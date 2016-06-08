@@ -855,6 +855,10 @@ class TestChronosTools:
         fake_epsilon = 'PT60S'
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
+        fake_cpus = 0.25
+        fake_period = 200000
+        fake_burst = 200
+        fake_cpu_quota = fake_cpus * fake_period * (100 + fake_burst) / 100
 
         chronos_job_config = chronos_tools.ChronosJobConfig(
             service=fake_service,
@@ -864,6 +868,9 @@ class TestChronosTools:
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
+                'cpus': fake_cpus,
+                'cfs_period_us': fake_period,
+                'cpu_burst_pct': fake_burst,
             },
             branch_dict={},
         )
@@ -878,7 +885,7 @@ class TestChronosTools:
             'retries': 2,
             'epsilon': fake_epsilon,
             'name': 'test_job',
-            'cpus': 0.25,
+            'cpus': fake_cpus,
             'async': False,
             'owner': fake_owner,
             'disabled': False,
@@ -889,7 +896,11 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
-                'parameters': [{"key": "memory-swap", "value": "1024m"}],
+                'parameters': [
+                    {'key': 'memory-swap', 'value': "1024m"},
+                    {"key": "cpu-period", "value": "%s" % int(fake_period)},
+                    {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
+                ]
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1142,7 +1153,11 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '1100000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1234,7 +1249,11 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '1100000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1293,7 +1312,11 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '1100000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1368,7 +1391,11 @@ class TestChronosTools:
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '1100000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
