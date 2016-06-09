@@ -286,7 +286,7 @@ def brutal_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
+    margin_factor=1.0,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -317,7 +317,7 @@ def upthendown_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
+    margin_factor=1.0,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
@@ -343,7 +343,7 @@ def crossover_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
+    margin_factor=1.0,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
@@ -378,7 +378,7 @@ def downthenup_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
+    margin_factor=1.0,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
@@ -398,7 +398,7 @@ def down_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
+    margin_factor=1.0,
 ):
     """
     Stops old apps, doesn't start any new apps.

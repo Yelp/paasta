@@ -175,7 +175,7 @@ def do_bounce(
     marathon_jobid,
     client,
     soa_dir,
-    bounce_margin_factor=1,
+    bounce_margin_factor=1.0,
 ):
     def log_bounce_action(line, level='debug'):
         return _log(
@@ -351,7 +351,7 @@ def deploy_service(
     nerve_ns,
     bounce_health_params,
     soa_dir,
-    bounce_margin_factor=1,
+    bounce_margin_factor=1.0,
 ):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
