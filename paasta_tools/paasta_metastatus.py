@@ -111,7 +111,10 @@ def healthcheck_result_for_resource_utilization(resource_utilization, threshold)
     :param resource_utilization: the resource_utilization tuple to check
     :returns: a HealthCheckResult
     """
-    utilization = percent_used(resource_utilization.total, resource_utilization.total - resource_utilization.free)
+    try:
+        utilization = percent_used(resource_utilization.total, resource_utilization.total - resource_utilization.free)
+    except ZeroDivisionError:
+        utilization = 0
     message = "%s: %.2f/%.2f(%.2f%%) used. Threshold (%.2f%%)" % (
         resource_utilization.metric,
         float(resource_utilization.total - resource_utilization.free),

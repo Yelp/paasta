@@ -630,6 +630,23 @@ def test_healthcheck_result_for_resource_utilization_unhealthy():
     ) == expected
 
 
+def test_healthcheck_result_for_resource_utilization_zero():
+    expected_message = 'cpus: 0.00/0.00(0.00%) used. Threshold (10.00%)'
+    expected = paasta_metastatus.HealthCheckResult(
+        message=expected_message,
+        healthy=True
+    )
+    resource_utilization = paasta_metastatus.ResourceUtilization(
+        metric='cpus',
+        total=0,
+        free=0,
+    )
+    assert paasta_metastatus.healthcheck_result_for_resource_utilization(
+        resource_utilization=resource_utilization,
+        threshold=10
+    ) == expected
+
+
 def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy():
     fake_healthcheckresult = Mock()
     fake_healthcheckresult.healthy = True
