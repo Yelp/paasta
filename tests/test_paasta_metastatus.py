@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import inspect
 
 from mock import Mock
 from mock import patch
@@ -261,72 +262,6 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 
 
-@patch('socket.getfqdn', autospec=True)
-@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
-@patch('paasta_tools.paasta_metastatus.get_num_masters')
-@patch('paasta_tools.paasta_metastatus.get_mesos_stats')
-def test_get_mesos_status(
-    mock_get_mesos_stats,
-    mock_get_num_masters,
-    mock_get_configured_quorum_size,
-    mock_getfqdn,
-):
-    mock_getfqdn.return_value = 'fakename'
-    mock_get_mesos_stats.return_value = {
-        'master/cpus_total': 10,
-        'master/cpus_used': 8,
-        'master/mem_total': 10240,
-        'master/mem_used': 2048,
-        'master/disk_total': 10240,
-        'master/disk_used': 3072,
-        'master/tasks_running': 3,
-        'master/tasks_staging': 4,
-        'master/tasks_starting': 0,
-        'master/slaves_active': 4,
-        'master/slaves_inactive': 0,
-    }
-    mesos_state = {
-        'flags': {
-            'zk': 'zk://1.1.1.1:2222/fake_cluster',
-            'quorum': 2,
-        },
-        'frameworks': [
-            {
-                'name': 'test_framework1',
-            },
-            {
-                'name': 'test_framework1',
-            },
-        ]
-    }
-    mock_get_num_masters.return_value = 5
-    mock_get_configured_quorum_size.return_value = 3
-    expected_cpus_output = "CPUs: 8.00 / 10 in use (%s)" % PaastaColors.green("80.00%")
-    expected_mem_output = \
-        "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20.00%")
-    expected_disk_output = "Disk: 3.00 / 10.00GB in use (%s)" % PaastaColors.green("30.00%")
-    expected_tasks_output = \
-        "Tasks: running: 3 staging: 4 starting: 0"
-    expected_duplicate_frameworks_output = \
-        "Frameworks:\n%s" % \
-        "    CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1."
-    expected_slaves_output = \
-        "Slaves: active: 4 inactive: 0"
-    expected_masters_quorum_output = \
-        "Quorum: masters: 5 configured quorum: 3 "
-
-    results = paasta_metastatus.get_mesos_status(mesos_state, verbosity=0)
-
-    assert mock_get_mesos_stats.called_once()
-    assert (expected_masters_quorum_output, True) in results
-    assert (expected_cpus_output, True) in results
-    assert (expected_mem_output, True) in results
-    assert (expected_disk_output, True) in results
-    assert (expected_tasks_output, True) in results
-    assert (expected_duplicate_frameworks_output, False) in results
-    assert (expected_slaves_output, True) in results
-
-
 @patch('paasta_tools.paasta_metastatus.marathon_tools.get_marathon_client', autospec=True)
 @patch('paasta_tools.paasta_metastatus.marathon_tools.load_marathon_config', autospec=True)
 def test_get_marathon_status(
@@ -400,22 +335,32 @@ def test_main_no_marathon_config():
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
+        patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_metrics_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
-        load_get_mesos_state_from_leader_patch,
-        load_get_mesos_status_patch,
+        get_mesos_state_from_leader_patch,
+        get_mesos_state_status_patch,
+        get_mesos_stats_patch,
+        get_mesos_metrics_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
         fake_args = Mock(
             verbose=0,
         )
+        get_mesos_state_from_leader_patch.return_value = {}
+        get_mesos_stats_patch.return_value = {}
+
+        get_mesos_state_status_patch.return_value = []
+        get_mesos_metrics_health_patch.return_value = []
+
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.side_effect = MarathonNotConfigured
         with raises(SystemExit) as excinfo:
@@ -427,17 +372,21 @@ def test_main_no_chronos_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True, return_value={}),
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
+        patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_metrics_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
-        load_get_mesos_state_from_leader_patch,
-        load_get_mesos_status_patch,
+        get_mesos_state_from_leader_patch,
+        get_mesos_state_status_patch,
+        get_mesos_stats_patch,
+        get_mesos_metrics_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
@@ -446,92 +395,31 @@ def test_main_no_chronos_config():
             verbose=0,
         )
         parse_args_patch.return_value = fake_args
+        load_marathon_config_patch.side_effect = MarathonNotConfigured
+
+        get_mesos_state_from_leader_patch.return_value = {}
+        get_mesos_stats_patch.return_value = {}
+
+        get_mesos_state_status_patch.return_value = []
+        get_mesos_metrics_health_patch.return_value = []
+
         load_chronos_config_patch.side_effect = ChronosNotConfigured
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
         assert excinfo.value.code == 0
 
 
-def test_assert_extra_slave_data_no_slaves():
-    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves registered on this cluster!'
-    actual = paasta_metastatus.assert_extra_slave_data(fake_mesos_state)[0]
-    assert expected == actual.strip()
-
-
-def test_assert_extra_attribute_data_no_slaves():
-    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves registered on this cluster!'
-    actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
-    assert expected == actual.strip()
-
-
-def test_assert_extra_attribute_data_slaves_attributes():
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat',
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat-2',
-                },
-            },
-        ],
-        'frameworks': [],
-    }
-    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
-
-
-def test_assert_extra_attribute_data_slaves_no_attributes():
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                },
-            },
-        ],
-        'frameworks': [],
-    }
-    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
-
-
 def test_status_for_results():
-    assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
+    assert paasta_metastatus.status_for_results([
+        paasta_metastatus.HealthCheckResult(
+            message='message',
+            healthy=True
+        ),
+        paasta_metastatus.HealthCheckResult(
+            message='message',
+            healthy=False
+        )
+    ]) == [True, False]
 
 
 def test_generate_summary_for_results_ok():
@@ -565,260 +453,269 @@ def test_filter_mesos_state_metrics():
     assert paasta_metastatus.filter_mesos_state_metrics(test_resource_dictionary) == expected
 
 
-def test_get_mesos_slave_data():
-    mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-            },
-        ],
-        'frameworks': [
-            {
-                'tasks': [
-                    {
-                        'slave_id': 'test-slave',
-                        'resources': {
-                            'cpus': 50,
-                            'disk': 100,
-                            'mem': 0,
-                            'something-bogus': 25,
-                        },
-                    },
-                ],
-            },
-        ],
-    }
-    expected_free_resources = [
+def test_group_slaves_by_key_func():
+    slaves = [
         {
-            'cpus': 0,
-            'disk': 100,
-            'mem': 1000,
+            'id': 'somenametest-slave',
+            'hostname': 'test.somewhere.www',
+            'resources': {
+                'cpus': 75,
+                'disk': 250,
+                'mem': 100,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat',
+            },
+        },
+        {
+            'id': 'somenametest-slave2',
+            'hostname': 'test2.somewhere.www',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat-2',
+            },
         },
     ]
-    extra_mesos_slave_data = paasta_metastatus.get_extra_mesos_slave_data(mesos_state)
-    assert (len(extra_mesos_slave_data) == len(mesos_state['slaves']))
-    assert ([slave['free_resources'] for slave in extra_mesos_slave_data] == expected_free_resources)
-
-
-def test_get_mesos_habitat_data():
-    mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 75,
-                    'disk': 250,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat',
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 750,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat-2',
-                },
-            },
-            {
-                'id': 'test-slave3',
-                'hostname': 'test3.somewhere.www',
-                'resources': {
-                    'cpus': 22,
-                    'disk': 201,
-                    'mem': 920,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat-2',
-                },
-            },
-        ],
-        'frameworks': [
-            {
-                'tasks': [
-                    {
-                        'slave_id': 'test-slave',
-                        'resources': {
-                            'cpus': 50,
-                            'disk': 100,
-                            'mem': 0,
-                            'something-bogus': 25,
-                        },
-                    },
-                ],
-            },
-        ],
-        'cluster': 'fake_cluster',
-    }
-    expected_free_resources = (
-        (
-            'habitat',
-            {
-                'free':
-                {
-                    'test-habitat': {
-                        'cpus': 25,
-                        'disk': 150,
-                        'mem': 1000,
-                    },
-                    'test-habitat-2': {
-                        'cpus': 72,
-                        'disk': 401,
-                        'mem': 1670,
-                    },
-                },
-                'total':
-                    {
-                    'test-habitat': {
-                        'cpus': 75,
-                        'disk': 250,
-                        'mem': 1000,
-                    },
-                    'test-habitat-2': {
-                        'cpus': 72,
-                        'disk': 401,
-                        'mem': 1670,
-                    },
-                }
-            }
-        ),
+    actual = paasta_metastatus.group_slaves_by_key_func(
+        lambda x: x['attributes']['habitat'],
+        slaves
     )
-    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+    assert len(actual.items()) == 2
+    for k, v in actual.items():
+        print k, v
+        assert len(list(v)) == 1
 
-    assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
 
-
-def test_get_mesos_habitat_data_humanized():
-    mesos_state = {
-        'slaves': [
-            {
-                'id': 'somenametest-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 75,
-                    'disk': 250,
-                    'mem': 100,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat',
-                },
-            },
-            {
-                'id': 'somenametest-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 500,
-                    'disk': 200,
-                    'mem': 750,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat-2',
-                },
-            },
-        ],
-
-        'frameworks': [
-            {
-                'tasks': [
-                    {
-                        'slave_id': 'somenametest-slave',
-                        'resources': {
-                            'cpus': 50,
-                            'disk': 100,
-                            'mem': 80,
-                            'something-bogus': 25,
-                        },
-                    },
-                ],
-            },
-        ],
-        'cluster': 'fake_cluster',
+@patch('paasta_tools.paasta_metastatus.group_slaves_by_key_func', autospec=True)
+@patch('paasta_tools.paasta_metastatus.calculate_resource_utilization_for_slaves', autospec=True)
+@patch('paasta_tools.paasta_metastatus.get_all_tasks_from_state', autospec=True)
+def test_get_resource_utilization_by_grouping(
+        mock_get_all_tasks_from_state,
+        mock_calculate_resource_utilization_for_slaves,
+        mock_group_slaves_by_key_func,
+):
+    mock_group_slaves_by_key_func.return_value = {
+        'somenametest-habitat': [{
+            'id': 'abcd',
+            'hostname': 'test.somewhere.www'
+        }],
+        'somenametest-habitat-2': [{
+            'id': 'abcd',
+            'hostname': 'test2.somewhere.www'
+        }]
     }
-    expected_slave_humanize_output = """  Hostname             CPU (free/total)  RAM (free/total)  Disk (free/total)
-    test.somewhere.www   25.00/75.00       20.0M/100.0M      150.0M/250.0M
-    test2.somewhere.www  500.00/500.00     750.0M/750.0M     200.0M/200.0M"""
-    expected_attribute_humanize_output = """  Habitat                 CPU (free/total)  RAM (free/total)  Disk (free/total)
-    somenametest-habitat    25.00/75.00       20.0M/100.0M      150.0M/250.0M
-    somenametest-habitat-2  500.00/500.00     750.0M/750.0M     200.0M/200.0M"""
-
-    extra_slave_data = paasta_metastatus.assert_extra_slave_data(mesos_state,
-                                                                 humanize_output=True)
-    extra_attribute_data = paasta_metastatus.assert_extra_attribute_data(mesos_state,
-                                                                         humanize_output=True)
-
-    assert extra_slave_data[0] == expected_slave_humanize_output
-    assert extra_attribute_data[0] == expected_attribute_humanize_output
-
-
-def test_get_mesos_habitat_data_nonhumanized():
-    mesos_state = {
-        'slaves': [
-            {
-                'id': 'somenametest-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 75,
-                    'disk': 250,
-                    'mem': 100,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat',
-                },
-            },
-            {
-                'id': 'somenametest-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 500,
-                    'disk': 200,
-                    'mem': 750,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat-2',
-                },
-            },
-        ],
-
-        'frameworks': [
-            {
-                'tasks': [
-                    {
-                        'slave_id': 'somenametest-slave',
-                        'resources': {
-                            'cpus': 50,
-                            'disk': 100,
-                            'mem': 80,
-                            'something-bogus': 25,
-                        },
-                    },
-                ],
-            },
-        ],
-        'cluster': 'fake_cluster',
+    mock_calculate_resource_utilization_for_slaves.return_value = {
+        'free': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
+        'total': paasta_metastatus.ResourceInfo(cpus=20, mem=20, disk=20)
     }
+    mock_get_all_tasks_from_state([Mock(), Mock()])
+    state = {
+        'frameworks': Mock(),
+        'slaves': [{}]
+    }
+    actual = paasta_metastatus.get_resource_utilization_by_grouping(
+        grouping_func=lambda slave: slave['attributes']['habitat'],
+        mesos_state=state,
+    )
+    assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
+    for k, v in actual.items():
+        print v
+        assert v['total'] == paasta_metastatus.ResourceInfo(
+            cpus=20,
+            disk=20,
+            mem=20
+        )
+        assert v['free'] == paasta_metastatus.ResourceInfo(
+            cpus=10,
+            disk=10,
+            mem=10
+        )
 
-    expected_slave_output = """  Hostname             CPU (free/total)  RAM (free/total)  Disk (free/total)
-    test.somewhere.www   25.00/75.00       20.00/100.00      150.00/250.00
-    test2.somewhere.www  500.00/500.00     750.00/750.00     200.00/200.00"""
-    expected_attribute_output = """  Habitat                 CPU (free/total)  RAM (free/total)  Disk (free/total)
-    somenametest-habitat    25.00/75.00       20.00/100.00      150.00/250.00
-    somenametest-habitat-2  500.00/500.00     750.00/750.00     200.00/200.00"""
 
-    extra_slave_data = paasta_metastatus.assert_extra_slave_data(mesos_state, humanize_output=False)
-    extra_attribute_data = paasta_metastatus.assert_extra_attribute_data(mesos_state, humanize_output=False)
+def test_get_resource_utilization_per_slave():
+    tasks = [
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            }
+        },
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            }
+        }
+    ]
+    slaves = [
+        {
+            'id': 'somenametest-slave',
+            'hostname': 'test.somewhere.www',
+            'resources': {
+                'cpus': 75,
+                'disk': 250,
+                'mem': 100,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat',
+            },
+        },
+        {
+            'id': 'somenametest-slave2',
+            'hostname': 'test2.somewhere.www',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat-2',
+            },
+        },
+    ]
+    actual = paasta_metastatus.calculate_resource_utilization_for_slaves(
+        slaves=slaves,
+        tasks=tasks
+    )
+    assert sorted(actual.keys()) == sorted(['total', 'free'])
+    assert actual['total'] == paasta_metastatus.ResourceInfo(
+        cpus=575,
+        disk=450,
+        mem=850
+    )
+    assert actual['free'] == paasta_metastatus.ResourceInfo(
+        cpus=555,
+        disk=430,
+        mem=830
+    )
 
-    assert extra_slave_data[0] == expected_slave_output
-    assert extra_attribute_data[0] == expected_attribute_output
+
+def test_healthcheck_result_for_resource_utilization_ok():
+    expected_message = 'cpus: 5.00/10.00(50.00%) used. Threshold (90.00%)'
+    expected = paasta_metastatus.HealthCheckResult(
+        message=expected_message,
+        healthy=True
+    )
+    resource_utilization = paasta_metastatus.ResourceUtilization(
+        metric='cpus',
+        total=10,
+        free=5
+    )
+    assert paasta_metastatus.healthcheck_result_for_resource_utilization(
+        resource_utilization=resource_utilization,
+        threshold=90
+    ) == expected
+
+
+def test_healthcheck_result_for_resource_utilization_unhealthy():
+    expected_message = 'cpus: 5.00/10.00(50.00%) used. Threshold (10.00%)'
+    expected = paasta_metastatus.HealthCheckResult(
+        message=expected_message,
+        healthy=False
+    )
+    resource_utilization = paasta_metastatus.ResourceUtilization(
+        metric='cpus',
+        total=10,
+        free=5
+    )
+    assert paasta_metastatus.healthcheck_result_for_resource_utilization(
+        resource_utilization=resource_utilization,
+        threshold=10
+    ) == expected
+
+
+def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy():
+    fake_healthcheckresult = Mock()
+    fake_healthcheckresult.healthy = True
+    fake_resource_utilization = Mock()
+    fake_resource_utilization.free = 10
+    fake_resource_utilization.total = 20
+    expected = PaastaColors.green("10/20")
+    assert paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair(
+        (fake_healthcheckresult, fake_resource_utilization),
+        False
+    ) == expected
+
+
+def test_format_table_column_for_healthcheck_resource_utilization_pair_unhealthy():
+    fake_healthcheckresult = Mock()
+    fake_healthcheckresult.healthy = False
+    fake_healthcheckresult.metric = 'mem'
+    fake_resource_utilization = Mock()
+    fake_resource_utilization.free = 10
+    fake_resource_utilization.total = 20
+    expected = PaastaColors.red("10/20")
+    assert paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair(
+        (fake_healthcheckresult, fake_resource_utilization),
+        False
+    ) == expected
+
+
+def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_human():
+    fake_healthcheckresult = Mock()
+    fake_healthcheckresult.healthy = True
+    fake_healthcheckresult.metric = 'mem'
+    fake_resource_utilization = Mock()
+    fake_resource_utilization.free = 10
+    fake_resource_utilization.total = 20
+    expected = PaastaColors.green("10.0M/20.0M")
+    assert paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair(
+        (fake_healthcheckresult, fake_resource_utilization),
+        True
+    ) == expected
+
+
+def test_format_table_column_for_healthcheck_resource_utilization_pair_unhealthy_human():
+    fake_healthcheckresult = Mock()
+    fake_healthcheckresult.healthy = False
+    fake_healthcheckresult.metric = 'mem'
+    fake_resource_utilization = Mock()
+    fake_resource_utilization.free = 10
+    fake_resource_utilization.total = 20
+    expected = PaastaColors.red("10.0M/20.0M")
+    assert paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair(
+        (fake_healthcheckresult, fake_resource_utilization),
+        True
+    ) == expected
+
+
+@patch('paasta_tools.paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair')
+def test_format_row_for_resource_utilization_checks(mock_format_row):
+    fake_pairs = [
+        (Mock(), Mock()),
+        (Mock(), Mock()),
+        (Mock(), Mock())
+    ]
+    assert paasta_metastatus.format_row_for_resource_utilization_healthchecks(fake_pairs, False)
+    assert mock_format_row.call_count == len(fake_pairs)
+
+
+@patch('paasta_tools.paasta_metastatus.format_row_for_resource_utilization_healthchecks')
+def test_get_table_rows_for_resource_usage_dict(mock_format_row):
+    fake_pairs = [
+        (Mock(), Mock()),
+        (Mock(), Mock()),
+        (Mock(), Mock())
+    ]
+    mock_format_row.return_value = ['10/10', '10/10', '10/10']
+    actual = paasta_metastatus.get_table_rows_for_resource_info_dict('myhabitat', fake_pairs, False)
+    assert actual == ['myhabitat', '10/10', '10/10', '10/10']
+
+
+def test_key_func_for_attribute():
+    assert inspect.isfunction(paasta_metastatus.key_func_for_attribute('habitat'))
+
+
+def test_get_mesos_disk_status():
+    metrics = {
+        'master/disk_total': 100,
+        'master/disk_used': 50
+    }
+    actual = paasta_metastatus.get_mesos_disk_status(metrics)
+    assert actual == (100, 50, 50)
