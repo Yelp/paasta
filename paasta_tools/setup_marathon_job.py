@@ -48,7 +48,6 @@ from collections import defaultdict
 
 import pysensu_yelp
 import requests_cache
-import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -577,7 +576,6 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
-    service_configuration_lib.disable_yaml_cache()
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:
         try:
