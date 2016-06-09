@@ -870,7 +870,7 @@ class TestCrossoverBounce:
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in xrange(200)),
+            'app2': set(mock.Mock() for _ in xrange(100)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -882,7 +882,7 @@ class TestCrossoverBounce:
             margin_factor=0.95,
         )
         assert actual['create_app'] is False
-        assert len(actual['tasks_to_drain']) == 125
+        assert len(actual['tasks_to_drain']) == 25
 
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
