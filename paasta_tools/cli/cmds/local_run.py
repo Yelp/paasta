@@ -14,7 +14,6 @@
 # limitations under the License.
 import datetime
 import json
-import math
 import os
 import pipes
 import shlex
@@ -382,7 +381,7 @@ def get_container_name():
 
 
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
-                       docker_hash, command, hostname, net):
+                       docker_hash, command, hostname, net, docker_params):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
@@ -390,7 +389,8 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
-    cmd.append('--memory-swap=%dm' % int(math.ceil(memory)))
+    for i in docker_params:
+        cmd.append('--%s=%s' % (i['key'], i['value']))
     if net == 'bridge':
         cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     elif net == 'host':
@@ -503,6 +503,7 @@ def run_docker_container(
     memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
+    docker_params = instance_config.format_docker_parameters()
     docker_run_cmd = get_docker_run_cmd(
         memory=memory,
         random_port=random_port,
@@ -514,6 +515,7 @@ def run_docker_container(
         command=command,
         hostname=hostname,
         net=net,
+        docker_params=docker_params,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
