@@ -823,11 +823,7 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
     def get_dashboard_links(self):
-        try:
-            return self['dashboard_links']
-        except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find dashboard_links in configuration directory: %s' % self.directory)
+        return self['dashboard_links']
 
     def get_fsm_template(self):
         fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
