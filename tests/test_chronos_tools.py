@@ -84,7 +84,7 @@ class TestChronosTools:
             'password': 'fake_password',
             'url': 'fake_host'
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         assert fake_config.get_username() == 'fake_user'
         assert fake_config.get_password() == 'fake_password'
         assert fake_config.get_url() == 'fake_host'
@@ -93,7 +93,7 @@ class TestChronosTools:
         fake_json_contents = {
             'password': 'fake_password',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_username()
 
@@ -101,7 +101,7 @@ class TestChronosTools:
         fake_json_contents = {
             'user': 'fake_user',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_password()
 
@@ -109,34 +109,9 @@ class TestChronosTools:
         fake_json_contents = {
             'user': 'fake_user',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_url()
-
-    def test_load_chronos_config_good(self):
-        expected = {'foo': 'bar'}
-        file_mock = mock.MagicMock(spec=file)
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=expected)
-        ) as (
-            open_file_patch,
-            json_patch
-        ):
-            assert chronos_tools.load_chronos_config() == expected
-            open_file_patch.assert_called_once_with('/etc/paasta/chronos.json')
-            json_patch.assert_called_once_with(file_mock.__enter__())
-
-    def test_load_chronos_config_bad(self):
-        fake_path = '/dne'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
-        ) as (
-            open_patch,
-        ):
-            with raises(chronos_tools.ChronosNotConfigured) as excinfo:
-                chronos_tools.load_chronos_config(fake_path)
-            assert str(excinfo.value) == "Could not load chronos config file b: a"
 
     def test_get_chronos_client(self):
         with contextlib.nested(
@@ -145,7 +120,7 @@ class TestChronosTools:
             mock_connect,
         ):
             fake_config = chronos_tools.ChronosConfig(
-                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']})
             chronos_tools.get_chronos_client(fake_config)
             assert mock_connect.call_count == 1
 
@@ -1407,7 +1382,7 @@ class TestChronosTools:
 
     def test_wait_for_job(self):
         fake_config = chronos_tools.ChronosConfig(
-            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']})
         client = chronos_tools.get_chronos_client(fake_config)
 
         # only provide the right response on the third attempt

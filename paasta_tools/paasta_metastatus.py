@@ -26,7 +26,6 @@ from marathon.exceptions import MarathonError
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
-from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.marathon_tools import MarathonNotConfigured
@@ -39,6 +38,7 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import print_with_indent
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
@@ -611,7 +611,7 @@ def main():
     # Check to see if Chronos should be running here by checking for config
     try:
         chronos_config = load_chronos_config()
-    except ChronosNotConfigured:
+    except PaastaNotConfiguredError:
         chronos_results = [HealthCheckResult(message='Chronos is not configured to run here', healthy=True)]
 
     if marathon_config:

@@ -30,7 +30,7 @@ class TestCleanupMarathonJobs:
         'url': 'http://mess_url',
         'user': 'namnin',
         'password': 'pass_nememim',
-    }, '/some/fake/path/fake_file.json')
+    })
     fake_marathon_client = mock.Mock()
 
     def test_main(self):

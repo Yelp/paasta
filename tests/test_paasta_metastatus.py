@@ -20,10 +20,10 @@ from mock import patch
 from pytest import raises
 
 from paasta_tools import paasta_metastatus
-from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.marathon_tools import MarathonConfig
 from paasta_tools.marathon_tools import MarathonNotConfigured
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_ok_check_threshold():
@@ -272,7 +272,7 @@ def test_get_marathon_status(
         'url': 'fakeurl',
         'user': 'fakeuser',
         'password': 'fakepass',
-    }, '/fake_config/fake_marathon.json')
+    })
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = [
         "MarathonApp::1",
@@ -302,7 +302,7 @@ def test_get_marathon_client():
         'url': 'fakeurl',
         'user': 'fakeuser',
         'password': 'fakepass',
-    }, '/fake_config/fake_marathon.json')
+    })
     client = paasta_metastatus.get_marathon_client(fake_config)
     assert client.servers == ['fakeurl']
     assert client.auth == ('fakeuser', 'fakepass')
@@ -333,7 +333,8 @@ def test_get_chronos_status():
 def test_main_no_marathon_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
-        patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_chronos_status', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
@@ -345,6 +346,7 @@ def test_main_no_marathon_config():
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
+        load_get_chronos_status_patch,
         get_mesos_state_from_leader_patch,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,
@@ -371,7 +373,7 @@ def test_main_no_marathon_config():
 def test_main_no_chronos_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
-        patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.load_chronos_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True, return_value={}),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
@@ -403,7 +405,7 @@ def test_main_no_chronos_config():
         get_mesos_state_status_patch.return_value = []
         get_mesos_metrics_health_patch.return_value = []
 
-        load_chronos_config_patch.side_effect = ChronosNotConfigured
+        load_chronos_config_patch.side_effect = PaastaNotConfiguredError
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
         assert excinfo.value.code == 0
