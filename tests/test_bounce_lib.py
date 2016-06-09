@@ -601,15 +601,15 @@ class TestCrossoverBounce:
             "tasks_to_drain": set(),
         }
 
-    def test_crossover_bounce_old_app_but_no_new_app(self):
+    def test_crossover_bounce_old_but_no_new(self):
         """When marathon only has old apps for this service, crossover bounce should start the new one, but not kill any
         old tasks yet."""
 
-        new_config = {'id': 'foo.bar.12345', 'instances': 100}
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(60)),
-            'app2': set(mock.Mock() for _ in xrange(40)),
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
