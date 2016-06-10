@@ -223,8 +223,8 @@ options:
   * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
     command is executed inside the container as a healthcheck. It must exit
     with status code 0 to signify a successful healthcheck. Any other exit code
-    is treated as a failure. Defaults to ``/bin/true`` (that is, always
-    indicate good health) if ``healthcheck_mode`` is ``cmd``.
+    is treated as a failure. This is a required field if ``healthcheck_mode``
+    is ``cmd``.
 
   * ``healthcheck_grace_period_seconds``: Marathon will wait this long for a
     service to come up before counting failed healthchecks. Defaults to 60
