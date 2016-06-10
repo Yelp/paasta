@@ -134,7 +134,7 @@ def working_paasta_cluster(context):
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
         "cluster": "testcluster",
-        "zookeeper": "zk://fake",
+        "zookeeper": "zk://zookeeper",
         "docker_registry": "fake.com"
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
