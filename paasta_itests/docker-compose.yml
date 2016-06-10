@@ -22,7 +22,6 @@ mesosslave:
   hostname: mesosslave.test_hostname
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    - /usr/bin/docker:/usr/bin/docker
 
 marathon:
   build: ../yelp_package/dockerfiles/itest/marathon/
