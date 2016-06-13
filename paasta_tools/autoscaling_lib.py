@@ -37,7 +37,7 @@ from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
-from paasta_tools.paasta_metastatus import get_mesos_utilization_for_attribute
+from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -455,18 +455,18 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
                          "(cowardly refusing to go past %.2f%% missing instances)") % (
             current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
         raise ClusterAutoscalingError(error_message)
-    tasks = [
-        task
-        for framework in mesos_state.get('frameworks', [])
-        for task in framework.get('tasks', [])
-        if task['slave_id'] in slaves
-    ]
-    pool_resources_dict = get_mesos_utilization_for_attribute(slaves.values(), tasks, 'pool')
-    free_pool_resources = pool_resources_dict['free'][pool]
-    total_pool_resources = pool_resources_dict['total'][pool]
-    utilization = 1.0 - min((float(free_pool_resources[resource]) / total_pool_resources[resource]
-                             for resource in free_pool_resources.keys()
-                             if resource in total_pool_resources))
+
+    pool_utilization_dict = get_resource_utilization_by_grouping(
+        lambda slave: slave['attributes']['pool'],
+        mesos_state
+    )[pool]
+
+    free_pool_resources = pool_utilization_dict['free']
+    total_pool_resources = pool_utilization_dict['total']
+    utilization = 1.0 - min([
+        float(free_pool_resources[resource]) / total_pool_resources[resource]
+        for resource in free_pool_resources
+    ])
     return utilization
 
 

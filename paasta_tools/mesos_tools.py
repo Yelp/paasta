@@ -479,6 +479,14 @@ def get_mesos_quorum(state):
     return int(state['flags']['quorum'])
 
 
+def get_all_tasks_from_state(mesos_state):
+    """Given a mesos state, find the tasks from all frameworks.
+    :param mesos_state: the mesos_state
+    :returns: a list of tasks
+    """
+    return [task for framework in mesos_state.get('frameworks', []) for task in framework.get('tasks', [])]
+
+
 def get_zookeeper_config(state):
     """Returns dict, containing the zookeeper hosts and path.
     :param state: mesos state dictionary"""

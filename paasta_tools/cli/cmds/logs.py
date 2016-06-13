@@ -25,12 +25,15 @@ from Queue import Empty
 
 import dateutil
 import isodate
+import pytz
 
 try:
     from scribereader import scribereader
     from scribereader.scribereader import StreamTailerSetupError
 except ImportError:
     scribereader = None
+
+from pytimeparse.timeparse import timeparse
 
 from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import format_job_id
@@ -68,7 +71,7 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect. Defaults to autodetect.'
+        help='The name of the service you wish to inspect. Defaults to autodetect.',
     ).completer = lazy_choices_completer(list_services)
     components_help = 'A comma separated list of the components you want logs for.'
     status_parser.add_argument(
@@ -81,7 +84,7 @@ def add_subparser(subparsers):
         help=cluster_help,
     ).completer = completer_clusters
     status_parser.add_argument(
-        '-f', '-F', '--tail', dest='tail', action='store_true', default=True,
+        '-f', '-F', '--tail', dest='tail', action='store_true', default=False,
         help='Stream the logs and follow it for more data',
     )
     status_parser.add_argument(
@@ -91,7 +94,7 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-r', '--raw-mode', action='store_true',
         dest='raw_mode', default=False,
-        help="Don't pretty-print logs; emit them exactly as they are in scribe."
+        help="Don't pretty-print logs; emit them exactly as they are in scribe.",
     )
     status_parser.add_argument(
         '-d', '--soa-dir',
@@ -100,9 +103,38 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+
+    status_parser.add_argument(
+        '-a', '--from', '--after', dest='time_from',
+        help='The time to start gettings logs from. This can be an ISO-8601 timestamp or a human readable duration '
+             'parseable by pytimeparse such as "5m", "1d3h" etc. For example: --from "3m" would start retrieving logs '
+             'from 3 minutes ago',
+    )
+    status_parser.add_argument(
+        '-t', '--to', dest='time_to',
+        help='The time to get logs up to. This can be an ISO-8601 timestamp or a human readable duration'
+             'parseable by pytimeparse such as "5m", "1d3h" etc. Defaults to right now',
+    )
+    status_parser.add_argument(
+        '-l', '-n', '--lines', dest='line_count',
+        help='The number of lines to retrieve from the specified offset. May optionally be prefixed with a "+" or "-" '
+             'to specify which direction from the offset, defaults to "-100"',
+        type=int,
+    )
+    status_parser.add_argument(
+        '-o', '--line-offset', dest='line_offset',
+        help='The offset at which line to start grabbing logs from. For example 1 would be the first line. Paired with '
+             '--lines +100 would give you the first 100 lines of logs. Defaults to the latest line\'s offset',
+        type=int,
+    )
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
-    epilog = 'COMPONENTS\n' \
+    epilog = 'TIME/LINE PARAMETERS\n' \
+             'The args for time and line based offsetting are mutually exclusive, they cannot be used together. ' \
+             'Additionally, some logging backends may not support offsetting by time or offsetting by lines.' \
+             '\n' \
+             '\n' \
+             'COMPONENTS\n' \
              'There are many possible components of Paasta logs that you might be interested in:\n' \
              'Run --list-components to see all available log components.\n' \
              'If unset, the default components are:\n\t%s\n' \
@@ -328,16 +360,36 @@ def get_log_reader():
 
 
 class LogReader(object):
-    def __init__(self, **kwargs):
-        pass
+    # Tailing, i.e actively viewing logs as they come in
+    SUPPORTS_TAILING = False
+    # Getting the last n lines of logs
+    SUPPORTS_LINE_COUNT = False
+    # Getting the last/prev n lines of logs from line #34013 for example
+    SUPPORTS_LINE_OFFSET = False
+    # Getting the logs between two given times
+    SUPPORTS_TIME = False
+    # Supporting at least one of these log retrieval modes is required
 
-    def tail_logs(service, levels, components, clusters, raw_mode=False):
+    def tail_logs(self, service, levels, components, clusters, raw_mode=False):
         raise NotImplementedError("tail_logs is not implemented")
+
+    def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, raw_mode):
+        raise NotImplementedError("print_logs_by_time is not implemented")
+
+    def print_last_n_logs(self, service, line_count, levels, components, clusters, raw_mode):
+        raise NotImplementedError("print_last_n_logs is not implemented")
+
+    def print_logs_by_offset(self, service, line_count, offset, levels, components, clusters, raw_mode):
+        raise NotImplementedError("print_logs_by_offset is not implemented")
 
 
 @register_log_reader('scribereader')
 class ScribeLogReader(LogReader):
-    def __init__(self, cluster_map, **kwargs):
+    SUPPORTS_TAILING = True
+
+    def __init__(self, cluster_map):
+        super(ScribeLogReader, self).__init__()
+
         if scribereader is None:
             raise Exception("scribereader package must be available to use scribereader log reading backend")
         self.cluster_map = cluster_map
@@ -559,6 +611,94 @@ class ScribeLogReader(LogReader):
             return env
 
 
+def generate_start_end_time(from_string="30m", to_string=None):
+    """Parses the --from and --to command line arguments to create python
+    datetime objects representing the start and end times for log retrieval
+
+    :param from_string: The --from argument, defaults to 30 minutes
+    :param to_string: The --to argument, defaults to the time right now
+    :return: A tuple containing start_time, end_time, which specify the interval of log retrieval
+    """
+    if to_string is None:
+        end_time = datetime.datetime.utcnow()
+    else:
+        # Try parsing as a a natural time duration first, if that fails move on to
+        # parsing as an ISO-8601 timestamp
+        to_duration = timeparse(to_string)
+
+        if to_duration is not None:
+            end_time = datetime.datetime.utcnow() - datetime.timedelta(seconds=to_duration)
+        else:
+            end_time = isodate.parse_datetime(to_string)
+            if not end_time:
+                raise ValueError("--to argument not in ISO8601 format and not a valid pytimeparse duration")
+
+    from_duration = timeparse(from_string)
+    if from_duration is not None:
+        start_time = datetime.datetime.utcnow() - datetime.timedelta(seconds=from_duration)
+    else:
+        start_time = isodate.parse_datetime(from_string)
+
+        if not start_time:
+            raise ValueError("--from argument not in ISO8601 format and not a valid pytimeparse duration")
+
+    # Covert the timestamps to something timezone aware
+    start_time = pytz.utc.localize(start_time)
+    end_time = pytz.utc.localize(end_time)
+
+    if start_time > end_time:
+        raise ValueError("Start time bigger than end time")
+
+    return start_time, end_time
+
+
+def validate_filtering_args(args, log_reader):
+    if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
+        print PaastaColors.red(log_reader.__class__.__name__ + " does not support line based offsets")
+        return False
+    if not log_reader.SUPPORTS_LINE_COUNT and args.line_count is not None:
+        print PaastaColors.red(log_reader.__class__.__name__ + " does not support line count based log retrieval")
+        return False
+    if not log_reader.SUPPORTS_TAILING and args.tail:
+        print PaastaColors.red(log_reader.__class__.__name__ + " does not support tailing")
+        return False
+    if not log_reader.SUPPORTS_TIME and (args.time_from is not None or args.time_to is not None):
+        print PaastaColors.red(log_reader.__class__.__name__ + " does not support time based offsets")
+        return False
+
+    if args.tail and (args.line_count is not None or args.time_from is not None or
+                      args.time_to is not None or args.line_offset is not None):
+        print PaastaColors.red("You cannot specify line/time based filtering parameters when tailing")
+        return False
+
+    # Can't have both
+    if args.line_count is not None and args.time_from is not None:
+        print PaastaColors.red("You cannot filter based on both line counts and time")
+        return False
+
+    return True
+
+
+def pick_default_log_mode(args, log_reader, service, levels, components, clusters):
+    if log_reader.SUPPORTS_LINE_COUNT:
+        sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 100 lines") + "\n")
+        log_reader.print_last_n_logs(service, 100, levels, components, clusters, raw_mode=args.raw_mode)
+        return 0
+
+    elif log_reader.SUPPORTS_TIME:
+        start_time, end_time = generate_start_end_time()
+
+        sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 30 minutes of logs") + "\n")
+        log_reader.print_logs_by_time(service, start_time, end_time, levels, components, clusters,
+                                      raw_mode=args.raw_mode)
+        return 0
+
+    elif log_reader.SUPPORTS_TAILING:
+        sys.stderr.write(PaastaColors.cyan("No filtering specified, tailing logs") + "\n")
+        log_reader.tail_logs(service, levels, components, clusters, raw_mode=args.raw_mode)
+        return 0
+
+
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -586,7 +726,39 @@ def paasta_logs(args):
 
     log_reader = get_log_reader()
 
+    if not validate_filtering_args(args, log_reader):
+        return 1
+
+    # They haven't specified what kind of filtering they want, decide for them
+    if args.line_count is None and args.time_from is None and not args.tail:
+        return pick_default_log_mode(args, log_reader, service, levels, components, clusters)
+
     if args.tail:
+        sys.stderr.write(PaastaColors.cyan("Tailing logs") + "\n")
         log_reader.tail_logs(service, levels, components, clusters, raw_mode=args.raw_mode)
-    else:
-        print "Non-tailing actions are not yet supported"
+        return 0
+
+    # If the logger doesn't support offsetting the number of lines by a particular line number
+    # there is no point in distinguishing between a positive/negative number of lines since it
+    # can only get the last N lines
+    if not log_reader.SUPPORTS_LINE_OFFSET and args.line_count is not None:
+        args.line_count = abs(args.line_count)
+
+    # Handle line based filtering
+    if args.line_count is not None and args.line_offset is None:
+        log_reader.print_last_n_logs(service, args.line_count, levels, components, clusters, raw_mode=args.raw_mode)
+        return 0
+    elif args.line_count is not None and args.line_offset is not None:
+        log_reader.print_logs_by_offset(service, args.line_count, args.line_offset,
+                                        levels, components, clusters, raw_mode=args.raw_mode)
+        return 0
+
+    # Handle time based filtering
+    try:
+        start_time, end_time = generate_start_end_time(args.time_from, args.time_to)
+    except ValueError as e:
+        print PaastaColors.red(e.message)
+        return 1
+
+    log_reader.print_logs_by_time(service, start_time, end_time, levels, components, clusters,
+                                  raw_mode=args.raw_mode)

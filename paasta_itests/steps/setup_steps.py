@@ -40,23 +40,35 @@ def _get_zookeeper_connection_string(chroot):
     return 'zk://%s/%s' % (get_service_connection_string('zookeeper'), chroot)
 
 
-def setup_marathon_client():
+def setup_system_paasta_config():
     marathon_connection_string = _get_marathon_connection_string()
     zk_connection_string = _get_zookeeper_connection_string('mesos-testcluster')
-    marathon_config = marathon_tools.MarathonConfig({
-        'url': marathon_connection_string,
-        'user': None,
-        'password': None,
-    }, '/some_fake_path_to_marathon.json')
-    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                                marathon_config.get_password())
+    chronos_connection_string = _get_chronos_connection_string()
     system_paasta_config = utils.SystemPaastaConfig({
         'cluster': 'testcluster',
         'docker_volumes': [],
         'docker_registry': u'docker-dev.yelpcorp.com',
         'zookeeper': zk_connection_string,
         'synapse_port': 3212,
+        'marathon_config': {
+            'url': marathon_connection_string,
+            'user': None,
+            'password': None,
+        },
+        'chronos_config': {
+            'user': None,
+            'password': None,
+            'url': [chronos_connection_string],
+        },
     }, '/some_fake_path_to_config_dir/')
+    return system_paasta_config
+
+
+def setup_marathon_client():
+    system_paasta_config = setup_system_paasta_config()
+    marathon_config = marathon_tools.MarathonConfig(system_paasta_config.get_marathon_config())
+    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
+                                                marathon_config.get_password())
     return (client, marathon_config, system_paasta_config)
 
 
@@ -66,12 +78,8 @@ def setup_chronos_client():
 
 
 def setup_chronos_config():
-    chronos_connection_string = _get_chronos_connection_string()
-    chronos_config = chronos_tools.ChronosConfig({
-        'user': None,
-        'password': None,
-        'url': [chronos_connection_string],
-    }, '/some_fake_path_to_chronos.json')
+    system_paasta_config = setup_system_paasta_config()
+    chronos_config = chronos_tools.ChronosConfig(system_paasta_config.get_chronos_config())
     return chronos_config
 
 
@@ -122,8 +130,8 @@ def working_paasta_cluster(context):
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
-    write_etc_paasta(context, context.marathon_config, 'marathon.json')
-    write_etc_paasta(context, context.chronos_config, 'chronos.json')
+    write_etc_paasta(context, {'marathon_config': context.marathon_config}, 'marathon.json')
+    write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
         "cluster": "testcluster",
         "zookeeper": "zk://fake",

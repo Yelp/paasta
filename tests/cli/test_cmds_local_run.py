@@ -491,8 +491,9 @@ def test_get_docker_run_cmd_without_additional_args():
     command = None
     hostname = 'fake_hostname'
     net = 'bridge'
+    docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
@@ -510,8 +511,9 @@ def test_get_docker_run_cmd_with_env_vars():
     command = None
     hostname = 'fake_hostname'
     net = 'bridge'
+    docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
     assert '--env="foo=bar"' in actual
     assert '--env="baz=qux"' in actual
     assert '--env="x= with spaces"' in actual
@@ -528,8 +530,9 @@ def test_get_docker_run_cmd_interactive_false():
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
     net = 'bridge'
+    docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
 
     assert any(['--env=MARATHON_PORT=%s' % random_port in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
@@ -554,14 +557,15 @@ def test_get_docker_run_cmd_interactive_true():
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
     net = 'bridge'
+    docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
 
     assert '--interactive=true' in actual
     assert '--tty=true' in actual
 
 
-def test_get_docker_run_cmd_memory_swap():
+def test_get_docker_run_docker_params():
     memory = 555
     random_port = 666
     container_name = 'Docker' * 6 + 'Doc'
@@ -572,9 +576,14 @@ def test_get_docker_run_cmd_memory_swap():
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
     net = 'bridge'
+    docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
+                     {'key': 'cpu-period', 'value': '200000'},
+                     {'key': 'cpu-quota', 'value': '150000'}]
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
     assert '--memory-swap=555m' in actual
+    assert '--cpu-period=200000' in actual
+    assert '--cpu-quota=150000' in actual
 
 
 def test_get_docker_run_cmd_host_networking():
@@ -588,8 +597,9 @@ def test_get_docker_run_cmd_host_networking():
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
     net = 'host'
+    docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net)
+                                interactive, docker_hash, command, hostname, net, docker_params)
 
     assert '--net=host' in actual
 
@@ -918,10 +928,11 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
-            autospec=True,
-            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
-            )
+@mock.patch(
+    'paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
+    autospec=True,
+    return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+)
 def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -929,11 +940,16 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_execlp,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
-    mock_simulate_healthcheck
+    mock_simulate_healthcheck,
+    capsys,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    ATTACH_OUTPUT = "I'm the stdout / stderr!\n"
+    mock_docker_client.attach = mock.MagicMock(
+        spec_set=docker.Client.attach,
+        return_value=ATTACH_OUTPUT,
+    )
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
@@ -954,6 +970,8 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
+
+    assert ATTACH_OUTPUT in capsys.readouterr()[0]
 
 
 @mock.patch('time.sleep', autospec=True)

@@ -84,7 +84,7 @@ class TestChronosTools:
             'password': 'fake_password',
             'url': 'fake_host'
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         assert fake_config.get_username() == 'fake_user'
         assert fake_config.get_password() == 'fake_password'
         assert fake_config.get_url() == 'fake_host'
@@ -93,7 +93,7 @@ class TestChronosTools:
         fake_json_contents = {
             'password': 'fake_password',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_username()
 
@@ -101,7 +101,7 @@ class TestChronosTools:
         fake_json_contents = {
             'user': 'fake_user',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_password()
 
@@ -109,34 +109,9 @@ class TestChronosTools:
         fake_json_contents = {
             'user': 'fake_user',
         }
-        fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+        fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_url()
-
-    def test_load_chronos_config_good(self):
-        expected = {'foo': 'bar'}
-        file_mock = mock.MagicMock(spec=file)
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=expected)
-        ) as (
-            open_file_patch,
-            json_patch
-        ):
-            assert chronos_tools.load_chronos_config() == expected
-            open_file_patch.assert_called_once_with('/etc/paasta/chronos.json')
-            json_patch.assert_called_once_with(file_mock.__enter__())
-
-    def test_load_chronos_config_bad(self):
-        fake_path = '/dne'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
-        ) as (
-            open_patch,
-        ):
-            with raises(chronos_tools.ChronosNotConfigured) as excinfo:
-                chronos_tools.load_chronos_config(fake_path)
-            assert str(excinfo.value) == "Could not load chronos config file b: a"
 
     def test_get_chronos_client(self):
         with contextlib.nested(
@@ -145,7 +120,7 @@ class TestChronosTools:
             mock_connect,
         ):
             fake_config = chronos_tools.ChronosConfig(
-                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']})
             chronos_tools.get_chronos_client(fake_config)
             assert mock_connect.call_count == 1
 
@@ -855,6 +830,10 @@ class TestChronosTools:
         fake_epsilon = 'PT60S'
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
+        fake_cpus = 0.25
+        fake_period = 200000
+        fake_burst = 200
+        fake_cpu_quota = fake_cpus * fake_period * (100 + fake_burst) / 100
 
         chronos_job_config = chronos_tools.ChronosJobConfig(
             service=fake_service,
@@ -864,6 +843,9 @@ class TestChronosTools:
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
+                'cpus': fake_cpus,
+                'cfs_period_us': fake_period,
+                'cpu_burst_pct': fake_burst,
             },
             branch_dict={},
         )
@@ -878,7 +860,7 @@ class TestChronosTools:
             'retries': 2,
             'epsilon': fake_epsilon,
             'name': 'test_job',
-            'cpus': 0.25,
+            'cpus': fake_cpus,
             'async': False,
             'owner': fake_owner,
             'disabled': False,
@@ -889,7 +871,11 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
-                'parameters': [{"key": "memory-swap", "value": "1024m"}],
+                'parameters': [
+                    {'key': 'memory-swap', 'value': "1024m"},
+                    {"key": "cpu-period", "value": "%s" % int(fake_period)},
+                    {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
+                ]
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1160,7 +1146,11 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1202,6 +1192,69 @@ class TestChronosTools:
             second_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
             assert first_description != second_description
+
+    def test_create_complete_config_desired_state_start(self):
+        fake_owner = 'test_team'
+        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
+            service=self.fake_service,
+            cluster='',
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict={
+                'desired_state': 'start',
+                'docker_image': 'fake_image'
+            },
+        )
+        fake_config_hash = 'fake_config_hash'
+        with contextlib.nested(
+            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
+                       autospec=True, return_value=fake_chronos_job_config),
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
+        ) as (
+            load_system_paasta_config_patch,
+            load_chronos_job_config_patch,
+            mock_get_team,
+            mock_fake_config_hash,
+        ):
+            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
+            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
+            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
+            expected = {
+                'arguments': None,
+                'description': fake_config_hash,
+                'constraints': [['pool', 'LIKE', 'default']],
+                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
+                'async': False,
+                'cpus': 5.5,
+                'scheduleTimeZone': 'Zulu',
+                'environmentVariables': mock.ANY,
+                'retries': 5,
+                'disabled': False,
+                'name': 'fake_service fake_job',
+                'command': '/bin/sleep 40',
+                'epsilon': 'PT30M',
+                'container': {
+                    'network': 'BRIDGE',
+                    'volumes': [],
+                    'image': "fake_registry/fake_image",
+                    'type': 'DOCKER',
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
+                    ],
+                },
+                'uris': ['file:///root/.dockercfg', ],
+                'mem': 1024.4,
+                'disk': 1234.5,
+                'owner': fake_owner,
+                'shell': True,
+            }
+            assert actual == expected
 
     def test_create_complete_config_desired_state_stop(self):
         fake_owner = 'test@test.com'
@@ -1252,7 +1305,11 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1327,7 +1384,11 @@ class TestChronosTools:
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1025m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
+                    ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1339,7 +1400,7 @@ class TestChronosTools:
 
     def test_wait_for_job(self):
         fake_config = chronos_tools.ChronosConfig(
-            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']})
         client = chronos_tools.get_chronos_client(fake_config)
 
         # only provide the right response on the third attempt
