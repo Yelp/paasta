@@ -512,7 +512,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 def determine_disabled_state(branch_state, soa_disabled_state):
-    """ Determine the *real* disabled state for a job. There are two sources of truth for
+    """Determine the *real* disabled state for a job. There are two sources of truth for
     the disabled/enabled state of a job: the 'disabled' flag in soa-configs,
     and the state set in deployments.json by `paasta stop` or `paasta start`.
     If the two conflict, then this determines the 'real' state for it.
@@ -524,7 +524,7 @@ def determine_disabled_state(branch_state, soa_disabled_state):
     have 'disabled:True' in your soa-config.
 
     :param branch_state: the desired state on the branch - either start or
-    stop.
+        stop.
     :param soa_disabled_state: the value of the disabled state in soa-configs.
     """
     if branch_state not in ['start', 'stop']:
@@ -566,7 +566,7 @@ def cmp_datetimes(first, second):
     :param first: A string containing a datetime
     :param second: A string containing a datetime
     :returns: -1 if ``first`` is more recent, 1 if ``second`` is more recent, or 0
-    if they are equivalent.
+        if they are equivalent.
     """
     parsed_first = _safe_parse_datetime(first)
     parsed_second = _safe_parse_datetime(second)
@@ -655,7 +655,7 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
     :param instance: passed on to ``filter_chronos_jobs()``
     :param include_disabled: passed on to ``filter_chronos_jobs()``
     :returns: list of job dicts discovered by ``client`` and filtered by
-    ``filter_chronos_jobs()`` using the other parameters
+        ``filter_chronos_jobs()`` using the other parameters
     """
     jobs = client.list()
     return filter_chronos_jobs(
@@ -673,7 +673,7 @@ def filter_non_temporary_chronos_jobs(jobs):
 
     :param jobs: a list of chronos jobs
     :returns: a list of chronos jobs containing the same jobs as those provided
-    by the ``jobs`` parameter, but with temporary jobs removed.
+        by the ``jobs`` parameter, but with temporary jobs removed.
     """
     return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
 
@@ -685,9 +685,9 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled):
     :param service: service we're looking for. If None, don't filter based on this key.
     :param instance: instance we're looking for. If None, don't filter based on this key.
     :param include_disabled: boolean indicating if disabled jobs should be
-    included in the returned list
+        included in the returned list
     :returns: list of job dicts whose name matches the arguments (if any)
-    provided
+        provided
     """
     matching_jobs = []
     for job in jobs:

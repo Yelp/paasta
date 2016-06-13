@@ -88,10 +88,10 @@ def build_service_job_mapping(client, configured_jobs):
     """
     :param client: A Chronos client used for getting the list of running jobs
     :param configured_jobs: A list of jobs configured in Paasta, i.e. jobs we
-    expect to be able to find
+        expect to be able to find
     :returns: A dict of {(service, instance): [(chronos job, lastrunstate)]}
-    where the chronos job is any with a matching (service, instance) in its
-    name and disabled == False
+        where the chronos job is any with a matching (service, instance) in its
+        name and disabled == False
     """
     service_job_mapping = {}
     for job in configured_jobs:
