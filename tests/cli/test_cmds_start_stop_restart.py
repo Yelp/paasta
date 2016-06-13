@@ -120,6 +120,57 @@ def test_log_event():
         )
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
+@mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
+def test_paasta_start_or_stop(
+    mock_get_git_url,
+    mock_get_instance_config,
+    mock_instance_config,
+    mock_figure_out_service_name,
+    mock_list_remote_refs,
+    mock_get_latest_deployment_tag,
+    mock_format_timestamp,
+    mock_issue_state_change_for_service,
+):
+    args = mock.Mock()
+    args.clusters = 'cluster1,cluster2'
+    args.instance = 'main1'
+    args.soa_dir = '/soa/dir'
+    mock_get_git_url.return_value = 'fake_git_url'
+    mock_figure_out_service_name.return_value = 'fake_service'
+    mock_get_instance_config.return_value = mock_instance_config
+    mock_instance_config.get_deploy_group.return_value = 'some_group'
+    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
+    mock_format_timestamp.return_value = 'not_a_real_timestamp'
+    ret = start_stop_restart.paasta_start_or_stop(args, 'start')
+    c1_get_instance_config_call = mock.call(service='fake_service',
+                                            cluster='cluster1',
+                                            instance='main1',
+                                            soa_dir='/soa/dir',
+                                            load_deployments=False)
+    c2_get_instance_config_call = mock.call(service='fake_service',
+                                            cluster='cluster2',
+                                            instance='main1',
+                                            soa_dir='/soa/dir',
+                                            load_deployments=False)
+    mock_get_instance_config.assert_has_calls([c1_get_instance_config_call,
+                                               c2_get_instance_config_call])
+    mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
+                                                      'some_group')
+    mock_issue_state_change_for_service.assert_called_with(service_config=mock_instance_config,
+                                                           force_bounce='not_a_real_timestamp',
+                                                           desired_state='start')
+    mock_issue_state_change_for_service.call_count == 2
+    assert(ret == 0)
+
+
 @mock.patch('sys.stdout', new_callable=StringIO)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
