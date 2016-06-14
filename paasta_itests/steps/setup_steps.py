@@ -134,7 +134,7 @@ def working_paasta_cluster(context):
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
         "cluster": "testcluster",
-        "zookeeper": "zk://fake",
+        "zookeeper": "zk://zookeeper",
         "docker_registry": "fake.com"
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
@@ -188,7 +188,10 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
 @given(u'I have yelpsoa-configs for the marathon job "{job_id}"')
 def write_soa_dir_marathon_job(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    soa_dir = mkdtemp()
+    try:
+        soa_dir = context.soa_dir
+    except AttributeError:
+        soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
