@@ -140,7 +140,7 @@ def test_paasta_start_or_stop(
 ):
     args = mock.Mock()
     args.clusters = 'cluster1,cluster2'
-    args.instance = 'main1'
+    args.instances = 'main1,canary'
     args.soa_dir = '/soa/dir'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -156,18 +156,30 @@ def test_paasta_start_or_stop(
                                             soa_dir='/soa/dir',
                                             load_deployments=False)
     c2_get_instance_config_call = mock.call(service='fake_service',
+                                            cluster='cluster1',
+                                            instance='canary',
+                                            soa_dir='/soa/dir',
+                                            load_deployments=False)
+    c3_get_instance_config_call = mock.call(service='fake_service',
                                             cluster='cluster2',
                                             instance='main1',
                                             soa_dir='/soa/dir',
                                             load_deployments=False)
+    c4_get_instance_config_call = mock.call(service='fake_service',
+                                            cluster='cluster2',
+                                            instance='canary',
+                                            soa_dir='/soa/dir',
+                                            load_deployments=False)
     mock_get_instance_config.assert_has_calls([c1_get_instance_config_call,
-                                               c2_get_instance_config_call])
+                                               c2_get_instance_config_call,
+                                               c3_get_instance_config_call,
+                                               c4_get_instance_config_call])
     mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
                                                       'some_group')
     mock_issue_state_change_for_service.assert_called_with(service_config=mock_instance_config,
                                                            force_bounce='not_a_real_timestamp',
                                                            desired_state='start')
-    mock_issue_state_change_for_service.call_count == 2
+    mock_issue_state_change_for_service.call_count == 4
     assert(ret == 0)
 
 
@@ -205,6 +217,7 @@ def test_start_or_stop_bad_refs(mock_list_remote_refs, mock_get_instance_config,
     # To suppress any messages due to Mock making everything truthy
     args.clusters = 'fake_cluster1,fake_cluster2'
     args.soa_dir = '/fake/soa/dir'
+    args.instances = 'fake_instance'
 
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = MarathonServiceConfig(
