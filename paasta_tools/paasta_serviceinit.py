@@ -129,7 +129,7 @@ def main():
                 log.error("I calculated an instance_type of %s for %s which I don't know how to handle."
                           % (instance_type, compose_job_id(service, instance)))
                 return_code = 1
-        except Exception:
+        except:
             log.error('Exception raised while looking at service %s instance %s:' % (service, instance))
             log.error(traceback.format_exc())
             return_code = 1

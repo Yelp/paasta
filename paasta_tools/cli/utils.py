@@ -19,6 +19,7 @@ import re
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
+from subprocess import CalledProcessError
 
 from service_configuration_lib import read_services_configuration
 
@@ -474,7 +475,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs):
+def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, ssh_flags='', **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
         verbose_flag = ' '.join(['-v' for i in range(kwargs['verbose'])])
@@ -493,10 +494,11 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     else:
         delta_flag = ''
 
-    ssh_flag = '-t' if stream else '-n'
+    ssh_flags += ' -t' if stream else ' -n'
+    ssh_flags = ssh_flags.strip()
 
     command_parts = [
-        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flag, master),
+        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flags, master),
         "-s %s" % service,
         "-i %s" % instances,
         verbose_flag,
@@ -507,12 +509,14 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     command_without_empty_strings = [part for part in command_parts if part != '']
     command = ' '.join(command_without_empty_strings)
     log.debug("Running Command: %s" % command)
-    _, output = _run(command, timeout=timeout, stream=stream)
+    return_code, output = _run(command, timeout=timeout, stream=stream)
+    if return_code != 0:
+        raise CalledProcessError(return_code, command, output)
     return output
 
 
 def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instances, system_paasta_config,
-                                                stream=False, **kwargs):
+                                                stream=False, ignore_ssh_output=False, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -524,7 +528,11 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
+    if ignore_ssh_output:
+        return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
+                                      ssh_flags='-o LogLevel=QUIET', **kwargs)
+    else:
+        return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
 def run_paasta_metastatus(master, verbose=0):
