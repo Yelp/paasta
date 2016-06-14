@@ -51,14 +51,15 @@ def add_subparser(subparsers):
             help='Service that you want to %s. Like example_service.' % lower,
         ).completer = lazy_choices_completer(list_services)
         status_parser.add_argument(
-            '-i', '--instance',
-            help='Instance of the service that you want to %s. Like "main" or "canary".' % lower,
-            required=True,
+            '-i', '--instances',
+            help='A comma-separated list of instances of the service that you '
+                 'want to %s. Like --instances main,canary' % lower
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-c', '--clusters',
-            help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
-            "For example: --clusters norcal-prod,nova-prod"
+            help="A comma-separated list of clusters to view. "
+            "For example: --clusters norcal-prod,nova-prod",
+            required=True
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
@@ -149,7 +150,7 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
-    instance = args.instance
+    instances = args.instances
     clusters = args.clusters
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
@@ -158,6 +159,11 @@ def paasta_start_or_stop(args, desired_state):
         clusters = args.clusters.split(",")
     else:
         clusters = list_clusters(service)
+
+    if args.instances is not None:
+        instances = args.instances.split(",")
+    else:
+        instances = list_instances()
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
@@ -174,25 +180,26 @@ def paasta_start_or_stop(args, desired_state):
 
     invalid_deploy_groups = []
     for cluster in clusters:
-        service_config = get_instance_config(
-            service=service,
-            cluster=cluster,
-            instance=instance,
-            soa_dir=soa_dir,
-            load_deployments=False,
-        )
-        deploy_group = service_config.get_deploy_group()
-        (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
-
-        if deploy_tag not in remote_refs:
-            invalid_deploy_groups.append(deploy_group)
-        else:
-            force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-            issue_state_change_for_service(
-                service_config=service_config,
-                force_bounce=force_bounce,
-                desired_state=desired_state,
+        for instance in instances:
+            service_config = get_instance_config(
+                service=service,
+                cluster=cluster,
+                instance=instance,
+                soa_dir=soa_dir,
+                load_deployments=False,
             )
+            deploy_group = service_config.get_deploy_group()
+            (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+
+            if deploy_tag not in remote_refs:
+                invalid_deploy_groups.append(deploy_group)
+            else:
+                force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+                issue_state_change_for_service(
+                    service_config=service_config,
+                    force_bounce=force_bounce,
+                    desired_state=desired_state,
+                )
 
     return_val = 0
     if invalid_deploy_groups:

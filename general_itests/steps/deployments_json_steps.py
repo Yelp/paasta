@@ -91,7 +91,7 @@ def step_paasta_mark_for_deployments_when(context):
 def step_paasta_stop_when(context):
     fake_args = mock.MagicMock(
         clusters='test_cluster',
-        instance='test_instance',
+        instances='test_instance',
         soa_dir='fake_soa_configs',
         service='fake_deployments_json_service',
     )
