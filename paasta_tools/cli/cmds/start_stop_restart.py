@@ -57,8 +57,9 @@ def add_subparser(subparsers):
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-c', '--clusters',
-            help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
-            "For example: --clusters norcal-prod,nova-prod"
+            help="A comma-separated list of clusters to view. "
+            "For example: --clusters norcal-prod,nova-prod",
+            required=True
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
