@@ -627,6 +627,32 @@ class TestCrossoverBounce:
             "tasks_to_drain": set(),
         }
 
+    def test_crossover_bounce_old_app_is_happy_but_no_new_app_happy_tasks(self):
+        """When marathon only has old apps for this service and margin_factor != 1,
+        crossover bounce should start the new app and kill some old tasks."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 100}
+        happy_tasks = []
+        old_app_live_happy_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(60)),
+            'app2': set(mock.Mock() for _ in xrange(40)),
+        }
+        old_app_live_unhappy_tasks = {
+            'app1': set(),
+            'app2': set(),
+        }
+
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            margin_factor=0.95,
+        )
+        assert actual["create_app"] is True
+        assert len(actual["tasks_to_drain"]) == 5
+
     def test_crossover_bounce_some_unhappy_old_some_happy_old_no_new(self):
         """When marathon only has old apps for this service, and some of them are unhappy (maybe they've been recently
         started), the crossover bounce should start a new app and prefer killing the unhappy tasks over the happy ones.
@@ -834,6 +860,29 @@ class TestCrossoverBounce:
         )
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 4
+
+    def test_crossover_bounce_using_margin_factor(self):
+        new_config = {'id': 'foo.bar.12345', 'instances': 500}
+        happy_tasks = [mock.Mock() for _ in xrange(100)]
+        old_app_live_happy_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(300)),
+            'app2': set(),
+        }
+        old_app_live_unhappy_tasks = {
+            'app1': set(),
+            'app2': set(mock.Mock() for _ in xrange(100)),
+        }
+
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            margin_factor=0.95,
+        )
+        assert actual['create_app'] is False
+        assert len(actual['tasks_to_drain']) == 25
 
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
