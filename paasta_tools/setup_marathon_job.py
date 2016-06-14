@@ -48,7 +48,6 @@ from collections import defaultdict
 
 import pysensu_yelp
 import requests_cache
-import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -176,6 +175,7 @@ def do_bounce(
     marathon_jobid,
     client,
     soa_dir,
+    bounce_margin_factor=1.0,
 ):
     def log_bounce_action(line, level='debug'):
         return _log(
@@ -220,6 +220,7 @@ def do_bounce(
         happy_new_tasks=happy_new_tasks,
         old_app_live_happy_tasks=old_app_live_happy_tasks,
         old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+        margin_factor=bounce_margin_factor,
     )
 
     if actions['create_app'] and not new_app_running:
@@ -352,6 +353,7 @@ def deploy_service(
     nerve_ns,
     bounce_health_params,
     soa_dir,
+    bounce_margin_factor=1.0,
 ):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
@@ -365,6 +367,7 @@ def deploy_service(
     :param drain_method_name: The name of the traffic draining method to use.
     :param nerve_ns: The nerve namespace to look in.
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
+    :param bounce_margin_factor: the multiplication factor used to calculate the number of instances to be drained
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
 
     def log_deploy_error(errormsg, level='event'):
@@ -490,6 +493,7 @@ def deploy_service(
                     marathon_jobid=marathon_jobid,
                     client=client,
                     soa_dir=soa_dir,
+                    bounce_margin_factor=bounce_margin_factor,
                 )
 
         except bounce_lib.LockHeldException:
@@ -547,6 +551,7 @@ def setup_service(service, instance, client, marathon_config,
         nerve_ns=service_marathon_config.get_nerve_namespace(),
         bounce_health_params=service_marathon_config.get_bounce_health_params(service_namespace_config),
         soa_dir=soa_dir,
+        bounce_margin_factor=service_marathon_config.get_bounce_marging_factor(),
     )
 
 
@@ -577,7 +582,6 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
-    service_configuration_lib.disable_yaml_cache()
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:
         try:

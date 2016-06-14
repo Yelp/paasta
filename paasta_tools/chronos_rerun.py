@@ -54,10 +54,10 @@ def modify_command_for_date(chronos_job, date):
     a given date.
 
     :param chronos_job: a chronos job dictionary, as created by
-    ``chronos_tools.create_complete_config``
+        ``chronos_tools.create_complete_config``
     :param date: a ``datetime.datetime`` object.
     :returns chronos_job: a chronos_job dict with the command modified to
-    interpolate in the context of the date provided.
+        interpolate in the context of the date provided.
     """
     current_command = chronos_job['command']
     chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date)
@@ -70,10 +70,10 @@ def set_default_schedule(chronos_job):
     schedule replaced with one that will set the job to run now.
 
     :param chronos_job: a chronos job dictionary suitable for POSTing to
-    Chronos
+        Chronos
     :returns: the chronos_job parameter, with the 'schedule' field modified to
-    a schedule for chronos to run the job now and only once. The interval field
-    of the schedule is irrelevant, but required by Chronos.
+        a schedule for chronos to run the job now and only once. The interval field
+        of the schedule is irrelevant, but required by Chronos.
     """
     chronos_job['schedule'] = 'R1//PT1M'
     return chronos_job
@@ -86,7 +86,7 @@ def set_tmp_naming_scheme(chronos_job):
 
     :param chronos_jobs: a chronos job suitable for POSTing to Chronos
     :returns: the chronos_job parameter, with the name of the job modified to
-    allow it to be idenitified as a temporary job.
+        allow it to be idenitified as a temporary job.
     """
     current_name = chronos_job['name']
     timestamp = datetime.datetime.utcnow().isoformat()
@@ -108,7 +108,7 @@ def remove_parents(chronos_job):
 
     :param chronos_job: a chronos_job suitable for POSTing to Chronos
     :returns: the chronos_job parameter, with the parents field of the job
-    removed.
+        removed.
     """
     chronos_job.pop('parents', None)
     return chronos_job
@@ -122,7 +122,7 @@ def clone_job(chronos_job, date):
     :param chronos_job: a chronos job suitable for POSTing to Chronos
     :param date: the date for which the job is to be run.
     :returns: the chronos_job parameter, modified to be submitted as a
-    temporary clone used to rerun a job in the context of a given date.
+        temporary clone used to rerun a job in the context of a given date.
     """
     clone = copy.deepcopy(chronos_job)
     job_type = chronos_tools.get_job_type(clone)

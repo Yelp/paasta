@@ -13,9 +13,7 @@
 # limitations under the License.
 import argparse
 import datetime
-import json
 import logging
-import os
 import re
 import urlparse
 from time import sleep
@@ -40,7 +38,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
 
 
@@ -61,7 +59,6 @@ MESOS_TASK_SPACER = ':'
 TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
-PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log = logging.getLogger(__name__)
 
@@ -86,8 +83,7 @@ class InvalidParentError(Exception):
 
 class ChronosConfig(dict):
 
-    def __init__(self, config, path):
-        self.path = path
+    def __init__(self, config):
         super(ChronosConfig, self).__init__(config)
 
     def get_url(self):
@@ -95,29 +91,28 @@ class ChronosConfig(dict):
         try:
             return self['url']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos url in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos url in system chronos config')
 
     def get_username(self):
         """:returns: The Chronos API username"""
         try:
             return self['user']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos user in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos user in system chronos config')
 
     def get_password(self):
         """:returns: The Chronos API password"""
         try:
             return self['password']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos password in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos password in system chronos config')
 
 
-def load_chronos_config(path=PATH_TO_CHRONOS_CONFIG):
+def load_chronos_config():
     try:
-        with open(path) as f:
-            return ChronosConfig(json.load(f), path)
-    except IOError as e:
-        raise ChronosNotConfigured("Could not load chronos config file %s: %s" % (e.filename, e.strerror))
+        return ChronosConfig(load_system_paasta_config().get_chronos_config())
+    except PaastaNotConfiguredError:
+        raise ChronosNotConfigured("Could not find chronos_config in configuration directory")
 
 
 def get_chronos_client(config):
@@ -517,7 +512,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 def determine_disabled_state(branch_state, soa_disabled_state):
-    """ Determine the *real* disabled state for a job. There are two sources of truth for
+    """Determine the *real* disabled state for a job. There are two sources of truth for
     the disabled/enabled state of a job: the 'disabled' flag in soa-configs,
     and the state set in deployments.json by `paasta stop` or `paasta start`.
     If the two conflict, then this determines the 'real' state for it.
@@ -529,7 +524,7 @@ def determine_disabled_state(branch_state, soa_disabled_state):
     have 'disabled:True' in your soa-config.
 
     :param branch_state: the desired state on the branch - either start or
-    stop.
+        stop.
     :param soa_disabled_state: the value of the disabled state in soa-configs.
     """
     if branch_state not in ['start', 'stop']:
@@ -571,7 +566,7 @@ def cmp_datetimes(first, second):
     :param first: A string containing a datetime
     :param second: A string containing a datetime
     :returns: -1 if ``first`` is more recent, 1 if ``second`` is more recent, or 0
-    if they are equivalent.
+        if they are equivalent.
     """
     parsed_first = _safe_parse_datetime(first)
     parsed_second = _safe_parse_datetime(second)
@@ -660,7 +655,7 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
     :param instance: passed on to ``filter_chronos_jobs()``
     :param include_disabled: passed on to ``filter_chronos_jobs()``
     :returns: list of job dicts discovered by ``client`` and filtered by
-    ``filter_chronos_jobs()`` using the other parameters
+        ``filter_chronos_jobs()`` using the other parameters
     """
     jobs = client.list()
     return filter_chronos_jobs(
@@ -678,7 +673,7 @@ def filter_non_temporary_chronos_jobs(jobs):
 
     :param jobs: a list of chronos jobs
     :returns: a list of chronos jobs containing the same jobs as those provided
-    by the ``jobs`` parameter, but with temporary jobs removed.
+        by the ``jobs`` parameter, but with temporary jobs removed.
     """
     return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
 
@@ -690,9 +685,9 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled):
     :param service: service we're looking for. If None, don't filter based on this key.
     :param instance: instance we're looking for. If None, don't filter based on this key.
     :param include_disabled: boolean indicating if disabled jobs should be
-    included in the returned list
+        included in the returned list
     :returns: list of job dicts whose name matches the arguments (if any)
-    provided
+        provided
     """
     matching_jobs = []
     for job in jobs:

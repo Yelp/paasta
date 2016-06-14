@@ -73,7 +73,7 @@ class TestMarathonTools:
                 'mode': 'RW',
             },
         ],
-    }, '/some/fake/path/fake_file.json')
+    })
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
     def test_load_marathon_service_config_happy_path(self):
@@ -241,28 +241,38 @@ class TestMarathonTools:
 
     def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
+        from_file = {'marathon_config': {'foo': 'bar'}}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=expected)
+            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+            mock.patch('json.load', autospec=True, return_value=from_file),
+            mock.patch('os.path.isdir', autospec=True, return_value=True),
+            mock.patch('os.access', autospec=True, return_value=True),
+            mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True,
+                       return_value=['/some/fake/dir/some_file.json']),
         ) as (
             open_file_patch,
-            json_patch
+            json_patch,
+            isdir_patch,
+            access_patch,
+            get_readable_files_patch,
         ):
             assert marathon_tools.load_marathon_config() == expected
-            open_file_patch.assert_called_once_with('/etc/paasta/marathon.json')
-            json_patch.assert_called_once_with(file_mock.__enter__())
+            open_file_patch.assert_called()
+            json_patch.assert_called_with(file_mock.__enter__())
 
     def test_load_marathon_config_path_dne(self):
-        fake_path = '/var/dir_of_fake'
+        expected = {}
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
+            mock.patch('os.path.isdir', autospec=True, return_value=True),
+            mock.patch('os.access', autospec=True, return_value=True),
         ) as (
             open_patch,
+            isdir_patch,
+            access_patch,
         ):
-            with raises(marathon_tools.PaastaNotConfiguredError) as excinfo:
-                marathon_tools.load_marathon_config(fake_path)
-            assert str(excinfo.value) == "Could not load marathon config file b: a"
+            assert marathon_tools.load_marathon_config() == expected
 
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
@@ -2289,7 +2299,7 @@ def test_create_complete_config():
 
 
 def test_marathon_config_key_errors():
-    fake_marathon_config = marathon_tools.MarathonConfig({}, '')
+    fake_marathon_config = marathon_tools.MarathonConfig({})
     with raises(marathon_tools.MarathonNotConfigured):
         fake_marathon_config.get_url()
     with raises(marathon_tools.MarathonNotConfigured):

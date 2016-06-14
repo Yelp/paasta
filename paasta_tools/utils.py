@@ -904,6 +904,33 @@ class SystemPaastaConfig(dict):
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
 
+    def get_chronos_config(self):
+        """Get the chronos config
+
+        :returns: The chronos config dictionary"""
+        try:
+            return self['chronos_config']
+        except KeyError:
+            return {}
+
+    def get_performance_check_config(self):
+        """Get the performance check config
+
+        :returns: The performance_check config dictionary"""
+        try:
+            return self['performance_check']
+        except KeyError:
+            return {}
+
+    def get_marathon_config(self):
+        """Get the marathon config
+
+        :returns: The marathon config dictionary"""
+        try:
+            return self['marathon_config']
+        except KeyError:
+            return {}
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
@@ -1041,7 +1068,7 @@ def decompose_job_id(job_id, spacer=SPACER):
 
     :param job_id: The composed id of the job/app
     :returns: A tuple (service name, instance, git hash, config hash) that
-    comprise the job_id
+        comprise the job_id
     """
     decomposed = job_id.split(spacer)
     if len(decomposed) == 2:

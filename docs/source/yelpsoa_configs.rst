@@ -74,6 +74,12 @@ instance MAY have:
     * ``min_task_uptime``: Minimum number of seconds that a task must be
       running before we consider it healthy (Disabled by default)
 
+  * ``bounce_margin_factor``: proportionally increase the number of old instances
+    to be drained when the crossover bounce method is used.
+    0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
+    This allows bounces to proceed in the face of a percentage of failures.
+    It doesn’t affect any other bounce method but crossover.
+
   * ``drain_method``: Controls the drain method; see `drain_lib
     <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
     instances that are not in Smartstack, or ``hacheck`` if they are.

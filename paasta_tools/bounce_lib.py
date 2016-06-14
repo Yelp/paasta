@@ -286,6 +286,7 @@ def brutal_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
+    margin_factor=1.0,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -296,6 +297,8 @@ def brutal_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained are not included in this dictionary.
+    :param margin_factor: the multiplication factor used to calculate the number of instances to be drained
+                          when the crossover method is used.
     :return: A dictionary representing the desired bounce actions and containing the following keys:
               - create_app: True if we should start the new Marathon app, False otherwise.
               - tasks_to_drain: a set of task objects which should be drained and killed. May be empty.
@@ -314,6 +317,7 @@ def upthendown_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
+    margin_factor=1.0,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
@@ -339,33 +343,32 @@ def crossover_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
+    margin_factor=1.0,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
     See the docstring for brutal_bounce() for parameters and return value.
     """
 
-    if not new_app_running:
-        return {
-            "create_app": True,
-            "tasks_to_drain": set(),
-        }
-    else:
-        happy_count = len(happy_new_tasks)
-        needed_count = max(new_config['instances'] - happy_count, 0)
+    assert margin_factor > 0
+    assert margin_factor <= 1
 
-        old_tasks = []
-        for app, tasks in old_app_live_happy_tasks.items():
-            for task in tasks:
-                old_tasks.append(task)
+    needed_count = max(int(new_config['instances'] * margin_factor) -
+                       len(happy_new_tasks), 0)
 
-        for app, tasks in old_app_live_unhappy_tasks.items():
-            for task in tasks:
-                old_tasks.append(task)
-        return {
-            "create_app": False,
-            "tasks_to_drain": set(set(old_tasks[needed_count:])),
-        }
+    old_tasks = []
+    for app, tasks in old_app_live_happy_tasks.items():
+        for task in tasks:
+            old_tasks.append(task)
+
+    for app, tasks in old_app_live_unhappy_tasks.items():
+        for task in tasks:
+            old_tasks.append(task)
+
+    return {
+        "create_app": not new_app_running,
+        "tasks_to_drain": set(old_tasks[needed_count:]),
+    }
 
 
 @register_bounce_method('downthenup')
@@ -375,6 +378,7 @@ def downthenup_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
+    margin_factor=1.0,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
@@ -394,6 +398,7 @@ def down_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
+    margin_factor=1.0,
 ):
     """
     Stops old apps, doesn't start any new apps.

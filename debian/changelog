@@ -1,3 +1,24 @@
+paasta-tools (0.20.0) lucid; urgency=low
+
+  * 0.20.0 tagged with 'make release'
+    Commit:
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 09 Jun 2016 12:53:43 -0700
+
+paasta-tools (0.19.16) lucid; urgency=low
+
+  * 0.19.16 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 09 Jun 2016 09:14:26 -0700
+
+paasta-tools (0.19.15) lucid; urgency=low
+
+  * 0.19.15 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 09 Jun 2016 04:08:27 -0700
+
 paasta-tools (0.19.14) lucid; urgency=low
 
   * 0.19.14 tagged with 'make release'
