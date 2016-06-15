@@ -255,7 +255,7 @@ def modify_string_for_rerun_status(string, launched_by_rerun):
         return string
 
 
-def format_chronos_job_status(job, running_tasks, verbose=0):
+def format_chronos_job_status(client, job, running_tasks, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
@@ -268,6 +268,8 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     is_temporary = chronos_tools.is_temporary_job(job) if 'name' in job else 'UNKNOWN'
     job_name = modify_string_for_rerun_status(job_name, is_temporary)
     disabled_state = _format_disabled_status(job)
+    service, instance = chronos_tools.decompose_job_id(job['name'])
+    chronos_state = chronos_tools.get_chronos_status_for_job(client, service, instance)
 
     (last_result, formatted_time) = _format_last_result(job)
 
@@ -284,7 +286,7 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Job:     %(job_name)s\n"
-        "  Status:   %(disabled_state)s"
+        "  Status:   %(disabled_state)s (%(chronos_state)s)"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
@@ -292,6 +294,7 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
             "job_name": job_name,
             "is_temporary": is_temporary,
             "schedule_type": schedule_type,
+            "chronos_state": PaastaColors.grey(chronos_state),
             "disabled_state": disabled_state,
             "last_result": last_result,
             "formatted_time": formatted_time,
@@ -302,7 +305,7 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     )
 
 
-def status_chronos_jobs(jobs, job_config, verbose):
+def status_chronos_jobs(client, jobs, job_config, verbose):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
@@ -319,7 +322,7 @@ def status_chronos_jobs(jobs, job_config, verbose):
         output.append("Desired:    %s" % desired_state)
         for job in jobs:
             running_tasks = get_running_tasks_from_active_frameworks(job["name"])
-            output.append(format_chronos_job_status(job, running_tasks, verbose))
+            output.append(format_chronos_job_status(client, job, running_tasks, verbose))
         return "\n".join(output)
 
 
@@ -395,7 +398,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        print status_chronos_jobs(sorted_matching_jobs, job_config, verbose)
+        print status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
