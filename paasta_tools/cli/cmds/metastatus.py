@@ -84,8 +84,11 @@ def get_cluster_dashboards(cluster):
     SPACER = ' '
     try:
         dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
-    except KeyError:
-        output = [PaastaColors.red('No dashboards configured for %s!' % cluster)]
+    except KeyError as e:
+        if e.args[0] == cluster:
+            output = [PaastaColors.red('No dashboards configured for %s!' % cluster)]
+        else:
+            output = [PaastaColors.red('No dashboards configured!')]
     else:
         output = ['Dashboards:']
         spacing = max((len(label) for label in dashboards.keys())) + 1
