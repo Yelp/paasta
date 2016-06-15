@@ -4,6 +4,7 @@ dist/
 .pip/
 *.py?
 .*.sw?
+.idea
 paasta_tools.egg-info/
 docs/man/
 tags
