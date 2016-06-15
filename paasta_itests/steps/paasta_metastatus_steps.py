@@ -21,6 +21,14 @@ from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 from paasta_tools.utils import remove_ansi_escape_sequences
 
+CONTAINER = {
+    'type': 'DOCKER',
+    'docker': {
+        'network': 'BRIDGE',
+        'image': 'busybox',
+    },
+}
+
 
 @when(u'all zookeepers are unavailable')
 def all_zookeepers_unavailable(context):
@@ -34,12 +42,14 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'an app with id "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1,
+                                                           container=CONTAINER))
 
 
 @when(u'an app with id "{app_id}" using high disk is launched')
 def run_paasta_metastatus_high_disk(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', disk=95, instances=1))
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', disk=95, instances=1,
+                                                           container=CONTAINER))
 
 
 @when(u'a chronos job with name "{job_name}" is launched')
@@ -51,7 +61,8 @@ def chronos_job_launched(context, job_name):
 
 @when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1,
+                                                           container=CONTAINER))
 
 
 @when(u'a task belonging to the app with id "{app_id}" is in the task list')

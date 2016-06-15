@@ -29,6 +29,13 @@ def create_trivial_marathon_app(context):
     app_config = {
         'id': APP_ID,
         'cmd': '/bin/sleep 30',
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
         'instances': 1,
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):

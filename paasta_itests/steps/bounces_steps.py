@@ -50,6 +50,13 @@ def given_a_new_app_to_be_deployed(context, state):
         'id': 'bounce.test1.newapp.confighash',
         'cmd': '/bin/sleep 300',
         'instances': 2,
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
         'backoff_seconds': 1,
         'backoff_factor': 1,
         'health_checks': [
@@ -69,6 +76,13 @@ def given_an_old_app_to_be_destroyed(context):
         'id': old_app_name,
         'cmd': '/bin/sleep 300',
         'instances': 2,
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
         'backoff_seconds': 1,
         'backoff_factor': 1,
     }
@@ -96,7 +110,7 @@ def when_there_are_num_which_tasks(context, num, which, state):
             if len(app.tasks) - happy_count >= context.max_tasks:
                 return
         time.sleep(0.5)
-    raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
+    raise Exception("timed out waiting for %d %s tasks on %s; there are %s" %
                     (context.max_tasks, state, app_id, app.tasks))
 
 
