@@ -56,6 +56,13 @@ def update_context_marathon_config(context):
     context.marathon_complete_config.update({
         'cmd': '/bin/sleep 1m',
         'constraints': None,
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
     })
     if 'max_instances' not in context:
         context.marathon_complete_config['instances'] = context.instances
