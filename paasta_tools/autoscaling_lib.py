@@ -344,6 +344,16 @@ def humanize_error(error):
         return 'utilization within thresholds'
 
 
+def is_task_healthy(task):
+    """
+    Check a marathon task has healthcheck results
+    and check that they are all healthy.
+    """
+    if task.health_check_results:
+        return all([hcr.alive for hcr in task.health_check_results])
+    return False
+
+
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     try:
         with create_autoscaling_lock():
@@ -378,7 +388,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                         try:
                             job_id = format_job_id(config.service, config.instance)
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
-                                              if job_id == get_short_job_id(task.id) and task.health_check_results}
+                                              if job_id == get_short_job_id(task.id) and is_task_healthy(task)}
                             if not marathon_tasks:
                                 raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
                             mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
