@@ -977,6 +977,24 @@ class TestChronosTools:
                 include_disabled=False,
             )
 
+    def test_get_chronos_status_for_job(self):
+        fake_service = 'fakeservice'
+        fake_instance = 'fakeinstance'
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        expected_status = "imdead"
+
+        fake_csv = [
+            "node,fake_service_instance,fresh,alive",
+            "node,%s,fresh,%s" % (chronos_tools.compose_job_id(fake_service, fake_instance), expected_status),
+            "node,other_fake_service_instance,fresh,alive",
+        ]
+        fake_client.scheduler_graph = mock.Mock(return_value="\n".join(fake_csv))
+
+        status = chronos_tools.get_chronos_status_for_job(fake_client, fake_service, fake_instance)
+        fake_client.scheduler_graph.assert_called_once_with()
+        assert status == expected_status
+
     def test_filter_chronos_jobs_with_no_filters(self):
         fake_jobs = [
             {

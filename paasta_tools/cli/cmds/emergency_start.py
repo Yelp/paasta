@@ -21,6 +21,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -73,13 +74,14 @@ def paasta_emergency_start(args):
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
     print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
-    execute_paasta_serviceinit_on_remote_master(
+    output = execute_paasta_serviceinit_on_remote_master(
         subcommand='start',
         cluster=args.cluster,
         service=service,
-        instance=args.instance,
+        instances=args.instance,
         system_paasta_config=system_paasta_config
     )
     print "%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:])
+    print "Output: %s" % PaastaColors.grey(output)
     print "Run this command to see the status:"
     print "paasta status --service %s --clusters %s" % (service, args.cluster)

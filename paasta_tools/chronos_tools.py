@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import csv
 import datetime
 import logging
 import re
@@ -645,6 +646,27 @@ def sort_jobs(jobs):
         key=get_key,
         reverse=True,
     )
+
+
+def get_chronos_status_for_job(client, service, instance):
+    """
+    Returns the status (queued, idle, running, etc.) for a specific job from
+    the undocumented Chronos csv api that has the following format:
+
+    node,example_job,success,queued
+    node,parent_job,success,idle
+    node,child_job,success,idle
+    link,parent_job,child_job
+
+    :param client: Chronos client object
+    :param service: service name
+    :param instance: instance name
+    """
+    resp = client.scheduler_graph()
+    lines = csv.reader(resp.splitlines())
+    for line in lines:
+        if line[0] == "node" and line[1] == compose_job_id(service, instance):
+            return line[3]
 
 
 def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):

@@ -29,23 +29,30 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-# Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
-# running the job now regardless of its 'schedule' and 'disabled' settings. The job's 'schedule' is left unmodified.
-def start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency=False):
+def start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency=False):
+    """
+    Calls the 'manual start' Chronos endpoint (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
+    running the job now regardless of its 'schedule'. The job's "schedule" is unmodified. If a job is disabled,
+    this function does not do anything.
+    """
     name = PaastaColors.cyan(job_id)
-    log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
-    log_immediate_run = " and running it immediately" if not job_config["disabled"] else ""
-    _log(
-        service=service,
-        line="%s: Sending job %s to Chronos%s" % (log_reason, name, log_immediate_run),
-        component="deploy",
-        level="event",
-        cluster=cluster,
-        instance=instance
-    )
-    client.update(job_config)
-    # TODO fail or give some output/feedback to user that the job won't run immediately if disabled (PAASTA-1244)
-    if not job_config["disabled"]:
+
+    # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs or has
+    # been previously stopped.
+    if complete_job_config['disabled']:
+        print PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first.")
+    else:
+        log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
+        _log(
+            service=service,
+            line="%s: Starting manual run of %s in Chronos" % (log_reason, name),
+            component="deploy",
+            level="event",
+            cluster=cluster,
+            instance=instance
+        )
+
+        client.update(complete_job_config)
         client.run(job_id)
 
 
@@ -66,9 +73,19 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergenc
         client.delete_tasks(job["name"])
 
 
-def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, emergency=False):
+def restart_chronos_job(
+    service,
+    instance,
+    job_id,
+    client,
+    cluster,
+    matching_jobs,
+    job_config,
+    complete_job_config,
+    emergency=False
+):
     stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency)
 
 
 def get_short_task_id(task_id):
@@ -317,11 +334,26 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     """
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
+    job_config = chronos_tools.load_chronos_job_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     job_id = complete_job_config["name"]
 
     if command == "start":
-        start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=True)
+        start_chronos_job(
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            job_config=job_config,
+            complete_job_config=complete_job_config,
+            emergency=True,
+        )
     elif command == "stop":
         matching_jobs = chronos_tools.lookup_chronos_jobs(
             service=service,
@@ -338,13 +370,14 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             include_disabled=True,
         )
         restart_chronos_job(
-            service,
-            instance,
-            job_id,
-            client,
-            cluster,
-            matching_jobs,
-            complete_job_config,
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            matching_jobs=matching_jobs,
+            job_config=job_config,
+            complete_job_config=complete_job_config,
             emergency=True,
         )
     elif command == "status":
