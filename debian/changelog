@@ -1,3 +1,10 @@
+paasta-tools (0.22.0) UNRELEASED; urgency=medium
+
+  * 0.22.0 tagged with 'make release'
+    Commit:
+
+ -- Ammar Askar <ammar@ammar-MacBookPro>  Thu, 16 Jun 2016 11:04:54 -0700
+
 paasta-tools (0.21.0) lucid; urgency=low
 
   * 0.21.0 tagged with 'make release'
