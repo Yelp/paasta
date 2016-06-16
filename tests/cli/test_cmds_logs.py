@@ -606,8 +606,7 @@ def test_prettify_log_line_valid_json_requested_level_is_only_event():
 
 def test_scribereader_run_code_over_scribe_envs():
     clusters = ['fake_cluster1', 'fake_cluster2']
-    non_default_components = ['marathon', 'chronos', 'stdout', 'stderr']
-    components = logs.DEFAULT_COMPONENTS + non_default_components
+    components = ['build', 'deploy', 'monitoring', 'marathon', 'chronos', 'stdout', 'stderr']
 
     callback = mock.MagicMock()
 
@@ -627,7 +626,7 @@ def test_scribereader_print_last_n_logs():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
-    components = logs.DEFAULT_COMPONENTS + ['marathon', 'chronos', 'stdout', 'stderr']
+    components = ['build', 'deploy', 'monitoring', 'marathon', 'chronos', 'stdout', 'stderr']
 
     with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True) as mock_scribereader, \
             mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True) \
@@ -663,7 +662,7 @@ def test_scribereader_print_logs_by_time():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
-    components = logs.DEFAULT_COMPONENTS + ['marathon', 'chronos', 'stdout', 'stderr']
+    components = ['build', 'deploy', 'monitoring', 'marathon', 'chronos', 'stdout', 'stderr']
 
     with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True) as mock_scribereader, \
             mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True) \

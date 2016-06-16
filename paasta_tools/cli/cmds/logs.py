@@ -56,7 +56,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
-DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring']
+DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring', 'stdout', 'stderr']
 
 log = logging.getLogger(__name__)
 
@@ -355,9 +355,9 @@ def prettify_level(level, requested_levels):
     pretty_level = ''
     if len(requested_levels) > 1:
         if level == 'event':
-            pretty_level = PaastaColors.bold('[%s]' % level)
+            pretty_level = PaastaColors.bold('[%s] ' % level)
         else:
-            pretty_level = PaastaColors.grey('[%s]' % level)
+            pretty_level = PaastaColors.grey('[%s] ' % level)
     return pretty_level
 
 
@@ -378,7 +378,7 @@ def prettify_log_line(line, requested_levels):
             'component': prettify_component(parsed_line['component']),
             'cluster': '[%s]' % parsed_line['cluster'],
             'instance': '[%s]' % parsed_line['instance'],
-            'level': '%s ' % pretty_level,
+            'level': '%s' % pretty_level,
             'message': parsed_line['message'],
         })
     except KeyError:
@@ -501,12 +501,14 @@ class ScribeLogReader(LogReader):
         log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
 
         for scribe_env in scribe_envs:
-            # Default components all get grouped in one call for backwards compatibility
-            if any([component in components for component in DEFAULT_COMPONENTS]):
+            # These components all get grouped in one call for backwards compatibility
+            grouped_components = {'build', 'deploy', 'monitoring'}
+
+            if any([component in components for component in grouped_components]):
                 stream_info = self.get_stream_info('default')
                 callback('default', stream_info, scribe_env, cluster=None)
 
-            non_defaults = set(components) - set(DEFAULT_COMPONENTS)
+            non_defaults = set(components) - grouped_components
             for component in non_defaults:
                 stream_info = self.get_stream_info(component)
 
@@ -662,8 +664,9 @@ class ScribeLogReader(LogReader):
 
         self.run_code_over_scribe_envs(clusters=clusters, components=components, callback=callback)
 
+        aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
         for line in aggregated_logs:
-            print_log(line, levels, raw_mode)
+            print_log(line['raw_line'], levels, raw_mode)
 
     def print_last_n_logs(self, service, line_count, levels, components, clusters, raw_mode):
         aggregated_logs = []
@@ -683,8 +686,9 @@ class ScribeLogReader(LogReader):
                                                   parser_fn=stream_info.parse_fn)
 
         self.run_code_over_scribe_envs(clusters=clusters, components=components, callback=callback)
+        aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
         for line in aggregated_logs:
-            print_log(line, levels, raw_mode)
+            print_log(line['raw_line'], levels, raw_mode)
 
     def filter_and_aggregate_scribe_logs(self, scribe_reader_ctx, scribe_env, stream_name,
                                          levels, service, components, clusters,
@@ -698,6 +702,15 @@ class ScribeLogReader(LogReader):
                     if filter_fn:
                         if filter_fn(line, levels, service, components, clusters,
                                      start_time=start_time, end_time=end_time):
+                            try:
+                                parsed_line = json.loads(line)
+                                timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
+                                if not timestamp.tzinfo:
+                                    timestamp = pytz.utc.localize(timestamp)
+                            except ValueError:
+                                timestamp = pytz.utc.localize(datetime.datetime.min())
+
+                            line = {'raw_line': line, 'sort_key': timestamp}
                             aggregated_logs.append(line)
             except StreamTailerSetupError:
                 log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
@@ -910,10 +923,12 @@ def paasta_logs(args):
         components = args.components.split(",")
     else:
         components = DEFAULT_COMPONENTS
+    components = set(components)
 
     if 'app_output' in components:
-        components.append('stdout')
-        components.append('stderr')
+        components.remove('app_output')
+        components.add('stdout')
+        components.add('stderr')
 
     if args.verbose:
         log.setLevel(logging.DEBUG)
