@@ -260,10 +260,8 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
             continue
 
         # if there are health check results, check if at least one healthcheck is passing
-        if len(task.health_check_results) > 0:
-            task_up = any([hc_result.alive is True for hc_result in task.health_check_results])
-            if not task_up:
-                continue
+        if not marathon_tools.is_task_healthy(task, require_all=False, default_healthy=True):
+            continue
         happy.append(task)
 
     return happy

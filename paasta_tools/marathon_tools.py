@@ -1076,3 +1076,21 @@ def get_instances_from_zookeeper(service, instance):
     with ZookeeperPool() as zookeeper_client:
         (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
         return int(instances)
+
+
+def is_task_healthy(task, require_all=True, default_healthy=False):
+    """Check that a marathon task is healthy
+
+    :param task: the marathon task object
+    :param require_all: require all the healthchecks to be passing
+        false means that only one needs to pass
+    :param default_healthy: cause the function to report healthy if
+        there are no health check results
+    :returns: True if healthy, False if not"""
+    if task.health_check_results:
+        results = [hcr.alive for hcr in task.health_check_results]
+        if require_all:
+            return all(results)
+        else:
+            return any(results)
+    return default_healthy

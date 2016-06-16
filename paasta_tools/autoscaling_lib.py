@@ -31,6 +31,7 @@ from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
@@ -342,16 +343,6 @@ def humanize_error(error):
         return '%d%% overutilized' % ceil(error * 100)
     else:
         return 'utilization within thresholds'
-
-
-def is_task_healthy(task):
-    """
-    Check a marathon task has healthcheck results
-    and check that they are all healthy.
-    """
-    if task.health_check_results:
-        return all([hcr.alive for hcr in task.health_check_results])
-    return False
 
 
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
