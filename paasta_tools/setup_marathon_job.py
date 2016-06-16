@@ -551,7 +551,7 @@ def setup_service(service, instance, client, marathon_config,
         nerve_ns=service_marathon_config.get_nerve_namespace(),
         bounce_health_params=service_marathon_config.get_bounce_health_params(service_namespace_config),
         soa_dir=soa_dir,
-        bounce_margin_factor=service_marathon_config.get_bounce_marging_factor(),
+        bounce_margin_factor=service_marathon_config.get_bounce_margin_factor(),
     )
 
 
