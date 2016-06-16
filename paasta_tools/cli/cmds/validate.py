@@ -81,63 +81,6 @@ def get_schema(file_type):
     return json.loads(schema)
 
 
-def validate_healthcheck_cmd_has_cmd(config_file_object):
-    """Check that healthcheck_cmd is included if healthcheck_mode
-    is set to cmd
-
-    :param config_file_object: the loaded config object
-    """
-    for config in config_file_object.values():
-        if 'healthcheck_mode' in config:
-            if config['healthcheck_mode'] == 'cmd':
-                assert 'healthcheck_cmd' in config,\
-                       "healthcheck_cmd is required if healthcheck_mode"\
-                       " == cmd"
-
-
-def validate_schema_dependencies(file_path, file_type):
-    """Check for conditional dependencies in our schemas, this is
-    difficult and sometimes not possible with json schema
-
-    :param file_path: path to file to validate
-    :param file_type: what schema type should we validate against
-    """
-    basename = os.path.basename(file_path)
-    extension = os.path.splitext(basename)[1]
-    config_file_object = get_config_object(file_path, extension)
-    try:
-        if file_type == 'marathon':
-            validate_healthcheck_cmd_has_cmd(config_file_object)
-    except AssertionError as e:
-        print '%s: %s' % (SCHEMA_INVALID, file_path)
-        print '  Validation Message: %s' % e.message
-        return False
-    else:
-        print '%s: %s' % (SCHEMA_VALID, basename)
-        return True
-
-
-def get_config_object(file_path, extension):
-    """Open and attempt to deserialise a config file
-    returns the deserialised object
-
-    :param file_path: path to file to validate
-    :param extension: file extension
-    """
-    try:
-        config_file = get_file_contents(file_path)
-    except IOError:
-        print '%s: %s' % (FAILED_READING_FILE, file_path)
-        return False
-    if extension == '.yaml':
-        config_file_object = yaml.load(config_file)
-    elif extension == '.json':
-        config_file_object = json.loads(config_file)
-    else:
-        config_file_object = config_file
-    return config_file_object
-
-
 def validate_schema(file_path, file_type):
     """Check if the specified config file has a valid schema
 
@@ -151,7 +94,17 @@ def validate_schema(file_path, file_type):
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
-    config_file_object = get_config_object(file_path, extension)
+    try:
+        config_file = get_file_contents(file_path)
+    except IOError:
+        print '%s: %s' % (FAILED_READING_FILE, file_path)
+        return False
+    if extension == '.yaml':
+        config_file_object = yaml.load(config_file)
+    elif extension == '.json':
+        config_file_object = json.loads(config_file)
+    else:
+        config_file_object = config_file
     try:
         validator.validate(config_file_object)
     except ValidationError as e:
@@ -180,8 +133,6 @@ def validate_all_schemas(service_path):
         for file_type in ['chronos', 'marathon']:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
-                    returncode = False
-                if not validate_schema_dependencies(file_name, file_type):
                     returncode = False
     return returncode
 
