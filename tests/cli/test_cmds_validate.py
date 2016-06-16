@@ -155,6 +155,7 @@ main_worker:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
   healthcheck_mode: cmd
+  healthcheck_cmd: '/bin/true'
 main_http:
   cpus: 0.1
   instances: 2
@@ -162,11 +163,82 @@ main_http:
   disk: 512
 """
     mock_get_file_contents.return_value = marathon_content
-
     assert validate_schema('unused_service_path.yaml', 'marathon')
-
     output = mock_stdout.getvalue()
+    assert SCHEMA_VALID in output
 
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
+@patch('sys.stdout', new_callable=StringIO)
+def test_marathon_validate_schema_healthcheck_non_cmd(
+    mock_stdout,
+    mock_get_file_contents
+):
+    marathon_content = """
+---
+main_worker:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+  healthcheck_mode: tcp
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue()
+    assert SCHEMA_VALID in output
+    marathon_content = """
+---
+main_worker:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    mock_stdout.truncate(0)
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
+@patch('sys.stdout', new_callable=StringIO)
+def test_marathon_validate_schema_healthcheck_cmd_has_cmd(
+    mock_stdout,
+    mock_get_file_contents
+):
+    marathon_content = """
+---
+main_worker:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+  healthcheck_mode: cmd
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert not validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue()
+    assert SCHEMA_INVALID in output
+    marathon_content = """
+---
+main_worker:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+  healthcheck_mode: cmd
+  healthcheck_cmd: '/bin/true'
+"""
+    mock_get_file_contents.return_value = marathon_content
+    mock_stdout.truncate(0)
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue()
     assert SCHEMA_VALID in output
 
 
