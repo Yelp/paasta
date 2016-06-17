@@ -25,8 +25,6 @@ from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
 
-logging.basicConfig()
-
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
     """Overriding the error method allows us to print the whole help page,
@@ -111,6 +109,7 @@ def main(argv=None):
 
     Ensure we kill any child pids before we quit
     """
+    logging.basicConfig()
     args, parser = parse_args(argv)
     if args.command is None:
         parser.print_help()
