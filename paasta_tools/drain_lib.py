@@ -198,7 +198,7 @@ class HacheckDrainMethod(DrainMethod):
             return info.get("since", 0) < (time.time() - self.delay)
 
 
-class StatusCodeNotAcceptableException(Exception):
+class StatusCodeNotAcceptableError(Exception):
     pass
 
 
@@ -240,7 +240,7 @@ class HTTPDrainMethod(DrainMethod):
     def check_response_code(self, status_code, success_codes_str):
         acceptable_response_codes = self.parse_success_codes(success_codes_str)
         if status_code not in acceptable_response_codes:
-            raise StatusCodeNotAcceptableException("Status code %d not in %s", status_code, success_codes_str)
+            raise StatusCodeNotAcceptableError("Status code %d not in %s", status_code, success_codes_str)
 
     def issue_request(self, url_spec, task):
         """Issue a request to the URL specified by url_spec regarding the task given."""
@@ -270,7 +270,7 @@ class HTTPDrainMethod(DrainMethod):
     def is_draining(self, task):
         try:
             self.issue_request(self.is_draining_url_spec, task)
-        except StatusCodeNotAcceptableException:
+        except StatusCodeNotAcceptableError:
             return False
         else:
             return True
@@ -278,7 +278,7 @@ class HTTPDrainMethod(DrainMethod):
     def is_safe_to_kill(self, task):
         try:
             self.issue_request(self.is_safe_to_kill_url_spec, task)
-        except StatusCodeNotAcceptableException:
+        except StatusCodeNotAcceptableError:
             return False
         else:
             return True

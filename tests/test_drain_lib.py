@@ -105,7 +105,7 @@ class TestHTTPDrainMethod(object):
         drain_method.check_response_code(200, '200-299')
 
         # Sad case
-        with raises(drain_lib.StatusCodeNotAcceptableException):
+        with raises(drain_lib.StatusCodeNotAcceptableError):
             drain_method.check_response_code(500, '200-299')
 
     def test_issue_request(self):
