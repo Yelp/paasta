@@ -15,6 +15,7 @@
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
 import argparse
+import logging
 import sys
 
 import argcomplete
@@ -23,6 +24,8 @@ import pkg_resources
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
+
+logging.basicConfig()
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
