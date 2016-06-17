@@ -144,11 +144,9 @@ def get_verbose_status_of_marathon_app(app):
             hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
         else:
             hostname = "Unknown"
-        health_check_results = [health_check.alive for health_check in task.health_check_results
-                                if health_check.alive is not None]
-        if not health_check_results:
+        if not task.health_check_results:
             health_check_status = PaastaColors.grey("N/A")
-        elif all(health_check_results):
+        elif marathon_tools.is_task_healthy(task):
             health_check_status = PaastaColors.green("Healthy")
         else:
             health_check_status = PaastaColors.red("Unhealthy")

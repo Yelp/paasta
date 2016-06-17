@@ -405,7 +405,9 @@ def test_autoscale_services():
         branch_dict={},
     )
     mock_mesos_tasks = [{'id': 'fake-service.fake-instance'}]
-    mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
+    mock_healthcheck_results = mock.Mock(alive=True)
+    mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
+                                     health_check_results=[mock_healthcheck_results])]
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.autoscale_marathon_instance', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_marathon_client', autospec=True,
@@ -438,6 +440,65 @@ def test_autoscale_services():
         autoscaling_lib.autoscale_services()
         mock_autoscale_marathon_instance.assert_called_once_with(
             fake_marathon_service_config, mock_marathon_tasks, mock_mesos_tasks)
+
+
+def test_autoscale_services_not_healthy():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 1, 'max_instances': 10, 'desired_state': 'start'},
+        branch_dict={},
+    )
+    mock_mesos_tasks = [{'id': 'fake-service.fake-instance'}]
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling_lib.autoscale_marathon_instance', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.write_to_log', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_marathon_client', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_running_tasks_from_active_frameworks', autospec=True,
+                   return_value=mock_mesos_tasks),
+        mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
+                   return_value=mock.Mock(get_cluster=mock.Mock())),
+        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                   return_value=mock.Mock(get_zk_hosts=mock.Mock())),
+        mock.patch('paasta_tools.autoscaling_lib.get_services_for_cluster', autospec=True,
+                   return_value=[('fake-service', 'fake-instance')]),
+        mock.patch('paasta_tools.autoscaling_lib.load_marathon_service_config', autospec=True,
+                   return_value=fake_marathon_service_config),
+        mock.patch('paasta_tools.autoscaling_lib.load_marathon_config', autospec=True),
+        mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.create_autoscaling_lock', autospec=True),
+    ) as (
+        mock_autoscale_marathon_instance,
+        mock_write_to_log,
+        mock_marathon_client,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ):
+        # Test missing health_check_results
+        mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
+                                         health_check_results=[])]
+        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))
+        autoscaling_lib.autoscale_services()
+        mock_write_to_log.assert_called_with(config=fake_marathon_service_config,
+                                             line="Caught Exception Couldn't find any healthy marathon tasks")
+        assert not mock_autoscale_marathon_instance.called
+
+        # Test present results but not yet passing
+        mock_healthcheck_results = mock.Mock(alive=False)
+        mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
+                                         health_check_results=[mock_healthcheck_results])]
+        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))
+        autoscaling_lib.autoscale_services()
+        mock_write_to_log.assert_called_with(config=fake_marathon_service_config,
+                                             line="Caught Exception Couldn't find any healthy marathon tasks")
+        assert not mock_autoscale_marathon_instance.called
 
 
 def test_autoscale_services_bespoke_doesnt_autoscale():

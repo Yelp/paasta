@@ -2381,3 +2381,33 @@ def wait_for_app_to_launch_tasks():
         marathon_tools.wait_for_app_to_launch_tasks(mock.Mock(), 'app_id', 0)
         assert mock_app_has_tasks.call_count == 3
         assert mock_sleep.call_count == 2
+
+
+def test_is_task_healthy():
+    mock_hcrs = [mock.Mock(alive=False), mock.Mock(alive=False)]
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert not marathon_tools.is_task_healthy(mock_task)
+
+    mock_hcrs = []
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert not marathon_tools.is_task_healthy(mock_task)
+
+    mock_hcrs = [mock.Mock(alive=True), mock.Mock(alive=True)]
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert marathon_tools.is_task_healthy(mock_task)
+
+    mock_hcrs = [mock.Mock(alive=True), mock.Mock(alive=False)]
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert not marathon_tools.is_task_healthy(mock_task)
+
+    mock_hcrs = [mock.Mock(alive=True), mock.Mock(alive=False)]
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert marathon_tools.is_task_healthy(mock_task, require_all=False)
+
+    mock_hcrs = [mock.Mock(alive=False), mock.Mock(alive=False)]
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert not marathon_tools.is_task_healthy(mock_task, require_all=False)
+
+    mock_hcrs = []
+    mock_task = mock.Mock(health_check_results=mock_hcrs)
+    assert marathon_tools.is_task_healthy(mock_task, default_healthy=True)

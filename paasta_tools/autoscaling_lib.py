@@ -31,6 +31,7 @@ from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
@@ -378,7 +379,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                         try:
                             job_id = format_job_id(config.service, config.instance)
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
-                                              if job_id == get_short_job_id(task.id) and task.health_check_results}
+                                              if job_id == get_short_job_id(task.id) and is_task_healthy(task)}
                             if not marathon_tasks:
                                 raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
                             mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
