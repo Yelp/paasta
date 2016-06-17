@@ -15,6 +15,7 @@
 import datetime
 import fcntl
 import logging
+import math
 import os
 import signal
 import time
@@ -351,7 +352,7 @@ def crossover_bounce(
     assert margin_factor > 0
     assert margin_factor <= 1
 
-    needed_count = max(int(new_config['instances'] * margin_factor) -
+    needed_count = max(int(math.ceil(new_config['instances'] * margin_factor)) -
                        len(happy_new_tasks), 0)
 
     old_tasks = []
