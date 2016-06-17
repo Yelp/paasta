@@ -712,12 +712,13 @@ class ScribeLogReader(LogReader):
 
                             line = {'raw_line': line, 'sort_key': timestamp}
                             aggregated_logs.append(line)
-            except StreamTailerSetupError:
-                log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
-                log.error("Don't Panic! This can happen the first time a service is deployed because the log")
-                log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again."
-                          % scribe_env)
-                raise
+            except StreamTailerSetupError as e:
+                if 'No data in stream' in e.message:
+                    log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
+                    log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
+                    log.warning("output within this stream.")
+                else:
+                    raise
 
     def scribe_get_from_time(self, scribe_env, stream_name, start_time, end_time):
         # Scribe connection details
