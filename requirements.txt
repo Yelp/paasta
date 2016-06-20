@@ -13,6 +13,7 @@ dulwich==0.10.0
 ephemeral-port-reserve==1.0.1
 future>=0.15.2
 futures==3.0.1
+gevent==1.1.1
 httplib2==0.9
 humanize==0.5.1
 importlib==1.0.3
@@ -31,6 +32,7 @@ prettytable==0.7.2
 protobuf==2.6.1
 pyasn1==0.1.8
 pycrypto==2.6.1
+pyramid==1.7
 pysensu-yelp==0.2.2
 python-daemon==1.5.2
 python-dateutil==2.4.2

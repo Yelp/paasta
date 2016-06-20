@@ -674,6 +674,58 @@ class InvalidMarathonHealthcheckMode(Exception):
     pass
 
 
+class MarathonDeployStatus:
+    """ An enum to represent marathon app deploy status.
+    'Not Running' is NOT included to keep consistent with mesosphere documentation.
+    Changing name of the keys will affect both the paasta CLI and API.
+    """
+    Running, Deploying, Stopped, Delayed, Waiting = range(0, 5)
+
+    @classmethod
+    def tostring(cls, val):
+        for k, v in vars(cls).iteritems():
+            if v == val:
+                return k
+
+
+def get_marathon_app_deploy_status(app, app_id, client):
+    # Check the launch queue to see if an app is blocked
+    is_overdue, backoff_seconds = get_app_queue_status(client, app_id)
+
+    # Based on conditions at https://mesosphere.github.io/marathon/docs/marathon-ui.html
+    if is_overdue:
+        deploy_status = MarathonDeployStatus.Waiting
+    elif backoff_seconds:
+        deploy_status = MarathonDeployStatus.Delayed
+    elif len(app.deployments) > 0:
+        deploy_status = MarathonDeployStatus.Deploying
+    elif app.instances == 0 and app.tasks_running == 0:
+        deploy_status = MarathonDeployStatus.Stopped
+    else:
+        deploy_status = MarathonDeployStatus.Running
+
+    return deploy_status, backoff_seconds
+
+
+def get_marathon_app_deploy_status_human(app, app_id, client):
+    status, delay = get_marathon_app_deploy_status(app, app_id, client)
+    status_string = MarathonDeployStatus.tostring(status)
+
+    if status == MarathonDeployStatus.Waiting:
+        deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red(status_string)
+    elif status == MarathonDeployStatus.Delayed:
+        deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
+                        PaastaColors.red(status_string), delay)
+    elif status == MarathonDeployStatus.Deploying:
+        deploy_status = PaastaColors.yellow(status_string)
+    elif status == MarathonDeployStatus.Stopped:
+        deploy_status = PaastaColors.grey(status_string)
+    else:
+        deploy_status = PaastaColors.bold(status_string)
+
+    return deploy_status
+
+
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 

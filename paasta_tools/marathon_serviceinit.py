@@ -108,22 +108,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
         running_instances = app.tasks_running
-
-        # Check the launch queue to see if an app is blocked
-        is_overdue, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
-
-        # Based on conditions at https://mesosphere.github.io/marathon/docs/marathon-ui.html
-        if is_overdue:
-            deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red("Waiting")
-        elif backoff_seconds:
-            deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
-                            PaastaColors.red("Delayed"), backoff_seconds)
-        elif len(app.deployments) > 0:
-            deploy_status = PaastaColors.yellow("Deploying")
-        elif app.instances == 0 and app.tasks_running == 0:
-            deploy_status = PaastaColors.grey("Stopped")
-        else:
-            deploy_status = PaastaColors.bold("Running")
+        deploy_status = marathon_tools.get_marathon_app_deploy_status_human(app, app_id, client)
 
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
