@@ -103,13 +103,29 @@ def status_desired_state(service, instance, client, job_config):
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 
+def get_app_queue_status(app_id, client):
+    app_queue = client.list_queue()
+    for app_queue_item in app_queue:
+        if app_queue_item.app.id == app_id:
+            return (app_queue_item.delay.overdue, app_queue_item.delay.timeLeftSeconds)
+
+    return (None, None)
+
+
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
         running_instances = app.tasks_running
+        is_overdue, backoff_seconds = get_app_queue_status(app_id, client)
+
         if len(app.deployments) == 0:
             deploy_status = PaastaColors.bold("Running")
+        elif is_overdue:
+            deploy_status = PaastaColors.red("Waiting for resources")
+        elif backoff_seconds:
+            delay_time = PaastaColors.grey("%s seconds" % backoff_seconds)
+            deploy_status = "%s (%s)" % (PaastaColors.red("Delayed"), delay_time)
         else:
             deploy_status = PaastaColors.yellow("Deploying")
         if running_instances >= normal_instance_count:
@@ -121,7 +137,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
+        return "Marathon:   %s - up with %s instances. Status: %s" % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
         status = PaastaColors.red("Critical")
