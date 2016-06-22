@@ -13,6 +13,7 @@
 # limitations under the License.
 import contextlib
 
+import marathon
 import mock
 from marathon import MarathonHttpError
 from marathon.models import MarathonApp
@@ -2381,6 +2382,20 @@ def wait_for_app_to_launch_tasks():
         marathon_tools.wait_for_app_to_launch_tasks(mock.Mock(), 'app_id', 0)
         assert mock_app_has_tasks.call_count == 3
         assert mock_sleep.call_count == 2
+
+
+def test_get_app_queue_status():
+    fake_app_id = 'fake_app_id'
+    fake_delay = 100
+    client = mock.create_autospec(marathon.MarathonClient)
+    queue_item = mock.create_autospec(marathon.models.queue.MarathonQueueItem)
+    queue_item.app = mock.Mock(id=fake_app_id)
+    queue_item.delay = mock.Mock(overdue=False, timeLeftSeconds=fake_delay)
+    client.list_queue.return_value = [queue_item]
+
+    is_overdue, delay_seconds = marathon_tools.get_app_queue_status(client, fake_app_id)
+    assert delay_seconds == fake_delay
+    assert is_overdue is False
 
 
 def test_is_task_healthy():

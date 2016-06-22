@@ -931,6 +931,23 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
         return len(tasks) >= expected_tasks
 
 
+def get_app_queue_status(client, app_id):
+    """Returns the status of an application if it exists in Marathon's launch queue
+
+    :param client: The marathon client
+    :param app_id: The Marathon app id
+    :returns: A tuple of the form (is_overdue, current_backoff_delay) or (None, None)
+              if the app cannot be found. If is_overdue is True, then Marathon has
+              not received a resource offer that satisfies the requirements for the app
+    """
+    app_queue = client.list_queue()
+    for app_queue_item in app_queue:
+        if app_queue_item.app.id == app_id:
+            return (app_queue_item.delay.overdue, app_queue_item.delay.timeLeftSeconds)
+
+    return (None, None)
+
+
 @timeout()
 def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
