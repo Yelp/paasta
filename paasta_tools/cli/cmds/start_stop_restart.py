@@ -150,8 +150,6 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
-    instances = args.instances
-    clusters = args.clusters
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
@@ -163,7 +161,7 @@ def paasta_start_or_stop(args, desired_state):
     if args.instances is not None:
         instances = args.instances.split(",")
     else:
-        instances = list_instances()
+        instances = list_instances(service=service)
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
