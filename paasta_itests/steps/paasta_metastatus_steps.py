@@ -42,13 +42,13 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'an app with id "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', mem=490, instances=1,
                                                            container=CONTAINER))
 
 
 @when(u'an app with id "{app_id}" using high disk is launched')
 def run_paasta_metastatus_high_disk(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', disk=95, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', disk=95, instances=1,
                                                            container=CONTAINER))
 
 
@@ -61,7 +61,7 @@ def chronos_job_launched(context, job_name):
 
 @when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', cpus=9, instances=1,
                                                            container=CONTAINER))
 
 
