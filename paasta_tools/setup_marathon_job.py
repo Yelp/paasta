@@ -509,8 +509,7 @@ def deploy_service(
     return (0, 'Service deployed.')
 
 
-def setup_service(service, instance, client, marathon_config,
-                  service_marathon_config, soa_dir):
+def setup_service(service, instance, client, service_marathon_config, soa_dir):
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
@@ -518,7 +517,6 @@ def setup_service(service, instance, client, marathon_config,
     :param service: The service name to setup
     :param instance: The instance of the service to setup
     :param client: A MarathonClient object
-    :param marathon_config: The marathon configuration dict
     :param service_marathon_config: The service instance's configuration dict
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
 
@@ -618,8 +616,7 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config)
         return 1
 
     try:
-        status, output = setup_service(service, instance, client, marathon_config,
-                                       service_instance_config, soa_dir)
+        status, output = setup_service(service, instance, client, service_instance_config, soa_dir)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, soa_dir, sensu_status, output)
         return 0
