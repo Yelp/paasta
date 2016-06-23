@@ -378,13 +378,14 @@ def list_service_instances():
     return the_list
 
 
-def list_instances(**kwargs):
+def list_instances(service=None, **kwargs):
     """Returns a sorted list of all possible instance names
     for tab completion. We try to guess what service you might be
     operating on, otherwise we just provide *all* of them
     """
     all_instances = set()
-    service = guess_service_name()
+    if service is None:
+        service = guess_service_name()
     try:
         validate_service_name(service)
         all_instances = set(list_all_instances_for_service(service))
