@@ -27,11 +27,12 @@ a situation where there is a loss of autoscaling state, a service up is the
 safest course of action until the autoscaler can scale back down to a "normal"
 instance count.
 
-Autoscaling only considers marathon tasks that have passing health checks. This
-is so new tasks that have higher-than-average load when starting up are ignored
-until their first health check passes. PaaSTA will not autoscale a service
-without any health checks, though these services can be autoscaled using the
-``bespoke`` decision policy.
+If you use autoscaling it is highly recommended that you also configure a
+healthcheck. This ensures that PaaSTA will not autoscale marathon tasks that are
+just starting up or unhealthy. If you have no healthcheck defined autoscaling will
+run as soon as the service is deployed. If you have defined a healthcheck,
+autoscaling will run as soon as the healthcheck passes. This is so new tasks that
+have higher-than-average load when starting up are ignored.
 
 Autoscaling parameters are stored in an ``autoscaling`` attribute of your
 instances as a dictionary. Within the ``autoscaling`` attribute, setting a
