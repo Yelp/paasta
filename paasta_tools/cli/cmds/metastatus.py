@@ -69,7 +69,7 @@ def add_subparser(subparsers):
             'Note: This is only effective with -vv'
         )
     )
-    status_parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
+    status_parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=True,
                                help="Print human-readable sizes")
     status_parser.set_defaults(command=paasta_metastatus)
 
