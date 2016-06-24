@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import socket
+from collections import namedtuple
 from urlparse import urlparse
 
 import humanize
@@ -29,6 +30,8 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
+
+SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
 
 log = logging.getLogger(__name__)
@@ -615,3 +618,37 @@ def get_mesos_network_for_net(net):
         'host': 'HOST',
     }
     return docker_mesos_net_mapping.get(net, net)
+
+
+def get_mesos_task_count_by_slave(mesos_state, pool=None):
+    """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
+
+    :param mesos_state: mesos state dict
+    :param pool: pool of slaves to return (None means all)
+    :returns: dict of {<slave_id>:{'count': <count>, 'slave': <slave_object>, 'chronos_count':<chronos_count>}}
+    """
+    all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
+    if pool:
+        slaves = {
+            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+            if slave['attributes'].get('pool', 'default') == pool
+        }
+    else:
+        slaves = {
+            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+        }
+    for task in all_mesos_tasks:
+        if task.slave['id'] not in slaves:
+            log.error("Task associated with %s but slave not in masters list of slaves" % task.slave['id'])
+            continue
+        else:
+            slaves[task.slave['id']]['count'] += 1
+            log.debug("Task framework: {0}".format(task.framework.name))
+            if task.framework.name == 'chronos':
+                slaves[task.slave['id']]['chronos_count'] += 1
+    slaves = {slave_pid: SlaveTaskCount(**slave_counts) for slave_pid, slave_counts in slaves.items()}
+    for slave in slaves.values():
+        log.debug("Slave: {0}, running {1} tasks, includeing {2} chronos tasks".format(slave.slave['pid'],
+                                                                                       slave.count,
+                                                                                       slave.chronos_count))
+    return slaves
