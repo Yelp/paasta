@@ -118,10 +118,10 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
             is_overdue, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
 
             if is_overdue:
-                deploy_status = PaastaColors.red("Waiting for resources")
+                deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red("Waiting")
             elif backoff_seconds:
-                delay_time = PaastaColors.grey("%s seconds" % backoff_seconds)
-                deploy_status = "%s (%s)" % (PaastaColors.red("Delayed"), delay_time)
+                deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
+                                PaastaColors.red("Delayed"), backoff_seconds)
             else:
                 deploy_status = PaastaColors.yellow("Deploying")
 
