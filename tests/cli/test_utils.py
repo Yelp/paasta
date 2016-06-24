@@ -209,6 +209,15 @@ def test_run_paasta_metastatus_verbose(mock_run):
     assert actual == mock_run.return_value[1]
 
 
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_paasta_metastatus_very_verbose(mock_run):
+    mock_run.return_value = ('unused', 'fake_output')
+    expected_command = 'ssh -A -n fake_master sudo paasta_metastatus -vv'
+    actual = utils.run_paasta_metastatus('fake_master', False, [], 2)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value[1]
+
+
 @patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
 @patch('paasta_tools.cli.utils.run_paasta_serviceinit', autospec=True)
