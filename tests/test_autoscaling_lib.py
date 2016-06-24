@@ -481,10 +481,14 @@ def test_autoscale_services_not_healthy():
         _,
         _,
     ):
+
         # Test missing health_check_results
         mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
                                          health_check_results=[])]
-        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))
+        mock_marathon_app = mock.Mock()
+        mock_marathon_app.health_checks = ["some-healthcheck-definition"]
+        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks),
+                                                      get_app=mock.Mock(return_value=mock_marathon_app))
         autoscaling_lib.autoscale_services()
         mock_write_to_log.assert_called_with(config=fake_marathon_service_config,
                                              line="Caught Exception Couldn't find any healthy marathon tasks")
@@ -494,11 +498,26 @@ def test_autoscale_services_not_healthy():
         mock_healthcheck_results = mock.Mock(alive=False)
         mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
                                          health_check_results=[mock_healthcheck_results])]
-        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))
+        mock_marathon_app = mock.Mock()
+        mock_marathon_app.health_checks = ["some-healthcheck-definition"]
+        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks),
+                                                      get_app=mock.Mock(return_value=mock_marathon_app))
         autoscaling_lib.autoscale_services()
         mock_write_to_log.assert_called_with(config=fake_marathon_service_config,
                                              line="Caught Exception Couldn't find any healthy marathon tasks")
         assert not mock_autoscale_marathon_instance.called
+
+        # Test no healthcheck defined
+        mock_marathon_tasks = [mock.Mock(id='fake-service.fake-instance',
+                                         health_check_results=[])]
+        mock_marathon_app = mock.Mock()
+        mock_marathon_app.health_checks = []
+        mock_marathon_client.return_value = mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks),
+                                                      get_app=mock.Mock(return_value=mock_marathon_app))
+        autoscaling_lib.autoscale_services()
+        mock_write_to_log.assert_called_with(config=fake_marathon_service_config,
+                                             line="Caught Exception Couldn't find any healthy marathon tasks")
+        assert mock_autoscale_marathon_instance.called
 
 
 def test_autoscale_services_bespoke_doesnt_autoscale():

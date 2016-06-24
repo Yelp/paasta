@@ -368,18 +368,23 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
             if configs:
                 marathon_config = load_marathon_config()
-                all_marathon_tasks = get_marathon_client(
+                marathon_client = get_marathon_client(
                     url=marathon_config.get_url(),
                     user=marathon_config.get_username(),
-                    passwd=marathon_config.get_password(),
-                ).list_tasks()
+                    passwd=marathon_config.get_password())
+                all_marathon_tasks = marathon_client.list_tasks()
                 all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
                 with ZookeeperPool():
                     for config in configs:
                         try:
                             job_id = format_job_id(config.service, config.instance)
+                            # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
+                            # are healthy. We assume tasks with no healthcheck results but a defined
+                            # healthcheck to be unhealthy.
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
-                                              if job_id == get_short_job_id(task.id) and is_task_healthy(task)}
+                                              if job_id == get_short_job_id(task.id) and
+                                              (is_task_healthy(task) or not
+                                               marathon_client.get_app(task.app_id).health_checks)}
                             if not marathon_tasks:
                                 raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
                             mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]

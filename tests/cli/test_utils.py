@@ -195,7 +195,7 @@ def test_run_paasta_serviceinit_status_verbose_multi(mock_run):
 def test_run_paasta_metastatus(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_metastatus'
-    actual = utils.run_paasta_metastatus('fake_master')
+    actual = utils.run_paasta_metastatus('fake_master', False, [], 0)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
 
@@ -204,7 +204,16 @@ def test_run_paasta_metastatus(mock_run):
 def test_run_paasta_metastatus_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_metastatus -v'
-    actual = utils.run_paasta_metastatus('fake_master', True)
+    actual = utils.run_paasta_metastatus('fake_master', False, [], 1)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value[1]
+
+
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_paasta_metastatus_very_verbose(mock_run):
+    mock_run.return_value = ('unused', 'fake_output')
+    expected_command = 'ssh -A -n fake_master sudo paasta_metastatus -vv'
+    actual = utils.run_paasta_metastatus('fake_master', False, [], 2)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
 
@@ -306,10 +315,10 @@ def test_execute_paasta_metastatus_on_remote_master(
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config, False, [], 0)
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
-    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False)
+    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0)
     assert actual == mock_run_paasta_metastatus.return_value
 
 
@@ -328,7 +337,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     mock_calculate_remote_masters.return_value = (['fake_master'], None)
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config, False, [], 0)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual

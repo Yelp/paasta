@@ -21,6 +21,7 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_all_instances_for_service
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
@@ -150,8 +151,6 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
-    instances = args.instances
-    clusters = args.clusters
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
@@ -163,7 +162,7 @@ def paasta_start_or_stop(args, desired_state):
     if args.instances is not None:
         instances = args.instances.split(",")
     else:
-        instances = list_instances()
+        instances = None
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
@@ -180,7 +179,16 @@ def paasta_start_or_stop(args, desired_state):
 
     invalid_deploy_groups = []
     for cluster in clusters:
-        for instance in instances:
+        # If they haven't specified what instances to act on, do it for all of them.
+        # If they have specified what instances, only iterate over them if they're
+        # actually within this cluster.
+        if instances is None:
+            cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
+        else:
+            all_cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
+            cluster_instances = all_cluster_instances.intersection(set(instances))
+
+        for instance in cluster_instances:
             service_config = get_instance_config(
                 service=service,
                 cluster=cluster,

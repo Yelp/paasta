@@ -535,22 +535,25 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
-def run_paasta_metastatus(master, verbose=0):
+def run_paasta_metastatus(master, humanize, groupings, verbose=0):
     if verbose > 0:
-        verbose_flag = " -%s" % 'v' * verbose
+        verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
     else:
         verbose_flag = ''
         timeout = 20
-    command = 'ssh -A -n %s sudo paasta_metastatus%s' % (
+    humanize_flag = "-H" if humanize else ''
+    groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
+    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
+    command = ('ssh -A -n %s sudo paasta_metastatus %s' % (
         master,
-        verbose_flag,
-    )
+        cmd_args
+    )).strip()
     _, output = _run(command, timeout=timeout)
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=0):
+def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
@@ -562,7 +565,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, ve
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
-    return run_paasta_metastatus(master, verbose)
+    return run_paasta_metastatus(master, humanize, groupings, verbose)
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):

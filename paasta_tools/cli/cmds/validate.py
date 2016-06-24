@@ -19,6 +19,7 @@ from glob import glob
 
 import yaml
 from jsonschema import Draft4Validator
+from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
 
@@ -107,10 +108,11 @@ def validate_schema(file_path, file_type):
         config_file_object = config_file
     try:
         validator.validate(config_file_object)
-    except ValidationError as e:
+    except ValidationError:
         print '%s: %s' % (SCHEMA_INVALID, file_path)
-        print '  Validation Message: %s' % e.message
-        return False
+
+        errors = validator.iter_errors(config_file_object)
+        print '  Validation Message: %s' % exceptions.best_match(errors).message
     else:
         print '%s: %s' % (SCHEMA_VALID, basename)
         return True
