@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Interacts with the framework APIs to start/stop/restart/get status/scale for
+Interacts with the framework APIs to start/stop/restart/get_status/scale for
 instances. Assumes that the credentials are available, so must run as root.
 """
 import argparse
