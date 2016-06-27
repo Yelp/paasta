@@ -24,6 +24,7 @@ from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
 from Queue import Empty
+from time import sleep
 
 import dateutil
 import isodate
@@ -783,11 +784,15 @@ class ScribeLogReader(LogReader):
             # Die peacefully rather than printing N threads worth of stack
             # traces.
             pass
-        except StreamTailerSetupError:
-            log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
-            log.error("Don't Panic! This can happen the first time a service is deployed because the log")
-            log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again." % scribe_env)
-            raise
+        except StreamTailerSetupError as e:
+            if 'No data in stream' in e.message:
+                log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
+                log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
+                log.warning("output within this stream.")
+                # Enter a wait so the process isn't considered dead
+                sleep(sys.maxsize)
+            else:
+                raise
 
     def determine_scribereader_envs(self, components, cluster):
         """Returns a list of environments that scribereader needs to connect
