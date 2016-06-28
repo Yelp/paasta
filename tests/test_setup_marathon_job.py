@@ -122,7 +122,6 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
-                self.fake_marathon_config,
                 self.fake_marathon_service_config,
                 'no_more',
             )
@@ -186,7 +185,6 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
-                self.fake_marathon_config,
                 self.fake_marathon_service_config,
                 'no_more',
             )
@@ -919,7 +917,6 @@ class TestSetupMarathonJob:
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
-                marathon_config=self.fake_marathon_config,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
@@ -1002,7 +999,6 @@ class TestSetupMarathonJob:
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
-                marathon_config=self.fake_marathon_config,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
@@ -1041,7 +1037,6 @@ class TestSetupMarathonJob:
                 service=fake_name,
                 instance=fake_instance,
                 client=None,
-                marathon_config=None,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )

@@ -26,18 +26,25 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
 
 
-def update_context_marathon_config(context):
+@contextlib.contextmanager
+def patch_mesos_cli_master_config():
     mesos_config = {
         "master": "%s" % get_service_connection_string('mesosmaster'),
         "scheme": "http",
         "response_timeout": 5,
     }
+
+    with mock.patch.object(mesos.cli.master, 'CFG', mesos_config):
+        yield
+
+
+def update_context_marathon_config(context):
     whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
     with contextlib.nested(
         # This seems to be necessary because mesos reads the config file at
         # import which is sometimes before the tests get a chance to write the
         # config file
-        mock.patch.object(mesos.cli.master, 'CFG', mesos_config),
+        patch_mesos_cli_master_config(),
         mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
         mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
         mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
