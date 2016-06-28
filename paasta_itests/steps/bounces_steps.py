@@ -57,7 +57,7 @@ def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
             "healthcheck_cmd": cmd,
             "bounce_method": str(bounce_method),
             "drain_method": str(drain_method),
-            "cpus": 0.001,
+            "cpus": 0.1,
             "mem": 100,
             "disk": 10,
         },
