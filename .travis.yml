@@ -16,7 +16,7 @@ services:
 before_install:
   # This probably ought to match the version in yelp_package/dockerfiles/itest/mesos/Dockerfile.
   # Having a recent enough version is important so that docker features like --cpu-shares work properly.
-  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.11.2-0~trusty
+  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.10.3-0~trusty
 install: pip install coveralls tox
 script: if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox; fi
 after_success:
