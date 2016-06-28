@@ -467,11 +467,12 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
         mesos_state
     )[pool]
 
+    log.debug(pool_utilization_dict)
     free_pool_resources = pool_utilization_dict['free']
     total_pool_resources = pool_utilization_dict['total']
     utilization = 1.0 - min([
-        float(free_pool_resources[resource]) / total_pool_resources[resource]
-        for resource in free_pool_resources
+        float(float(pair[0]) / float(pair[1]))
+        for pair in zip(free_pool_resources, total_pool_resources)
     ])
     return utilization
 
