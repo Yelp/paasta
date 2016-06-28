@@ -460,34 +460,29 @@ LOG_COMPONENTS = OrderedDict([
     ('build', {
         'color': PaastaColors.blue,
         'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-        'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
         'source_env': 'devc',
     }),
     ('deploy', {
         'color': PaastaColors.cyan,
         'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
-        'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
+        'additional_source_envs': ['devc'],
     }),
     ('monitoring', {
         'color': PaastaColors.green,
         'help': 'Logs from Sensu checks for the service',
-        'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
     }),
     ('marathon', {
         'color': PaastaColors.magenta,
         'help': 'Logs from Marathon for the service',
-        'command': 'NA - TODO log marathon stuff.',
     }),
     ('chronos', {
         'color': PaastaColors.red,
         'help': 'Logs from Chronos for the service',
-        'command': 'NA - TODO log chronos stuff.',
     }),
     ('app_output', {
         'color': compose(PaastaColors.yellow, PaastaColors.bold),
         'help': 'Stderr and stdout of the actual process spawned by Mesos. '
                 'Convenience alias for both the stdout and stderr components',
-        'command': 'NA - PAASTA-78',
     }),
     ('stdout', {
         'color': PaastaColors.yellow,

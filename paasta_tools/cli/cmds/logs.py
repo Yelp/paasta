@@ -15,7 +15,6 @@
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
-import json
 import logging
 import re
 import sys
@@ -28,6 +27,7 @@ from Queue import Empty
 import dateutil
 import isodate
 import pytz
+import ujson as json
 
 try:
     from scribereader import scribereader
@@ -649,6 +649,11 @@ class ScribeLogReader(LogReader):
     def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, raw_mode):
         aggregated_logs = []
 
+        if 'marathon' in components or 'chronos' in components:
+            sys.stderr.write(PaastaColors.red("Warning, you have chosen to get marathon or chronos logs based "
+                                              "on time. This command may take a dozen minutes or so to run "
+                                              "because marathon and chronos are on shared streams.\n"))
+
         def callback(component, stream_info, scribe_env, cluster):
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
@@ -801,6 +806,8 @@ class ScribeLogReader(LogReader):
             # If a component has a 'source_env', we use that
             # otherwise we lookup what scribe env is associated with a given cluster
             env = LOG_COMPONENTS[component].get('source_env', self.cluster_to_scribe_env(cluster))
+            if 'additional_source_envs' in LOG_COMPONENTS[component]:
+                envs += LOG_COMPONENTS[component]['additional_source_envs']
             envs.append(env)
         return set(envs)
 
