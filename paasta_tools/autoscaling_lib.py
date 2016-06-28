@@ -53,8 +53,8 @@ DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
-MISSING_SLAVE_PANIC_THRESHOLD = .3
-MAX_CLUSTER_DELTA = .1
+MISSING_SLAVE_PANIC_THRESHOLD = .1
+MAX_CLUSTER_DELTA = .20
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -477,7 +477,7 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def spotfleet_scaler(resource, error):
+def spotfleet_scaler(resource, error, dry_run):
     ec2_client = boto3.client('ec2')
     spot_fleet_request = ec2_client.describe_spot_fleet_requests(
         SpotFleetRequestIds=[resource['id']])['SpotFleetRequestConfigs'][0]
@@ -507,9 +507,8 @@ def spotfleet_scaler(resource, error):
             ideal_capacity, resource['min_instances']))
     if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
             ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
-        log.warning(
-            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
-            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
+        log.warning("Our ideal capacity %d, current capcity is %d." % (ideal_capacity, current_capacity))
+        log.warning("For now, just doing a %.2f%% change for to %d." % (MAX_CLUSTER_DELTA * 100, new_capacity))
 
     if new_capacity != current_capacity:
         print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
@@ -535,7 +534,7 @@ class ClusterAutoscalingError(Exception):
     pass
 
 
-def autoscale_local_cluster():
+def autoscale_local_cluster(dry_run=False):
     TARGET_UTILIZATION = 0.8
 
     system_config = load_system_paasta_config()
@@ -545,9 +544,9 @@ def autoscale_local_cluster():
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
             utilization = resource_metrics_provider(resource['id'], mesos_state, resource['pool'])
-            log.debug("Utilization for %s: %.2f%%" % (identifier, utilization * 100))
+            log.info("Utilization for %s: %.2f%%" % (identifier, utilization * 100))
             error = utilization - TARGET_UTILIZATION
             resource_scaler = get_scaler(resource['type'])
-            resource_scaler(resource, error)
+            resource_scaler(resource=resource, error=error, dry_run=dry_run)
         except ClusterAutoscalingError as e:
             log.error('%s: %s' % (identifier, e))

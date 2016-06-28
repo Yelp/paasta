@@ -25,6 +25,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Autoscales the local PaaSTA cluster')
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output.")
+    parser.add_argument('-d', '--dry-run', action='store_true',
+                        help="Perform no actions, only print what to do")
     args = parser.parse_args()
     return args
 
@@ -38,7 +40,7 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    autoscale_local_cluster()
+    autoscale_local_cluster(dry_run=args.dry_run)
 
 
 if __name__ == '__main__':
