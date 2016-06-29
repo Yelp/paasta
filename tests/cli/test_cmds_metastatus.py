@@ -37,9 +37,19 @@ def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
     thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
     with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
-        metastatus.print_cluster_status(cluster, fake_system_paasta_config)
+        metastatus.print_cluster_status(
+            cluster,
+            fake_system_paasta_config,
+            False,
+            [],
+            verbose=0
+        )
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
-            cluster, fake_system_paasta_config, verbose=False,
+            cluster=cluster,
+            system_paasta_config=fake_system_paasta_config,
+            humanize=False,
+            groupings=[],
+            verbose=0,
         )
         actual = mock_stdout.getvalue()
         assert 'Cluster: %s' % cluster in actual
@@ -66,3 +76,26 @@ def test_get_cluster_dashboards():
         output_text = metastatus.get_cluster_dashboards('fake_cluster')
         assert 'http://paasta-fake_cluster.yelp:5050' in output_text
         assert 'URL: ' in output_text
+
+
+def test_get_cluster_no_dashboards():
+    with mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config',
+                    autospec=True) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+            {}, 'fake_directory')
+        output_text = metastatus.get_cluster_dashboards('fake_cluster')
+        assert 'No dashboards configured' in output_text
+
+
+def test_get_cluster_dashboards_unknown_cluster():
+    with mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config',
+                    autospec=True) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig({
+            'dashboard_links': {
+                'another_fake_cluster': {
+                    'URL': 'http://paasta-fake_cluster.yelp:5050',
+                },
+            },
+        }, 'fake_directory')
+        output_text = metastatus.get_cluster_dashboards('fake_cluster')
+        assert 'No dashboards configured for fake_cluster' in output_text

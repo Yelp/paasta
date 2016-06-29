@@ -282,6 +282,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
     app.deployments = ['test_deployment']
+    app.instances = normal_instance_count
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
     ) as (
@@ -290,6 +291,82 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
         output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
         is_app_id_running_patch.assert_called_once_with(app_id, client)
         assert 'Deploying' in output
+
+
+def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment():
+    client = mock.create_autospec(marathon.MarathonClient)
+    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client.get_app.return_value = app
+    service = 'my_service'
+    instance = 'my_instance'
+    app_id = 'mock_app_id'
+    normal_instance_count = 5
+    mock_tasks_running = 0
+    app.tasks_running = mock_tasks_running
+    app.deployments = ['test_deployment']
+    app.instances = normal_instance_count
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(False, 10)),
+    ) as (
+        is_app_id_running_patch,
+        get_app_queue_status_patch,
+    ):
+        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        is_app_id_running_patch.assert_called_once_with(app_id, client)
+        get_app_queue_status_patch.assert_called_once_with(client, app_id)
+        assert 'Delayed' in output
+
+
+def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment():
+    client = mock.create_autospec(marathon.MarathonClient)
+    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client.get_app.return_value = app
+    service = 'my_service'
+    instance = 'my_instance'
+    app_id = 'mock_app_id'
+    normal_instance_count = 5
+    mock_tasks_running = 0
+    app.tasks_running = mock_tasks_running
+    app.deployments = ['test_deployment']
+    app.instances = normal_instance_count
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0)),
+    ) as (
+        is_app_id_running_patch,
+        get_app_queue_status_patch,
+    ):
+        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        is_app_id_running_patch.assert_called_once_with(app_id, client)
+        get_app_queue_status_patch.assert_called_once_with(client, app_id)
+        assert 'Waiting' in output
+
+
+def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployment():
+    client = mock.create_autospec(marathon.MarathonClient)
+    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client.get_app.return_value = app
+    service = 'my_service'
+    instance = 'my_instance'
+    app_id = 'mock_app_id'
+    normal_instance_count = 5
+    mock_tasks_running = 0
+    app.tasks_running = mock_tasks_running
+    app.deployments = ['test_deployment']
+    app.instances = 0
+    app.tasks_running = 0
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0)),
+    ) as (
+        is_app_id_running_patch,
+        get_app_queue_status_patch,
+    ):
+        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        is_app_id_running_patch.assert_called_once_with(app_id, client)
+        assert get_app_queue_status_patch.call_count == 0
+        assert 'Stopped' in output
 
 
 def test_format_haproxy_backend_row():

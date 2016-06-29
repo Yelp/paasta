@@ -18,6 +18,7 @@ import mock
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string
+from itest_utils import update_context_marathon_config
 from marathon.exceptions import MarathonHttpError
 
 from paasta_tools import marathon_tools
@@ -56,31 +57,6 @@ def run_setup_marathon_job(context):
 @when(u'we set up an app to use zookeeper scaling with {number:d} max instances')
 def setup_zookeeper(context, number):
     context.max_instances = number
-
-
-def update_context_marathon_config(context):
-    whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
-    with contextlib.nested(
-        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
-        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
-        mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
-    ) as (
-        _,
-        _,
-        mock_get_max_instances,
-    ):
-        mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
-        context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
-            context.service,
-            context.instance,
-            soa_dir=context.soa_dir,
-        ).items() if key in whitelist_keys}
-    context.marathon_complete_config.update({
-        'cmd': '/bin/sleep 1m',
-        'constraints': None,
-    })
-    if 'max_instances' not in context:
-        context.marathon_complete_config['instances'] = context.instances
 
 
 @when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')

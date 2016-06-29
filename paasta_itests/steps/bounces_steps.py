@@ -28,15 +28,14 @@ from paasta_tools.bounce_lib import get_happy_tasks
 
 
 def which_id(context, which):
-    config = {
-        'new': context.new_config,
-        'old': context.old_app_config,
+    return {
+        'new': context.new_id,
+        'old': context.old_app_config['id'],
     }[which]
-    return config['id']
 
 
-@given(u'a new {state} app to be deployed')
-def given_a_new_app_to_be_deployed(context, state):
+@given(u'a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
+def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
     if state == "healthy":
         cmd = "/bin/true"
     elif state == "unhealthy":
@@ -46,19 +45,28 @@ def given_a_new_app_to_be_deployed(context, state):
 
     context.service = 'bounce'
     context.instance = 'test1'
-    context.new_config = {
-        'id': 'bounce.test1.newapp.confighash',
-        'cmd': '/bin/sleep 300',
-        'instances': 2,
-        'backoff_seconds': 1,
-        'backoff_factor': 1,
-        'health_checks': [
-            {
-                "protocol": "COMMAND",
-                "command": {"value": cmd}
-            }
-        ]
-    }
+    context.new_id = 'bounce.test1.newapp.confighash'
+    context.new_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service=context.service,
+        cluster=context.cluster,
+        instance=context.instance,
+        config_dict={
+            "cmd": "/bin/sleep 300",
+            "instances": 2,
+            "healthcheck_mode": "cmd",
+            "healthcheck_cmd": cmd,
+            "bounce_method": str(bounce_method),
+            "drain_method": str(drain_method),
+            "cpus": 0.1,
+            "mem": 100,
+            "disk": 10,
+        },
+        branch_dict={
+            'docker_image': 'busybox',
+            'desired_state': 'start',
+            'force_bounce': None,
+        },
+    )
 
 
 @given(u'an old app to be destroyed')
@@ -69,6 +77,13 @@ def given_an_old_app_to_be_destroyed(context):
         'id': old_app_name,
         'cmd': '/bin/sleep 300',
         'instances': 2,
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
         'backoff_seconds': 1,
         'backoff_factor': 1,
     }
@@ -96,12 +111,12 @@ def when_there_are_num_which_tasks(context, num, which, state):
             if len(app.tasks) - happy_count >= context.max_tasks:
                 return
         time.sleep(0.5)
-    raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
+    raise Exception("timed out waiting for %d %s tasks on %s; there are %s" %
                     (context.max_tasks, state, app_id, app.tasks))
 
 
-@when(u'deploy_service with bounce strategy "{bounce_method}" and drain method "{drain_method}" is initiated')
-def when_deploy_service_initiated(context, bounce_method, drain_method):
+@when(u'setup_service is initiated')
+def when_setup_service_initiated(context):
     with contextlib.nested(
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
@@ -116,6 +131,9 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
         mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
+        mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
+        mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
     ) as (
         _,
         _,
@@ -123,28 +141,26 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
         _,
         mock_load_system_paasta_config,
         _,
+        _,
+        _,
+        _,
     ):
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
         for _ in xrange(120):
             try:
-                setup_marathon_job.deploy_service(
+                (code, message) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
-                    marathon_jobid=context.new_config['id'],
-                    config=context.new_config,
                     client=context.marathon_client,
-                    bounce_method=bounce_method,
-                    drain_method_name=drain_method,
-                    drain_method_params={},
-                    nerve_ns=context.instance,
-                    bounce_health_params={},
-                    soa_dir=None,
+                    service_marathon_config=context.new_marathon_service_config,
+                    soa_dir='/nail/etc/services',
                 )
+                assert code == 0, message
                 return
             except MarathonHttpError:
                 time.sleep(0.5)
-        raise Exception("Unable to qcuiqre app lock for setup_marathon_job.deploy_service")
+        raise Exception("Unable to acquire app lock for setup_marathon_job.setup_service")
 
 
 @when(u'the {which} app is down to {num} instances')

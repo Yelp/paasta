@@ -15,6 +15,7 @@
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
 import argparse
+import logging
 import sys
 
 import argcomplete
@@ -108,6 +109,7 @@ def main(argv=None):
 
     Ensure we kill any child pids before we quit
     """
+    logging.basicConfig()
     args, parser = parse_args(argv)
     if args.command is None:
         parser.print_help()

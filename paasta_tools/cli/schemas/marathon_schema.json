@@ -7,6 +7,20 @@
         "type": "object",
         "additionalProperties": false,
         "minProperties": 1,
+        "oneOf": [
+            {
+                "properties": {
+                    "healthcheck_mode": {"enum": ["tcp", "http"]}
+                }
+            },
+            {
+                "properties": {
+                    "healthcheck_mode": {"enum": ["cmd"]},
+                    "healthcheck_cmd": {"type": "string"}
+                },
+                "required": ["healthcheck_cmd"]
+            }
+        ],
         "properties": {
             "cpus": {
                 "type": "number",

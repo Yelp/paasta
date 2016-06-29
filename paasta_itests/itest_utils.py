@@ -11,13 +11,68 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import json
 import os
 import time
 
+import mesos.cli.master
+import mock
 import requests
 
+from paasta_tools import marathon_tools
+from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
+
+
+@contextlib.contextmanager
+def patch_mesos_cli_master_config():
+    mesos_config = {
+        "master": "%s" % get_service_connection_string('mesosmaster'),
+        "scheme": "http",
+        "response_timeout": 5,
+    }
+
+    with mock.patch.object(mesos.cli.master, 'CFG', mesos_config):
+        yield
+
+
+def update_context_marathon_config(context):
+    whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
+    with contextlib.nested(
+        # This seems to be necessary because mesos reads the config file at
+        # import which is sometimes before the tests get a chance to write the
+        # config file
+        patch_mesos_cli_master_config(),
+        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
+        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
+        mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
+    ) as (
+        _,
+        _,
+        _,
+        mock_get_max_instances,
+    ):
+        mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
+        context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
+            context.service,
+            context.instance,
+            soa_dir=context.soa_dir,
+        ).items() if key in whitelist_keys}
+    context.marathon_complete_config.update({
+        'cmd': '/bin/sleep 1m',
+        'constraints': None,
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
+    })
+    if 'max_instances' not in context:
+        context.marathon_complete_config['instances'] = context.instances
 
 
 def get_service_connection_string(service):

@@ -861,7 +861,7 @@ class TestCrossoverBounce:
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 4
 
-    def test_crossover_bounce_using_margin_factor(self):
+    def test_crossover_bounce_using_margin_factor_big_numbers(self):
         new_config = {'id': 'foo.bar.12345', 'instances': 500}
         happy_tasks = [mock.Mock() for _ in xrange(100)]
         old_app_live_happy_tasks = {
@@ -883,6 +883,29 @@ class TestCrossoverBounce:
         )
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 25
+
+    def test_crossover_bounce_using_margin_factor_small_numbers(self):
+        new_config = {'id': 'foo.bar.12345', 'instances': 3}
+        happy_tasks = []
+        old_app_live_happy_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(),
+        }
+        old_app_live_unhappy_tasks = {
+            'app1': set(),
+            'app2': set(),
+        }
+
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            margin_factor=0.66,
+        )
+        assert actual['create_app'] is False
+        assert len(actual['tasks_to_drain']) == 1
 
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of

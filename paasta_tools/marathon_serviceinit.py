@@ -108,10 +108,23 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
         running_instances = app.tasks_running
+
         if len(app.deployments) == 0:
             deploy_status = PaastaColors.bold("Running")
+        elif app.instances == 0 and app.tasks_running == 0:
+            deploy_status = PaastaColors.grey("Stopped")
         else:
-            deploy_status = PaastaColors.yellow("Deploying")
+            # App is currently deploying so we should check the launch queue for more info
+            is_overdue, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
+
+            if is_overdue:
+                deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red("Waiting")
+            elif backoff_seconds:
+                deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
+                                PaastaColors.red("Delayed"), backoff_seconds)
+            else:
+                deploy_status = PaastaColors.yellow("Deploying")
+
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
@@ -121,7 +134,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
+        return "Marathon:   %s - up with %s instances. Status: %s" % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
         status = PaastaColors.red("Critical")
@@ -144,11 +157,9 @@ def get_verbose_status_of_marathon_app(app):
             hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
         else:
             hostname = "Unknown"
-        health_check_results = [health_check.alive for health_check in task.health_check_results
-                                if health_check.alive is not None]
-        if not health_check_results:
+        if not task.health_check_results:
             health_check_status = PaastaColors.grey("N/A")
-        elif all(health_check_results):
+        elif marathon_tools.is_task_healthy(task):
             health_check_status = PaastaColors.green("Healthy")
         else:
             health_check_status = PaastaColors.red("Unhealthy")

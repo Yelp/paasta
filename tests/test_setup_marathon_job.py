@@ -122,7 +122,6 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
-                self.fake_marathon_config,
                 self.fake_marathon_service_config,
                 'no_more',
             )
@@ -186,7 +185,6 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
-                self.fake_marathon_config,
                 self.fake_marathon_service_config,
                 'no_more',
             )
@@ -919,7 +917,6 @@ class TestSetupMarathonJob:
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
-                marathon_config=self.fake_marathon_config,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
@@ -984,7 +981,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch.object(
                 self.fake_marathon_service_config,
-                'get_bounce_marging_factor',
+                'get_bounce_margin_factor',
                 return_value=fake_bounce_margin_factor,
                 autospec=True,
             ),
@@ -996,13 +993,12 @@ class TestSetupMarathonJob:
             format_marathon_app_dict_patch,
             read_service_conf_patch,
             read_namespace_conf_patch,
-            get_bounce_marging_factor_patch,
+            get_bounce_margin_factor_patch,
         ):
             status, output = setup_marathon_job.setup_service(
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
-                marathon_config=self.fake_marathon_config,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
@@ -1010,7 +1006,7 @@ class TestSetupMarathonJob:
             assert output == 'Never'
 
             get_bounce_patch.assert_called_once_with()
-            get_bounce_marging_factor_patch.assert_called_once_with()
+            get_bounce_margin_factor_patch.assert_called_once_with()
             format_marathon_app_dict_patch.assert_called_once_with()
             get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)
             deploy_service_patch.assert_called_once_with(
@@ -1041,7 +1037,6 @@ class TestSetupMarathonJob:
                 service=fake_name,
                 instance=fake_instance,
                 client=None,
-                marathon_config=None,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )

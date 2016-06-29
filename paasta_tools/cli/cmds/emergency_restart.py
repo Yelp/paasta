@@ -72,7 +72,13 @@ def paasta_emergency_restart(args):
     service = figure_out_service_name(args, args.soa_dir)
     system_paasta_config = load_system_paasta_config()
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance, system_paasta_config)
+    execute_paasta_serviceinit_on_remote_master(
+        subcommand='restart',
+        cluster=args.cluster,
+        service=args.service,
+        instances=args.instance,
+        system_paasta_config=system_paasta_config
+    )
     print "%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-7:])
     print "Run this to see the status:"
     print "paasta status --service %s --clusters %s" % (service, args.cluster)

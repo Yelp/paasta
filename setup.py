@@ -22,7 +22,7 @@ from setuptools import setup
 setup(
     name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.20.0',
+    version='0.27.0',
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
@@ -34,14 +34,14 @@ setup(
         # argparse is pinned to 1.2.1 since it comes in the core python2.7
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
+        'chronos-python == 0.35.0',
         'cookiecutter == 1.4.0',
-        'chronos-python == 0.34.0',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
         'humanize >= 0.5.1',
-        'httplib2 >= 0.9, <= 1.0',
+        'httplib2 >= 0.9,<= 1.0',
         'isodate >= 0.5.0',
         'jsonschema',
         'kazoo >= 2.0.0',
@@ -53,7 +53,7 @@ setup(
         'pytimeparse >= 1.1.0',
         'python-dateutil >= 2.4.0',
         'requests == 2.6.2',
-        'requests-cache >= 0.4.10, <= 0.5.0',
+        'requests-cache >= 0.4.10,<= 0.5.0',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.10.1',
         'setuptools != 18.6',

@@ -38,7 +38,7 @@ def add_subparser(subparsers):
             "is not changed after an 'emergency-stop', therefore alerts will fire for the service "
             "after an emergency stop.\n\n"
             "'emergency-stop' is not a permanant declaration of state. If the operator wishes to "
-            "stop a service permanatly, they should run 'paasta stop', or configure the service to "
+            "stop a service permanently, they should run 'paasta stop', or configure the service to "
             "have '0' instances. Otherwise, subsequent changes or bounces to a service will start "
             "it right back up."
         ),
@@ -63,10 +63,11 @@ def add_subparser(subparsers):
         required=False,
     )
     status_parser.add_argument(
-        '-y', '--yelpsoa-config-root',
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
-        required=False,
-        help="Path to root of yelpsoa-configs checkout",
+        help="define a different soa config directory",
     )
     status_parser.set_defaults(command=paasta_emergency_stop)
 
@@ -82,10 +83,16 @@ def paasta_emergency_stop(args):
     for Chronos jobs by setting 'disabled: True'. Alternatively, remove the config yaml entirely.
     """
     system_paasta_config = load_system_paasta_config()
-    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+    service = figure_out_service_name(args, soa_dir=args.soa_dir)
     print "Performing an emergency stop on %s..." % compose_job_id(service, args.instance)
-    output = execute_paasta_serviceinit_on_remote_master('stop', args.cluster, service, args.instance,
-                                                         system_paasta_config, app_id=args.appid)
+    output = execute_paasta_serviceinit_on_remote_master(
+        subcommand='stop',
+        cluster=args.cluster,
+        service=args.service,
+        instances=args.instance,
+        system_paasta_config=system_paasta_config,
+        app_id=args.appid
+    )
     print "Output: %s" % output
     print "%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:])
     print "To start this service again asap, run:"

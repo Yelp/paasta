@@ -110,7 +110,7 @@ def test_report_status_for_cluster_displays_deployed_service(
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance',
-        fake_system_paasta_config, stream=True, verbose=0)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
@@ -190,7 +190,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a,fake_instance_b',
-        fake_system_paasta_config, stream=True, verbose=0)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
@@ -274,7 +274,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
     mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
         'status', 'a_cluster', service, 'a_instance', fake_system_paasta_config,
-        stream=True, verbose=verbosity_level
+        stream=True, verbose=verbosity_level, ignore_ssh_output=True
     )
 
     output = mock_stdout.getvalue()
@@ -308,7 +308,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
     )
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a',
-        fake_system_paasta_config, stream=True, verbose=0)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)

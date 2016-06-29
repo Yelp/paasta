@@ -206,9 +206,9 @@ class MarathonServiceConfig(InstanceConfig):
 
         Defaults to 0 if not specified in the config.
 
-        :param service_config: The service instance's configuration dictionary
         :returns: The number of instances specified in the config, 0 if not
-                  specified or if desired_state is not 'start'."""
+                  specified or if desired_state is not 'start'.
+                  """
         if self.get_desired_state() == 'start':
             if self.get_max_instances() is not None:
                 try:
@@ -524,7 +524,7 @@ class MarathonServiceConfig(InstanceConfig):
             default = {'check_haproxy': True}
         return self.config_dict.get('bounce_health_params', default)
 
-    def get_bounce_marging_factor(self):
+    def get_bounce_margin_factor(self):
         return self.config_dict.get('bounce_margin_factor', 1.0)
 
     def get_accepted_resource_roles(self):
@@ -931,6 +931,23 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
         return len(tasks) >= expected_tasks
 
 
+def get_app_queue_status(client, app_id):
+    """Returns the status of an application if it exists in Marathon's launch queue
+
+    :param client: The marathon client
+    :param app_id: The Marathon app id
+    :returns: A tuple of the form (is_overdue, current_backoff_delay) or (None, None)
+              if the app cannot be found. If is_overdue is True, then Marathon has
+              not received a resource offer that satisfies the requirements for the app
+    """
+    app_queue = client.list_queue()
+    for app_queue_item in app_queue:
+        if app_queue_item.app.id == app_id:
+            return (app_queue_item.delay.overdue, app_queue_item.delay.timeLeftSeconds)
+
+    return (None, None)
+
+
 @timeout()
 def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
@@ -1076,3 +1093,21 @@ def get_instances_from_zookeeper(service, instance):
     with ZookeeperPool() as zookeeper_client:
         (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
         return int(instances)
+
+
+def is_task_healthy(task, require_all=True, default_healthy=False):
+    """Check that a marathon task is healthy
+
+    :param task: the marathon task object
+    :param require_all: require all the healthchecks to be passing
+        false means that only one needs to pass
+    :param default_healthy: cause the function to report healthy if
+        there are no health check results
+    :returns: True if healthy, False if not"""
+    if task.health_check_results:
+        results = [hcr.alive for hcr in task.health_check_results]
+        if require_all:
+            return all(results)
+        else:
+            return any(results)
+    return default_healthy

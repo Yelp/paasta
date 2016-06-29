@@ -543,7 +543,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
     assert docker_hash in actual
-    assert ' '.join(pipes.quote(part) for part in command) in actual
+    assert ' '.join(pipes.quote(part) for part in command) in ' '.join(actual)
 
 
 def test_get_docker_run_cmd_interactive_true():

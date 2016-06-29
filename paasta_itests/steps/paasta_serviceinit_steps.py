@@ -31,6 +31,13 @@ def run_marathon_app(context, job_id):
     app_config = {
         'id': app_id,
         'cmd': '/bin/sleep 1m',
+        'container': {
+            'type': 'DOCKER',
+            'docker': {
+                'network': 'BRIDGE',
+                'image': 'busybox',
+            },
+        },
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
         paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
@@ -178,9 +185,9 @@ def chronos_emergency_start_job(context, service_instance):
     assert exit_code == 0
 
 
-@when(u"we paasta_serviceinit emergency-restart the chronos job")
-def chronos_emergency_restart_job(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job restart' % context.soa_dir
+@when(u'we paasta_serviceinit emergency-restart the service_instance "{service_instance}"')
+def chronos_emergency_restart_job(context, service_instance):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s restart' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
     exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)

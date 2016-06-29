@@ -59,15 +59,33 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    status_parser.add_argument(
+        '-g',
+        '--groupings',
+        nargs='+',
+        default=['region'],
+        help=(
+            'Group resource information of slaves grouped by attribute.'
+            'Note: This is only effective with -vv'
+        )
+    )
+    status_parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=True,
+                               help="Print human-readable sizes")
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, system_paasta_config, verbose=0):
+def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     print "Cluster: %s" % cluster
     print get_cluster_dashboards(cluster)
-    print execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=verbose)
+    print execute_paasta_metastatus_on_remote_master(
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+        humanize=humanize,
+        groupings=groupings,
+        verbose=verbose
+    )
     print ""
 
 
@@ -84,8 +102,11 @@ def get_cluster_dashboards(cluster):
     SPACER = ' '
     try:
         dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
-    except KeyError:
-        output = [PaastaColors.red('No dashboards configured for %s!' % cluster)]
+    except KeyError as e:
+        if e.args[0] == cluster:
+            output = [PaastaColors.red('No dashboards configured for %s!' % cluster)]
+        else:
+            output = [PaastaColors.red('No dashboards configured!')]
     else:
         output = ['Dashboards:']
         spacing = max((len(label) for label in dashboards.keys())) + 1
@@ -102,7 +123,13 @@ def paasta_metastatus(args):
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(cluster, system_paasta_config, args.verbose)
+            print_cluster_status(
+                cluster=cluster,
+                system_paasta_config=system_paasta_config,
+                humanize=args.humanize,
+                groupings=args.groupings,
+                verbose=args.verbose
+            )
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"

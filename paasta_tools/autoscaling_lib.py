@@ -31,6 +31,7 @@ from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
@@ -367,18 +368,23 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
             if configs:
                 marathon_config = load_marathon_config()
-                all_marathon_tasks = get_marathon_client(
+                marathon_client = get_marathon_client(
                     url=marathon_config.get_url(),
                     user=marathon_config.get_username(),
-                    passwd=marathon_config.get_password(),
-                ).list_tasks()
+                    passwd=marathon_config.get_password())
+                all_marathon_tasks = marathon_client.list_tasks()
                 all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
                 with ZookeeperPool():
                     for config in configs:
                         try:
                             job_id = format_job_id(config.service, config.instance)
+                            # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
+                            # are healthy. We assume tasks with no healthcheck results but a defined
+                            # healthcheck to be unhealthy.
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
-                                              if job_id == get_short_job_id(task.id) and task.health_check_results}
+                                              if job_id == get_short_job_id(task.id) and
+                                              (is_task_healthy(task) or not
+                                               marathon_client.get_app(task.app_id).health_checks)}
                             if not marathon_tasks:
                                 raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
                             mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
@@ -461,11 +467,12 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
         mesos_state
     )[pool]
 
+    log.debug(pool_utilization_dict)
     free_pool_resources = pool_utilization_dict['free']
     total_pool_resources = pool_utilization_dict['total']
     utilization = 1.0 - min([
-        float(free_pool_resources[resource]) / total_pool_resources[resource]
-        for resource in free_pool_resources
+        float(float(pair[0]) / float(pair[1]))
+        for pair in zip(free_pool_resources, total_pool_resources)
     ])
     return utilization
 
