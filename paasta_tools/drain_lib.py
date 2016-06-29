@@ -116,6 +116,18 @@ class TestDrainMethod(DrainMethod):
         cls.safe_to_kill_task_ids.add(cls.downed_task_ids.pop())
 
 
+@register_drain_method('crashy_drain')
+class CrashyDrainDrainMethod(NoopDrainMethod):
+    def drain(self, task):
+        raise Exception("Intentionally crashing for testing purposes")
+
+
+@register_drain_method('crashy_is_safe_to_kill')
+class CrashySafeToKillDrainMethod(NoopDrainMethod):
+    def is_safe_to_kill(self, task):
+        raise Exception("Intentionally crashing for testing purposes")
+
+
 @register_drain_method('hacheck')
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
