@@ -368,6 +368,18 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     return old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks
 
 
+def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
+    # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
+    # `paasta mark-for-deployment`), then we should undrain them.
+    for task in to_undrain:
+        if task not in leave_draining:
+            # TODO: don't take actions in deploy_service.
+            try:
+                drain_method.stop_draining(task)
+            except Exception as e:
+                log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
+
+
 def deploy_service(
     service,
     instance,
@@ -451,7 +463,6 @@ def deploy_service(
     )
 
     if new_app_running:
-        protected_draining_tasks = set()
         if new_app.instances < config['instances']:
             client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
         elif new_app.instances > config['instances']:
@@ -470,7 +481,6 @@ def deploy_service(
 
             tasks_to_move_draining = min(len(scaling_app_draining_tasks), num_tasks_to_scale)
             old_app_draining_tasks[new_app.id] = set(scaling_app_draining_tasks[:tasks_to_move_draining])
-            protected_draining_tasks.update(scaling_app_draining_tasks[:tasks_to_move_draining])
             num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
 
             tasks_to_move_unhappy = min(len(scaling_app_unhappy_tasks), num_tasks_to_scale)
@@ -480,11 +490,13 @@ def deploy_service(
             tasks_to_move_happy = min(len(scaling_app_happy_tasks), num_tasks_to_scale)
             old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
-        # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
-        # `paasta mark-for-deployment`), then we should undrain them.
-        for task in new_app.tasks:
-            if task not in protected_draining_tasks:
-                drain_method.stop_draining(task)
+
+        undrain_tasks(
+            to_undrain=new_app.tasks,
+            leave_draining=old_app_draining_tasks.get(new_app.id, []),
+            drain_method=drain_method,
+            log_deploy_error=log_deploy_error,
+        )
 
     # log all uncaught exceptions and raise them again
     try:

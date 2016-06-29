@@ -1472,3 +1472,25 @@ class TestDrainTasksAndFindTasksToKill(object):
         fake_log_bounce_action.assert_called_with(
             line='fake bounce killing task to_drain due to exception in is_safe_to_kill: Hello',
         )
+
+
+def test_undrain_tasks():
+    all_tasks = [mock.Mock(id="task%d" % x) for x in xrange(5)]
+    to_undrain = all_tasks[:4]
+    leave_draining = all_tasks[2:]
+    fake_drain_method = mock.Mock(
+        stop_draining=mock.Mock(side_effect=Exception('Hello')),
+    )
+    fake_log_deploy_error = mock.Mock()
+
+    setup_marathon_job.undrain_tasks(
+        to_undrain=to_undrain,
+        leave_draining=leave_draining,
+        drain_method=fake_drain_method,
+        log_deploy_error=fake_log_deploy_error,
+    )
+
+    assert fake_drain_method.stop_draining.call_count == 2
+    fake_drain_method.stop_draining.assert_any_call(to_undrain[0])
+    fake_drain_method.stop_draining.assert_any_call(to_undrain[1])
+    assert fake_log_deploy_error.call_count == 2
