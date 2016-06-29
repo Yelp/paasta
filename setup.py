@@ -58,7 +58,7 @@ setup(
         'service-configuration-lib >= 0.10.1',
         'setuptools != 18.6',
         'tron == 0.6.1.1',
-        'ujson == 1.35'
+        'ujson == 1.35',
         'yelp_clog >= 2.2.0',
     ],
     scripts=[
