@@ -551,23 +551,26 @@ def pick_slaves_to_kill(mesos_state, number, pool='default'):
         return []
 
 
-def kill_instances_gracefully(instances_to_kill):
+def wait_and_terminate(instances_to_kill):
     """Kills instances after waiting for slave to be running 0 mesos tasks
 
     :param instances_to_kill: dict of instances to kill {<slave_id>: <instance_id>}"""
     ec2_client = boto3.client('ec2')
     try:
-        with Timeout(seconds=CLUSTER_DRAIN_TIMEOUT):
+        # This loop should always finish because the maintenance window should trigger is_ready_to_kill
+        # being true. Just in case though we set a timeout and terminate anyway
+        with Timeout(seconds=CLUSTER_DRAIN_TIMEOUT + 300):
             while instances_to_kill:
-                mesos_state = get_mesos_state_from_leader()
-                slaves_count = get_mesos_task_count_by_slave(mesos_state, pool=None)
                 for slave_id, instance_id in instances_to_kill.items():
-                    num_tasks = slaves_count[slave_id]['count']
-                    log.debug("Instance: {0}, running {1} tasks".format(instance_id, num_tasks))
-                    if num_tasks == 0:
+                    is_ready_to_kill = True
+                    # is_ready_to_kill = paasta_maintenance.is_the_slave_drained_or_we_reached_the_maintenance_window()
+                    if is_ready_to_kill:
+                        log.debug("Instance {0}: ready to kill")
                         log.info("TERMINATING: {0}".format(instance_id))
                         ec2_client.termintate_instances(InstanceIds=[instance_id])
                         instances_to_kill.pop(slave_id)
+                    log.debug("Instance {0}: NOT ready to kill")
+                log.debug("Waiting 5 seconds and then checking again")
                 time.sleep(5)
     except TimeoutError:
         log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(CLUSTER_DRAIN_TIMEOUT,
@@ -597,12 +600,14 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, slaves_to_kil
     elif delta < 0:
         slaves_by_ip = {slave: slave_pid_to_ip(slave) for slave in slaves_to_kill}
         instances_to_kill = {slave_id: get_instance_id_from_ip(ip) for slave_id, ip in slaves_by_ip.items()}
-        start = time.time()
-        # This ensures we are in maintenance mode longer than the time before
-        # we give up trying to drain and just terminate
-        duration = CLUSTER_DRAIN_TIMEOUT + 300
+        # The start time of the maintenance window is the point at which
+        # we giveup waiting for the instance to drain and mark it for termination anyway
+        start = int(time.time() + CLUSTER_DRAIN_TIMEOUT)
+        # Set the duration to an hour, if we haven't cleaned up and termintated by then
+        # mesos should put the slave back into the pool
+        duration = 600
         drain(slaves_by_ip.values(), start, duration)
-        kill_instances_gracefully(instances_to_kill)
+        wait_and_terminate(instances_to_kill)
         return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
                                                     ExcessCapacityTerminationPolicy='noTermination')
 
