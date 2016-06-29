@@ -1426,3 +1426,49 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         assert actual_live_happy_tasks == expected_live_happy_tasks
         assert actual_live_unhappy_tasks == expected_live_unhappy_tasks
         assert actual_draining_tasks == expected_draining_tasks
+
+
+class TestDrainTasksAndFindTasksToKill(object):
+    def test_catches_exception_during_drain(self):
+        tasks_to_drain = set([mock.Mock(id='to_drain')])
+        already_draining_tasks = set()
+        fake_drain_method = mock.Mock(
+            drain=mock.Mock(side_effect=Exception('Hello')),
+        )
+
+        def _print(line, level=None):
+            print line
+        fake_log_bounce_action = mock.Mock(side_effect=_print)
+
+        setup_marathon_job.drain_tasks_and_find_tasks_to_kill(
+            tasks_to_drain=tasks_to_drain,
+            already_draining_tasks=already_draining_tasks,
+            drain_method=fake_drain_method,
+            log_bounce_action=fake_log_bounce_action,
+            bounce_method='fake',
+        )
+
+        fake_log_bounce_action.assert_any_call(
+            line="fake bounce killing task to_drain due to exception when draining: Hello",
+            level='error',
+        )
+
+    def test_catches_exception_during_is_safe_to_kill(self):
+        tasks_to_drain = set([mock.Mock(id='to_drain')])
+        already_draining_tasks = set()
+        fake_drain_method = mock.Mock(
+            is_safe_to_kill=mock.Mock(side_effect=Exception('Hello')),
+        )
+        fake_log_bounce_action = mock.Mock()
+
+        setup_marathon_job.drain_tasks_and_find_tasks_to_kill(
+            tasks_to_drain=tasks_to_drain,
+            already_draining_tasks=already_draining_tasks,
+            drain_method=fake_drain_method,
+            log_bounce_action=fake_log_bounce_action,
+            bounce_method='fake',
+        )
+
+        fake_log_bounce_action.assert_called_with(
+            line='fake bounce killing task to_drain due to exception in is_safe_to_kill: Hello',
+        )

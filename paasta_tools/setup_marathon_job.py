@@ -175,12 +175,25 @@ def drain_tasks_and_find_tasks_to_kill(tasks_to_drain, already_draining_tasks, d
             )
         for task in tasks_to_drain:
             all_draining_tasks.add(task)
-            drain_method.drain(task)
+            try:
+                drain_method.drain(task)
+            except Exception as e:
+                log_bounce_action(
+                    line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
+                    level='error',
+                )
+                tasks_to_kill.add(task)
 
     for task in all_draining_tasks:
-        if drain_method.is_safe_to_kill(task):
+        try:
+            if drain_method.is_safe_to_kill(task):
+                tasks_to_kill.add(task)
+                log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+        except Exception as e:
             tasks_to_kill.add(task)
-            log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+            log_bounce_action(
+                line='%s bounce killing task %s due to exception in is_safe_to_kill: %s' % (bounce_method, task.id, e),
+            )
 
     return tasks_to_kill
 
