@@ -652,3 +652,12 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
                                                                                        slave.count,
                                                                                        slave.chronos_count))
     return slaves
+
+
+def slave_pid_to_ip(slave_pid):
+    """Convert slave_pid to IP
+
+    :param: slave pid e.g. slave(1)@10.40.31.172:5051
+    :returns: ip address"""
+    regex = re.compile(r'.+?@([\d\.]+):\d+')
+    return regex.match(slave_pid).group(1)
