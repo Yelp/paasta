@@ -551,7 +551,7 @@ def pick_slaves_to_kill(mesos_state, number, pool='default'):
         return []
 
 
-def wait_and_terminate(instances_to_kill):
+def wait_and_terminate(instances_to_kill, dry_run):
     """Kills instances after waiting for slave to be running 0 mesos tasks
 
     :param instances_to_kill: dict of instances to kill {<slave_id>: <instance_id>}"""
@@ -567,7 +567,7 @@ def wait_and_terminate(instances_to_kill):
                     if is_ready_to_kill:
                         log.debug("Instance {0}: ready to kill")
                         log.info("TERMINATING: {0}".format(instance_id))
-                        ec2_client.termintate_instances(InstanceIds=[instance_id])
+                        ec2_client.termintate_instances(InstanceIds=[instance_id], DryRun=dry_run)
                         instances_to_kill.pop(slave_id)
                     log.debug("Instance {0}: NOT ready to kill")
                 log.debug("Waiting 5 seconds and then checking again")
@@ -575,11 +575,11 @@ def wait_and_terminate(instances_to_kill):
     except TimeoutError:
         log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(CLUSTER_DRAIN_TIMEOUT,
                                                                                             instances_to_kill))
-        ec2_client.termintate_instances(InstanceIds=instances_to_kill)
+        ec2_client.termintate_instances(InstanceIds=instances_to_kill, DryRun=dry_run)
 
 
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def scale_aws_spot_fleet_request(resource, delta, target_capacity, slaves_to_kill):
+def scale_aws_spot_fleet_request(resource, delta, target_capacity, slaves_to_kill, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
     If scaling up we just set target capacity and let AWS take care of the rest
     If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -596,7 +596,8 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, slaves_to_kil
         return
     elif delta > 0:
         return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
-                                                    ExcessCapacityTerminationPolicy='noTermination')
+                                                    ExcessCapacityTerminationPolicy='noTermination',
+                                                    DryRun=dry_run)
     elif delta < 0:
         slaves_by_ip = {slave: slave_pid_to_ip(slave) for slave in slaves_to_kill}
         instances_to_kill = {slave_id: get_instance_id_from_ip(ip) for slave_id, ip in slaves_by_ip.items()}
@@ -607,9 +608,10 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, slaves_to_kil
         # mesos should put the slave back into the pool
         duration = 600
         drain(slaves_by_ip.values(), start, duration)
-        wait_and_terminate(instances_to_kill)
-        return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
-                                                    ExcessCapacityTerminationPolicy='noTermination')
+        ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
+                                             ExcessCapacityTerminationPolicy='noTermination',
+                                             DryRun=dry_run)
+        wait_and_terminate(instances_to_kill, dry_run)
 
 
 class ClusterAutoscalingError(Exception):
@@ -632,7 +634,7 @@ def get_instance_id_from_ip(ip):
     return instance_id
 
 
-def autoscale_local_cluster():
+def autoscale_local_cluster(dry_run=False):
 
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
@@ -648,6 +650,6 @@ def autoscale_local_cluster():
                 slaves_to_kill = pick_slaves_to_kill(mesos_state, number_to_kill, pool=resource['pool'])
             else:
                 slaves_to_kill = []
-            resource_scaler(resource, delta, target, slaves_to_kill)
+            resource_scaler(resource, delta, target, slaves_to_kill, dry_run)
         except ClusterAutoscalingError as e:
             log.error('%s: %s' % (identifier, e))
