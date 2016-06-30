@@ -194,13 +194,17 @@ def write_soa_dir_marathon_job(context, job_id):
         soa_dir = context.soa_dir
     except AttributeError:
         soa_dir = mkdtemp()
+        context.soa_dir = soa_dir
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.dump({
             "%s" % instance: {
-                'cpus': 0.1,
-                'mem': 100,
+                'cpus': 9.9,
+                'mem': 10,
+                'disk': 0.1,
+                'instances': 1,
+                'command': 'while true; do echo hi; sleep 5; done'
             }
         }))
     context.soa_dir = soa_dir
@@ -219,7 +223,7 @@ def write_soa_dir_deployments(context, service, disabled, instance):
         dp.write(json.dumps({
             'v1': {
                 '%s:%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
-                    'docker_image': 'test-image-foobar%d' % context.tag_version,
+                    'docker_image': 'busybox',
                     'desired_state': desired_state,
                 }
             }
@@ -238,7 +242,18 @@ def modify_configs(context, field, framework, service, instance, value):
         f.truncate()
 
 
+@when((u'we set the constraints field of the {framework} config for service "{service}"'
+       ' and instance "{instance}" to arrays "{value}"'))
+def modify_constraints(context, framework, service, instance, value):
+    with open(os.path.join(context.soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
+        data = yaml.load(f.read())
+        data[instance]['constraints'] = [x.split(",") for x in value.split(":")]
+        f.seek(0)
+        f.write(yaml.safe_dump(data))
+        f.truncate()
+
+
 @when((u'we set the "{field}" field of the {framework} config for service "{service}"'
-       ' and instance "{instance}" to the integer {value:d}'))
+       ' and instance "{instance}" to integer {value:g}'))
 def modify_configs_for_int(context, field, framework, service, instance, value):
     modify_configs(context, field, framework, service, instance, value)

@@ -21,24 +21,35 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   # capacity. In docker-compose.yml, we set disk at 10240MB for the 1 mesos slave in use.
   Scenario: High disk usage
     Given a working paasta cluster
-    When an app with id "disktest" using high disk is launched
-     And a task belonging to the app with id "disktest" is in the task list
-    Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% disk available."
+      And I have yelpsoa-configs for the marathon job "myservice.myinstance"
+      And I have yelpsoa-configs for the marathon job "myservice.myotherinstance"
+      And we have a deployments.json for the service "myservice" with enabled instance "myinstance"
+      And we have a deployments.json for the service "myservice" with enabled instance "myotherinstance"
+     When we set the constraints field of the marathon config for service "myservice" and instance "myinstance" to arrays "region,LIKE,region-1"
+     When we set the constraints field of the marathon config for service "myservice" and instance "myotherinstance" to arrays "region,LIKE,region-2"
+      And we set the "disk" field of the marathon config for service "myservice" and instance "myinstance" to integer 99
+      And we set the "disk" field of the marathon config for service "myservice" and instance "myotherinstance" to integer 99
+      And we run setup_marathon_job for service_instance "myservice.myinstance"
+      And we run setup_marathon_job for service_instance "myservice.myotherinstance"
+      And we wait for the service_instance "myservice.myinstance" to have the correct number of marathon tasks
+      And we wait for the service_instance "myservice.myotherinstance" to have the correct number of marathon tasks
+    Then paasta_metastatus exits with return code "2""
 
-  # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
-  # capacity. in docker-compose.yml, we set cpus at 10 for the 1 mesos slave in use;
-  # mainly this is just to use a round number. It's important to note that this
-  # is a *limit* on the number of cpus used. The app that is launched in this
-  # task is set to require 9 cpus, though again, it doesn't use this number,
-  # just asks that mesos allocates 9 cpus of it's capacity to this task. As a
-  # result, we have an easy way of simulating an app using 90% of the CPUs
-  # available to mesos, whilst still consuming minimal resources whilst running
-  # the test.
-  Scenario: High cpu usage
+  Scenario: paasta metastatus alerts on high cpu usage
     Given a working paasta cluster
-     When an app with id "cputest" using high cpu is launched
-      And a task belonging to the app with id "cputest" is in the task list
-     Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
+      And I have yelpsoa-configs for the marathon job "myservice.myinstance"
+      And I have yelpsoa-configs for the marathon job "myservice.myotherinstance"
+      And we have a deployments.json for the service "myservice" with enabled instance "myinstance"
+      And we have a deployments.json for the service "myservice" with enabled instance "myotherinstance"
+     When we set the constraints field of the marathon config for service "myservice" and instance "myinstance" to arrays "region,LIKE,region-1"
+     When we set the constraints field of the marathon config for service "myservice" and instance "myotherinstance" to arrays "region,LIKE,region-2"
+      And we set the "cpus" field of the marathon config for service "myservice" and instance "myinstance" to integer 9.9
+      And we set the "cpus" field of the marathon config for service "myservice" and instance "myotherinstance" to integer 9.9
+      And we run setup_marathon_job for service_instance "myservice.myinstance"
+      And we run setup_marathon_job for service_instance "myservice.myotherinstance"
+      And we wait for the service_instance "myservice.myinstance" to have the correct number of marathon tasks
+      And we wait for the service_instance "myservice.myotherinstance" to have the correct number of marathon tasks
+    Then paasta_metastatus exits with return code "2""
 
   Scenario: With a launched chronos job
     Given a working paasta cluster
@@ -59,4 +70,19 @@ Feature: paasta_metastatus describes the state of the paasta cluster
      Then paasta_metastatus -vv exits with return code "0" and output " "
      Then paasta_metastatus -vvv exits with return code "0" and output "mesosslave.test_hostname"
 
-# vim: set ts=2 sw=2
+
+  Scenario: paasta metastatus vv shows information for both regions
+    Given a working paasta cluster
+    Then paasta_metastatus -vv exits with return code "0" and output "    region-1  10.0/10.0         512.0/512.0       100.0/100.0"
+     And paasta_metastatus -vv exits with return code "0" and output "    region-2  10.0/10.0         512.0/512.0       100.0/100.0"
+
+  Scenario: paasta metastatus vv -g region alerts on per-region and has the correct output
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "myservice.myinstance"
+      And we have a deployments.json for the service "myservice" with enabled instance "myinstance"
+     When we set the constraints field of the marathon config for service "myservice" and instance "myinstance" to arrays "region,LIKE,region-1"
+      And we set the "cpus" field of the marathon config for service "myservice" and instance "myinstance" to integer 9.9
+      And we run setup_marathon_job for service_instance "myservice.myinstance"
+      And we wait for the service_instance "myservice.myinstance" to have the correct number of marathon tasks
+    Then paasta_metastatus -vv exits with return code "2" and output "    region-1  0.1/10.0          502.0/512.0       99.9/100.0"
+     And paasta_metastatus -vv exits with return code "2" and output "    region-2  10.0/10.0         512.0/512.0       100.0/100.0"

@@ -25,8 +25,17 @@ from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SystemPaastaConfig
+
+
+@when(u'we run setup_marathon_job for service_instance "{service_instance}"')
+def run_setup_chronos_job(context, service_instance):
+    cmd = "../paasta_tools/setup_marathon_job.py %s -d %s" % (service_instance, context.soa_dir)
+    exit_code, output = _run(cmd)
+    context.exit_code, context.output = exit_code, output
+    print context.output
 
 
 def run_setup_marathon_job(context):
