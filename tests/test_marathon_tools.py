@@ -854,6 +854,7 @@ class TestMarathonTools:
             'health_checks': fake_healthchecks,
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
+            'max_launch_delay_seconds': 300,
             'accepted_resource_roles': ['ads'],
         }
         config = marathon_tools.MarathonServiceConfig(
@@ -2033,6 +2034,7 @@ def test_format_marathon_app_dict_no_smartstack():
             'args': [],
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
+            'max_launch_delay_seconds': 300,
             'cpus': 0.25,
             'disk': 1024.0,
             'uris': ['file:///root/.dockercfg'],
@@ -2101,6 +2103,7 @@ def test_format_marathon_app_dict_with_smartstack():
             'args': [],
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
+            'max_launch_delay_seconds': 300,
             'cpus': 0.25,
             'disk': 1024.0,
             'uris': ['file:///root/.dockercfg'],
@@ -2238,6 +2241,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
             'uris': ['file:///root/.dockercfg'],
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
+            'max_launch_delay_seconds': 300,
             'health_checks': [],
             'env': mock.ANY,
             'id': fake_job_id,
