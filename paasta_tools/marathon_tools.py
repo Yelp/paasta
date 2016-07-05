@@ -267,6 +267,12 @@ class MarathonServiceConfig(InstanceConfig):
         else:
             return int(ceil(10.0 / instances))
 
+    def get_backoff_factor(self):
+        return self.config_dict.get('backoff_factor', 2)
+
+    def get_max_launch_delay_seconds(self):
+        return self.config_dict.get('max_launch_delay_seconds', 300)
+
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
 
@@ -377,7 +383,8 @@ class MarathonServiceConfig(InstanceConfig):
             },
             'uris': [system_paasta_config.get_dockercfg_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
-            'backoff_factor': 2,
+            'backoff_factor': self.get_backoff_factor(),
+            'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
             'mem': float(self.get_mem()),
