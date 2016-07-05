@@ -22,7 +22,7 @@ from setuptools import setup
 setup(
     name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.28.0',
+    version='0.29.0',
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
