@@ -373,7 +373,6 @@ def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
     # `paasta mark-for-deployment`), then we should undrain them.
     for task in to_undrain:
         if task not in leave_draining:
-            # TODO: don't take actions in deploy_service.
             try:
                 drain_method.stop_draining(task)
             except Exception as e:
@@ -491,6 +490,7 @@ def deploy_service(
             old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
 
+        # TODO: don't take actions in deploy_service.
         undrain_tasks(
             to_undrain=new_app.tasks,
             leave_draining=old_app_draining_tasks.get(new_app.id, []),
