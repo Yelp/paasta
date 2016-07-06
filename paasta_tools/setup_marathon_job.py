@@ -158,6 +158,48 @@ def get_main_marathon_config():
     return marathon_config
 
 
+def drain_tasks_and_find_tasks_to_kill(tasks_to_drain, already_draining_tasks, drain_method, log_bounce_action,
+                                       bounce_method):
+    """Drain the tasks_to_drain, and return the set of tasks that are safe to kill."""
+    all_draining_tasks = set(already_draining_tasks)
+    tasks_to_kill = set()
+
+    if len(tasks_to_drain) > 0:
+        tasks_to_drain_by_app_id = defaultdict(set)
+        for task in tasks_to_drain:
+            tasks_to_drain_by_app_id[task.app_id].add(task)
+        for app_id, tasks in tasks_to_drain_by_app_id.items():
+            log_bounce_action(
+                line='%s bounce draining %d old tasks with app_id %s' %
+                (bounce_method, len(tasks), app_id),
+            )
+        for task in tasks_to_drain:
+            all_draining_tasks.add(task)
+
+    for task in all_draining_tasks:
+        try:
+            drain_method.drain(task)
+        except Exception as e:
+            log_bounce_action(
+                line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
+                level='error',
+            )
+            tasks_to_kill.add(task)
+
+    for task in all_draining_tasks:
+        try:
+            if drain_method.is_safe_to_kill(task):
+                tasks_to_kill.add(task)
+                log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+        except Exception as e:
+            tasks_to_kill.add(task)
+            log_bounce_action(
+                line='%s bounce killing task %s due to exception in is_safe_to_kill: %s' % (bounce_method, task.id, e),
+            )
+
+    return tasks_to_kill
+
+
 def do_bounce(
     bounce_func,
     drain_method,
@@ -213,7 +255,6 @@ def do_bounce(
             soa_dir=soa_dir,
         )
 
-    all_draining_tasks = set()
     actions = bounce_func(
         new_config=config,
         new_app_running=new_app_running,
@@ -229,28 +270,14 @@ def do_bounce(
         )
         with requests_cache.disabled():
             bounce_lib.create_marathon_app(marathon_jobid, config, client)
-    if len(actions['tasks_to_drain']) > 0:
-        tasks_to_drain_by_app_id = defaultdict(set)
-        for task in actions['tasks_to_drain']:
-            tasks_to_drain_by_app_id[task.app_id].add(task)
-        for app_id, tasks in tasks_to_drain_by_app_id.items():
-            log_bounce_action(
-                line='%s bounce draining %d old tasks with app_id %s' %
-                (bounce_method, len(tasks), app_id),
-            )
-        for task in actions['tasks_to_drain']:
-            all_draining_tasks.add(task)
-            drain_method.drain(task)
-    for app, tasks in old_app_draining_tasks.items():
-        for task in tasks:
-            all_draining_tasks.add(task)
 
-    tasks_to_kill = set()
-
-    for task in all_draining_tasks:
-        if drain_method.is_safe_to_kill(task):
-            tasks_to_kill.add(task)
-            log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+    tasks_to_kill = drain_tasks_and_find_tasks_to_kill(
+        tasks_to_drain=actions['tasks_to_drain'],
+        already_draining_tasks=bounce_lib.flatten_tasks(old_app_draining_tasks),
+        drain_method=drain_method,
+        log_bounce_action=log_bounce_action,
+        bounce_method=bounce_method,
+    )
 
     kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
 
@@ -341,6 +368,17 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     return old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks
 
 
+def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
+    # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
+    # `paasta mark-for-deployment`), then we should undrain them.
+    for task in to_undrain:
+        if task not in leave_draining:
+            try:
+                drain_method.stop_draining(task)
+            except Exception as e:
+                log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
+
+
 def deploy_service(
     service,
     instance,
@@ -424,7 +462,6 @@ def deploy_service(
     )
 
     if new_app_running:
-        protected_draining_tasks = set()
         if new_app.instances < config['instances']:
             client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
         elif new_app.instances > config['instances']:
@@ -443,7 +480,6 @@ def deploy_service(
 
             tasks_to_move_draining = min(len(scaling_app_draining_tasks), num_tasks_to_scale)
             old_app_draining_tasks[new_app.id] = set(scaling_app_draining_tasks[:tasks_to_move_draining])
-            protected_draining_tasks.update(scaling_app_draining_tasks[:tasks_to_move_draining])
             num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
 
             tasks_to_move_unhappy = min(len(scaling_app_unhappy_tasks), num_tasks_to_scale)
@@ -453,16 +489,14 @@ def deploy_service(
             tasks_to_move_happy = min(len(scaling_app_happy_tasks), num_tasks_to_scale)
             old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
-        # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
-        # `paasta mark-for-deployment`), then we should undrain them.
-        for task in new_app.tasks:
-            if task not in protected_draining_tasks:
-                drain_method.stop_draining(task)
 
-    # Re-drain any already draining tasks on old apps
-    for tasks in old_app_draining_tasks.values():
-        for task in tasks:
-            drain_method.drain(task)
+        # TODO: don't take actions in deploy_service.
+        undrain_tasks(
+            to_undrain=new_app.tasks,
+            leave_draining=old_app_draining_tasks.get(new_app.id, []),
+            drain_method=drain_method,
+            log_deploy_error=log_deploy_error,
+        )
 
     # log all uncaught exceptions and raise them again
     try:
