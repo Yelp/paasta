@@ -176,13 +176,15 @@ def test_load_system_paasta_config():
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
         mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True,
                    return_value=['/some/fake/dir/some_file.json']),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value),
+        mock.patch('paasta_tools.utils.deep_merge_dictionaries', autospec=True, return_value=json_load_return_value)
     ) as (
         os_is_dir_patch,
         os_access_patch,
         open_file_patch,
         mock_get_readable_files_in_glob,
         json_patch,
+        mock_deep_merge,
     ):
         actual = utils.load_system_paasta_config()
         assert actual == expected
@@ -193,6 +195,7 @@ def test_load_system_paasta_config():
         open_file_patch.assert_any_call('/some/fake/dir/some_file.json')
         json_patch.assert_any_call(file_mock.__enter__())
         assert json_patch.call_count == 1
+        mock_deep_merge.assert_called_with(json_load_return_value, {})
 
 
 def test_load_system_paasta_config_file_non_existent_dir():
