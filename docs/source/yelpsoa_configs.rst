@@ -573,10 +573,16 @@ time to propagate before you switch synapse’s ``discover`` key.
 
 An example of switching from region to superregion discovery:
 
-1. Append to your advertise key::
+1a. Append to your advertise key::
 
     - advertise: [region]
     + advertise: [region, superregion]
+
+1b. When moving from a large grouping to a smaller grouping (like
+moving from superregion => region) you must add an additional constraint
+to ensure Marathon balances the tasks evenly::
+
+    extra_advertise: [['region', 'GROUP_BY', 2]]
 
 2. (Optional) Use zkCli.sh to monitor your new registrations for each
 superregion you are changing::
@@ -586,6 +592,9 @@ superregion you are changing::
     [zk: 10.40.5.6:22181(CONNECTED) 1] ls /nerve/superregion:norcal-devc/servicename.main
     [host1-uswest1adevc_0000015910, host2-uswest1cdevc_0000015898, host3-uswest1cdevc_0000015893]
     [zk: 10.40.5.6:22181(CONNECTED) 2]
+
+2b. Run ``paasta status -v`` to verify that Marathon has balanced services
+across the infrastructure as expected.
 
 3. Once zookeeper shows the proper servers, switch the discovery key::
 

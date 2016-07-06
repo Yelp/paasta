@@ -15,7 +15,6 @@
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
-import json
 import logging
 import re
 import sys
@@ -24,10 +23,12 @@ from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
 from Queue import Empty
+from time import sleep
 
 import dateutil
 import isodate
 import pytz
+import ujson as json
 
 try:
     from scribereader import scribereader
@@ -649,6 +650,11 @@ class ScribeLogReader(LogReader):
     def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, raw_mode):
         aggregated_logs = []
 
+        if 'marathon' in components or 'chronos' in components:
+            sys.stderr.write(PaastaColors.red("Warning, you have chosen to get marathon or chronos logs based "
+                                              "on time. This command may take a dozen minutes or so to run "
+                                              "because marathon and chronos are on shared streams.\n"))
+
         def callback(component, stream_info, scribe_env, cluster):
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
@@ -783,11 +789,17 @@ class ScribeLogReader(LogReader):
             # Die peacefully rather than printing N threads worth of stack
             # traces.
             pass
-        except StreamTailerSetupError:
-            log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
-            log.error("Don't Panic! This can happen the first time a service is deployed because the log")
-            log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again." % scribe_env)
-            raise
+        except StreamTailerSetupError as e:
+            if 'No data in stream' in e.message:
+                log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
+                log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
+                log.warning("output within this stream.")
+                # Enter a wait so the process isn't considered dead.
+                # This is just a large number, since apparently some python interpreters
+                # don't like being passed sys.maxsize.
+                sleep(2**16)
+            else:
+                raise
 
     def determine_scribereader_envs(self, components, cluster):
         """Returns a list of environments that scribereader needs to connect
@@ -801,6 +813,8 @@ class ScribeLogReader(LogReader):
             # If a component has a 'source_env', we use that
             # otherwise we lookup what scribe env is associated with a given cluster
             env = LOG_COMPONENTS[component].get('source_env', self.cluster_to_scribe_env(cluster))
+            if 'additional_source_envs' in LOG_COMPONENTS[component]:
+                envs += LOG_COMPONENTS[component]['additional_source_envs']
             envs.append(env)
         return set(envs)
 
@@ -864,26 +878,27 @@ def generate_start_end_time(from_string="30m", to_string=None):
 
 def validate_filtering_args(args, log_reader):
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
-        print PaastaColors.red(log_reader.__class__.__name__ + " does not support line based offsets")
+        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support line based offsets"))
         return False
     if not log_reader.SUPPORTS_LINE_COUNT and args.line_count is not None:
-        print PaastaColors.red(log_reader.__class__.__name__ + " does not support line count based log retrieval")
+        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ +
+                                          " does not support line count based log retrieval"))
         return False
     if not log_reader.SUPPORTS_TAILING and args.tail:
-        print PaastaColors.red(log_reader.__class__.__name__ + " does not support tailing")
+        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support tailing"))
         return False
     if not log_reader.SUPPORTS_TIME and (args.time_from is not None or args.time_to is not None):
-        print PaastaColors.red(log_reader.__class__.__name__ + " does not support time based offsets")
+        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support time based offsets"))
         return False
 
     if args.tail and (args.line_count is not None or args.time_from is not None or
                       args.time_to is not None or args.line_offset is not None):
-        print PaastaColors.red("You cannot specify line/time based filtering parameters when tailing")
+        sys.stderr.write(PaastaColors.red("You cannot specify line/time based filtering parameters when tailing"))
         return False
 
     # Can't have both
     if args.line_count is not None and args.time_from is not None:
-        print PaastaColors.red("You cannot filter based on both line counts and time")
+        sys.stderr.write(PaastaColors.red("You cannot filter based on both line counts and time"))
         return False
 
     return True
@@ -973,7 +988,7 @@ def paasta_logs(args):
     try:
         start_time, end_time = generate_start_end_time(args.time_from, args.time_to)
     except ValueError as e:
-        print PaastaColors.red(e.message)
+        sys.stderr.write(PaastaColors.red(e.message))
         return 1
 
     log_reader.print_logs_by_time(service, start_time, end_time, levels, components, clusters,

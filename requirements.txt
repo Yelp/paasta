@@ -43,6 +43,7 @@ simplejson==3.6.5
 six==1.9.0
 thriftpy==0.1.15
 tron==0.6.1.1
+ujson==1.35
 websocket-client==0.32.0
 wsgiref==0.1.2
 yelp-clog==2.2.10

@@ -897,6 +897,25 @@ def test_determine_scribereader_envs():
         assert actual == set(['devc', 'fake_scribe_env'])
 
 
+def test_determine_scribereader_additional_envs():
+    cluster = 'fake_cluster'
+    components = ['fake_component']
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader'), \
+            mock.patch('paasta_tools.cli.cmds.logs.LOG_COMPONENTS', spec_set=dict) as mock_LOG_COMPONENTS:
+        cluster_map = {
+            cluster: 'fake_scribe_env',
+        }
+        LOG_COMPONENTS = {
+            'fake_component': {
+                'additional_source_envs': ['fake_scribe_env2']
+            }
+        }
+        mock_LOG_COMPONENTS.__getitem__.side_effect = LOG_COMPONENTS.__getitem__
+
+        actual = logs.ScribeLogReader(cluster_map=cluster_map).determine_scribereader_envs(components, cluster)
+        assert 'fake_scribe_env' in actual and 'fake_scribe_env2' in actual
+
+
 def test_prefix():
     actual = logs.prefix('TEST STRING', 'deploy')
     assert 'TEST STRING' in actual
