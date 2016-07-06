@@ -23,13 +23,13 @@ Feature: setup_marathon_job can create a "complete" app
       And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
       And an old app to be destroyed with constraints [["hostname", "UNIQUE"]]
     When there are 2 old healthy tasks
-     And we mark the host "mesosslave" as at-risk
-     And setup_service is initiated
+      And we mark the host "mesosslave" as at-risk
+      And setup_service is initiated
     When there are 2 new healthy tasks
-     And setup_service is initiated
-     And we wait a bit for the old app to disappear
+      And setup_service is initiated
+      And we wait a bit for the old app to disappear
     Then the old app should be gone
-     And the tasks on the host "mesosslave" should be drained
+      And the tasks on the host "mesosslave" should be drained
 
   Scenario: marathon apps can be scaled down
     Given a working paasta cluster
