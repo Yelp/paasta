@@ -29,7 +29,7 @@ Feature: setup_marathon_job can create a "complete" app
       And setup_service is initiated
       And we wait a bit for the old app to disappear
     Then the old app should be gone
-      And the tasks on the host "mesosslave" should be drained
+      And there should be 0 tasks on the host "mesosslave"
 
   Scenario: marathon apps can be scaled down
     Given a working paasta cluster

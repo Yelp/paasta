@@ -145,11 +145,12 @@ def mark_host_at_risk(context, host):
         paasta_maintenance.drain([host], start, duration)
 
 
-@then(u'the tasks on the host "{host}" should be drained')
-def tasks_on_host_drained(context, host):
+@then(u'there should be {number:d} tasks on the host "{host}"')
+def tasks_on_host_drained(context, number, host):
     app_id = context.new_id
     tasks = context.marathon_client.list_tasks(app_id)
+    count = 0
     for task in tasks:
         if task.host == host:
-            return False
-    return True
+            count += 1
+    return count == number
