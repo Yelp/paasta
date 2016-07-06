@@ -36,7 +36,7 @@ def which_id(context, which):
 
 @given(u'a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
 def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
-    given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, str(None))
+    given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints='')
 
 
 @given(u'a new {state} app to be deployed, ' +
