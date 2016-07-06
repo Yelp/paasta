@@ -57,6 +57,17 @@ instance MAY have:
     namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
     their traffic to the same pool as the other ``main`` instances.
 
+  * ``backoff_factor``: PaaSTA will automatically calculate the duration of an
+    application's backoff period in case of a failed launch based on the number
+    of instances. For each consecutive failure that duration is multipled by
+    ``backoff_factor`` and added to the previous value until it reaches
+    ``max_launch_delay_seconds``. See `Marathon's API docs <https://mesosphere.github.io/marathon/docs/rest-api.html>`_
+    for more information. Defaults to 2.
+
+  * ``max_launch_delay_seconds``: The maximum time marathon will wait between attempts
+    to launch an app that previously failed to launch. See `Marathon's API docs
+    <https://mesosphere.github.io/marathon/docs/rest-api.html>`_ for more information. Defaults to 300 seconds.
+
   .. _net:
 
   * ``net``: Specify which kind of
