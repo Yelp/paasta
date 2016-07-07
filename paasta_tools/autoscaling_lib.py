@@ -583,7 +583,7 @@ def wait_and_terminate(instances_to_kill, dry_run):
                 for slave_pid, slave_data in instances_to_kill.items():
                     instance_id = slave_data['instance_id']
                     if not instance_id:
-                        log.debug("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave_pid))
+                        log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave_pid))
                         continue
                     is_ready_to_kill = True
                     # is_ready_to_kill = paasta_maintenance.something(slave['pid'])
@@ -631,7 +631,7 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, sorted_slaves
     if delta == 0:
         return
     elif delta > 0:
-        log.debug("Increasing spot fleet capacity to: {0}".format(target_capacity))
+        log.info("Increasing spot fleet capacity to: {0}".format(target_capacity))
         if not dry_run:
             ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
                                                  ExcessCapacityTerminationPolicy='noTermination')
@@ -641,12 +641,12 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, sorted_slaves
         sfr_ips = get_sfr_instance_ips(sfr_id)
         log.debug("IPs in SFR: {0}".format(sfr_ips))
         sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
-        log.debug("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
+        log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
         if number_to_kill > len(sfr_sorted_slaves):
             log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
             return
         slaves_to_kill = sfr_sorted_slaves[0:number_to_kill]
-        log.debug("Set to kill: {0}".format([slave['pid'] for slave in slaves_to_kill]))
+        log.info("Set to kill: {0}".format([slave['pid'] for slave in slaves_to_kill]))
         instances_to_kill = {}
         for slave in slaves_to_kill:
             ip = slave_pid_to_ip(slave['pid'])
@@ -658,14 +658,14 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, sorted_slaves
         # Set the duration to an hour, if we haven't cleaned up and termintated by then
         # mesos should put the slave back into the pool
         duration = 600
-        log.debug("Draining {0}".format(instances_to_kill))
-        log.debug("Decreasing spot fleet capacity to: {0}".format(target_capacity))
+        log.info("Draining {0}".format(instances_to_kill))
+        log.info("Decreasing spot fleet capacity to: {0}".format(target_capacity))
         if not dry_run:
             # sort to make testing easier
             drain([instance['ip'] for instance in sorted(instances_to_kill.values())], start, duration)
             ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
                                                  ExcessCapacityTerminationPolicy='noTermination')
-        log.debug("Waiting for instances to drain before we terminate")
+        log.info("Waiting for instances to drain before we terminate")
         wait_and_terminate(instances_to_kill, dry_run)
 
 
@@ -689,15 +689,17 @@ def get_instance_id_from_ip(ip):
 
 
 def autoscale_local_cluster(dry_run=False):
-
+    if dry_run:
+        log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     mesos_state = get_mesos_state_from_leader()
     for identifier, resource in autoscaling_resources.items():
+        log.info("Autoscaling {0}".format(identifier))
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
             delta, target = resource_metrics_provider(resource['id'], mesos_state, resource)
-            log.debug("Target capacity: {0}, Capacity delta: {1}".format(target, delta))
+            log.info("Target capacity: {0}, Capacity delta: {1}".format(target, delta))
             resource_scaler = get_scaler(resource['type'])
             if delta < 0:
                 sorted_slaves = sort_slaves_to_kill(mesos_state, pool=resource['pool'])
