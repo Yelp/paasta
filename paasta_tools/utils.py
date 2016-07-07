@@ -747,7 +747,8 @@ def get_readable_files_in_glob(glob, path):
 
 def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     """
-    Reads Paasta configs in specified directory in lexicographical order and merges duplicated keys (last file wins)
+    Reads Paasta configs in specified directory in lexicographical order and deep merges
+    the dictionaries (last file wins).
     """
     config = {}
     if not os.path.isdir(path):
@@ -759,7 +760,7 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     try:
         for config_file in get_readable_files_in_glob(glob="*.json", path=path):
             with open(config_file) as f:
-                config.update(json.load(f))
+                config = deep_merge_dictionaries(json.load(f), config)
     except IOError as e:
         raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
     return SystemPaastaConfig(config, path)

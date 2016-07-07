@@ -11,10 +11,8 @@ Structure
 By default, the System Paasta Configs are read by merging all files under ``/etc/paasta`` that end with ``.json``.
 You can override this path by setting the ``PAASTA_SYSTEM_CONFIG_DIR`` environment variable.
 This directory is searched recursively, so you may put configuration files in subdirectories as desired.
-The dictionaries described by each of these JSON files are merged with `python's dict.update
-<https://docs.python.org/2/library/stdtypes.html#dict.update>`_.
-This is not a deep merge, so if one file contains ``{"foo": {"bar": "one"}}`` and a later file contains
-``{"foo": {"baz": "two"}}``, then the final structure would contain only ``{"foo": {"baz": "two"}}``.
+The dictionaries described by each of these JSON files are deep merged when the config is loaded. If there
+are overlapping keys in different files the last file will win.
 
 If a file has permissions that prevent us from reading it, then that file will be ignored.
 This is useful for credentials that only some users or scripts need access to.
