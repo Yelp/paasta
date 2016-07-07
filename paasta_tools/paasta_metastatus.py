@@ -28,7 +28,6 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
-from paasta_tools.marathon_tools import MarathonNotConfigured
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_mesos_state_from_leader
@@ -38,7 +37,6 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import print_with_indent
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
@@ -603,16 +601,10 @@ def main():
     all_mesos_results = mesos_state_status + mesos_metrics_status
 
     # Check to see if Marathon should be running here by checking for config
-    try:
-        marathon_config = marathon_tools.load_marathon_config()
-    except MarathonNotConfigured:
-        marathon_results = [HealthCheckResult(message='Marathon is not configured to run here', healthy=True)]
+    marathon_config = marathon_tools.load_marathon_config()
 
     # Check to see if Chronos should be running here by checking for config
-    try:
-        chronos_config = load_chronos_config()
-    except PaastaNotConfiguredError:
-        chronos_results = [HealthCheckResult(message='Chronos is not configured to run here', healthy=True)]
+    chronos_config = load_chronos_config()
 
     if marathon_config:
         marathon_client = get_marathon_client(marathon_config)
@@ -621,6 +613,8 @@ def main():
         except MarathonError as e:
             print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Error: %s" % e))
             sys.exit(2)
+    else:
+        marathon_results = [HealthCheckResult(message='Marathon is not configured to run here', healthy=True)]
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config)
@@ -629,6 +623,8 @@ def main():
         except ServerNotFoundError as e:
             print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
             sys.exit(2)
+    else:
+        chronos_results = [HealthCheckResult(message='Chronos is not configured to run here', healthy=True)]
 
     mesos_ok = all(status_for_results(all_mesos_results))
     marathon_ok = all(status_for_results(marathon_results))
