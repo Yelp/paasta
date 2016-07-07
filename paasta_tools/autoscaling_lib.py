@@ -562,8 +562,8 @@ def sort_slaves_to_kill(mesos_state, pool='default'):
     :returns: list of slaves"""
     slaves = get_mesos_task_count_by_slave(mesos_state, pool=pool)
     if slaves:
-        slaves_by_task_count = [slave['slave'] for slave in sorted(slaves.values(),
-                                                                   key=lambda x: (x['chronos_count'], x['count']))]
+        slaves_by_task_count = [slave.slave for slave in sorted(slaves.values(),
+                                                                key=lambda x: (x.chronos_count, x.count))]
         return slaves_by_task_count
     else:
         return []
