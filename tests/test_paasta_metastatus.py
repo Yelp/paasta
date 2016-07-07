@@ -21,9 +21,7 @@ from pytest import raises
 
 from paasta_tools import paasta_metastatus
 from paasta_tools.marathon_tools import MarathonConfig
-from paasta_tools.marathon_tools import MarathonNotConfigured
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_ok_check_threshold():
@@ -364,7 +362,7 @@ def test_main_no_marathon_config():
         get_mesos_metrics_health_patch.return_value = []
 
         parse_args_patch.return_value = fake_args
-        load_marathon_config_patch.side_effect = MarathonNotConfigured
+        load_marathon_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
         assert excinfo.value.code == 0
@@ -397,7 +395,7 @@ def test_main_no_chronos_config():
             verbose=0,
         )
         parse_args_patch.return_value = fake_args
-        load_marathon_config_patch.side_effect = MarathonNotConfigured
+        load_marathon_config_patch.return_value = {}
 
         get_mesos_state_from_leader_patch.return_value = {}
         get_mesos_stats_patch.return_value = {}
@@ -405,7 +403,7 @@ def test_main_no_chronos_config():
         get_mesos_state_status_patch.return_value = []
         get_mesos_metrics_health_patch.return_value = []
 
-        load_chronos_config_patch.side_effect = PaastaNotConfiguredError
+        load_chronos_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
         assert excinfo.value.code == 0
