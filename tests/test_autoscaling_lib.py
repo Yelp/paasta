@@ -22,6 +22,7 @@ from pytest import raises
 
 from paasta_tools import autoscaling_lib
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_tools import SlaveTaskCount
 
 
 def test_get_zookeeper_instances():
@@ -724,9 +725,9 @@ def test_sort_slaves_to_kill():
         mock_slave_1 = mock.Mock()
         mock_slave_2 = mock.Mock()
         mock_slave_3 = mock.Mock()
-        mock_task_count = {'pid1': {'count': 3, 'slave': mock_slave_1, 'chronos_count': 0},
-                           'pid2': {'count': 2, 'slave': mock_slave_2, 'chronos_count': 1},
-                           'pid3': {'count': 5, 'slave': mock_slave_3, 'chronos_count': 0}}
+        mock_task_count = {'pid1': SlaveTaskCount(count=3, slave=mock_slave_1, chronos_count=0),
+                           'pid2': SlaveTaskCount(count=2, slave=mock_slave_2, chronos_count=1),
+                           'pid3': SlaveTaskCount(count=5, slave=mock_slave_3, chronos_count=0)}
         mock_get_task_count.return_value = mock_task_count
         ret = autoscaling_lib.sort_slaves_to_kill(mock_mesos_state)
         mock_get_task_count.assert_called_with(mock_mesos_state, pool='default')
