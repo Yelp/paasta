@@ -583,47 +583,75 @@ def test_humanize_error_equal():
 
 def test_scale_aws_spot_fleet_request():
     with contextlib.nested(
-        mock.patch('boto3.client', autospec=True),
         mock.patch('time.time', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.get_sfr_instance_ips', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.filter_sfr_slaves', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.drain', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.get_instance_id_from_ip', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.set_spot_fleet_request_capacity', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.wait_and_terminate', autospec=True),
     ) as (
-        mock_ec2_client,
         mock_time,
-        mock_get_sfr_instance_ips,
+        mock_filter_sfr_slaves,
         mock_drain,
-        mock_get_instance_id_from_ip,
+        mock_set_spot_fleet_request_capacity,
         mock_wait_and_terminate
     ):
 
-        mock_modify_spot_fleet_request = mock.Mock()
-        mock_ec2_client.return_value = mock.Mock(modify_spot_fleet_request=mock_modify_spot_fleet_request)
         mock_resource = {'id': 'sfr-blah'}
 
         # test no scale
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 0, 4, [], False)
-        assert not mock_modify_spot_fleet_request.called
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, [], False)
+        assert not mock_set_spot_fleet_request_capacity.called
 
         # test scale up
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 2, 4, [], False)
-        mock_modify_spot_fleet_request.assert_called_with(SpotFleetRequestId='sfr-blah', TargetCapacity=4,
-                                                          ExcessCapacityTerminationPolicy='noTermination')
+        mock_set_spot_fleet_request_capacity.assert_called_with('sfr-blah', 4, False)
 
         # test scale down
+        mock_sfr_sorted_slaves = [{'ip': '10.1.1.1', 'instance_id': 'i-blah123',
+                                   'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1},
+                                  {'ip': '10.2.2.2', 'instance_id': 'i-blah456',
+                                   'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 2}]
         mock_time.return_value = int(1)
-        mock_get_instance_id_from_ip.return_value = 'i-blah123'
-        mock_get_sfr_instance_ips.return_value = {'10.1.1.1', '10.1.1.2'}
-        mock_sorted_slaves = [{'pid': 'slave(1)@10.1.1.1:5051'}, {'pid': 'slave(1)@10.1.1.2:5051'}]
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, -2, 2, mock_sorted_slaves, False)
         mock_start = 1 + autoscaling_lib.CLUSTER_DRAIN_TIMEOUT
-        mock_instances_to_kill = {'slave(1)@10.1.1.1:5051': {'ip': '10.1.1.1', 'instance_id': 'i-blah123'},
-                                  'slave(1)@10.1.1.2:5051': {'ip': '10.1.1.2', 'instance_id': 'i-blah123'}}
-        mock_drain.assert_called_with(['10.1.1.1', '10.1.1.2'], mock_start, 600)
-        mock_modify_spot_fleet_request.assert_called_with(SpotFleetRequestId='sfr-blah', TargetCapacity=2,
-                                                          ExcessCapacityTerminationPolicy='noTermination')
-        mock_wait_and_terminate(mock_instances_to_kill, False)
+        terminate_call_1 = mock.call(mock_sfr_sorted_slaves[0], False)
+        terminate_call_2 = mock.call(mock_sfr_sorted_slaves[1], False)
+        drain_call_1 = mock.call(['10.1.1.1'], mock_start, 600)
+        drain_call_2 = mock.call(['10.2.2.2'], mock_start, 600)
+        set_call_1 = mock.call('sfr-blah', 4, False)
+        set_call_2 = mock.call('sfr-blah', 2, False)
+        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
+        mock_sorted_slaves = mock.Mock()
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, False)
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_drain.assert_has_calls([drain_call_1, drain_call_2])
+        mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2])
+        mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2])
+
+        # test scale down stop if it would take us below capacity
+        mock_sfr_sorted_slaves = [{'ip': '10.1.1.1', 'instance_id': 'i-blah123',
+                                   'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1},
+                                  {'ip': '10.2.2.2', 'instance_id': 'i-blah456',
+                                   'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 5}]
+        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, False)
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1])
+        mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1])
+        mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2, terminate_call_1])
+
+        # test we cleanup if a termination fails
+        mock_wait_and_terminate.side_effect = ClientError({'Error': {}}, 'blah')
+        mock_sfr_sorted_slaves = [{'ip': '10.1.1.1', 'instance_id': 'i-blah123',
+                                   'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1}]
+        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 4, mock_sorted_slaves, False)
+        set_call_3 = mock.call('sfr-blah', 5, False)
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1, drain_call_1])
+        mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1,
+                                                               set_call_1, set_call_3])
+        mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2,
+                                                  terminate_call_1, terminate_call_1])
 
 
 def test_autoscale_local_cluster():
@@ -660,7 +688,7 @@ def test_autoscale_local_cluster():
         mock_scaler.assert_called_with({'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}, 2, 6, [], False)
 
         # test scale down
-        mock_metrics_provider.return_value = (-2, 6)
+        mock_metrics_provider.return_value = (6, 2)
         mock_sort_slaves_to_kill.return_value = ['a_slave', 'another_slave']
         autoscaling_lib.autoscale_local_cluster()
         mock_get_metrics_provider.assert_called_with('sfr')
@@ -668,7 +696,7 @@ def test_autoscale_local_cluster():
                                                                                   'pool': 'default'})
         mock_get_scaler.assert_called_with('sfr')
         mock_scaler.assert_called_with({'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'},
-                                       -2, 6, ['a_slave', 'another_slave'], False)
+                                       6, 2, ['a_slave', 'another_slave'], False)
 
 
 def test_get_instance_id_from_ip():
@@ -702,12 +730,9 @@ def test_wait_and_terminate():
         mock_terminate_instances = mock.Mock()
         mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
 
-        mock_instances_to_kill = {'slave(1)@10.1.1.1:5051': {'ip': '10.1.1.1', 'instance_id': 'i-blah123'},
-                                  'slave(1)@10.1.1.2:5051': {'ip': '10.1.1.2', 'instance_id': 'i-blah456'}}
-        autoscaling_lib.wait_and_terminate(mock_instances_to_kill, False)
-        terminate_1_call = mock.call(InstanceIds=['i-blah123'], DryRun=False)
-        terminate_2_call = mock.call(InstanceIds=['i-blah456'], DryRun=False)
-        mock_terminate_instances.assert_has_calls([terminate_1_call, terminate_2_call], any_order=True)
+        mock_slave_to_kill = {'ip': '10.1.1.1', 'instance_id': 'i-blah123', 'pid': 'slave(1)@10.1.1.1:5051'}
+        autoscaling_lib.wait_and_terminate(mock_slave_to_kill, False)
+        mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
 
 
 def test_sort_slaves_to_kill():
@@ -768,21 +793,112 @@ def test_get_sfr_instance_ips():
         assert ret == {'10.1.1.1', '10.2.2.2'}
 
 
-def test_get_sfr_state():
+def test_get_sfr():
     with contextlib.nested(
         mock.patch('boto3.client', autospec=True),
     ) as (
         mock_ec2_client,
     ):
-        mock_sfr = {'SpotFleetRequestConfigs': [{'SpotFleetRequestState': 'active'}]}
+        mock_sfr_config = mock.Mock()
+        mock_sfr = {'SpotFleetRequestConfigs': [mock_sfr_config]}
         mock_describe_spot_fleet_requests = mock.Mock(return_value=mock_sfr)
         mock_ec2_client.return_value = mock.Mock(describe_spot_fleet_requests=mock_describe_spot_fleet_requests)
-        ret = autoscaling_lib.get_sfr_state('sfr-blah')
+        ret = autoscaling_lib.get_sfr('sfr-blah')
         mock_describe_spot_fleet_requests.assert_called_with(SpotFleetRequestIds=['sfr-blah'])
-        assert ret == 'active'
+        assert ret == mock_sfr_config
 
         mock_error = {'Error': {'Code': 'InvalidSpotFleetRequestId.NotFound'}}
         mock_describe_spot_fleet_requests = mock.Mock(side_effect=ClientError(mock_error, 'blah'))
         mock_ec2_client.return_value = mock.Mock(describe_spot_fleet_requests=mock_describe_spot_fleet_requests)
-        ret = autoscaling_lib.get_sfr_state('sfr-blah')
+        ret = autoscaling_lib.get_sfr('sfr-blah')
+        assert ret is None
+
+
+def test_filter_sfr_slaves():
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling_lib.get_sfr_instance_ips', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.slave_pid_to_ip'),
+        mock.patch('paasta_tools.autoscaling_lib.get_instance_id_from_ip'),
+        mock.patch('paasta_tools.autoscaling_lib.describe_instances', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_instance_type_weights', autospec=True),
+    ) as (
+        mock_get_sfr_instance_ips,
+        mock_pid_to_ip,
+        mock_get_instance_id,
+        mock_describe_instances,
+        mock_get_instance_type_weights
+    ):
+        mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
+        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3', '10.1.1.1', '10.3.3.3']
+        mock_get_instance_id.side_effect = ['i-1', 'i-3']
+        mock_instances = [{'InstanceId': 'i-1',
+                           'InstanceType': 'c4.blah'},
+                          {'InstanceId': 'i-2',
+                           'InstanceType': 'm4.whatever'},
+                          {'InstanceId': 'i-3',
+                           'InstanceType': 'm4.whatever'}]
+        mock_describe_instances.return_value = mock_instances
+        mock_sfr_sorted_slaves = [{'pid': 'slave(1)@10.1.1.1:5051'},
+                                  {'pid': 'slave(2)@10.2.2.2:5051'},
+                                  {'pid': 'slave(3)@10.3.3.3:5051'}]
+        mock_get_instance_call_1 = mock.call('10.1.1.1')
+        mock_get_instance_call_3 = mock.call('10.3.3.3')
+        mock_get_ip_call_1 = mock.call('slave(1)@10.1.1.1:5051')
+        mock_get_ip_call_2 = mock.call('slave(2)@10.2.2.2:5051')
+        mock_get_ip_call_3 = mock.call('slave(3)@10.3.3.3:5051')
+        mock_get_instance_type_weights.return_value = {'c4.blah': 2, 'm4.whatever': 5}
+        ret = autoscaling_lib.filter_sfr_slaves(mock_sfr_sorted_slaves, 'sfr-blah')
+        mock_get_sfr_instance_ips.assert_called_with('sfr-blah')
+        mock_pid_to_ip.assert_has_calls([mock_get_ip_call_1, mock_get_ip_call_2, mock_get_ip_call_3,
+                                         mock_get_ip_call_1, mock_get_ip_call_3])
+        mock_get_instance_id.assert_has_calls([mock_get_instance_call_1, mock_get_instance_call_3])
+        mock_describe_instances.assert_called_with(['i-1', 'i-3'])
+        mock_get_instance_type_weights.assert_called_with('sfr-blah')
+        expected = [{'pid': 'slave(1)@10.1.1.1:5051',
+                     'instance_id': 'i-1',
+                     'instance_type': 'c4.blah',
+                     'ip': '10.1.1.1',
+                     'instance_weight': 2},
+                    {'pid': 'slave(3)@10.3.3.3:5051',
+                     'instance_id': 'i-3',
+                     'instance_type': 'm4.whatever',
+                     'ip': '10.3.3.3',
+                     'instance_weight': 5}]
+        assert ret == expected
+
+
+def test_get_instance_type_weights():
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling_lib.get_sfr', autospec=True),
+    ) as (
+        mock_get_sfr,
+    ):
+        mock_launch_specs = [{'InstanceType': 'c4.blah',
+                              'WeightedCapacity': 123},
+                             {'InstanceType': 'm4.whatever',
+                              'WeightedCapacity': 456}]
+        mock_get_sfr.return_value = {'SpotFleetRequestConfig': {'LaunchSpecifications': mock_launch_specs}}
+        ret = autoscaling_lib.get_instance_type_weights('sfr-blah')
+        mock_get_sfr.assert_called_with('sfr-blah')
+        assert ret == {'c4.blah': 123, 'm4.whatever': 456}
+
+
+def test_describe_instance():
+    with contextlib.nested(
+        mock.patch('boto3.client', autospec=True),
+    ) as (
+        mock_ec2_client,
+    ):
+        mock_instance_1 = mock.Mock()
+        mock_instance_2 = mock.Mock()
+        mock_instances = {'Reservations': [{'Instances': [mock_instance_1]}, {'Instances': [mock_instance_2]}]}
+        mock_describe_instances = mock.Mock(return_value=mock_instances)
+        mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
+        ret = autoscaling_lib.describe_instances(['i-1', 'i-2'])
+        mock_describe_instances.assert_called_with(InstanceIds=['i-1', 'i-2'])
+        assert ret == [mock_instance_1, mock_instance_2]
+
+        mock_error = {'Error': {'Code': 'InvalidInstanceID.NotFound'}}
+        mock_describe_instances.side_effect = ClientError(mock_error, 'blah')
+        ret = autoscaling_lib.describe_instances(['i-1', 'i-2'])
         assert ret is None
