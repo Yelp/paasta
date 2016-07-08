@@ -942,15 +942,16 @@ def get_app_queue_status(client, app_id):
     """Returns the status of an application if it exists in Marathon's launch queue
 
     :param client: The marathon client
-    :param app_id: The Marathon app id
+    :param app_id: The Marathon app id (without the leading /)
     :returns: A tuple of the form (is_overdue, current_backoff_delay) or (None, None)
               if the app cannot be found. If is_overdue is True, then Marathon has
               not received a resource offer that satisfies the requirements for the app
     """
+    app_id = "/%s" % app_id
     app_queue = client.list_queue()
     for app_queue_item in app_queue:
         if app_queue_item.app.id == app_id:
-            return (app_queue_item.delay.overdue, app_queue_item.delay.timeLeftSeconds)
+            return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
     return (None, None)
 
