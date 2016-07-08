@@ -775,22 +775,19 @@ def test_get_spot_fleet_instances():
 
 def test_get_sfr_instance_ips():
     with contextlib.nested(
-        mock.patch('boto3.client', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.describe_instances', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_spot_fleet_instances', autospec=True),
     ) as (
-        mock_ec2_client,
+        mock_describe_instances,
         mock_get_spot_fleet_instances
     ):
         mock_spot_fleet_instances = [{'InstanceId': 'i-blah1'}, {'InstanceId': 'i-blah2'}]
         mock_get_spot_fleet_instances.return_value = mock_spot_fleet_instances
-        mock_instances = {'Reservations': [{'Instances': [{'PrivateIpAddress': '10.1.1.1'},
-                                                          {'PrivateIpAddress': '10.2.2.2'}]}]}
-        mock_describe_instances = mock.Mock(return_value=mock_instances)
-        mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances,
-                                                 get_spot_fleet_instances=mock_get_spot_fleet_instances)
+        mock_instances = [{'PrivateIpAddress': '10.1.1.1'}, {'PrivateIpAddress': '10.2.2.2'}]
+        mock_describe_instances.return_value = mock_instances
         ret = autoscaling_lib.get_sfr_instance_ips('sfr-blah')
-        mock_describe_instances.assert_called_with(InstanceIds=['i-blah1', 'i-blah2'])
-        assert ret == {'10.1.1.1', '10.2.2.2'}
+        mock_describe_instances.assert_called_with(['i-blah1', 'i-blah2'])
+        assert ret == ['10.1.1.1', '10.2.2.2']
 
 
 def test_get_sfr():

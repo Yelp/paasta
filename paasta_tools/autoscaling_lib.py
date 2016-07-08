@@ -447,14 +447,15 @@ def get_spot_fleet_instances(spotfleet_request_id):
 
 
 def get_sfr_instance_ips(spotfleet_request_id):
-    ec2_client = boto3.client('ec2')
     spot_fleet_instances = get_spot_fleet_instances(spotfleet_request_id)
-    instance_ips = {
-        instance['PrivateIpAddress']
-        for reservation in ec2_client.describe_instances(
-            InstanceIds=[instance['InstanceId'] for instance in spot_fleet_instances])['Reservations']
-        for instance in reservation['Instances']
-    }
+    instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances])
+    instance_ips = []
+    for instance in instance_descriptions:
+        try:
+            instance_ips.append(instance['PrivateIpAddress'])
+        except KeyError:
+            log.warning("Instance {0} does not have an IP. This normally means it has been"
+                        " terminated".format(instance['InstanceId']))
     return instance_ips
 
 
