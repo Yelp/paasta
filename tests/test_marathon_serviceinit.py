@@ -227,6 +227,7 @@ def test_status_marathon_job_when_running():
     mock_tasks_running = 5
     app.tasks_running = mock_tasks_running
     app.deployments = []
+    app.instances = normal_instance_count
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
     ) as (
@@ -247,6 +248,7 @@ def tests_status_marathon_job_when_running_running_no_tasks():
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
     app.deployments = []
+    app.instances = normal_instance_count
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
     ) as (
@@ -353,19 +355,19 @@ def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployme
     normal_instance_count = 5
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
-    app.deployments = ['test_deployment']
+    app.deployments = []
     app.instances = 0
     app.tasks_running = 0
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0)),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(None, None)),
     ) as (
         is_app_id_running_patch,
         get_app_queue_status_patch,
     ):
         output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
         is_app_id_running_patch.assert_called_once_with(app_id, client)
-        assert get_app_queue_status_patch.call_count == 0
+        assert get_app_queue_status_patch.call_count == 1
         assert 'Stopped' in output
 
 
