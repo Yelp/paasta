@@ -61,6 +61,7 @@ DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
+AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
 MAX_CLUSTER_DELTA = .2
 
@@ -662,6 +663,30 @@ def filter_sfr_slaves(sorted_slaves, sfr_id):
     return ret
 
 
+def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
+    """ AWS won't modify a request that is already modifying. This
+    function ensures we wait a few seconds in case we've just modified
+    a SFR"""
+    ec2_client = boto3.client('ec2')
+    with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
+        try:
+            state = None
+            while True:
+                state = get_sfr(sfr_id)['SpotFleetRequestState']
+                if state == 'active':
+                    break
+                log.debug("SFR {0} in state {1}, waiting for state: active".format(sfr_id, state))
+                log.debug("Sleep 5 seconds")
+                time.sleep(5)
+        except TimeoutError:
+            log.error("Spot fleet {0} not in active state so we can't modify it.".format(sfr_id))
+            return
+    if dry_run:
+        return
+    return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=capacity,
+                                                ExcessCapacityTerminationPolicy='noTermination')
+
+
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
 def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, sorted_slaves, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
@@ -679,16 +704,13 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
     current_capacity = int(current_capacity)
     delta = target_capacity - current_capacity
     sfr_id = resource['id']
-    ec2_client = boto3.client('ec2')
     if delta == 0:
         log.info("Already at target capacity: {0}".format(target_capacity))
         return
     elif delta > 0:
         log.info("Increasing spot fleet capacity to: {0}".format(target_capacity))
-        if not dry_run:
-            ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
-                                                 ExcessCapacityTerminationPolicy='noTermination')
-            return
+        set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run)
+        return
     elif delta < 0:
         sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, sfr_id)
         log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
@@ -720,18 +742,14 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             if not dry_run:
                 drain([slave_to_kill['ip']], start, duration)
             log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
-            if not dry_run:
-                ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=new_capacity,
-                                                     ExcessCapacityTerminationPolicy='noTermination')
+            set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run)
             log.info("Waiting for instance to drain before we terminate")
             try:
                 wait_and_terminate(slave_to_kill, dry_run)
             except ClientError as e:
                 log.error("Failure when terminating: {0}: {1}".format(slave['pid'], e))
                 log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
-                if not dry_run:
-                    ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=current_capacity,
-                                                         ExcessCapacityTerminationPolicy='noTermination')
+                set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run)
                 continue
             current_capacity = new_capacity
 
