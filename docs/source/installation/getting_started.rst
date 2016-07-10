@@ -185,7 +185,7 @@ Sensu
 that allows clients to send alerts for arbitrary events. PaaSTA uses Sensu to
 allow individual teams to get alerts for their services.
 
-The `official documentation <https://sensuapp.org/docs/latest/overview>` has
+The `official documentation <https://sensuapp.org/docs/latest/overview>`_ has
 instructions on how to set it up.
 
 Out of the box Sensu doesn't understand team-centric routing, and must be combined
