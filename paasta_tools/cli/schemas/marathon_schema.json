@@ -93,7 +93,7 @@
                 "type": "object"
             },
             "drain_method": {
-                "enum": [ "noop", "hacheck", "test" ],
+                "enum": [ "noop", "hacheck", "http", "test" ],
                 "default": "noop"
             },
             "drain_method_params": {
