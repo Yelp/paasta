@@ -446,8 +446,8 @@ def get_spot_fleet_instances(spotfleet_request_id):
     return spot_fleet_instances
 
 
-def get_sfr_instance_ips(spotfleet_request_id):
-    spot_fleet_instances = get_spot_fleet_instances(spotfleet_request_id)
+def get_sfr_instance_ips(sfr):
+    spot_fleet_instances = sfr['ActiveInstances']
     instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances])
     instance_ips = []
     for instance in instance_descriptions:
@@ -496,11 +496,14 @@ def describe_instances(instance_ids):
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
-    if not get_sfr(spotfleet_request_id)['SpotFleetRequestState'] == 'active':
+    sfr = get_sfr(spotfleet_request_id)
+    sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id)
+    resource['sfr'] = sfr
+    if not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that is not yet active or is cancelled etc.".format(spotfleet_request_id))
         return 0, 0
-    desired_instances = len(get_spot_fleet_instances(spotfleet_request_id))
-    instance_ips = get_sfr_instance_ips(spotfleet_request_id)
+    desired_instances = len(sfr['ActiveInstances'])
+    instance_ips = get_sfr_instance_ips(sfr)
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
@@ -635,14 +638,13 @@ def wait_and_terminate(slave, dry_run):
                 raise
 
 
-def get_instance_type_weights(sfr_id):
-    sfr = get_sfr(sfr_id)
+def get_instance_type_weights(sfr):
     launch_specifications = sfr['SpotFleetRequestConfig']['LaunchSpecifications']
     return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
 
 
-def filter_sfr_slaves(sorted_slaves, sfr_id):
-    sfr_ips = get_sfr_instance_ips(sfr_id)
+def filter_sfr_slaves(sorted_slaves, sfr):
+    sfr_ips = get_sfr_instance_ips(sfr)
     log.debug("IPs in SFR: {0}".format(sfr_ips))
     sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
     sfr_sorted_slave_instances = []
@@ -654,7 +656,7 @@ def filter_sfr_slaves(sorted_slaves, sfr_id):
     ret = []
     instance_ids = [slave['instance_id'] for slave in sfr_sorted_slave_instances]
     instance_descriptions = describe_instances(instance_ids)
-    instance_type_weights = get_instance_type_weights(sfr_id)
+    instance_type_weights = get_instance_type_weights(sfr)
     for slave in sfr_sorted_slave_instances:
         instance_description = [instance_description for instance_description in instance_descriptions
                                 if instance_description['InstanceId'] == slave['instance_id']][0]
@@ -713,7 +715,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
         set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run)
         return
     elif delta < 0:
-        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, sfr_id)
+        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, resource['sfr'])
         log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
         killable_capacity = sum([slave['instance_weight'] for slave in sfr_sorted_slaves])
         amount_to_decrease = delta * -1

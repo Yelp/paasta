@@ -596,7 +596,8 @@ def test_scale_aws_spot_fleet_request():
         mock_wait_and_terminate
     ):
 
-        mock_resource = {'id': 'sfr-blah'}
+        mock_sfr = mock.Mock()
+        mock_resource = {'id': 'sfr-blah', 'sfr': mock_sfr}
 
         # test no scale
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, [], False)
@@ -622,7 +623,7 @@ def test_scale_aws_spot_fleet_request():
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
         mock_sorted_slaves = mock.Mock()
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, False)
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_sfr)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2])
@@ -634,7 +635,7 @@ def test_scale_aws_spot_fleet_request():
                                    'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 5}]
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, False)
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_sfr)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2, terminate_call_1])
@@ -646,7 +647,7 @@ def test_scale_aws_spot_fleet_request():
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 4, mock_sorted_slaves, False)
         set_call_3 = mock.call('sfr-blah', 5, False)
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, 'sfr-blah')
+        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_sfr)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1, drain_call_1])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1,
                                                                set_call_1, set_call_3])
@@ -776,16 +777,14 @@ def test_get_spot_fleet_instances():
 def test_get_sfr_instance_ips():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.describe_instances', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.get_spot_fleet_instances', autospec=True),
     ) as (
         mock_describe_instances,
-        mock_get_spot_fleet_instances
     ):
         mock_spot_fleet_instances = [{'InstanceId': 'i-blah1'}, {'InstanceId': 'i-blah2'}]
-        mock_get_spot_fleet_instances.return_value = mock_spot_fleet_instances
+        mock_sfr = {'ActiveInstances': mock_spot_fleet_instances}
         mock_instances = [{'PrivateIpAddress': '10.1.1.1'}, {'PrivateIpAddress': '10.2.2.2'}]
         mock_describe_instances.return_value = mock_instances
-        ret = autoscaling_lib.get_sfr_instance_ips('sfr-blah')
+        ret = autoscaling_lib.get_sfr_instance_ips(mock_sfr)
         mock_describe_instances.assert_called_with(['i-blah1', 'i-blah2'])
         assert ret == ['10.1.1.1', '10.2.2.2']
 
@@ -825,6 +824,7 @@ def test_filter_sfr_slaves():
         mock_describe_instances,
         mock_get_instance_type_weights
     ):
+        mock_sfr = mock.Mock()
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
         mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3', '10.1.1.1', '10.3.3.3']
         mock_get_instance_id.side_effect = ['i-1', 'i-3']
@@ -844,13 +844,13 @@ def test_filter_sfr_slaves():
         mock_get_ip_call_2 = mock.call('slave(2)@10.2.2.2:5051')
         mock_get_ip_call_3 = mock.call('slave(3)@10.3.3.3:5051')
         mock_get_instance_type_weights.return_value = {'c4.blah': 2, 'm4.whatever': 5}
-        ret = autoscaling_lib.filter_sfr_slaves(mock_sfr_sorted_slaves, 'sfr-blah')
-        mock_get_sfr_instance_ips.assert_called_with('sfr-blah')
+        ret = autoscaling_lib.filter_sfr_slaves(mock_sfr_sorted_slaves, mock_sfr)
+        mock_get_sfr_instance_ips.assert_called_with(mock_sfr)
         mock_pid_to_ip.assert_has_calls([mock_get_ip_call_1, mock_get_ip_call_2, mock_get_ip_call_3,
                                          mock_get_ip_call_1, mock_get_ip_call_3])
         mock_get_instance_id.assert_has_calls([mock_get_instance_call_1, mock_get_instance_call_3])
         mock_describe_instances.assert_called_with(['i-1', 'i-3'])
-        mock_get_instance_type_weights.assert_called_with('sfr-blah')
+        mock_get_instance_type_weights.assert_called_with(mock_sfr)
         expected = [{'pid': 'slave(1)@10.1.1.1:5051',
                      'instance_id': 'i-1',
                      'instance_type': 'c4.blah',
@@ -890,19 +890,13 @@ def test_set_spot_fleet_request_capacity():
 
 
 def test_get_instance_type_weights():
-    with contextlib.nested(
-        mock.patch('paasta_tools.autoscaling_lib.get_sfr', autospec=True),
-    ) as (
-        mock_get_sfr,
-    ):
-        mock_launch_specs = [{'InstanceType': 'c4.blah',
-                              'WeightedCapacity': 123},
-                             {'InstanceType': 'm4.whatever',
-                              'WeightedCapacity': 456}]
-        mock_get_sfr.return_value = {'SpotFleetRequestConfig': {'LaunchSpecifications': mock_launch_specs}}
-        ret = autoscaling_lib.get_instance_type_weights('sfr-blah')
-        mock_get_sfr.assert_called_with('sfr-blah')
-        assert ret == {'c4.blah': 123, 'm4.whatever': 456}
+    mock_launch_specs = [{'InstanceType': 'c4.blah',
+                          'WeightedCapacity': 123},
+                         {'InstanceType': 'm4.whatever',
+                          'WeightedCapacity': 456}]
+    mock_sfr = {'SpotFleetRequestConfig': {'LaunchSpecifications': mock_launch_specs}}
+    ret = autoscaling_lib.get_instance_type_weights(mock_sfr)
+    assert ret == {'c4.blah': 123, 'm4.whatever': 456}
 
 
 def test_describe_instance():
