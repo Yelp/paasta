@@ -598,6 +598,7 @@ def test_scale_aws_spot_fleet_request():
 
         mock_sfr = mock.Mock()
         mock_resource = {'id': 'sfr-blah', 'sfr': mock_sfr}
+        mock_set_spot_fleet_request_capacity.return_value = True
 
         # test no scale
         autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, [], False)
@@ -879,14 +880,16 @@ def test_set_spot_fleet_request_capacity():
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'modifying'}
         mock_modify_spot_fleet_request = mock.Mock()
         mock_ec2_client.return_value = mock.Mock(modify_spot_fleet_request=mock_modify_spot_fleet_request)
-        autoscaling_lib.set_spot_fleet_request_capacity('sfr-blah', 4, False)
+        ret = autoscaling_lib.set_spot_fleet_request_capacity('sfr-blah', 4, False)
         assert not mock_modify_spot_fleet_request.called
+        assert ret is False
 
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
-        autoscaling_lib.set_spot_fleet_request_capacity('sfr-blah', 4, False)
+        ret = autoscaling_lib.set_spot_fleet_request_capacity('sfr-blah', 4, False)
         mock_modify_spot_fleet_request.assert_called_with(SpotFleetRequestId='sfr-blah',
                                                           TargetCapacity=4,
                                                           ExcessCapacityTerminationPolicy='noTermination')
+        assert ret is not None
 
 
 def test_get_instance_type_weights():

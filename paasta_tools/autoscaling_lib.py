@@ -25,6 +25,7 @@ import requests
 from botocore.exceptions import ClientError
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+from requests.exceptions import HTTPError
 
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
@@ -683,11 +684,16 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
                 time.sleep(5)
         except TimeoutError:
             log.error("Spot fleet {0} not in active state so we can't modify it.".format(sfr_id))
-            return
+            return False
     if dry_run:
-        return
-    return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=capacity,
-                                                ExcessCapacityTerminationPolicy='noTermination')
+        return True
+    try:
+        ret = ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=capacity,
+                                                   ExcessCapacityTerminationPolicy='noTermination')
+    except ClientError as e:
+        log.error("Error modifying spot fleet request: {0}".format(e))
+        return False
+    return ret
 
 
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
@@ -743,16 +749,24 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             duration = 600
             log.info("Draining {0}".format(slave_to_kill['pid']))
             if not dry_run:
-                drain([slave_to_kill['ip']], start, duration)
+                try:
+                    drain([slave_to_kill['ip']], start, duration)
+                except HTTPError as e:
+                    log.error("Failed to trigger drain on {0}: {1}\n Trying next host".format(slave_to_kill['ip'], e))
+                    continue
             log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
-            set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run)
+            if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run):
+                log.error("Couldn't update spot fleet, stopping autoscaler")
+                break
             log.info("Waiting for instance to drain before we terminate")
             try:
                 wait_and_terminate(slave_to_kill, dry_run)
             except ClientError as e:
                 log.error("Failure when terminating: {0}: {1}".format(slave['pid'], e))
                 log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
-                set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run)
+                if not set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run):
+                    log.error("Couldn't update spot fleet, stopping autoscaler")
+                    break
                 continue
             current_capacity = new_capacity
 
