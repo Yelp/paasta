@@ -1,3 +1,10 @@
+paasta-tools (0.30.3) lucid; urgency=low
+
+  * 0.30.3 tagged with 'make release'
+    Commit:
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 13 Jul 2016 11:35:52 -0700
+
 paasta-tools (0.30.2) lucid; urgency=low
 
   * 0.30.2 tagged with 'make release'
