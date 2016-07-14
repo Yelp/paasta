@@ -130,10 +130,7 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    # The container we run doesn't really have a stdout/stderr. The message below
-    # comes from mesos.cli, proving that paasta_serviceinit tried to read stdout/sdterr,
-    # caught the Exception and presented the right information to the user.
-    assert "No such task has the requested file or directory" in output
+    assert "stdout EOF" in output
 
 
 @then((u'paasta_serviceinit status -s "{service}" -i "{instances}"'

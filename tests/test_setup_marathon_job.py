@@ -296,17 +296,15 @@ class TestSetupMarathonJob:
         expected_check_name = 'paasta_bounce_progress.%s' % compose_job_id(fake_service, fake_instance)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
-            mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
         ) as (
             send_event_patch,
-            load_marathon_service_config_patch,
         ):
-            load_marathon_service_config_patch.return_value.get_monitoring.return_value = {}
             setup_marathon_job.send_sensu_bounce_keepalive(
                 service=fake_service,
                 instance=fake_instance,
                 cluster=fake_cluster,
                 soa_dir=fake_soa_dir,
+                config={},
             )
             send_event_patch.assert_called_once_with(
                 service=fake_service,
@@ -316,13 +314,6 @@ class TestSetupMarathonJob:
                 output=mock.ANY,
                 soa_dir=fake_soa_dir,
                 ttl='1h',
-            )
-            load_marathon_service_config_patch.assert_called_once_with(
-                service=fake_service,
-                instance=fake_instance,
-                cluster=fake_cluster,
-                load_deployments=False,
-                soa_dir=fake_soa_dir,
             )
 
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
@@ -657,6 +648,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 cluster=self.fake_cluster,
                 soa_dir='fake_soa_dir',
+                config=fake_config,
             )
 
     def test_do_bounce_when_all_old_tasks_are_unhappy(self):

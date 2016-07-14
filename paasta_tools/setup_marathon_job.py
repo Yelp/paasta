@@ -115,7 +115,7 @@ def send_event(name, instance, soa_dir, status, output):
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
-def send_sensu_bounce_keepalive(service, instance, cluster, soa_dir):
+def send_sensu_bounce_keepalive(service, instance, soa_dir, cluster, config):
     """Send a Sensu event with a special ``ttl``, to let Sensu know that
     the everything is fine. This event is **not** fired when the bounce is in
     progress.
@@ -124,13 +124,14 @@ def send_sensu_bounce_keepalive(service, instance, cluster, soa_dir):
     will emit a new event saying that this one didn't check in within the expected
     time-to-live."""
     ttl = '1h'
-    monitoring_overrides = marathon_tools.load_marathon_service_config(
+    marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service,
-        instance=instance,
         cluster=cluster,
-        soa_dir=soa_dir,
-        load_deployments=False,
-    ).get_monitoring()
+        instance=instance,
+        config_dict=config,
+        branch_dict=None,
+    )
+    monitoring_overrides = marathon_service_config.get_monitoring()
     # Sensu currently emits events for expired ttl checks every 30s
     monitoring_overrides['check_every'] = '30s'
     monitoring_overrides['alert_after'] = '2m'
@@ -256,6 +257,7 @@ def do_bounce(
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
+            config=config,
         )
 
     actions = bounce_func(

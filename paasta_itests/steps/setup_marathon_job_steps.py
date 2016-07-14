@@ -87,17 +87,27 @@ def set_number_instances(context, number):
 
 @when(u'we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
+    config = {
+        'master': '%s' % get_service_connection_string('mesosmaster'),
+        'scheme': 'http',
+        'response_timeout': 5,
+    }
     for _ in xrange(20):
         with contextlib.nested(
-            mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+            mock.patch.object(mesos.cli.master, 'CFG', config),
         ) as (
+            mock_load_credentials,
             _,
         ):
+            mock_load_credentials.side_effect = paasta_maintenance.load_credentials(
+                mesos_secrets='/etc/mesos-slave-secret',
+            )
             run_setup_marathon_job(context)
         sleep(0.5)
-        if marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True):
+        if context.marathon_client.get_app(context.app_id).instances == number:
             return
-    assert marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True)
+    assert context.marathon_client.get_app(context.app_id).instances == number
 
 
 @when(u'we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
@@ -125,6 +135,14 @@ def assert_instances_equals(context, number):
     assert context.marathon_client.get_app(context.app_id).instances == number
 
 
+@when(u'we mark a host it is running on as at-risk')
+def mark_host_running_on_at_risk(context):
+    app = context.marathon_client.get_app(context.new_id)
+    tasks = app.tasks
+    host = tasks[0].host
+    mark_host_at_risk(context, host)
+
+
 @when(u'we mark the host "{host}" as at-risk')
 def mark_host_at_risk(context, host):
     start = paasta_maintenance.datetime_to_nanoseconds(paasta_maintenance.now())
@@ -143,6 +161,12 @@ def mark_host_at_risk(context, host):
     ):
         mock_load_credentials.side_effect = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
         paasta_maintenance.drain([host], start, duration)
+        context.at_risk_host = host
+
+
+@then(u'there should be {number:d} tasks on that at-risk host')
+def tasks_on_that_at_risk_host_drained(context, number):
+    tasks_on_host_drained(context, number, context.at_risk_host)
 
 
 @then(u'there should be {number:d} tasks on the host "{host}"')

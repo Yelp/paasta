@@ -14,29 +14,32 @@
 import contextlib
 import time
 
+import mesos.cli.master
 import mock
 from behave import given
 from behave import then
 from behave import when
+from itest_utils import get_service_connection_string
 from marathon import MarathonHttpError
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
+from paasta_tools import paasta_maintenance
 from paasta_tools import setup_marathon_job
 from paasta_tools.bounce_lib import get_happy_tasks
 
 
 def which_id(context, which):
-    return {
-        'new': context.new_id,
-        'old': context.old_app_config['id'],
-    }[which]
+    if which == 'new':
+        return context.new_id
+    elif which == 'old':
+        return context.old_app_config['id']
 
 
 @given(u'a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
 def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
-    given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints=str(None))
+    given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints=str([]))
 
 
 @given(u'a new {state} app to be deployed, ' +
@@ -112,15 +115,16 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
-@when(u'there are {num} {which} {state} tasks')
+@when(u'there are {num:d} {which} {state} tasks')
 def when_there_are_num_which_tasks(context, num, which, state):
-    context.max_tasks = int(num)
+    context.max_tasks = num
     app_id = which_id(context, which)
 
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
-        happy_count = len(get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config))
+        happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
+        happy_count = len(happy_tasks)
         if state == "healthy":
             if happy_count >= context.max_tasks:
                 return
@@ -134,6 +138,11 @@ def when_there_are_num_which_tasks(context, num, which, state):
 
 @when(u'setup_service is initiated')
 def when_setup_service_initiated(context):
+    config = {
+        'master': '%s' % get_service_connection_string('mesosmaster'),
+        'scheme': 'http',
+        'response_timeout': 5,
+    }
     with contextlib.nested(
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
@@ -151,7 +160,8 @@ def when_setup_service_initiated(context):
         mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
         mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
         mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
-        mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+        mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+        mock.patch.object(mesos.cli.master, 'CFG', config),
     ) as (
         _,
         _,
@@ -162,8 +172,10 @@ def when_setup_service_initiated(context):
         _,
         _,
         _,
+        mock_load_credentials,
         _,
     ):
+        mock_load_credentials.side_effect = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
         for _ in xrange(120):

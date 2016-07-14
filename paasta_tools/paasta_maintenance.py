@@ -122,9 +122,9 @@ def get_schedule_client():
 
 
 def get_maintenance_schedule():
-    """Makes a GET request to the /master/maintenance API endpoint
+    """Makes a GET request to the /master/maintenance/schedule API endpoint
 
-    :returns: a function that can be called to make a request to /master/maintenance
+    :returns: a function that can be called to make a request to /master/maintenance/schedule
     """
     client_fn = get_schedule_client()
     return client_fn(method="GET", endpoint="")
@@ -135,8 +135,16 @@ def get_maintenance_status():
 
     :returns: a requests.response object representing the current maintenance status
     """
-    client_fn = get_schedule_client()
+    client_fn = maintenance_api()
     return client_fn(method="GET", endpoint="/status")
+
+
+def schedule():
+    """Get the Mesos maintenance schedule. This contains hostname/ip mappings and their maintenance window.
+    :returns: None
+    """
+    schedule = get_maintenance_schedule()
+    print "%s:%s" % (schedule, schedule.text)
 
 
 def get_hosts_with_state(state):
@@ -146,7 +154,7 @@ def get_hosts_with_state(state):
     :param state: State we are interested in ('down_machines' or 'draining_machines')
     :returns: A list of hostnames in the specified state or an empty list if no machines
     """
-    status = get_maintenance_status()
+    status = get_maintenance_status().json()
     if not status or state not in status:
         return []
     return [machine['id']['hostname'] for machine in status[state]]
@@ -380,14 +388,6 @@ def status():
     """
     status = get_maintenance_status()
     print "%s:%s" % (status, status.text)
-
-
-def schedule():
-    """Get the Mesos maintenance schedule. This contains hostname/ip mappings and their maintenance window.
-    :returns: None
-    """
-    schedule = get_maintenance_schedule()
-    print "%s:%s" % (schedule, schedule.text)
 
 
 def paasta_maintenance():

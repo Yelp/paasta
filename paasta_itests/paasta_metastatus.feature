@@ -57,6 +57,6 @@ Feature: paasta_metastatus describes the state of the paasta cluster
      When we create a trivial marathon app
      Then paasta_metastatus -v exits with return code "0" and output " "
      Then paasta_metastatus -vv exits with return code "0" and output " "
-     Then paasta_metastatus -vvv exits with return code "0" and output "mesosslave.test_hostname"
+     Then paasta_metastatus -vvv exits with return code "0" and output "Hostname"
 
 # vim: set ts=2 sw=2

@@ -20,16 +20,29 @@ Feature: setup_marathon_job can create a "complete" app
 
   Scenario: marathon apps can be scaled up with at-risk hosts
     Given a working paasta cluster
-      And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
+     And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
       And an old app to be destroyed with constraints [["hostname", "UNIQUE"]]
     When there are 2 old healthy tasks
-      And we mark the host "mesosslave" as at-risk
-      And setup_service is initiated
-    When there are 2 new healthy tasks
-      And setup_service is initiated
+    When setup_service is initiated
+      And there are 2 new healthy tasks
+    When we mark a host it is running on as at-risk
+    When setup_service is initiated
+      And there are 3 new healthy tasks
       And we wait a bit for the old app to disappear
     Then the old app should be gone
-      And there should be 0 tasks on the host "mesosslave"
+      And there should be 0 tasks on that at-risk host
+
+  Scenario: marathon apps can be deployed with at-risk hosts
+    Given a working paasta cluster
+      And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
+    When setup_service is initiated
+      And there are 2 new healthy tasks
+    When we mark a host it is running on as at-risk
+    When setup_service is initiated
+      And there are 3 new healthy tasks
+    When setup_service is initiated
+      And there are 2 new healthy tasks
+    Then there should be 0 tasks on that at-risk host
 
   Scenario: marathon apps can be scaled down
     Given a working paasta cluster
