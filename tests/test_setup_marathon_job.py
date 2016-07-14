@@ -739,12 +739,14 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_happy_tasks', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.drain_lib.get_drain_method', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
         ) as (
             mock_log,
             mock_load_system_paasta_config,
             mock_get_matching_apps,
             mock_get_happy_tasks,
             mock_get_drain_method,
+            _,
             _,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
@@ -793,6 +795,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_happy_tasks', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.drain_lib.get_drain_method', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
         ) as (
             mock_log,
             mock_load_system_paasta_config,
@@ -800,10 +803,12 @@ class TestSetupMarathonJob:
             mock_get_happy_tasks,
             mock_get_drain_method,
             mock_get_draining_hosts,
+            mock_mt_get_draining_hosts,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
             mock_get_draining_hosts.return_value = ['fake-host1', 'fake-host2']
+            mock_mt_get_draining_hosts.return_value = ['fake-host1', 'fake-host2']
             tasks = [
                 mock.Mock(host='fake-host1'),
                 mock.Mock(host='fake-host2'),
@@ -858,6 +863,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.do_bounce', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
         ) as (
             mock_log,
             mock_load_system_paasta_config,
@@ -867,6 +873,7 @@ class TestSetupMarathonJob:
             mock_get_bounce_method_func,
             mock_bounce_lock_zookeeper,
             mock_do_bounce,
+            _,
             _,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
@@ -922,6 +929,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.do_bounce', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
         ) as (
             mock_log,
             mock_load_system_paasta_config,
@@ -931,6 +939,7 @@ class TestSetupMarathonJob:
             mock_get_bounce_method_func,
             mock_bounce_lock_zookeeper,
             mock_do_bounce,
+            _,
             _,
         ):
             mock_stop_draining = mock.MagicMock()

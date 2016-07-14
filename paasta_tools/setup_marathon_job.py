@@ -53,6 +53,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
 from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import _log
@@ -382,23 +383,6 @@ def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_healt
         old_app_at_risk_tasks[app.id] = tasks_by_state['at_risk']
 
     return old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks, old_app_at_risk_tasks
-
-
-def get_num_at_risk_tasks(app):
-    """Determine how many of an application's tasks are running on
-    at-risk (Mesos Maintenance Draining) hosts.
-
-    :param app: A marathon application
-    :returns: An integer representing the number of tasks running on at-risk hosts
-    """
-    hosts_tasks_running_on = [task.host for task in app.tasks]
-    draining_hosts = get_draining_hosts()
-    num_at_risk_tasks = 0
-    for host in hosts_tasks_running_on:
-        if host in draining_hosts:
-            num_at_risk_tasks += 1
-    log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
-    return num_at_risk_tasks
 
 
 def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
