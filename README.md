@@ -76,6 +76,7 @@ Read the documentation at [Read the Docs](http://paasta.readthedocs.io/en/latest
 * [EvanKrall](https://github.com/EvanKrall), [solarkennedy](https://github.com/solarkennedy), and [jnb](https://github.com/jnb) give a [behind the scenes tour of PaaSTA at Yelp](https://vimeo.com/141231345) (Oct 2015)
 * [Rob-Johnson](https://github.com/Rob-Johnson) talks about PaaSTA at [MesosCon 2015](https://www.youtube.com/watch?v=fxYfmzWctRc) (Nov 2015)
 * [solarkennedy](https://github.com/solarkennedy) presents at Box to give a [Theory of PaaSes](https://youtu.be/YFDwdRVTg4g?t=33m11s) (Jan 2016)
+* [nhandler](https://github.com/nhandler) speaks at OSCON about Running Applications at Yelp ([Slides](http://www.slideshare.net/NathanHandler/paasta-running-applications-at-yelp) / [Video](https://youtu.be/vISUXKeoqXM)) (May 2016)
 
 ## License
 
