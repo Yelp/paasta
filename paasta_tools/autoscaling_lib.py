@@ -25,6 +25,7 @@ import requests
 from botocore.exceptions import ClientError
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+from requests.exceptions import HTTPError
 
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
@@ -61,8 +62,9 @@ DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
+AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
-MAX_CLUSTER_DELTA = .1
+MAX_CLUSTER_DELTA = .2
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -445,19 +447,20 @@ def get_spot_fleet_instances(spotfleet_request_id):
     return spot_fleet_instances
 
 
-def get_sfr_instance_ips(spotfleet_request_id):
-    ec2_client = boto3.client('ec2')
-    spot_fleet_instances = get_spot_fleet_instances(spotfleet_request_id)
-    instance_ips = {
-        instance['PrivateIpAddress']
-        for reservation in ec2_client.describe_instances(
-            InstanceIds=[instance['InstanceId'] for instance in spot_fleet_instances])['Reservations']
-        for instance in reservation['Instances']
-    }
+def get_sfr_instance_ips(sfr):
+    spot_fleet_instances = sfr['ActiveInstances']
+    instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances])
+    instance_ips = []
+    for instance in instance_descriptions:
+        try:
+            instance_ips.append(instance['PrivateIpAddress'])
+        except KeyError:
+            log.warning("Instance {0} does not have an IP. This normally means it has been"
+                        " terminated".format(instance['InstanceId']))
     return instance_ips
 
 
-def get_sfr_state(spotfleet_request_id):
+def get_sfr(spotfleet_request_id):
     ec2_client = boto3.client('ec2')
     try:
         sfrs = ec2_client.describe_spot_fleet_requests(SpotFleetRequestIds=[spotfleet_request_id])
@@ -467,25 +470,49 @@ def get_sfr_state(spotfleet_request_id):
             return None
         else:
             raise
-    ret = sfrs['SpotFleetRequestConfigs'][0]['SpotFleetRequestState']
+    ret = sfrs['SpotFleetRequestConfigs'][0]
+    return ret
+
+
+def describe_instances(instance_ids):
+    """This wraps ec2.describe_instances and catches instance not
+    found errors. It returns a list of instance description
+    dictionaries. It assumes one instance per reservation (which
+    seems to be the case for SFRs)
+
+    :param instance_ids: a list of instance ids
+    :returns: a list of instance description dictionaries"""
+    ec2_client = boto3.client('ec2')
+    try:
+        instances = ec2_client.describe_instances(InstanceIds=instance_ids)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
+            log.warn('Cannot find one or more instance from IDs {0}'.format(instance_ids))
+            return None
+        else:
+            raise
+    ret = [reservation['Instances'][0] for reservation in instances['Reservations']]
     return ret
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
-    if not get_sfr_state(spotfleet_request_id) == 'active':
+    sfr = get_sfr(spotfleet_request_id)
+    sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id)
+    resource['sfr'] = sfr
+    if not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that is not yet active or is cancelled etc.".format(spotfleet_request_id))
         return 0, 0
-    desired_instances = len(get_spot_fleet_instances(spotfleet_request_id))
-    instance_ips = get_sfr_instance_ips(spotfleet_request_id)
+    desired_instances = len(sfr['ActiveInstances'])
+    instance_ips = get_sfr_instance_ips(sfr)
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
         slave['attributes'].get('pool', 'default') == resource['pool']
     }
     current_instances = len(slaves)
-    log.info("Found %.2%% slaves registered in mesos for this SFR (%d/%d)" % (
-             (current_instances / desired_instances) * 100, current_instances, desired_instances))
+    log.info("Found %.2f%% slaves registered in mesos for this SFR (%d/%d)" % (
+             float(float(current_instances) / float(desired_instances)) * 100, current_instances, desired_instances))
     if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
         error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
                          "Refusing to scale because we either need to wait for the requests to be "
@@ -507,8 +534,8 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
         for pair in zip(free_pool_resources, total_pool_resources)
     ])
     error = utilization - CLUSTER_TARGET_UTILIZATION
-    delta, target = get_spot_fleet_delta(resource, error)
-    return delta, target
+    current, target = get_spot_fleet_delta(resource, error)
+    return current, target
 
 
 def get_spot_fleet_delta(resource, error):
@@ -523,22 +550,22 @@ def get_spot_fleet_delta(resource, error):
     log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
     new_capacity = int(min(
         max(
-            resource['min_instances'],
+            resource['min_capacity'],
             floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
             ideal_capacity,
             1,  # A SFR cannot scale below 1 instance
         ),
         ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
-        resource['max_instances'],
+        resource['max_capacity'],
     ))
     log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
 
-    if ideal_capacity > resource['max_instances']:
-        log.warning("Our ideal capacity (%d) is higher than max_instances (%d). Consider rasing max_instances!" % (
-            ideal_capacity, resource['max_instances']))
-    if ideal_capacity < resource['min_instances']:
-        log.warning("Our ideal capacity (%d) is lower than min_instances (%d). Consider lowering min_instances!" % (
-            ideal_capacity, resource['min_instances']))
+    if ideal_capacity > resource['max_capacity']:
+        log.warning("Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
+            ideal_capacity, resource['max_capacity']))
+    if ideal_capacity < resource['min_capacity']:
+        log.warning("Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
+            ideal_capacity, resource['min_capacity']))
     if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
             ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
         log.warning(
@@ -547,7 +574,7 @@ def get_spot_fleet_delta(resource, error):
 
     if new_capacity != current_capacity:
         print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
-        return new_capacity - current_capacity, new_capacity
+        return current_capacity, new_capacity
     else:
         return 0
 
@@ -569,43 +596,42 @@ def sort_slaves_to_kill(mesos_state, pool='default'):
         return []
 
 
-def wait_and_terminate(instances_to_kill, dry_run):
-    """Currently kills a list of instances, will wait for draining to complete soon
+def wait_and_terminate(slave, dry_run):
+    """Currently kills a slave, will wait for draining to complete soon
 
-    :param instances_to_kill: dict of instances to kill
+    :param slave: dict of slave to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
     ec2_client = boto3.client('ec2')
     try:
         # This loop should always finish because the maintenance window should trigger is_ready_to_kill
         # being true. Just in case though we set a timeout and terminate anyway
         with Timeout(seconds=CLUSTER_DRAIN_TIMEOUT + 300):
-            while instances_to_kill:
-                for slave_pid, slave_data in instances_to_kill.items():
-                    instance_id = slave_data['instance_id']
-                    if not instance_id:
-                        log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave_pid))
-                        continue
-                    is_ready_to_kill = True
-                    # is_ready_to_kill = paasta_maintenance.something(slave['pid'])
-                    if is_ready_to_kill:
-                        log.info("TERMINATING: {0}".format(instance_id))
-                        try:
-                            ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
-                        except ClientError as e:
-                            if e.response['Error'].get('Code') == 'DryRunOperation':
-                                pass
-                            else:
-                                raise
-                        instances_to_kill.pop(slave_pid)
-                    else:
-                        log.debug("Instance {0}: NOT ready to kill".format(instance_id))
+            while True:
+                instance_id = slave['instance_id']
+                if not instance_id:
+                    log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave['pid']))
+                    continue
+                is_ready_to_kill = True
+                # is_ready_to_kill = paasta_maintenance.something(slave['pid'])
+                if is_ready_to_kill:
+                    log.info("TERMINATING: {0}".format(instance_id))
+                    try:
+                        ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
+                    except ClientError as e:
+                        if e.response['Error'].get('Code') == 'DryRunOperation':
+                            pass
+                        else:
+                            raise
+                    break
+                else:
+                    log.debug("Instance {0}: NOT ready to kill".format(instance_id))
                 log.debug("Waiting 5 seconds and then checking again")
                 time.sleep(5)
     except TimeoutError:
         log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(CLUSTER_DRAIN_TIMEOUT,
-                                                                                            instances_to_kill))
+                                                                                            slave['pid']))
         try:
-            ec2_client.terminate_instances(InstanceIds=instances_to_kill, DryRun=dry_run)
+            ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
         except ClientError as e:
             if e.response['Error'].get('Code') == 'DryRunOperation':
                 pass
@@ -613,8 +639,65 @@ def wait_and_terminate(instances_to_kill, dry_run):
                 raise
 
 
+def get_instance_type_weights(sfr):
+    launch_specifications = sfr['SpotFleetRequestConfig']['LaunchSpecifications']
+    return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
+
+
+def filter_sfr_slaves(sorted_slaves, sfr):
+    sfr_ips = get_sfr_instance_ips(sfr)
+    log.debug("IPs in SFR: {0}".format(sfr_ips))
+    sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
+    sfr_sorted_slave_instances = []
+    for slave in sfr_sorted_slaves:
+        ip = slave_pid_to_ip(slave['pid'])
+        sfr_sorted_slave_instances.append({'ip': ip,
+                                           'pid': slave['pid'],
+                                           'instance_id': get_instance_id_from_ip(ip)})
+    ret = []
+    instance_ids = [slave['instance_id'] for slave in sfr_sorted_slave_instances]
+    instance_descriptions = describe_instances(instance_ids)
+    instance_type_weights = get_instance_type_weights(sfr)
+    for slave in sfr_sorted_slave_instances:
+        instance_description = [instance_description for instance_description in instance_descriptions
+                                if instance_description['InstanceId'] == slave['instance_id']][0]
+        slave['instance_type'] = instance_description['InstanceType']
+        slave['instance_weight'] = instance_type_weights[slave['instance_type']]
+        ret.append(slave)
+    return ret
+
+
+def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
+    """ AWS won't modify a request that is already modifying. This
+    function ensures we wait a few seconds in case we've just modified
+    a SFR"""
+    ec2_client = boto3.client('ec2')
+    with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
+        try:
+            state = None
+            while True:
+                state = get_sfr(sfr_id)['SpotFleetRequestState']
+                if state == 'active':
+                    break
+                log.debug("SFR {0} in state {1}, waiting for state: active".format(sfr_id, state))
+                log.debug("Sleep 5 seconds")
+                time.sleep(5)
+        except TimeoutError:
+            log.error("Spot fleet {0} not in active state so we can't modify it.".format(sfr_id))
+            return False
+    if dry_run:
+        return True
+    try:
+        ret = ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=capacity,
+                                                   ExcessCapacityTerminationPolicy='noTermination')
+    except ClientError as e:
+        log.error("Error modifying spot fleet request: {0}".format(e))
+        return False
+    return ret
+
+
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def scale_aws_spot_fleet_request(resource, delta, target_capacity, sorted_slaves, dry_run):
+def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, sorted_slaves, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
     If scaling up we just set target capacity and let AWS take care of the rest
     If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -622,51 +705,70 @@ def scale_aws_spot_fleet_request(resource, delta, target_capacity, sorted_slaves
     them once they are running 0 tasks or once a timeout is reached
 
     :param resource: resource to scale
-    :param delta: integer change in number of servers
-    :param target_capacity: target number of instances
+    :param current_capacity: integer current SFR capacity
+    :param target_capacity: target SFR capacity
     :param sorted_slaves: list of slaves by order to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
+    target_capacity = int(target_capacity)
+    current_capacity = int(current_capacity)
+    delta = target_capacity - current_capacity
     sfr_id = resource['id']
-    ec2_client = boto3.client('ec2')
     if delta == 0:
+        log.info("Already at target capacity: {0}".format(target_capacity))
         return
     elif delta > 0:
         log.info("Increasing spot fleet capacity to: {0}".format(target_capacity))
-        if not dry_run:
-            ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
-                                                 ExcessCapacityTerminationPolicy='noTermination')
-            return
+        set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run)
+        return
     elif delta < 0:
-        number_to_kill = delta * -1
-        sfr_ips = get_sfr_instance_ips(sfr_id)
-        log.debug("IPs in SFR: {0}".format(sfr_ips))
-        sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
+        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, resource['sfr'])
         log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
-        if number_to_kill > len(sfr_sorted_slaves):
+        killable_capacity = sum([slave['instance_weight'] for slave in sfr_sorted_slaves])
+        amount_to_decrease = delta * -1
+        if amount_to_decrease > killable_capacity:
             log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
             return
-        slaves_to_kill = sfr_sorted_slaves[0:number_to_kill]
-        log.info("Set to kill: {0}".format([slave['pid'] for slave in slaves_to_kill]))
-        instances_to_kill = {}
-        for slave in slaves_to_kill:
-            ip = slave_pid_to_ip(slave['pid'])
-            instances_to_kill[slave['pid']] = {'ip': ip,
-                                               'instance_id': get_instance_id_from_ip(ip)}
-        # The start time of the maintenance window is the point at which
-        # we giveup waiting for the instance to drain and mark it for termination anyway
-        start = int(time.time() + CLUSTER_DRAIN_TIMEOUT)
-        # Set the duration to an hour, if we haven't cleaned up and termintated by then
-        # mesos should put the slave back into the pool
-        duration = 600
-        log.info("Draining {0}".format(instances_to_kill))
-        log.info("Decreasing spot fleet capacity to: {0}".format(target_capacity))
-        if not dry_run:
-            # sort to make testing easier
-            drain([instance['ip'] for instance in sorted(instances_to_kill.values())], start, duration)
-            ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity,
-                                                 ExcessCapacityTerminationPolicy='noTermination')
-        log.info("Waiting for instances to drain before we terminate")
-        wait_and_terminate(instances_to_kill, dry_run)
+        sfr_sorted_slaves.reverse()
+        while True:
+            if len(sfr_sorted_slaves) == 0:
+                break
+            slave_to_kill = sfr_sorted_slaves.pop()
+            instance_capacity = int(slave_to_kill['instance_weight'])
+            new_capacity = current_capacity - instance_capacity
+            if current_capacity - instance_capacity < target_capacity:
+                log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
+                         " close to our target as we can get".format(slave_to_kill['instance_id'],
+                                                                     slave_to_kill['instance_weight'],
+                                                                     target_capacity))
+                break
+            # The start time of the maintenance window is the point at which
+            # we giveup waiting for the instance to drain and mark it for termination anyway
+            start = int(time.time() + CLUSTER_DRAIN_TIMEOUT)
+            # Set the duration to an hour, if we haven't cleaned up and termintated by then
+            # mesos should put the slave back into the pool
+            duration = 600
+            log.info("Draining {0}".format(slave_to_kill['pid']))
+            if not dry_run:
+                try:
+                    drain([slave_to_kill['ip']], start, duration)
+                except HTTPError as e:
+                    log.error("Failed to trigger drain on {0}: {1}\n Trying next host".format(slave_to_kill['ip'], e))
+                    continue
+            log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
+            if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run):
+                log.error("Couldn't update spot fleet, stopping autoscaler")
+                break
+            log.info("Waiting for instance to drain before we terminate")
+            try:
+                wait_and_terminate(slave_to_kill, dry_run)
+            except ClientError as e:
+                log.error("Failure when terminating: {0}: {1}".format(slave['pid'], e))
+                log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
+                if not set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run):
+                    log.error("Couldn't update spot fleet, stopping autoscaler")
+                    break
+                continue
+            current_capacity = new_capacity
 
 
 class ClusterAutoscalingError(Exception):
@@ -698,14 +800,14 @@ def autoscale_local_cluster(dry_run=False):
         log.info("Autoscaling {0}".format(identifier))
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
-            delta, target = resource_metrics_provider(resource['id'], mesos_state, resource)
-            log.info("Target capacity: {0}, Capacity delta: {1}".format(target, delta))
+            current, target = resource_metrics_provider(resource['id'], mesos_state, resource)
+            log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
             resource_scaler = get_scaler(resource['type'])
-            if delta < 0:
+            if target - current < 0:
                 sorted_slaves = sort_slaves_to_kill(mesos_state, pool=resource['pool'])
                 log.debug("Slaves by kill preference: {0}".format(sorted_slaves))
             else:
                 sorted_slaves = []
-            resource_scaler(resource, delta, target, sorted_slaves, dry_run)
+            resource_scaler(resource, current, target, sorted_slaves, dry_run)
         except ClusterAutoscalingError as e:
             log.error('%s: %s' % (identifier, e))
