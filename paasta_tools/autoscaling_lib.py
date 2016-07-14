@@ -474,17 +474,21 @@ def get_sfr(spotfleet_request_id):
     return ret
 
 
-def describe_instances(instance_ids):
+def describe_instances(instance_ids, instance_filters=None):
     """This wraps ec2.describe_instances and catches instance not
     found errors. It returns a list of instance description
     dictionaries. It assumes one instance per reservation (which
-    seems to be the case for SFRs)
+    seems to be the case for SFRs) Optionally, a filter can be
+    passed through to the ec2 call
 
-    :param instance_ids: a list of instance ids
+    :param instance_ids: a list of instance ids, [] means all
+    :param instance_filters: a list of ec2 filters
     :returns: a list of instance description dictionaries"""
+    if not instance_filters:
+        instance_filters = []
     ec2_client = boto3.client('ec2')
     try:
-        instances = ec2_client.describe_instances(InstanceIds=instance_ids)
+        instances = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
             log.warn('Cannot find one or more instance from IDs {0}'.format(instance_ids))
@@ -648,18 +652,27 @@ def filter_sfr_slaves(sorted_slaves, sfr):
     sfr_ips = get_sfr_instance_ips(sfr)
     log.debug("IPs in SFR: {0}".format(sfr_ips))
     sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
+    sfr_sorted_slave_ips = [slave_pid_to_ip(slave['pid']) for slave in sfr_sorted_slaves]
+    sfr_instance_descriptions = describe_instances([], instance_filters=[{'Name': 'private-ip-address',
+                                                                          'Values': sfr_sorted_slave_ips}])
     sfr_sorted_slave_instances = []
     for slave in sfr_sorted_slaves:
         ip = slave_pid_to_ip(slave['pid'])
+        instances = get_instances_from_ip(ip, sfr_instance_descriptions)
+        if not instances:
+            log.warning("Couldn't find instance for ip {0}".format(ip))
+            continue
+        if len(instances) > 1:
+            log.error("Found more than one instance with the same private IP {0}. "
+                      "This should never happen")
+            continue
         sfr_sorted_slave_instances.append({'ip': ip,
                                            'pid': slave['pid'],
-                                           'instance_id': get_instance_id_from_ip(ip)})
+                                           'instance_id': instances[0]['InstanceId']})
     ret = []
-    instance_ids = [slave['instance_id'] for slave in sfr_sorted_slave_instances]
-    instance_descriptions = describe_instances(instance_ids)
     instance_type_weights = get_instance_type_weights(sfr)
     for slave in sfr_sorted_slave_instances:
-        instance_description = [instance_description for instance_description in instance_descriptions
+        instance_description = [instance_description for instance_description in sfr_instance_descriptions
                                 if instance_description['InstanceId'] == slave['instance_id']][0]
         slave['instance_type'] = instance_description['InstanceType']
         slave['instance_weight'] = instance_type_weights[slave['instance_type']]
@@ -775,19 +788,14 @@ class ClusterAutoscalingError(Exception):
     pass
 
 
-def get_instance_id_from_ip(ip):
-    """Get AWS instance ID from private IP
+def get_instances_from_ip(ip, instance_descriptions):
+    """Filter AWS instance_descriptions based on PrivateIpAddress
 
-    :param ip: private IP of AWS instance
-    :returns: Instance ID"""
-    ec2_client = boto3.client('ec2')
-    instances = ec2_client.describe_instances(Filters=[{'Name': 'private-ip-address', 'Values': [ip]}])
-    try:
-        instance_id = instances['Reservations'][0]['Instances'][0]['InstanceId']
-    except IndexError:
-        log.error('Cannot find instance from IP: {0}'.format(ip))
-        return None
-    return instance_id
+    :param ip: private IP of AWS instance.
+    :param instance_descriptions: list of AWS instance description dicts.
+    :returns: list of instance description dicts"""
+    instances = [instance for instance in instance_descriptions if instance['PrivateIpAddress'] == ip]
+    return instances
 
 
 def autoscale_local_cluster(dry_run=False):
