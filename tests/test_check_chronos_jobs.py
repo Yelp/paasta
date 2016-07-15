@@ -20,7 +20,8 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
     ) == {
         'alert_after': '2m',
         'check_every': '1m',
-        'runbook': 'myrunbook'
+        'runbook': 'myrunbook',
+        'realert_every': -1
     }
 
 
@@ -36,7 +37,42 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
     ) == {
         'alert_after': '10m',
         'check_every': '1m',
-        'runbook': 'myrunbook'
+        'runbook': 'myrunbook',
+        'realert_every': -1
+    }
+
+
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.service_configuration_lib.read_service_configuration')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.read_monitoring_config')
+def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mock_read_service_config):
+    mock_read_monitoring.return_value = {'runbook': 'myrunbook'}
+    mock_read_service_config.return_value = {}
+
+    assert check_chronos_jobs.compose_monitoring_overrides_for_service(
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={'realert_every': 5})
+        ),
+        'soa_dir'
+    ) == {
+        'alert_after': '2m',
+        'check_every': '1m',
+        'runbook': 'myrunbook',
+        'realert_every': 5
+    }
+
+    mock_read_monitoring.return_value = {'runbook': 'myrunbook', 'realert_every': 10}
+    assert check_chronos_jobs.compose_monitoring_overrides_for_service(
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={})
+        ),
+        'soa_dir'
+    ) == {
+        'alert_after': '2m',
+        'check_every': '1m',
+        'runbook': 'myrunbook',
+        'realert_every': 10
     }
 
 
