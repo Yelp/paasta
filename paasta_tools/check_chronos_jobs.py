@@ -7,8 +7,12 @@ a CRITICAL event to sensu.
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
 import argparse
+import sys
+from socket import error as socket_error
 
+import chronos
 import pysensu_yelp
+from httplib2 import ServerNotFoundError
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -178,34 +182,39 @@ def main():
 
     configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir=soa_dir)
 
-    service_job_mapping = build_service_job_mapping(client, configured_jobs)
-    for service_instance, job_state_pairs in service_job_mapping.items():
-        service, instance = service_instance[0], service_instance[1]
-        chronos_job_config = load_chronos_job_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-        )
-        sensu_output, sensu_status = sensu_message_status_for_jobs(
-            chronos_job_config=chronos_job_config,
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            job_state_pairs=job_state_pairs
-        )
-        monitoring_overrides = compose_monitoring_overrides_for_service(
-            chronos_job_config=chronos_job_config,
-            soa_dir=soa_dir
-        )
-        send_event(
-            service=service,
-            instance=instance,
-            monitoring_overrides=monitoring_overrides,
-            status_code=sensu_status,
-            message=sensu_output,
-            soa_dir=soa_dir,
-        )
+    try:
+        service_job_mapping = build_service_job_mapping(client, configured_jobs)
+
+        for service_instance, job_state_pairs in service_job_mapping.items():
+            service, instance = service_instance[0], service_instance[1]
+            chronos_job_config = load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            sensu_output, sensu_status = sensu_message_status_for_jobs(
+                chronos_job_config=chronos_job_config,
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_state_pairs=job_state_pairs
+            )
+            monitoring_overrides = compose_monitoring_overrides_for_service(
+                chronos_job_config=chronos_job_config,
+                soa_dir=soa_dir
+            )
+            send_event(
+                service=service,
+                instance=instance,
+                monitoring_overrides=monitoring_overrides,
+                status_code=sensu_status,
+                message=sensu_output,
+                soa_dir=soa_dir,
+            )
+    except (ServerNotFoundError, chronos.ChronosAPIError, socket_error) as e:
+        print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
+        sys.exit(2)
 
 
 if __name__ == '__main__':
