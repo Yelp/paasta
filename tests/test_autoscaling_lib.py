@@ -701,24 +701,14 @@ def test_autoscale_local_cluster():
                                        6, 2, ['a_slave', 'another_slave'], False)
 
 
-def test_get_instance_id_from_ip():
-    with contextlib.nested(
-        mock.patch('boto3.client', autospec=True),
-    ) as (
-        mock_ec2_client,
-    ):
-        mock_instance = {'Reservations': [{'Instances': []}]}
-        mock_describe_instances = mock.Mock(return_value=mock_instance)
-        mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
-        ret = autoscaling_lib.get_instance_id_from_ip('10.1.1.1')
-        assert ret is None
+def test_get_instances_from_ip():
+    mock_instances = []
+    ret = autoscaling_lib.get_instances_from_ip('10.1.1.1', mock_instances)
+    assert ret == []
 
-        mock_instance = {'Reservations': [{'Instances': [{'InstanceId': 'i-blah'}]}]}
-        mock_describe_instances = mock.Mock(return_value=mock_instance)
-        mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
-        ret = autoscaling_lib.get_instance_id_from_ip('10.1.1.1')
-        mock_describe_instances.assert_called_with(Filters=[{'Name': 'private-ip-address', 'Values': ['10.1.1.1']}])
-        assert ret == 'i-blah'
+    mock_instances = [{'InstanceId': 'i-blah', 'PrivateIpAddress': '10.1.1.1'}]
+    ret = autoscaling_lib.get_instances_from_ip('10.1.1.1', mock_instances)
+    assert ret == mock_instances
 
 
 def test_wait_and_terminate():
@@ -815,20 +805,21 @@ def test_filter_sfr_slaves():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.get_sfr_instance_ips', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.slave_pid_to_ip'),
-        mock.patch('paasta_tools.autoscaling_lib.get_instance_id_from_ip'),
+        mock.patch('paasta_tools.autoscaling_lib.get_instances_from_ip'),
         mock.patch('paasta_tools.autoscaling_lib.describe_instances', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_instance_type_weights', autospec=True),
     ) as (
         mock_get_sfr_instance_ips,
         mock_pid_to_ip,
-        mock_get_instance_id,
+        mock_get_instances_from_ip,
         mock_describe_instances,
         mock_get_instance_type_weights
     ):
         mock_sfr = mock.Mock()
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
-        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3', '10.1.1.1', '10.3.3.3']
-        mock_get_instance_id.side_effect = ['i-1', 'i-3']
+        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3',
+                                      '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3']
+        mock_get_instances_from_ip.side_effect = [[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]]
         mock_instances = [{'InstanceId': 'i-1',
                            'InstanceType': 'c4.blah'},
                           {'InstanceId': 'i-2',
@@ -839,8 +830,8 @@ def test_filter_sfr_slaves():
         mock_sfr_sorted_slaves = [{'pid': 'slave(1)@10.1.1.1:5051'},
                                   {'pid': 'slave(2)@10.2.2.2:5051'},
                                   {'pid': 'slave(3)@10.3.3.3:5051'}]
-        mock_get_instance_call_1 = mock.call('10.1.1.1')
-        mock_get_instance_call_3 = mock.call('10.3.3.3')
+        mock_get_instance_call_1 = mock.call('10.1.1.1', mock_instances)
+        mock_get_instance_call_3 = mock.call('10.3.3.3', mock_instances)
         mock_get_ip_call_1 = mock.call('slave(1)@10.1.1.1:5051')
         mock_get_ip_call_2 = mock.call('slave(2)@10.2.2.2:5051')
         mock_get_ip_call_3 = mock.call('slave(3)@10.3.3.3:5051')
@@ -849,8 +840,9 @@ def test_filter_sfr_slaves():
         mock_get_sfr_instance_ips.assert_called_with(mock_sfr)
         mock_pid_to_ip.assert_has_calls([mock_get_ip_call_1, mock_get_ip_call_2, mock_get_ip_call_3,
                                          mock_get_ip_call_1, mock_get_ip_call_3])
-        mock_get_instance_id.assert_has_calls([mock_get_instance_call_1, mock_get_instance_call_3])
-        mock_describe_instances.assert_called_with(['i-1', 'i-3'])
+        mock_get_instances_from_ip.assert_has_calls([mock_get_instance_call_1, mock_get_instance_call_3])
+        mock_describe_instances.assert_called_with([], instance_filters=[{'Values': ['10.1.1.1', '10.3.3.3'],
+                                                                          'Name': 'private-ip-address'}])
         mock_get_instance_type_weights.assert_called_with(mock_sfr)
         expected = [{'pid': 'slave(1)@10.1.1.1:5051',
                      'instance_id': 'i-1',
@@ -913,9 +905,12 @@ def test_describe_instance():
         mock_instances = {'Reservations': [{'Instances': [mock_instance_1]}, {'Instances': [mock_instance_2]}]}
         mock_describe_instances = mock.Mock(return_value=mock_instances)
         mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
-        ret = autoscaling_lib.describe_instances(['i-1', 'i-2'])
-        mock_describe_instances.assert_called_with(InstanceIds=['i-1', 'i-2'])
+        ret = autoscaling_lib.describe_instances(['i-1', 'i-2'], instance_filters=['filter1'])
+        mock_describe_instances.assert_called_with(InstanceIds=['i-1', 'i-2'], Filters=['filter1'])
         assert ret == [mock_instance_1, mock_instance_2]
+
+        ret = autoscaling_lib.describe_instances(['i-1', 'i-2'])
+        mock_describe_instances.assert_called_with(InstanceIds=['i-1', 'i-2'], Filters=[])
 
         mock_error = {'Error': {'Code': 'InvalidInstanceID.NotFound'}}
         mock_describe_instances.side_effect = ClientError(mock_error, 'blah')
