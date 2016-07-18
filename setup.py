@@ -40,6 +40,7 @@ setup(
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
+        'ephemeral-port-reserve >= 1.0.1',
         'humanize >= 0.5.1',
         'httplib2 >= 0.9,<= 1.0',
         'isodate >= 0.5.0',

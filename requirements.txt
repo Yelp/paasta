@@ -10,6 +10,7 @@ chronos-python==0.35.0
 cookiecutter==1.4.0
 docker-py==1.2.3
 dulwich==0.10.0
+ephemeral-port-reserve==1.0.1
 future>=0.15.2
 futures==3.0.1
 httplib2==0.9
