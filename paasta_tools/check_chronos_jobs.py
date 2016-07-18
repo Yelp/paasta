@@ -36,6 +36,8 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+    monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
+        monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
     return monitoring_overrides
 
 

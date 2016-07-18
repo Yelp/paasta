@@ -99,6 +99,7 @@ def monitoring_defaults(key):
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
         'ticket': False,
         'project': None,
+        'realert_every': -1
     }
     return defaults.get(key, None)
 
@@ -173,7 +174,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'page': get_page(overrides, service, soa_dir),
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
-        'realert_every': -1,
+        'realert_every': overrides.get('realert_every', monitoring_defaults('realert_every')),
         'source': 'paasta-%s' % system_paasta_config.get_cluster(),
         'ttl': ttl,
     }
