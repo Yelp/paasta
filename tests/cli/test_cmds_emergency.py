@@ -45,14 +45,13 @@ def test_emergency_start(mock_service_name, mock_execute, mock_load_config):
 @patch('paasta_tools.cli.cmds.emergency_stop.figure_out_service_name', return_value='fake_service')
 def test_emergency_stop(mock_service_name, mock_execute, mock_load_config):
     args = Mock()
-    args.service = 'fake_service'
     args.soa_dir = 'fakesoadir/'
     args.appid = 'fakeappid'
     emergency_stop.paasta_emergency_stop(args)
     mock_execute.assert_called_with(
         subcommand='stop',
         cluster=args.cluster,
-        service=args.service,
+        service='fake_service',
         instances=args.instance,
         system_paasta_config={},
         app_id=args.appid

@@ -88,7 +88,7 @@ def paasta_emergency_stop(args):
     output = execute_paasta_serviceinit_on_remote_master(
         subcommand='stop',
         cluster=args.cluster,
-        service=args.service,
+        service=service,
         instances=args.instance,
         system_paasta_config=system_paasta_config,
         app_id=args.appid
