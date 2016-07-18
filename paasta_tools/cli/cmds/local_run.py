@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import functools
 import json
 import os
 import pipes
@@ -24,6 +25,7 @@ from os import execlp
 from random import randint
 from urlparse import urlparse
 
+import ephemeral_port_reserve
 import requests
 from docker import errors
 
@@ -57,34 +59,7 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
-def pick_random_port():
-    """Bind to an ephemeral port, force it into the TIME_WAIT state, and
-    unbind it.
-
-    This means that further ephemeral port alloctions won't pick this
-    "reserved" port, but subprocesses can still bind to it explicitly, given
-    that they use SO_REUSEADDR.
-
-    By default on linux you have a grace period of 60 seconds to reuse this
-    port.
-
-    To check your own particular value:
-    $ cat /proc/sys/net/ipv4/tcp_fin_timeout
-    60
-    """
-    s = socket.socket()
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', 0))
-    s.listen(0)
-
-    sockname = s.getsockname()
-
-    # these three are necessary just to get the port into a TIME_WAIT state
-    s2 = socket.socket()
-    s2.connect(sockname)
-    s.accept()
-
-    return sockname[1]
+pick_random_port = functools.partial(ephemeral_port_reserve.reserve, '0.0.0.0')
 
 
 def perform_http_healthcheck(url, timeout):
