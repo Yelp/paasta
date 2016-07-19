@@ -22,6 +22,7 @@ usr/share/python/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/list_chronos_
 usr/share/python/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/paasta_list_chronos_jobs
 usr/share/python/paasta-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 usr/share/python/paasta-tools/bin/paasta usr/bin/paasta
+usr/share/python/paasta-tools/bin/paasta-api usr/bin/paasta-api
 usr/share/python/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 usr/share/python/paasta-tools/bin/paasta_maintenance.py usr/bin/paasta_maintenance
 usr/share/python/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus

@@ -68,6 +68,11 @@ def parse_args():
     return args
 
 
+def get_deployment_version(actual_deployments, cluster, instance):
+    key = '.'.join((cluster, instance))
+    return actual_deployments[key][:8] if key in actual_deployments else None
+
+
 def main():
     args = parse_args()
     if args.debug:
@@ -99,7 +104,7 @@ def main():
         # For an instance, there might be multiple versions running, e.g. in crossover bouncing.
         # In addition, mesos master does not have information of a chronos service's git hash.
         # The git sha in deployment.json is simply used here.
-        version = actual_deployments['.'.join((cluster, instance))][:8]
+        version = get_deployment_version(actual_deployments, cluster, instance)
         print 'instance: %s' % PaastaColors.blue(instance)
         print 'Git sha:    %s (desired)' % version
 
