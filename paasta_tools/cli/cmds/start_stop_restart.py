@@ -123,30 +123,33 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
         service_config=service_config,
         desired_state=desired_state,
     )
-    if isinstance(service_config, MarathonServiceConfig):
-        if desired_state == 'start':
-            extra_message = (
-                "A 'start' command will signal to Marathon that the service should have the normal "
-                "instance count. A restart will cause new tasks to replace the old ones gracefully."
-            )
-        elif desired_state == 'stop':
-            extra_message = (
-                "A 'stop' command will signal to Marathon that the service should be in Marathon, "
-                "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
-                "make the service start back up."
-            )
-    elif isinstance(service_config, ChronosJobConfig):
-        if desired_state == 'start':
-            extra_message = (
-                "'Start' will tell Chronos to start scheduling the job. "
-                "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
-            )
-        elif desired_state == 'stop':
-            extra_message = (
-                "'Stop' for a Chronos job will cause the job to be disabled until the "
-                "next deploy or a 'start' command is issued."
-            )
-    print extra_message
+
+
+def print_marathon_message(desired_state):
+    if desired_state == "start":
+        print(
+            "A 'start' command will signal to Marathon that the service should have the normal "
+            "instance count. A restart will cause new tasks to replace the old ones gracefully."
+        )
+    elif desired_state == "stop":
+        print(
+            "A 'stop' command will signal to Marathon that the service should be in Marathon, "
+            "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
+            "make the service start back up."
+        )
+
+
+def print_chronos_message(desired_state):
+    if desired_state == "start":
+        print(
+            "'Start' will tell Chronos to start scheduling the job. "
+            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
+        )
+    elif desired_state == "stop":
+        print(
+            "'Stop' for a Chronos job will cause the job to be disabled until the "
+            "next deploy or a 'start' command is issued."
+        )
 
 
 def paasta_start_or_stop(args, desired_state):
@@ -178,6 +181,7 @@ def paasta_start_or_stop(args, desired_state):
         return 1
 
     invalid_deploy_groups = []
+    marathon_message_printed, chronos_message_printed = False, False
     for cluster in clusters:
         # If they haven't specified what instances to act on, do it for all of them.
         # If they have specified what instances, only iterate over them if they're
@@ -203,6 +207,13 @@ def paasta_start_or_stop(args, desired_state):
                 invalid_deploy_groups.append(deploy_group)
             else:
                 force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+                if isinstance(service_config, MarathonServiceConfig) and not marathon_message_printed:
+                    print_marathon_message(desired_state)
+                    marathon_message_printed = True
+                elif isinstance(service_config, ChronosJobConfig) and not chronos_message_printed:
+                    print_chronos_message(desired_state)
+                    chronos_message_printed = True
+
                 issue_state_change_for_service(
                     service_config=service_config,
                     force_bounce=force_bounce,
