@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    paasta_tools.api
     paasta_tools.cli
     paasta_tools.monitoring
 
