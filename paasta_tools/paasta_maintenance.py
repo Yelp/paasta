@@ -143,7 +143,11 @@ def schedule():
     """Get the Mesos maintenance schedule. This contains hostname/ip mappings and their maintenance window.
     :returns: None
     """
-    schedule = get_maintenance_schedule()
+    try:
+        schedule = get_maintenance_schedule()
+    except HTTPError as e:
+        e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
+        raise
     print "%s:%s" % (schedule, schedule.text)
 
 
@@ -154,7 +158,11 @@ def get_hosts_with_state(state):
     :param state: State we are interested in ('down_machines' or 'draining_machines')
     :returns: A list of hostnames in the specified state or an empty list if no machines
     """
-    status = get_maintenance_status().json()
+    try:
+        status = get_maintenance_status().json()
+    except HTTPError as e:
+        e.msg = "Error getting maintenance status. Got error: %s" % e.msg
+        raise
     if not status or state not in status:
         return []
     return [machine['id']['hostname'] for machine in status[state]]
@@ -347,7 +355,12 @@ def drain(hostnames, start, duration):
     log.info("Draining: %s" % hostnames)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
-    print client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
+    try:
+        drain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
+    except HTTPError as e:
+        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
+        raise
+    print drain_output
 
 
 def undrain(hostnames):
@@ -358,7 +371,12 @@ def undrain(hostnames):
     """
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
-    print client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
+    try:
+        undrain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
+    except HTTPError as e:
+        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
+        raise
+    print undrain_output
 
 
 def down(hostnames):
@@ -368,7 +386,12 @@ def down(hostnames):
     """
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
-    print client_fn(method="POST", endpoint="/machine/down", data=json.dumps(payload)).text
+    try:
+        down_output = client_fn(method="POST", endpoint="/machine/down", data=json.dumps(payload)).text
+    except HTTPError as e:
+        e.msg = "Error performing maintenance down. Got error: %s" % e.msg
+        raise
+    print down_output
 
 
 def up(hostnames):
@@ -378,7 +401,12 @@ def up(hostnames):
     """
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
-    print client_fn(method="POST", endpoint="/machine/up", data=json.dumps(payload)).text
+    try:
+        up_output = client_fn(method="POST", endpoint="/machine/up", data=json.dumps(payload)).text
+    except HTTPError as e:
+        e.msg = "Error performing maintenance up. Got error: %s" % e.msg
+        raise
+    print up_output
 
 
 def status():
@@ -386,7 +414,11 @@ def status():
     down for maintenance or draining.
     :returns: None
     """
-    status = get_maintenance_status()
+    try:
+        status = get_maintenance_status()
+    except HTTPError as e:
+        e.msg = "Error performing maintenance status. Got error: %s" % e.msg
+        raise
     print "%s:%s" % (status, status.text)
 
 
