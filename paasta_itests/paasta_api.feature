@@ -6,7 +6,7 @@ Feature: paasta_api
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main"
       And we wait for it to be deployed
-     Then instance GET should return app_count "1" and an expected number of running instances for "test-service.main"
+     Then instance GET should return app_count "2" and an expected number of running instances for "test-service.main"
       And instance GET should return error code "404" for "test-service.non-existent"
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2
