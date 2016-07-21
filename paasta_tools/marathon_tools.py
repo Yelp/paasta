@@ -29,6 +29,7 @@ from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
@@ -43,7 +44,6 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
@@ -164,7 +164,7 @@ class InvalidMarathonConfig(Exception):
     pass
 
 
-class MarathonServiceConfig(InstanceConfig):
+class MarathonServiceConfig(LongRunningServiceConfig):
 
     def __init__(self, service, cluster, instance, config_dict, branch_dict):
         super(MarathonServiceConfig, self).__init__(
