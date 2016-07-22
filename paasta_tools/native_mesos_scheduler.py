@@ -111,7 +111,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 remainingMem >= task_mem:
             t = mesos_pb2.TaskInfo()
             t.MergeFrom(base_task)
-            tid = uuid.uuid4().hex
+            tid = "%s.%s" % (t.name, uuid.uuid4().hex)
             t.task_id.value = tid
             self.started.add(tid)
             tasks.append(t)
@@ -150,7 +150,10 @@ class PaastaScheduler(mesos.interface.Scheduler):
             if task_id in self.tasks:
                 self.tasks.pop(task_id)
         driver.acknowledgeStatusUpdate(update)
-        # self.kill_tasks_if_necessary()
+        self.kill_tasks_if_necessary()
+
+    def kill_tasks_if_necessary(self):
+        pass
 
     def load_config(self):
         self.service_config = load_paasta_native_job_config(
