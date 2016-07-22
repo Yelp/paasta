@@ -56,6 +56,7 @@ def create_driver(service, instance, scheduler, system_paasta_config):
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
     framework.name = "paasta %s" % compose_job_id(service, instance)
+    framework.failover_timeout = 604800
     framework.id.value = framework.name
     framework.checkpoint = True
 
