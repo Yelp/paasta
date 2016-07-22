@@ -1,11 +1,10 @@
 import logging
+import uuid
 
 import mesos.interface
-from mesos.interface import mesos_pb2
 import service_configuration_lib
 from mesos.interface import mesos_pb2
 from mesos.native import MesosSchedulerDriver
-import uuid
 
 import paasta_tools.mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -34,12 +33,15 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
         driver.reconcileTasks([])
-        #self.load_config()
-        #print self.service_config
 
     def resourceOffers(self, driver, offers):
         for offer in offers:
-            print self.start_task(driver, offer)
+            tasks = self.start_task(driver, offer)
+            if tasks:
+                operation = mesos_pb2.Offer.Operation()
+                operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                operation.launch.task_infos.extend(tasks)
+                driver.acceptOffers([offer.id], [operation])
         # do something with the rest of the offers
 
     def task_fits(self, offer):
@@ -93,8 +95,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
         mem.scalar.value = TASK_MEM
 
         while len(self.started) + len(self.running) < TOTAL_TASKS and \
-                  remainingCpus >= TASK_CPUS and \
-                  remainingMem >= TASK_MEM:
+                remainingCpus >= TASK_CPUS and \
+                remainingMem >= TASK_MEM:
             t = mesos_pb2.TaskInfo()
             t.MergeFrom(task)
             tid = uuid.uuid4().hex
