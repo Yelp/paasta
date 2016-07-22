@@ -171,7 +171,14 @@ def we_sleep_wait_seconds(context, wait):
 @when(u'we change force_bounce')
 def we_change_the_config(context):
     branch_dict = context.scheduler.service_config.branch_dict
+    context.old_force_bounce = branch_dict['force_bounce']
     branch_dict['force_bounce'] = str(int(branch_dict['force_bounce'] or 0) + 1)
+
+
+@when(u'we change force_bounce back')
+def we_change_force_bounce_back(context):
+    branch_dict = context.scheduler.service_config.branch_dict
+    branch_dict['force_bounce'] = context.old_force_bounce
 
 
 @then(u'it should eventually drain {num} tasks')
@@ -179,12 +186,36 @@ def it_should_drain_num_tasks(context, num):
     num = int(num)
     for _ in xrange(10):
         if len(drain_lib.TestDrainMethod.downed_task_ids) >= num:
+            # set() to make a copy.
+            context.drained_tasks = set(drain_lib.TestDrainMethod.downed_task_ids)
             return
         time.sleep(1)
     else:
         raise Exception("Expected %d tasks to drain before timeout, saw %d" % (
             num,
             len(drain_lib.TestDrainMethod.downed_task_ids)
+        ))
+
+
+@then(u'it should undrain {num_undrain_expected} tasks and drain {num_drain_expected} more')
+def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expected):
+    num_undrain_expected = int(num_undrain_expected)
+    num_drain_expected = int(num_drain_expected)
+
+    for _ in xrange(10):
+        print "currently drained: %r" % drain_lib.TestDrainMethod.downed_task_ids
+        print "drained previously: %r" % context.drained_tasks
+        num_drained = len(drain_lib.TestDrainMethod.downed_task_ids - context.drained_tasks)
+        num_undrained = len(context.drained_tasks - drain_lib.TestDrainMethod.downed_task_ids)
+        if num_drained >= num_drain_expected and num_undrained >= num_undrain_expected:
+            return
+        time.sleep(1)
+    else:
+        raise Exception("Expected %d tasks to drain and %d to undrain, saw %d and %d" % (
+            num_drain_expected,
+            num_undrain_expected,
+            num_drained,
+            num_undrained,
         ))
 
 

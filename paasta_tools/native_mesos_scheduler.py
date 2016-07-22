@@ -168,6 +168,10 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
+        # Undrain any tasks that shouldn't be draining.
+        for task in self.get_new_tasks(base_task.name, self.draining_tasks):
+            self.undrain_task(task)
+
         # Happier things first
         new_running_tasks = list(self.get_new_tasks(base_task.name, self.running_tasks))
         new_started_tasks = list(self.get_new_tasks(base_task.name, self.started_tasks))
@@ -195,6 +199,14 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task in set(self.draining_tasks):
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
                 self.kill_task(driver, task)
+
+    def undrain_task(self, task):
+        self.drain_method.stop_draining(DrainTask(id=task))
+
+        self.stopping_tasks.discard(task)
+        self.draining_tasks.discard(task)
+        self.started_tasks.discard(task)
+        self.running_tasks.add(task)
 
     def drain_task(self, task):
         self.drain_method.drain(DrainTask(id=task))
