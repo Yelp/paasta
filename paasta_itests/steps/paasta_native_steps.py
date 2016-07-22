@@ -8,7 +8,7 @@ from behave import given
 from behave import then
 from behave import when
 
-from paasta_tools.mesos_tools import list_frameworks
+from paasta_tools import mesos_tools
 from paasta_tools.native_mesos_scheduler import create_driver
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import PaastaNativeServiceConfig
@@ -63,7 +63,7 @@ def start_paasta_native_framework(context):
 def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
-    for _ in xrange(10):
+    for _ in xrange(20):
         if len(context.scheduler.running) >= num:
             return
         time.sleep(1)
@@ -109,4 +109,10 @@ def run_native_mesos_scheduler_main(context):
 
 @then(u'there should be a framework registered with id {framework_id}')
 def should_be_framework_with_id(context, framework_id):
-    assert framework_id in list_frameworks()
+    try:
+        del mesos_tools.master.CURRENT._cache
+        print "cleared mesos_tools.master.CURRENT._cache"
+    except AttributeError:
+        pass
+
+    assert framework_id in mesos_tools.list_frameworks()
