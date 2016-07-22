@@ -2,6 +2,7 @@ import argparse
 import binascii
 import logging
 import sys
+import time
 import uuid
 from time import sleep
 
@@ -39,7 +40,7 @@ MESOS_TASK_SPACER = '.'
 
 class PaastaScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster, system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
-                 service_config=None):
+                 service_config=None, reconcile_backoff=30):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
@@ -51,6 +52,9 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.draining_tasks = set()
         self.stopping_tasks = set()
 
+        self.reconcile_start_time = float('inf')  # don't accept resources until we reconcile.
+        self.reconcile_backoff = reconcile_backoff  # wait this long after starting a reconcile before accepting offers.
+
         self.drain_method = drain_lib.TestDrainMethod(service_name, instance_name, instance_name)  # TODO: fix nerve_ns
         self.framework_id = None  # Gets set when registered() is called
         if service_config is not None:
@@ -61,9 +65,17 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
         print "Registered with framework ID %s" % frameworkId.value
+
+        self.reconcile_start_time = time.time()
         driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
+        if self.within_reconcile_backoff():
+            print "Declining all offers since we started reconciliation too recently"
+            for offer in offers:
+                driver.declineOffer(offer.id)
+            return
+
         for offer in offers:
             tasks = self.start_task(driver, offer)
             if tasks:
@@ -135,7 +147,13 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
         return tasks
 
+    def within_reconcile_backoff(self):
+        return time.time() - self.reconcile_backoff < self.reconcile_start_time
+
     def periodic(self, driver):
+        if not self.within_reconcile_backoff():
+            driver.reviveOffers()
+
         self.load_config()
         self.kill_tasks_if_necessary(driver)
 

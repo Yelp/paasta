@@ -43,8 +43,8 @@ def new_paasta_native_config(context, num):
     )
 
 
-@when('we start a paasta_native scheduler')
-def start_paasta_native_framework(context):
+@when('we start a paasta_native scheduler with reconcile_backoff {reconcile_backoff}')
+def start_paasta_native_framework(context, reconcile_backoff):
     clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
     system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
@@ -55,6 +55,7 @@ def start_paasta_native_framework(context):
         cluster=context.cluster,
         system_paasta_config=system_paasta_config,
         service_config=context.new_config,
+        reconcile_backoff=int(reconcile_backoff),
     )
 
     context.driver = create_driver(
@@ -241,3 +242,10 @@ def we_call_periodic(context):
 def we_change_instances_to_num(context, num):
     num = int(num)
     context.scheduler.service_config.config_dict['instances'] = num
+
+
+@then(u'it should not start tasks for {num} seconds')
+def should_not_start_tasks_for_num_seconds(context, num):
+    time.sleep(int(num))
+    assert len(context.scheduler.running_tasks) == 0
+    assert len(context.scheduler.started_tasks) == 0

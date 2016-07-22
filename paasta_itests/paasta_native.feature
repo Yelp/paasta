@@ -2,7 +2,7 @@ Feature: Paasta native mesos framework
   Scenario: we can start a service
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then it should eventually start 3 tasks
 
   Scenario: native_mesos_scheduler.main() works
@@ -19,28 +19,28 @@ Feature: Paasta native mesos framework
   Scenario: reuse same framework ID
     Given a working paasta cluster
       And a new paasta_native config to be deployed, with 1 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then there should be a framework registered with name paasta fake_service.fake_instance
      When we stop that framework without terminating
-      And we start a paasta_native scheduler
+      And we start a paasta_native scheduler with reconcile_backoff 0
      Then there should be a framework registered with name paasta fake_service.fake_instance
       And it should have the same ID as before
 
   Scenario: new framework ID after termination
     Given a working paasta cluster
       And a new paasta_native config to be deployed, with 1 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then there should be a framework registered with name paasta fake_service.fake_instance
      When we terminate that framework
      Then there should not be a framework registered with name paasta fake_service.fake_instance
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then there should be a framework registered with name paasta fake_service.fake_instance
       And it should have a different ID than before
 
   Scenario: native_mesos_scheduler bounces when config changes
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then it should eventually start 3 tasks
      When we change force_bounce
      Then it should eventually start 6 tasks
@@ -59,7 +59,7 @@ Feature: Paasta native mesos framework
   Scenario: native_mesos_scheduler scales down when instances decreases
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then it should eventually start 3 tasks
      When we change instances to 2
       And we call periodic
@@ -71,7 +71,7 @@ Feature: Paasta native mesos framework
   Scenario: native_mesos_scheduler undrains when rolling back
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances
-     When we start a paasta_native scheduler
+     When we start a paasta_native scheduler with reconcile_backoff 0
      Then it should eventually start 3 tasks
      When we change force_bounce
      Then it should eventually start 6 tasks
@@ -79,3 +79,11 @@ Feature: Paasta native mesos framework
      When we change force_bounce back
       And we call periodic
      Then it should undrain 3 tasks and drain 3 more
+
+  @wip
+  Scenario: native_mesos_scheduler waits for task reconciliation before accepting offers
+    Given a working paasta cluster, with docker registry docker.io
+      And a new paasta_native config to be deployed, with 3 instances
+     When we start a paasta_native scheduler with reconcile_backoff 10
+     Then it should not start tasks for 9 seconds
+      And it should eventually start 3 tasks
