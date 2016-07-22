@@ -1,4 +1,5 @@
 import logging
+import uuid
 from time import sleep
 
 import mesos.interface
@@ -29,7 +30,9 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
-        self.tasks = []
+        self.tasks = {}
+        self.running = set()
+        self.started = set()
         if service_config is not None:
             self.service_config = service_config
         else:
@@ -37,11 +40,16 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
+        driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
         for offer in offers:
-            while self.task_fits(offer) and self.need_more_tasks():
-                self.start_task(driver, offer)
+            tasks = self.start_task(driver, offer)
+            if tasks:
+                operation = mesos_pb2.Offer.Operation()
+                operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                operation.launch.task_infos.extend(tasks)
+                driver.acceptOffers([offer.id], [operation])
         # do something with the rest of the offers
 
     def task_fits(self, offer):
@@ -66,7 +74,51 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def start_task(self, driver, offer):
         """Starts a task using the offer, and subtracts any resources used from the offer."""
-        pass
+        tasks = []
+        offerCpus = 0
+        offerMem = 0
+        for resource in offer.resources:
+            if resource.name == "cpus":
+                offerCpus += resource.scalar.value
+            elif resource.name == "mem":
+                offerMem += resource.scalar.value
+        remainingCpus = offerCpus
+        remainingMem = offerMem
+        task = mesos_pb2.TaskInfo()
+        task.container.type = mesos_pb2.ContainerInfo.DOCKER
+        task.container.docker.image = self.service_config.get_docker_image()
+        task.slave_id.value = offer.slave_id.value
+        task.name = self.service_config.get_service()
+        task.command.value = self.service_config.get_cmd()
+        TOTAL_TASKS = self.service_config.config_dict['instances']
+        TASK_CPUS = self.service_config.get_cpus()
+        TASK_MEM = self.service_config.get_mem()
+        cpus = task.resources.add()
+        cpus.name = "cpus"
+        cpus.type = mesos_pb2.Value.SCALAR
+        cpus.scalar.value = TASK_CPUS
+        mem = task.resources.add()
+        mem.name = "mem"
+        mem.type = mesos_pb2.Value.SCALAR
+        mem.scalar.value = TASK_MEM
+
+        while len(self.started) + len(self.running) < TOTAL_TASKS and \
+                remainingCpus >= TASK_CPUS and \
+                remainingMem >= TASK_MEM:
+            t = mesos_pb2.TaskInfo()
+            t.MergeFrom(task)
+            tid = uuid.uuid4().hex
+            t.task_id.value = tid
+            self.started.add(tid)
+            tasks.append(t)
+            self.tasks[tid] = (
+                offer.slave_id, task.executor.executor_id)
+            self.started.add(tid)
+
+            remainingCpus -= TASK_CPUS
+            remainingMem -= TASK_MEM
+
+        return tasks
 
     def periodic(self, driver):
         self.load_config()
