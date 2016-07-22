@@ -2,8 +2,12 @@ import logging
 
 import mesos.interface
 import service_configuration_lib
+from mesos.interface import mesos_pb2
+from mesos.native import MesosSchedulerDriver
 
+import paasta_tools.mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
@@ -12,12 +16,13 @@ log = logging.getLogger(__name__)
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
-    def __init__(self, service_name, instance_name, cluster):
+    def __init__(self, service_name, instance_name, cluster, config=None):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
         self.tasks = []
-        self.load_config()
+        if not config:
+            self.load_config()
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
@@ -32,8 +37,9 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.load_config()
         self.kill_tasks_if_necessary()
 
-    def statusUpdate(self, driver, status):
+    def statusUpdate(self, driver, update):
         # update tasks
+        driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary()
 
     def load_config(self):
@@ -42,6 +48,29 @@ class PaastaScheduler(mesos.interface.Scheduler):
             instance=self.instance_name,
             cluster=self.cluster,
         )
+
+
+def create_driver(service, instance, scheduler, system_paasta_config):
+    framework = mesos_pb2.FrameworkInfo()
+    framework.user = ""  # Have Mesos fill in the current user.
+    framework.name = "paasta %s" % compose_job_id(service, instance)
+    framework.checkpoint = True
+
+    credential = mesos_pb2.Credential()
+    credential.principal = system_paasta_config.get_paasta_native_config()['principal']
+    credential.secret = system_paasta_config.get_paasta_native_config()['secret']
+
+    framework.principal = system_paasta_config.get_paasta_native_config()['principal']
+    implicitAcknowledgements = False
+
+    driver = MesosSchedulerDriver(
+        scheduler,
+        framework,
+        paasta_tools.mesos_tools.get_mesos_leader(),
+        implicitAcknowledgements,
+        credential
+    )
+    return driver
 
 
 class UnknownPaastaNativeServiceError(Exception):

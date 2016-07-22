@@ -148,6 +148,12 @@ def working_paasta_cluster(context):
             {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
         ]
     }, 'volumes.json')
+    write_etc_paasta(context, {
+        'paasta_native': {
+            'principal': 'paasta_native',
+            'secret': 'secret4',
+        }
+    }, 'paasta_native.json')
 
 
 @given(u'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')

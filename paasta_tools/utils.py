@@ -925,6 +925,12 @@ class SystemPaastaConfig(dict):
         except KeyError:
             return {}
 
+    def get_paasta_native_config(self):
+        try:
+            return self['paasta_native']
+        except KeyError:
+            return {}
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
