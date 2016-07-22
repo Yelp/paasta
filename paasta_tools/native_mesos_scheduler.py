@@ -1,10 +1,17 @@
 import logging
 import uuid
+from time import sleep
 
 import mesos.interface
 import service_configuration_lib
 from mesos.interface import mesos_pb2
-from mesos.native import MesosSchedulerDriver
+try:
+    from mesos.native import MesosSchedulerDriver
+except ImportError:
+    # mesos.native is tricky to install - it's not available on pypi. When building the dh-virtualenv or running itests,
+    # we hack together a wheel from the mesos.native module installed by the mesos debian package.
+    # This try/except allows us to unit-test this module.
+    pass
 
 import paasta_tools.mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -12,6 +19,8 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import get_services_for_cluster
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +36,6 @@ class PaastaScheduler(mesos.interface.Scheduler):
         if service_config is not None:
             self.service_config = service_config
         else:
-            raise Exception(repr(service_config))
             self.load_config()
 
     def registered(self, driver, frameworkId, masterInfo):
@@ -179,7 +187,7 @@ class UnknownPaastaNativeServiceError(Exception):
 
 def read_paasta_native_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     paasta_native_conf_file = 'paasta_native-%s' % cluster
-    log.info("Reading Chronos configuration file: %s/%s/paasta_native-%s.yaml" % (soa_dir, service, cluster))
+    log.info("Reading paasta_native configuration file: %s/%s/paasta_native-%s.yaml" % (soa_dir, service, cluster))
 
     return service_configuration_lib.read_extra_service_information(
         service,
@@ -217,3 +225,35 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+
+def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """A paasta_native-specific wrapper around utils.get_services_for_cluster
+
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (service, job_name)"""
+    return get_services_for_cluster(cluster, 'paasta_native', soa_dir)
+
+
+def main():
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+
+    drivers = []
+    for service, instance in get_paasta_native_jobs_for_cluster(cluster=cluster):
+        scheduler = PaastaScheduler(
+            service_name=service,
+            instance_name=instance,
+            cluster=cluster
+        )
+        driver = create_driver(
+            service=service,
+            instance=instance,
+            scheduler=scheduler,
+            system_paasta_config=system_paasta_config(),
+        )
+        driver.start()
+        driver.append(drivers)
+
+    sleep(300)

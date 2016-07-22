@@ -77,6 +77,8 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native')
+
 
 class InvalidInstanceConfig(Exception):
     pass
@@ -345,12 +347,10 @@ class InstanceConfig(dict):
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
-    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)
-    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
-    if (service, instance) in marathon_services:
-        return 'marathon'
-    elif (service, instance) in chronos_services:
-        return 'chronos'
+    for instance_type in INSTANCE_TYPES:
+        services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
+        if (service, instance) in services:
+            return instance_type
     else:
         print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
                % (compose_job_id(service, instance), cluster))
@@ -1165,10 +1165,10 @@ def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance
         service = '*'
     service_path = os.path.join(soa_dir, service)
 
-    if instance_type == 'marathon' or instance_type == 'chronos':
+    if instance_type in INSTANCE_TYPES:
         instance_types = instance_type
     else:
-        instance_types = 'marathon|chronos'
+        instance_types = '|'.join(INSTANCE_TYPES)
 
     search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
 
@@ -1219,10 +1219,10 @@ def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir
     """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    if instance_type == 'marathon' or instance_type == 'chronos':
+    if instance_type in INSTANCE_TYPES:
         instance_types = [instance_type]
     else:
-        instance_types = ['marathon', 'chronos']
+        instance_types = INSTANCE_TYPES
 
     instance_list = []
     for srv_instance_type in instance_types:
