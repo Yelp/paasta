@@ -24,7 +24,7 @@ def new_paasta_native_config(context, num):
             "cpus": 0.1,
             "mem": 100,
             "instances": int(num),
-            "cmd": '/bin/true',
+            "cmd": 'sleep 50',
         },
         branch_dict={
             'docker_image': 'busybox',
@@ -58,7 +58,7 @@ def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(60):
-        if len(context.scheduler.tasks) >= num:
+        if len(context.scheduler.running) >= num:
             return
         time.sleep(1)
 
