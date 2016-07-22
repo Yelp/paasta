@@ -130,18 +130,18 @@ class PaastaScheduler(mesos.interface.Scheduler):
         state = update.state
         print "Task %s is in state %s" % \
             (task_id, mesos_pb2.TaskState.Name(state))
-        if task_id in self.tasks:
-            if state == mesos_pb2.TASK_RUNNING and task_id in self.started:
+        if state == mesos_pb2.TASK_RUNNING and task_id in self.started:
+            self.started.remove(task_id)
+            self.running.add(task_id)
+        if state == mesos_pb2.TASK_LOST or \
+                state == mesos_pb2.TASK_KILLED or \
+                state == mesos_pb2.TASK_FAILED or \
+                state == mesos_pb2.TASK_FINISHED:
+            if task_id in self.started:
                 self.started.remove(task_id)
-                self.running.add(task_id)
-            if state == mesos_pb2.TASK_LOST or \
-                    state == mesos_pb2.TASK_KILLED or \
-                    state == mesos_pb2.TASK_FAILED or \
-                    state == mesos_pb2.TASK_FINISHED:
-                if task_id in self.started:
-                    self.started.remove(task_id)
-                if task_id in self.running:
-                    self.running.remove(update.task_id.value)
+            if task_id in self.running:
+                self.running.remove(update.task_id.value)
+            if task_id in self.tasks:
                 self.tasks.remove(task_id)
         driver.acknowledgeStatusUpdate(update)
         # self.kill_tasks_if_necessary()
