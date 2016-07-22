@@ -25,7 +25,11 @@ def new_paasta_native_config(context, num):
             "mem": 100,
             "instances": int(num),
         },
-        branch_dict={},
+        branch_dict={
+            'docker_image': 'busybox',
+            'desired_state': 'start',
+            'force_bounce': None,
+        },
     )
 
 
