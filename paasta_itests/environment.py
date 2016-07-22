@@ -15,6 +15,7 @@ import os
 import shutil
 import time
 
+import requests
 import requests_cache
 from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
@@ -112,9 +113,12 @@ def _clean_up_zookeeper_autoscaling(context):
 
 
 def _clean_up_paasta_native_frameworks(context):
-    for framework in mesos_tools.list_framework_ids(active_only=True):
-        if framework.startswith('paasta '):
-            mesos_tools.terminate_framework(framework)
+    for framework in mesos_tools.get_all_frameworks(active_only=True):
+        if framework.name.startswith('paasta '):
+            try:
+                mesos_tools.terminate_framework(framework.id)
+            except requests.exceptions.HTTPError as e:
+                print "Got exception when terminating framework %s: %s" % (framework.id, e)
 
 
 def after_scenario(context, scenario):

@@ -42,6 +42,7 @@ def new_paasta_native_config(context, num):
 
 @when('we start a paasta_native scheduler')
 def start_paasta_native_framework(context):
+    clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
     system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
 
@@ -61,6 +62,17 @@ def start_paasta_native_framework(context):
     )
 
     context.driver.start()
+
+    if not hasattr(context, 'framework_ids'):
+        context.framework_ids = []
+
+    for _ in xrange(10):
+        if context.scheduler.framework_id:
+            context.framework_ids.append(context.scheduler.framework_id)
+            break
+        time.sleep(1)
+    else:
+        raise Exception("Expected scheduler to successfully register before timeout")
 
 
 @then('it should eventually start {num} tasks')
@@ -111,12 +123,51 @@ def run_native_mesos_scheduler_main(context):
     main(['--soa-dir', context.soa_dir, '--stay-alive-seconds', '10'])
 
 
-@then(u'there should be a framework registered with id {framework_id}')
-def should_be_framework_with_id(context, framework_id):
+@then(u'there should be a framework registered with name {name}')
+def should_be_framework_with_id(context, name):
+    clear_mesos_tools_cache()
+    assert name in [f.name for f in mesos_tools.get_all_frameworks(active_only=True)]
+
+
+@then(u'there should not be a framework registered with name {name}')
+def should_not_be_framework_with_name(context, name):
+    clear_mesos_tools_cache()
+    assert name not in [f.name for f in mesos_tools.get_all_frameworks(active_only=True)]
+
+
+@when(u'we terminate that framework')
+def terminate_that_framework(context):
+    try:
+        print "terminating framework %s" % context.scheduler.framework_id
+        mesos_tools.terminate_framework(context.scheduler.framework_id)
+    except Exception as e:
+        raise Exception(e.response.text)
+
+
+@when(u'we stop that framework without terminating')
+def stop_that_framework(context):
+    context.driver.stop(True)
+    context.driver.join()
+
+
+@then(u'it should have the same ID as before')
+def should_have_same_id(context):
+    assert context.framework_ids[-2] == context.framework_ids[-1]
+
+
+@then(u'it should have a different ID than before')
+def should_have_different_id(context):
+    assert context.framework_ids[-2] != context.framework_ids[-1]
+
+
+@when(u'we sleep {wait} seconds')
+def we_sleep_wait_seconds(context, wait):
+    time.sleep(int(wait))
+
+
+def clear_mesos_tools_cache():
     try:
         del mesos_tools.master.CURRENT._cache
         print "cleared mesos_tools.master.CURRENT._cache"
     except AttributeError:
         pass
-
-    assert framework_id in mesos_tools.list_framework_ids(active_only=True)

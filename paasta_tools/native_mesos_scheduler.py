@@ -16,7 +16,7 @@ except ImportError:
     # This try/except allows us to unit-test this module.
     pass
 
-import paasta_tools.mesos_tools
+from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -46,12 +46,14 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.tasks = {}
         self.running = set()
         self.started = set()
+        self.framework_id = None  # Gets set when registered() is called
         if service_config is not None:
             self.service_config = service_config
         else:
             self.load_config()
 
     def registered(self, driver, frameworkId, masterInfo):
+        self.framework_id = frameworkId.value
         print "Registered with framework ID %s" % frameworkId.value
         driver.reconcileTasks([])
 
@@ -159,12 +161,20 @@ class PaastaScheduler(mesos.interface.Scheduler):
         )
 
 
+def find_existing_id_if_exists_or_gen_new(name):
+    for framework in mesos_tools.get_all_frameworks(active_only=True):
+        if framework.name == name:
+            return framework.id
+    else:
+        return uuid.uuid4().hex
+
+
 def create_driver(service, instance, scheduler, system_paasta_config):
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
     framework.name = "paasta %s" % compose_job_id(service, instance)
     framework.failover_timeout = 604800
-    framework.id.value = framework.name
+    framework.id.value = find_existing_id_if_exists_or_gen_new(framework.name)
     framework.checkpoint = True
 
     credential = mesos_pb2.Credential()
@@ -177,7 +187,7 @@ def create_driver(service, instance, scheduler, system_paasta_config):
     driver = MesosSchedulerDriver(
         scheduler,
         framework,
-        '%s:%d' % (paasta_tools.mesos_tools.get_mesos_leader(), paasta_tools.mesos_tools.MESOS_MASTER_PORT),
+        '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT),
         implicitAcknowledgements,
         credential
     )
