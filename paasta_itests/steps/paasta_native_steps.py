@@ -28,7 +28,7 @@ def new_paasta_native_config(context, num):
         service=context.service,
         config_dict={
             "cpus": 0.1,
-            "mem": 100,
+            "mem": 50,
             "instances": int(num),
             "cmd": 'sleep 50',
         },
@@ -171,3 +171,9 @@ def clear_mesos_tools_cache():
         print "cleared mesos_tools.master.CURRENT._cache"
     except AttributeError:
         pass
+
+
+@when(u'we change the config')
+def we_change_the_config(context):
+    branch_dict = context.scheduler.service_config.branch_dict
+    branch_dict['force_bounce'] = str(int(branch_dict['force_bounce'] or 0) + 1)

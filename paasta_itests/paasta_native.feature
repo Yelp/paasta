@@ -36,3 +36,11 @@ Feature: Paasta native mesos framework
      When we start a paasta_native scheduler
      Then there should be a framework registered with name paasta fake_service.fake_instance
       And it should have a different ID than before
+
+  Scenario: native_mesos_scheduler starts new tasks when config changes
+    Given a working paasta cluster, with docker registry docker.io
+      And a new paasta_native config to be deployed, with 3 instances
+     When we start a paasta_native scheduler
+     Then it should eventually start 3 tasks
+     When we change the config
+     Then it should eventually start 6 tasks

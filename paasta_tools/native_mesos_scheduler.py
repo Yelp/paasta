@@ -83,9 +83,11 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
         return True
 
-    def need_more_tasks(self):
+    def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
-        return len(self.tasks) < self.service_config.get_instances()
+        started_current = [tid for tid in self.started if tid.startswith("%s." % name)]
+        running_current = [tid for tid in self.running if tid.startswith("%s." % name)]
+        return len(started_current) + len(running_current) < self.service_config.config_dict['instances']
 
     def start_task(self, driver, offer):
         """Starts a task using the offer, and subtracts any resources used from the offer."""
@@ -106,7 +108,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         task_mem = self.service_config.get_mem()
         task_cpus = self.service_config.get_cpus()
 
-        while len(self.started) + len(self.running) < self.service_config.config_dict['instances'] and \
+        while self.need_more_tasks(base_task.name) and \
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem:
             t = mesos_pb2.TaskInfo()
