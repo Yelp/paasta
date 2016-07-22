@@ -20,8 +20,12 @@ def new_paasta_native_config(context, num):
         cluster=context.cluster,
         instance=context.instance,
         service=context.service,
-        config_dict={},
-        branch_dict={'instances': int(num)},
+        config_dict={
+            "cpus": 0.1,
+            "mem": 100,
+            "instances": int(num),
+        },
+        branch_dict={},
     )
 
 
@@ -31,7 +35,7 @@ def start_paasta_native_framework(context):
         service_name=context.service,
         instance_name=context.instance,
         cluster=context.cluster,
-        config=context.config,
+        service_config=context.new_config,
     )
 
     context.driver = create_driver(

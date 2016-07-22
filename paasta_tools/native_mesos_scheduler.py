@@ -16,24 +16,49 @@ log = logging.getLogger(__name__)
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
-    def __init__(self, service_name, instance_name, cluster, config=None):
+    def __init__(self, service_name, instance_name, cluster, service_config=None):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
         self.tasks = []
-        if not config:
+        if service_config is not None:
+            self.service_config = service_config
+        else:
+            raise Exception(repr(service_config))
             self.load_config()
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
 
     def resourceOffers(self, driver, offers):
-        return
-
         for offer in offers:
             while self.task_fits(offer) and self.need_more_tasks():
                 self.start_task(driver, offer)
         # do something with the rest of the offers
+
+    def task_fits(self, offer):
+        """Checks whether the offer is big enough to fit the tasks"""
+        needed_resources = {
+            "cpus": self.service_config.get_cpus(),
+            "mem": self.service_config.get_mem(),
+            "disk": self.service_config.get_disk(),
+        }
+        for resource in offer.resources:
+            try:
+                if resource.scalar.value < needed_resources[resource.name]:
+                    return False
+            except KeyError:
+                pass
+
+        return True
+
+    def need_more_tasks(self):
+        """Returns whether we need to start more tasks."""
+        return len(self.tasks) < self.service_config.get_instances()
+
+    def start_task(self, driver, offer):
+        """Starts a task using the offer, and subtracts any resources used from the offer."""
+        pass
 
     def periodic(self, driver):
         self.load_config()
