@@ -1,4 +1,6 @@
+import argparse
 import logging
+import sys
 import uuid
 from time import sleep
 
@@ -26,7 +28,7 @@ log = logging.getLogger(__name__)
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
-    def __init__(self, service_name, instance_name, cluster, service_config=None):
+    def __init__(self, service_name, instance_name, cluster, soa_dir=DEFAULT_SOA_DIR, service_config=None):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
@@ -36,7 +38,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         if service_config is not None:
             self.service_config = service_config
         else:
-            self.load_config()
+            self.load_config(soa_dir=soa_dir)
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
@@ -129,11 +131,12 @@ class PaastaScheduler(mesos.interface.Scheduler):
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary()
 
-    def load_config(self):
+    def load_config(self, soa_dir):
         self.service_config = load_paasta_native_job_config(
             service=self.service_name,
             instance=self.instance_name,
             cluster=self.cluster,
+            soa_dir=soa_dir,
         )
 
 
@@ -180,8 +183,9 @@ def read_paasta_native_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DI
 def load_paasta_native_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     service_paasta_native_jobs = read_paasta_native_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_paasta_native_jobs:
+        filename = '%s/%s/paasta_native-%s.yaml' % (soa_dir, service, cluster)
         raise UnknownPaastaNativeServiceError(
-            'No job named "%s" in config file paasta_native-%s.yaml' % (instance, cluster)
+            'No job named "%s" in config file %s: \n%s' % (instance, filename, open(filename).read())
         )
     branch_dict = {}
     if load_deployments:
@@ -217,24 +221,34 @@ def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return get_services_for_cluster(cluster, 'paasta_native', soa_dir)
 
 
-def main():
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description='Runs native paasta mesos scheduler.')
+    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR", default=DEFAULT_SOA_DIR)
+    parser.add_argument('--stay-alive-seconds', dest="stay_alive_seconds", type=int, default=300)
+    return parser.parse_args(argv)
+
+
+def main(argv=sys.argv):
+    args = parse_args(argv)
+
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
     drivers = []
-    for service, instance in get_paasta_native_jobs_for_cluster(cluster=cluster):
+    for service, instance in get_paasta_native_jobs_for_cluster(cluster=cluster, soa_dir=args.soa_dir):
         scheduler = PaastaScheduler(
             service_name=service,
             instance_name=instance,
-            cluster=cluster
+            cluster=cluster,
+            soa_dir=args.soa_dir,
         )
         driver = create_driver(
             service=service,
             instance=instance,
             scheduler=scheduler,
-            system_paasta_config=system_paasta_config(),
+            system_paasta_config=system_paasta_config,
         )
         driver.start()
-        driver.append(drivers)
+        drivers.append(driver)
 
-    sleep(300)
+    sleep(args.stay_alive_seconds)

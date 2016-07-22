@@ -25,6 +25,7 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools import marathon_tools
+from paasta_tools import mesos_tools
 
 
 def before_all(context):
@@ -110,6 +111,12 @@ def _clean_up_zookeeper_autoscaling(context):
         client.close()
 
 
+def _clean_up_paasta_native_frameworks(context):
+    for framework in mesos_tools.list_frameworks():
+        if framework.startswith('paasta '):
+            mesos_tools.terminate_framework(framework)
+
+
 def after_scenario(context, scenario):
     requests_cache.uninstall_cache()
     _clean_up_marathon_apps(context)
@@ -118,3 +125,4 @@ def after_scenario(context, scenario):
     _clean_up_soa_dir(context)
     _clean_up_etc_paasta(context)
     _clean_up_zookeeper_autoscaling(context)
+    _clean_up_paasta_native_frameworks(context)

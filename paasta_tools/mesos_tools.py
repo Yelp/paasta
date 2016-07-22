@@ -661,3 +661,12 @@ def slave_pid_to_ip(slave_pid):
     :returns: ip address"""
     regex = re.compile(r'.+?@([\d\.]+):\d+')
     return regex.match(slave_pid).group(1)
+
+
+def list_frameworks():
+    return [f.id for f in master.CURRENT.frameworks()]
+
+
+def terminate_framework(framework_id):
+    requests.post('http://%s:%d/master/terminate' % (get_mesos_leader(), MESOS_MASTER_PORT),
+                  data={"frameworkId": framework_id})
