@@ -290,7 +290,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv=sys.argv):
+def main(argv):
     args = parse_args(argv)
 
     system_paasta_config = load_system_paasta_config()
@@ -315,3 +315,6 @@ def main(argv=sys.argv):
         drivers.append(driver)
 
     sleep(args.stay_alive_seconds)
+
+if __name__ == '__main__':
+    main(sys.argv)
