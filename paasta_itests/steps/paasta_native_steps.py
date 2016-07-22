@@ -175,7 +175,7 @@ def clear_mesos_tools_cache():
         pass
 
 
-@when(u'we change the config')
+@when(u'we change force_bounce')
 def we_change_the_config(context):
     branch_dict = context.scheduler.service_config.branch_dict
     branch_dict['force_bounce'] = str(int(branch_dict['force_bounce'] or 0) + 1)

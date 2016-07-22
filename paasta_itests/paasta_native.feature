@@ -42,7 +42,7 @@ Feature: Paasta native mesos framework
       And a new paasta_native config to be deployed, with 3 instances
      When we start a paasta_native scheduler
      Then it should eventually start 3 tasks
-     When we change the config
+     When we change force_bounce
      Then it should eventually start 6 tasks
       And it should eventually drain 3 tasks
      When a task has drained
