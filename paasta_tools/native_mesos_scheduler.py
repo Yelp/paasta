@@ -28,6 +28,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
         print "Registered with framework ID %s" % frameworkId.value
 
     def resourceOffers(self, driver, offers):
+        return
+
         for offer in offers:
             while self.task_fits(offer) and self.need_more_tasks():
                 self.start_task(driver, offer)
@@ -54,6 +56,7 @@ def create_driver(service, instance, scheduler, system_paasta_config):
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
     framework.name = "paasta %s" % compose_job_id(service, instance)
+    framework.id.value = framework.name
     framework.checkpoint = True
 
     credential = mesos_pb2.Credential()
@@ -66,7 +69,7 @@ def create_driver(service, instance, scheduler, system_paasta_config):
     driver = MesosSchedulerDriver(
         scheduler,
         framework,
-        paasta_tools.mesos_tools.get_mesos_leader(),
+        '%s:%d' % (paasta_tools.mesos_tools.get_mesos_leader(), paasta_tools.mesos_tools.MESOS_MASTER_PORT),
         implicitAcknowledgements,
         credential
     )
