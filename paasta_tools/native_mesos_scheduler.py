@@ -17,6 +17,8 @@ except ImportError:
     pass
 
 from paasta_tools import mesos_tools
+from paasta_tools import bounce_lib
+from paasta_tools import drain_lib
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -46,6 +48,9 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.tasks = {}
         self.running = set()
         self.started = set()
+        self.draining_tasks = set()
+
+        self.drain_method = drain_lib.TestDrainMethod(service_name, instance_name, instance_name)  # TODO: fix nerve_ns
         self.framework_id = None  # Gets set when registered() is called
         if service_config is not None:
             self.service_config = service_config
@@ -85,9 +90,15 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
-        started_current = [tid for tid in self.started if tid.startswith("%s." % name)]
-        running_current = [tid for tid in self.running if tid.startswith("%s." % name)]
-        return len(started_current) + len(running_current) < self.service_config.config_dict['instances']
+        return len(self.get_new_tasks(name)) < self.service_config.get_instances()
+
+    def get_new_tasks(self, name):
+        started_current = set([tid for tid in self.started if tid.startswith("%s." % name)])
+        running_current = set([tid for tid in self.running if tid.startswith("%s." % name)])
+        return started_current | running_current
+
+    def get_old_tasks(self, name):
+        return (self.started | self.running) - self.get_new_tasks(name)
 
     def start_task(self, driver, offer):
         """Starts a task using the offer, and subtracts any resources used from the offer."""
@@ -115,7 +126,6 @@ class PaastaScheduler(mesos.interface.Scheduler):
             t.MergeFrom(base_task)
             tid = "%s.%s" % (t.name, uuid.uuid4().hex)
             t.task_id.value = tid
-            self.started.add(tid)
             tasks.append(t)
             self.tasks[tid] = offer.slave_id
             self.started.add(tid)
@@ -127,7 +137,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def periodic(self, driver):
         self.load_config()
-        self.kill_tasks_if_necessary()
+        self.kill_tasks_if_necessary(driver)
 
     def statusUpdate(self, driver, update):
         # update tasks
@@ -149,13 +159,41 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 self.started.remove(task_id)
             if task_id in self.running:
                 self.running.remove(task_id)
+            if task_id in self.draining_tasks:
+                self.draining_tasks.remove(task_id)
             if task_id in self.tasks:
                 self.tasks.pop(task_id)
         driver.acknowledgeStatusUpdate(update)
-        self.kill_tasks_if_necessary()
+        self.kill_tasks_if_necessary(driver)
 
-    def kill_tasks_if_necessary(self):
-        pass
+    def kill_tasks_if_necessary(self, driver):
+        base_task = self.service_config.base_task(self.system_paasta_config)
+
+        actions = bounce_lib.crossover_bounce(
+            new_config={"instances": self.service_config.get_instances()},
+            new_app_running=True,
+            happy_new_tasks=self.get_new_tasks(base_task.name),
+            old_app_live_happy_tasks=self.group_tasks_by_version(self.get_old_tasks(base_task.name)),
+            old_app_live_unhappy_tasks={},
+        )
+
+        for task in actions['tasks_to_drain']:
+            self.drain_method.drain(DrainTask(id=task))
+            self.draining_tasks.add(task)
+
+        for task in self.draining_tasks:
+            if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
+                print repr(task)
+                tid = mesos_pb2.TaskID()
+                tid.value = task
+                driver.killTask(tid)
+
+    def group_tasks_by_version(self, task_ids):
+        d = {}
+        for task_id in task_ids:
+            version = task_id.rsplit('.', 1)[0]
+            d.setdefault(version, []).append(task_id)
+        return d
 
     def load_config(self):
         self.service_config = load_paasta_native_job_config(
@@ -164,6 +202,11 @@ class PaastaScheduler(mesos.interface.Scheduler):
             cluster=self.cluster,
             soa_dir=self.soa_dir,
         )
+
+
+class DrainTask(object):
+    def __init__(self, id):
+        self.id = id
 
 
 def find_existing_id_if_exists_or_gen_new(name):
@@ -244,6 +287,12 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+    def get_instances(self):
+        if self.get_desired_state() == 'start':
+            return self.config_dict.get('instances')
+        else:
+            return 0
 
     def task_name(self, base_task):
         code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)

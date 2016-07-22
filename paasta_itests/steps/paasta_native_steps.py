@@ -3,11 +3,13 @@ import os
 import time
 from tempfile import mkdtemp
 
+import mock
 import yaml
 from behave import given
 from behave import then
 from behave import when
 
+from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
 from paasta_tools.native_mesos_scheduler import create_driver
 from paasta_tools.native_mesos_scheduler import main
@@ -177,3 +179,35 @@ def clear_mesos_tools_cache():
 def we_change_the_config(context):
     branch_dict = context.scheduler.service_config.branch_dict
     branch_dict['force_bounce'] = str(int(branch_dict['force_bounce'] or 0) + 1)
+
+
+@then(u'it should eventually drain {num} tasks')
+def it_should_drain_num_tasks(context, num):
+    num = int(num)
+    for _ in xrange(10):
+        if len(drain_lib.TestDrainMethod.downed_task_ids) >= num:
+            return
+        time.sleep(1)
+    else:
+        raise Exception("Expected %d tasks to drain before timeout, saw %d" % (
+            num,
+            len(drain_lib.TestDrainMethod.downed_task_ids)
+        ))
+
+
+@then(u'it should eventually have only {num} tasks')
+def it_should_eventually_have_only_num_tasks(context, num):
+    num = int(num)
+
+    for _ in xrange(20):
+        if len(context.scheduler.running) <= num:
+            return
+        time.sleep(1)
+
+    raise Exception("Expected <= %d tasks before timeout, saw %d" % (num, len(context.scheduler.running)))
+
+
+@when(u'we call periodic')
+def we_call_periodic(context):
+    with mock.patch.object(context.scheduler, 'load_config'):
+        context.scheduler.periodic(context.driver)
