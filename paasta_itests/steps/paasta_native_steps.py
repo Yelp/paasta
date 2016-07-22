@@ -42,10 +42,14 @@ def new_paasta_native_config(context, num):
 
 @when('we start a paasta_native scheduler')
 def start_paasta_native_framework(context):
+    system_paasta_config = load_system_paasta_config()
+    system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
+
     context.scheduler = PaastaScheduler(
         service_name=context.service,
         instance_name=context.instance,
         cluster=context.cluster,
+        system_paasta_config=system_paasta_config,
         service_config=context.new_config,
     )
 
@@ -53,7 +57,7 @@ def start_paasta_native_framework(context):
         service=context.service,
         instance=context.instance,
         scheduler=context.scheduler,
-        system_paasta_config=load_system_paasta_config(),
+        system_paasta_config=system_paasta_config,
     )
 
     context.driver.start()
@@ -68,7 +72,7 @@ def should_eventually_start_num_tasks(context, num):
             return
         time.sleep(1)
 
-    raise Exception("Expected %d tasks before timeout, saw %d" % (num, len(context.scheduler.tasks)))
+    raise Exception("Expected %d tasks before timeout, saw %d" % (num, len(context.scheduler.running)))
 
 
 @given('a fresh soa_dir')
@@ -94,7 +98,7 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
         json.dump({
             'v1': {
                 '%s.%s' % (context.cluster, instance): {
-                    'image': 'busybox',
+                    'docker_image': 'busybox',
                     'desired_state': 'start',
                     'force_bounce': None,
                 }

@@ -1,4 +1,5 @@
 import argparse
+import binascii
 import logging
 import sys
 import uuid
@@ -24,21 +25,31 @@ from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_services_for_cluster
 
+from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_docker_url
+
+
 log = logging.getLogger(__name__)
+
+MESOS_TASK_SPACER = '.'
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
-    def __init__(self, service_name, instance_name, cluster, soa_dir=DEFAULT_SOA_DIR, service_config=None):
+    def __init__(self, service_name, instance_name, cluster, system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
+                 service_config=None):
         self.service_name = service_name
         self.instance_name = instance_name
         self.cluster = cluster
+        self.system_paasta_config = system_paasta_config
+        self.soa_dir = soa_dir
         self.tasks = {}
         self.running = set()
         self.started = set()
         if service_config is not None:
             self.service_config = service_config
         else:
-            self.load_config(soa_dir=soa_dir)
+            self.load_config()
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID %s" % frameworkId.value
@@ -86,29 +97,18 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 offerMem += resource.scalar.value
         remainingCpus = offerCpus
         remainingMem = offerMem
-        task = mesos_pb2.TaskInfo()
-        task.container.type = mesos_pb2.ContainerInfo.DOCKER
-        task.container.docker.image = self.service_config.get_docker_image()
-        task.slave_id.value = offer.slave_id.value
-        task.name = self.service_config.get_service()
-        task.command.value = self.service_config.get_cmd()
-        TOTAL_TASKS = self.service_config.config_dict['instances']
-        TASK_CPUS = self.service_config.get_cpus()
-        TASK_MEM = self.service_config.get_mem()
-        cpus = task.resources.add()
-        cpus.name = "cpus"
-        cpus.type = mesos_pb2.Value.SCALAR
-        cpus.scalar.value = TASK_CPUS
-        mem = task.resources.add()
-        mem.name = "mem"
-        mem.type = mesos_pb2.Value.SCALAR
-        mem.scalar.value = TASK_MEM
 
-        while len(self.started) + len(self.running) < TOTAL_TASKS and \
-                remainingCpus >= TASK_CPUS and \
-                remainingMem >= TASK_MEM:
+        base_task = self.service_config.base_task(self.system_paasta_config)
+        base_task.slave_id.value = offer.slave_id.value
+
+        task_mem = self.service_config.get_mem()
+        task_cpus = self.service_config.get_cpus()
+
+        while len(self.started) + len(self.running) < self.service_config.config_dict['instances'] and \
+                remainingCpus >= task_cpus and \
+                remainingMem >= task_mem:
             t = mesos_pb2.TaskInfo()
-            t.MergeFrom(task)
+            t.MergeFrom(base_task)
             tid = uuid.uuid4().hex
             t.task_id.value = tid
             self.started.add(tid)
@@ -116,8 +116,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
             self.tasks[tid] = offer.slave_id
             self.started.add(tid)
 
-            remainingCpus -= TASK_CPUS
-            remainingMem -= TASK_MEM
+            remainingCpus -= task_cpus
+            remainingMem -= task_mem
 
         return tasks
 
@@ -150,12 +150,12 @@ class PaastaScheduler(mesos.interface.Scheduler):
         driver.acknowledgeStatusUpdate(update)
         # self.kill_tasks_if_necessary()
 
-    def load_config(self, soa_dir):
+    def load_config(self):
         self.service_config = load_paasta_native_job_config(
             service=self.service_name,
             instance=self.instance_name,
             cluster=self.cluster,
-            soa_dir=soa_dir,
+            soa_dir=self.soa_dir,
         )
 
 
@@ -230,6 +230,49 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
+    def task_name(self, base_task):
+        code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)
+
+        filled_in_task = mesos_pb2.TaskInfo()
+        filled_in_task.MergeFrom(base_task)
+        filled_in_task.name = ""
+        filled_in_task.task_id.value = ""
+        filled_in_task.slave_id.value = ""
+
+        config_hash = get_config_hash(
+            binascii.b2a_base64(filled_in_task.SerializeToString()),
+            force_bounce=self.get_force_bounce(),
+        )
+
+        return compose_job_id(
+            self.service,
+            self.instance,
+            git_hash=code_sha,
+            config_hash=config_hash,
+            spacer=MESOS_TASK_SPACER,
+        )
+
+    def base_task(self, system_paasta_config):
+        """Return a TaskInfo protobuf with all the fields corresponding to the configuration filled in. Does not
+        include task.slave_id or a task.id; those need to be computed separately."""
+        task = mesos_pb2.TaskInfo()
+        task.container.type = mesos_pb2.ContainerInfo.DOCKER
+        task.container.docker.image = get_docker_url(system_paasta_config.get_docker_registry(),
+                                                     self.get_docker_image())
+        task.command.value = self.get_cmd()
+        cpus = task.resources.add()
+        cpus.name = "cpus"
+        cpus.type = mesos_pb2.Value.SCALAR
+        cpus.scalar.value = self.get_cpus()
+        mem = task.resources.add()
+        mem.name = "mem"
+        mem.type = mesos_pb2.Value.SCALAR
+        mem.scalar.value = self.get_mem()
+
+        task.name = self.task_name(task)
+
+        return task
+
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """A paasta_native-specific wrapper around utils.get_services_for_cluster
@@ -259,6 +302,7 @@ def main(argv=sys.argv):
             service_name=service,
             instance_name=instance,
             cluster=cluster,
+            system_paasta_config=system_paasta_config,
             soa_dir=args.soa_dir,
         )
         driver = create_driver(

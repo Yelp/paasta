@@ -113,6 +113,11 @@ def write_etc_paasta(context, config, filename):
 
 @given(u'a working paasta cluster')
 def working_paasta_cluster(context):
+    return working_paasta_cluster_with_registry(context, 'fake.com')
+
+
+@given(u'a working paasta cluster, with docker registry {docker_registry}')
+def working_paasta_cluster_with_registry(context, docker_registry):
     """Adds a working marathon client and chronos client for the purposes of
     interacting with them in the test."""
     if not hasattr(context, 'marathon_client'):
@@ -137,7 +142,7 @@ def working_paasta_cluster(context):
     write_etc_paasta(context, {
         "cluster": "testcluster",
         "zookeeper": "zk://zookeeper",
-        "docker_registry": "fake.com"
+        "docker_registry": docker_registry
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
     write_etc_paasta(context, {"sensu_host": None}, 'sensu.json')
