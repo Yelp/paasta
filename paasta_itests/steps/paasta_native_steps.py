@@ -113,7 +113,7 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as f:
         json.dump({
             'v1': {
-                '%s.%s' % (context.cluster, instance): {
+                '%s:paasta-%s.%s' % (service, context.cluster, instance): {
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                     'force_bounce': None,
@@ -124,7 +124,12 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
 
 @when(u'we run native_mesos_scheduler.main()')
 def run_native_mesos_scheduler_main(context):
-    main(['--soa-dir', context.soa_dir, '--stay-alive-seconds', '10'])
+    clear_mesos_tools_cache()
+    context.main_schedulers = main([
+        '--soa-dir', context.soa_dir,
+        '--stay-alive-seconds', '10',
+        '--periodic-interval', '1'
+    ])
 
 
 @then(u'there should be a framework registered with name {name}')
@@ -249,3 +254,13 @@ def should_not_start_tasks_for_num_seconds(context, num):
     time.sleep(int(num))
     assert len(context.scheduler.running_tasks) == 0
     assert len(context.scheduler.started_tasks) == 0
+
+
+@then(u'periodic() should eventually be called')
+def periodic_should_eventually_be_called(context):
+    for _ in xrange(30):
+        for scheduler in context.main_schedulers:
+            if hasattr(scheduler, 'periodic_was_called'):
+                return
+    else:
+        raise Exception("periodic() not called on all schedulers")

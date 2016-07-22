@@ -16,6 +16,14 @@ Feature: Paasta native mesos framework
      Then there should be a framework registered with name paasta bar.two
      Then there should be a framework registered with name paasta baz.three
 
+  Scenario: native_mesos_scheduler.main() calls periodic
+    Given a working paasta cluster, with docker registry docker.io
+      And a fresh soa_dir
+      And paasta_native-cluster.yaml and deployments.json files for service foo with instance one
+     When we run native_mesos_scheduler.main()
+     Then there should be a framework registered with name paasta foo.one
+      And periodic() should eventually be called
+
   Scenario: reuse same framework ID
     Given a working paasta cluster
       And a new paasta_native config to be deployed, with 1 instances
@@ -80,7 +88,6 @@ Feature: Paasta native mesos framework
       And we call periodic
      Then it should undrain 3 tasks and drain 3 more
 
-  @wip
   Scenario: native_mesos_scheduler waits for task reconciliation before accepting offers
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances

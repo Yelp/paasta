@@ -151,6 +151,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         return time.time() - self.reconcile_backoff < self.reconcile_start_time
 
     def periodic(self, driver):
+        self.periodic_was_called = True  # Used for testing.
         if not self.within_reconcile_backoff():
             driver.reviveOffers()
 
@@ -406,6 +407,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='Runs native paasta mesos scheduler.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR", default=DEFAULT_SOA_DIR)
     parser.add_argument('--stay-alive-seconds', dest="stay_alive_seconds", type=int, default=300)
+    parser.add_argument('--periodic-interval', dest="periodic_interval", type=int, default=30)
     return parser.parse_args(argv)
 
 
@@ -416,6 +418,7 @@ def main(argv):
     cluster = system_paasta_config.get_cluster()
 
     drivers = []
+    schedulers = []
     for service, instance in get_paasta_native_jobs_for_cluster(cluster=cluster, soa_dir=args.soa_dir):
         scheduler = PaastaScheduler(
             service_name=service,
@@ -424,6 +427,8 @@ def main(argv):
             system_paasta_config=system_paasta_config,
             soa_dir=args.soa_dir,
         )
+        schedulers.append(scheduler)
+
         driver = create_driver(
             service=service,
             instance=instance,
@@ -433,7 +438,13 @@ def main(argv):
         driver.start()
         drivers.append(driver)
 
-    sleep(args.stay_alive_seconds)
+    end_time = time.time() + args.stay_alive_seconds
+    while time.time() < end_time:
+        sleep(args.periodic_interval)
+        for scheduler, driver in zip(schedulers, drivers):
+            scheduler.periodic(driver)
+
+    return schedulers
 
 if __name__ == '__main__':
     main(sys.argv)
