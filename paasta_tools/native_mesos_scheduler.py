@@ -39,8 +39,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def resourceOffers(self, driver, offers):
         for offer in offers:
-            while self.task_fits(offer) and self.need_more_tasks():
-                print self.start_task(driver, offer)
+            print self.start_task(driver, offer)
         # do something with the rest of the offers
 
     def task_fits(self, offer):
@@ -73,10 +72,11 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 offerCpus += resource.scalar.value
             elif resource.name == "mem":
                 offerMem += resource.scalar.value
-
+        remainingCpus = offerCpus
+        remainingMem = offerMem
         task = mesos_pb2.TaskInfo()
         task.container.type = mesos_pb2.ContainerInfo.DOCKER
-        task.docker.image.value = self.service_config.get_docker_image()
+        task.container.docker.image = self.service_config.get_docker_image()
         task.slave_id.value = offer.slave_id.value
         task.name = self.service_config.get_service()
         task.command.value = self.service_config.get_cmd()
@@ -91,7 +91,6 @@ class PaastaScheduler(mesos.interface.Scheduler):
         mem.name = "mem"
         mem.type = mesos_pb2.Value.SCALAR
         mem.scalar.value = TASK_MEM
-        print "start task"
 
         while len(self.started) + len(self.running) < TOTAL_TASKS and \
                   remainingCpus >= TASK_CPUS and \
