@@ -146,7 +146,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
             if task_id in self.running:
                 self.running.remove(task_id)
             if task_id in self.tasks:
-                self.tasks.remove(task_id)
+                self.tasks.pop(task_id)
         driver.acknowledgeStatusUpdate(update)
         # self.kill_tasks_if_necessary()
 
