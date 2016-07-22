@@ -19,6 +19,7 @@ import requests
 import requests_cache
 from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
+from itest_utils import clear_mesos_tools_cache
 from itest_utils import get_service_connection_string
 from itest_utils import setup_mesos_cli_config
 from itest_utils import wait_for_marathon
@@ -113,8 +114,10 @@ def _clean_up_zookeeper_autoscaling(context):
 
 
 def _clean_up_paasta_native_frameworks(context):
+    clear_mesos_tools_cache()
     for framework in mesos_tools.get_all_frameworks(active_only=True):
         if framework.name.startswith('paasta '):
+            print "cleaning up framework %s" % framework.name
             try:
                 mesos_tools.terminate_framework(framework.id)
             except requests.exceptions.HTTPError as e:

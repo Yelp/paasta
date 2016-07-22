@@ -8,6 +8,7 @@ import yaml
 from behave import given
 from behave import then
 from behave import when
+from itest_utils import clear_mesos_tools_cache
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
@@ -82,11 +83,11 @@ def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(20):
-        if len(context.scheduler.running) >= num:
+        if len(context.scheduler.running_tasks | context.scheduler.draining_tasks) >= num:
             return
         time.sleep(1)
 
-    raise Exception("Expected %d tasks before timeout, saw %d" % (num, len(context.scheduler.running)))
+    raise Exception("Expected %d tasks before timeout, saw %d" % (num, len(context.scheduler.running_tasks)))
 
 
 @given('a fresh soa_dir')
@@ -167,14 +168,6 @@ def we_sleep_wait_seconds(context, wait):
     time.sleep(int(wait))
 
 
-def clear_mesos_tools_cache():
-    try:
-        del mesos_tools.master.CURRENT._cache
-        print "cleared mesos_tools.master.CURRENT._cache"
-    except AttributeError:
-        pass
-
-
 @when(u'we change force_bounce')
 def we_change_the_config(context):
     branch_dict = context.scheduler.service_config.branch_dict
@@ -199,15 +192,21 @@ def it_should_drain_num_tasks(context, num):
 def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
-    for _ in xrange(20):
-        if len(context.scheduler.running) <= num:
+    for _ in xrange(30):
+        if len(context.scheduler.running_tasks) <= num:
             return
         time.sleep(1)
 
-    raise Exception("Expected <= %d tasks before timeout, saw %d" % (num, len(context.scheduler.running)))
+    raise Exception("Expected <= %d tasks before timeout, saw %d" % (num, len(context.scheduler.running_tasks)))
 
 
 @when(u'we call periodic')
 def we_call_periodic(context):
     with mock.patch.object(context.scheduler, 'load_config'):
         context.scheduler.periodic(context.driver)
+
+
+@when(u'we change instances to {num}')
+def we_change_instances_to_num(context, num):
+    num = int(num)
+    context.scheduler.service_config.config_dict['instances'] = num

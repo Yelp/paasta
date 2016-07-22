@@ -45,10 +45,11 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        self.tasks = {}
-        self.running = set()
-        self.started = set()
+        self.tasks = {}  # TODO: do we need this?
+        self.running_tasks = set()
+        self.started_tasks = set()
         self.draining_tasks = set()
+        self.stopping_tasks = set()
 
         self.drain_method = drain_lib.TestDrainMethod(service_name, instance_name, instance_name)  # TODO: fix nerve_ns
         self.framework_id = None  # Gets set when registered() is called
@@ -90,15 +91,14 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
-        return len(self.get_new_tasks(name)) < self.service_config.get_instances()
+        num_have = len(self.get_new_tasks(name, self.running_tasks | self.started_tasks))
+        return num_have < self.service_config.get_instances()
 
-    def get_new_tasks(self, name):
-        started_current = set([tid for tid in self.started if tid.startswith("%s." % name)])
-        running_current = set([tid for tid in self.running if tid.startswith("%s." % name)])
-        return started_current | running_current
+    def get_new_tasks(self, name, tasks):
+        return set([tid for tid in tasks if tid.startswith("%s." % name)])
 
-    def get_old_tasks(self, name):
-        return (self.started | self.running) - self.get_new_tasks(name)
+    def get_old_tasks(self, name, tasks):
+        return tasks - self.get_new_tasks(name, tasks)
 
     def start_task(self, driver, offer):
         """Starts a task using the offer, and subtracts any resources used from the offer."""
@@ -128,7 +128,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
             t.task_id.value = tid
             tasks.append(t)
             self.tasks[tid] = offer.slave_id
-            self.started.add(tid)
+            self.started_tasks.add(tid)
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
@@ -146,47 +146,72 @@ class PaastaScheduler(mesos.interface.Scheduler):
         print "Task %s is in state %s" % \
             (task_id, mesos_pb2.TaskState.Name(state))
         if state == mesos_pb2.TASK_RUNNING:
-            if task_id in self.started:
-                self.started.remove(task_id)
-            self.running.add(task_id)
+            if task_id in self.started_tasks:
+                self.started_tasks.remove(task_id)
+            self.running_tasks.add(task_id)
             if task_id not in self.tasks:
                 self.tasks[task_id] = update.slave_id.value
         if state == mesos_pb2.TASK_LOST or \
                 state == mesos_pb2.TASK_KILLED or \
                 state == mesos_pb2.TASK_FAILED or \
                 state == mesos_pb2.TASK_FINISHED:
-            if task_id in self.started:
-                self.started.remove(task_id)
-            if task_id in self.running:
-                self.running.remove(task_id)
-            if task_id in self.draining_tasks:
-                self.draining_tasks.remove(task_id)
-            if task_id in self.tasks:
-                self.tasks.pop(task_id)
+
+            self.started_tasks.discard(task_id)
+            self.running_tasks.discard(task_id)
+            self.draining_tasks.discard(task_id)
+            self.stopping_tasks.discard(task_id)
+            self.tasks.pop(task_id)
+
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
 
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
+        # Happier things first
+        new_running_tasks = list(self.get_new_tasks(base_task.name, self.running_tasks))
+        new_started_tasks = list(self.get_new_tasks(base_task.name, self.started_tasks))
+
+        desired_instances = self.service_config.get_instances()
+
+        new_tasks = new_running_tasks + new_started_tasks
+        new_tasks_to_kill = new_tasks[desired_instances:]
+
+        old_app_live_happy_tasks = self.group_tasks_by_version(
+            self.get_old_tasks(base_task.name, self.started_tasks | self.running_tasks) | set(new_tasks_to_kill)
+        )
+
         actions = bounce_lib.crossover_bounce(
-            new_config={"instances": self.service_config.get_instances()},
+            new_config={"instances": desired_instances},
             new_app_running=True,
-            happy_new_tasks=self.get_new_tasks(base_task.name),
-            old_app_live_happy_tasks=self.group_tasks_by_version(self.get_old_tasks(base_task.name)),
+            happy_new_tasks=new_running_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
             old_app_live_unhappy_tasks={},
         )
 
         for task in actions['tasks_to_drain']:
-            self.drain_method.drain(DrainTask(id=task))
-            self.draining_tasks.add(task)
+            self.drain_task(task)
 
-        for task in self.draining_tasks:
+        for task in set(self.draining_tasks):
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
-                print repr(task)
-                tid = mesos_pb2.TaskID()
-                tid.value = task
-                driver.killTask(tid)
+                self.kill_task(driver, task)
+
+    def drain_task(self, task):
+        self.drain_method.drain(DrainTask(id=task))
+
+        self.stopping_tasks.discard(task)
+        self.running_tasks.discard(task)
+        self.started_tasks.discard(task)
+        self.draining_tasks.add(task)
+
+    def kill_task(self, driver, task):
+        tid = mesos_pb2.TaskID()
+        tid.value = task
+        driver.killTask(tid)
+        self.draining_tasks.discard(task)
+        self.running_tasks.discard(task)
+        self.started_tasks.discard(task)
+        self.stopping_tasks.add(task)
 
     def group_tasks_by_version(self, task_ids):
         d = {}

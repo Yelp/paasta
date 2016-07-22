@@ -50,7 +50,20 @@ Feature: Paasta native mesos framework
      Then it should eventually have only 5 tasks
      When a task has drained
       And we call periodic
+      And we call periodic
      Then it should eventually have only 4 tasks
      When a task has drained
       And we call periodic
      Then it should eventually have only 3 tasks
+
+  Scenario: native_mesos_scheduler scales down when instances decreases
+    Given a working paasta cluster, with docker registry docker.io
+      And a new paasta_native config to be deployed, with 3 instances
+     When we start a paasta_native scheduler
+     Then it should eventually start 3 tasks
+     When we change instances to 2
+      And we call periodic
+     Then it should eventually drain 1 tasks
+     When a task has drained
+      And we call periodic
+     Then it should eventually have only 2 tasks

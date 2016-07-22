@@ -21,6 +21,7 @@ import mock
 import requests
 
 from paasta_tools import marathon_tools
+from paasta_tools import mesos_tools
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
@@ -129,3 +130,11 @@ def cleanup_file(path_to_file):
     """Removes the given file"""
     print "Removing generated file: %s" % path_to_file
     os.remove(path_to_file)
+
+
+def clear_mesos_tools_cache():
+    try:
+        del mesos_tools.master.CURRENT._cache
+        print "cleared mesos_tools.master.CURRENT._cache"
+    except AttributeError:
+        pass
