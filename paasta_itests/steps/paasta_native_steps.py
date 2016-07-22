@@ -119,4 +119,4 @@ def should_be_framework_with_id(context, framework_id):
     except AttributeError:
         pass
 
-    assert framework_id in mesos_tools.list_frameworks()
+    assert framework_id in mesos_tools.list_framework_ids(active_only=True)

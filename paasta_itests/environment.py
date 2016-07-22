@@ -112,7 +112,7 @@ def _clean_up_zookeeper_autoscaling(context):
 
 
 def _clean_up_paasta_native_frameworks(context):
-    for framework in mesos_tools.list_frameworks():
+    for framework in mesos_tools.list_framework_ids(active_only=True):
         if framework.startswith('paasta '):
             mesos_tools.terminate_framework(framework)
 
