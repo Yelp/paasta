@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import binascii
 import logging
@@ -83,6 +84,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 operation.type = mesos_pb2.Offer.Operation.LAUNCH
                 operation.launch.task_infos.extend(tasks)
                 driver.acceptOffers([offer.id], [operation])
+            else:
+                driver.declineOffer(offer.id)
         # do something with the rest of the offers
 
     def task_fits(self, offer):
@@ -252,6 +255,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         return d
 
     def load_config(self):
+        service_configuration_lib._yaml_cache = {}
         self.service_config = load_paasta_native_job_config(
             service=self.service_name,
             instance=self.instance_name,
@@ -447,4 +451,4 @@ def main(argv):
     return schedulers
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main(sys.argv[1:])
