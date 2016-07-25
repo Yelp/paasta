@@ -17,7 +17,7 @@ import mock
 
 from paasta_tools.cli.cmds import info
 from paasta_tools.cli.utils import PaastaColors
-from paasta_tools.marathon_tools import ServiceNamespaceConfig
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
 

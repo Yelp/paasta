@@ -15,4 +15,4 @@ def test_main():
         mock.patch('paasta_tools.native_mesos_scheduler.load_system_paasta_config', autospec=True),
         mock.patch('paasta_tools.native_mesos_scheduler.PaastaScheduler', autospec=True),
     ):
-        native_mesos_scheduler.main([])
+        native_mesos_scheduler.main(["--stay-alive-seconds=0"])

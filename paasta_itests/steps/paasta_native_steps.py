@@ -34,12 +34,14 @@ def new_paasta_native_config(context, num):
             "mem": 50,
             "instances": int(num),
             "cmd": 'sleep 50',
+            "drain_method": "test"
         },
         branch_dict={
             'docker_image': 'busybox',
             'desired_state': 'start',
             'force_bounce': None,
         },
+        service_namespace_config=None,
     )
 
 

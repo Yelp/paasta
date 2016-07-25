@@ -22,6 +22,8 @@ from paasta_tools import mesos_tools
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
@@ -55,11 +57,11 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
         self.reconcile_start_time = float('inf')  # don't accept resources until we reconcile.
         self.reconcile_backoff = reconcile_backoff  # wait this long after starting a reconcile before accepting offers.
-
-        self.drain_method = drain_lib.TestDrainMethod(service_name, instance_name, instance_name)  # TODO: fix nerve_ns
         self.framework_id = None  # Gets set when registered() is called
+
         if service_config is not None:
             self.service_config = service_config
+            self.recreate_drain_method()
         else:
             self.load_config()
 
@@ -86,7 +88,6 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 driver.acceptOffers([offer.id], [operation])
             else:
                 driver.declineOffer(offer.id)
-        # do something with the rest of the offers
 
     def task_fits(self, offer):
         """Checks whether the offer is big enough to fit the tasks"""
@@ -182,7 +183,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
             self.running_tasks.discard(task_id)
             self.draining_tasks.discard(task_id)
             self.stopping_tasks.discard(task_id)
-            self.tasks.pop(task_id)
+            self.tasks.pop(task_id, None)
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
@@ -262,6 +263,17 @@ class PaastaScheduler(mesos.interface.Scheduler):
             cluster=self.cluster,
             soa_dir=self.soa_dir,
         )
+        self.recreate_drain_method()
+
+    def recreate_drain_method(self):
+        """Re-instantiate self.drain_method. Should be called after self.service_config changes."""
+        self.drain_method = drain_lib.get_drain_method(
+            name=self.service_config.get_drain_method(self.service_config.service_namespace_config),
+            service=self.service_name,
+            instance=self.instance_name,
+            nerve_ns=self.service_config.get_nerve_namespace(),
+            **self.service_config.get_drain_method_params(self.service_config.service_namespace_config)
+        )
 
 
 class DrainTask(object):
@@ -329,7 +341,8 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
         branch_dict = deployments_json.get_branch_dict(service, branch)
-    return PaastaNativeServiceConfig(
+
+    service_config = PaastaNativeServiceConfig(
         service=service,
         cluster=cluster,
         instance=instance,
@@ -337,9 +350,15 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
         branch_dict=branch_dict,
     )
 
+    service_namespace_config = load_service_namespace_config(service, service_config.get_nerve_namespace(),
+                                                             soa_dir=soa_dir)
+    service_config.service_namespace_config = service_namespace_config
+
+    return service_config
+
 
 class PaastaNativeServiceConfig(LongRunningServiceConfig):
-    def __init__(self, service, instance, cluster, config_dict, branch_dict):
+    def __init__(self, service, instance, cluster, config_dict, branch_dict, service_namespace_config=None):
         super(PaastaNativeServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
@@ -347,6 +366,13 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+        # service_namespace_config may be omitted/set to None at first, then set after initializing. e.g. we do this in
+        # load_paasta_native_job_config so we can call get_nerve_namespace() to figure out what SNC to read.
+        # It may also be set to None if this service is not in nerve.
+        if service_namespace_config is not None:
+            self.service_namespace_config = service_namespace_config
+        else:
+            self.service_namespace_config = ServiceNamespaceConfig()
 
     def get_instances(self):
         if self.get_desired_state() == 'start':
