@@ -502,11 +502,11 @@ def describe_instances(instance_ids, instance_filters=None):
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
     sfr = get_sfr(spotfleet_request_id)
+    if not sfr or not sfr['SpotFleetRequestState'] == 'active':
+        log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
+        return 0, 0
     sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id)
     resource['sfr'] = sfr
-    if not sfr['SpotFleetRequestState'] == 'active':
-        log.error("Ignoring SFR {0} that is not yet active or is cancelled etc.".format(spotfleet_request_id))
-        return 0, 0
     desired_instances = len(sfr['ActiveInstances'])
     instance_ips = get_sfr_instance_ips(sfr)
     slaves = {
