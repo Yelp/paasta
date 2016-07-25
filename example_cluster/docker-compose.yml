@@ -1,0 +1,96 @@
+version: '2'
+services:
+  zookeeper:
+    build: ../yelp_package/dockerfiles/itest/zookeeper/
+    ports:
+      - 2181
+  mesosbase:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+  mesosmaster:
+    build: ../yelp_package/dockerfiles/mesos-paasta/
+    ports:
+      - '5050:5050'
+      - 22
+    links:
+      - zookeeper
+    #command: '/bin/bash -c "/usr/sbin/sshd && mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets"'
+    depends_on:
+      - mesosbase
+    volumes:
+    - /var/tmp/pip_cache1:/var/tmp/pip_cache
+    - ../:/work:rw
+    - ./paasta:/etc/paasta:rw
+    - ./example-services:/nail/etc/services:rw
+    - /var/run/docker.sock:/var/run/docker.sock
+    command: '/start.sh'
+    environment:
+      MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
+  mesosslave:
+    build: ../yelp_package/dockerfiles/mesos-paasta/
+    ports:
+      - 5051
+    links:
+      - zookeeper
+      - registry
+    environment:
+      CLUSTER: testcluster
+    command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker --attributes="region:fakeregion;pool:default"'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mesosbase
+  marathon:
+    build: ../yelp_package/dockerfiles/itest/marathon/
+    ports:
+      - '8080:8080'
+    links:
+      - zookeeper
+    environment:
+      CLUSTER: testcluster
+    command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger --env_vars_prefix MARATHON_ --mesos_authentication_principal marathon --mesos_authentication_secret_file /etc/marathon_framework_secret'
+  trusty:
+    build: ../yelp_package/dockerfiles/trusty/
+  playground:
+    build: ../yelp_package/dockerfiles/playground/
+    links:
+      - marathon
+      - mesosmaster
+      - mesosslave
+      - zookeeper
+      - chronos
+      - hacheck
+      - registry
+      - git
+    environment:
+      MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
+    volumes:
+    - /var/tmp/pip_cache2:/var/tmp/pip_cache
+    - ../:/work:rw
+    - ./paasta:/etc/paasta:rw
+    - ./example-services:/nail/etc/services:rw
+    - /var/run/docker.sock:/var/run/docker.sock
+    command: '/start.sh'
+    depends_on:
+      - mesosmaster
+      - trusty
+  chronos:
+    build: ../yelp_package/dockerfiles/itest/chronos/
+    ports:
+      - '8081:8081'
+    links:
+      - zookeeper
+  hacheck:
+    build: ../yelp_package/dockerfiles/itest/hacheck/
+    ports:
+      - 6666
+  registry:
+    image: registry:2
+    ports:
+      - '5000:5000'
+  git:
+    build: ../yelp_package/dockerfiles/gitremote/
+    command: /usr/sbin/sshd -D
+    ports:
+      - 22
+    depends_on:
+      - trusty
