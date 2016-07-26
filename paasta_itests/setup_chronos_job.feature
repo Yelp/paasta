@@ -10,10 +10,10 @@ Feature: setup_chronos_job can create and bounce jobs
 
   Scenario: jobs can be bounced using the "graceful" method
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
-     When we set the "bounce" field of the chronos config for service "testservice" and instance "testinstance" to "graceful"
-      And we run setup_chronos_job for service_instance "testservice.testinstance"
+      and we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      and we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+     when we set the "bounce" field of the chronos config for service "testservice" and instance "testinstance" to "graceful"
+      and we run setup_chronos_job for service_instance "testservice.testinstance"
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance testinstance as myfirstjob
      Then the field "disabled" for the job stored as "myfirstjob" is set to "False"

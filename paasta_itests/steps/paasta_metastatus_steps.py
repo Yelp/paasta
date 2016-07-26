@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 
+import yaml
 from behave import then
 from behave import when
 from marathon import MarathonApp
@@ -99,3 +100,14 @@ def check_metastatus_return_code_no_flags(context, expected_return_code, expecte
         expected_return_code=expected_return_code,
         expected_output=expected_output,
     )
+
+
+@when('we wait for the service_instance "{service_instance}" to have the correct number of marathon tasks')
+def wait_for_tasks(context, service_instance):
+    service, instance = service_instance.split(".")[0], service_instance.split(".")[1]
+    data = None
+    with open(os.path.join(context.soa_dir, service, "marathon-%s.yaml" % context.cluster), 'r+') as f:
+        data = yaml.load(f.read())
+    expected_instances = data[instance]['instances']
+    matching_app_id = marathon_tools.get_matching_appids(service, instance, context.marathon_client)[0]
+    marathon_tools.wait_for_app_to_launch_tasks(context.marathon_client, matching_app_id, expected_instances)
