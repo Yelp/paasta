@@ -1,3 +1,4 @@
+@chronos
 Feature: setup_chronos_job can create and bounce jobs
 
   Scenario: complete jobs can be deployed

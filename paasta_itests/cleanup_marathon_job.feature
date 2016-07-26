@@ -1,3 +1,4 @@
+@marathon
 Feature: cleanup_marathon_job removes no longer needed jobs
     
   Scenario: deleted apps are destroyed

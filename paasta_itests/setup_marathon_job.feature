@@ -1,3 +1,4 @@
+@marathon
 Feature: setup_marathon_job can create a "complete" app
     
   Scenario: complete apps can be deployed

@@ -1,3 +1,4 @@
+@mesos
 Feature: check_mesos_resource_utilization can send event
 
   Scenario: check_mesos_resource_utilization 101%

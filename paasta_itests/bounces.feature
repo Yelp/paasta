@@ -1,3 +1,4 @@
+@marathon
 Feature: Bounces work as expected
 
   Scenario: The upthendown bounce works

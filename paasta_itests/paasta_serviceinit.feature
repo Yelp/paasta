@@ -1,5 +1,6 @@
 Feature: paasta_serviceinit
 
+  @marathon
   Scenario: marathon_serviceinit can run status
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -8,6 +9,7 @@ Feature: paasta_serviceinit
       And we wait for it to be deployed
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
+  @marathon
   Scenario: marathon_serviceinit can restart tasks
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -16,6 +18,7 @@ Feature: paasta_serviceinit
       And we wait for it to be deployed
      Then marathon_serviceinit restart should get new task_ids for "test-service.main"
 
+  @chronos
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
@@ -26,6 +29,7 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
      Then paasta_serviceinit status for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
 
+  @chronos
   Scenario: paasta_serviceinit can run status --verbose on chronos jobs
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
@@ -36,6 +40,7 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
      Then paasta_serviceinit status --verbose for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
 
+  @marathon
   Scenario: paasta_serviceinit can run status -vv to tail a mesos task stdout/stderr
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -46,6 +51,7 @@ Feature: paasta_serviceinit
       And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
 
+  @chronos
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
@@ -60,6 +66,7 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is disabled in chronos
       And the job stored as "myjob" has no running tasks
 
+  @chronos
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
@@ -72,6 +79,7 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is enabled in chronos
       And the job stored as "myjob" has running tasks
 
+  @chronos
   Scenario: paasta_serviceinit can run emergency-start on a disabled chronos job that results in noop
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
@@ -84,6 +92,7 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is disabled in chronos
       And the job stored as "myjob" has no running tasks
 
+  @chronos
   Scenario: paasta_serviceinit can run emergency-start on a stopped chronos job that results in noop
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
@@ -95,6 +104,7 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is disabled in chronos
       And the job stored as "myjob" has no running tasks
 
+  @chronos
   Scenario: paasta_serviceinit can run emergency-restart on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
@@ -107,6 +117,7 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is enabled in chronos
       And the job stored as "myjob" has running tasks
 
+  @marathon
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -117,6 +128,7 @@ Feature: paasta_serviceinit
       And we wait for "test-service.main" to launch exactly 0 tasks
      Then "test-service.main" has exactly 0 requested tasks in marathon
 
+  @marathon
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app via appid
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -127,6 +139,7 @@ Feature: paasta_serviceinit
       And we wait for "test-service.main" to launch exactly 0 tasks
      Then "test-service.main" has exactly 0 requested tasks in marathon
 
+  @marathon
   Scenario: paasta_serviceinit can run emergency-scale on a marathon app
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"

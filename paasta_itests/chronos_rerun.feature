@@ -1,3 +1,4 @@
+@chronos
 Feature: chronos_rerun can rerun old jobs
 
   Scenario: a job can be rerun

@@ -31,7 +31,9 @@ test:
 
 itest: test
 	tox -e general_itests
-	tox -e paasta_itests
+	tox -e marathon_itests
+	tox -e chronos_itests
+	tox -e everything_else_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
