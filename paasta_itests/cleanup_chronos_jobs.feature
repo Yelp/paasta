@@ -1,3 +1,4 @@
+@chronos
 Feature: cleanup_chronos_jobs removes chronos jobs no longer in the config
 
  Scenario: Cleanup chronos jobs removes jobs

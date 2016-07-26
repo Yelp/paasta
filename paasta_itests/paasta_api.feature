@@ -1,3 +1,4 @@
+@api
 Feature: paasta_api
 
   Scenario: instance GET shows the status of service.instance

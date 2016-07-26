@@ -8,7 +8,9 @@ env:
   - TOXENV=coverage
   - TOXENV=docs
   - TOXENV=general_itests
-  - TOXENV=paasta_itests
+  - TOXENV=marathon_itests
+  - TOXENV=chronos_itests
+  - TOXENV=everything_else_itests
   - MAKE_TARGET=itest_trusty
 sudo: required
 services:

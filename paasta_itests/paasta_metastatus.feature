@@ -1,3 +1,4 @@
+@metastatus
 Feature: paasta_metastatus describes the state of the paasta cluster
 
 #  Scenario: Zookeeper unreachable

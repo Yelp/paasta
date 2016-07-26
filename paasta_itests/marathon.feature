@@ -1,3 +1,4 @@
+@marathon
 Feature: paasta_tools can create marathon apps
 
   Scenario: Trivial marathon apps can be deployed
