@@ -23,6 +23,7 @@ from pytest import raises
 from paasta_tools import autoscaling_lib
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import SlaveTaskCount
+from paasta_tools.paasta_metastatus import ResourceInfo
 
 
 def test_get_zookeeper_instances():
@@ -916,3 +917,59 @@ def test_describe_instance():
         mock_describe_instances.side_effect = ClientError(mock_error, 'blah')
         ret = autoscaling_lib.describe_instances(['i-1', 'i-2'])
         assert ret is None
+
+
+def test_spotfleet_metrics_provider():
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling_lib.get_sfr', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_spot_fleet_instances', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_sfr_instance_ips', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_resource_utilization_by_grouping', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.slave_pid_to_ip'),
+        mock.patch('paasta_tools.autoscaling_lib.get_spot_fleet_delta'),
+    ) as (
+        mock_get_sfr,
+        mock_get_spot_fleet_instances,
+        mock_get_sfr_instance_ips,
+        mock_get_resource_utilization_by_grouping,
+        mock_pid_to_ip,
+        mock_get_spot_fleet_delta
+    ):
+        mock_resource = {'pool': 'default'}
+        mock_mesos_state = {'slaves': [{'id': 'id1',
+                                        'attributes': {'pool': 'default'},
+                                        'pid': 'pid1'},
+                                       {'id': 'id2',
+                                        'attributes': {'pool': 'default'},
+                                        'pid': 'pid2'}]}
+        mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
+                            'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
+        mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
+        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2']
+        mock_get_spot_fleet_instances.return_value = [mock.Mock(), mock.Mock()]
+        mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.2.2.2']
+        mock_get_spot_fleet_delta.return_value = 1, 2
+
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'cancelled'}
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state, mock_resource)
+        mock_get_sfr.assert_called_with('sfr-blah')
+        assert not mock_get_spot_fleet_instances.called
+        assert ret == (0, 0)
+
+        mock_get_sfr.return_value = None
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state, mock_resource)
+        mock_get_sfr.assert_called_with('sfr-blah')
+        assert not mock_get_spot_fleet_instances.called
+        assert ret == (0, 0)
+
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state, mock_resource)
+        mock_get_sfr.assert_called_with('sfr-blah')
+        mock_get_spot_fleet_instances.assert_called_with('sfr-blah')
+        expected_get_ip_call = mock_get_sfr.return_value.copy()
+        expected_get_ip_call['ActiveInstances'] = mock_get_spot_fleet_instances.return_value
+        mock_get_sfr_instance_ips.assert_called_with(expected_get_ip_call)
+        mock_pid_to_ip.assert_has_calls([mock.call('pid1'), mock.call('pid2')])
+        mock_get_resource_utilization_by_grouping.assert_called_with(mock.ANY, mock_mesos_state)
+        mock_get_spot_fleet_delta.assert_called_with(mock_resource, float(0.5) - float(0.8))
+        assert ret == (1, 2)
