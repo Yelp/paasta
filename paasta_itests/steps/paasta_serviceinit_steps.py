@@ -24,8 +24,8 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 
 
-@when(u'we run the marathon app "{job_id}"')
-def run_marathon_app(context, job_id):
+@when(u'we run the marathon app "{job_id}" with "{instances:d}" instances')
+def run_marathon_app(context, job_id, instances):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     app_config = {
@@ -38,7 +38,7 @@ def run_marathon_app(context, job_id):
                 'image': 'busybox',
             },
         },
-        'instances': 2,
+        'instances': instances,
         'constraints': [["hostname", "UNIQUE"]],
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
