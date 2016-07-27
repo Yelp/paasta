@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import binascii
+from collections import namedtuple
 import logging
 import sys
 import time
@@ -39,6 +40,13 @@ from paasta_tools.utils import get_docker_url
 log = logging.getLogger(__name__)
 
 MESOS_TASK_SPACER = '.'
+RUNNING_TASK = 0x00001
+STARTING_TASK = 0x00010
+DRAINING_TASK = 0x00100
+STOPPING_TASK = 0x01000
+HEALTHY_TASK = 0x10000
+
+MesosTaskParameters = namedtuple("MesosTaskParamters", ["flags", "health"])
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
@@ -49,11 +57,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        self.tasks = {}  # TODO: do we need this?
-        self.running_tasks = set()
-        self.started_tasks = set()
-        self.draining_tasks = set()
-        self.stopping_tasks = set()
+        self.tasks_with_flags = {}
 
         self.reconcile_start_time = float('inf')  # don't accept resources until we reconcile.
         self.reconcile_backoff = reconcile_backoff  # wait this long after starting a reconcile before accepting offers.
@@ -107,7 +111,10 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
-        num_have = len(self.get_new_tasks(name, self.running_tasks | self.started_tasks))
+        num_have = len(self.get_new_tasks(
+            name,
+            [task for task, parameters in self.tasks_with_flags.iteritems() if (RUNNING_TASK | STARTING_TASK) & parameters.flags]
+        ))
         return num_have < self.service_config.get_instances()
 
     def get_new_tasks(self, name, tasks):
@@ -143,8 +150,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
             tid = "%s.%s" % (t.name, uuid.uuid4().hex)
             t.task_id.value = tid
             tasks.append(t)
-            self.tasks[tid] = offer.slave_id
-            self.started_tasks.add(tid)
+            task_params = self.tasks_with_flags.get(tid, MesosTaskParameters(0x0, None))
+            self.tasks_with_flags[tid] = MesosTaskParameters(task_params.flags | STARTING_TASK, task_params.health)
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
@@ -169,21 +176,15 @@ class PaastaScheduler(mesos.interface.Scheduler):
         print "Task %s is in state %s" % \
             (task_id, mesos_pb2.TaskState.Name(state))
         if state == mesos_pb2.TASK_RUNNING:
-            if task_id in self.started_tasks:
-                self.started_tasks.remove(task_id)
-            self.running_tasks.add(task_id)
-            if task_id not in self.tasks:
-                self.tasks[task_id] = update.slave_id.value
+            task_params = self.tasks_with_flags.get(task_id, MesosTaskParameters(0x0, None))
+            self.tasks_with_flags[task_id] = MesosTaskParameters((task_params.flags & ~STARTING_TASK) | RUNNING_TASK, task_params.health)
         if state == mesos_pb2.TASK_LOST or \
                 state == mesos_pb2.TASK_KILLED or \
                 state == mesos_pb2.TASK_FAILED or \
                 state == mesos_pb2.TASK_FINISHED:
 
-            self.started_tasks.discard(task_id)
-            self.running_tasks.discard(task_id)
-            self.draining_tasks.discard(task_id)
-            self.stopping_tasks.discard(task_id)
             self.tasks.pop(task_id, None)
+            self.tasks_with_flags.pop(task_id)
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
@@ -192,12 +193,18 @@ class PaastaScheduler(mesos.interface.Scheduler):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
         # Undrain any tasks that shouldn't be draining.
-        for task in self.get_new_tasks(base_task.name, self.draining_tasks):
+        for task in self.get_new_tasks(base_task.name, set([task for task, parameters in self.tasks_with_flags.iteritems() if DRAINING_TASK & parameters.flags])):
             self.undrain_task(task)
 
         # Happier things first
-        new_running_tasks = list(self.get_new_tasks(base_task.name, self.running_tasks))
-        new_started_tasks = list(self.get_new_tasks(base_task.name, self.started_tasks))
+        new_running_tasks = list(self.get_new_tasks(
+            base_task.name,
+            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & RUNNING_TASK]
+        ))
+        new_started_tasks = list(self.get_new_tasks(
+            base_task.name,
+            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & STARTING_TASK]
+        ))
 
         desired_instances = self.service_config.get_instances()
 
@@ -205,7 +212,10 @@ class PaastaScheduler(mesos.interface.Scheduler):
         new_tasks_to_kill = new_tasks[desired_instances:]
 
         old_app_live_happy_tasks = self.group_tasks_by_version(
-            self.get_old_tasks(base_task.name, self.started_tasks | self.running_tasks) | set(new_tasks_to_kill)
+            self.get_old_tasks(
+                base_task.name,
+                set([task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & (STARTING_TASK | RUNNING_TASK)])
+            ) | set(new_tasks_to_kill)
         )
 
         actions = bounce_lib.crossover_bounce(
@@ -219,34 +229,28 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task in set(self.draining_tasks):
+        for task in [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & DRAINING_TASK]:
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
                 self.kill_task(driver, task)
 
     def undrain_task(self, task):
         self.drain_method.stop_draining(DrainTask(id=task))
 
-        self.stopping_tasks.discard(task)
-        self.draining_tasks.discard(task)
-        self.started_tasks.discard(task)
-        self.running_tasks.add(task)
+        task_params = self.tasks_with_flags.get(task)
+        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(STOPPING_TASK | DRAINING_TASK | STARTING_TASK) | RUNNING_TASK), task_params.health)
 
     def drain_task(self, task):
         self.drain_method.drain(DrainTask(id=task))
 
-        self.stopping_tasks.discard(task)
-        self.running_tasks.discard(task)
-        self.started_tasks.discard(task)
-        self.draining_tasks.add(task)
+        task_params = self.tasks_with_flags.get(task)
+        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(STOPPING_TASK | STARTING_TASK | RUNNING_TASK)) | DRAINING_TASK, task_params.health)
 
     def kill_task(self, driver, task):
         tid = mesos_pb2.TaskID()
         tid.value = task
         driver.killTask(tid)
-        self.draining_tasks.discard(task)
-        self.running_tasks.discard(task)
-        self.started_tasks.discard(task)
-        self.stopping_tasks.add(task)
+        task_params = self.tasks_with_flags.get(task)
+        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(DRAINING_TASK | STARTING_TASK | RUNNING_TASK)) | STOPPING_TASK, task_params.health)
 
     def group_tasks_by_version(self, task_ids):
         d = {}
