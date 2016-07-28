@@ -549,32 +549,33 @@ def get_spot_fleet_delta(resource, error):
     if spot_fleet_request['SpotFleetRequestState'] != 'active':
         raise ClusterAutoscalingError('Can not scale non-active spot fleet requests. This one is "%s"' %
                                       spot_fleet_request['SpotFleetRequestState'])
-    current_capacity = int(spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity'])
-    ideal_capacity = int(ceil((1 + error) * current_capacity))
-    log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
-    new_capacity = int(min(
+    current_capacity = float(spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity'])
+    ideal_capacity = float((1.0 + error) * current_capacity)
+    log.debug("Ideal calculated capacity is %.2f%% instances" % ideal_capacity)
+    new_capacity = float(min(
         max(
-            resource['min_capacity'],
-            floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
+            float(resource['min_capacity']),
+            current_capacity * (1.00 - float(MAX_CLUSTER_DELTA)),
             ideal_capacity,
-            1,  # A SFR cannot scale below 1 instance
         ),
-        ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
-        resource['max_capacity'],
+        current_capacity * (1.00 + float(MAX_CLUSTER_DELTA)),
+        float(resource['max_capacity']),
     ))
-    log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
+    log.debug("The new capacity to scale to is %.2f%% instances" % ideal_capacity)
 
     if ideal_capacity > resource['max_capacity']:
-        log.warning("Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
+        log.warning("Our ideal capacity (%.2f%%) is over max_capacity (%.2f%%). Consider rasing max_capacity!" % (
             ideal_capacity, resource['max_capacity']))
     if ideal_capacity < resource['min_capacity']:
-        log.warning("Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
+        log.warning("Our ideal capacity (%.2f%%) is under min_capacity (%.2f%%). Consider lowering min_capacity!" % (
             ideal_capacity, resource['min_capacity']))
-    if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
-            ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
+    if (ideal_capacity < current_capacity * (1.00 - float(MAX_CLUSTER_DELTA)) or
+            ideal_capacity > current_capacity * (1.00 + float(MAX_CLUSTER_DELTA))):
         log.warning(
-            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
-            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
+            "Our ideal capacity (%.2f%%) would change by more than %.2f%% "
+            "of current %.2f%%. Just doing a %.2f%% change for now to %.2f%%." %
+            (ideal_capacity, float(MAX_CLUSTER_DELTA) * 100, current_capacity,
+             float(MAX_CLUSTER_DELTA) * 100, new_capacity))
 
     if new_capacity != current_capacity:
         print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
@@ -645,7 +646,7 @@ def wait_and_terminate(slave, dry_run):
 
 def get_instance_type_weights(sfr):
     launch_specifications = sfr['SpotFleetRequestConfig']['LaunchSpecifications']
-    return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
+    return {ls['InstanceType']: float(ls['WeightedCapacity']) for ls in launch_specifications}
 
 
 def filter_sfr_slaves(sorted_slaves, sfr):
@@ -722,8 +723,8 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
     :param target_capacity: target SFR capacity
     :param sorted_slaves: list of slaves by order to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
-    target_capacity = int(target_capacity)
-    current_capacity = int(current_capacity)
+    target_capacity = float(target_capacity)
+    current_capacity = float(current_capacity)
     delta = target_capacity - current_capacity
     sfr_id = resource['id']
     if delta == 0:
@@ -746,7 +747,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             if len(sfr_sorted_slaves) == 0:
                 break
             slave_to_kill = sfr_sorted_slaves.pop()
-            instance_capacity = int(slave_to_kill['instance_weight'])
+            instance_capacity = slave_to_kill['instance_weight']
             new_capacity = current_capacity - instance_capacity
             if current_capacity - instance_capacity < target_capacity:
                 log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
