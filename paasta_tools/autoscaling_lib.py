@@ -576,12 +576,7 @@ def get_spot_fleet_delta(resource, error):
             "of current %.2f%%. Just doing a %.2f%% change for now to %.2f%%." %
             (ideal_capacity, float(MAX_CLUSTER_DELTA) * 100, current_capacity,
              float(MAX_CLUSTER_DELTA) * 100, new_capacity))
-
-    if new_capacity != current_capacity:
-        print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
-        return current_capacity, new_capacity
-    else:
-        return 0
+    return current_capacity, new_capacity
 
 
 def sort_slaves_to_kill(mesos_state, pool='default'):
