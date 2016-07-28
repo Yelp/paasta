@@ -1,3 +1,10 @@
+paasta-tools (0.33.0) UNRELEASED; urgency=medium
+
+  * 0.33.0 tagged with 'make release'
+    Commit:
+
+ -- Ammar Askar <ammar@yelp.com>  Thu, 28 Jul 2016 18:01:13 -0400
+
 paasta-tools (0.32.2) lucid; urgency=low
 
   * 0.32.2 tagged with 'make release'
