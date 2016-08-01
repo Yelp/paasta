@@ -14,6 +14,7 @@
 import contextlib
 from time import sleep
 
+import mesos.cli.master
 import mock
 from behave import then
 from behave import when
@@ -22,6 +23,7 @@ from itest_utils import update_context_marathon_config
 from marathon.exceptions import MarathonHttpError
 
 from paasta_tools import marathon_tools
+from paasta_tools import paasta_maintenance
 from paasta_tools import setup_marathon_job
 from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -61,12 +63,18 @@ def setup_zookeeper(context, number):
 
 @when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')
 def create_app_with_instances(context, job_id, number):
+    create_app_with_instances_constraints(context, job_id, number, str(None))
+
+
+@when(u'we create a marathon app called "{job_id}" with {number:d} instance(s) and constraints {constraints}')
+def create_app_with_instances_constraints(context, job_id, number, constraints):
     set_number_instances(context, number)
     context.job_id = job_id
     (service, instance, _, __) = decompose_job_id(job_id)
     context.service = service
     context.instance = instance
     context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
+    context.constraints = constraints
     update_context_marathon_config(context)
     context.app_id = context.marathon_complete_config['id']
     run_setup_marathon_job(context)
@@ -79,12 +87,27 @@ def set_number_instances(context, number):
 
 @when(u'we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
+    config = {
+        'master': '%s' % get_service_connection_string('mesosmaster'),
+        'scheme': 'http',
+        'response_timeout': 5,
+    }
     for _ in xrange(20):
-        run_setup_marathon_job(context)
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+            mock.patch.object(mesos.cli.master, 'CFG', config),
+        ) as (
+            mock_load_credentials,
+            _,
+        ):
+            mock_load_credentials.side_effect = paasta_maintenance.load_credentials(
+                mesos_secrets='/etc/mesos-slave-secret',
+            )
+            run_setup_marathon_job(context)
         sleep(0.5)
-        if marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True):
+        if context.marathon_client.get_app(context.app_id).instances == number:
             return
-    assert marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True)
+    assert context.marathon_client.get_app(context.app_id).instances == number
 
 
 @when(u'we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
@@ -110,3 +133,48 @@ def can_run_get_app(context):
 @then(u'we should see the number of instances become {number:d}')
 def assert_instances_equals(context, number):
     assert context.marathon_client.get_app(context.app_id).instances == number
+
+
+@when(u'we mark a host it is running on as at-risk')
+def mark_host_running_on_at_risk(context):
+    app = context.marathon_client.get_app(context.new_id)
+    tasks = app.tasks
+    host = tasks[0].host
+    mark_host_at_risk(context, host)
+
+
+@when(u'we mark the host "{host}" as at-risk')
+def mark_host_at_risk(context, host):
+    start = paasta_maintenance.datetime_to_nanoseconds(paasta_maintenance.now())
+    duration = paasta_maintenance.parse_timedelta('1h')
+    config = {
+        'master': '%s' % get_service_connection_string('mesosmaster'),
+        'scheme': 'http',
+        'response_timeout': 5,
+    }
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+        mock.patch.object(mesos.cli.master, 'CFG', config),
+    ) as (
+        mock_load_credentials,
+        _,
+    ):
+        mock_load_credentials.side_effect = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        paasta_maintenance.drain([host], start, duration)
+        context.at_risk_host = host
+
+
+@then(u'there should be {number:d} tasks on that at-risk host')
+def tasks_on_that_at_risk_host_drained(context, number):
+    tasks_on_host_drained(context, number, context.at_risk_host)
+
+
+@then(u'there should be {number:d} tasks on the host "{host}"')
+def tasks_on_host_drained(context, number, host):
+    app_id = context.new_id
+    tasks = context.marathon_client.list_tasks(app_id)
+    count = 0
+    for task in tasks:
+        if task.host == host:
+            count += 1
+    return count == number

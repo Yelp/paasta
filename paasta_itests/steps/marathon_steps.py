@@ -36,7 +36,8 @@ def create_trivial_marathon_app(context):
                 'image': 'busybox',
             },
         },
-        'instances': 1,
+        'instances': 3,
+        'constraints': [["hostname", "UNIQUE"]],
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
         paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
@@ -63,7 +64,7 @@ def when_the_task_has_started(context):
     for _ in xrange(120):
         app = context.marathon_client.get_app(APP_ID)
         happy_count = app.tasks_running
-        if happy_count >= 1:
+        if happy_count >= 3:
             return
         time.sleep(0.5)
 

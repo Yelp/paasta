@@ -32,6 +32,7 @@ from marathon import NotFoundError
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -1171,3 +1172,20 @@ def is_task_healthy(task, require_all=True, default_healthy=False):
         else:
             return any(results)
     return default_healthy
+
+
+def get_num_at_risk_tasks(app):
+    """Determine how many of an application's tasks are running on
+    at-risk (Mesos Maintenance Draining) hosts.
+
+    :param app: A marathon application
+    :returns: An integer representing the number of tasks running on at-risk hosts
+    """
+    hosts_tasks_running_on = [task.host for task in app.tasks]
+    draining_hosts = get_draining_hosts()
+    num_at_risk_tasks = 0
+    for host in hosts_tasks_running_on:
+        if host in draining_hosts:
+            num_at_risk_tasks += 1
+    log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
+    return num_at_risk_tasks

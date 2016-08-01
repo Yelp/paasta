@@ -382,14 +382,14 @@ def test_load_credentials_keyerror(
         assert load_credentials()
 
 
-@mock.patch('paasta_tools.paasta_maintenance.get_schedule_client')
+@mock.patch('paasta_tools.paasta_maintenance.maintenance_api')
 def test_get_maintenance_status(
-    mock_get_schedule_client,
+    mock_maintenance_api,
 ):
     get_maintenance_status()
-    assert mock_get_schedule_client.call_count == 1
-    assert mock_get_schedule_client.return_value.call_count == 1
-    assert mock_get_schedule_client.return_value.call_args == mock.call(method="GET", endpoint="/status")
+    assert mock_maintenance_api.call_count == 1
+    assert mock_maintenance_api.return_value.call_count == 1
+    assert mock_maintenance_api.return_value.call_args == mock.call(method="GET", endpoint="/status")
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_schedule_client')
@@ -428,9 +428,9 @@ def test_undrain(
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
-    undrain(hostnames=['some-host'], start='some-start', duration='some-duration')
+    undrain(hostnames=['some-host'])
     assert mock_build_maintenance_schedule_payload.call_count == 1
-    expected_args = mock.call(['some-host'], 'some-start', 'some-duration', drain=False)
+    expected_args = mock.call(['some-host'], drain=False)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
@@ -506,7 +506,9 @@ def test_schedule(
 def test_get_hosts_with_state_none(
     mock_get_maintenance_status,
 ):
-    mock_get_maintenance_status.return_value = {}
+    fake_status = {}
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     assert get_hosts_with_state(state='fake_state') == []
 
 
@@ -530,7 +532,8 @@ def test_get_hosts_with_state_draining(
             }
         ]
     }
-    mock_get_maintenance_status.return_value = fake_status
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     expected = sorted(['fake-host1.fakesite.something', 'fake-host2.fakesite.something'])
     assert sorted(get_hosts_with_state(state='draining_machines')) == expected
 
@@ -555,7 +558,8 @@ def test_get_hosts_with_state_down(
             }
         ]
     }
-    mock_get_maintenance_status.return_value = fake_status
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     expected = sorted(['fake-host1.fakesite.something', 'fake-host2.fakesite.something'])
     assert sorted(get_hosts_with_state(state='down_machines')) == expected
 
