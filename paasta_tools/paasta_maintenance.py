@@ -148,7 +148,7 @@ def schedule():
     except HTTPError as e:
         e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
         raise
-    print "%s:%s" % (schedule, schedule.text)
+    print "%s" % schedule.text
 
 
 def get_hosts_with_state(state):
@@ -419,7 +419,7 @@ def status():
     except HTTPError as e:
         e.msg = "Error performing maintenance status. Got error: %s" % e.msg
         raise
-    print "%s:%s" % (status, status.text)
+    print "%s" % status.text
 
 
 def paasta_maintenance():
@@ -431,8 +431,8 @@ def paasta_maintenance():
     action = args.action
     hostnames = args.hostname
 
-    if action not in ['drain', 'undrain', 'down', 'up', 'status']:
-        print "action must be 'drain', 'undrain', 'down', 'up', or 'status'"
+    if action not in ['drain', 'undrain', 'down', 'up', 'status', 'schedule']:
+        print "action must be 'drain', 'undrain', 'down', 'up', 'status', or 'schedule'"
         return
 
     if action != 'status' and not hostnames:
@@ -445,13 +445,14 @@ def paasta_maintenance():
     if action == 'drain':
         drain(hostnames, start, duration)
     elif action == 'undrain':
-        undrain(hostnames, start, duration)
+        undrain(hostnames)
     elif action == 'down':
         down(hostnames)
     elif action == 'up':
         up(hostnames)
     elif action == 'status':
         status()
+    elif action == 'schedule':
         schedule()
 
 

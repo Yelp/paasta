@@ -479,12 +479,11 @@ def test_status(
     mock_stdout,
 ):
     mock_get_maintenance_status.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_status.return_value.__str__.return_value = 'fake_status'
     mock_get_maintenance_status.return_value.text = 'fake_text'
     status()
     output = mock_stdout.getvalue()
     assert mock_get_maintenance_status.call_count == 1
-    assert output == "fake_status:fake_text\n"
+    assert output == "fake_text\n"
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
@@ -494,12 +493,11 @@ def test_schedule(
     mock_stdout,
 ):
     mock_get_maintenance_schedule.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_schedule.return_value.__str__.return_value = 'fake_status'
     mock_get_maintenance_schedule.return_value.text = 'fake_text'
     schedule()
     output = mock_stdout.getvalue()
     assert mock_get_maintenance_schedule.call_count == 1
-    assert output == "fake_status:fake_text\n"
+    assert output == "fake_text\n"
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_status')
