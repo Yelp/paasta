@@ -741,9 +741,11 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             if len(sfr_sorted_slaves) == 0:
                 break
             slave_to_kill = sfr_sorted_slaves.pop()
-            instance_capacity = int(slave_to_kill['instance_weight'])
-            new_capacity = current_capacity - instance_capacity
-            if current_capacity - instance_capacity < target_capacity:
+            # Instance weights can be floats but the target has to be an integer
+            # because AWS...
+            instance_capacity = slave_to_kill['instance_weight']
+            new_capacity = int(round(current_capacity - instance_capacity))
+            if new_capacity < target_capacity:
                 log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
                          " close to our target as we can get".format(slave_to_kill['instance_id'],
                                                                      slave_to_kill['instance_weight'],
