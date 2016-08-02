@@ -551,7 +551,7 @@ def get_spot_fleet_delta(resource, error):
                                       spot_fleet_request['SpotFleetRequestState'])
     current_capacity = float(spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity'])
     ideal_capacity = float((1.0 + error) * current_capacity)
-    log.debug("Ideal calculated capacity is %.2f instances" % ideal_capacity)
+    log.debug("Ideal calculated capacity is %.2f%% instances" % ideal_capacity)
     new_capacity = float(min(
         max(
             float(resource['min_capacity']),
@@ -561,19 +561,19 @@ def get_spot_fleet_delta(resource, error):
         current_capacity * (1.00 + float(MAX_CLUSTER_DELTA)),
         float(resource['max_capacity']),
     ))
-    log.debug("The new capacity to scale to is %.2f instances" % ideal_capacity)
+    log.debug("The new capacity to scale to is %.2f%% instances" % ideal_capacity)
 
     if ideal_capacity > resource['max_capacity']:
-        log.warning("Our ideal capacity (%.2f) is over max_capacity (%.2f). Consider rasing max_capacity!" % (
+        log.warning("Our ideal capacity (%.2f%%) is over max_capacity (%.2f%%). Consider rasing max_capacity!" % (
             ideal_capacity, resource['max_capacity']))
     if ideal_capacity < resource['min_capacity']:
-        log.warning("Our ideal capacity (%.2f) is under min_capacity (%.2f). Consider lowering min_capacity!" % (
+        log.warning("Our ideal capacity (%.2f%%) is under min_capacity (%.2f%%). Consider lowering min_capacity!" % (
             ideal_capacity, resource['min_capacity']))
     if (ideal_capacity < current_capacity * (1.00 - float(MAX_CLUSTER_DELTA)) or
             ideal_capacity > current_capacity * (1.00 + float(MAX_CLUSTER_DELTA))):
         log.warning(
-            "Our ideal capacity (%.2f) would change by more than %.2f%% "
-            "of current %.2f. Just doing a %.2f%% change for now to %.2f." %
+            "Our ideal capacity (%.2f%%) would change by more than %.2f%% "
+            "of current %.2f%%. Just doing a %.2f%% change for now to %.2f%%." %
             (ideal_capacity, float(MAX_CLUSTER_DELTA) * 100, current_capacity,
              float(MAX_CLUSTER_DELTA) * 100, new_capacity))
     return current_capacity, new_capacity
