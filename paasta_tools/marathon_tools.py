@@ -523,8 +523,18 @@ class MarathonServiceConfig(InstanceConfig):
     def get_healthcheck_max_consecutive_failures(self):
         return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
+    # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self):
-        return self.config_dict.get('nerve_ns', self.instance)
+        return self.get_registration_namespaces()[0]
+
+    def get_registration_namespaces(self):
+        registration_namespaces = self.config_dict.get('registration_namespaces', [])
+        # Backwards compatbility with nerve_ns
+        # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
+        if 'nerve_ns' in self.config_dict:
+            registration_namespaces.append(self.config_dict.get('nerve_ns'))
+
+        return registration_namespaces or [self.instance]
 
     def get_bounce_health_params(self, service_namespace_config):
         default = {}
@@ -766,9 +776,15 @@ def deformat_job_id(job_id):
     return decompose_job_id(job_id)
 
 
-def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive a service instance's nerve namespace from its configuration file.
-    If one is not defined in the config file, returns instance instead."""
+def read_all_namespaces_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive all registration namespaces for a particular service instance.
+
+    For example, the 'main' paasta instance may register in the 'main'
+    namespace as well as the 'bulk' namespace
+
+    If one is not defined in the config file, returns a list containing
+    instance instead.
+    """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     srv_info = service_configuration_lib.read_extra_service_information(
@@ -776,7 +792,26 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
         "marathon-%s" % cluster,
         soa_dir
     )[instance]
-    return srv_info['nerve_ns'] if 'nerve_ns' in srv_info else instance
+
+    registration_namespaces = srv_info.get('registration_namespaces', [])
+    # Backwards compatbility with nerve_ns
+    # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
+    if 'nerve_ns' in srv_info:
+        registration_namespaces.append(srv_info['nerve_ns'])
+
+    return registration_namespaces or [instance]
+
+
+def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive a service instance's primary registration namespace for a
+    particular service instance.
+
+    This is the namespace that clients ought talk to, as well as paasta
+    ought monitor. In this context "primary" just means the first one in the
+    list of registration namespaces.
+
+    If one is not defined in the config file, returns instance instead."""
+    return read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir)[0]
 
 
 def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -867,13 +902,13 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     nerve_list = []
     for name, instance, port in marathon_services:
         try:
-            namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
-            if not nerve_dict.is_in_smartstack():
-                continue
-            nerve_dict['port'] = port
-            nerve_name = compose_job_id(name, namespace)
-            nerve_list.append((nerve_name, nerve_dict))
+            for namespace in read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir):
+                nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
+                if not nerve_dict.is_in_smartstack():
+                    continue
+                nerve_dict['port'] = port
+                nerve_name = compose_job_id(name, namespace)
+                nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
     return nerve_list
