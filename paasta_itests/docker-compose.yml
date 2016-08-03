@@ -8,7 +8,7 @@ mesosmaster:
     - 5050
   links:
     - zookeeper
-  command: 'mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets'
+  command: 'mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --work_dir=/tmp/mesos --credentials=/etc/mesos-secrets'
 
 mesosslave:
   build: ../yelp_package/dockerfiles/itest/mesos/
