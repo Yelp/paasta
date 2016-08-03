@@ -49,11 +49,11 @@ def test_filter_not_running_tasks():
 
 
 @mark.parametrize('test_case', [
-    [False, 0],
-    [True, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
+    [0, 0],
+    [10, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
 ])
 def test_status_mesos_tasks_verbose(test_case):
-    tail_stdstreams, expected_format_tail_call_count = test_case
+    tail_lines, expected_format_tail_call_count = test_case
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True,),
         mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks', autospec=True,),
@@ -88,7 +88,11 @@ def test_status_mesos_tasks_verbose(test_case):
         def get_short_task_id(_):
             return 'short_task_id'
 
-        actual = mesos_tools.status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams)
+        actual = mesos_tools.status_mesos_tasks_verbose(
+            job_id=job_id,
+            get_short_task_id=get_short_task_id,
+            tail_lines=tail_lines,
+        )
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)

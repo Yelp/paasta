@@ -344,14 +344,14 @@ def zip_tasks_verbose_output(table, stdstreams):
     return output
 
 
-def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_stdstreams):
+def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_lines):
     """Formats a list of tasks, returns a list of output lines
     :param tasks: List of tasks as returned by get_*_tasks_from_active_frameworks.
     :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
     :param table_header: List of column names used in the tasks table.
     :param get_short_task_id: A function which given a task_id returns a short task_id suitable for printing.
     :param format_task_row: Formatting function, works on a task and a get_short_task_id function.
-    :param tail_stdstreams: If True, also display the stdout/stderr tail, as obtained from the Mesos sandbox.
+    :param tail_lines (int): number of lines of stdout/stderr to tail, as obtained from the Mesos sandbox.
     :param grey: If True, the list will be made less visually prominent.
     :return output: Formatted output (list of output lines).
     """
@@ -369,27 +369,27 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     for task in tasks:
         table_rows.append(format_task_row(task, get_short_task_id))
     tasks_table = ["    %s" % row for row in format_table(table_rows)]
-    if not tail_stdstreams:
+    if tail_lines == 0:
         output.extend(tasks_table)
     else:
         stdstreams = []
         for task in tasks:
-            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id))
+            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
         output.append(tasks_table[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table[1:], stdstreams))
 
     return output
 
 
-def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False):
+def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
     """Returns detailed information about the mesos tasks for a service.
 
     :param job_id: An id used for looking up Mesos tasks
     :param get_short_task_id: A function which given a
                               task_id returns a short task_id suitable for
                               printing.
-    :param tail_stdstreams: If True, also display the stdout/stderr tail,
-                            as obtained from the Mesos sandbox.
+    :param tail_lines: int representing the number of lines of stdout/err to
+                       report.
     """
     output = []
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
@@ -402,13 +402,13 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         "Deployed at what localtime"
     ]
     output.extend(format_task_list(
-        running_and_active_tasks,
-        list_title,
-        table_header,
-        get_short_task_id,
-        format_running_mesos_task_row,
-        False,
-        tail_stdstreams
+        tasks=running_and_active_tasks,
+        list_title=list_title,
+        table_header=table_header,
+        get_short_task_id=get_short_task_id,
+        format_task_row=format_running_mesos_task_row,
+        grey=False,
+        tail_lines=tail_lines,
     ))
 
     non_running_tasks = get_non_running_tasks_from_active_frameworks(job_id)
@@ -424,13 +424,13 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         "Status",
     ]
     output.extend(format_task_list(
-        non_running_tasks_ordered,
-        list_title,
-        table_header,
-        get_short_task_id,
-        format_non_running_mesos_task_row,
-        True,
-        tail_stdstreams
+        tasks=non_running_tasks_ordered,
+        list_title=list_title,
+        table_header=table_header,
+        get_short_task_id=get_short_task_id,
+        format_task_row=format_non_running_mesos_task_row,
+        grey=True,
+        tail_lines=tail_lines,
     ))
 
     return "\n".join(output)

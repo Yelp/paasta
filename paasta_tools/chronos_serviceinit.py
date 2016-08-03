@@ -281,8 +281,12 @@ def format_chronos_job_status(client, job, running_tasks, verbose=0):
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose > 0:
-        tail_stdstreams = verbose > 1
-        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id, tail_stdstreams)
+        tail_lines = (verbose - 1) * 10
+        mesos_status_verbose = status_mesos_tasks_verbose(
+            job_id=job["name"],
+            get_short_task_id=get_short_task_id,
+            tail_lines=tail_lines,
+        )
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Job:     %(job_name)s\n"
