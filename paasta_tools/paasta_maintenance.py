@@ -48,7 +48,7 @@ def parse_args():
     )
     parser.add_argument(
         'action',
-        choices=['drain', 'undrain', 'down', 'up', 'status'],
+        choices=['drain', 'undrain', 'down', 'up', 'status', 'schedule'],
         help="Action to perform on the speicifed hosts",
     )
     parser.add_argument(
