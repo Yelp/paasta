@@ -84,8 +84,8 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             context.marathon_client,
             cluster
         )
-    print "Sleeping 5 seconds to wait for %s to be restarted." % service
-    time.sleep(5)
+    print "Sleeping 7 seconds to wait for %s to be restarted." % service
+    time.sleep(7)
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
