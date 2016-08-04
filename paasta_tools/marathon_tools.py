@@ -1111,9 +1111,9 @@ def kill_task(client, app_id, task_id, scale):
         # Marathon allows you to kill and scale in one action, but this is not
         # idempotent. If you kill&scale the same task ID twice, the number of instances
         # gets decremented twice. This can lead to a situation where kill&scaling the
-        # last task decrements the number of instances below zero, causing a "Bean is not
-        # valid" message.
-        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+        # last task decrements the number of instances below zero, causing an "Object is not
+        # valid" message or a "Bean is not valid" message.
+        if 'is not valid' in e.error_message and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         elif 'does not exist' in e.error_message and e.status_code == 404:
@@ -1132,7 +1132,7 @@ def kill_given_tasks(client, task_ids, scale):
         # a task in the interface and kill it, yet by the time it tries to kill
         # it, it is already gone. This is not really a failure condition, so we
         # swallow this error.
-        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+        if 'is not valid' in e.error_message and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         else:

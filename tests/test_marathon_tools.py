@@ -2264,7 +2264,7 @@ def test_kill_tasks_passes_catches_fewer_than_error():
     bad_fake_response = mock.Mock()
     bad_fake_response.status_code = 422
     bad_fake_response.json.return_value = {
-        "message": "Bean is not valid",
+        "message": "Object is not valid",
         "errors": [{"attribute": "instances", "error": "must be greater than or equal to 0"}],
     }
     fake_client.kill_task.side_effect = MarathonHttpError(response=bad_fake_response)
