@@ -929,6 +929,20 @@ class SystemPaastaConfig(dict):
         except KeyError:
             return {}
 
+    def get_api_port(self):
+        """Get the port where the PaaSTA API listens on"""
+        return self.get('api_port', 5054)
+
+    def get_api_ssl(self):
+        """Check if we the API is SSL enabled"""
+        return self.get('api_ssl', False)
+
+    def get_api_endpoints(self):
+        return self.get('api_endpoints', {})
+
+    def get_api_cluster_endpoint(self, cluster):
+        return self.get_api_endpoints().get(cluster, '')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

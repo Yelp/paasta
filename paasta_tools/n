@@ -1,0 +1,31 @@
+{"git_sha": "ea414723", "desired_state": "start", "service": "nsone_updater", "instance": "main", "app_count": 1, "bounce_method": "crossover", "marathon": {"app_id": "nsone--updater.main.gitea414723.config83efdede", "deploy_status": "Not Running"}}
+
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+§Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+Sleeping, Completed: 0 out of 2
+Checking nsone_updater.main at paasta-norcal-stagef.yelp
+        Check Successful!
+Checking nsone_updater.canary at paasta-norcal-stagef.yelp
+        Check Successful!
+
+All checks were successful
