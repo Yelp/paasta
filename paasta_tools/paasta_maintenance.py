@@ -26,6 +26,8 @@ from requests import Session
 from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_tools import get_mesos_leader
+from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 log = logging.getLogger(__name__)
@@ -420,6 +422,39 @@ def status():
         e.msg = "Error performing maintenance status. Got error: %s" % e.msg
         raise
     print "%s" % status.text
+
+
+def is_safe_to_kill(hostname):
+    """Checks if a host has drained or reached its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return is_host_drained(hostname) or hostname in get_hosts_past_maintenance_start()
+
+
+def is_host_drained(hostname):
+    """Checks if a host has drained successfully by confirming it is
+    draining and currently running 0 tasks
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    mesos_state = get_mesos_state_from_leader()
+    task_counts = get_mesos_task_count_by_slave(mesos_state)
+    slave_task_count = task_counts[hostname].count
+    return is_host_draining(hostname=hostname) and slave_task_count == 0
+
+
+def get_hosts_past_maintenance_start():
+    """Get a list of hosts that have reached the start of their maintenance window
+    :returns: List of hostnames
+    """
+    schedules = get_maintenance_schedule().json()
+    current_time = datetime_to_nanoseconds(now())
+    ret = []
+    for window in schedules['windows']:
+        if window['unavailability']['start']['nanoseconds'] < current_time:
+            ret += [host['hostname'] for host in window['machine_ids']]
+    return ret
 
 
 def paasta_maintenance():

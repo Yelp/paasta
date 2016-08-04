@@ -43,6 +43,7 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.paasta_maintenance import drain
+from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -610,9 +611,8 @@ def wait_and_terminate(slave, dry_run):
                 if not instance_id:
                     log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave['pid']))
                     continue
-                is_ready_to_kill = True
-                # is_ready_to_kill = paasta_maintenance.something(slave['pid'])
-                if is_ready_to_kill:
+                # Check if no tasks are running or we have reached the maintenance window
+                if is_safe_to_kill(slave['hostname']):
                     log.info("TERMINATING: {0}".format(instance_id))
                     try:
                         ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
@@ -662,6 +662,7 @@ def filter_sfr_slaves(sorted_slaves, sfr):
                       "This should never happen")
             continue
         sfr_sorted_slave_instances.append({'ip': ip,
+                                           'hostname': slave['hostname'],
                                            'pid': slave['pid'],
                                            'instance_id': instances[0]['InstanceId']})
     ret = []
@@ -753,16 +754,18 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
                 break
             # The start time of the maintenance window is the point at which
             # we giveup waiting for the instance to drain and mark it for termination anyway
-            start = int(time.time() + CLUSTER_DRAIN_TIMEOUT)
+            start = int(time.time() + CLUSTER_DRAIN_TIMEOUT) * 1000000000  # nanoseconds
             # Set the duration to an hour, if we haven't cleaned up and termintated by then
             # mesos should put the slave back into the pool
-            duration = 600
+            duration = 600 * 1000000000  # nanoseconds
             log.info("Draining {0}".format(slave_to_kill['pid']))
             if not dry_run:
                 try:
-                    drain([slave_to_kill['ip']], start, duration)
+                    drain_host_string = "{0}|{1}".format(slave_to_kill['hostname'], slave_to_kill['ip'])
+                    drain([drain_host_string], start, duration)
                 except HTTPError as e:
-                    log.error("Failed to trigger drain on {0}: {1}\n Trying next host".format(slave_to_kill['ip'], e))
+                    log.error("Failed to start drain "
+                              "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
                     continue
             log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
             if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run):

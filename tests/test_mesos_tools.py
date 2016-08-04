@@ -646,16 +646,16 @@ def test_get_mesos_task_count_by_slave():
         mock_task4.framework = mock_marathon
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_running_tasks_from_active_frameworks.return_value = mock_tasks
-        mock_slave_1 = {'id': 'slave1', 'attributes': {'pool': 'default'}, 'pid': 'aa'}
-        mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'pid': 'bb'}
-        mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'pid': 'cc'}
+        mock_slave_1 = {'id': 'slave1', 'attributes': {'pool': 'default'}, 'hostname': 'host1'}
+        mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2'}
+        mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3'}
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'slave1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'slave2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
+        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
+                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'slave1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'slave2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
-                       'slave3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}
+        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
+                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
+                       'host3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}
