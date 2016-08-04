@@ -10,4 +10,6 @@ ADD ./mesos_rsa.pub /root/.ssh/authorized_keys
 ADD ./mesos_rsa /root/.ssh/id_rsa
 RUN chmod 600 /root/.ssh/id_rsa
 ADD ./cron.d /etc/cron.d
+RUN mkdir -p /nail/etc
+RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
 ADD ./start.sh /start.sh
