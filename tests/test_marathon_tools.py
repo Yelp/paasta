@@ -655,7 +655,6 @@ class TestMarathonTools:
             read_ns_config_patch.assert_any_call('no_docstrings', 'quatro', soa_dir)
             assert read_ns_config_patch.call_count == 4
 
-
     def test_get_marathon_services_running_here_for_nerve_when_not_in_smartstack(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
