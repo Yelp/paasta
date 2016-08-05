@@ -531,7 +531,7 @@ class MarathonServiceConfig(InstanceConfig):
         registration_namespaces = self.config_dict.get('registration_namespaces', [])
         # Backwards compatbility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
-        if 'nerve_ns' in self.config_dict:
+        if not registration_namespaces and 'nerve_ns' in self.config_dict:
             registration_namespaces.append(self.config_dict.get('nerve_ns'))
 
         return registration_namespaces or [self.instance]
@@ -787,19 +787,12 @@ def read_all_namespaces_for_service_instance(name, instance, cluster=None, soa_d
     """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    srv_info = service_configuration_lib.read_extra_service_information(
-        name,
-        "marathon-%s" % cluster,
-        soa_dir
-    )[instance]
 
-    registration_namespaces = srv_info.get('registration_namespaces', [])
-    # Backwards compatbility with nerve_ns
-    # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
-    if 'nerve_ns' in srv_info:
-        registration_namespaces.append(srv_info['nerve_ns'])
+    marathon_service_config = load_marathon_service_config(
+        name, instance, cluster, load_deployments=False, soa_dir=soa_dir
+    )
 
-    return registration_namespaces or [instance]
+    return marathon_service_config.get_registration_namespaces()
 
 
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -815,7 +808,8 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
 
 
 def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the proxy_port defined in the namespace configuration for a service instance.
+    """Get the proxy_port defined in the first namespace configuration for a
+    service instance.
 
     This means that the namespace first has to be loaded from the service instance's
     configuration, and then the proxy_port has to loaded from the smartstack configuration
