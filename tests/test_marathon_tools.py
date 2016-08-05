@@ -479,52 +479,77 @@ class TestMarathonTools:
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
 
-    @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    def test_read_namespace_for_service_instance_has_value_with_nerve_ns(self, read_info_patch):
+    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
+    def test_read_namespace_for_service_instance_has_value_with_nerve_ns(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
         namespace = 'spacename'
         soa_dir = 'dirdirdir'
-        read_info_patch.return_value = {instance: {'nerve_ns': namespace}}
+        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
+            service=name,
+            cluster=cluster,
+            instance=instance,
+            config_dict={'nerve_ns': namespace},
+            branch_dict={},
+        )
         actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == namespace
-        read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
+        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
-    @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    def test_read_namespace_for_service_instance_has_value(self, read_info_patch):
+    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
+    def test_read_namespace_for_service_instance_has_value(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
         namespace = 'spacename'
         soa_dir = 'dirdirdir'
-        read_info_patch.return_value = {instance: {'registration_namespaces': [namespace, 'something else']}}
+        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
+            service=name,
+            cluster=cluster,
+            instance=instance,
+            config_dict={'registration_namespaces': [namespace, 'something else']},
+            branch_dict={},
+        )
         actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == namespace
-        read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
+        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
-    @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    def test_read_all_namespaces_for_service_instance_has_value(self, read_info_patch):
+    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
+    def test_read_all_namespaces_for_service_instance_has_value(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
         namespaces = ['spacename', 'spaceiscool', 'rocketsarecooler']
         soa_dir = 'dirdirdir'
-        read_info_patch.return_value = {instance: {'registration_namespaces': namespaces}}
+        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
+            service=name,
+            cluster=cluster,
+            instance=instance,
+            config_dict={'registration_namespaces': namespaces},
+            branch_dict={},
+        )
         actual_registrations = marathon_tools.read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir)
         assert set(actual_registrations) == set(namespaces)
-        read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
+        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
-    @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    def test_read_namespace_for_service_instance_no_value(self, read_info_patch):
+    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
+    def test_read_namespace_for_service_instance_no_value(self, load_config_patch):
         name = 'wall_light'
         instance = 'ceiling_light'
         cluster = 'no_light'
         soa_dir = 'warehouse_light'
-        read_info_patch.return_value = {instance: {'aaaaaaaa': ['bbbbbbbb']}}
+        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
+            service=name,
+            cluster=cluster,
+            instance=instance,
+            config_dict={'aaaaaaaa': ['bbbbbbbbbb']},
+            branch_dict={},
+        )
+
         actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == instance
-        read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
+        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.get_local_slave_state', autospec=True)
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
@@ -2423,7 +2448,7 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
 def test_read_namespace_for_service_instance_no_cluster():
     mock_get_cluster = mock.Mock()
     with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.service_configuration_lib.read_extra_service_information',
+            mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
                        autospec=True),
             mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
                        return_value=mock.Mock(get_cluster=mock_get_cluster)),
