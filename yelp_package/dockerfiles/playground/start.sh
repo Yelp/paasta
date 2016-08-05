@@ -1,7 +1,4 @@
 #!/bin/bash
-#socat tcp-listen:5000,reuseaddr,fork tcp:registry:5000 &
-ssh-keyscan mesosmaster >> /root/.ssh/known_hosts
-ssh-keyscan git >> /root/.ssh/known_hosts
 if [ ! -f /var/tmp/pip_cache/built_wheels ]; then
     pip wheel . --wheel-dir=/var/tmp/pip_cache
     touch /var/tmp/pip_cache/built_wheels

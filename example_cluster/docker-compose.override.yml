@@ -1,4 +1,6 @@
 version: '2'
+volumes:
+  ssh-data: {}
 services:
   mesosbase:
     build: ../yelp_package/dockerfiles/itest/mesos/
@@ -11,11 +13,12 @@ services:
       - mesosbase
       - zookeeper
     volumes:
-    - /var/tmp/pip_cache1:/var/tmp/pip_cache
-    - ../:/work:rw
-    - ./paasta:/etc/paasta:rw
-    - ./example-services:/nail/etc/services:rw
-    - /var/run/docker.sock:/var/run/docker.sock
+      - /var/tmp/pip_cache1:/var/tmp/pip_cache
+      - ../:/work:rw
+      - ./paasta:/etc/paasta:rw
+      - ./example-services:/nail/etc/services:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ssh-data:/root/.ssh
     command: '/start.sh'
     environment:
       MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
@@ -36,11 +39,12 @@ services:
     environment:
       MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
     volumes:
-    - /var/tmp/pip_cache2:/var/tmp/pip_cache
-    - ../:/work:rw
-    - ./paasta:/etc/paasta:rw
-    - ./example-services:/nail/etc/services:rw
-    - /var/run/docker.sock:/var/run/docker.sock
+      - /var/tmp/pip_cache2:/var/tmp/pip_cache
+      - ../:/work:rw
+      - ./paasta:/etc/paasta:rw
+      - ./example-services:/nail/etc/services:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ssh-data:/root/.ssh
     command: '/start.sh'
     depends_on:
       - mesosmaster
@@ -62,5 +66,7 @@ services:
   git:
     build: ../yelp_package/dockerfiles/gitremote/
     command: /usr/sbin/sshd -D
+    volumes:
+      - ssh-data:/root/.ssh
     ports:
       - 22
