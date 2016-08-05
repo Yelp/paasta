@@ -1450,7 +1450,6 @@ class TestDrainTasksAndFindTasksToKill(object):
 
         fake_log_bounce_action.assert_any_call(
             line="fake bounce killing task to_drain due to exception when draining: Hello",
-            level='error',
         )
 
     def test_catches_exception_during_is_safe_to_kill(self):

@@ -182,7 +182,6 @@ def drain_tasks_and_find_tasks_to_kill(tasks_to_drain, already_draining_tasks, d
         except Exception as e:
             log_bounce_action(
                 line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
-                level='error',
             )
             tasks_to_kill.add(task)
 
