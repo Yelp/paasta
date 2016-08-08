@@ -59,6 +59,7 @@ class TestSetupChronosJob:
         config_dict=fake_config_dict,
         branch_dict=fake_branch_dict,
     )
+    fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=[])
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(

@@ -313,7 +313,22 @@ class InstanceConfig(dict):
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
-        return self.config_dict.get('extra_volumes', [])
+
+        system_config = load_system_paasta_config()
+        whitelisted_volumes = system_config.get_volumes_whitelist()
+
+        if self.get_service() in whitelisted_volumes:
+            volumes_to_attach = []
+            whitelisted_volumes_for_service = whitelisted_volumes[self.get_service()]
+
+            for volume in self.config_dict.get('extra_volumes', []):
+                if os.path.normpath(volume['hostPath']) in whitelisted_volumes_for_service:
+                    volumes_to_attach.append(volume)
+
+            return volumes_to_attach
+        else:
+            # By default, don't allow access to extra volumes
+            return []
 
     def get_pool(self):
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
@@ -809,6 +824,17 @@ class SystemPaastaConfig(dict):
             return self['volumes']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
+
+    def get_volumes_whitelist(self):
+        """Get the list of accessible volumes per service
+
+        :returns: A dictionary that maps services to allowed
+        """
+        try:
+            return self['volumes_whitelist']
+        except KeyError:
+            raise PaastaNotConfiguredError('Could not find volumes_whitelist in configuration directory: %s'
+                                           % self.directory)
 
     def get_cluster(self):
         """Get the cluster defined in this host's cluster config file.

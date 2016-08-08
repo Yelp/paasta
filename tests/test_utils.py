@@ -297,6 +297,21 @@ def test_SystemPaastaConfig_get_volumes_dne():
         fake_config.get_volumes()
 
 
+def test_SystemPaastaConfig_get_volumes_whitelist():
+    expected = {'fakeservice': ['fakedir']}
+    fake_config = utils.SystemPaastaConfig({
+        'volumes_whitelist': expected,
+    }, '/some/fake/dir')
+    actual = fake_config.get_volumes_whitelist()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_volumes_whitelist_dne():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    with raises(utils.PaastaNotConfiguredError):
+        fake_config.get_volumes_whitelist()
+
+
 def test_SystemPaastaConfig_get_zk():
     fake_config = utils.SystemPaastaConfig({
         'zookeeper': 'zk://fake_zookeeper_host'
@@ -1154,31 +1169,74 @@ class TestInstanceConfig:
         assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
-        fake_conf = utils.InstanceConfig(
-            service='',
-            cluster='',
-            instance='',
-            config_dict={},
-            branch_dict={},
-        )
-        assert fake_conf.get_extra_volumes() == []
+        fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value={}))
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        autospec=True,
+                        return_value=fake_config) as mock_load_system_paasta_config:
+            fake_conf = utils.InstanceConfig(
+                service='fake_service',
+                cluster='',
+                instance='',
+                config_dict={},
+                branch_dict={},
+            )
+            assert fake_conf.get_extra_volumes() == []
+            mock_load_system_paasta_config.assert_called_once_with()
 
     def test_extra_volumes_normal(self):
-        fake_extra_volumes = [
-            {
-                "containerPath": "/etc/a",
-                "hostPath": "/var/data/a",
-                "mode": "RO"
-            },
-        ]
-        fake_conf = utils.InstanceConfig(
-            service='',
-            cluster='',
-            instance='',
-            config_dict={'extra_volumes': fake_extra_volumes},
-            branch_dict={},
-        )
-        assert fake_conf.get_extra_volumes() == fake_extra_volumes
+        fake_whitelist = {
+            "fake_service": ['/var/data/a']
+        }
+        fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value=fake_whitelist))
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        autospec=True,
+                        return_value=fake_config):
+            fake_extra_volumes = [
+                {
+                    "containerPath": "/etc/a",
+                    "hostPath": "/var/data/a",
+                    "mode": "RO"
+                },
+            ]
+            fake_conf = utils.InstanceConfig(
+                service='fake_service',
+                cluster='',
+                instance='',
+                config_dict={'extra_volumes': fake_extra_volumes},
+                branch_dict={},
+            )
+
+            assert fake_conf.get_extra_volumes() == fake_extra_volumes
+
+    def test_extra_volumes_whitelist(self):
+        fake_whitelist = {
+            "fake_service": ['/var/data/a']
+        }
+        fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value=fake_whitelist))
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        autospec=True,
+                        return_value=fake_config):
+            fake_extra_volumes = [
+                {
+                    "containerPath": "/etc/a",
+                    "hostPath": "/var/data/a",
+                    "mode": "RO"
+                },
+                {
+                    "containerPath": "/etc/supersecret",
+                    "hostPath": "/var/data/a/../../supersecret",
+                    "mode": "RO"
+                },
+            ]
+            fake_conf = utils.InstanceConfig(
+                service='fake_service',
+                cluster='',
+                instance='',
+                config_dict={'extra_volumes': fake_extra_volumes},
+                branch_dict={},
+            )
+
+            assert fake_conf.get_extra_volumes() == fake_extra_volumes[:1]
 
     def test_get_pool(self):
         pool = "poolname"
