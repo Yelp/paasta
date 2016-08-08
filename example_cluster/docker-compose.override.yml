@@ -1,0 +1,72 @@
+version: '2'
+volumes:
+  ssh-data: {}
+services:
+  mesosbase:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+  mesosmaster:
+    build: ../yelp_package/dockerfiles/mesos-paasta/
+    ports:
+      - '5050:5050'
+      - 22
+    depends_on:
+      - mesosbase
+      - zookeeper
+    volumes:
+      - /var/tmp/pip_cache1:/var/tmp/pip_cache
+      - ../:/work:rw
+      - ./paasta:/etc/paasta:rw
+      - ./example-services:/nail/etc/services:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ssh-data:/root/.ssh
+    command: '/start.sh'
+    environment:
+      MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
+  mesosslave:
+    build: ../yelp_package/dockerfiles/mesos-paasta/
+    depends_on:
+      - mesosbase
+      - zookeeper
+  marathon:
+    ports:
+      - '8080:8080'
+    depends_on:
+      - zookeeper
+  itest_trusty:
+    build: ../yelp_package/dockerfiles/trusty/
+  playground:
+    build: ../yelp_package/dockerfiles/playground/
+    environment:
+      MESOS_CLI_CONFIG: /etc/paasta/mesos-cli.json
+    volumes:
+      - /var/tmp/pip_cache2:/var/tmp/pip_cache
+      - ../:/work:rw
+      - ./paasta:/etc/paasta:rw
+      - ./example-services:/nail/etc/services:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ssh-data:/root/.ssh
+    command: '/start.sh'
+    depends_on:
+      - mesosmaster
+      - itest_trusty
+      - chronos
+      - registry
+      - git
+      - mesosslave
+      - marathon
+  chronos:
+    ports:
+      - '8081:8081'
+    depends_on:
+      - zookeeper
+  registry:
+    image: registry:2
+    ports:
+      - '5000:5000'
+  git:
+    build: ../yelp_package/dockerfiles/gitremote/
+    command: /usr/sbin/sshd -D
+    volumes:
+      - ssh-data:/root/.ssh
+    ports:
+      - 22

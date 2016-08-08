@@ -1,0 +1,7 @@
+---
+main:
+  cpus: 1
+  instances: 1
+  mem: 100
+  deploy_group: testcluster.everything
+  disk: 40
