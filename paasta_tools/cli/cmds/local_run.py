@@ -72,7 +72,7 @@ def perform_http_healthcheck(url, timeout):
     try:
         with Timeout(seconds=timeout):
             try:
-                res = requests.head(url)
+                res = requests.get(url)
             except requests.ConnectionError:
                 return (False, "http request failed: connection failed")
     except TimeoutError:
