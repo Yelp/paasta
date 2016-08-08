@@ -21,6 +21,7 @@ import isodate
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import _log
+from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import PaastaColors
 
@@ -281,7 +282,7 @@ def format_chronos_job_status(client, job, running_tasks, verbose=0):
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose > 0:
-        tail_lines = (verbose - 1) * 10
+        tail_lines = calculate_tail_lines(verbose_level=verbose)
         mesos_status_verbose = status_mesos_tasks_verbose(
             job_id=job["name"],
             get_short_task_id=get_short_task_id,
