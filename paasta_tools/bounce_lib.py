@@ -252,6 +252,10 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
         tasks = tasks_in_smartstack
 
     for task in tasks:
+        if task.started_at is None:
+            # Can't be healthy if it hasn't started
+            continue
+
         if min_task_uptime is not None:
             if (now - task.started_at).total_seconds() < min_task_uptime:
                 continue
