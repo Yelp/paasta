@@ -25,7 +25,7 @@ def test_list_instances(
     mock_list_all_instances_for_service.return_value = fake_instances
 
     request = testing.DummyRequest()
-    request.matchdict = {'service': 'fake_service'}
+    request.swagger_data = {'service': 'fake_service'}
 
     response = list_instances(request)
     assert response['instances'] == fake_instances

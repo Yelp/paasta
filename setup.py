@@ -89,7 +89,7 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json']},
+    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json', 'api/api_docs/*.json']},
     entry_points={'console_scripts': [
         'paasta=paasta_tools.cli.cli:main',
         'paasta-api=paasta_tools.api.api:main',
