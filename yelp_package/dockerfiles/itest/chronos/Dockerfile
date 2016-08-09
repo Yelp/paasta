@@ -34,6 +34,6 @@ RUN echo -n 'chronos' > /etc/chronos/conf/mesos_authentication_principal
 RUN echo -n 'secret3' > /etc/chronos_framework_secret
 RUN echo -n '/etc/chronos_framework_secret' > /etc/chronos/conf/mesos_authentication_secret_file
 
-CMD rsyslogd ; (/usr/bin/chronos &) ; tail -f /var/log/syslog
+CMD rsyslogd ; sleep 1; (/usr/bin/chronos &) ; tail -f /var/log/syslog
 
 EXPOSE 8081
