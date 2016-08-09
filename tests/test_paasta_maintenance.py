@@ -28,6 +28,7 @@ from paasta_tools.paasta_maintenance import down
 from paasta_tools.paasta_maintenance import drain
 from paasta_tools.paasta_maintenance import get_down_hosts
 from paasta_tools.paasta_maintenance import get_draining_hosts
+from paasta_tools.paasta_maintenance import get_hosts_past_maintenance_end
 from paasta_tools.paasta_maintenance import get_hosts_past_maintenance_start
 from paasta_tools.paasta_maintenance import get_hosts_with_state
 from paasta_tools.paasta_maintenance import get_machine_ids
@@ -663,12 +664,85 @@ def test_get_hosts_past_maintenance_start(
     mock_now,
     mock_get_maintenance_schedule,
 ):
-    mock_schedule = {"windows": [{"machine_ids": [{"hostname": "host1"}],
-                                  "unavailability": {"start": {"nanoseconds": 10}}},
-                                 {"machine_ids": [{"hostname": "host2"}],
-                                  "unavailability": {"start": {"nanoseconds": 5}}}]}
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    }
+                }
+            }
+        ]
+    }
     mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
     mock_datetime_to_nanoseconds.return_value = 7
     ret = get_hosts_past_maintenance_start()
+    assert ret == ['host2']
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
+@mock.patch('paasta_tools.paasta_maintenance.now')
+@mock.patch('paasta_tools.paasta_maintenance.datetime_to_nanoseconds')
+def test_get_hosts_past_maintenance_end(
+    mock_datetime_to_nanoseconds,
+    mock_now,
+    mock_get_maintenance_schedule,
+):
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    },
+                    "duration": {
+                        "nanoseconds": 20
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    },
+                    "duration": {
+                        "nanoseconds": 10
+                    }
+                }
+            }
+        ]
+    }
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 20
+    ret = get_hosts_past_maintenance_end()
     assert ret == ['host2']

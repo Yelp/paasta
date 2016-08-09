@@ -457,6 +457,20 @@ def get_hosts_past_maintenance_start():
     return ret
 
 
+def get_hosts_past_maintenance_end():
+    """Get a list of hosts that have reached the end of their maintenance window
+    :returns: List of hostnames
+    """
+    schedules = get_maintenance_schedule().json()
+    current_time = datetime_to_nanoseconds(now())
+    ret = []
+    for window in schedules['windows']:
+        end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
+        if end < current_time:
+            ret += [host['hostname'] for host in window['machine_ids']]
+    return ret
+
+
 def paasta_maintenance():
     """Manipulate the maintenance state of a PaaSTA host.
     :returns: None
