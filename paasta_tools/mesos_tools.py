@@ -646,9 +646,9 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
             log.debug("Task framework: {0}".format(task.framework.name))
             if task.framework.name == 'chronos':
                 slaves[task.slave['id']]['chronos_count'] += 1
-    slaves = {slave_pid: SlaveTaskCount(**slave_counts) for slave_pid, slave_counts in slaves.items()}
+    slaves = {slave_counts['slave']['hostname']: SlaveTaskCount(**slave_counts) for slave_counts in slaves.values()}
     for slave in slaves.values():
-        log.info("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['pid'],
+        log.info("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['hostname'],
                                                                                      slave.count,
                                                                                      slave.chronos_count))
     return slaves
