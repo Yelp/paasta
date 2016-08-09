@@ -613,7 +613,11 @@ def wait_and_terminate(slave, dry_run):
                     continue
                 # Check if no tasks are running or we have reached the maintenance window
                 if is_safe_to_kill(slave['hostname']):
-                    log.info("TERMINATING: {0}".format(instance_id))
+                    log.info("TERMINATING: {0} (Hostname = {1}, IP = {2})".format(
+                        instance_id,
+                        slave['hostname'],
+                        slave['ip'],
+                    ))
                     try:
                         ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
                     except ClientError as e:
