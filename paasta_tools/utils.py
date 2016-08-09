@@ -1541,3 +1541,10 @@ class ZookeeperPool(object):
             cls.zk.stop()
             cls.zk.close()
             cls.zk = None
+
+
+def calculate_tail_lines(verbose_level):
+    if verbose_level == 1:
+        return 0
+    else:
+        return 10 ** (verbose_level - 1)
