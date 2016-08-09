@@ -19,6 +19,7 @@ import logging
 from socket import getfqdn
 from socket import gethostbyname
 
+from dateutil import parser
 from dateutil import tz
 from pytimeparse import timeparse
 from requests import Request
@@ -45,6 +46,7 @@ def parse_args():
     )
     parser.add_argument(
         '-s', '--start',
+        type=parse_datetime,
         default=now(),
         help="Time to start the maintenance window. Defaults to now.",
     )
@@ -217,6 +219,21 @@ def parse_timedelta(value):
     if not seconds:
         raise argparse.ArgumentTypeError(error_msg)
     return seconds_to_nanoseconds(seconds)
+
+
+def parse_datetime(value):
+    """Return the datetime in nanoseconds.
+    :param value: a string containing a datetime supported by :mod:`dateutil.parser`
+    :returns: an integer (or float) representing the specified datetime in nanoseconds
+    """
+    error_msg = "'%s' is not a valid datetime expression" % value
+    try:
+        dt = parser.parse(value)
+    except:
+        raise argparse.ArgumentTypeError(error_msg)
+    if not dt:
+        raise argparse.ArgumentTypeError(error_msg)
+    return datetime_to_nanoseconds(dt)
 
 
 def datetime_seconds_from_now(seconds):
@@ -488,7 +505,7 @@ def paasta_maintenance():
         print "You must specify one or more hostnames"
         return
 
-    start = args.start.strftime("%s")
+    start = args.start
     duration = args.duration
 
     if action == 'drain':

@@ -39,6 +39,7 @@ from paasta_tools.paasta_maintenance import is_host_drained
 from paasta_tools.paasta_maintenance import is_host_draining
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import load_credentials
+from paasta_tools.paasta_maintenance import parse_datetime
 from paasta_tools.paasta_maintenance import parse_timedelta
 from paasta_tools.paasta_maintenance import schedule
 from paasta_tools.paasta_maintenance import seconds_to_nanoseconds
@@ -59,6 +60,20 @@ def test_parse_timedelta_invalid():
 
 def test_parse_timedelta():
     assert parse_timedelta(value='1 hour') == 3600 * 1000000000
+
+
+def test_parse_datetime_none():
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_datetime(value=None)
+
+
+def test_parse_datetime_invalid():
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_datetime(value='fake value')
+
+
+def test_parse_datetime():
+    assert parse_datetime('November 11, 2011 11:11:11Z') == 1321009871000000000
 
 
 @mock.patch('paasta_tools.paasta_maintenance.now')
