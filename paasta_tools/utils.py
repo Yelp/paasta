@@ -828,7 +828,7 @@ class SystemPaastaConfig(dict):
     def get_volumes_whitelist(self):
         """Get the list of accessible volumes per service
 
-        :returns: A dictionary that maps services to allowed
+        :returns: A dictionary that maps services to a list of volumes it may mount
         """
         try:
             return self['volumes_whitelist']

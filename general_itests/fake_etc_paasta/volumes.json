@@ -1,3 +1,4 @@
 {
-    "volumes": []
+    "volumes": [],
+    "volumes_whitelist": {}
 }

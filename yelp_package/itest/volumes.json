@@ -15,5 +15,6 @@
             "containerPath": "/var/run/synapse/services/",
             "mode": "RO"
         }
-    ]
+    ],
+    "volumes_whitelist": {}
 }

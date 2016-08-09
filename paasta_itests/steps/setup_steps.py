@@ -146,7 +146,8 @@ def working_paasta_cluster(context):
             {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
             {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
             {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
-        ]
+        ],
+        'volumes_whitelist': {}
     }, 'volumes.json')
 
 
