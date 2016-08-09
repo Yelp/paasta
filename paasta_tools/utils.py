@@ -308,7 +308,7 @@ class InstanceConfig(dict):
                 error_msgs.append(check_msg)
         return error_msgs
 
-    def get_extra_volumes(self):
+    def get_extra_volumes(self, apply_whitelist=True):
         """Extra volumes are a specially formatted list of dictionaries that should
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
@@ -317,18 +317,21 @@ class InstanceConfig(dict):
         system_config = load_system_paasta_config()
         whitelisted_volumes = system_config.get_volumes_whitelist()
 
-        if self.get_service() in whitelisted_volumes:
-            volumes_to_attach = []
-            whitelisted_volumes_for_service = whitelisted_volumes[self.get_service()]
+        if apply_whitelist:
+            if self.get_service() in whitelisted_volumes:
+                volumes_to_attach = []
+                whitelisted_volumes_for_service = whitelisted_volumes[self.get_service()]
 
-            for volume in self.config_dict.get('extra_volumes', []):
-                if os.path.normpath(volume['hostPath']) in whitelisted_volumes_for_service:
-                    volumes_to_attach.append(volume)
+                for volume in self.config_dict.get('extra_volumes', []):
+                    if os.path.normpath(volume['hostPath']) in whitelisted_volumes_for_service:
+                        volumes_to_attach.append(volume)
 
-            return volumes_to_attach
+                return volumes_to_attach
+            else:
+                # By default, don't allow access to extra volumes
+                return []
         else:
-            # By default, don't allow access to extra volumes
-            return []
+            return self.config_dict.get('extra_volumes', [])
 
     def get_pool(self):
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting

@@ -1238,6 +1238,33 @@ class TestInstanceConfig:
 
             assert fake_conf.get_extra_volumes() == fake_extra_volumes[:1]
 
+    def test_extra_volumes_whitelist_disabled(self):
+        fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value=[]))
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        autospec=True,
+                        return_value=fake_config):
+            fake_extra_volumes = [
+                {
+                    "containerPath": "/etc/a",
+                    "hostPath": "/var/data/a",
+                    "mode": "RO"
+                },
+                {
+                    "containerPath": "/etc/supersecret",
+                    "hostPath": "/var/data/a/../../supersecret",
+                    "mode": "RO"
+                },
+            ]
+            fake_conf = utils.InstanceConfig(
+                service='fake_service',
+                cluster='',
+                instance='',
+                config_dict={'extra_volumes': fake_extra_volumes},
+                branch_dict={},
+            )
+
+            assert fake_conf.get_extra_volumes(apply_whitelist=False) == fake_extra_volumes
+
     def test_get_pool(self):
         pool = "poolname"
         fake_conf = utils.InstanceConfig(

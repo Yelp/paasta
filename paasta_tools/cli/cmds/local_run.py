@@ -653,9 +653,15 @@ def configure_and_run_docker_container(
         docker_pull_image(docker_url)
 
     # if only one volume specified, extra_volumes should be converted to a list
-    extra_volumes = instance_config.get_extra_volumes()
-    if type(extra_volumes) == dict:
-        extra_volumes = [extra_volumes]
+    extra_volumes = instance_config.get_extra_volumes(apply_whitelist=False)
+    extra_whitelisted_volumes = [v['hostPath'] for v in instance_config.get_extra_volumes(apply_whitelist=True)]
+
+    disallowed_volumes = list(set([v['hostPath'] for v in extra_volumes]) - set(extra_whitelisted_volumes))
+    if len(disallowed_volumes) > 0:
+        sys.stdout.write(PaastaColors.yellow(
+            "Warning: Your service is attempting to mount the following extra volumes "
+            "that are not whitelisted:\n\n\t%s\n\n"
+            "These mounts will fail when PaaSTA deploys your service.\n\n" % disallowed_volumes))
 
     for volume in system_paasta_config.get_volumes() + extra_volumes:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
