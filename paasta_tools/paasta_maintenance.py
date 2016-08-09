@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument(
         '-s', '--start',
         type=parse_datetime,
-        default=now(),
+        default=str(now()),
         help="Time to start the maintenance window. Defaults to now.",
     )
     parser.add_argument(
