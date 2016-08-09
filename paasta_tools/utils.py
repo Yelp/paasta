@@ -41,7 +41,6 @@ from subprocess import Popen
 from subprocess import STDOUT
 
 import dateutil.tz
-import docker
 import service_configuration_lib
 import yaml
 from docker import Client
@@ -1112,7 +1111,7 @@ def check_docker_image(service, tag):
     :raises: ValueError if more than one docker image with :tag: found.
     :returns: True if there is exactly one matching image found.
     """
-    docker_client = docker.Client(timeout=60)
+    docker_client = get_docker_client()
     image_name = build_docker_image_name(service)
     docker_tag = build_docker_tag(service, tag)
     images = docker_client.images(name=image_name)

@@ -510,7 +510,7 @@ def test_check_docker_image_false(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('docker.Client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -529,7 +529,7 @@ def test_check_docker_image_true(mock_build_docker_image_name):
     fake_commit = 'fake_commit'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('docker.Client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
