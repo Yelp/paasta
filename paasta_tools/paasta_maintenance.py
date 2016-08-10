@@ -21,7 +21,6 @@ from socket import getfqdn
 from socket import gethostbyname
 
 from dateutil import parser
-from dateutil import tz
 from pytimeparse import timeparse
 from requests import Request
 from requests import Session
@@ -260,11 +259,11 @@ def datetime_seconds_from_now(seconds):
 
 
 def now():
-    """Returns a datetime object representing the current time in UTC
+    """Returns a datetime object representing the current time
 
     :returns: a datetime.datetime object representing the current time
     """
-    return datetime.datetime.now(tz.tzutc())
+    return datetime.datetime.now()
 
 
 def seconds_to_nanoseconds(seconds):
@@ -492,9 +491,10 @@ def get_hosts_past_maintenance_start():
     schedules = get_maintenance_schedule().json()
     current_time = datetime_to_nanoseconds(now())
     ret = []
-    for window in schedules['windows']:
-        if window['unavailability']['start']['nanoseconds'] < current_time:
-            ret += [host['hostname'] for host in window['machine_ids']]
+    if 'windows' in schedules:
+        for window in schedules['windows']:
+            if window['unavailability']['start']['nanoseconds'] < current_time:
+                ret += [host['hostname'] for host in window['machine_ids']]
     print ret
     return ret
 
@@ -506,10 +506,11 @@ def get_hosts_past_maintenance_end():
     schedules = get_maintenance_schedule().json()
     current_time = datetime_to_nanoseconds(now())
     ret = []
-    for window in schedules['windows']:
-        end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
-        if end < current_time:
-            ret += [host['hostname'] for host in window['machine_ids']]
+    if 'windows' in schedules:
+        for window in schedules['windows']:
+            end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
+            if end < current_time:
+                ret += [host['hostname'] for host in window['machine_ids']]
     print ret
     return ret
 
