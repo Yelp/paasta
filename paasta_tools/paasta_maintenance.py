@@ -337,6 +337,8 @@ def build_maintenance_schedule_payload(hostnames, start=None, duration=None, dra
     if schedule:
         for existing_window in schedule['windows']:
             for existing_machine_id in existing_window['machine_ids']:
+                # If we already have a maintenance window scheduled for one of the hosts,
+                # replace it with the new window.
                 if existing_machine_id in machine_ids:
                     existing_window['machine_ids'].remove(existing_machine_id)
                     if not existing_window['machine_ids']:
@@ -394,6 +396,7 @@ def drain(hostnames, start, duration):
         e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
         raise
     print drain_output
+    return 0
 
 
 def undrain(hostnames):
@@ -402,6 +405,7 @@ def undrain(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Undraining: %s" % hostnames)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:
@@ -410,6 +414,7 @@ def undrain(hostnames):
         e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
         raise
     print undrain_output
+    return 0
 
 
 def down(hostnames):
@@ -417,6 +422,7 @@ def down(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Bringing down: %s" % hostnames)
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
     try:
@@ -425,6 +431,7 @@ def down(hostnames):
         e.msg = "Error performing maintenance down. Got error: %s" % e.msg
         raise
     print down_output
+    return 0
 
 
 def up(hostnames):
@@ -432,6 +439,7 @@ def up(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Bringing up: %s" % hostnames)
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
     try:
@@ -440,6 +448,7 @@ def up(hostnames):
         e.msg = "Error performing maintenance up. Got error: %s" % e.msg
         raise
     print up_output
+    return 0
 
 
 def status():
@@ -453,6 +462,7 @@ def status():
         e.msg = "Error performing maintenance status. Got error: %s" % e.msg
         raise
     print "%s" % status.text
+    return 0
 
 
 def is_safe_to_kill(hostname):
