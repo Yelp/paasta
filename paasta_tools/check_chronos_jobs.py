@@ -192,12 +192,16 @@ def main():
 
         for service_instance, job_state_pairs in service_job_mapping.items():
             service, instance = service_instance[0], service_instance[1]
-            chronos_job_config = load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
+            try:
+                chronos_job_config = load_chronos_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            except utils.NoDeploymentsAvailable:
+                print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
+                continue
             sensu_output, sensu_status = sensu_message_status_for_jobs(
                 chronos_job_config=chronos_job_config,
                 service=service,
