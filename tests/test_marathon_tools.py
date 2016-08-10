@@ -1225,7 +1225,10 @@ class TestMarathonTools:
         fake_passwd = "is_for_real"
         with mock.patch('paasta_tools.marathon_tools.MarathonClient', autospec=True) as client_patch:
             marathon_tools.get_marathon_client(fake_url, fake_user, fake_passwd)
-            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=30)
+            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=30, session=mock.ANY)
+            args, kwargs = client_patch.call_args
+            assert 'User-Agent' in kwargs['session'].headers
+            assert 'PaaSTA' in kwargs['session'].headers['User-Agent']
 
     def test_list_all_marathon_app_ids(self):
         fakeapp1 = mock.Mock(id='/fake_app1')

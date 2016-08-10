@@ -49,6 +49,7 @@ from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
@@ -207,8 +208,11 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
     utilization = []
     for task in marathon_tasks:
         try:
-            utilization.append(float(requests.get('http://%s:%s/%s' % (
-                task.host, task.ports[0], endpoint)).json()['utilization']))
+            endpoint_utilization = requests.get(
+                'http://%s:%s/%s' % (task.host, task.ports[0], endpoint),
+                headers={'User-Agent': get_user_agent()}
+            ).json()['utilization']
+            utilization.append(float(endpoint_utilization))
         except Exception:
             pass
     if not utilization:

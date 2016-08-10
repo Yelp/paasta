@@ -23,6 +23,7 @@ import socket
 from math import ceil
 from time import sleep
 
+import requests
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
@@ -44,6 +45,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
@@ -735,7 +737,11 @@ def get_marathon_client(url, user, passwd):
     :param passwd: The password to connect with
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
-    return MarathonClient(url, user, passwd, timeout=30)
+
+    session = requests.Session()
+    session.headers.update({'User-Agent': get_user_agent()})
+
+    return MarathonClient(url, user, passwd, timeout=30, session=session)
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):
