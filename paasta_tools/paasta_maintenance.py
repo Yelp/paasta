@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+import sys
 from socket import getfqdn
 from socket import gethostbyname
 
@@ -52,7 +53,20 @@ def parse_args():
     )
     parser.add_argument(
         'action',
-        choices=['drain', 'undrain', 'down', 'up', 'status', 'schedule'],
+        choices=[
+            'down',
+            'drain',
+            'get_hosts_past_maintenance_end',
+            'get_hosts_past_maintenance_start',
+            'is_host_down',
+            'is_host_drained',
+            'is_host_draining',
+            'is_safe_to_kill',
+            'schedule',
+            'status',
+            'undrain',
+            'up',
+        ],
         help="Action to perform on the speicifed hosts",
     )
     parser.add_argument(
@@ -471,6 +485,7 @@ def get_hosts_past_maintenance_start():
     for window in schedules['windows']:
         if window['unavailability']['start']['nanoseconds'] < current_time:
             ret += [host['hostname'] for host in window['machine_ids']]
+    print ret
     return ret
 
 
@@ -485,6 +500,7 @@ def get_hosts_past_maintenance_end():
         end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
         if end < current_time:
             ret += [host['hostname'] for host in window['machine_ids']]
+    print ret
     return ret
 
 
@@ -497,7 +513,20 @@ def paasta_maintenance():
     action = args.action
     hostnames = args.hostname
 
-    if action not in ['drain', 'undrain', 'down', 'up', 'status', 'schedule']:
+    if action not in [
+            'down',
+            'drain',
+            'get_hosts_past_maintenance_end',
+            'get_hosts_past_maintenance_start',
+            'is_host_down',
+            'is_host_drained',
+            'is_host_draining',
+            'is_safe_to_kill',
+            'schedule',
+            'status',
+            'undrain',
+            'up',
+    ]:
         print "action must be 'drain', 'undrain', 'down', 'up', 'status', or 'schedule'"
         return
 
@@ -509,18 +538,32 @@ def paasta_maintenance():
     duration = args.duration
 
     if action == 'drain':
-        drain(hostnames, start, duration)
+        return drain(hostnames, start, duration)
     elif action == 'undrain':
-        undrain(hostnames)
+        return undrain(hostnames)
     elif action == 'down':
-        down(hostnames)
+        return down(hostnames)
     elif action == 'up':
-        up(hostnames)
+        return up(hostnames)
     elif action == 'status':
-        status()
+        return status()
     elif action == 'schedule':
-        schedule()
+        return schedule()
+    elif action == 'is_safe_to_kill':
+        return is_safe_to_kill(hostnames[0])
+    elif action == 'is_host_drained':
+        return is_host_drained(hostnames[0])
+    elif action == 'is_host_down':
+        return is_host_down(hostnames[0])
+    elif action == 'is_host_draining':
+        return is_host_draining(hostnames[0])
+    elif action == 'get_hosts_past_maintenance_start':
+        return get_hosts_past_maintenance_start()
+    elif action == 'get_hosts_past_maintenance_end':
+        return get_hosts_past_maintenance_end()
 
 
 if __name__ == '__main__':
-    paasta_maintenance()
+    if paasta_maintenance():
+        sys.exit(0)
+    sys.exit(1)
