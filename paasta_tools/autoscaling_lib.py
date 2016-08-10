@@ -44,6 +44,7 @@ from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.paasta_maintenance import drain
 from paasta_tools.paasta_maintenance import is_safe_to_kill
+from paasta_tools.paasta_maintenance import undrain
 from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -612,7 +613,7 @@ def wait_and_terminate(slave, dry_run):
                     log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave['pid']))
                     continue
                 # Check if no tasks are running or we have reached the maintenance window
-                if is_safe_to_kill(slave['hostname']):
+                if is_safe_to_kill(slave['hostname']) or dry_run:
                     log.info("TERMINATING: {0} (Hostname = {1}, IP = {2})".format(
                         instance_id,
                         slave['hostname'],
@@ -774,6 +775,9 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
             if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run):
                 log.error("Couldn't update spot fleet, stopping autoscaler")
+                log.info("Undraining {0}".format(slave_to_kill['pid']))
+                if not dry_run:
+                    undrain([drain_host_string])
                 break
             log.info("Waiting for instance to drain before we terminate")
             try:
@@ -785,6 +789,10 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
                     log.error("Couldn't update spot fleet, stopping autoscaler")
                     break
                 continue
+            finally:
+                log.info("Undraining {0}".format(slave_to_kill['pid']))
+                if not dry_run:
+                    undrain([drain_host_string])
             current_capacity = new_capacity
 
 
