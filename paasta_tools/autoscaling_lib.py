@@ -627,7 +627,7 @@ def wait_and_terminate(slave, dry_run):
                             raise
                     break
                 else:
-                    log.debug("Instance {0}: NOT ready to kill".format(instance_id))
+                    log.info("Instance {0}: NOT ready to kill".format(instance_id))
                 log.debug("Waiting 5 seconds and then checking again")
                 time.sleep(5)
     except TimeoutError:
