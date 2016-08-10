@@ -18,11 +18,12 @@ import glob
 from setuptools import find_packages
 from setuptools import setup
 
+from paasta_tools import __version__
+
 
 setup(
     name='paasta-tools',
-    # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.34.4',
+    version=__version__,
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',

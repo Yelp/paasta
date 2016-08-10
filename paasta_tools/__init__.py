@@ -11,3 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# It is imperative that this file not contain any imports from our
+# dependencies. Since this file is imported from setup.py in the
+# setup phase, the dependencies may not exist on disk yet.
+#
+# Don't bump version manually. See `make release` docs in ./Makefile
+__version__ = '0.34.4'
