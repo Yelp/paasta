@@ -65,7 +65,7 @@ def test_dry_run(
 
     # Should pass and produce something
     with raises(SystemExit) as excinfo:
-        main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance'))
+        main(('local-run', '--pull', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance'))
     ret = excinfo.value.code
     out, err = capsys.readouterr()
     assert ret == 0
@@ -452,6 +452,8 @@ def test_run_success(
     args.service = 'fake_service'
     args.healthcheck = False
     args.interactive = False
+    args.build = None
+    args.pull = True
     assert paasta_local_run(args) is None
 
 
@@ -474,7 +476,8 @@ def test_run_cook_image_fails(
     args.service = 'fake_service'
     args.healthcheck = False
     args.interactive = False
-    args.pull = False
+    args.pull = None
+    args.build = True
     args.dry_run = False
     assert paasta_local_run(args) == 1
     assert not mock_run_docker_container.called
