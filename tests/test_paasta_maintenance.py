@@ -715,6 +715,12 @@ def test_get_hosts_past_maintenance_start(
     ret = get_hosts_past_maintenance_start()
     assert ret == ['host2']
 
+    mock_schedule = {}
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    ret = get_hosts_past_maintenance_start()
+    assert ret == []
+
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
 @mock.patch('paasta_tools.paasta_maintenance.now')
@@ -763,6 +769,13 @@ def test_get_hosts_past_maintenance_end(
     mock_datetime_to_nanoseconds.return_value = 20
     ret = get_hosts_past_maintenance_end()
     assert ret == ['host2']
+
+    mock_schedule = {}
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 20
+    ret = get_hosts_past_maintenance_end()
+    assert ret == []
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_start')
