@@ -35,19 +35,17 @@ log = logging.getLogger(__name__)
 
 
 def chronos_instance_status(instance_status, service, instance, verbose):
-    return
+    cstatus = {}
+    return cstatus
 
 
-def marathon_job_status(client, job_config):
-    mstatus = {}
-
+def marathon_job_status(mstatus, client, job_config):
     try:
         app_id = job_config.format_marathon_app_dict()['id']
-        mstatus['app_id'] = app_id
     except NoDockerImageError:
         error_msg = "Docker image is not in deployments.json."
-        mstatus['message'] = error_msg
-        return mstatus
+        mstatus['error_message'] = error_msg
+        return
 
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
@@ -61,20 +59,19 @@ def marathon_job_status(client, job_config):
     else:
         mstatus['deploy_status'] = 'Not Running'
 
-    return mstatus
-
 
 def marathon_instance_status(instance_status, service, instance, verbose):
+    mstatus = {}
     apps = marathon_tools.get_matching_appids(service, instance, settings.marathon_client)
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir)
 
     # bouncing status can be inferred from app_count, ref get_bouncing_status
-    instance_status['app_count'] = len(apps)
-    instance_status['bounce_method'] = job_config.get_bounce_method()
-    instance_status['desired_state'] = job_config.get_desired_state()
-
-    instance_status['marathon'] = marathon_job_status(settings.marathon_client, job_config)
+    mstatus['app_count'] = len(apps)
+    mstatus['desired_state'] = job_config.get_desired_state()
+    mstatus['bounce_method'] = job_config.get_bounce_method()
+    marathon_job_status(mstatus, settings.marathon_client, job_config)
+    return mstatus
 
 
 class InstanceFailure(Exception):
@@ -100,15 +97,20 @@ def instance_failure_response(exc, request):
 
 @view_config(route_name='service.instance.status', request_method='GET', renderer='json')
 def instance_status(request):
-    service = request.matchdict['service']
-    instance = request.matchdict['instance']
+    service = request.swagger_data.get('service')
+    instance = request.swagger_data.get('instance')
     verbose = request.matchdict.get('verbose', False)
 
     instance_status = {}
     instance_status['service'] = service
     instance_status['instance'] = instance
 
-    actual_deployments = get_actual_deployments(service, settings.soa_dir)
+    try:
+        actual_deployments = get_actual_deployments(service, settings.soa_dir)
+    except:
+        error_message = traceback.format_exc()
+        raise InstanceFailure(error_message, 500)
+
     version = get_deployment_version(actual_deployments, settings.cluster, instance)
     # exit if the deployment key is not found
     if not version:
@@ -120,9 +122,9 @@ def instance_status(request):
     try:
         instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
         if instance_type == 'marathon':
-            marathon_instance_status(instance_status, service, instance, verbose)
+            instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
-            chronos_instance_status(instance_status, service, instance, verbose)
+            instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
             raise InstanceFailure(error_message, 404)
