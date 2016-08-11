@@ -37,6 +37,8 @@ from paasta_tools.paasta_maintenance import get_maintenance_status
 from paasta_tools.paasta_maintenance import is_host_down
 from paasta_tools.paasta_maintenance import is_host_drained
 from paasta_tools.paasta_maintenance import is_host_draining
+from paasta_tools.paasta_maintenance import is_host_past_maintenance_end
+from paasta_tools.paasta_maintenance import is_host_past_maintenance_start
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import load_credentials
 from paasta_tools.paasta_maintenance import parse_datetime
@@ -761,3 +763,21 @@ def test_get_hosts_past_maintenance_end(
     mock_datetime_to_nanoseconds.return_value = 20
     ret = get_hosts_past_maintenance_end()
     assert ret == ['host2']
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_start')
+def test_is_host_past_maintenance_start(
+    mock_get_hosts_past_maintenance_start,
+):
+    mock_get_hosts_past_maintenance_start.return_value = ['fake_host']
+    assert is_host_past_maintenance_start('fake_host')
+    assert not is_host_past_maintenance_start('fake_host2')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_end')
+def test_is_host_past_maintenance_end(
+    mock_get_hosts_past_maintenance_end,
+):
+    mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
+    assert is_host_past_maintenance_end('fake_host')
+    assert not is_host_past_maintenance_end('fake_host2')

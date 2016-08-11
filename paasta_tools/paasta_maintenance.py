@@ -55,11 +55,11 @@ def parse_args():
         choices=[
             'down',
             'drain',
-            'get_hosts_past_maintenance_end',
-            'get_hosts_past_maintenance_start',
             'is_host_down',
             'is_host_drained',
             'is_host_draining',
+            'is_hosts_past_maintenance_end',
+            'is_hosts_past_maintenance_start',
             'is_safe_to_kill',
             'schedule',
             'status',
@@ -484,6 +484,22 @@ def is_host_drained(hostname):
     return is_host_draining(hostname=hostname) and slave_task_count == 0
 
 
+def is_host_past_maintenance_start(hostname):
+    """Checks if a host has reached the start of its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return hostname in get_hosts_past_maintenance_start()
+
+
+def is_host_past_maintenance_end(hostname):
+    """Checks if a host has reached the end of its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return hostname in get_hosts_past_maintenance_end()
+
+
 def get_hosts_past_maintenance_start():
     """Get a list of hosts that have reached the start of their maintenance window
     :returns: List of hostnames
@@ -527,11 +543,11 @@ def paasta_maintenance():
     if action not in [
             'down',
             'drain',
-            'get_hosts_past_maintenance_end',
-            'get_hosts_past_maintenance_start',
             'is_host_down',
             'is_host_drained',
             'is_host_draining',
+            'is_host_past_maintenance_end',
+            'is_host_past_maintenance_start',
             'is_safe_to_kill',
             'schedule',
             'status',
@@ -568,10 +584,10 @@ def paasta_maintenance():
         return is_host_down(hostnames[0])
     elif action == 'is_host_draining':
         return is_host_draining(hostnames[0])
-    elif action == 'get_hosts_past_maintenance_start':
-        return get_hosts_past_maintenance_start()
-    elif action == 'get_hosts_past_maintenance_end':
-        return get_hosts_past_maintenance_end()
+    elif action == 'is_host_past_maintenance_start':
+        return is_host_past_maintenance_start(hostnames[0])
+    elif action == 'is_host_past_maintenance_end':
+        return is_host_past_maintenance_end(hostnames[0])
 
 
 if __name__ == '__main__':
