@@ -587,12 +587,14 @@ def test_scale_aws_spot_fleet_request():
         mock.patch('time.time', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.filter_sfr_slaves', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.drain', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.undrain', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.set_spot_fleet_request_capacity', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.wait_and_terminate', autospec=True),
     ) as (
         mock_time,
         mock_filter_sfr_slaves,
         mock_drain,
+        mock_undrain,
         mock_set_spot_fleet_request_capacity,
         mock_wait_and_terminate
     ):
@@ -622,6 +624,8 @@ def test_scale_aws_spot_fleet_request():
         terminate_call_2 = mock.call(mock_sfr_sorted_slaves[1], False)
         drain_call_1 = mock.call(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
         drain_call_2 = mock.call(['host2|10.2.2.2'], mock_start, 600 * 1000000000)
+        undrain_call_1 = mock.call(['host1|10.1.1.1'])
+        undrain_call_2 = mock.call(['host2|10.2.2.2'])
         set_call_1 = mock.call('sfr-blah', 4, False)
         set_call_2 = mock.call('sfr-blah', 2, False)
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
@@ -631,6 +635,7 @@ def test_scale_aws_spot_fleet_request():
         mock_drain.assert_has_calls([drain_call_1, drain_call_2])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2])
+        mock_undrain.assert_has_calls([undrain_call_1, undrain_call_2])
 
         # test scale down stop if it would take us below capacity
         mock_sfr_sorted_slaves = [{'hostname': 'host1', 'instance_id': 'i-blah123',
@@ -660,6 +665,7 @@ def test_scale_aws_spot_fleet_request():
                                                                set_call_1, set_call_3])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2,
                                                   terminate_call_1, terminate_call_1])
+        mock_undrain.assert_has_calls([undrain_call_1, undrain_call_2, undrain_call_1, undrain_call_1])
 
 
 def test_autoscale_local_cluster():
