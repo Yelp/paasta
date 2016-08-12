@@ -1,0 +1,158 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Paasta API",
+    "version": "1.0.0"
+  },
+  "host": "localhost:5054",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "consumes": ["application/x-www-form-urlencoded"],
+  "produces": ["application/json"],
+  "tags": [
+    {
+      "name": "instances",
+      "description": "Instances of a service"
+    },
+    {
+      "name": "status",
+      "description": "Status of a serivce instance"
+    }
+  ],
+  "paths": {
+    "/{service}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Instances of a service",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "instances": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "summary": "List instances of service_name",
+        "operationId": "listInstances",
+        "tags": ["instances"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "/{service}/{instance}/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Detailed status of an instance",
+            "schema": {
+                "$ref":"#/definitions/InstanceStatus"
+            }
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get status of service_name.instance_name",
+        "operationId": "statusInstance",
+        "tags": ["status"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "InstanceStatus": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "description": "Service name"
+        },
+        "instance": {
+          "type": "string",
+          "description": "Instance name"
+        },
+        "git_sha": {
+          "type": "string",
+          "description": "Git sha of a service"
+        },
+        "marathon": {
+          "$ref": "#/definitions/InstanceStatusMarathon",
+          "description": "Marathon specific instance status"
+        }
+      }
+    },
+    "InstanceStatusMarathon": {
+      "type": "object",
+      "properties": {
+        "desired_state": {
+          "type": "string",
+          "description": "Desired state of a service, for both Marathon and Chronos",
+          "enum": ["start", "stop"]
+        },
+        "app_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
+        },
+        "bounce_method": {
+          "type": "string",
+          "description": "Method to transit between new and old versions of a service",
+          "enum": ["brutal", "upthendown", "downthenup ", "crossover"]
+        },
+        "deploy_status": {
+          "type": "string",
+          "description": "Deploy status of a marathon service",
+          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "Not Running"]
+        },
+        "running_instance_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of actual running instances of the service"
+        },
+        "expected_instance_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of desired instances of the service"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when a marathon job ID cannot be found"
+        }
+      },
+      "required": [
+        "desired_state",
+        "app_count",
+        "bounce_method"
+      ]
+    }
+  }
+}

@@ -42,13 +42,13 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'an app with id "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', mem=490, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', mem=490, instances=3,
                                                            container=CONTAINER))
 
 
 @when(u'an app with id "{app_id}" using high disk is launched')
 def run_paasta_metastatus_high_disk(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', disk=95, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', disk=95, instances=3,
                                                            container=CONTAINER))
 
 
@@ -61,14 +61,20 @@ def chronos_job_launched(context, job_name):
 
 @when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
-    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', cpus=9, instances=1,
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep 1000', cpus=9, instances=3,
                                                            container=CONTAINER))
 
 
 @when(u'a task belonging to the app with id "{app_id}" is in the task list')
 def marathon_task_is_ready(context, app_id):
     """Wait for a task with a matching task name to be ready. time out in 60 seconds """
-    marathon_tools.wait_for_app_to_launch_tasks(context.marathon_client, app_id, 1)
+    marathon_tasks_are_ready(context, 1, app_id)
+
+
+@when(u'{num:d} tasks belonging to the app with id "{app_id}" are in the task list')
+def marathon_tasks_are_ready(context, num, app_id):
+    """Wait for the specified number of  tasks with matching task names to be ready. time out in 60 seconds """
+    marathon_tools.wait_for_app_to_launch_tasks(context.marathon_client, app_id, num)
 
 
 @then(u'paasta_metastatus{flags} exits with return code "{expected_return_code}" and output "{expected_output}"')

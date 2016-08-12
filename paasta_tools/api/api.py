@@ -17,6 +17,7 @@ Responds to paasta service and instance requests.
 """
 import argparse
 import logging
+import os
 import sys
 
 import requests_cache
@@ -51,7 +52,15 @@ def parse_paasta_api_args():
 
 
 def make_app():
-    config = Configurator()
+    paasta_api_path = os.path.dirname(sys.modules['paasta_tools.api'].__file__)
+    config = Configurator(settings={
+        'service_name': 'paasta-api',
+        'pyramid_swagger.schema_directory': os.path.join(paasta_api_path, 'api_docs'),
+        'pyramid_swagger.skip_validation': ['/(static)\\b', '/(status)\\b', '/(swagger.json)\\b'],
+        'pyramid_swagger.swagger_versions': ['2.0'],
+    })
+
+    config.include('pyramid_swagger')
     config.add_route('service.instance.status', '/v1/{service}/{instance}/status')
     config.add_route('service.list', '/v1/{service}')
     config.scan()

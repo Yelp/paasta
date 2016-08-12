@@ -28,13 +28,20 @@ from paasta_tools.paasta_maintenance import down
 from paasta_tools.paasta_maintenance import drain
 from paasta_tools.paasta_maintenance import get_down_hosts
 from paasta_tools.paasta_maintenance import get_draining_hosts
+from paasta_tools.paasta_maintenance import get_hosts_past_maintenance_end
+from paasta_tools.paasta_maintenance import get_hosts_past_maintenance_start
 from paasta_tools.paasta_maintenance import get_hosts_with_state
 from paasta_tools.paasta_maintenance import get_machine_ids
 from paasta_tools.paasta_maintenance import get_maintenance_schedule
 from paasta_tools.paasta_maintenance import get_maintenance_status
 from paasta_tools.paasta_maintenance import is_host_down
+from paasta_tools.paasta_maintenance import is_host_drained
 from paasta_tools.paasta_maintenance import is_host_draining
+from paasta_tools.paasta_maintenance import is_host_past_maintenance_end
+from paasta_tools.paasta_maintenance import is_host_past_maintenance_start
+from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import load_credentials
+from paasta_tools.paasta_maintenance import parse_datetime
 from paasta_tools.paasta_maintenance import parse_timedelta
 from paasta_tools.paasta_maintenance import schedule
 from paasta_tools.paasta_maintenance import seconds_to_nanoseconds
@@ -55,6 +62,20 @@ def test_parse_timedelta_invalid():
 
 def test_parse_timedelta():
     assert parse_timedelta(value='1 hour') == 3600 * 1000000000
+
+
+def test_parse_datetime_none():
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_datetime(value=None)
+
+
+def test_parse_datetime_invalid():
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_datetime(value='fake value')
+
+
+def test_parse_datetime():
+    assert parse_datetime('November 11, 2011 11:11:11Z') == 1321009871000000000
 
 
 @mock.patch('paasta_tools.paasta_maintenance.now')
@@ -382,14 +403,14 @@ def test_load_credentials_keyerror(
         assert load_credentials()
 
 
-@mock.patch('paasta_tools.paasta_maintenance.get_schedule_client')
+@mock.patch('paasta_tools.paasta_maintenance.maintenance_api')
 def test_get_maintenance_status(
-    mock_get_schedule_client,
+    mock_maintenance_api,
 ):
     get_maintenance_status()
-    assert mock_get_schedule_client.call_count == 1
-    assert mock_get_schedule_client.return_value.call_count == 1
-    assert mock_get_schedule_client.return_value.call_args == mock.call(method="GET", endpoint="/status")
+    assert mock_maintenance_api.call_count == 1
+    assert mock_maintenance_api.return_value.call_count == 1
+    assert mock_maintenance_api.return_value.call_args == mock.call(method="GET", endpoint="/status")
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_schedule_client')
@@ -428,9 +449,9 @@ def test_undrain(
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
-    undrain(hostnames=['some-host'], start='some-start', duration='some-duration')
+    undrain(hostnames=['some-host'])
     assert mock_build_maintenance_schedule_payload.call_count == 1
-    expected_args = mock.call(['some-host'], 'some-start', 'some-duration', drain=False)
+    expected_args = mock.call(['some-host'], drain=False)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
@@ -479,12 +500,11 @@ def test_status(
     mock_stdout,
 ):
     mock_get_maintenance_status.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_status.return_value.__str__.return_value = 'fake_status'
     mock_get_maintenance_status.return_value.text = 'fake_text'
     status()
     output = mock_stdout.getvalue()
     assert mock_get_maintenance_status.call_count == 1
-    assert output == "fake_status:fake_text\n"
+    assert output == "fake_text\n"
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
@@ -494,19 +514,20 @@ def test_schedule(
     mock_stdout,
 ):
     mock_get_maintenance_schedule.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_schedule.return_value.__str__.return_value = 'fake_status'
     mock_get_maintenance_schedule.return_value.text = 'fake_text'
     schedule()
     output = mock_stdout.getvalue()
     assert mock_get_maintenance_schedule.call_count == 1
-    assert output == "fake_status:fake_text\n"
+    assert output == "fake_text\n"
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_status')
 def test_get_hosts_with_state_none(
     mock_get_maintenance_status,
 ):
-    mock_get_maintenance_status.return_value = {}
+    fake_status = {}
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     assert get_hosts_with_state(state='fake_state') == []
 
 
@@ -530,7 +551,8 @@ def test_get_hosts_with_state_draining(
             }
         ]
     }
-    mock_get_maintenance_status.return_value = fake_status
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     expected = sorted(['fake-host1.fakesite.something', 'fake-host2.fakesite.something'])
     assert sorted(get_hosts_with_state(state='draining_machines')) == expected
 
@@ -555,7 +577,8 @@ def test_get_hosts_with_state_down(
             }
         ]
     }
-    mock_get_maintenance_status.return_value = fake_status
+    mock_get_maintenance_status.return_value = mock.Mock()
+    mock_get_maintenance_status.return_value.json.return_value = fake_status
     expected = sorted(['fake-host1.fakesite.something', 'fake-host2.fakesite.something'])
     assert sorted(get_hosts_with_state(state='down_machines')) == expected
 
@@ -596,3 +619,178 @@ def test_is_host_down(
     mock_get_down_hosts.return_value = ['fake-host1.fakesite.something', 'fake-host2.fakesite.something']
     assert is_host_down('fake-host1.fakesite.something')
     assert not is_host_down('fake-host3.fakesite.something')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.is_host_drained')
+@mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_start')
+def test_is_safe_to_kill(
+    mock_get_hosts_past_maintenance_start,
+    mock_is_host_drained,
+):
+    mock_is_host_drained.return_value = False
+    mock_get_hosts_past_maintenance_start.return_value = []
+    assert not is_safe_to_kill('blah')
+
+    mock_is_host_drained.return_value = False
+    mock_get_hosts_past_maintenance_start.return_value = ['blah']
+    assert is_safe_to_kill('blah')
+
+    mock_is_host_drained.return_value = True
+    mock_get_hosts_past_maintenance_start.return_value = ['blah']
+    assert is_safe_to_kill('blah')
+
+    mock_is_host_drained.return_value = True
+    mock_get_hosts_past_maintenance_start.return_value = []
+    assert is_safe_to_kill('blah')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_mesos_task_count_by_slave')
+@mock.patch('paasta_tools.paasta_maintenance.get_mesos_state_from_leader')
+@mock.patch('paasta_tools.paasta_maintenance.is_host_draining')
+def test_is_host_drained(
+    mock_is_host_draining,
+    mock_get_mesos_state_from_leader,
+    mock_get_mesos_task_count_by_slave,
+):
+    mock_mesos_state = mock.Mock()
+    mock_slave_counts = {'host1': mock.Mock(count=3), 'host2': mock.Mock(count=0)}
+    mock_get_mesos_state_from_leader.return_value = mock_mesos_state
+    mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
+    mock_is_host_draining.return_value = True
+
+    assert not is_host_drained('host1')
+    assert mock_get_mesos_state_from_leader.called
+    mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
+    mock_is_host_draining.assert_called_with(hostname='host1')
+
+    mock_is_host_draining.return_value = True
+    assert is_host_drained('host2')
+
+    mock_is_host_draining.return_value = False
+    assert not is_host_drained('host1')
+
+    mock_is_host_draining.return_value = False
+    assert not is_host_drained('host2')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
+@mock.patch('paasta_tools.paasta_maintenance.now')
+@mock.patch('paasta_tools.paasta_maintenance.datetime_to_nanoseconds')
+def test_get_hosts_past_maintenance_start(
+    mock_datetime_to_nanoseconds,
+    mock_now,
+    mock_get_maintenance_schedule,
+):
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    }
+                }
+            }
+        ]
+    }
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 7
+    ret = get_hosts_past_maintenance_start()
+    assert ret == ['host2']
+
+    mock_schedule = {}
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    ret = get_hosts_past_maintenance_start()
+    assert ret == []
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
+@mock.patch('paasta_tools.paasta_maintenance.now')
+@mock.patch('paasta_tools.paasta_maintenance.datetime_to_nanoseconds')
+def test_get_hosts_past_maintenance_end(
+    mock_datetime_to_nanoseconds,
+    mock_now,
+    mock_get_maintenance_schedule,
+):
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    },
+                    "duration": {
+                        "nanoseconds": 20
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    },
+                    "duration": {
+                        "nanoseconds": 10
+                    }
+                }
+            }
+        ]
+    }
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 20
+    ret = get_hosts_past_maintenance_end()
+    assert ret == ['host2']
+
+    mock_schedule = {}
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 20
+    ret = get_hosts_past_maintenance_end()
+    assert ret == []
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_start')
+def test_is_host_past_maintenance_start(
+    mock_get_hosts_past_maintenance_start,
+):
+    mock_get_hosts_past_maintenance_start.return_value = ['fake_host']
+    assert is_host_past_maintenance_start('fake_host')
+    assert not is_host_past_maintenance_start('fake_host2')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.get_hosts_past_maintenance_end')
+def test_is_host_past_maintenance_end(
+    mock_get_hosts_past_maintenance_end,
+):
+    mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
+    assert is_host_past_maintenance_end('fake_host')
+    assert not is_host_past_maintenance_end('fake_host2')

@@ -1,0 +1,9 @@
+{
+    "profile": "default",
+    "default": {
+        "master": "zk://zookeeper:2181/mesos-testcluster",
+        "log_level": "warning",
+        "log_file": "None",
+        "response_timeout": 15
+    }
+}

@@ -241,7 +241,7 @@ class HTTPDrainMethod(DrainMethod):
     def parse_success_codes(self, success_codes_str):
         """Expand a string like 200-399,407-409,500 to a set containing all the integers in between."""
         acceptable_response_codes = set()
-        for series_str in success_codes_str.split(','):
+        for series_str in str(success_codes_str).split(','):
             if '-' in series_str:
                 start, end = series_str.split('-')
                 acceptable_response_codes.update(range(int(start), int(end) + 1))

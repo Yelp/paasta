@@ -36,11 +36,11 @@ def service_instance_status(context, app_count, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
 
     request = testing.DummyRequest()
-    request.matchdict = {'service': service, 'instance': instance}
+    request.swagger_data = {'service': service, 'instance': instance}
     response = instance_status(request)
 
-    assert response['app_count'] == int(app_count)
-    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count']
+    assert response['marathon']['app_count'] == int(app_count), response
+    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
 
 
 @then(u'instance GET should return error code "{error_code}" for "{job_id}"')
@@ -57,7 +57,7 @@ def service_instance_status_error(context, error_code, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
 
     request = testing.DummyRequest()
-    request.matchdict = {'service': service, 'instance': instance}
+    request.swagger_data = {'service': service, 'instance': instance}
 
     response = None
     try:

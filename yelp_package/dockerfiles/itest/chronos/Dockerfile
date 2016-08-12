@@ -13,11 +13,16 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
+
+RUN apt-get update && apt-get -y install apt-transport-https
+
+RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN apt-get update && apt-get -y install libsasl2-modules mesos=0.28.2-2.0.27.ubuntu1404
+RUN apt-get update && apt-get -y install libsasl2-modules mesos=1.0.0-2.0.89.ubuntu1404
 
-RUN apt-get -y install chronos=2.4.0-0.1.20151007110204.ubuntu1404
+RUN apt-get -y --allow-unauthenticated install chronos=2.5.0-yelp13-1.ubuntu1404
+
 # Chronos will look in here for zk config, so we blow away the bogus defaults
 RUN rm -rf /etc/mesos/
 
@@ -29,6 +34,6 @@ RUN echo -n 'chronos' > /etc/chronos/conf/mesos_authentication_principal
 RUN echo -n 'secret3' > /etc/chronos_framework_secret
 RUN echo -n '/etc/chronos_framework_secret' > /etc/chronos/conf/mesos_authentication_secret_file
 
-CMD rsyslogd ; (/usr/bin/chronos &) ; tail -f /var/log/syslog
+CMD rsyslogd ; sleep 1; (/usr/bin/chronos &) ; tail -f /var/log/syslog
 
 EXPOSE 8081

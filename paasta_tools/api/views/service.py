@@ -23,6 +23,6 @@ from paasta_tools.utils import list_all_instances_for_service
 
 @view_config(route_name='service.list', request_method='GET', renderer='json')
 def list_instances(request):
-    service = request.matchdict['service']
+    service = request.swagger_data.get('service')
     instances = list_all_instances_for_service(service, clusters=[settings.cluster])
     return {'instances': list(instances)}

@@ -97,6 +97,7 @@ class TestHTTPDrainMethod(object):
         assert drain_method.parse_success_codes('200') == set([200])
         assert drain_method.parse_success_codes('200-203') == set([200, 201, 202, 203])
         assert drain_method.parse_success_codes('200-202,302,305-306') == set([200, 201, 202, 302, 305, 305, 306])
+        assert drain_method.parse_success_codes(200) == set([200])
 
     def test_check_response_code(self):
         drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})

@@ -7,18 +7,56 @@
         "type": "object",
         "additionalProperties": false,
         "minProperties": 1,
-        "oneOf": [
+        "allOf":[
             {
-                "properties": {
-                    "healthcheck_mode": {"enum": ["tcp", "http"]}
-                }
-            },
-            {
-                "properties": {
-                    "healthcheck_mode": {"enum": ["cmd"]},
-                    "healthcheck_cmd": {"type": "string"}
-                },
-                "required": ["healthcheck_cmd"]
+                "oneOf": [
+                    {
+                        "properties": {
+                            "healthcheck_mode": {"enum": ["tcp", "http"]}
+                        }
+                    },
+                    {
+                        "properties": {
+                            "healthcheck_mode": {"enum": ["cmd"]},
+                            "healthcheck_cmd": {"type": "string"}
+                        },
+                        "required": ["healthcheck_cmd"]
+                    }
+                ]
+            }, {
+                "oneOf": [
+                    {
+                        "properties": {
+                            "drain_method": {
+                                "enum": [ "noop", "hacheck", "test" ]
+                            }
+                        }
+                    },
+                    {
+                        "properties": {
+                            "drain_method": {"enum": ["http"]},
+                            "drain_method_params": {
+                                "type": "object",
+                                "properties": {
+                                    "drain": {
+                                        "type": "object"
+                                    },
+                                    "stop_draining": {
+                                        "type": "object"
+                                    },
+                                    "is_draining": {
+                                        "type": "object"
+                                    },
+                                    "is_safe_to_kill": {
+                                        "type": "object"
+                                    }
+                                },
+                                "required": ["drain", "stop_draining", "is_draining", "is_safe_to_kill"]
+                            }
+                        },
+                        "required": ["drain_method_params"]
+                    }
+                ]
             }
         ],
         "properties": {
