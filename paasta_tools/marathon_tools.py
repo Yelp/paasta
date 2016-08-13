@@ -16,6 +16,7 @@ that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
+import json
 import logging
 import os
 import re
@@ -885,6 +886,9 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     return nerve_list
 
 
+def _get_classic_service_puppet_file(service):
+    return os.path.join(PUPPET_SERVICE_DIR, service)
+
 def get_classic_services_that_run_here():
     # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
     # this allows us to (de)register services on a machine by
@@ -893,7 +897,7 @@ def get_classic_services_that_run_here():
     if os.path.exists(PUPPET_SERVICE_DIR):
         puppet_service_dir_services = {
             i for i in os.listdir(PUPPET_SERVICE_DIR) if
-            os.path.exists(os.path.join(PUPPET_SERVICE_DIR, i))
+            os.path.exists(_get_classic_service_puppet_file(i))
         }
 
     return sorted(
@@ -911,6 +915,11 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = compose_job_id(name, namespace)
+    try:
+        with open(_get_classic_service_puppet_file(name)) as extras:
+            nerve_dict.update(json.load(extras))
+    except (ValueError,IOError):
+        pass
     return (nerve_name, nerve_dict)
 
 

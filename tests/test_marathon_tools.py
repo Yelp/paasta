@@ -699,6 +699,35 @@ class TestMarathonTools:
             info = marathon_tools.get_classic_service_information_for_nerve('no_water', 'we_are_the_one')
             assert info == ('no_water.main', {'ten': 10, 'port': 101})
 
+    def test_get_classic_service_information_for_nerve_with_extra(self):
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_port', return_value=80),
+            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
+                       return_value={'mode': 'http'}),
+            mock.patch('__builtin__.open', mock.mock_open(read_data='{"hi_key":"hello_value"}')),
+        ) as (
+            read_port_patch,
+            namespace_config_patch,
+            puppet_service_file,
+        ):
+            info = marathon_tools.get_classic_service_information_for_nerve('a_test_service', '/here/is/a/soa/dir')
+            assert info == ('a_test_service.main', {'mode': 'http', 'port': 80, 'hi_key': 'hello_value'})
+
+
+    def test_get_classic_service_information_for_nerve_with_bad_extra(self):
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_port', return_value=80),
+            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
+                       return_value={'mode': 'http'}),
+            mock.patch('__builtin__.open', mock.mock_open(read_data='im not json')),
+        ) as (
+            read_port_patch,
+            namespace_config_patch,
+            puppet_service_file,
+        ):
+            info = marathon_tools.get_classic_service_information_for_nerve('a_test_service', '/here/is/a/soa/dir')
+            assert info == ('a_test_service.main', {'mode': 'http', 'port': 80})
+
     def test_get_classic_services_that_run_here(self):
         with contextlib.nested(
             mock.patch(
