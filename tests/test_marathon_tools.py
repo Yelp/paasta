@@ -713,7 +713,6 @@ class TestMarathonTools:
             info = marathon_tools.get_classic_service_information_for_nerve('a_test_service', '/here/is/a/soa/dir')
             assert info == ('a_test_service.main', {'mode': 'http', 'port': 80, 'hi_key': 'hello_value'})
 
-
     def test_get_classic_service_information_for_nerve_with_bad_extra(self):
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_port', return_value=80),

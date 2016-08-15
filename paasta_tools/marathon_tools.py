@@ -889,6 +889,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
 def _get_classic_service_puppet_file(service):
     return os.path.join(PUPPET_SERVICE_DIR, service)
 
+
 def get_classic_services_that_run_here():
     # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
     # this allows us to (de)register services on a machine by
@@ -918,7 +919,7 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     try:
         with open(_get_classic_service_puppet_file(name)) as extras:
             nerve_dict.update(json.load(extras))
-    except (ValueError,IOError):
+    except (ValueError, IOError):
         pass
     return (nerve_name, nerve_dict)
 
