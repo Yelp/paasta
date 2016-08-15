@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 import binascii
-from collections import namedtuple
 import logging
 import sys
 import time
@@ -40,13 +39,24 @@ from paasta_tools.utils import get_docker_url
 log = logging.getLogger(__name__)
 
 MESOS_TASK_SPACER = '.'
-RUNNING_TASK = 0x00001
-STARTING_TASK = 0x00010
-DRAINING_TASK = 0x00100
-STOPPING_TASK = 0x01000
-HEALTHY_TASK = 0x10000
 
-MesosTaskParameters = namedtuple("MesosTaskParamters", ["flags", "health"])
+
+class MesosTaskParameters(object):
+    def __init__(
+        self,
+        health,
+        is_running=False,
+        is_starting=False,
+        is_draining=False,
+        is_stopping=False,
+        is_healthy=False,
+    ):
+        self.health = health
+        self.is_running = is_running
+        self.is_starting = is_starting
+        self.is_draining = is_draining
+        self.is_stopping = is_stopping
+        self.is_healthy = is_healthy
 
 
 class PaastaScheduler(mesos.interface.Scheduler):
@@ -113,7 +123,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         """Returns whether we need to start more tasks."""
         num_have = len(self.get_new_tasks(
             name,
-            [task for task, parameters in self.tasks_with_flags.iteritems() if (RUNNING_TASK | STARTING_TASK) & parameters.flags]
+            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_running or parameters.is_starting]
         ))
         return num_have < self.service_config.get_instances()
 
@@ -150,8 +160,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
             tid = "%s.%s" % (t.name, uuid.uuid4().hex)
             t.task_id.value = tid
             tasks.append(t)
-            task_params = self.tasks_with_flags.get(tid, MesosTaskParameters(0x0, None))
-            self.tasks_with_flags[tid] = MesosTaskParameters(task_params.flags | STARTING_TASK, task_params.health)
+            self.tasks_with_flags.setdefault(tid, MesosTaskParameters(None)).is_starting = True
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
@@ -176,8 +185,9 @@ class PaastaScheduler(mesos.interface.Scheduler):
         print "Task %s is in state %s" % \
             (task_id, mesos_pb2.TaskState.Name(state))
         if state == mesos_pb2.TASK_RUNNING:
-            task_params = self.tasks_with_flags.get(task_id, MesosTaskParameters(0x0, None))
-            self.tasks_with_flags[task_id] = MesosTaskParameters((task_params.flags & ~STARTING_TASK) | RUNNING_TASK, task_params.health)
+            task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(None))
+            task_params.is_starting = False
+            task_params.is_running = True
         if state == mesos_pb2.TASK_LOST or \
                 state == mesos_pb2.TASK_KILLED or \
                 state == mesos_pb2.TASK_FAILED or \
@@ -193,17 +203,17 @@ class PaastaScheduler(mesos.interface.Scheduler):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
         # Undrain any tasks that shouldn't be draining.
-        for task in self.get_new_tasks(base_task.name, set([task for task, parameters in self.tasks_with_flags.iteritems() if DRAINING_TASK & parameters.flags])):
+        for task in self.get_new_tasks(base_task.name, set([task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_draining])):
             self.undrain_task(task)
 
         # Happier things first
         new_running_tasks = list(self.get_new_tasks(
             base_task.name,
-            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & RUNNING_TASK]
+            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_running]
         ))
         new_started_tasks = list(self.get_new_tasks(
             base_task.name,
-            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & STARTING_TASK]
+            [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_starting]
         ))
 
         desired_instances = self.service_config.get_instances()
@@ -214,7 +224,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         old_app_live_happy_tasks = self.group_tasks_by_version(
             self.get_old_tasks(
                 base_task.name,
-                set([task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & (STARTING_TASK | RUNNING_TASK)])
+                set([task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_starting or parameters.is_running])
             ) | set(new_tasks_to_kill)
         )
 
@@ -229,7 +239,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task in [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.flags & DRAINING_TASK]:
+        for task in [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_draining]:
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
                 self.kill_task(driver, task)
 
@@ -237,20 +247,29 @@ class PaastaScheduler(mesos.interface.Scheduler):
         self.drain_method.stop_draining(DrainTask(id=task))
 
         task_params = self.tasks_with_flags.get(task)
-        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(STOPPING_TASK | DRAINING_TASK | STARTING_TASK) | RUNNING_TASK), task_params.health)
+        task_params.is_stopping = False  # todo: delete
+        task_params.is_draining = False
+        task_params.is_starting = False  # todo: delete
+        task_params.is_running = True  # todo:delete
 
     def drain_task(self, task):
         self.drain_method.drain(DrainTask(id=task))
 
         task_params = self.tasks_with_flags.get(task)
-        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(STOPPING_TASK | STARTING_TASK | RUNNING_TASK)) | DRAINING_TASK, task_params.health)
+        task_params.is_stopping = False  # todo: delete
+        task_params.is_starting = False  # todo: delete
+        task_params.is_running = False  # todo: delete
+        task_params.is_draining = True
 
     def kill_task(self, driver, task):
         tid = mesos_pb2.TaskID()
         tid.value = task
         driver.killTask(tid)
         task_params = self.tasks_with_flags.get(task)
-        self.tasks_with_flags[task] = MesosTaskParameters((task_params.flags & ~(DRAINING_TASK | STARTING_TASK | RUNNING_TASK)) | STOPPING_TASK, task_params.health)
+        task_params.is_draining = False  # todo: delete
+        task_params.is_starting = False  # todo: delete
+        task_params.is_running = False  # todo: delete
+        task_params.is_stopping = True
 
     def group_tasks_by_version(self, task_ids):
         d = {}

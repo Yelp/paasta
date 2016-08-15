@@ -16,11 +16,6 @@ from paasta_tools.native_mesos_scheduler import create_driver
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import PaastaNativeServiceConfig
 from paasta_tools.native_mesos_scheduler import PaastaScheduler
-from paasta_tools.native_mesos_scheduler import RUNNING_TASK
-from paasta_tools.native_mesos_scheduler import STARTING_TASK
-from paasta_tools.native_mesos_scheduler import DRAINING_TASK
-from paasta_tools.native_mesos_scheduler import STOPPING_TASK
-from paasta_tools.native_mesos_scheduler import HEALTHY_TASK
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -91,7 +86,7 @@ def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(20):
-        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if (RUNNING_TASK | DRAINING_TASK) & parameters.flags])
+        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.is_running or parameters.is_draining])
         if actual_num_tasks >= num:
             return
         time.sleep(1)
@@ -238,7 +233,7 @@ def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(30):
-        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if RUNNING_TASK & parameters.flags])
+        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.is_running])
         if actual_num_tasks <= num:
             return
         time.sleep(1)
@@ -261,8 +256,8 @@ def we_change_instances_to_num(context, num):
 @then(u'it should not start tasks for {num} seconds')
 def should_not_start_tasks_for_num_seconds(context, num):
     time.sleep(int(num))
-    assert len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if RUNNING_TASK & parameters.flags]) == 0
-    assert len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if STARTING_TASK & parameters.flags]) == 0
+    assert len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.is_running]) == 0
+    assert len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.is_starting]) == 0
 
 
 @then(u'periodic() should eventually be called')
