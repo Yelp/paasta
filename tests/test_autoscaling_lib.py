@@ -399,7 +399,7 @@ def test_autoscale_marathon_instance_aborts_when_task_deploying():
         assert not mock_set_instances_for_marathon_service.called
 
 
-def test_autoscale_services():
+def test_autoscale_services_happy_path():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
