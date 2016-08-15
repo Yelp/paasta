@@ -918,9 +918,12 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     nerve_name = compose_job_id(name, namespace)
     try:
         with open(_get_classic_service_puppet_file(name)) as extras:
-            nerve_dict.update(json.load(extras))
-    except (ValueError, IOError):
-        pass
+            if os.fstat(extras.fileno()).st_size > 0:
+                nerve_dict.update(json.load(extras))
+    except IOError:
+        log.exception("Could not open {0} for reading".format(extras.name))
+    except ValueError:
+        log.exception("Could not interpret {0} as JSON".format(extras.name))
     return (nerve_name, nerve_dict)
 
 
