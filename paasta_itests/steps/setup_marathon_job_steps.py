@@ -92,7 +92,7 @@ def run_until_number_tasks(context, number):
         'scheme': 'http',
         'response_timeout': 5,
     }
-    for _ in xrange(30):
+    for _ in xrange(20):
         with contextlib.nested(
             mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
             mock.patch.object(mesos.cli.master, 'CFG', config),
@@ -104,7 +104,7 @@ def run_until_number_tasks(context, number):
                 mesos_secrets='/etc/mesos-slave-secret',
             )
             run_setup_marathon_job(context)
-        sleep(1)
+        sleep(0.5)
         if context.marathon_client.get_app(context.app_id).instances == number:
             return
     assert context.marathon_client.get_app(context.app_id).instances == number
