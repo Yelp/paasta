@@ -2,7 +2,6 @@ branches:
   only:
     - master
     - /^v[0-9.]+$/
-    - /^travis-.*$/
 language: python
 env:
   - TOXENV=py27
