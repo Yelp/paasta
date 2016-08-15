@@ -656,6 +656,8 @@ def main():
             if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
                 num_failed_deployments = num_failed_deployments + 1
 
+    requests_cache.uninstall_cache()
+
     log.debug("%d out of %d service.instances failed to deploy." %
               (num_failed_deployments, len(args.service_instance_list)))
 
