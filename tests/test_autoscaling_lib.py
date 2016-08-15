@@ -24,6 +24,7 @@ from paasta_tools import autoscaling_lib
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.paasta_metastatus import ResourceInfo
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 def test_get_zookeeper_instances():
@@ -565,6 +566,20 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
     ):
         autoscaling_lib.autoscale_services()
         assert not mock_autoscale_marathon_instance.called
+
+
+def test_autoscale_services_ignores_non_deployed_services():
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling_lib.get_services_for_cluster', autospec=True,
+                   return_value=[('fake-service', 'fake-instance')]),
+        mock.patch('paasta_tools.autoscaling_lib.load_marathon_service_config', autospec=True,
+                   side_effect=NoDeploymentsAvailable),
+    ) as (
+        _,
+        _,
+    ):
+        configs = autoscaling_lib.get_configs_of_services_to_scale(cluster='fake_cluster')
+        assert len(configs) == 0, configs
 
 
 def test_humanize_error_above():
