@@ -911,19 +911,30 @@ def get_classic_service_information_for_nerve(name, soa_dir):
     return _namespaced_get_classic_service_information_for_nerve(name, 'main', soa_dir)
 
 
+def _read_classic_service_puppet_file_as_json(service_puppet_file_name):
+    try:
+        with open(service_puppet_file_name) as extras:
+            return json.load(extras)
+    except ValueError:
+        if os.fstat(extras.fileno()).st_size > 0:
+            # only raise ValueError when we couldn't load JSON from an empty file
+            # since it really means, parse error
+            raise
+    return {}
+
+
 def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_dir):
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = compose_job_id(name, namespace)
     try:
-        with open(_get_classic_service_puppet_file(name)) as extras:
-            if os.fstat(extras.fileno()).st_size > 0:
-                nerve_dict.update(json.load(extras))
-    except IOError:
-        log.exception("Could not open {0} for reading".format(extras.name))
+        file_name = _get_classic_service_puppet_file(name)
+        nerve_dict.update(_read_classic_service_puppet_file_as_json(file_name))
     except ValueError:
-        log.exception("Could not interpret {0} as JSON".format(extras.name))
+        log.exception("Could not interpret {0} as JSON".format(file_name))
+    except IOError:
+        log.exception("Could not open {0}".format(file_name))
     return (nerve_name, nerve_dict)
 
 
