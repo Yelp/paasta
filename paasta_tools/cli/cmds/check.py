@@ -86,7 +86,7 @@ def deploy_check(service_path):
 
 def deploy_has_security_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
-    steps = [step['instancename'] for step in pipeline]
+    steps = [step['step'] for step in pipeline]
     if 'security-check' in steps:
         print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
         return True
@@ -97,7 +97,7 @@ def deploy_has_security_check(service, soa_dir):
 
 def deploy_has_performance_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
-    steps = [step['instancename'] for step in pipeline]
+    steps = [step['step'] for step in pipeline]
     if 'performance-check' in steps:
         print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
         return True
@@ -257,7 +257,7 @@ def deployments_check(service, soa_dir):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
     pipeline_deployments = get_pipeline_config(service, soa_dir)
-    pipeline_steps = [step['instancename'] for step in pipeline_deployments]
+    pipeline_steps = [step['step'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
     marathon_steps = get_marathon_steps(service, soa_dir)
     chronos_steps = get_chronos_steps(service, soa_dir)

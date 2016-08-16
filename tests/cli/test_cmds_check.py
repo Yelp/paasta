@@ -470,10 +470,10 @@ def test_makefile_has_docker_tag_false():
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config')
 def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     actual = deploy_has_security_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
@@ -483,11 +483,11 @@ def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config')
 def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'security-check', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'security-check', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     actual = deploy_has_security_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
@@ -497,10 +497,10 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config')
 def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
@@ -510,11 +510,11 @@ def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config')
 def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'performance-check', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'performance-check', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
@@ -552,11 +552,11 @@ def test_marathon_deployments_check_good(
     mock_stdout,
 ):
     mock_get_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'performance-check', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'performance-check', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     mock_get_marathon_steps.return_value = [
         'hab.canary',
@@ -575,12 +575,12 @@ def test_marathon_deployments_deploy_but_not_marathon(
     mock_stdout,
 ):
     mock_get_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'performance-check', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
-        {'instancename': 'hab.EXTRA', },
+        {'step': 'itest', },
+        {'step': 'performance-check', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
+        {'step': 'hab.EXTRA', },
     ]
     mock_get_marathon_steps.return_value = [
         'hab.canary',
@@ -600,11 +600,11 @@ def test_marathon_deployments_marathon_but_not_deploy(
     mock_stdout,
 ):
     mock_get_pipeline_config.return_value = [
-        {'instancename': 'itest', },
-        {'instancename': 'performance-check', },
-        {'instancename': 'push-to-registry', },
-        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'hab.main', },
+        {'step': 'itest', },
+        {'step': 'performance-check', },
+        {'step': 'push-to-registry', },
+        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'step': 'hab.main', },
     ]
     mock_get_marathon_steps.return_value = [
         'hab.canary',

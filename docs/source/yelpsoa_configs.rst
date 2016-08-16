@@ -214,7 +214,7 @@ instance MAY have:
    implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
-    to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+    to. The ``step`` parameter in ``deploy.yaml`` refererences this value
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
 
