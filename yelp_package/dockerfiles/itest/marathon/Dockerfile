@@ -15,7 +15,7 @@
 FROM ubuntu:trusty
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN apt-get update && apt-get -y install libsasl2-modules mesos=1.0.0-2.0.89.ubuntu1404
+RUN apt-get update && apt-get -y install libsasl2-modules mesos=0.28.2-2.0.27.ubuntu1404
 
 # Install Java 8 PPA
 RUN apt-get install -y software-properties-common
