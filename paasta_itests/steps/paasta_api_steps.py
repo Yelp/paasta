@@ -19,7 +19,6 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.instance import instance_status
 from paasta_tools.api.views.instance import InstanceFailure
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import load_system_paasta_config
 
 
 @then(u'instance GET should return app_count "{app_count}" and an expected number of running instances for "{job_id}"')
@@ -30,8 +29,9 @@ def service_instance_status(context, app_count, job_id):
         marathon_config.get_username(),
         marathon_config.get_password()
     )
-    settings.cluster = load_system_paasta_config().get_cluster()
+    settings.cluster = context.cluster
     settings.soa_dir = context.soa_dir
+    settings.marathon_client = context.marathon_client
 
     (service, instance, _, __) = decompose_job_id(job_id)
 
@@ -51,8 +51,9 @@ def service_instance_status_error(context, error_code, job_id):
         marathon_config.get_username(),
         marathon_config.get_password()
     )
-    settings.cluster = load_system_paasta_config().get_cluster()
+    settings.cluster = context.cluster
     settings.soa_dir = context.soa_dir
+    settings.marathon_client = context.marathon_client
 
     (service, instance, _, __) = decompose_job_id(job_id)
 
