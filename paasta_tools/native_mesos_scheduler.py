@@ -52,6 +52,8 @@ TASK_KILLED = mesos_pb2.TASK_KILLED
 TASK_LOST = mesos_pb2.TASK_LOST
 TASK_ERROR = mesos_pb2.TASK_ERROR
 
+LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
+
 
 class MesosTaskParameters(object):
     def __init__(
@@ -132,7 +134,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         """Returns whether we need to start more tasks."""
         num_have = 0
         for task, parameters in self.tasks_with_flags.iteritems():
-            if self.is_task_new(name, task) and (parameters.mesos_task_state in (TASK_STAGING, TASK_STARTING, TASK_RUNNING)):
+            if self.is_task_new(name, task) and (parameters.mesos_task_state in LIVE_TASK_STATES):
                 num_have += 1
         return num_have < self.service_config.get_instances()
 

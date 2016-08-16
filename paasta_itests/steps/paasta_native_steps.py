@@ -13,12 +13,11 @@ from itest_utils import clear_mesos_tools_cache
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
 from paasta_tools.native_mesos_scheduler import create_driver
+from paasta_tools.native_mesos_scheduler import LIVE_TASK_STATES
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import PaastaNativeServiceConfig
 from paasta_tools.native_mesos_scheduler import PaastaScheduler
 from paasta_tools.native_mesos_scheduler import TASK_RUNNING
-from paasta_tools.native_mesos_scheduler import TASK_STAGING
-from paasta_tools.native_mesos_scheduler import TASK_STARTING
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -89,12 +88,12 @@ def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(20):
-        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.mesos_task_state == TASK_RUNNING])
-        if actual_num_tasks >= num:
+        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+        if actual_num >= num:
             return
         time.sleep(1)
 
-    raise Exception("Expected %d tasks before timeout, saw %d" % (num, actual_num_tasks))
+    raise Exception("Expected %d tasks before timeout, saw %d" % (num, actual_num))
 
 
 @given('a fresh soa_dir')
@@ -236,12 +235,12 @@ def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
     for _ in xrange(30):
-        actual_num_tasks = len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if parameters.mesos_task_state == TASK_RUNNING])
-        if actual_num_tasks <= num:
+        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+        if actual_num <= num:
             return
         time.sleep(1)
 
-    raise Exception("Expected <= %d tasks before timeout, saw %d" % (num, actual_num_tasks))
+    raise Exception("Expected <= %d tasks before timeout, saw %d" % (num, actual_num))
 
 
 @when(u'we call periodic')
@@ -260,7 +259,7 @@ def we_change_instances_to_num(context, num):
 def should_not_start_tasks_for_num_seconds(context, num):
     time.sleep(int(num))
 
-    assert len([_ for task, parameters in context.scheduler.tasks_with_flags.iteritems() if (parameters.mesos_task_state in (TASK_RUNNING, TASK_STARTING, TASK_STAGING))]) == 0
+    assert [] == [p for p in context.scheduler.tasks_with_flags.values() if (p.mesos_task_state in LIVE_TASK_STATES)]
 
 
 @then(u'periodic() should eventually be called')
