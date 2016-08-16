@@ -86,7 +86,9 @@ Feature: Paasta native mesos framework
       And it should eventually drain 3 tasks
      When we change force_bounce back
       And we call periodic
-     Then it should undrain 3 tasks and drain 3 more
+     Then it should undrain 3 tasks and drain 0 more
+     When we call periodic
+     Then it should undrain 0 tasks and drain 3 more
 
   Scenario: native_mesos_scheduler waits for task reconciliation before accepting offers
     Given a working paasta cluster, with docker registry docker.io
