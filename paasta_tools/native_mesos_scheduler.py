@@ -209,7 +209,6 @@ class PaastaScheduler(mesos.interface.Scheduler):
                 state == TASK_FAILED or \
                 state == TASK_FINISHED:
 
-            self.tasks.pop(task_id, None)
             self.tasks_with_flags.pop(task_id)
         else:
             task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
@@ -258,13 +257,15 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
         old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
         old_happy_tasks = self.get_happy_tasks(old_tasks)
+        old_draining_tasks = self.get_draining_tasks(old_tasks)
+        old_unhappy_tasks = set(old_tasks) - set(old_happy_tasks) - set(old_draining_tasks)
 
         actions = bounce_lib.crossover_bounce(
             new_config={"instances": desired_instances},
             new_app_running=True,
             happy_new_tasks=happy_new_tasks,
             old_app_live_happy_tasks=self.group_tasks_by_version(old_happy_tasks + new_tasks_to_kill),
-            old_app_live_unhappy_tasks=self.group_tasks_by_version(set(old_tasks) - set(old_happy_tasks)),
+            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_tasks),
         )
 
         for task in set(new_tasks) - set(actions['tasks_to_drain']):
@@ -284,6 +285,10 @@ class PaastaScheduler(mesos.interface.Scheduler):
             if params.mesos_task_state == TASK_RUNNING and not params.is_draining:
                 happy_tasks.append(task)
         return happy_tasks
+
+    def get_draining_tasks(self, tasks):
+        """Filter a list of tasks to those that are draining."""
+        return [t for t, p in self.tasks_with_flags.iteritems() if p.is_draining]
 
     def undrain_task(self, task):
         self.drain_method.stop_draining(DrainTask(id=task))
