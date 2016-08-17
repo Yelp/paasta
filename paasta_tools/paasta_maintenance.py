@@ -15,9 +15,7 @@
 import argparse
 import logging
 import sys
-import traceback
 from socket import getfqdn
-from socket import gethostbyname
 from socket import gethostname
 
 from paasta_tools import mesos_maintenance
@@ -114,69 +112,8 @@ def is_safe_to_drain(hostname):
     return not are_local_tasks_in_danger()
 
 
-def is_healthy_in_haproxy(local_port, backends):
-    local_ip = gethostbyname(gethostname())
-    for backend in backends:
-        ip, port, _ = ip_port_hostname_from_svname(backend['svname'])
-        if ip == local_ip and port == local_port:
-            if backend_is_up(backend):
-                log.debug("Found a healthy local backend: %s" % backend)
-                return True
-            else:
-                log.debug("Found a unhealthy local backend: %s" % backend)
-                return False
-    log.debug("Couldn't find any haproxy backend listening on %s" % local_port)
-    return False
-
-
-def synapse_replication_is_low(service, instance, system_paasta_config, local_backends):
-    crit_threshold = 80
-    namespace = read_namespace_for_service_instance(service=service, instance=instance)
-    smartstack_replication_info = load_smartstack_info_for_service(
-        service=service,
-        namespace=namespace,
-        blacklist=[],
-        system_paasta_config=system_paasta_config,
-    )
-    expected_count = get_expected_instance_count_for_namespace(service=service, namespace=namespace)
-    expected_count_per_location = int(expected_count / len(smartstack_replication_info))
-    synapse_name = "%s.%s" % (service, namespace)
-    local_replication = get_replication_for_services(
-        synapse_host=system_paasta_config.get_default_synapse_host(),
-        synapse_port=system_paasta_config.get_synapse_port(),
-        synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-        services=[synapse_name],
-    )
-    num_available = local_replication.get(synapse_name, 0)
-    under_replicated, ratio = utils.is_under_replicated(
-        num_available, expected_count_per_location, crit_threshold)
-    log.info('Service %s.%s has %d out of %d expected instances' % (
-        service, instance, num_available, expected_count_per_location))
-    return under_replicated
-
-
 def are_local_tasks_in_danger():
-    try:
-        system_paasta_config = utils.load_system_paasta_config()
-        local_services = marathon_services_running_here()
-        local_backends = get_backends(
-            service=None,
-            synapse_host=system_paasta_config.get_default_synapse_host(),
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format()
-        )
-        for service, instance, port in local_services:
-            log.info("Inspecting %s.%s on %s" % (service, instance, port))
-            if is_healthy_in_haproxy(port, local_backends) and \
-               synapse_replication_is_low(service, instance, system_paasta_config, local_backends=local_backends):
-                log.warning("%s.%s on port %s is healthy but the service is in danger!" % (
-                    service, instance, port
-                ))
-                return True
-        return False
-    except Exception:
-        log.warning(traceback.format_exc())
-        return False
+    return False
 
 
 def paasta_maintenance():
