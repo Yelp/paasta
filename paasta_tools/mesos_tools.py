@@ -27,6 +27,7 @@ from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools.utils import format_table
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -448,10 +449,11 @@ def get_local_slave_state():
     hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
     try:
-        response = requests.get(stats_uri, timeout=10)
+        headers = {'User-Agent': get_user_agent()}
+        response = requests.get(stats_uri, timeout=10, headers=headers)
         if response.status_code == 404:
             fallback_stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
-            response = requests.get(fallback_stats_uri, timeout=10)
+            response = requests.get(fallback_stats_uri, timeout=10, headers=headers)
     except requests.ConnectionError as e:
         raise MesosSlaveConnectionError(
             'Could not connect to the mesos slave to see which services are running\n'

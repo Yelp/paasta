@@ -40,8 +40,18 @@ class LongRunningServiceConfig(InstanceConfig):
             default = {'delay': 60}
         return self.config_dict.get('drain_method_params', default)
 
+    # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self):
-        return self.config_dict.get('nerve_ns', self.instance)
+        return self.get_registration_namespaces()[0]
+
+    def get_registration_namespaces(self):
+        registration_namespaces = self.config_dict.get('registration_namespaces', [])
+        # Backwards compatbility with nerve_ns
+        # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
+        if not registration_namespaces and 'nerve_ns' in self.config_dict:
+            registration_namespaces.append(self.config_dict.get('nerve_ns'))
+
+        return registration_namespaces or [self.instance]
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):

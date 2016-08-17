@@ -47,6 +47,8 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 
+import paasta_tools
+
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -1014,6 +1016,14 @@ def get_umask():
     old_umask = os.umask(0022)
     os.umask(old_umask)
     return old_umask
+
+
+def get_user_agent():
+    user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
+    if len(sys.argv) >= 1:
+        return user_agent + " " + os.path.basename(sys.argv[0])
+    else:
+        return user_agent
 
 
 @contextlib.contextmanager

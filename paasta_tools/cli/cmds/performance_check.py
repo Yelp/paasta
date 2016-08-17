@@ -16,6 +16,7 @@ import sys
 
 import requests
 
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import get_username
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
@@ -65,6 +66,7 @@ def submit_performance_check_job(service, commit, image):
     r = requests.post(
         url=performance_check_config['endpoint'],
         data=payload,
+        headers={'User-Agent': get_user_agent()}
     )
     print "Posted a submission to the PaaSTA performance-check service:"
     print r.text

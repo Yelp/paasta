@@ -15,6 +15,8 @@ import csv
 
 import requests
 
+from paasta_tools.utils import get_user_agent
+
 
 def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format):
     """Retrieves the haproxy csv from the haproxy web interface
@@ -27,6 +29,7 @@ def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format)
 
     # timeout after 1 second and retry 3 times
     haproxy_request = requests.Session()
+    haproxy_request.headers.update({'User-Agent': get_user_agent()})
     haproxy_request.mount(
         'http://',
         requests.adapters.HTTPAdapter(max_retries=3))

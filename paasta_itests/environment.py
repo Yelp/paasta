@@ -16,7 +16,6 @@ import shutil
 import time
 
 import requests
-import requests_cache
 from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
 from itest_utils import clear_mesos_tools_cache
@@ -125,7 +124,6 @@ def _clean_up_paasta_native_frameworks(context):
 
 
 def after_scenario(context, scenario):
-    requests_cache.uninstall_cache()
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)

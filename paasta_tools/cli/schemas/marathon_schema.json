@@ -96,6 +96,13 @@
             "nerve_ns": {
                 "type": "string"
             },
+            "registration_namespaces": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "uniqueItems": true
+            },
             "bounce_method": {
                 "type": "string"
             },
