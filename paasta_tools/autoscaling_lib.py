@@ -692,7 +692,6 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
     ec2_client = boto3.client('ec2')
     with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
         try:
-            state = None
             while True:
                 state = get_sfr(sfr_id)['SpotFleetRequestState']
                 if state == 'active':

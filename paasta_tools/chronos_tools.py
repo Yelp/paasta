@@ -139,9 +139,9 @@ def decompose_job_id(job_id):
         if not decomposed[0].startswith(TMP_JOB_IDENTIFIER):
             raise InvalidJobNameError('invalid job id %s' % job_id)
         else:
-            return (decomposed[1], decomposed[2])
+            return decomposed[1], decomposed[2]
     elif len(decomposed) == 2:
-        return (decomposed[0], decomposed[1])
+        return decomposed[0], decomposed[1]
     else:
         raise InvalidJobNameError('invalid job id %s' % job_id)
 
@@ -458,7 +458,7 @@ class ChronosJobConfig(InstanceConfig):
 def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """A chronos-specific wrapper around utils.get_service_instance_list.
 
-    :param name: The service name
+    :param service: The service name
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, job) for each job defined for the service name
@@ -607,16 +607,16 @@ def get_status_last_run(job):
     last_success = last_success_for_job(job)
     last_failure = last_failure_for_job(job)
     if not last_success and not last_failure:
-        return (None, LastRunState.NotRun)
+        return None, LastRunState.NotRun
     elif not last_failure:
-        return (last_success, LastRunState.Success)
+        return last_success, LastRunState.Success
     elif not last_success:
-        return (last_failure, LastRunState.Fail)
+        return last_failure, LastRunState.Fail
     else:
         if cmp_datetimes(last_success, last_failure) <= 0:
-            return (last_success, LastRunState.Success)
+            return last_success, LastRunState.Success
         else:
-            return (last_failure, LastRunState.Fail)
+            return last_failure, LastRunState.Fail
 
 
 def get_job_type(job):
@@ -741,7 +741,7 @@ def wait_for_job(client, job_name):
         if found:
             return True
         else:
-            print "waiting for job %s to launch. retrying" % (job_name)
+            print "waiting for job %s to launch. retrying" % job_name
             sleep(0.5)
 
 

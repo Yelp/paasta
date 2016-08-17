@@ -32,7 +32,7 @@ def test_get_replication_for_service():
 
     mock_response = mock.Mock()
     mock_response.text = mock_haproxy_data
-    mock_get = mock.Mock(return_value=(mock_response))
+    mock_get = mock.Mock(return_value=mock_response)
 
     with mock.patch.object(requests.Session, 'get', mock_get):
         replication_result = get_replication_for_services(

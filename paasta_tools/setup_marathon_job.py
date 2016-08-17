@@ -466,7 +466,7 @@ def deploy_service(
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
             (drain_method_name, ', '.join(drain_lib.list_drain_methods()))
         log_deploy_error(errormsg)
-        return (1, errormsg)
+        return 1, errormsg
 
     (old_app_live_happy_tasks,
      old_app_live_unhappy_tasks,
@@ -536,7 +536,7 @@ def deploy_service(
             errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
                 (bounce_method, ', '.join(bounce_lib.list_bounce_methods()))
             log_deploy_error(errormsg)
-            return (1, errormsg)
+            return 1, errormsg
 
         try:
             with bounce_lib.bounce_lock_zookeeper(short_id):
@@ -563,13 +563,13 @@ def deploy_service(
 
         except bounce_lib.LockHeldException:
             log.error("Instance %s already being bounced. Exiting", short_id)
-            return (1, "Instance %s is already being bounced." % short_id)
+            return 1, "Instance %s is already being bounced." % short_id
     except Exception:
         logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
         log_deploy_error(logline, level='debug')
         raise
 
-    return (0, 'Service deployed.')
+    return 0, 'Service deployed.'
 
 
 def setup_service(service, instance, client, service_marathon_config, soa_dir):
@@ -594,7 +594,7 @@ def setup_service(service, instance, client, service_marathon_config, soa_dir):
             instance,
         )
         log.error(error_msg)
-        return (1, error_msg)
+        return 1, error_msg
 
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance)
@@ -649,10 +649,10 @@ def main():
             service, instance, _, __ = decompose_job_id(service_instance)
         except InvalidJobNameError:
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
-            num_failed_deployments = num_failed_deployments + 1
+            num_failed_deployments += 1
         else:
             if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
-                num_failed_deployments = num_failed_deployments + 1
+                num_failed_deployments += 1
 
     requests_cache.uninstall_cache()
 

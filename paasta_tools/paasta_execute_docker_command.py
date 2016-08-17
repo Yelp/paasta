@@ -71,7 +71,7 @@ def execute_in_container(docker_client, container_id, cmd, timeout):
         exec_id = docker_client.exec_create(container_id, ['/bin/sh', '-c', cmd])['Id']
     output = docker_client.exec_start(exec_id, stream=False)
     return_code = docker_client.exec_inspect(exec_id)['ExitCode']
-    return (output, return_code)
+    return output, return_code
 
 
 def main():

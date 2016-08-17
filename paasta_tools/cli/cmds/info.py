@@ -116,15 +116,11 @@ def get_service_info(service, soa_dir):
     smartstack_endpoints = get_smartstack_endpoints(service, soa_dir)
     git_url = get_git_url(service, soa_dir)
 
-    output = []
-    output.append('Service Name: %s' % service)
-    output.append('Description: %s' % description)
-    output.append('External Link: %s' % PaastaColors.cyan(external_link))
-    output.append('Monitored By: team %s' % get_team(service=service, overrides={}))
-    output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service=service, overrides={})))
-    output.append('Git Repo: %s' % git_url)
-    output.append('Jenkins Pipeline: %s' % pipeline_url)
-    output.append('Deployed to the following clusters:')
+    output = ['Service Name: %s' % service, 'Description: %s' % description,
+              'External Link: %s' % PaastaColors.cyan(external_link),
+              'Monitored By: team %s' % get_team(service=service, overrides={}),
+              'Runbook: %s' % PaastaColors.cyan(get_runbook(service=service, overrides={})), 'Git Repo: %s' % git_url,
+              'Jenkins Pipeline: %s' % pipeline_url, 'Deployed to the following clusters:']
     output.extend(get_deployments_strings(service, soa_dir))
     if smartstack_endpoints:
         output.append('Smartstack endpoint(s):')

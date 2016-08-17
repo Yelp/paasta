@@ -83,11 +83,11 @@ def main():
     instances = []
     return_codes = []
     command = args.command
-    if (args.service_instance):
+    if args.service_instance:
         service_instance = args.service_instance
         service, instance, _, __ = decompose_job_id(service_instance)
         instances.append(instance)
-    elif (args.service and args.instances):
+    elif args.service and args.instances:
         service = args.service
         instances = args.instances.split(',')
     else:

@@ -127,7 +127,7 @@ def bounce_chronos_job(
         _log(service=service, instance=instance, component='deploy',
              cluster=cluster, level='event', line=log_line)
 
-    return (0, "All chronos bouncing tasks finished.")
+    return 0, "All chronos bouncing tasks finished."
 
 
 def setup_job(service, instance, complete_job_config, client, cluster):

@@ -638,7 +638,7 @@ def test_list_all_instances_for_service():
     service = 'fake_service'
     clusters = ['fake_cluster']
     mock_instances = [(service, 'instance1'), (service, 'instance2')]
-    expected = set(['instance1', 'instance2'])
+    expected = {'instance1', 'instance2'}
     with contextlib.nested(
         mock.patch('paasta_tools.utils.list_clusters', autospec=True),
         mock.patch('paasta_tools.utils.get_service_instance_list', autospec=True),

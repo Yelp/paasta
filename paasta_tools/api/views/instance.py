@@ -101,10 +101,8 @@ def instance_status(request):
     instance = request.swagger_data.get('instance')
     verbose = request.matchdict.get('verbose', False)
 
-    instance_status = {}
-    instance_status['service'] = service
-    instance_status['instance'] = instance
-
+    instance_status = {'service': service,
+                       'instance': instance}
     try:
         actual_deployments = get_actual_deployments(service, settings.soa_dir)
     except:

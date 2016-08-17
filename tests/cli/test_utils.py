@@ -473,10 +473,7 @@ def test_list_teams():
             },
         }
     }
-    expected = set([
-        'red_jaguars',
-        'blue_barracudas',
-    ])
+    expected = {'red_jaguars', 'blue_barracudas'}
     with mock.patch(
         'paasta_tools.cli.utils._load_sensu_team_data',
         autospec=True,

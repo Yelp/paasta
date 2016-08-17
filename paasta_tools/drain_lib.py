@@ -103,8 +103,8 @@ class TestDrainMethod(DrainMethod):
         self.downed_task_ids.add(task.id)
 
     def stop_draining(self, task):
-        self.downed_task_ids -= set([task.id])
-        self.safe_to_kill_task_ids -= set([task.id])
+        self.downed_task_ids -= {task.id}
+        self.safe_to_kill_task_ids -= {task.id}
 
     def is_draining(self, task):
         return task.id in (self.downed_task_ids | self.safe_to_kill_task_ids)
@@ -180,9 +180,8 @@ class HacheckDrainMethod(DrainMethod):
         ])
         match = re.match(regex, response.text)
         groupdict = match.groupdict()
-        info = {}
-        info['service'] = groupdict['service']
-        info['state'] = groupdict['state']
+        info = {'service': groupdict['service'],
+                'state':   groupdict['state']}
         if 'since' in groupdict:
             info['since'] = float(groupdict['since'] or 0)
         if 'until' in groupdict:

@@ -358,12 +358,11 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     """
     if not grey:
         def colorize(x):
-            return(x)
+            return x
     else:
         def colorize(x):
-            return(PaastaColors.grey(x))
-    output = []
-    output.append(colorize("  %s" % list_title))
+            return PaastaColors.grey(x)
+    output = [colorize("  %s" % list_title)]
     table_rows = [
         [colorize(th) for th in table_header]
     ]
@@ -526,7 +525,7 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None, whitelist=N
     mesos_state = get_mesos_state_from_leader()
     slaves = mesos_state['slaves']
     filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist, whitelist=whitelist)
-    if filtered_slaves == []:
+    if not filtered_slaves:
         raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
     else:
         for slave in filtered_slaves:

@@ -240,7 +240,7 @@ def assert_no_duplicate_frameworks(state):
         else:
             output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
-        message=("\n").join(output),
+        message="\n".join(output),
         healthy=ok
     )
 
@@ -417,7 +417,9 @@ def get_mesos_state_status(mesos_state):
     return cluster_results
 
 
-def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
+def run_healthchecks_with_param(param, healthcheck_functions, format_options=None):
+    if format_options is None:
+        format_options = {}
     return [healthcheck(param, **format_options) for healthcheck in healthcheck_functions]
 
 
@@ -523,7 +525,7 @@ def healthcheck_result_resource_utilization_pair_for_resource_utilization(utiliz
     :param threshold: a threshold which decides the health of the given ResourceUtilization
     :returns: a tuple of (HealthCheckResult, ResourceUtilization)
     """
-    return (healthcheck_result_for_resource_utilization(utilization, threshold), utilization)
+    return healthcheck_result_for_resource_utilization(utilization, threshold), utilization
 
 
 def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_utilization_pair, humanize):
