@@ -21,7 +21,7 @@ isodate==0.5.1
 jsonschema==2.5.1
 kazoo==2.2
 lockfile==0.9.1
-marathon==0.8.1
+marathon==0.8.5
 mccabe==0.3.1
 mesos.cli==0.1.5
 mesos.interface==0.28.0
@@ -33,6 +33,7 @@ protobuf==2.6.1
 pyasn1==0.1.8
 pycrypto==2.6.1
 pyramid==1.7
+pyramid-swagger==2.2.3
 pysensu-yelp==0.2.2
 python-daemon==1.5.2
 python-dateutil==2.4.2
@@ -45,7 +46,7 @@ service-configuration-lib==0.10.1
 simplejson==3.6.5
 six==1.9.0
 thriftpy==0.1.15
-tron==0.6.1.1
+tron==0.6.2.0
 ujson==1.35
 websocket-client==0.32.0
 wsgiref==0.1.2

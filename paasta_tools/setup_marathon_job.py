@@ -565,10 +565,8 @@ def deploy_service(
             log.error("Instance %s already being bounced. Exiting", short_id)
             return (1, "Instance %s is already being bounced." % short_id)
     except Exception:
-        loglines = ['Exception raised during deploy of service %s:' % service]
-        loglines.extend(traceback.format_exc().rstrip().split("\n"))
-        for logline in loglines:
-            log_deploy_error(logline, level='debug')
+        logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
+        log_deploy_error(logline, level='debug')
         raise
 
     return (0, 'Service deployed.')
@@ -655,6 +653,8 @@ def main():
         else:
             if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
                 num_failed_deployments = num_failed_deployments + 1
+
+    requests_cache.uninstall_cache()
 
     log.debug("%d out of %d service.instances failed to deploy." %
               (num_failed_deployments, len(args.service_instance_list)))

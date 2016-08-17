@@ -34,7 +34,8 @@ def test_submit_performance_check_job_happy(
         data={'submitter': 'fake_user',
               'commit': 'fake_commit',
               'service': 'fake_service',
-              'image': 'fake_image'}
+              'image': 'fake_image'},
+        headers=mock.ANY
     )
 
 

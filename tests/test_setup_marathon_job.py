@@ -1456,8 +1456,10 @@ class TestSetupMarathonJob:
                     bounce_health_params={},
                     soa_dir='fake_soa_dir',
                 )
-            assert fake_name in mock_log.mock_calls[0][2]["line"]
-            assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
+
+            logged_line = mock_log.mock_calls[0][2]["line"]
+            assert logged_line.startswith("Exception raised during deploy of service whoa:\nTraceback")
+            assert "IOError: foo" in logged_line
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

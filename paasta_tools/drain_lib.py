@@ -16,6 +16,7 @@ import time
 
 import requests
 
+from paasta_tools.utils import get_user_agent
 
 _drain_methods = {}
 
@@ -156,12 +157,13 @@ class HacheckDrainMethod(DrainMethod):
                 'expiration': time.time() + self.expiration,
                 'reason': 'Drained by Paasta',
             },
+            headers={'User-Agent': get_user_agent()},
         )
         resp.raise_for_status()
 
     def get_spool(self, task):
         """Query hacheck for the state of a task, and parse the result into a dictionary."""
-        response = requests.get(self.spool_url(task))
+        response = requests.get(self.spool_url(task), headers={'User-Agent': get_user_agent()})
         if response.status_code == 200:
             return {
                 'state': 'up',
@@ -270,7 +272,7 @@ class HTTPDrainMethod(DrainMethod):
             'HEAD': requests.head,
         }[method]
 
-        resp = requests_func(url)
+        resp = requests_func(url, headers={'User-Agent': get_user_agent()},)
         self.check_response_code(resp.status_code, url_spec['success_codes'])
 
     def drain(self, task):

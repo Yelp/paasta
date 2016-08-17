@@ -41,12 +41,13 @@ from subprocess import Popen
 from subprocess import STDOUT
 
 import dateutil.tz
-import docker
 import service_configuration_lib
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
+
+import paasta_tools
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -1011,6 +1012,14 @@ def get_umask():
     return old_umask
 
 
+def get_user_agent():
+    user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
+    if len(sys.argv) >= 1:
+        return user_agent + " " + os.path.basename(sys.argv[0])
+    else:
+        return user_agent
+
+
 @contextlib.contextmanager
 def atomic_file_write(target_path):
     dirname = os.path.dirname(target_path)
@@ -1112,7 +1121,7 @@ def check_docker_image(service, tag):
     :raises: ValueError if more than one docker image with :tag: found.
     :returns: True if there is exactly one matching image found.
     """
-    docker_client = docker.Client(timeout=60)
+    docker_client = get_docker_client()
     image_name = build_docker_image_name(service)
     docker_tag = build_docker_tag(service, tag)
     images = docker_client.images(name=image_name)
@@ -1542,3 +1551,10 @@ class ZookeeperPool(object):
             cls.zk.stop()
             cls.zk.close()
             cls.zk = None
+
+
+def calculate_tail_lines(verbose_level):
+    if verbose_level == 1:
+        return 0
+    else:
+        return 10 ** (verbose_level - 1)

@@ -16,16 +16,19 @@ import argparse
 import datetime
 import json
 import logging
+import sys
 from socket import getfqdn
 from socket import gethostbyname
 
-from dateutil import tz
+from dateutil import parser
 from pytimeparse import timeparse
 from requests import Request
 from requests import Session
 from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_tools import get_mesos_leader
+from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 log = logging.getLogger(__name__)
@@ -43,12 +46,26 @@ def parse_args():
     )
     parser.add_argument(
         '-s', '--start',
-        default=now(),
+        type=parse_datetime,
+        default=str(now()),
         help="Time to start the maintenance window. Defaults to now.",
     )
     parser.add_argument(
         'action',
-        choices=['drain', 'undrain', 'down', 'up', 'status', 'schedule'],
+        choices=[
+            'down',
+            'drain',
+            'is_host_down',
+            'is_host_drained',
+            'is_host_draining',
+            'is_hosts_past_maintenance_end',
+            'is_hosts_past_maintenance_start',
+            'is_safe_to_kill',
+            'schedule',
+            'status',
+            'undrain',
+            'up',
+        ],
         help="Action to perform on the speicifed hosts",
     )
     parser.add_argument(
@@ -217,6 +234,21 @@ def parse_timedelta(value):
     return seconds_to_nanoseconds(seconds)
 
 
+def parse_datetime(value):
+    """Return the datetime in nanoseconds.
+    :param value: a string containing a datetime supported by :mod:`dateutil.parser`
+    :returns: an integer (or float) representing the specified datetime in nanoseconds
+    """
+    error_msg = "'%s' is not a valid datetime expression" % value
+    try:
+        dt = parser.parse(value)
+    except:
+        raise argparse.ArgumentTypeError(error_msg)
+    if not dt:
+        raise argparse.ArgumentTypeError(error_msg)
+    return datetime_to_nanoseconds(dt)
+
+
 def datetime_seconds_from_now(seconds):
     """Given a number of seconds, returns a datetime object representing that number of seconds in the future from the
     current time.
@@ -227,11 +259,11 @@ def datetime_seconds_from_now(seconds):
 
 
 def now():
-    """Returns a datetime object representing the current time in UTC
+    """Returns a datetime object representing the current time
 
     :returns: a datetime.datetime object representing the current time
     """
-    return datetime.datetime.now(tz.tzutc())
+    return datetime.datetime.now()
 
 
 def seconds_to_nanoseconds(seconds):
@@ -304,6 +336,8 @@ def build_maintenance_schedule_payload(hostnames, start=None, duration=None, dra
     if schedule:
         for existing_window in schedule['windows']:
             for existing_machine_id in existing_window['machine_ids']:
+                # If we already have a maintenance window scheduled for one of the hosts,
+                # replace it with the new window.
                 if existing_machine_id in machine_ids:
                     existing_window['machine_ids'].remove(existing_machine_id)
                     if not existing_window['machine_ids']:
@@ -361,6 +395,7 @@ def drain(hostnames, start, duration):
         e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
         raise
     print drain_output
+    return 0
 
 
 def undrain(hostnames):
@@ -369,6 +404,7 @@ def undrain(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Undraining: %s" % hostnames)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:
@@ -377,6 +413,7 @@ def undrain(hostnames):
         e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
         raise
     print undrain_output
+    return 0
 
 
 def down(hostnames):
@@ -384,6 +421,7 @@ def down(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Bringing down: %s" % hostnames)
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
     try:
@@ -392,6 +430,7 @@ def down(hostnames):
         e.msg = "Error performing maintenance down. Got error: %s" % e.msg
         raise
     print down_output
+    return 0
 
 
 def up(hostnames):
@@ -399,6 +438,7 @@ def up(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
+    log.info("Bringing up: %s" % hostnames)
     payload = build_start_maintenance_payload(hostnames)
     client_fn = master_api()
     try:
@@ -407,6 +447,7 @@ def up(hostnames):
         e.msg = "Error performing maintenance up. Got error: %s" % e.msg
         raise
     print up_output
+    return 0
 
 
 def status():
@@ -420,6 +461,74 @@ def status():
         e.msg = "Error performing maintenance status. Got error: %s" % e.msg
         raise
     print "%s" % status.text
+    return 0
+
+
+def is_safe_to_kill(hostname):
+    """Checks if a host has drained or reached its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return is_host_drained(hostname) or hostname in get_hosts_past_maintenance_start()
+
+
+def is_host_drained(hostname):
+    """Checks if a host has drained successfully by confirming it is
+    draining and currently running 0 tasks
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    mesos_state = get_mesos_state_from_leader()
+    task_counts = get_mesos_task_count_by_slave(mesos_state)
+    slave_task_count = task_counts[hostname].count
+    return is_host_draining(hostname=hostname) and slave_task_count == 0
+
+
+def is_host_past_maintenance_start(hostname):
+    """Checks if a host has reached the start of its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return hostname in get_hosts_past_maintenance_start()
+
+
+def is_host_past_maintenance_end(hostname):
+    """Checks if a host has reached the end of its maintenance window
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    return hostname in get_hosts_past_maintenance_end()
+
+
+def get_hosts_past_maintenance_start():
+    """Get a list of hosts that have reached the start of their maintenance window
+    :returns: List of hostnames
+    """
+    schedules = get_maintenance_schedule().json()
+    current_time = datetime_to_nanoseconds(now())
+    ret = []
+    if 'windows' in schedules:
+        for window in schedules['windows']:
+            if window['unavailability']['start']['nanoseconds'] < current_time:
+                ret += [host['hostname'] for host in window['machine_ids']]
+    print ret
+    return ret
+
+
+def get_hosts_past_maintenance_end():
+    """Get a list of hosts that have reached the end of their maintenance window
+    :returns: List of hostnames
+    """
+    schedules = get_maintenance_schedule().json()
+    current_time = datetime_to_nanoseconds(now())
+    ret = []
+    if 'windows' in schedules:
+        for window in schedules['windows']:
+            end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
+            if end < current_time:
+                ret += [host['hostname'] for host in window['machine_ids']]
+    print ret
+    return ret
 
 
 def paasta_maintenance():
@@ -431,7 +540,20 @@ def paasta_maintenance():
     action = args.action
     hostnames = args.hostname
 
-    if action not in ['drain', 'undrain', 'down', 'up', 'status', 'schedule']:
+    if action not in [
+            'down',
+            'drain',
+            'is_host_down',
+            'is_host_drained',
+            'is_host_draining',
+            'is_host_past_maintenance_end',
+            'is_host_past_maintenance_start',
+            'is_safe_to_kill',
+            'schedule',
+            'status',
+            'undrain',
+            'up',
+    ]:
         print "action must be 'drain', 'undrain', 'down', 'up', 'status', or 'schedule'"
         return
 
@@ -439,22 +561,36 @@ def paasta_maintenance():
         print "You must specify one or more hostnames"
         return
 
-    start = args.start.strftime("%s")
+    start = args.start
     duration = args.duration
 
     if action == 'drain':
-        drain(hostnames, start, duration)
+        return drain(hostnames, start, duration)
     elif action == 'undrain':
-        undrain(hostnames)
+        return undrain(hostnames)
     elif action == 'down':
-        down(hostnames)
+        return down(hostnames)
     elif action == 'up':
-        up(hostnames)
+        return up(hostnames)
     elif action == 'status':
-        status()
+        return status()
     elif action == 'schedule':
-        schedule()
+        return schedule()
+    elif action == 'is_safe_to_kill':
+        return is_safe_to_kill(hostnames[0])
+    elif action == 'is_host_drained':
+        return is_host_drained(hostnames[0])
+    elif action == 'is_host_down':
+        return is_host_down(hostnames[0])
+    elif action == 'is_host_draining':
+        return is_host_draining(hostnames[0])
+    elif action == 'is_host_past_maintenance_start':
+        return is_host_past_maintenance_start(hostnames[0])
+    elif action == 'is_host_past_maintenance_end':
+        return is_host_past_maintenance_end(hostnames[0])
 
 
 if __name__ == '__main__':
-    paasta_maintenance()
+    if paasta_maintenance():
+        sys.exit(0)
+    sys.exit(1)

@@ -61,11 +61,11 @@ def test_instances_status(
     mock_marathon_job_status.return_value = 'fake_marathon_status'
 
     request = testing.DummyRequest()
-    request.matchdict = {'service': 'fake_service', 'instance': 'fake_instance'}
+    request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
 
     response = instance_status(request)
-    assert response['bounce_method'] == 'fake_bounce'
-    assert response['desired_state'] == 'start'
+    assert response['marathon']['bounce_method'] == 'fake_bounce'
+    assert response['marathon']['desired_state'] == 'start'
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.is_app_id_running', autospec=True)
@@ -86,5 +86,6 @@ def test_marathon_job_status(
     job_config.format_marathon_app_dict.return_value = {'id': 'mock_app_id'}
     job_config.get_instances.return_value = 5
 
-    mstatus = marathon_job_status(client, job_config)
+    mstatus = {}
+    marathon_job_status(mstatus, client, job_config)
     assert mstatus['deploy_status'] == 'Running'

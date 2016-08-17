@@ -1,3 +1,31 @@
+paasta-tools (0.37.0) lucid; urgency=low
+
+  * 0.37.0 tagged with 'make release'
+    Commit:
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 15 Aug 2016 17:03:54 -0700
+
+paasta-tools (0.36.0) UNRELEASED; urgency=medium
+
+  * 0.36.0 tagged with 'make release'
+    Commit:
+
+ -- Ammar Askar <ammar@ammar-MacBookPro>  Fri, 12 Aug 2016 16:44:16 -0700
+
+paasta-tools (0.35.0) lucid; urgency=low
+
+  * 0.35.0 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 11 Aug 2016 08:12:38 -0700
+
+paasta-tools (0.34.5) UNRELEASED; urgency=medium
+
+  * 0.34.5 tagged with 'make release'
+    Commit:
+
+ -- Ammar Askar <ammar@ammar-MacBookPro>  Tue, 09 Aug 2016 17:41:20 -0700
+
 paasta-tools (0.34.4) lucid; urgency=low
 
   * 0.34.4 tagged with 'make release'

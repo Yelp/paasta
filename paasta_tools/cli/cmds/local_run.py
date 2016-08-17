@@ -72,7 +72,7 @@ def perform_http_healthcheck(url, timeout):
     try:
         with Timeout(seconds=timeout):
             try:
-                res = requests.head(url)
+                res = requests.get(url)
             except requests.ConnectionError:
                 return (False, "http request failed: connection failed")
     except TimeoutError:
@@ -278,9 +278,7 @@ def add_subparser(subparsers):
         '-b', '--build',
         help=(
             "Build the docker image to run from scratch using the local Makefile's "
-            "'cook-image' target. Defaults to try to use the local Makefile if present. "
-            "otherwise local-run will pull and run the Docker image that is marked for "
-            "deployment in the Docker registry. Mutually exclusive with '--pull'."
+            "'cook-image' target. Defaults to try to use the local Makefile if present."
         ),
         required=False,
         action='store_true',
@@ -290,9 +288,7 @@ def add_subparser(subparsers):
         '-p', '--pull',
         help=(
             "Pull the docker image marked for deployment from the Docker registry and "
-            "use that for the local-run. This is the opposite of --build. Defaults to "
-            "autodetect a Makefile, if present will not pull, and instead assume that "
-            "a local build is desired. Mutally exclusive with '--build'"
+            "use that for the local-run. This is the opposite of --build."
         ),
         required=False,
         action='store_true',
@@ -696,24 +692,24 @@ def local_makefile_present():
         sys.stderr.write("Local Makefile with 'cook-image' target detected. Assuming --build\n")
         return True
     else:
-        sys.stderr.write("No Makefile with 'cook-image' target detected. Assuming --pull\n")
         return False
 
 
 def paasta_local_run(args):
-    if args.pull or args.dry_run:
-        build = False
-    elif args.build:
-        build = True
-    else:
-        build = local_makefile_present()
+    if (args.pull is None) and (args.build is None):
+        # Default to --build if neither is specified
+        if not local_makefile_present():
+            sys.stderr.write("A local Makefile with a 'cook-image' target is required for --build\n")
+            sys.stderr.write("If you meant to pull the docker image from the registry, explicitly pass --pull\n")
+            return 1
+        args.build = True
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = guess_cluster(service=service, args=args)
     instance = guess_instance(service=service, cluster=cluster, args=args)
     docker_client = get_docker_client()
 
-    if build:
+    if args.build:
         default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
         tag = os.environ.get('DOCKER_TAG', default_tag)
         os.environ['DOCKER_TAG'] = tag
