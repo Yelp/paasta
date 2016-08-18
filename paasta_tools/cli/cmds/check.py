@@ -37,9 +37,9 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 
@@ -258,7 +258,7 @@ def deployments_check(service, soa_dir):
     the_return = True
     pipeline_deployments = get_pipeline_config(service, soa_dir)
     pipeline_steps = [step['step'] for step in pipeline_deployments]
-    pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
+    pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
     marathon_steps = get_marathon_steps(service, soa_dir)
     chronos_steps = get_chronos_steps(service, soa_dir)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)

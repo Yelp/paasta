@@ -1479,3 +1479,12 @@ def test_function_composition():
 
     composed_func = utils.compose(func_one, func_two)
     assert composed_func(0) == 2
+
+
+def test_is_deploy_step():
+    assert utils.is_deploy_step('prod.main')
+    assert utils.is_deploy_step('thingy')
+
+    assert not utils.is_deploy_step('itest')
+    assert not utils.is_deploy_step('performance-check')
+    assert not utils.is_deploy_step('command-thingy')
