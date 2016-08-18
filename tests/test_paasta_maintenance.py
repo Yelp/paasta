@@ -672,6 +672,12 @@ def test_is_host_drained(
     mock_is_host_draining.return_value = False
     assert not is_host_drained('host2')
 
+    mock_get_mesos_task_count_by_slave.return_value = {}
+    assert not is_host_drained('host3')
+
+    mock_is_host_draining.return_value = True
+    assert is_host_drained('host3')
+
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
 @mock.patch('paasta_tools.paasta_maintenance.now')
