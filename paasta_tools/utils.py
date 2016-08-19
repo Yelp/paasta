@@ -892,6 +892,9 @@ class SystemPaastaConfig(dict):
     def get_cluster_autoscaling_resources(self):
         return self.get('cluster_autoscaling_resources', {})
 
+    def get_resource_pool_settings(self):
+        return self.get('resource_pool_settings', {})
+
     def get_cluster_fqdn_format(self):
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
