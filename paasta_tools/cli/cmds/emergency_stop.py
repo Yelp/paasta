@@ -26,9 +26,9 @@ from paasta_tools.utils import load_system_paasta_config
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-stop',
-        help="Stop a PaaSTA service instance in an emergency",
+        help="Kills PaaSTA service tasks in an emergency",
         description=(
-            "'emergency-stop' stops a Marathon service instance by scaling it down to 0. If the "
+            "'emergency-stop' kills a Marathon service tasks, allowing fresh ones to replace them. If the "
             "provided 'instance' name refers to a Chronos job, 'emergency-stop' will cancel the "
             "chronos job if it is currently running."
         ),

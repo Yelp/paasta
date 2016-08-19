@@ -58,13 +58,14 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service=service,
-        line="EmergencyStop: Scaling %s down to 0 instances" % (name),
+        line="EmergencyStop: Killing %s's in-flight tasks for Marathon to replace with new ones." % name,
         component='deploy',
         level='event',
         cluster=cluster,
         instance=instance
     )
-    client.scale_app(app_id, instances=0, force=True)  # TODO do we want to capture the return val of any client calls?
+    client.scale_app(app_id, instances=0, force=True)
+    client.delete_app(app_id)
 
 
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
