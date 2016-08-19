@@ -410,6 +410,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                             # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
                             # are healthy. We assume tasks with no healthcheck results but a defined
                             # healthcheck to be unhealthy.
+                            log.info("Inspecting %s for autoscaling" % job_id)
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
                                               if job_id == get_short_job_id(task.id) and
                                               (is_task_healthy(task) or not
@@ -421,6 +422,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
+        log.warning("Skipping autoscaling run for services because the lock is held")
         pass
 
 
