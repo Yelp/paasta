@@ -378,12 +378,14 @@ def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
                 cluster=cluster,
                 soa_dir=soa_dir,
             )
-            if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
-                    and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
-                configs.append(service_config)
         except NoDeploymentsAvailable:
             log.debug("%s is not deployed yet, refusing to do autoscaling calculations for it" %
                       compose_job_id(service, instance))
+            continue
+
+        if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
+                and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
+            configs.append(service_config)
 
     return configs
 
