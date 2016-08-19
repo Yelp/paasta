@@ -199,8 +199,8 @@ class TestSetupChronosJob:
     def test_main_alerts_whitelisted_volume(self):
         expected_status = 0
         expected_output = 'it_is_finished'
-        fake_disallowed_volumes = ['fake_disallowed_volume']
-        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_disallowed_volumes
+        fake_non_whitelisted_volumes = ['fake_non_whitelisted_volume']
+        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_non_whitelisted_volumes
         fake_complete_job_config = {'foo': 'bar'}
         with contextlib.nested(
             mock.patch('paasta_tools.setup_chronos_job.parse_args',
@@ -218,7 +218,7 @@ class TestSetupChronosJob:
                        return_value=(expected_status, expected_output),
                        autospec=True),
             mock.patch('paasta_tools.setup_chronos_job.validate_whitelisted_volumes',
-                       autospec=True, return_value=fake_disallowed_volumes),
+                       autospec=True, return_value=fake_non_whitelisted_volumes),
             mock.patch('paasta_tools.setup_chronos_job.send_event', autospec=True),
             mock.patch('paasta_tools.setup_chronos_job.load_system_paasta_config', autospec=True),
             mock.patch('sys.exit', autospec=True),

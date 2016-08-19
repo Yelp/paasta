@@ -1472,8 +1472,8 @@ class TestSetupMarathonJob:
             'nine': 'eaten',
             'id': full_id,
         }
-        fake_disallowed_volumes = ['fake_disallowed_volume']
-        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_disallowed_volumes
+        fake_non_whitelisted_volumes = ['fake_non_whitelisted_volume']
+        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_non_whitelisted_volumes
         with contextlib.nested(
             mock.patch.object(
                 self.fake_marathon_service_config,
@@ -1492,7 +1492,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch(
                 'paasta_tools.setup_marathon_job.validate_whitelisted_volumes',
-                return_value=fake_disallowed_volumes,
+                return_value=fake_non_whitelisted_volumes,
                 autospec=True,
             ),
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),

@@ -217,14 +217,14 @@ def main():
         cluster=cluster,
         soa_dir=soa_dir,
     )
-    disallowed_volumes = validate_whitelisted_volumes(chronos_job_config)
-    if len(disallowed_volumes) > 0:
+    non_whitelisted_volumes = validate_whitelisted_volumes(chronos_job_config)
+    if len(non_whitelisted_volumes) > 0:
         send_event(
             service=service,
             instance=instance,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output="Attempting to mount unpermitted volumes: %s" % disallowed_volumes,
+            output="Attempting to mount unpermitted volumes: %s" % non_whitelisted_volumes,
         )
 
     status, output = setup_job(

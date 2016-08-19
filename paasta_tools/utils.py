@@ -368,13 +368,13 @@ def validate_whitelisted_volumes(instance_config):
     all_extra_volumes = instance_config.get_extra_volumes(apply_whitelist=False)
     extra_whitelisted_volumes = instance_config.get_extra_volumes(apply_whitelist=True)
 
-    disallowed_volumes = []
+    non_whitelisted_volumes = []
     for volume in all_extra_volumes:
         v = {'hostPath': volume['hostPath'], 'mode': volume['mode']}
         if v not in extra_whitelisted_volumes:
-            disallowed_volumes.append(v)
+            non_whitelisted_volumes.append(v)
 
-    return disallowed_volumes
+    return non_whitelisted_volumes
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):

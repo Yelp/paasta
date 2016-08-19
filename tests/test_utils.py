@@ -1357,17 +1357,17 @@ def test_validate_whitelisted_volumes_blocked():
     )
 
     fake_volume = {'hostPath': 'fake_vol', 'mode': 'RO'}
-    fake_disallowed_volume1 = {'hostPath': 'fake_vol', 'mode': 'RW'}
-    fake_disallowed_volume2 = {'hostPath': 'fake_disallowed_vol', 'mode': 'RO'}
+    fake_non_whitelisted_volume1 = {'hostPath': 'fake_vol', 'mode': 'RW'}
+    fake_non_whitelisted_volume2 = {'hostPath': 'fake_non_whitelisted_vol', 'mode': 'RO'}
 
     def mock_whitelist(apply_whitelist):
         if apply_whitelist:
-            # Assume everything is disallowed
+            # Assume everything is non_whitelisted
             return [fake_volume]
         else:
-            return [fake_volume, fake_disallowed_volume1, fake_disallowed_volume2]
+            return [fake_volume, fake_non_whitelisted_volume1, fake_non_whitelisted_volume2]
     fake_marathon_service_config.get_extra_volumes = mock_whitelist
-    expected_extra_volumes = [fake_disallowed_volume1, fake_disallowed_volume2]
+    expected_extra_volumes = [fake_non_whitelisted_volume1, fake_non_whitelisted_volume2]
     assert utils.validate_whitelisted_volumes(fake_marathon_service_config) == expected_extra_volumes
 
 

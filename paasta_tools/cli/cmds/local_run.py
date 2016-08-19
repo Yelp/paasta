@@ -653,15 +653,15 @@ def configure_and_run_docker_container(
         docker_hash = docker_url
         docker_pull_image(docker_url)
 
-    # Warn if the service is attempting to mount disallowed volumes
+    # Warn if the service is attempting to mount non-whitelisted volumes
     extra_volumes = instance_config.get_extra_volumes()
 
-    disallowed_volumes = validate_whitelisted_volumes(instance_config)
-    if len(disallowed_volumes) > 0:
+    non_whitelisted_volumes = validate_whitelisted_volumes(instance_config)
+    if len(non_whitelisted_volumes) > 0:
         sys.stdout.write(PaastaColors.yellow(
             "Warning: Your service is attempting to mount the following extra volumes "
             "that are not whitelisted:\n\n\t%s\n\n"
-            "These mounts will fail when PaaSTA deploys your service.\n\n" % disallowed_volumes))
+            "These mounts will fail when PaaSTA deploys your service.\n\n" % non_whitelisted_volumes))
 
     for volume in system_paasta_config.get_volumes() + extra_volumes:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))

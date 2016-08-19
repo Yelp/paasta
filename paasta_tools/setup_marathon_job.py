@@ -601,10 +601,10 @@ def setup_service(service, instance, client, service_marathon_config, soa_dir):
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance)
 
-    # Check if the service is attempting to access un-whitelisted volumes
-    disallowed_volumes = validate_whitelisted_volumes(service_marathon_config)
-    if len(disallowed_volumes) > 0:
-        output = "Attempting to mount unpermitted volumes: %s" % disallowed_volumes
+    # Check if the service is attempting to access non-whitelisted volumes
+    non_whitelisted_volumes = validate_whitelisted_volumes(service_marathon_config)
+    if len(non_whitelisted_volumes) > 0:
+        output = "Attempting to mount unpermitted volumes: %s" % non_whitelisted_volumes
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, output)
 
     log.info("Desired Marathon instance id: %s", full_id)
