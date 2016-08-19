@@ -54,7 +54,7 @@ def add_subparser(subparsers):
         status_parser.add_argument(
             '-i', '--instances',
             help='A comma-separated list of instances of the service that you '
-                 'want to %s. Like --instances main,canary' % lower
+                 'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-c', '--clusters',
@@ -169,7 +169,6 @@ def paasta_start_or_stop(args, desired_state):
         instance_clusters = [list_clusters(service, soa_dir, instance) for instance in args.instances]
         valid_clusters = sorted(list(set([cluster for cluster_list in instance_clusters for cluster in cluster_list])))
     else:
-        print list_clusters(service, soa_dir)
         valid_clusters = list_clusters(service, soa_dir)
 
     if args.clusters:
