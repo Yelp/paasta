@@ -47,10 +47,12 @@ from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import undrain
 from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import ZookeeperPool
@@ -361,27 +363,38 @@ def humanize_error(error):
         return 'utilization within thresholds'
 
 
+def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
+    services = get_services_for_cluster(
+        cluster=cluster,
+        instance_type='marathon',
+        soa_dir=soa_dir,
+    )
+    configs = []
+    for service, instance in services:
+        try:
+            service_config = load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+        except NoDeploymentsAvailable:
+            log.debug("%s is not deployed yet, refusing to do autoscaling calculations for it" %
+                      compose_job_id(service, instance))
+            continue
+
+        if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
+                and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
+            configs.append(service_config)
+
+    return configs
+
+
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     try:
         with create_autoscaling_lock():
             cluster = load_system_paasta_config().get_cluster()
-            services = get_services_for_cluster(
-                cluster=cluster,
-                instance_type='marathon',
-                soa_dir=soa_dir,
-            )
-            configs = []
-            for service, instance in services:
-                service_config = load_marathon_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                )
-                if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
-                        and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
-                    configs.append(service_config)
-
+            configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
             if configs:
                 marathon_config = load_marathon_config()
                 marathon_client = get_marathon_client(
