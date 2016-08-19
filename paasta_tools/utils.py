@@ -1558,3 +1558,12 @@ def calculate_tail_lines(verbose_level):
         return 0
     else:
         return 10 ** (verbose_level - 1)
+
+
+def is_deploy_step(step):
+    """
+    Returns true if the given step deploys to an instancename
+    Returns false if the step is a predefined step-type, e.g. itest or command-*
+    """
+    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS)
+                or (step.startswith('command-')))
