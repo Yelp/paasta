@@ -16,6 +16,7 @@ import contextlib
 
 import marathon
 import mock
+from pysensu_yelp import Status
 from pytest import raises
 
 from paasta_tools import bounce_lib
@@ -47,6 +48,7 @@ class TestSetupMarathonJob:
         },
         branch_dict={},
     )
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=[])
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({
         'url': 'http://test_url',
@@ -1458,6 +1460,58 @@ class TestSetupMarathonJob:
                 )
             assert fake_name in mock_log.mock_calls[0][2]["line"]
             assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
+
+    def test_setup_service_alerts_whitelisted_volume(self):
+        fake_name = 'if_trees_could_talk'
+        fake_instance = 'would_they_scream'
+        fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
+        full_id = marathon_tools.format_job_id(fake_name, fake_instance)
+        fake_complete = {
+            'seven': 'full',
+            'eight': 'frightened',
+            'nine': 'eaten',
+            'id': full_id,
+        }
+        fake_disallowed_volumes = ['fake_disallowed_volume']
+        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_disallowed_volumes
+        with contextlib.nested(
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'format_marathon_app_dict',
+                return_value=fake_complete,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools.load_marathon_config',
+                return_value=self.fake_marathon_config,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.deploy_service',
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.validate_whitelisted_volumes',
+                return_value=fake_disallowed_volumes,
+                autospec=True,
+            ),
+            mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
+        ) as (
+            format_marathon_app_dict_patch,
+            get_config_patch,
+            deploy_service_patch,
+            validate_whitelisted_volumes_patch,
+            send_event_patch,
+        ):
+            setup_marathon_job.setup_service(
+                service=fake_name,
+                instance=fake_instance,
+                client=fake_client,
+                service_marathon_config=self.fake_marathon_service_config,
+                soa_dir=None,
+            )
+            validate_whitelisted_volumes_patch.assert_called_once_with(self.fake_marathon_service_config)
+            send_event_patch.assert_any_call(fake_name, fake_instance, None, Status.CRITICAL, expected_error_msg)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

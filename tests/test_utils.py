@@ -22,6 +22,7 @@ import tempfile
 import mock
 from pytest import raises
 
+from paasta_tools import marathon_tools
 from paasta_tools import utils
 
 
@@ -1185,7 +1186,7 @@ class TestInstanceConfig:
 
     def test_extra_volumes_normal(self):
         fake_whitelist = {
-            "fake_service": ['/var/data/a']
+            "fake_service": [{'hostPath': '/var/data/a', 'mode': 'RO'}]
         }
         fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value=fake_whitelist))
         with mock.patch('paasta_tools.utils.load_system_paasta_config',
@@ -1208,9 +1209,9 @@ class TestInstanceConfig:
 
             assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
-    def test_extra_volumes_whitelist(self):
+    def test_extra_volumes_only_whitelisted(self):
         fake_whitelist = {
-            "fake_service": ['/var/data/a']
+            "fake_service": [{'hostPath': '/var/data/a', 'mode': 'RO'}]
         }
         fake_config = mock.Mock(get_volumes_whitelist=mock.Mock(return_value=fake_whitelist))
         with mock.patch('paasta_tools.utils.load_system_paasta_config',
@@ -1316,6 +1317,58 @@ def test_deploy_blacklist_to_constraints():
     expected_constraints = [["region", "UNLIKE", "useast1-prod"], ["habitat", "UNLIKE", "fake_habitat"]]
     actual = utils.deploy_blacklist_to_constraints(fake_deploy_blacklist)
     assert actual == expected_constraints
+
+
+def test_validate_whitelisted_volumes():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='servicename',
+        cluster='clustername',
+        instance='instancename',
+        config_dict={
+            'instances': 3,
+            'cpus': 1,
+            'mem': 100,
+            'docker_image': 'fake_docker_image',
+            'nerve_ns': 'aaaaugh',
+            'bounce_method': 'brutal'
+        },
+        branch_dict={},
+    )
+
+    fake_volume = {'hostPath': 'fake_vol', 'mode': 'RO'}
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=[fake_volume])
+    assert utils.validate_whitelisted_volumes(fake_marathon_service_config) == []
+
+
+def test_validate_whitelisted_volumes_blocked():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='servicename',
+        cluster='clustername',
+        instance='instancename',
+        config_dict={
+            'instances': 3,
+            'cpus': 1,
+            'mem': 100,
+            'docker_image': 'fake_docker_image',
+            'nerve_ns': 'aaaaugh',
+            'bounce_method': 'brutal'
+        },
+        branch_dict={},
+    )
+
+    fake_volume = {'hostPath': 'fake_vol', 'mode': 'RO'}
+    fake_disallowed_volume1 = {'hostPath': 'fake_vol', 'mode': 'RW'}
+    fake_disallowed_volume2 = {'hostPath': 'fake_disallowed_vol', 'mode': 'RO'}
+
+    def mock_whitelist(apply_whitelist):
+        if apply_whitelist:
+            # Assume everything is disallowed
+            return [fake_volume]
+        else:
+            return [fake_volume, fake_disallowed_volume1, fake_disallowed_volume2]
+    fake_marathon_service_config.get_extra_volumes = mock_whitelist
+    expected_extra_volumes = [fake_disallowed_volume1, fake_disallowed_volume2]
+    assert utils.validate_whitelisted_volumes(fake_marathon_service_config) == expected_extra_volumes
 
 
 def test_validate_service_instance_valid_marathon():

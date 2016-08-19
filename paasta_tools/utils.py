@@ -298,7 +298,7 @@ class InstanceConfig(dict):
         if param in check_methods:
             return check_methods[param]()
         else:
-            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
+            return False, 'Your config specifies "%s", an unsupported parameter.' % param
 
     def validate(self):
         error_msgs = []
@@ -323,8 +323,10 @@ class InstanceConfig(dict):
                 whitelisted_volumes_for_service = whitelisted_volumes[self.get_service()]
 
                 for volume in self.config_dict.get('extra_volumes', []):
-                    if os.path.normpath(volume['hostPath']) in whitelisted_volumes_for_service:
-                        volumes_to_attach.append(volume)
+                    for entry in whitelisted_volumes_for_service:
+                        if (os.path.normpath(volume['hostPath']) == entry['hostPath'] and
+                                volume['mode'] == entry['mode']):
+                            volumes_to_attach.append(volume)
 
                 return volumes_to_attach
             else:
@@ -360,6 +362,19 @@ class InstanceConfig(dict):
         :returns: the docker networking mode the container should be started with.
         """
         return self.config_dict.get('net', 'bridge')
+
+
+def validate_whitelisted_volumes(instance_config):
+    all_extra_volumes = instance_config.get_extra_volumes(apply_whitelist=False)
+    extra_whitelisted_volumes = instance_config.get_extra_volumes(apply_whitelist=True)
+
+    disallowed_volumes = []
+    for volume in all_extra_volumes:
+        v = {'hostPath': volume['hostPath'], 'mode': volume['mode']}
+        if v not in extra_whitelisted_volumes:
+            disallowed_volumes.append(v)
+
+    return disallowed_volumes
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
