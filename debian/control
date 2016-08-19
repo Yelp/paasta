@@ -9,4 +9,4 @@ Package: paasta-tools
 Architecture: any
 Depends: python2.7, ${shlibs:Depends}, ${misc:Depends}
 Description: CLI tools for PaaSTA
-Conflicts: service-deployment-tools
+Conflicts: service-deployment-tools, synapse-tools

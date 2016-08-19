@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import shutil
+import signal
 import time
 
 from behave_pytest.hook import install_pytest_asserts
@@ -109,6 +110,36 @@ def _clean_up_zookeeper_autoscaling(context):
         client.close()
 
 
+def _clean_up_synapse_process(context):
+    if hasattr(context, 'synapse_process'):
+        context.synapse_process.kill()
+        context.synapse_process.wait()
+    # this dir and its contents are created by synapse.
+    if os.path.exists('/var/run/synapse'):
+        shutil.rmtree('/var/run/synapse')
+
+
+def _clean_up_synapse_config_dir(context):
+    if hasattr(context, 'synapse_config_dir'):
+        print 'Cleaning up %s' % context.synapse_config_dir
+        shutil.rmtree(context.synapse_config_dir)
+        del context.synapse_config_dir
+
+
+def _clean_up_zookeeper_discovery(context):
+    if hasattr(context, 'zookeeper_discovery_file'):
+        os.unlink(context.zookeeper_discovery_file)
+        del context.zookeeper_discovery_file
+    if hasattr(context, 'zookeeper_discovery_dir'):
+        os.removedirs(context.zookeeper_discovery_dir)
+        del context.zookeeper_discovery_dir
+
+
+def _clean_up_haproxy_pid(context):
+    if hasattr(context, 'haproxy_pid'):
+        os.kill(context.haproxy_pid, signal.SIGTERM)
+
+
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
@@ -116,3 +147,7 @@ def after_scenario(context, scenario):
     _clean_up_soa_dir(context)
     _clean_up_etc_paasta(context)
     _clean_up_zookeeper_autoscaling(context)
+    _clean_up_synapse_process(context)
+    _clean_up_synapse_config_dir(context)
+    _clean_up_zookeeper_discovery(context)
+    _clean_up_haproxy_pid(context)

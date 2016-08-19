@@ -10,6 +10,7 @@ chronos-python==0.35.0
 cookiecutter==1.4.0
 docker-py==1.2.3
 dulwich==0.10.0
+environment_tools==1.1.0
 ephemeral-port-reserve==1.0.1
 future>=0.15.2
 futures==3.0.1
@@ -27,13 +28,16 @@ mesos.cli==0.1.5
 mesos.interface==0.28.0
 ordereddict==1.1
 path.py==8.1
+plumbum==1.6.0
 ply==3.4
 prettytable==0.7.2
 protobuf==2.6.1
+psutil==2.1.1
 pyasn1==0.1.8
 pycrypto==2.6.1
 pyramid==1.7
 pyramid-swagger==2.2.3
+pyroute2==0.3.4
 pysensu-yelp==0.2.2
 python-daemon==1.5.2
 python-dateutil==2.4.2

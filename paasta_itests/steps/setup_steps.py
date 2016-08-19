@@ -206,6 +206,23 @@ def write_soa_dir_marathon_job(context, job_id):
     context.soa_dir = soa_dir
 
 
+@given(u'yelpsoa-configs with smartstack.yaml for service "{service}" and namespace "{namespace}"')
+def write_soa_dir_smartstack_yaml(context, service, namespace):
+    try:
+        soa_dir = context.soa_dir
+    except AttributeError:
+        soa_dir = mkdtemp()
+    if not os.path.exists(os.path.join(soa_dir, service)):
+        os.makedirs(os.path.join(soa_dir, service))
+    with open(os.path.join(soa_dir, service, 'smartstack.yaml'), 'w') as f:
+        f.write(yaml.dump({
+            namespace: {
+                "proxy_port": 12345,
+            }
+        }))
+    context.soa_dir = soa_dir
+
+
 @given(u'we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
 def write_soa_dir_deployments(context, service, disabled, instance):
     if disabled == 'disabled':

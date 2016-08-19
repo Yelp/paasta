@@ -99,5 +99,8 @@ setup(
         'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
         'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
         'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
+        'configure_synapse=paasta_tools.configure_synapse:main',
+        'haproxy_synapse_reaper=paasta_tools.haproxy_synapse_reaper:main',
+        'synapse_qdisc_tool=paasta_tools.haproxy.qdisc_tool:main',
     ]},
 )
