@@ -137,6 +137,10 @@
           "format": "int32",
           "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
         },
+        "app_id": {
+          "type": "string",
+          "description": "ID of the desired version of a service instance"
+        },
         "bounce_method": {
           "type": "string",
           "description": "Method to transit between new and old versions of a service",
@@ -145,7 +149,12 @@
         "deploy_status": {
           "type": "string",
           "description": "Deploy status of a marathon service",
-          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "Not Running"]
+          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "NotRunning"]
+        },
+        "backoff_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "backoff in seconds before launching the next task"
         },
         "running_instance_count": {
           "type": "integer",

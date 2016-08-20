@@ -5,5 +5,6 @@ pep8==1.5.7
 pre-commit==0.7.6
 pytest==2.7.3
 pytest-cov==2.2.0
+requests-mock==1.0.0
 sphinx==1.4.1
 sphinxcontrib-programoutput==0.8
