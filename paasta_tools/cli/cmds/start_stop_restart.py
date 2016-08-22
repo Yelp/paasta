@@ -54,7 +54,7 @@ def add_subparser(subparsers):
         status_parser.add_argument(
             '-i', '--instances',
             help='A comma-separated list of instances of the service that you '
-                 'want to %s. Like --instances main,canary' % lower
+                 'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-c', '--clusters',
@@ -156,16 +156,32 @@ def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
+    instances = args.instances.split(",") if args.instances else None
 
-    if args.clusters is not None:
+    # assert that each of the clusters that the user specifies are 'valid'
+    # for the instance list provided; that is, assert that at least one of the instances
+    # provided in the -i argument is deployed there.
+    # if there are no instances defined in the args, then assert that the service
+    # is deployed to that cluster.
+    # If args.clusters is falsey, then default to *all* clusters that a service is deployed to,
+    # and we figure out which ones are needed for each service later.
+    if instances:
+        instance_clusters = [list_clusters(service, soa_dir, instance) for instance in args.instances]
+        valid_clusters = sorted(list(set([cluster for cluster_list in instance_clusters for cluster in cluster_list])))
+    else:
+        valid_clusters = list_clusters(service, soa_dir)
+
+    if args.clusters:
         clusters = args.clusters.split(",")
+        invalid_clusters = [cluster for cluster in clusters if cluster not in valid_clusters]
+        if invalid_clusters:
+            print(
+                "Invalid cluster name(s) specified: %s."
+                "Valid options: %s"
+            ) % (" ".join(invalid_clusters), " ".join(valid_clusters))
+            return 1
     else:
-        clusters = list_clusters(service)
-
-    if args.instances is not None:
-        instances = args.instances.split(",")
-    else:
-        instances = None
+        clusters = valid_clusters
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
@@ -188,6 +204,7 @@ def paasta_start_or_stop(args, desired_state):
         # actually within this cluster.
         if instances is None:
             cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
+            print("no instances specified; restarting all instances for service")
         else:
             all_cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
             cluster_instances = all_cluster_instances.intersection(set(instances))
