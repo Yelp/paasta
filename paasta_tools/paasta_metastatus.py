@@ -25,6 +25,7 @@ from httplib2 import ServerNotFoundError
 from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
+from paasta_tools import __version__
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools.chronos_tools import get_chronos_client
@@ -648,6 +649,7 @@ def main():
         print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
         print chronos_summary
         print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
+        print "Master paasta_tools version: {0}".format(__version__)
     elif args.verbose == 2:
         print mesos_summary
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
@@ -679,6 +681,7 @@ def main():
         print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
         print chronos_summary
         print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
+        print "Master paasta_tools version: {0}".format(__version__)
     else:
         print mesos_summary
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
@@ -733,6 +736,7 @@ def main():
             all_rows.extend(table_rows)
         for line in format_table(all_rows):
             print_with_indent(line, 4)
+        print "Master paasta_tools version: {0}".format(__version__)
 
     if not healthy_exit:
         sys.exit(2)
