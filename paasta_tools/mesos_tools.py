@@ -634,7 +634,7 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
         }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.error("Task associated with %s but slave not in masters list of slaves" % task.slave['id'])
+            log.debug("Task associated with slave {0} not found in {1} pool".format(task.slave['id'], pool))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1
