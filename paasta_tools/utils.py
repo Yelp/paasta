@@ -165,15 +165,39 @@ class InstanceConfig(dict):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
+    def get_ulimit(self):
+        """Get the --ulimit options to be passed to docker
+        Generated from the ulimit configuration option, which is a dictionary
+        of ulimit values. Each value is a dictionary itself, with the soft
+        limit stored under the 'soft' key and the optional hard limit stored
+        under the 'hard' key.
+
+        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
+
+        :returns: A generator of ulimit options to be passed as --ulimit flags"""
+        for key, val in sorted(self.config_dict.get('ulimit', {}).iteritems()):
+            soft = val.get('soft')
+            hard = val.get('hard')
+            if soft is None:
+                raise InvalidInstanceConfig(
+                    'soft limit missing in ulimit configuration for {0}.'.format(key)
+                )
+            combined_val = '%i' % soft
+            if hard is not None:
+                combined_val += ':%i' % hard
+            yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
+
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
         :returns: A list of parameters to be added to docker run"""
-        return [{"key": "memory-swap", "value": self.get_mem_swap()},
-                {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
+                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters.extend(self.get_ulimit())
+        return parameters
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.

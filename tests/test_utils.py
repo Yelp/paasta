@@ -907,6 +907,10 @@ class TestInstanceConfig:
                 'cfs_period_us': 200000,
                 'cpus': 1,
                 'mem': 1024,
+                'ulimit': {
+                    'nofile': {'soft': 1024, 'hard': 2048},
+                    'nice': {'soft': 20},
+                },
             },
             branch_dict={},
         )
@@ -914,6 +918,8 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
+            {"key": "ulimit", "value": "nice=20"},
+            {"key": "ulimit", "value": "nofile=1024:2048"},
         ]
 
     def test_full_cpu_burst(self):
@@ -969,6 +975,34 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.get_disk() == 1024
+
+    def test_get_ulimit_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'ulimit': {
+                    'nofile': {'soft': 1024, 'hard': 2048},
+                    'nice': {'soft': 20},
+                }
+            },
+            branch_dict={},
+        )
+        assert list(fake_conf.get_ulimit()) == [
+            {"key": "ulimit", "value": "nice=20"},
+            {"key": "ulimit", "value": "nofile=1024:2048"},
+        ]
+
+    def test_get_ulimit_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert list(fake_conf.get_ulimit()) == []
 
     def test_deploy_group_default(self):
         fake_conf = utils.InstanceConfig(
