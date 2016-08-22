@@ -24,7 +24,10 @@ RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
 RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_0.11-1_all.deb && dpkg -i dh-virtualenv_0.11-1_all.deb && apt-get -f install
 
 RUN apt-get install -yq zip
-RUN cd /usr/lib/python2.7/site-packages && zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info
+# mesos.native is not available on pypi, so we can either build mesos from
+# source or do this, and building from source takes a long time.
+RUN cd /usr/lib/python2.7/site-packages && \
+	zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info
 
 ENV HOME /work
 ENV PWD /work
