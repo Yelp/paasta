@@ -165,7 +165,7 @@ def schedule():
     except HTTPError as e:
         e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
         raise
-    print "%s" % schedule.text
+    return schedule.text
 
 
 def get_hosts_with_state(state):
@@ -469,7 +469,7 @@ def is_safe_to_kill(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    return is_host_drained(hostname) or hostname in get_hosts_past_maintenance_start()
+    return is_host_drained(hostname) or is_host_past_maintenance_start(hostname)
 
 
 def is_host_drained(hostname):
@@ -514,7 +514,6 @@ def get_hosts_past_maintenance_start():
         for window in schedules['windows']:
             if window['unavailability']['start']['nanoseconds'] < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    print ret
     return ret
 
 
@@ -578,11 +577,15 @@ def paasta_maintenance():
     elif action == 'status':
         return status()
     elif action == 'schedule':
-        return schedule()
+        ret = schedule()
+        print "%s" % ret
+        return ret
     elif action == 'is_safe_to_kill':
         return is_safe_to_kill(hostnames[0])
     elif action == 'is_host_drained':
-        return is_host_drained(hostnames[0])
+        ret = is_host_drained(hostnames[0])
+        print ret
+        return ret
     elif action == 'is_host_down':
         return is_host_down(hostnames[0])
     elif action == 'is_host_draining':
