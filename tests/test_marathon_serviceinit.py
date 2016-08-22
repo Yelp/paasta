@@ -69,7 +69,7 @@ def test_stop_marathon_job():
     with mock.patch('paasta_tools.marathon_serviceinit._log'):
         marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
-    client.delete_app.assert_called_once_with(app_id)
+    client.delete_app.assert_called_once_with(app_id, force=True)
 
 
 def test_scale_marathon_job():

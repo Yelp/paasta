@@ -65,7 +65,7 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
         instance=instance
     )
     client.scale_app(app_id, instances=0, force=True)
-    client.delete_app(app_id)
+    client.delete_app(app_id, force=True)
 
 
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
