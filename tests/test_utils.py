@@ -911,6 +911,7 @@ class TestInstanceConfig:
                     'nofile': {'soft': 1024, 'hard': 2048},
                     'nice': {'soft': 20},
                 },
+                'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
             },
             branch_dict={},
         )
@@ -920,6 +921,8 @@ class TestInstanceConfig:
             {"key": "cpu-quota", "value": "600000"},
             {"key": "ulimit", "value": "nice=20"},
             {"key": "ulimit", "value": "nofile=1024:2048"},
+            {"key": "cap-add", "value": "IPC_LOCK"},
+            {"key": "cap-add", "value": "SYS_PTRACE"},
         ]
 
     def test_full_cpu_burst(self):
@@ -1003,6 +1006,31 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert list(fake_conf.get_ulimit()) == []
+
+    def test_get_cap_add_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
+            },
+            branch_dict={},
+        )
+        assert list(fake_conf.get_cap_add()) == [
+            {"key": "cap-add", "value": "IPC_LOCK"},
+            {"key": "cap-add", "value": "SYS_PTRACE"},
+        ]
+
+    def test_get_cap_add_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert list(fake_conf.get_cap_add()) == []
 
     def test_deploy_group_default(self):
         fake_conf = utils.InstanceConfig(

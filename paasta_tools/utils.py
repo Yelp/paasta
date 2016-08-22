@@ -187,6 +187,17 @@ class InstanceConfig(dict):
                 combined_val += ':%i' % hard
             yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
 
+    def get_cap_add(self):
+        """Get the --cap-add options to be passed to docker
+        Generated from the cap_add configuration option, which is a list of
+        capabilities.
+
+        Example configuration: {'cap_add': ['IPC_LOCK', 'SYS_PTRACE']}
+
+        :returns: A generator of cap_add options to be passed as --cap-add flags"""
+        for value in self.config_dict.get('cap_add', []):
+            yield {"key": "cap-add", "value": "{0}".format(value)}
+
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
@@ -197,6 +208,7 @@ class InstanceConfig(dict):
                       {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
                       {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
         parameters.extend(self.get_ulimit())
+        parameters.extend(self.get_cap_add())
         return parameters
 
     def get_disk(self):
