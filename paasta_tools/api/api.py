@@ -61,8 +61,8 @@ def make_app():
     })
 
     config.include('pyramid_swagger')
-    config.add_route('service.instance.status', '/v1/{service}/{instance}/status')
-    config.add_route('service.list', '/v1/{service}')
+    config.add_route('service.instance.status', '/v1/services/{service}/{instance}/status')
+    config.add_route('service.list', '/v1/services/{service}')
     config.scan()
     return config.make_wsgi_app()
 
