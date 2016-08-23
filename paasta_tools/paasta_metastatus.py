@@ -31,10 +31,10 @@ from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
 from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
-from paasta_tools.mesos_tools import get_zookeeper_config
+from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
@@ -67,9 +67,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_num_masters(state):
+def get_num_masters():
     """ Gets the number of masters from mesos state """
-    return get_number_of_mesos_masters(get_zookeeper_config(state))
+    zookeeper_host_path = get_zookeeper_host_path()
+    return get_number_of_mesos_masters(zookeeper_host_path.host, zookeeper_host_path.path)
 
 
 def get_mesos_cpu_status(metrics):
@@ -253,8 +254,8 @@ def assert_slave_health(metrics):
     )
 
 
-def assert_quorum_size(state):
-    masters, quorum = get_num_masters(state), get_mesos_quorum(state)
+def assert_quorum_size():
+    masters, quorum = get_num_masters(), get_mesos_quorum()
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
@@ -410,11 +411,7 @@ def get_mesos_state_status(mesos_state):
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
     :returns: a list of HealthCheckResult tuples
     """
-    cluster_results = run_healthchecks_with_param(
-        mesos_state,
-        [assert_quorum_size, assert_no_duplicate_frameworks]
-    )
-    return cluster_results
+    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state)]
 
 
 def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
@@ -586,7 +583,7 @@ def main():
     args = parse_args()
 
     try:
-        mesos_state = get_mesos_state_from_leader()
+        mesos_state = get_mesos_state_summary_from_leader()
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
