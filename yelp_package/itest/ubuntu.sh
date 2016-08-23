@@ -31,6 +31,7 @@ list_marathon_service_instances
 paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
+paasta_readiness_check
 paasta_serviceinit
 setup_chronos_job
 chronos_rerun
