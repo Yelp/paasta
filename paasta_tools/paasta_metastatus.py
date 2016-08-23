@@ -648,37 +648,6 @@ def main():
         print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
         print chronos_summary
         print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
-    elif args.verbose == 2:
-        print mesos_summary
-        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
-        for grouping in args.groupings:
-            print_with_indent('Resources Grouped by %s' % grouping, 2)
-            resource_info_dict = get_resource_utilization_by_grouping(key_func_for_attribute(grouping), mesos_state)
-            all_rows = [[grouping.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
-            table_rows = []
-            for attribute_value, resource_info_dict in resource_info_dict.items():
-                resource_utilizations = resource_utillizations_from_resource_info(
-                    total=resource_info_dict['total'],
-                    free=resource_info_dict['free'],
-                )
-                healthcheck_utilization_pairs = [
-                    healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
-                    for utilization in resource_utilizations
-                ]
-                healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
-                table_rows.append(get_table_rows_for_resource_info_dict(
-                    attribute_value,
-                    healthcheck_utilization_pairs,
-                    args.humanize
-                ))
-            table_rows = sorted(table_rows, key=lambda x: x[0])
-            all_rows.extend(table_rows)
-            for line in format_table(all_rows):
-                print_with_indent(line, 4)
-        print marathon_summary
-        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
-        print chronos_summary
-        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
     else:
         print mesos_summary
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
@@ -707,32 +676,37 @@ def main():
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
 
-        print_with_indent('Per Slave Utilization', 2)
-        slave_resource_dict = get_resource_utilization_by_grouping(lambda slave: slave['hostname'], mesos_state)
-        all_rows = [['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+        if args.verbose == 3:
+            print_with_indent('Per Slave Utilization', 2)
+            slave_resource_dict = get_resource_utilization_by_grouping(lambda slave: slave['hostname'], mesos_state)
+            all_rows = [['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
 
-        # print info about slaves here. Note that we don't make modifications to
-        # the healthy_exit variable here, because we don't care about a single slave
-        # having high usage.
-        for attribute_value, resource_info_dict in slave_resource_dict.items():
-            table_rows = []
-            resource_utilizations = resource_utillizations_from_resource_info(
-                total=resource_info_dict['total'],
-                free=resource_info_dict['free'],
-            )
-            healthcheck_utilization_pairs = [
-                healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
-                for utilization in resource_utilizations
-            ]
-            table_rows.append(get_table_rows_for_resource_info_dict(
-                attribute_value,
-                healthcheck_utilization_pairs,
-                args.humanize
-            ))
-            table_rows = sorted(table_rows, key=lambda x: x[0])
-            all_rows.extend(table_rows)
-        for line in format_table(all_rows):
-            print_with_indent(line, 4)
+            # print info about slaves here. Note that we don't make modifications to
+            # the healthy_exit variable here, because we don't care about a single slave
+            # having high usage.
+            for attribute_value, resource_info_dict in slave_resource_dict.items():
+                table_rows = []
+                resource_utilizations = resource_utillizations_from_resource_info(
+                    total=resource_info_dict['total'],
+                    free=resource_info_dict['free'],
+                )
+                healthcheck_utilization_pairs = [
+                    healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
+                    for utilization in resource_utilizations
+                ]
+                table_rows.append(get_table_rows_for_resource_info_dict(
+                    attribute_value,
+                    healthcheck_utilization_pairs,
+                    args.humanize
+                ))
+                table_rows = sorted(table_rows, key=lambda x: x[0])
+                all_rows.extend(table_rows)
+            for line in format_table(all_rows):
+                print_with_indent(line, 4)
+        print marathon_summary
+        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
+        print chronos_summary
+        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
 
     if not healthy_exit:
         sys.exit(2)
