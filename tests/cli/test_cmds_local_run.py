@@ -65,7 +65,7 @@ def test_dry_run(
 
     # Should pass and produce something
     with raises(SystemExit) as excinfo:
-        main(('local-run', '--pull', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance'))
+        main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance'))
     ret = excinfo.value.code
     out, err = capsys.readouterr()
     assert ret == 0

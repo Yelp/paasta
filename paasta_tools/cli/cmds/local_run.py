@@ -687,22 +687,14 @@ def configure_and_run_docker_container(
     )
 
 
-def local_makefile_present():
-    if makefile_responds_to('cook-image'):
-        sys.stderr.write("Local Makefile with 'cook-image' target detected. Assuming --build\n")
-        return True
-    else:
-        return False
-
-
 def paasta_local_run(args):
-    if (args.pull is None) and (args.build is None):
-        # Default to --build if neither is specified
-        if not local_makefile_present():
-            sys.stderr.write("A local Makefile with a 'cook-image' target is required for --build\n")
-            sys.stderr.write("If you meant to pull the docker image from the registry, explicitly pass --pull\n")
-            return 1
-        args.build = True
+    if args.pull is None and args.build is None:
+        if args.dry_run:
+            sys.stderr.write('Running in dry mode. Assuming --pull\n')
+            args.pull = True
+        else:
+            sys.stderr.write("Neither --pull or --build were passed. Assuming --build\n")
+            args.build = True
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = guess_cluster(service=service, args=args)
