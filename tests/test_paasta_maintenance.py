@@ -14,7 +14,6 @@
 import argparse
 import datetime
 import json
-from StringIO import StringIO
 
 import mock
 import pytest
@@ -495,18 +494,12 @@ def test_up(
     assert mock_master_api.return_value.call_args == expected_args
 
 
-@mock.patch('sys.stdout', new_callable=StringIO)
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_status')
 def test_status(
     mock_get_maintenance_status,
-    mock_stdout,
 ):
-    mock_get_maintenance_status.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_status.return_value.text = 'fake_text'
     status()
-    output = mock_stdout.getvalue()
     assert mock_get_maintenance_status.call_count == 1
-    assert output == "fake_text\n"
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
