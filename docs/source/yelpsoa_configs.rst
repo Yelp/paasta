@@ -74,7 +74,7 @@ instance MAY have:
 
     By default, the Namespace assigned to a particular Instance in PaaSTA has
     the *same name*, so the ``main`` Instance will correspond to the ``main``
-    Namespace defined in ``smartstack.yaml``. 
+    Namespace defined in ``smartstack.yaml``.
 
     The first instance in this list is assumed to be used by clients and is
     the only one currently monitored, waited for during bounces, etc ...
@@ -174,10 +174,10 @@ instance MAY have:
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_DOCKER_IMAGE``: The docker image name
 
-    Additionally, there are ``MARATHON_`` prefixed variables available. See the
-    `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_
-    for more information about these variables.
+    Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
+    See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available

@@ -1094,6 +1094,7 @@ class TestInstanceConfig:
             'PAASTA_SERVICE': 'fake_service',
             'PAASTA_INSTANCE': 'fake_instance',
             'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DOCKER_IMAGE': '',
         }
 
     def test_get_env_with_config(self):
@@ -1102,13 +1103,14 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
-            branch_dict={},
+            branch_dict={'docker_image': 'something'},
         )
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
             'PAASTA_SERVICE': '',
             'PAASTA_INSTANCE': '',
             'PAASTA_CLUSTER': '',
+            'PAASTA_DOCKER_IMAGE': 'something',
         }
 
     def test_get_args_default_no_cmd(self):

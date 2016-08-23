@@ -886,6 +886,7 @@ class TestMarathonTools:
             'PAASTA_CLUSTER': '',
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
+            'PAASTA_DOCKER_IMAGE': '',
         }
         fake_cpus = .42
         fake_disk = 1234.5
