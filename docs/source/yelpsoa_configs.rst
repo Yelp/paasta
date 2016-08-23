@@ -49,6 +49,11 @@ instance MAY have:
         - nofile: {"soft": 1024, "hard": 2048}
         - nice: {"soft": 20}
 
+  * ``cap_add``: List of capabilities that are passed to Docker. Defaults
+    to empty list. Example::
+
+      "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
+
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``min_instances``: When autoscaling, the minimum number of instances that
