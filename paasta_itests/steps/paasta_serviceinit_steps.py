@@ -250,4 +250,10 @@ def marathon_app_task_count(context, job_id, task_count):
     assert len(tasks) == task_count
 
 
+@then(u'there should be no matching appids for service "{service}" instance "{instance}"')
+def no_matching_app_ids(context, service, instance):
+    matching_apps = marathon_tools.get_matching_appids(
+        service=service, instance=instance, client=context.marathon_client)
+    assert len(matching_apps) == 0, matching_apps
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

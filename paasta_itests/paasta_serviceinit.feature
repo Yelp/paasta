@@ -114,8 +114,7 @@ Feature: paasta_serviceinit
      When we run the marathon app "test-service.main" with "1" instances
       And we wait for it to be deployed
       And we run paasta serviceinit "stop" on "test-service.main"
-      And we wait for "test-service.main" to launch exactly 0 tasks
-     Then "test-service.main" has exactly 0 requested tasks in marathon
+     Then there should be no matching appids for service "test-service" instance "main"
 
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app via appid
     Given a working paasta cluster
