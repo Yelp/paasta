@@ -560,7 +560,7 @@ def test_get_default_cluster_for_service():
     ):
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         assert utils.get_default_cluster_for_service(fake_service) == 'fake_cluster-1'
-        mock_list_clusters.assert_called_once_with(fake_service)
+        mock_list_clusters.assert_called_once_with(fake_service, soa_dir=mock.ANY)
 
 
 def test_get_default_cluster_for_service_empty_deploy_config():
@@ -575,7 +575,7 @@ def test_get_default_cluster_for_service_empty_deploy_config():
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         with raises(utils.NoConfigurationForServiceError):
             utils.get_default_cluster_for_service(fake_service)
-        mock_list_clusters.assert_called_once_with(fake_service)
+        mock_list_clusters.assert_called_once_with(fake_service, soa_dir=mock.ANY)
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():
