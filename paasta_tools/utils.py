@@ -1190,12 +1190,12 @@ def get_username():
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
-def get_default_cluster_for_service(service):
+def get_default_cluster_for_service(service, soa_dir=DEFAULT_SOA_DIR):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
     except PaastaNotConfiguredError:
-        clusters_deployed_to = list_clusters(service)
+        clusters_deployed_to = list_clusters(service, soa_dir=soa_dir)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
         else:
