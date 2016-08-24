@@ -256,11 +256,12 @@ def test_is_mesos_leader_substring(mock_get_mesos_leader):
 def test_get_number_of_mesos_masters(
     mock_kazoo,
 ):
-    fake_zk_config = {'hosts': '1.1.1.1', 'path': 'fake_path'}
+    host = '1.1.1.1'
+    path = 'fake_path'
 
     zk = mock_kazoo.return_value
     zk.get_children.return_value = ['log_11', 'state', 'json.info_1', 'info_2']
-    assert mesos_tools.get_number_of_mesos_masters(fake_zk_config) == 2
+    assert mesos_tools.get_number_of_mesos_masters(host, path) == 2
 
 
 @mock.patch('requests.get')
