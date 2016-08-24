@@ -245,7 +245,7 @@ def test_assert_tasks_running():
 def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 5
     mock_quorum_size.return_value = 3
-    output, health = paasta_metastatus.assert_quorum_size({})
+    output, health = paasta_metastatus.assert_quorum_size()
     assert health
     assert 'Quorum: masters: 5 configured quorum: 3 ' in output
 
@@ -255,7 +255,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
 def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 1
     mock_quorum_size.return_value = 3
-    output, health = paasta_metastatus.assert_quorum_size({})
+    output, health = paasta_metastatus.assert_quorum_size()
     assert not health
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 
@@ -333,7 +333,7 @@ def test_main_no_marathon_config():
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.load_chronos_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_chronos_status', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_summary_from_leader', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
@@ -345,7 +345,7 @@ def test_main_no_marathon_config():
         load_marathon_config_patch,
         load_chronos_config_patch,
         load_get_chronos_status_patch,
-        get_mesos_state_from_leader_patch,
+        get_mesos_state_summary_from_leader_patch,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,
         get_mesos_metrics_health_patch,
@@ -355,7 +355,7 @@ def test_main_no_marathon_config():
         fake_args = Mock(
             verbose=0,
         )
-        get_mesos_state_from_leader_patch.return_value = {}
+        get_mesos_state_summary_from_leader_patch.return_value = {}
         get_mesos_stats_patch.return_value = {}
 
         get_mesos_state_status_patch.return_value = []
@@ -372,7 +372,7 @@ def test_main_no_chronos_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.load_chronos_config', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True, return_value={}),
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_summary_from_leader', autospec=True, return_value={}),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
@@ -383,7 +383,7 @@ def test_main_no_chronos_config():
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
-        get_mesos_state_from_leader_patch,
+        get_mesos_state_summary_from_leader_patch,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,
         get_mesos_metrics_health_patch,
@@ -397,7 +397,7 @@ def test_main_no_chronos_config():
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.return_value = {}
 
-        get_mesos_state_from_leader_patch.return_value = {}
+        get_mesos_state_summary_from_leader_patch.return_value = {}
         get_mesos_stats_patch.return_value = {}
 
         get_mesos_state_status_patch.return_value = []

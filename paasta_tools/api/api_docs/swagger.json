@@ -20,7 +20,21 @@
     }
   ],
   "paths": {
-    "/{service}": {
+    "/version": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Version of paasta_tools package",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "summary": "Version of paasta_tools package",
+        "operationId": "showVersion"
+      }
+    },
+    "/services/{service}": {
       "get": {
         "responses": {
           "200": {
@@ -50,7 +64,7 @@
         ]
       }
     },
-    "/{service}/{instance}/status": {
+    "/services/{service}/{instance}/status": {
       "get": {
         "responses": {
           "200": {
