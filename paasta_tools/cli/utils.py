@@ -30,6 +30,7 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
+from paasta_tools.utils import JENKINS_HOST
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
@@ -616,7 +617,7 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
 
 def get_pipeline_url(service):
     return PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service)
+        '%s/view/services-%s' % (JENKINS_HOST, service))
 
 
 def get_jenkins_build_output_url():

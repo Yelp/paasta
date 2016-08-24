@@ -35,6 +35,7 @@ from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
+from paasta_tools.utils import JENKINS_HOST
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -87,7 +88,7 @@ def add_subparser(subparsers):
 
 def missing_deployments_message(service):
     jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service)
+        '%s/view/services-%s' % (JENKINS_HOST, service))
     message = "%s No deployments in deployments.json yet.\n  " \
               "Has Jenkins run?\n  " \
               "Check: %s" % (x_mark(), jenkins_url)

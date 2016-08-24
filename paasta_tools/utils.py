@@ -71,6 +71,7 @@ DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
+JENKINS_HOST = 'https://jenkins-paasta.yelpcorp.com'
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_PCT = 900
