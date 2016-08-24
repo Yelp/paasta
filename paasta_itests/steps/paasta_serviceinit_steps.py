@@ -24,8 +24,8 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 
 
-@when(u'we run the marathon app "{job_id}"')
-def run_marathon_app(context, job_id):
+@when(u'we run the marathon app "{job_id}" with "{instances:d}" instances')
+def run_marathon_app(context, job_id, instances):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     app_config = {
@@ -38,6 +38,8 @@ def run_marathon_app(context, job_id):
                 'image': 'busybox',
             },
         },
+        'instances': instances,
+        'constraints': [["hostname", "UNIQUE"]],
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
         paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
@@ -82,8 +84,8 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             context.marathon_client,
             cluster
         )
-    print "Sleeping 5 seconds to wait for %s to be restarted." % service
-    time.sleep(5)
+    print "Sleeping 7 seconds to wait for %s to be restarted." % service
+    time.sleep(7)
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
@@ -128,10 +130,7 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    # The container we run doesn't really have a stdout/stderr. The message below
-    # comes from mesos.cli, proving that paasta_serviceinit tried to read stdout/sdterr,
-    # caught the Exception and presented the right information to the user.
-    assert "No such task has the requested file or directory" in output
+    assert "stdout EOF" in output
 
 
 @then((u'paasta_serviceinit status -s "{service}" -i "{instances}"'

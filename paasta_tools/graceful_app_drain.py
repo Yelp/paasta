@@ -7,7 +7,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools.setup_marathon_job import do_bounce
-from paasta_tools.setup_marathon_job import get_old_happy_unhappy_draining_tasks
+from paasta_tools.setup_marathon_job import get_tasks_by_state
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
@@ -73,7 +73,8 @@ def main():
         (old_app_live_happy_tasks,
          old_app_live_unhappy_tasks,
          old_app_draining_tasks,
-         ) = get_old_happy_unhappy_draining_tasks(
+         old_app_at_risk_tasks,
+         ) = get_tasks_by_state(
              other_apps=[app_to_kill],
              drain_method=drain_method,
              service=service,

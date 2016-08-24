@@ -41,12 +41,13 @@ from subprocess import Popen
 from subprocess import STDOUT
 
 import dateutil.tz
-import docker
 import service_configuration_lib
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
+
+import paasta_tools
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -164,15 +165,51 @@ class InstanceConfig(dict):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
+    def get_ulimit(self):
+        """Get the --ulimit options to be passed to docker
+        Generated from the ulimit configuration option, which is a dictionary
+        of ulimit values. Each value is a dictionary itself, with the soft
+        limit stored under the 'soft' key and the optional hard limit stored
+        under the 'hard' key.
+
+        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
+
+        :returns: A generator of ulimit options to be passed as --ulimit flags"""
+        for key, val in sorted(self.config_dict.get('ulimit', {}).iteritems()):
+            soft = val.get('soft')
+            hard = val.get('hard')
+            if soft is None:
+                raise InvalidInstanceConfig(
+                    'soft limit missing in ulimit configuration for {0}.'.format(key)
+                )
+            combined_val = '%i' % soft
+            if hard is not None:
+                combined_val += ':%i' % hard
+            yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
+
+    def get_cap_add(self):
+        """Get the --cap-add options to be passed to docker
+        Generated from the cap_add configuration option, which is a list of
+        capabilities.
+
+        Example configuration: {'cap_add': ['IPC_LOCK', 'SYS_PTRACE']}
+
+        :returns: A generator of cap_add options to be passed as --cap-add flags"""
+        for value in self.config_dict.get('cap_add', []):
+            yield {"key": "cap-add", "value": "{0}".format(value)}
+
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
         :returns: A list of parameters to be added to docker run"""
-        return [{"key": "memory-swap", "value": self.get_mem_swap()},
-                {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
+                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters.extend(self.get_ulimit())
+        parameters.extend(self.get_cap_add())
+        return parameters
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.
@@ -198,6 +235,7 @@ class InstanceConfig(dict):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
@@ -891,6 +929,9 @@ class SystemPaastaConfig(dict):
     def get_cluster_autoscaling_resources(self):
         return self.get('cluster_autoscaling_resources', {})
 
+    def get_resource_pool_settings(self):
+        return self.get('resource_pool_settings', {})
+
     def get_cluster_fqdn_format(self):
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
@@ -1011,6 +1052,14 @@ def get_umask():
     return old_umask
 
 
+def get_user_agent():
+    user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
+    if len(sys.argv) >= 1:
+        return user_agent + " " + os.path.basename(sys.argv[0])
+    else:
+        return user_agent
+
+
 @contextlib.contextmanager
 def atomic_file_write(target_path):
     dirname = os.path.dirname(target_path)
@@ -1112,7 +1161,7 @@ def check_docker_image(service, tag):
     :raises: ValueError if more than one docker image with :tag: found.
     :returns: True if there is exactly one matching image found.
     """
-    docker_client = docker.Client(timeout=60)
+    docker_client = get_docker_client()
     image_name = build_docker_image_name(service)
     docker_tag = build_docker_tag(service, tag)
     images = docker_client.images(name=image_name)
@@ -1542,3 +1591,18 @@ class ZookeeperPool(object):
             cls.zk.stop()
             cls.zk.close()
             cls.zk = None
+
+
+def calculate_tail_lines(verbose_level):
+    if verbose_level == 1:
+        return 0
+    else:
+        return 10 ** (verbose_level - 1)
+
+
+def is_deploy_step(step):
+    """
+    Returns true if the given step deploys to an instancename
+    Returns false if the step is a predefined step-type, e.g. itest or command-*
+    """
+    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))

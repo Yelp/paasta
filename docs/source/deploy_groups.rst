@@ -18,15 +18,15 @@ Deploy groups are specified in your soa configs. Let’s take a look in ``exampl
 
    ---
    pipeline:
-   - instancename: itest
-   - instancename: security-check
-   - instancename: push-to-registry
-   - instancename: performance-check
-   - instancename: dev-stage.everything
+   - step: itest
+   - step: security-check
+   - step: push-to-registry
+   - step: performance-check
+   - step: dev-stage.everything
      trigger_next_step_manually: true
-   - instancename: prod.canary
+   - step: prod.canary
      trigger_next_step_manually: true
-   - instancename: prod.non_canary
+   - step: prod.non_canary
 
 You can see we have three deploy groups here: ``dev-stage.everything``, ``prod.canary`` and ``prod.non_canary``. There each refer to a number of instances that all share the same docker container, and will all be deployed at the same time.
 
@@ -38,7 +38,7 @@ Now let’s take a look at how instances are linked to a deploy group by taking 
    canary:
      cpus: .1
      mem: 301
-     nerve_ns: main
+     registration_namespaces: ['main']
      instances: 1
      deploy_group: dev-stage.everything
    main:

@@ -108,8 +108,11 @@ def build_service_job_mapping(client, configured_jobs):
             client=client,
             include_disabled=True,
         )
-        filtered = chronos_tools.filter_non_temporary_chronos_jobs(matching_jobs)
-        with_states = last_run_state_for_jobs(filtered)
+        matching_jobs = chronos_tools.sort_jobs(matching_jobs)
+        # Only consider the most recent one
+        if len(matching_jobs) > 0:
+            matching_jobs = [matching_jobs[0]]
+        with_states = last_run_state_for_jobs(matching_jobs)
         service_job_mapping[job] = with_states
     return service_job_mapping
 
@@ -189,12 +192,16 @@ def main():
 
         for service_instance, job_state_pairs in service_job_mapping.items():
             service, instance = service_instance[0], service_instance[1]
-            chronos_job_config = load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
+            try:
+                chronos_job_config = load_chronos_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            except utils.NoDeploymentsAvailable:
+                print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
+                continue
             sensu_output, sensu_status = sensu_message_status_for_jobs(
                 chronos_job_config=chronos_job_config,
                 service=service,

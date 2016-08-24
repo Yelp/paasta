@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import logging
 
 from paasta_tools.autoscaling_lib import autoscale_services
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
@@ -23,14 +24,19 @@ def parse_args():
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="Increase logging verboseness")
     args = parser.parse_args()
     return args
 
 
 def main():
     args = parse_args()
-    soa_dir = args.soa_dir
-    autoscale_services(soa_dir)
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+    autoscale_services(soa_dir=args.soa_dir)
 
 
 if __name__ == '__main__':

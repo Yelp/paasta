@@ -510,7 +510,7 @@ def test_check_docker_image_false(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('docker.Client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -529,7 +529,7 @@ def test_check_docker_image_true(mock_build_docker_image_name):
     fake_commit = 'fake_commit'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('docker.Client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -907,6 +907,11 @@ class TestInstanceConfig:
                 'cfs_period_us': 200000,
                 'cpus': 1,
                 'mem': 1024,
+                'ulimit': {
+                    'nofile': {'soft': 1024, 'hard': 2048},
+                    'nice': {'soft': 20},
+                },
+                'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
             },
             branch_dict={},
         )
@@ -914,6 +919,10 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
+            {"key": "ulimit", "value": "nice=20"},
+            {"key": "ulimit", "value": "nofile=1024:2048"},
+            {"key": "cap-add", "value": "IPC_LOCK"},
+            {"key": "cap-add", "value": "SYS_PTRACE"},
         ]
 
     def test_full_cpu_burst(self):
@@ -969,6 +978,59 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.get_disk() == 1024
+
+    def test_get_ulimit_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'ulimit': {
+                    'nofile': {'soft': 1024, 'hard': 2048},
+                    'nice': {'soft': 20},
+                }
+            },
+            branch_dict={},
+        )
+        assert list(fake_conf.get_ulimit()) == [
+            {"key": "ulimit", "value": "nice=20"},
+            {"key": "ulimit", "value": "nofile=1024:2048"},
+        ]
+
+    def test_get_ulimit_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert list(fake_conf.get_ulimit()) == []
+
+    def test_get_cap_add_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
+            },
+            branch_dict={},
+        )
+        assert list(fake_conf.get_cap_add()) == [
+            {"key": "cap-add", "value": "IPC_LOCK"},
+            {"key": "cap-add", "value": "SYS_PTRACE"},
+        ]
+
+    def test_get_cap_add_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert list(fake_conf.get_cap_add()) == []
 
     def test_deploy_group_default(self):
         fake_conf = utils.InstanceConfig(
@@ -1032,6 +1094,7 @@ class TestInstanceConfig:
             'PAASTA_SERVICE': 'fake_service',
             'PAASTA_INSTANCE': 'fake_instance',
             'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DOCKER_IMAGE': '',
         }
 
     def test_get_env_with_config(self):
@@ -1040,13 +1103,14 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
-            branch_dict={},
+            branch_dict={'docker_image': 'something'},
         )
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
             'PAASTA_SERVICE': '',
             'PAASTA_INSTANCE': '',
             'PAASTA_CLUSTER': '',
+            'PAASTA_DOCKER_IMAGE': 'something',
         }
 
     def test_get_args_default_no_cmd(self):
@@ -1479,3 +1543,12 @@ def test_function_composition():
 
     composed_func = utils.compose(func_one, func_two)
     assert composed_func(0) == 2
+
+
+def test_is_deploy_step():
+    assert utils.is_deploy_step('prod.main')
+    assert utils.is_deploy_step('thingy')
+
+    assert not utils.is_deploy_step('itest')
+    assert not utils.is_deploy_step('performance-check')
+    assert not utils.is_deploy_step('command-thingy')

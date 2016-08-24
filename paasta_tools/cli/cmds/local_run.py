@@ -72,7 +72,7 @@ def perform_http_healthcheck(url, timeout):
     try:
         with Timeout(seconds=timeout):
             try:
-                res = requests.head(url)
+                res = requests.get(url)
             except requests.ConnectionError:
                 return (False, "http request failed: connection failed")
     except TimeoutError:
@@ -278,26 +278,30 @@ def add_subparser(subparsers):
         '-b', '--build',
         help=(
             "Build the docker image to run from scratch using the local Makefile's "
-            "'cook-image' target. Defaults to try to use the local Makefile if present. "
-            "otherwise local-run will pull and run the Docker image that is marked for "
-            "deployment in the Docker registry. Mutually exclusive with '--pull'."
+            "'cook-image' target. Defaults to try to use the local Makefile if present."
         ),
-        required=False,
-        action='store_true',
-        default=None,
+        action='store_const',
+        const='build',
+        dest='action',
     )
     build_pull_group.add_argument(
         '-p', '--pull',
         help=(
             "Pull the docker image marked for deployment from the Docker registry and "
-            "use that for the local-run. This is the opposite of --build. Defaults to "
-            "autodetect a Makefile, if present will not pull, and instead assume that "
-            "a local build is desired. Mutally exclusive with '--build'"
+            "use that for the local-run. This is the opposite of --build."
         ),
-        required=False,
-        action='store_true',
-        default=None,
+        action='store_const',
+        const='pull',
+        dest='action',
     )
+    build_pull_group.add_argument(
+        '-d', '--dry-run',
+        help='Shows the arguments supplied to docker as json.',
+        action='store_const',
+        const='dry_run',
+        dest='action',
+    )
+    build_pull_group.set_defaults(action='build')
     list_parser.add_argument(
         '-C', '--cmd',
         help=('Run Docker container with particular command, '
@@ -342,11 +346,6 @@ def add_subparser(subparsers):
         action='store_true',
         required=False,
         default=False,
-    )
-    list_parser.add_argument(
-        '-d', '--dry-run',
-        help='Shows the arguments supplied to docker as json.',
-        action='store_true',
     )
     list_parser.set_defaults(command=paasta_local_run)
 
@@ -691,29 +690,18 @@ def configure_and_run_docker_container(
     )
 
 
-def local_makefile_present():
-    if makefile_responds_to('cook-image'):
-        sys.stderr.write("Local Makefile with 'cook-image' target detected. Assuming --build\n")
-        return True
-    else:
-        sys.stderr.write("No Makefile with 'cook-image' target detected. Assuming --pull\n")
-        return False
-
-
 def paasta_local_run(args):
-    if args.pull or args.dry_run:
-        build = False
-    elif args.build:
-        build = True
-    else:
-        build = local_makefile_present()
+    if args.action == 'build' and not makefile_responds_to('cook-image'):
+        sys.stderr.write("A local Makefile with a 'cook-image' target is required for --build\n")
+        sys.stderr.write("If you meant to pull the docker image from the registry, explicitly pass --pull\n")
+        return 1
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = guess_cluster(service=service, args=args)
     instance = guess_instance(service=service, cluster=cluster, args=args)
     docker_client = get_docker_client()
 
-    if build:
+    if args.action == 'build':
         default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
         tag = os.environ.get('DOCKER_TAG', default_tag)
         os.environ['DOCKER_TAG'] = tag
@@ -721,7 +709,7 @@ def paasta_local_run(args):
         cook_return = paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
         if cook_return != 0:
             return cook_return
-    elif args.dry_run:
+    elif args.action == 'dry_run':
         pull_image = False
         tag = None
     else:
@@ -737,7 +725,7 @@ def paasta_local_run(args):
             cluster=cluster,
             args=args,
             pull_image=pull_image,
-            dry_run=args.dry_run,
+            dry_run=args.action == 'dry_run',
         )
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))

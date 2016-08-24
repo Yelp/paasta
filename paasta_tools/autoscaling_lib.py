@@ -43,11 +43,16 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.paasta_maintenance import drain
+from paasta_tools.paasta_maintenance import is_safe_to_kill
+from paasta_tools.paasta_maintenance import undrain
 from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import ZookeeperPool
@@ -56,8 +61,8 @@ _autoscaling_components = defaultdict(dict)
 
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
-CLUSTER_TARGET_UTILIZATION = 0.8
-CLUSTER_DRAIN_TIMEOUT = 900  # seconds
+DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
+DEFAULT_DRAIN_TIMEOUT = 600  # seconds
 DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
@@ -205,8 +210,11 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
     utilization = []
     for task in marathon_tasks:
         try:
-            utilization.append(float(requests.get('http://%s:%s/%s' % (
-                task.host, task.ports[0], endpoint)).json()['utilization']))
+            endpoint_utilization = requests.get(
+                'http://%s:%s/%s' % (task.host, task.ports[0], endpoint),
+                headers={'User-Agent': get_user_agent()}
+            ).json()['utilization']
+            utilization.append(float(endpoint_utilization))
         except Exception:
             pass
     if not utilization:
@@ -355,27 +363,38 @@ def humanize_error(error):
         return 'utilization within thresholds'
 
 
+def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
+    services = get_services_for_cluster(
+        cluster=cluster,
+        instance_type='marathon',
+        soa_dir=soa_dir,
+    )
+    configs = []
+    for service, instance in services:
+        try:
+            service_config = load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+        except NoDeploymentsAvailable:
+            log.debug("%s is not deployed yet, refusing to do autoscaling calculations for it" %
+                      compose_job_id(service, instance))
+            continue
+
+        if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
+                and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
+            configs.append(service_config)
+
+    return configs
+
+
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     try:
         with create_autoscaling_lock():
             cluster = load_system_paasta_config().get_cluster()
-            services = get_services_for_cluster(
-                cluster=cluster,
-                instance_type='marathon',
-                soa_dir=soa_dir,
-            )
-            configs = []
-            for service, instance in services:
-                service_config = load_marathon_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                )
-                if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
-                        and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
-                    configs.append(service_config)
-
+            configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
             if configs:
                 marathon_config = load_marathon_config()
                 marathon_client = get_marathon_client(
@@ -391,6 +410,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                             # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
                             # are healthy. We assume tasks with no healthcheck results but a defined
                             # healthcheck to be unhealthy.
+                            log.info("Inspecting %s for autoscaling" % job_id)
                             marathon_tasks = {task.id: task for task in all_marathon_tasks
                                               if job_id == get_short_job_id(task.id) and
                                               (is_task_healthy(task) or not
@@ -402,6 +422,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
+        log.warning("Skipping autoscaling run for services because the lock is held")
         pass
 
 
@@ -440,16 +461,17 @@ def create_autoscaling_lock():
         zk.stop()
 
 
-def get_spot_fleet_instances(spotfleet_request_id):
-    ec2_client = boto3.client('ec2')
+def get_spot_fleet_instances(spotfleet_request_id, region=None):
+    ec2_client = boto3.client('ec2', region_name=region)
     spot_fleet_instances = ec2_client.describe_spot_fleet_instances(
         SpotFleetRequestId=spotfleet_request_id)['ActiveInstances']
     return spot_fleet_instances
 
 
-def get_sfr_instance_ips(sfr):
+def get_sfr_instance_ips(sfr, region=None):
     spot_fleet_instances = sfr['ActiveInstances']
-    instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances])
+    instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances],
+                                               region=region)
     instance_ips = []
     for instance in instance_descriptions:
         try:
@@ -460,8 +482,8 @@ def get_sfr_instance_ips(sfr):
     return instance_ips
 
 
-def get_sfr(spotfleet_request_id):
-    ec2_client = boto3.client('ec2')
+def get_sfr(spotfleet_request_id, region=None):
+    ec2_client = boto3.client('ec2', region_name=region)
     try:
         sfrs = ec2_client.describe_spot_fleet_requests(SpotFleetRequestIds=[spotfleet_request_id])
     except ClientError as e:
@@ -474,7 +496,7 @@ def get_sfr(spotfleet_request_id):
     return ret
 
 
-def describe_instances(instance_ids, instance_filters=None):
+def describe_instances(instance_ids, region=None, instance_filters=None):
     """This wraps ec2.describe_instances and catches instance not
     found errors. It returns a list of instance description
     dictionaries. It assumes one instance per reservation (which
@@ -486,7 +508,7 @@ def describe_instances(instance_ids, instance_filters=None):
     :returns: a list of instance description dictionaries"""
     if not instance_filters:
         instance_filters = []
-    ec2_client = boto3.client('ec2')
+    ec2_client = boto3.client('ec2', region_name=region)
     try:
         instances = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
     except ClientError as e:
@@ -500,15 +522,15 @@ def describe_instances(instance_ids, instance_filters=None):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
-def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
-    sfr = get_sfr(spotfleet_request_id)
+def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource, pool_settings):
+    sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
         return 0, 0
-    sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id)
+    sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
     resource['sfr'] = sfr
     desired_instances = len(sfr['ActiveInstances'])
-    instance_ips = get_sfr_instance_ips(sfr)
+    instance_ips = get_sfr_instance_ips(sfr, region=resource['region'])
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
@@ -537,13 +559,14 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource):
         float(float(pair[0]) / float(pair[1]))
         for pair in zip(free_pool_resources, total_pool_resources)
     ])
-    error = utilization - CLUSTER_TARGET_UTILIZATION
+    target_utilization = pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
+    error = utilization - target_utilization
     current, target = get_spot_fleet_delta(resource, error)
     return current, target
 
 
 def get_spot_fleet_delta(resource, error):
-    ec2_client = boto3.client('ec2')
+    ec2_client = boto3.client('ec2', region_name=resource['region'])
     spot_fleet_request = ec2_client.describe_spot_fleet_requests(
         SpotFleetRequestIds=[resource['id']])['SpotFleetRequestConfigs'][0]
     if spot_fleet_request['SpotFleetRequestState'] != 'active':
@@ -575,12 +598,7 @@ def get_spot_fleet_delta(resource, error):
         log.warning(
             "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
             (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
-
-    if new_capacity != current_capacity:
-        print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
-        return current_capacity, new_capacity
-    else:
-        return 0
+    return current_capacity, new_capacity
 
 
 def sort_slaves_to_kill(mesos_state, pool='default'):
@@ -600,25 +618,28 @@ def sort_slaves_to_kill(mesos_state, pool='default'):
         return []
 
 
-def wait_and_terminate(slave, dry_run):
+def wait_and_terminate(slave, drain_timeout, dry_run, region=None):
     """Currently kills a slave, will wait for draining to complete soon
 
     :param slave: dict of slave to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
-    ec2_client = boto3.client('ec2')
+    ec2_client = boto3.client('ec2', region_name=region)
     try:
         # This loop should always finish because the maintenance window should trigger is_ready_to_kill
         # being true. Just in case though we set a timeout and terminate anyway
-        with Timeout(seconds=CLUSTER_DRAIN_TIMEOUT + 300):
+        with Timeout(seconds=drain_timeout + 300):
             while True:
                 instance_id = slave['instance_id']
                 if not instance_id:
                     log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave['pid']))
                     continue
-                is_ready_to_kill = True
-                # is_ready_to_kill = paasta_maintenance.something(slave['pid'])
-                if is_ready_to_kill:
-                    log.info("TERMINATING: {0}".format(instance_id))
+                # Check if no tasks are running or we have reached the maintenance window
+                if is_safe_to_kill(slave['hostname']) or dry_run:
+                    log.info("TERMINATING: {0} (Hostname = {1}, IP = {2})".format(
+                        instance_id,
+                        slave['hostname'],
+                        slave['ip'],
+                    ))
                     try:
                         ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
                     except ClientError as e:
@@ -628,11 +649,11 @@ def wait_and_terminate(slave, dry_run):
                             raise
                     break
                 else:
-                    log.debug("Instance {0}: NOT ready to kill".format(instance_id))
+                    log.info("Instance {0}: NOT ready to kill".format(instance_id))
                 log.debug("Waiting 5 seconds and then checking again")
                 time.sleep(5)
     except TimeoutError:
-        log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(CLUSTER_DRAIN_TIMEOUT,
+        log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(drain_timeout,
                                                                                             slave['pid']))
         try:
             ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
@@ -648,13 +669,15 @@ def get_instance_type_weights(sfr):
     return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
 
 
-def filter_sfr_slaves(sorted_slaves, sfr):
-    sfr_ips = get_sfr_instance_ips(sfr)
+def filter_sfr_slaves(sorted_slaves, resource):
+    sfr = resource['sfr']
+    sfr_ips = get_sfr_instance_ips(sfr, region=resource['region'])
     log.debug("IPs in SFR: {0}".format(sfr_ips))
     sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
     sfr_sorted_slave_ips = [slave_pid_to_ip(slave['pid']) for slave in sfr_sorted_slaves]
-    sfr_instance_descriptions = describe_instances([], instance_filters=[{'Name': 'private-ip-address',
-                                                                          'Values': sfr_sorted_slave_ips}])
+    sfr_instance_descriptions = describe_instances([], region=resource['region'],
+                                                   instance_filters=[{'Name': 'private-ip-address',
+                                                                      'Values': sfr_sorted_slave_ips}])
     sfr_sorted_slave_instances = []
     for slave in sfr_sorted_slaves:
         ip = slave_pid_to_ip(slave['pid'])
@@ -667,6 +690,7 @@ def filter_sfr_slaves(sorted_slaves, sfr):
                       "This should never happen")
             continue
         sfr_sorted_slave_instances.append({'ip': ip,
+                                           'hostname': slave['hostname'],
                                            'pid': slave['pid'],
                                            'instance_id': instances[0]['InstanceId']})
     ret = []
@@ -680,16 +704,16 @@ def filter_sfr_slaves(sorted_slaves, sfr):
     return ret
 
 
-def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
+def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
     """ AWS won't modify a request that is already modifying. This
     function ensures we wait a few seconds in case we've just modified
     a SFR"""
-    ec2_client = boto3.client('ec2')
+    ec2_client = boto3.client('ec2', region_name=region)
     with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
         try:
             state = None
             while True:
-                state = get_sfr(sfr_id)['SpotFleetRequestState']
+                state = get_sfr(sfr_id, region=region)['SpotFleetRequestState']
                 if state == 'active':
                     break
                 log.debug("SFR {0} in state {1}, waiting for state: active".format(sfr_id, state))
@@ -710,7 +734,7 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, sorted_slaves, dry_run):
+def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, sorted_slaves, pool_settings, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
     If scaling up we just set target capacity and let AWS take care of the rest
     If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -731,10 +755,10 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
         return
     elif delta > 0:
         log.info("Increasing spot fleet capacity to: {0}".format(target_capacity))
-        set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run)
+        set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run, region=resource['region'])
         return
     elif delta < 0:
-        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, resource['sfr'])
+        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, resource)
         log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
         killable_capacity = sum([slave['instance_weight'] for slave in sfr_sorted_slaves])
         amount_to_decrease = delta * -1
@@ -746,41 +770,53 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
             if len(sfr_sorted_slaves) == 0:
                 break
             slave_to_kill = sfr_sorted_slaves.pop()
-            instance_capacity = int(slave_to_kill['instance_weight'])
-            new_capacity = current_capacity - instance_capacity
-            if current_capacity - instance_capacity < target_capacity:
+            # Instance weights can be floats but the target has to be an integer
+            # because AWS...
+            instance_capacity = slave_to_kill['instance_weight']
+            new_capacity = int(round(current_capacity - instance_capacity))
+            if new_capacity < target_capacity:
                 log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
                          " close to our target as we can get".format(slave_to_kill['instance_id'],
                                                                      slave_to_kill['instance_weight'],
                                                                      target_capacity))
                 break
+            drain_timeout = pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
             # The start time of the maintenance window is the point at which
             # we giveup waiting for the instance to drain and mark it for termination anyway
-            start = int(time.time() + CLUSTER_DRAIN_TIMEOUT)
-            # Set the duration to an hour, if we haven't cleaned up and termintated by then
-            # mesos should put the slave back into the pool
-            duration = 600
+            start = int(time.time() + drain_timeout) * 1000000000  # nanoseconds
+            # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
+            # do anything at the end of the maintenance window.
+            duration = 600 * 1000000000  # nanoseconds
             log.info("Draining {0}".format(slave_to_kill['pid']))
             if not dry_run:
                 try:
-                    drain([slave_to_kill['ip']], start, duration)
+                    drain_host_string = "{0}|{1}".format(slave_to_kill['hostname'], slave_to_kill['ip'])
+                    drain([drain_host_string], start, duration)
                 except HTTPError as e:
-                    log.error("Failed to trigger drain on {0}: {1}\n Trying next host".format(slave_to_kill['ip'], e))
+                    log.error("Failed to start drain "
+                              "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
                     continue
             log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
-            if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run):
+            if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run, region=resource['region']):
                 log.error("Couldn't update spot fleet, stopping autoscaler")
+                log.info("Undraining {0}".format(slave_to_kill['pid']))
+                if not dry_run:
+                    undrain([drain_host_string])
                 break
             log.info("Waiting for instance to drain before we terminate")
             try:
-                wait_and_terminate(slave_to_kill, dry_run)
+                wait_and_terminate(slave_to_kill, drain_timeout, dry_run, region=resource['region'])
             except ClientError as e:
                 log.error("Failure when terminating: {0}: {1}".format(slave['pid'], e))
                 log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
-                if not set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run):
+                if not set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run, region=resource['region']):
                     log.error("Couldn't update spot fleet, stopping autoscaler")
                     break
                 continue
+            finally:
+                log.info("Undraining {0}".format(slave_to_kill['pid']))
+                if not dry_run:
+                    undrain([drain_host_string])
             current_capacity = new_capacity
 
 
@@ -803,12 +839,14 @@ def autoscale_local_cluster(dry_run=False):
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
+    all_pool_settings = system_config.get_resource_pool_settings()
     mesos_state = get_mesos_state_from_leader()
     for identifier, resource in autoscaling_resources.items():
+        pool_settings = all_pool_settings.get(resource['pool'], {})
         log.info("Autoscaling {0}".format(identifier))
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
-            current, target = resource_metrics_provider(resource['id'], mesos_state, resource)
+            current, target = resource_metrics_provider(resource['id'], mesos_state, resource, pool_settings)
             log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
             resource_scaler = get_scaler(resource['type'])
             if target - current < 0:
@@ -816,6 +854,6 @@ def autoscale_local_cluster(dry_run=False):
                 log.debug("Slaves by kill preference: {0}".format(sorted_slaves))
             else:
                 sorted_slaves = []
-            resource_scaler(resource, current, target, sorted_slaves, dry_run)
+            resource_scaler(resource, current, target, sorted_slaves, pool_settings, dry_run)
         except ClusterAutoscalingError as e:
             log.error('%s: %s' % (identifier, e))

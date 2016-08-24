@@ -49,11 +49,11 @@ def test_filter_not_running_tasks():
 
 
 @mark.parametrize('test_case', [
-    [False, 0],
-    [True, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
+    [0, 0],
+    [10, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
 ])
 def test_status_mesos_tasks_verbose(test_case):
-    tail_stdstreams, expected_format_tail_call_count = test_case
+    tail_lines, expected_format_tail_call_count = test_case
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True,),
         mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks', autospec=True,),
@@ -88,7 +88,11 @@ def test_status_mesos_tasks_verbose(test_case):
         def get_short_task_id(_):
             return 'short_task_id'
 
-        actual = mesos_tools.status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams)
+        actual = mesos_tools.status_mesos_tasks_verbose(
+            job_id=job_id,
+            get_short_task_id=get_short_task_id,
+            tail_lines=tail_lines,
+        )
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)
@@ -642,16 +646,16 @@ def test_get_mesos_task_count_by_slave():
         mock_task4.framework = mock_marathon
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_running_tasks_from_active_frameworks.return_value = mock_tasks
-        mock_slave_1 = {'id': 'slave1', 'attributes': {'pool': 'default'}, 'pid': 'aa'}
-        mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'pid': 'bb'}
-        mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'pid': 'cc'}
+        mock_slave_1 = {'id': 'slave1', 'attributes': {'pool': 'default'}, 'hostname': 'host1'}
+        mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2'}
+        mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3'}
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'slave1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'slave2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
+        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
+                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'slave1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'slave2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
-                       'slave3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}
+        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
+                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
+                       'host3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}

@@ -4,6 +4,7 @@ from mock import patch
 from pytest import raises
 
 from paasta_tools import check_chronos_jobs
+from paasta_tools import chronos_rerun
 from paasta_tools import chronos_tools
 from paasta_tools import utils
 
@@ -137,44 +138,69 @@ def test_sensu_event_for_last_run_state_invalid():
 
 
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
+def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
+    fake_job = {
+        'name': 'service1 test-job',
+        'lastSuccess': '2016-07-26T22:00:00+00:00',
+        'lastError': '2016-07-26T22:01:00+00:00'
+    }
+    mock_lookup_chronos_jobs.side_effect = iter([[
+        fake_job
+    ]])
+
+    fake_configured_jobs = [('service1', 'chronos_job')]
+    fake_client = Mock(list=Mock(return_value=[('service1', 'chronos_job')]))
+
+    assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
+        ('service1', 'chronos_job'): [(fake_job, chronos_tools.LastRunState.Fail)]
+    }
+
+    # simulate a re-run where we now pass
+    reran_job = {
+        'name': 'service1 test-job',
+        'lastSuccess': '2016-07-26T22:12:00+00:00',
+    }
+    reran_job = chronos_rerun.set_tmp_naming_scheme(reran_job)
+    mock_lookup_chronos_jobs.side_effect = iter([[
+        fake_job,
+        reran_job
+    ]])
+    assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
+        ('service1', 'chronos_job'): [(reran_job, chronos_tools.LastRunState.Success)]
+    }
+
+
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
-def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
+def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
     # iter() is a workaround
     # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
     # for a bug in mock (http://bugs.python.org/issue17826)
+    services = ['service1', 'service2', 'service3']
+    latest_time = '2016-07-26T22:03:00+00:00'
     fake_jobs = [[
         {
-            'name': 'foo'
+            'name': service + ' foo',
+            'lastSuccess': '2016-07-26T22:02:00+00:00'
         },
         {
-            'name': 'foo'
+            'name': service + ' foo',
+            'lastError': latest_time
         },
         {
-            'name': 'foo'
+            'name': service + ' foo'
         }
-    ] for x in range(0, 3)]
+    ] for service in services]
     mock_lookup_chronos_jobs.side_effect = iter(fake_jobs)
     mock_filter_enabled_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
-    mock_last_run_state.side_effect = iter([
-        ('faketimestamp', chronos_tools.LastRunState.Success),
-        ('faketimestamp', chronos_tools.LastRunState.Fail),
-        ('faketimestamp', chronos_tools.LastRunState.NotRun),
-    ] * 3)
 
     fake_configured_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]
     fake_client = Mock(list=Mock(return_value=[('service1', 'main'), ('service2', 'main'), ('service3', 'main')]))
 
-    expected_job_states = [
-        ({'name': 'foo'}, chronos_tools.LastRunState.Success),
-        ({'name': 'foo'}, chronos_tools.LastRunState.Fail),
-        ({'name': 'foo'}, chronos_tools.LastRunState.NotRun),
-    ]
-
     expected = {
-        ('service1', 'main'): expected_job_states,
-        ('service2', 'main'): expected_job_states,
-        ('service3', 'main'): expected_job_states,
+        ('service1', 'main'): [({'name': 'service1 foo', 'lastError': latest_time}, chronos_tools.LastRunState.Fail)],
+        ('service2', 'main'): [({'name': 'service2 foo', 'lastError': latest_time}, chronos_tools.LastRunState.Fail)],
+        ('service3', 'main'): [({'name': 'service3 foo', 'lastError': latest_time}, chronos_tools.LastRunState.Fail)],
     }
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == expected
 

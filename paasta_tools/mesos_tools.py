@@ -23,10 +23,10 @@ from urlparse import urlparse
 import humanize
 import requests
 from kazoo.client import KazooClient
-from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools.utils import format_table
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -88,12 +88,6 @@ MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master  # noqa
 import mesos.cli.cluster  # noqa
 
-
-# monkey patch MesosMaster.state to use a larger ttl
-@util.CachedProperty(ttl=60)
-def fetch_state(self):
-    return master.CURRENT.fetch("/master/state.json").json()
-master.MesosMaster.state = fetch_state
 
 # Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
 # The method below gets a slave by its ID. Original code here:
@@ -344,14 +338,14 @@ def zip_tasks_verbose_output(table, stdstreams):
     return output
 
 
-def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_stdstreams):
+def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_lines):
     """Formats a list of tasks, returns a list of output lines
     :param tasks: List of tasks as returned by get_*_tasks_from_active_frameworks.
     :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
     :param table_header: List of column names used in the tasks table.
     :param get_short_task_id: A function which given a task_id returns a short task_id suitable for printing.
     :param format_task_row: Formatting function, works on a task and a get_short_task_id function.
-    :param tail_stdstreams: If True, also display the stdout/stderr tail, as obtained from the Mesos sandbox.
+    :param tail_lines (int): number of lines of stdout/stderr to tail, as obtained from the Mesos sandbox.
     :param grey: If True, the list will be made less visually prominent.
     :return output: Formatted output (list of output lines).
     """
@@ -369,27 +363,27 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     for task in tasks:
         table_rows.append(format_task_row(task, get_short_task_id))
     tasks_table = ["    %s" % row for row in format_table(table_rows)]
-    if not tail_stdstreams:
+    if tail_lines == 0:
         output.extend(tasks_table)
     else:
         stdstreams = []
         for task in tasks:
-            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id))
+            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
         output.append(tasks_table[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table[1:], stdstreams))
 
     return output
 
 
-def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False):
+def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
     """Returns detailed information about the mesos tasks for a service.
 
     :param job_id: An id used for looking up Mesos tasks
     :param get_short_task_id: A function which given a
                               task_id returns a short task_id suitable for
                               printing.
-    :param tail_stdstreams: If True, also display the stdout/stderr tail,
-                            as obtained from the Mesos sandbox.
+    :param tail_lines: int representing the number of lines of stdout/err to
+                       report.
     """
     output = []
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
@@ -402,13 +396,13 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         "Deployed at what localtime"
     ]
     output.extend(format_task_list(
-        running_and_active_tasks,
-        list_title,
-        table_header,
-        get_short_task_id,
-        format_running_mesos_task_row,
-        False,
-        tail_stdstreams
+        tasks=running_and_active_tasks,
+        list_title=list_title,
+        table_header=table_header,
+        get_short_task_id=get_short_task_id,
+        format_task_row=format_running_mesos_task_row,
+        grey=False,
+        tail_lines=tail_lines,
     ))
 
     non_running_tasks = get_non_running_tasks_from_active_frameworks(job_id)
@@ -424,13 +418,13 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         "Status",
     ]
     output.extend(format_task_list(
-        non_running_tasks_ordered,
-        list_title,
-        table_header,
-        get_short_task_id,
-        format_non_running_mesos_task_row,
-        True,
-        tail_stdstreams
+        tasks=non_running_tasks_ordered,
+        list_title=list_title,
+        table_header=table_header,
+        get_short_task_id=get_short_task_id,
+        format_task_row=format_non_running_mesos_task_row,
+        grey=True,
+        tail_lines=tail_lines,
     ))
 
     return "\n".join(output)
@@ -448,10 +442,11 @@ def get_local_slave_state():
     hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
     try:
-        response = requests.get(stats_uri, timeout=10)
+        headers = {'User-Agent': get_user_agent()}
+        response = requests.get(stats_uri, timeout=10, headers=headers)
         if response.status_code == 404:
             fallback_stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
-            response = requests.get(fallback_stats_uri, timeout=10)
+            response = requests.get(fallback_stats_uri, timeout=10, headers=headers)
     except requests.ConnectionError as e:
         raise MesosSlaveConnectionError(
             'Could not connect to the mesos slave to see which services are running\n'
@@ -639,18 +634,18 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
         }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.error("Task associated with %s but slave not in masters list of slaves" % task.slave['id'])
+            log.debug("Task associated with slave {0} not found in {1} pool".format(task.slave['id'], pool))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1
             log.debug("Task framework: {0}".format(task.framework.name))
             if task.framework.name == 'chronos':
                 slaves[task.slave['id']]['chronos_count'] += 1
-    slaves = {slave_pid: SlaveTaskCount(**slave_counts) for slave_pid, slave_counts in slaves.items()}
+    slaves = {slave_counts['slave']['hostname']: SlaveTaskCount(**slave_counts) for slave_counts in slaves.values()}
     for slave in slaves.values():
-        log.info("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['pid'],
-                                                                                     slave.count,
-                                                                                     slave.chronos_count))
+        log.debug("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['hostname'],
+                                                                                      slave.count,
+                                                                                      slave.chronos_count))
     return slaves
 
 

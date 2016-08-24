@@ -18,11 +18,12 @@ import glob
 from setuptools import find_packages
 from setuptools import setup
 
+from paasta_tools import __version__
+
 
 setup(
     name='paasta-tools',
-    # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.32.2',
+    version=__version__,
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
@@ -49,6 +50,7 @@ setup(
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
         'mesos.cli == 0.1.5',
+        'mesos.interface == 0.28.0',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'pyramid == 1.7',
@@ -60,7 +62,7 @@ setup(
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.10.1',
         'setuptools != 18.6',
-        'tron == 0.6.1.1',
+        'tron == 0.6.2.0',
         'ujson == 1.35',
         'yelp_clog >= 2.2.0',
     ],
@@ -87,7 +89,7 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json']},
+    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json', 'api/api_docs/*.json']},
     entry_points={'console_scripts': [
         'paasta=paasta_tools.cli.cli:main',
         'paasta-api=paasta_tools.api.api:main',

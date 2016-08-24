@@ -26,6 +26,7 @@ from paasta_tools.monitoring.replication_utils import backend_is_up
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
+from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
@@ -373,8 +374,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
         if verbose > 0:
-            tail_stdstreams = verbose > 1
-            print status_mesos_tasks_verbose(app_id, get_short_task_id, tail_stdstreams)
+            tail_lines = calculate_tail_lines(verbose_level=verbose)
+            print status_mesos_tasks_verbose(
+                job_id=app_id,
+                get_short_task_id=get_short_task_id,
+                tail_lines=tail_lines,
+            )
         if proxy_port is not None:
             print status_smartstack_backends(
                 service=service,

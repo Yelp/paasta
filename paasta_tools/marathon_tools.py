@@ -23,6 +23,7 @@ import socket
 from math import ceil
 from time import sleep
 
+import requests
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
@@ -32,6 +33,7 @@ from marathon import NotFoundError
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -43,6 +45,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
@@ -522,8 +525,18 @@ class MarathonServiceConfig(InstanceConfig):
     def get_healthcheck_max_consecutive_failures(self):
         return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
+    # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self):
-        return self.config_dict.get('nerve_ns', self.instance)
+        return self.get_registration_namespaces()[0]
+
+    def get_registration_namespaces(self):
+        registration_namespaces = self.config_dict.get('registration_namespaces', [])
+        # Backwards compatbility with nerve_ns
+        # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
+        if not registration_namespaces and 'nerve_ns' in self.config_dict:
+            registration_namespaces.append(self.config_dict.get('nerve_ns'))
+
+        return registration_namespaces or [self.instance]
 
     def get_bounce_health_params(self, service_namespace_config):
         default = {}
@@ -734,7 +747,11 @@ def get_marathon_client(url, user, passwd):
     :param passwd: The password to connect with
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
-    return MarathonClient(url, user, passwd, timeout=30)
+
+    session = requests.Session()
+    session.headers.update({'User-Agent': get_user_agent()})
+
+    return MarathonClient(url, user, passwd, timeout=30, session=session)
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):
@@ -765,21 +782,40 @@ def deformat_job_id(job_id):
     return decompose_job_id(job_id)
 
 
-def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive a service instance's nerve namespace from its configuration file.
-    If one is not defined in the config file, returns instance instead."""
+def read_all_namespaces_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive all registration namespaces for a particular service instance.
+
+    For example, the 'main' paasta instance may register in the 'main'
+    namespace as well as the 'bulk' namespace
+
+    If one is not defined in the config file, returns a list containing
+    instance instead.
+    """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    srv_info = service_configuration_lib.read_extra_service_information(
-        name,
-        "marathon-%s" % cluster,
-        soa_dir
-    )[instance]
-    return srv_info['nerve_ns'] if 'nerve_ns' in srv_info else instance
+
+    marathon_service_config = load_marathon_service_config(
+        name, instance, cluster, load_deployments=False, soa_dir=soa_dir
+    )
+
+    return marathon_service_config.get_registration_namespaces()
+
+
+def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive a service instance's primary registration namespace for a
+    particular service instance.
+
+    This is the namespace that clients ought talk to, as well as paasta
+    ought monitor. In this context "primary" just means the first one in the
+    list of registration namespaces.
+
+    If one is not defined in the config file, returns instance instead."""
+    return read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir)[0]
 
 
 def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the proxy_port defined in the namespace configuration for a service instance.
+    """Get the proxy_port defined in the first namespace configuration for a
+    service instance.
 
     This means that the namespace first has to be loaded from the service instance's
     configuration, and then the proxy_port has to loaded from the smartstack configuration
@@ -866,13 +902,13 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     nerve_list = []
     for name, instance, port in marathon_services:
         try:
-            namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
-            if not nerve_dict.is_in_smartstack():
-                continue
-            nerve_dict['port'] = port
-            nerve_name = compose_job_id(name, namespace)
-            nerve_list.append((nerve_name, nerve_dict))
+            for namespace in read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir):
+                nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
+                if not nerve_dict.is_in_smartstack():
+                    continue
+                nerve_dict['port'] = port
+                nerve_name = compose_job_id(name, namespace)
+                nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
     return nerve_list
@@ -1110,9 +1146,9 @@ def kill_task(client, app_id, task_id, scale):
         # Marathon allows you to kill and scale in one action, but this is not
         # idempotent. If you kill&scale the same task ID twice, the number of instances
         # gets decremented twice. This can lead to a situation where kill&scaling the
-        # last task decrements the number of instances below zero, causing a "Bean is not
-        # valid" message.
-        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+        # last task decrements the number of instances below zero, causing an "Object is not
+        # valid" message or a "Bean is not valid" message.
+        if 'is not valid' in e.error_message and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         elif 'does not exist' in e.error_message and e.status_code == 404:
@@ -1131,7 +1167,7 @@ def kill_given_tasks(client, task_ids, scale):
         # a task in the interface and kill it, yet by the time it tries to kill
         # it, it is already gone. This is not really a failure condition, so we
         # swallow this error.
-        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+        if 'is not valid' in e.error_message and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         else:
@@ -1171,3 +1207,20 @@ def is_task_healthy(task, require_all=True, default_healthy=False):
         else:
             return any(results)
     return default_healthy
+
+
+def get_num_at_risk_tasks(app):
+    """Determine how many of an application's tasks are running on
+    at-risk (Mesos Maintenance Draining) hosts.
+
+    :param app: A marathon application
+    :returns: An integer representing the number of tasks running on at-risk hosts
+    """
+    hosts_tasks_running_on = [task.host for task in app.tasks]
+    draining_hosts = get_draining_hosts()
+    num_at_risk_tasks = 0
+    for host in hosts_tasks_running_on:
+        if host in draining_hosts:
+            num_at_risk_tasks += 1
+    log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
+    return num_at_risk_tasks

@@ -39,6 +39,21 @@ instance MAY have:
     left on device' errors if they attempt to exceed these limits, and then be
     unable to write any more data to disk.
 
+  * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
+    to empty dictionary. Each ulimit value is a dictionary with the soft limit
+    specified under the 'soft' key and the optional hard limit specified under
+    the 'hard' key. Ulimit values that are not set are inherited from the
+    default ulimits set on the Docker daemon. Example::
+
+      ulimit:
+        - nofile: {"soft": 1024, "hard": 2048}
+        - nice: {"soft": 20}
+
+  * ``cap_add``: List of capabilities that are passed to Docker. Defaults
+    to empty list. Example::
+
+      "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
+
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``min_instances``: When autoscaling, the minimum number of instances that
@@ -47,15 +62,26 @@ instance MAY have:
   * ``max_instances``: When autoscaling, the maximum number of instances that
     marathon will create for a service
 
-  * ``nerve_ns``: Specifies that this namespace should be routed to by another
-    namespace in SmartStack. In SmartStack, each service has difference pools
-    of backend servers that are listening on a particul port. In PaaSTA we call
-    these "Nerve Namespaces". By default, the Namespace assigned to a particular
-    instance in PaaSTA has the *same name*, so the ``main`` instance will correspond
-    to the ``main`` Nerve namespace defined in ``smartstack.yaml``. This ``nerve_ns``
-    option allows users to make particular instances appear under an *alternative*
-    namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
-    their traffic to the same pool as the other ``main`` instances.
+  * ``registration_namespaces`` (list of strings): Specifices that this service
+    Instance should register in the provided SmartStack Namespaces. Paasta
+    deploys Instances, SmartStack routes to Namespaces. In SmartStack, each
+    namespace of a service is a separate pools of backend servers that are
+    listening on a particul port. This ``registration_namespaces`` option
+    allows users to make particular instances appear under an *alternative*
+    namespace. For example ``canary`` instances can have
+    ``registration_namespaces: ['main']`` to route their traffic to the same
+    pool as the other ``main`` instances.
+
+    By default, the Namespace assigned to a particular Instance in PaaSTA has
+    the *same name*, so the ``main`` Instance will correspond to the ``main``
+    Namespace defined in ``smartstack.yaml``.
+
+    The first instance in this list is assumed to be used by clients and is
+    the only one currently monitored, waited for during bounces, etc ...
+
+  * ``nerve_ns``: **DEPRECATED**, use ``registration_namespaces`` instead.
+    **WARNING**: do not supply both ``registration_namespaces`` and
+    ``nerve_ns`` as ``registration_namespces`` will take precedence.
 
   * ``backoff_factor``: PaaSTA will automatically calculate the duration of an
     application's backoff period in case of a failed launch based on the number
@@ -148,10 +174,10 @@ instance MAY have:
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_DOCKER_IMAGE``: The docker image name
 
-    Additionally, there are ``MARATHON_`` prefixed variables available. See the
-    `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_
-    for more information about these variables.
+    Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
+    See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -214,7 +240,7 @@ instance MAY have:
    implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
-    to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+    to. The ``step`` parameter in ``deploy.yaml`` refererences this value
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
 
@@ -444,7 +470,7 @@ The ``main`` key is the service namespace.  Namespaces were introduced for
 PaaSTA services in order to support running multiple daemons from a single
 service codebase. In PaaSTA, each instance in your marathon.yaml maps to a
 smartstack namespace of the same name, unless you specify a different
-``nerve_ns``.
+``registration_namespaces``.
 
 We now describe which keys are supported within a namespace.  Note that all but
 proxy_port are optional.
@@ -705,7 +731,7 @@ A marathon service that overrides options on different instances (canary)::
         page: true
     canary:
       instances: 1
-      nerve_ns: main
+      registration_namespaces: ['main']
       monitoring:
         page: false
         ticket: true
