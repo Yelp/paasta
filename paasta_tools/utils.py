@@ -235,6 +235,7 @@ class InstanceConfig(dict):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
@@ -1604,5 +1605,4 @@ def is_deploy_step(step):
     Returns true if the given step deploys to an instancename
     Returns false if the step is a predefined step-type, e.g. itest or command-*
     """
-    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS)
-                or (step.startswith('command-')))
+    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))
