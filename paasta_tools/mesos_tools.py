@@ -153,7 +153,6 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
 
 def get_current_tasks(job_id):
     """ Returns a list of all the tasks with a given job id.
-    Note: this will only return tasks from active frameworks.
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
@@ -539,7 +538,7 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
 
 
 def get_slaves():
-    return master.CURRENT.slaves()
+    return master.CURRENT.fetch("/master/slaves")
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
