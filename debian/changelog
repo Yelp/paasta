@@ -1,3 +1,10 @@
+paasta-tools (0.43.0) lucid; urgency=low
+
+  * 0.43.0 tagged with 'make release'
+    Commit:
+
+ -- Guenther Starnberger <gstarnbe@yelp.com>  Thu, 25 Aug 2016 14:13:19 -0700
+
 paasta-tools (0.42.0) lucid; urgency=low
 
   * 0.42.0 tagged with 'make release'
