@@ -1,7 +1,40 @@
 # Change Log
 
-## [0.41.0](https://github.com/Yelp/paasta/tree/0.41.0) (2016-08-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.40.0...0.41.0)
+## [v0.44.0](https://github.com/Yelp/paasta/tree/v0.44.0) (2016-08-26)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.43.0...v0.44.0)
+
+**Closed issues:**
+
+- paasta metastatus is no longer accurate in -vv and -vvv [\#708](https://github.com/Yelp/paasta/issues/708)
+
+**Merged pull requests:**
+
+- use the full state endpoint in metastatus again [\#709](https://github.com/Yelp/paasta/pull/709) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Removed zookeper scaling itests [\#707](https://github.com/Yelp/paasta/pull/707) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.43.0](https://github.com/Yelp/paasta/tree/v0.43.0) (2016-08-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.42.0...v0.43.0)
+
+**Merged pull requests:**
+
+- add ulimit and cap\_add settings to json schema [\#705](https://github.com/Yelp/paasta/pull/705) ([gstarnberger](https://github.com/gstarnberger))
+- Add back paasta-api itests [\#675](https://github.com/Yelp/paasta/pull/675) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.42.0](https://github.com/Yelp/paasta/tree/v0.42.0) (2016-08-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.41.0...v0.42.0)
+
+**Closed issues:**
+
+- local-run ignores -y for guessing cluster [\#702](https://github.com/Yelp/paasta/issues/702)
+
+**Merged pull requests:**
+
+- pass soa\_dir into guess\_cluster/get\_default\_cluster\_for\_service. [\#703](https://github.com/Yelp/paasta/pull/703) ([EvanKrall](https://github.com/EvanKrall))
+- Add PAASTA\_DOCKER\_IMAGE environment variable. [\#697](https://github.com/Yelp/paasta/pull/697) ([EvanKrall](https://github.com/EvanKrall))
+- Add version to metastatus [\#689](https://github.com/Yelp/paasta/pull/689) ([mattmb](https://github.com/mattmb))
+
+## [v0.41.0](https://github.com/Yelp/paasta/tree/v0.41.0) (2016-08-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.40.0...v0.41.0)
 
 **Closed issues:**
 
@@ -10,6 +43,7 @@
 **Merged pull requests:**
 
 - Fix local-run --dry-run [\#700](https://github.com/Yelp/paasta/pull/700) ([chriskuehl](https://github.com/chriskuehl))
+- delete duplicate code in metastatus [\#692](https://github.com/Yelp/paasta/pull/692) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - allow to pass --cap-add arguments to docker [\#690](https://github.com/Yelp/paasta/pull/690) ([gstarnberger](https://github.com/gstarnberger))
 - Make log message clearer when counting tasks [\#688](https://github.com/Yelp/paasta/pull/688) ([mattmb](https://github.com/mattmb))
 - Move print statements in paasta\_maintenance [\#687](https://github.com/Yelp/paasta/pull/687) ([mattmb](https://github.com/mattmb))
