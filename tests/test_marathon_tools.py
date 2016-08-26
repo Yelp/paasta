@@ -22,6 +22,7 @@ from pytest import raises
 
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
+from paasta_tools.mesos_tools import NoSlavesAvailableError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import SystemPaastaConfig
@@ -1528,6 +1529,45 @@ class TestMarathonTools:
 
             third_id = fake_service_config_3.format_marathon_app_dict()['id']
             assert second_id == third_id
+
+    def test_get_routing_constraints_no_slaves(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[])
+        ):
+            fake_service_config = marathon_tools.MarathonServiceConfig(
+                service='fake_name',
+                cluster='fake_cluster',
+                instance='fake_instance',
+                config_dict=self.fake_marathon_app_config.config_dict,
+                branch_dict={
+                    'desired_state': 'stop',
+                    'force_bounce': '99999',
+                },
+            )
+            with raises(NoSlavesAvailableError):
+                fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
+
+    def test_get_routing_constraints_no_slaves_after_filter(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}]),
+            mock.patch('paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist',
+                       autospec=True, return_value=[]),
+        ) as (
+            _,
+            _
+        ):
+            fake_service_config = marathon_tools.MarathonServiceConfig(
+                service='fake_name',
+                cluster='fake_cluster',
+                instance='fake_instance',
+                config_dict=self.fake_marathon_app_config.config_dict,
+                branch_dict={
+                    'desired_state': 'stop',
+                    'force_bounce': '99999',
+                },
+            )
+            with raises(NoSlavesAvailableError):
+                fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
 
     def test_get_expected_instance_count_for_namespace(self):
         service = 'red'

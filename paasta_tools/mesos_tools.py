@@ -529,16 +529,16 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     """
     sorted_slaves = sorted(
         slaves,
-        key=lambda slave: slave['attributes'].get(attribute, 'unknown')
+        key=lambda slave: slave['attributes'].get(attribute)
     )
     return {key: list(group) for key, group in itertools.groupby(
         sorted_slaves,
         key=lambda slave: slave['attributes'].get(attribute)
-    )}
+    ) if key}
 
 
 def get_slaves():
-    return master.CURRENT.fetch("/master/slaves")
+    return master.CURRENT.fetch("/master/slaves").json()['slaves']
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):

@@ -343,12 +343,23 @@ class MarathonServiceConfig(InstanceConfig):
         discover_level = service_namespace_config.get_discover()
         slaves = get_slaves()
         if not slaves:
-            raise NoSlavesAvailableError
+            raise NoSlavesAvailableError(
+                "No slaves could be found in the cluster."
+            )
         filtered_slaves = filter_mesos_slaves_by_blacklist(
             slaves=slaves,
             blacklist=self.get_deploy_blacklist(),
             whitelist=self.get_deploy_whitelist(),
         )
+        if not filtered_slaves:
+            raise NoSlavesAvailableError(
+                "No suitable slaves could be found in the cluster for %s.%s"
+                "There are %d total slaves in the cluster, but after filtering"
+                "those available to the app according to the constraints set"
+                "by the deploy_blacklist and deploy_whitelist, there are 0"
+                "available."
+            )
+
         value_dict = get_mesos_slaves_grouped_by_attribute(
             filtered_slaves,
             discover_level
