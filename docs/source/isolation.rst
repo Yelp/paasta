@@ -91,7 +91,7 @@ By default, PaaSTA uses the 'Docker' executor everywhere. This means that *all*
 tasks launched by Marathon and Chronos are done so with a Docker container.
 
 How Tasks are isolated from eachother.
--------------------------------------
+--------------------------------------
 
 Given that a slave may run multiple tasks, we need to ensure that tasks cannot
 'interfere' with one another. We do this on a file system level using Docker -
@@ -106,7 +106,7 @@ host. The next section aims to explain how PaaSTA services are protected from
 so-called 'noisy neighbours' that can starve others from resources.
 
 CGroups
-^^^^^^
+^^^^^^^
 Docker uses cgroups to enforce resource isolation. Cgroups are a part of the
 linux kernel, and can be used to restrict the resources available to groups of
 processes. In our setup, each Docker container that is launched (and any child
