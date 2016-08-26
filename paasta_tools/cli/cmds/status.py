@@ -19,7 +19,7 @@ from subprocess import CalledProcessError
 
 from service_configuration_lib import read_deploy
 
-from paasta_tools.api.client import PaastaApiClient
+from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_pipeline_url
@@ -139,36 +139,39 @@ def get_actual_deployments(service, soa_dir):
 
 
 def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose):
-    api_client = PaastaApiClient(cluster=cluster, system_paasta_config=system_paasta_config)
-    status = api_client.instance_status(service, instance, verbose)
+    client = get_paasta_api_client(cluster, system_paasta_config)
+    if not client:
+        print 'Cannot get a paasta-api client'
+        exit(1)
 
+    status = client.service.status_instance(service=service, instance=instance).result()
     print 'instance: %s' % PaastaColors.blue(instance)
-    print 'Git sha:    %s (desired)' % status['git_sha']
+    print 'Git sha:    %s (desired)' % status.git_sha
 
-    marathon_status = status['marathon']
-    if 'error_message' in marathon_status:
-        print marathon_status['error_message']
+    marathon_status = status.marathon
+    if marathon_status.error_message:
+        print marathon_status.error_message
         return
 
-    bouncing_status = bouncing_status_human(marathon_status['app_count'],
-                                            marathon_status['bounce_method'])
-    desired_state = desired_state_human(marathon_status['desired_state'],
-                                        marathon_status['expected_instance_count'])
+    bouncing_status = bouncing_status_human(marathon_status.app_count,
+                                            marathon_status.bounce_method)
+    desired_state = desired_state_human(marathon_status.desired_state,
+                                        marathon_status.expected_instance_count)
     print "State:      %s - Desired state: %s" % (bouncing_status, desired_state)
 
-    status = MarathonDeployStatus.fromstring(marathon_status['deploy_status'])
+    status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
     if status != MarathonDeployStatus.NotRunning:
         if status == MarathonDeployStatus.Delayed:
-            deploy_status = marathon_app_deploy_status_human(status, marathon_status['backoff_seconds'])
+            deploy_status = marathon_app_deploy_status_human(status, marathon_status.backoff_seconds)
         else:
             deploy_status = marathon_app_deploy_status_human(status)
     else:
         deploy_status = 'NotRunning'
 
     print status_marathon_job_human(service, instance, deploy_status,
-                                    marathon_status['app_id'],
-                                    marathon_status['running_instance_count'],
-                                    marathon_status['expected_instance_count'])
+                                    marathon_status.app_id,
+                                    marathon_status.running_instance_count,
+                                    marathon_status.expected_instance_count)
 
 
 def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,

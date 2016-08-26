@@ -11,12 +11,8 @@
   "produces": ["application/json"],
   "tags": [
     {
-      "name": "instances",
-      "description": "Instances of a service"
-    },
-    {
-      "name": "status",
-      "description": "Status of a serivce instance"
+      "name": "service",
+      "description": "information about a paasta serivce"
     }
   ],
   "paths": {
@@ -51,8 +47,8 @@
           }
         },
         "summary": "List instances of service_name",
-        "operationId": "listInstances",
-        "tags": ["instances"],
+        "operationId": "list_instances",
+        "tags": ["service"],
         "parameters": [
           {
             "in": "path",
@@ -81,8 +77,8 @@
           }
         },
         "summary": "Get status of service_name.instance_name",
-        "operationId": "statusInstance",
-        "tags": ["status"],
+        "operationId": "status_instance",
+        "tags": ["service"],
         "parameters": [
           {
             "in": "path",

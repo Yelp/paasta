@@ -35,8 +35,10 @@ setup(
         # argparse is pinned to 1.2.1 since it comes in the core python2.7
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
+        'bravado == 8.3.0',
         'chronos-python == 0.35.0',
         'cookiecutter == 1.4.0',
+        'cryptography == 1.4',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
@@ -46,7 +48,7 @@ setup(
         'humanize >= 0.5.1',
         'httplib2 >= 0.9,<= 1.0',
         'isodate >= 0.5.0',
-        'jsonschema',
+        'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
         'mesos.cli == 0.1.5',
@@ -54,6 +56,7 @@ setup(
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'pyramid == 1.7',
+        'pyramid-swagger == 2.2.3',
         'pysensu-yelp >= 0.2.2',
         'pytimeparse >= 1.1.0',
         'python-dateutil >= 2.4.0',
@@ -61,7 +64,6 @@ setup(
         'requests-cache >= 0.4.10,<= 0.5.0',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.10.1',
-        'setuptools != 18.6',
         'ujson == 1.35',
         'yelp_clog >= 2.2.0',
     ],

@@ -15,93 +15,48 @@
 """
 Client interface for the Paasta rest api.
 """
+import json
 import logging
+import os
+import sys
+from urlparse import urlparse
 
-import requests
+from bravado.client import SwaggerClient
 
-from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaNotConfiguredError
 
 
 log = logging.getLogger(__name__)
 
 
-class PaastaApiError(Exception):
-    pass
+def get_paasta_api_client(cluster=None, system_paasta_config=None):
+    if not system_paasta_config:
+        system_paasta_config = load_system_paasta_config()
 
+    if not cluster:
+        cluster = system_paasta_config.get_cluster()
 
-class PaastaApiClient(object):
-    def __init__(self, cluster=None, system_paasta_config=None, timeout=30):
-        """Create a PaastaApiClient instance.
-        :param str cluster: name of the cluster of an api server
-        :param int timeout: Timeout (in seconds) for a request to an api endpoint
-        :param :class:`requests.Session` session: the session for request and response
-        """
-        self.timeout = timeout
-        self.session = requests.Session()
-        self.session.headers.update({'User-Agent': get_user_agent()})
+    api_endpoints = system_paasta_config.get_api_endpoints()
+    if cluster not in api_endpoints:
+        log.error('Cluster %s not in paasta-api endpoints config', cluster)
+        return None
 
-        try:
-            if not system_paasta_config:
-                system_paasta_config = load_system_paasta_config()
-            api_endpoints = system_paasta_config.get_api_endpoints()
-            if not cluster:
-                cluster = system_paasta_config.get_cluster()
-            self.server = api_endpoints[cluster]
-        except:
-            raise PaastaNotConfiguredError(
-                "Could not find cluster {0} in system paasta configuration directory".format(cluster))
+    url = str(api_endpoints[cluster])
+    parsed = urlparse(url)
+    if not parsed:
+        log.error('Unsupported paasta-api url %s', url)
+        return None
+    api_server = parsed.netloc
 
-    def _do_request(self, method, path, params=None, data=None):
-        """Hit the api server."""
-        headers = {
-            'Content-Type': 'application/json', 'Accept': 'application/json'}
-        url = ''.join([self.server.rstrip('/'), path])
-        try:
-            response = self.session.request(method,
-                                            url,
-                                            params=params,
-                                            data=data,
-                                            headers=headers,
-                                            timeout=self.timeout)
-        except requests.exceptions.RequestException as e:
-            log.error('Paasta api error while calling %s: %s', url, str(e))
-            raise PaastaApiError('No remaining Marathon servers to try')
+    # Get swagger spec from file system instead of the api server
+    paasta_api_path = os.path.dirname(sys.modules['paasta_tools.api'].__file__)
+    swagger_file = os.path.join(paasta_api_path, 'api_docs/swagger.json')
+    if not os.path.isfile(swagger_file):
+        log.error('paasta-api swagger spec %s does not exist', swagger_file)
+        return None
 
-        if response.status_code >= 300:
-            log.error('Paasta api got HTTP {code}: {body}'.format(
-                code=response.status_code, body=response.text))
-            raise PaastaApiError(response)
-        else:
-            log.debug('Paasta api got HTTP {code}: {body}'.format(
-                code=response.status_code, body=response.text))
-
-        return response
-
-    def list_instances(self, service):
-        """List instances of a paasta service."""
-        response = self._do_request(
-            'GET', '/v1/services/{service_name}'.format(service_name=service))
-        response_json = response.json()
-        if 'instances' in response_json:
-            return response_json['instances']
-        else:
-            log.error('Paasta api list_instances got HTTP {code}: {body}'.format(
-                code=response.status_code, body=response.text))
-            raise PaastaApiError(response)
-
-    def instance_status(self, service, instance, verbose=False):
-        """Get status of a paasta service instance."""
-        params = {'verbose': verbose}
-        response = self._do_request(
-            'GET', '/v1/services/{service_name}/{instance_name}/status'.format(
-                service_name=service, instance_name=instance),
-            params=params)
-        response_json = response.json()
-        if service == response_json['service'] and instance == response_json['instance']:
-            return response_json
-        else:
-            log.error('Paasta api instance_status got HTTP {code}: {body}'.format(
-                code=response.status_code, body=response.text))
-            raise PaastaApiError(response)
+    with open(swagger_file) as f:
+        spec_dict = json.load(f)
+    # replace localhost in swagger.json with actual api server
+    spec_dict['host'] = api_server
+    return SwaggerClient.from_spec(spec_dict=spec_dict)
