@@ -30,9 +30,12 @@ from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.mesos_tools import NoSlavesAvailableError
 from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -324,12 +327,33 @@ class MarathonServiceConfig(InstanceConfig):
         return [[str(val) for val in constraint] for constraint in constraints]
 
     def get_routing_constraints(self, service_namespace_config):
-        discover_level = service_namespace_config.get_discover()
-        locations = get_mesos_slaves_grouped_by_attribute(
-            attribute=discover_level, blacklist=self.get_deploy_blacklist(),
-            whitelist=self.get_deploy_whitelist())
+        """
+        Returns a set of constraints in order to evenly group a marathon
+        application amongst instances of a discovery type.
+        If, for example, a given app's 'discover' key is set to 'region', then this function
+        computes the constraints required to group the app evenly amongst each
+        of the actual 'region' values in the cluster.
+        It does so by querying the value of the region attribute for each slave
+        in the cluster, returning a GROUP_BY constraint where the value is the
+        number of unique regions.
 
-        routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
+        :param service_namespace_config: the config for this service
+        :returns: a set of constraints for marathon
+        """
+        discover_level = service_namespace_config.get_discover()
+        slaves = get_slaves()
+        if not slaves:
+            raise NoSlavesAvailableError
+        filtered_slaves = filter_mesos_slaves_by_blacklist(
+            slaves=slaves,
+            blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist(),
+        )
+        value_dict = get_mesos_slaves_grouped_by_attribute(
+            filtered_slaves,
+            discover_level
+        )
+        routing_constraints = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
 
     def get_deploy_constraints(self):

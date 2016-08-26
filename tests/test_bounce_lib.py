@@ -272,11 +272,14 @@ class TestBounceLib:
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with contextlib.nested(
             mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
-            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-                       return_value={'fake_region': ['fake_host']}, autospec=True),
+            mock.patch('paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
+                       return_value={'fake_region': [{'hostname': 'fakehost'}]}, autospec=True),
+            mock.patch('paasta_tools.mesos_tools.get_slaves',
+                       return_value=[], autospec=True),
         ) as (
             _,
             get_mesos_slaves_grouped_by_attribute_patch,
+            __
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
@@ -291,10 +294,12 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
             mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-                       return_value={'fake_region': ['fake_host']}, autospec=True),
+                       return_value={'fake_region': [{'hostname': 'fake_host'}]}, autospec=True),
+            mock.patch('paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True),
         ) as (
             _,
             get_mesos_slaves_grouped_by_attribute_patch,
+            _,
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
@@ -312,13 +317,15 @@ class TestBounceLib:
                 side_effect=[tasks[2:3], tasks[3:]], autospec=True,
             ),
             mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True),
+            mock.patch('paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True),
         ) as (
             get_registered_marathon_tasks_patch,
             get_mesos_slaves_grouped_by_attribute_patch,
+            _
         ):
             get_mesos_slaves_grouped_by_attribute_patch.return_value = {
-                'fake_region': ['fake_host1'],
-                'fake_other_region': ['fake_host2'],
+                'fake_region': [{'hostname': 'fake_host1'}],
+                'fake_other_region': [{'hostname': 'fake_host2'}]
             }
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)

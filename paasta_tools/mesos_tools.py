@@ -54,7 +54,7 @@ class SlaveNotAvailableException(Exception):
     pass
 
 
-class NoSlavesAvailable(Exception):
+class NoSlavesAvailableError(Exception):
     pass
 
 
@@ -520,30 +520,26 @@ def get_number_of_mesos_masters(host, path):
     return len(result)
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None, whitelist=None):
+def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
+    :param slaves: a list of mesos slaves to group
     :param attribute: an attribute to filter
-    :param blacklist: a list of [attribute, value] lists to exclude from the output list
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
-    if blacklist is None:
-        blacklist = []
-    if whitelist is None:
-        whitelist = []
-    attr_map = {}
-    mesos_state = get_mesos_state_from_leader()
-    slaves = mesos_state['slaves']
-    filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist, whitelist=whitelist)
-    if filtered_slaves == []:
-        raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
-    else:
-        for slave in filtered_slaves:
-            if attribute in slave['attributes']:
-                attr_val = slave['attributes'][attribute]
-                attr_map.setdefault(attr_val, []).append(slave['hostname'])
-        return attr_map
+    sorted_slaves = sorted(
+        slaves,
+        key=lambda slave: slave['attributes'].get(attribute, 'unknown')
+    )
+    return {key: list(group) for key, group in itertools.groupby(
+        sorted_slaves,
+        key=lambda slave: slave['attributes'].get(attribute)
+    )}
+
+
+def get_slaves():
+    return master.CURRENT.slaves()
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
