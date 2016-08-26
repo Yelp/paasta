@@ -22,11 +22,9 @@ from service_configuration_lib import read_deploy
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import get_pipeline_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaCheckMessages
-from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
@@ -35,7 +33,6 @@ from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import JENKINS_HOST
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -87,11 +84,8 @@ def add_subparser(subparsers):
 
 
 def missing_deployments_message(service):
-    jenkins_url = PaastaColors.cyan(
-        '%s/view/services-%s' % (JENKINS_HOST, service))
-    message = "%s No deployments in deployments.json yet.\n  " \
-              "Has Jenkins run?\n  " \
-              "Check: %s" % (x_mark(), jenkins_url)
+    message = ("%s No deployments in deployments.json yet.\n  "
+               "Has Jenkins run?")
     return message
 
 
@@ -238,8 +232,6 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
 
 def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
                   system_paasta_config, verbose=0, use_api_endpoint=False):
-    pipeline_url = get_pipeline_url(service)
-    print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:

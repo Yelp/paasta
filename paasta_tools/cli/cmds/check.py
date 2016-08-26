@@ -16,7 +16,6 @@
 passes all the markers required to be considered paasta ready."""
 import os
 import re
-import urllib2
 
 from service_configuration_lib import read_service_configuration
 
@@ -40,7 +39,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import is_deploy_step
-from paasta_tools.utils import JENKINS_HOST
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 
@@ -294,18 +292,6 @@ def deployments_check(service, soa_dir):
     return the_return
 
 
-def pipeline_check(service):
-    url = "%s/view/services-%s/api/xml" % (JENKINS_HOST, service)
-    try:
-        req_status = urllib2.urlopen(url).getcode()
-        if req_status == 200:
-            print PaastaCheckMessages.PIPELINE_FOUND
-        else:
-            print PaastaCheckMessages.PIPELINE_MISSING
-    except urllib2.HTTPError:
-        print PaastaCheckMessages.PIPELINE_MISSING
-
-
 def sensu_check(service, service_path, soa_dir):
     """Check whether monitoring.yaml exists in service directory,
     and that the team name is declared.
@@ -367,7 +353,6 @@ def paasta_check(args):
     deploy_check(service_path)
     deploy_has_security_check(service, soa_dir)
     deploy_has_performance_check(service, soa_dir)
-    pipeline_check(service)
     git_repo_check(service)
     docker_check()
     makefile_check()
