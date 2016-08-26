@@ -191,45 +191,12 @@ should *not* make assumptions about the local time zone setting of a server.
 
 Bouncing
 --------
-PaaSTA supports pluggable bounce_methods to give service authors a choice
-on how to handle the transition between new and old versions of as service.
+Bouncing in this context refers to how PaaSTA deploys new version of a
+service or handles change in its configuration. (soa-config changes: memory,
+cpu, environment variables, etc).
 
-There are four bounce methods available:
-
-* `brutal <generated/paasta_tools.bounce_lib.html#bounce_lib.brutal_bounce>`_ - Stops old versions and
-  starts the new version, without regard to safety. Not recommended for most
-  use cases; it's mostly for debugging, but this is probably the fastest bounce
-  method.
-* `upthendown <generated/paasta_tools.bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up the
-  new version of the service and waits until all instances are healthy before
-  stopping the old versions. May be useful for services that need a quorum of
-  the new version. During a bounce, your service will have up to twice as many
-  instances running, so it will up to twice as many cluster resources as usual.
-* `downthenup <generated/paasta_tools.bounce_lib.html#bounce_lib.downthenup_bounce>`_ - Stops any old
-  versions and waits for them to die before starting the new version. May be
-  useful for services without strict uptime requirements (log tailers, queue
-  workers) that do not want more than one version running at a time.
-* `crossover <generated/paasta_tools.bounce_lib.html#bounce_lib.crossover_bounce>`_ - Starts the new
-  version, and gradually kills instances of the old versions as new instances
-  become healthy. The code behind this is more complex than the other methods,
-  but this is recommended for most use cases. It provides good safety (will not
-  take your old instances down if your new version doesn't pass healthchecks)
-  but does not consume as many resources as ``upthendown``.
-
-A service author can select a bounce method by setting ``bounce_method`` in
-the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
-is set per-instance. If not set, it will default to the ``crossover`` method.
-See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>`_ file.
-
-Additionally, a service author can configure how the bounce code determines
-which instances are healthy by setting ``bounce_health_params``. This
-dictionary is passed in as keyword arguments to `get_happy_tasks <generated/paasta_tools.bounce_lib.html#bounce_lib.get_happy_tasks>`_.
-Valid options are:
-
-* ``min_task_uptime``: Minimum number of seconds that a task must be running
-  before we consider it healthy. Useful if tasks take a while to start up.
-* ``check_haproxy``: Whether to check the local haproxy to make sure this task
-  has been registered and discovered.
+See the dedicated `bounce docs <bouncing.html>`_ on how PaaSTA does this
+in a safe (by default) manner.
 
 Draining
 --------
