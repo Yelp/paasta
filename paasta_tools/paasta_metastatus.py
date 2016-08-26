@@ -32,7 +32,7 @@ from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
+from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
@@ -584,7 +584,7 @@ def main():
     args = parse_args()
 
     try:
-        mesos_state = get_mesos_state_summary_from_leader()
+        mesos_state = get_mesos_state_from_leader()
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
