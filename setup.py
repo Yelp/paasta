@@ -62,7 +62,6 @@ setup(
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.10.1',
         'setuptools != 18.6',
-        'tron == 0.6.2.0',
         'ujson == 1.35',
         'yelp_clog >= 2.2.0',
     ],
