@@ -49,3 +49,7 @@ done
 
 # And then finally the "main" paasta command
 help2man --name='paasta' --version-string=$VERSION "paasta" > docs/man/paasta.1
+
+# Make our generated docs available at 'man paasta_tools"
+sphinx-build -b man docs/source docs/man
+mv docs/man/paasta{_,-}tools.1

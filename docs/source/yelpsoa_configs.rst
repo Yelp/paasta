@@ -619,7 +619,7 @@ An example of switching from region to superregion discovery:
 moving from superregion => region) you must add an additional constraint
 to ensure Marathon balances the tasks evenly::
 
-    extra_advertise: [['region', 'GROUP_BY', 2]]
+    extra_constraints: [['region', 'GROUP_BY', 2]]
 
 2. (Optional) Use zkCli.sh to monitor your new registrations for each
 superregion you are changing::

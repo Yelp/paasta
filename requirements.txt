@@ -46,7 +46,6 @@ service-configuration-lib==0.10.1
 simplejson==3.6.5
 six==1.9.0
 thriftpy==0.1.15
-tron==0.6.2.0
 ujson==1.35
 websocket-client==0.32.0
 wsgiref==0.1.2

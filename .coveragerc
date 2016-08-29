@@ -7,6 +7,8 @@ omit =
     /usr/*
     */tmp*
     setup.py
+    paasta_tools/tron_command_context.py
+    paasta_tools/tron_timeutils.py
 
 [report]
 exclude_lines =
