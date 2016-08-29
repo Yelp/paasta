@@ -102,5 +102,8 @@ setup(
         'configure_synapse=paasta_tools.configure_synapse:main',
         'haproxy_synapse_reaper=paasta_tools.haproxy_synapse_reaper:main',
         'synapse_qdisc_tool=paasta_tools.haproxy.qdisc_tool:main',
+        'clean_nerve=paasta_tools.clean_nerve:main',
+        'configure_nerve=paasta_tools.configure_nerve:main',
+        'updown_service=paasta_tools.updown_service:main',
     ]},
 )
