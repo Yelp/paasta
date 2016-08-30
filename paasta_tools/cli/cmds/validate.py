@@ -89,7 +89,7 @@ def validate_schema(file_path, file_type):
     :param file_type: what schema type should we validate against
     """
     schema = get_schema(file_type)
-    if (schema is None):
+    if schema is None:
         print '%s: %s' % (SCHEMA_NOT_FOUND, file_path)
         return
     validator = Draft4Validator(schema, format_checker=FormatChecker())

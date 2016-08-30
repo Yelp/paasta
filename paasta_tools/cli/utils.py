@@ -416,7 +416,7 @@ def calculate_remote_masters(cluster, system_paasta_config):
     except gaierror as e:
         output = 'ERROR while doing DNS lookup of %s:\n%s\n ' % (cluster_fqdn, e.strerror)
         ips = []
-    return (ips, output)
+    return ips, output
 
 
 def find_connectable_master(masters):
@@ -437,7 +437,7 @@ def find_connectable_master(masters):
             connectable_master = master
             output = None
             break
-    return (connectable_master, output)
+    return connectable_master, output
 
 
 def check_ssh_and_sudo_on_master(master, timeout=10):
@@ -448,7 +448,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
-        return (True, None)
+        return True, None
     if rc == 255:  # ssh error
         reason = 'Return code was %d which probably means an ssh failure.' % rc
         hint = 'HINT: Are you allowed to ssh to this machine %s?' % master
@@ -471,7 +471,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
                   'hint': hint,
                   'output': output,
               })
-    return (False, output)
+    return False, output
 
 
 def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, ssh_flags='', **kwargs):
@@ -520,7 +520,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
+    if not masters:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
@@ -557,7 +557,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
     Otherwise returns the output of run_paasta_metastatus().
     """
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
+    if not masters:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
@@ -585,8 +585,8 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
     Otherwise returns the output of run_chronos_rerun().
     """
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return (-1, 'ERROR: %s' % output)
+    if not masters:
+        return -1, 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
@@ -625,7 +625,7 @@ def get_jenkins_build_output_url():
     """
     build_output = os.environ.get('BUILD_URL')
     if build_output:
-        build_output = build_output + 'console'
+        build_output += 'console'
     return build_output
 
 

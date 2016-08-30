@@ -285,7 +285,6 @@ def test_format_chronos_job_schedule(mock_status):
         'name': 'my_service my_instance',
         'schedule': 'R/2015-04-20T23:20:00+00:00/PT60M',
         'epsilon': 'PT42S',
-        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False

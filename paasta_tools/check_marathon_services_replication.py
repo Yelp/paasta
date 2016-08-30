@@ -318,8 +318,8 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
 def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist, system_paasta_config):
     """Retrives number of available backends for given services
 
-    :param service_instances: A list of tuples of (service, instance)
-    :param namespaces: list of Smartstack namespaces
+    :param service: A list of tuples of (service, instance)
+    :param namespace: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form
@@ -354,7 +354,6 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     :param attribute: a Mesos attribute
     :param service: A service name, like 'example_service'
     :param namespace: A particular smartstack namespace to inspect, like 'main'
-    :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :param blacklist: A list of blacklisted location tuples in the form of (location, value)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}

@@ -95,7 +95,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         "\n"
         "cluster: fake_cluster\n"
         "    %s\n"
-        % (fake_status)
+        % fake_status
     )
 
     status.report_status_for_cluster(
@@ -175,7 +175,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         "\n"
         "cluster: fake_cluster\n"
         "    %s\n"
-        % (fake_status)
+        % fake_status
     )
 
     status.report_status_for_cluster(

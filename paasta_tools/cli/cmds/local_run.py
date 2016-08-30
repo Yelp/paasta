@@ -74,20 +74,20 @@ def perform_http_healthcheck(url, timeout):
             try:
                 res = requests.get(url)
             except requests.ConnectionError:
-                return (False, "http request failed: connection failed")
+                return False, "http request failed: connection failed"
     except TimeoutError:
-        return (False, "http request timed out after %d seconds" % timeout)
+        return False, "http request timed out after %d seconds" % timeout
 
     if 'content-type' in res.headers and ',' in res.headers['content-type']:
         sys.stdout.write(PaastaColors.yellow(
             "Multiple content-type headers detected in response."
             " The Mesos healthcheck system will treat this as a failure!"))
-        return (False, "http request succeeded, code %d" % res.status_code)
+        return False, "http request succeeded, code %d" % res.status_code
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
-    elif res.status_code >= 200 and res.status_code < 400:
-        return (True, "http request succeeded, code %d" % res.status_code)
+    elif 200 <= res.status_code < 400:
+        return True, "http request succeeded, code %d" % res.status_code
     elif res.status_code >= 400:
-        return (False, "http request failed, code %d" % res.status_code)
+        return False, "http request failed, code %d" % res.status_code
 
 
 def perform_tcp_healthcheck(url, timeout):
@@ -103,9 +103,9 @@ def perform_tcp_healthcheck(url, timeout):
     result = sock.connect_ex((url_elem.hostname, url_elem.port))
     sock.close()
     if result == 0:
-        return (True, "tcp connection succeeded")
+        return True, "tcp connection succeeded"
     else:
-        return (False, "%s (timeout %d seconds)" % (os.strerror(result), timeout))
+        return False, "%s (timeout %d seconds)" % (os.strerror(result), timeout)
 
 
 def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
@@ -119,9 +119,9 @@ def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
     """
     (output, return_code) = execute_in_container(docker_client, container_id, command, timeout)
     if return_code == 0:
-        return (True, output)
+        return True, output
     else:
-        return (False, output)
+        return False, output
 
 
 def run_healthcheck_on_container(

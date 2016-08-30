@@ -67,7 +67,7 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 # A set of config attributes that don't get included in the hash of the config.
 # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
+CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_instances'}
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
@@ -605,22 +605,9 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     # We also can't just copy the whole dict, as we only care about some keys
     # and there's other things that appear in the smartstack section in
     # several cases.
-    key_whitelist = set([
-        'healthcheck_mode',
-        'healthcheck_uri',
-        'healthcheck_port',
-        'healthcheck_timeout_s',
-        'updown_timeout_s',
-        'proxy_port',
-        'timeout_connect_ms',
-        'timeout_server_ms',
-        'timeout_client_ms',
-        'retries',
-        'mode',
-        'discover',
-        'advertise',
-        'extra_healthcheck_headers'
-    ])
+    key_whitelist = {'healthcheck_mode', 'healthcheck_uri', 'healthcheck_port', 'healthcheck_timeout_s',
+                     'updown_timeout_s', 'proxy_port', 'timeout_connect_ms', 'timeout_server_ms', 'timeout_client_ms',
+                     'retries', 'mode', 'discover', 'advertise', 'extra_healthcheck_headers'}
 
     for key, value in namespace_config_from_file.items():
         if key in key_whitelist:
@@ -895,7 +882,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
         # where there isn't a Paasta configuration file at *all*, then
         # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
-        except (PaastaNotConfiguredError):
+        except PaastaNotConfiguredError:
             return []
     # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
@@ -940,7 +927,7 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = compose_job_id(name, namespace)
-    return (nerve_name, nerve_dict)
+    return nerve_name, nerve_dict
 
 
 def get_classic_services_running_here_for_nerve(soa_dir):
@@ -1039,9 +1026,9 @@ def get_app_queue_status(client, app_id):
     app_queue = client.list_queue()
     for app_queue_item in app_queue:
         if app_queue_item.app.id == app_id:
-            return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
+            return app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds
 
-    return (None, None)
+    return None, None
 
 
 @timeout()
@@ -1135,7 +1122,7 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     else:
         mode = None
         healthcheck_command = None
-    return (mode, healthcheck_command)
+    return mode, healthcheck_command
 
 
 def kill_task(client, app_id, task_id, scale):

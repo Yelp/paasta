@@ -61,7 +61,7 @@ class TestSuggestSmartstackProxyPort:
             55555,  # bogus out-of-range value
         ]
 
-        def get_smarstack_proxy_port_from_file_side_effect(*args):
+        def get_smarstack_proxy_port_from_file_side_effect():
             return get_smartstack_proxy_port_from_file_returns.pop(0)
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(
@@ -94,7 +94,7 @@ class TestSuggestSmartstackProxyPort:
             55555,  # bogus out-of-range value
         ]
 
-        def get_smarstack_proxy_port_from_file_side_effect(*args):
+        def get_smarstack_proxy_port_from_file_side_effect():
             return get_smartstack_proxy_port_from_file_returns.pop(0)
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(

@@ -221,7 +221,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
         sorted_states = sorted(states, key=lambda x: x[1])
         return sorted_states[-1]
     else:
-        return ('start', None)
+        return 'start', None
 
 
 def get_deployments_dict_from_deploy_group_mappings(deploy_group_mappings):

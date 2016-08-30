@@ -160,10 +160,10 @@ def paasta_rollback(args):
     deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
     if len(invalid) > 0:
-        print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
+        print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % ",".join(invalid))
 
     if len(deploy_groups) == 0:
-        print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service))
+        print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % service)
         return 1
 
     commit = args.commit

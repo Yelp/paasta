@@ -39,7 +39,7 @@ def patch_mesos_cli_master_config():
 
 
 def update_context_marathon_config(context):
-    whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
+    whitelist_keys = {'id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'}
     with contextlib.nested(
         # This seems to be necessary because mesos reads the config file at
         # import which is sometimes before the tests get a chance to write the

@@ -319,7 +319,7 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         provided by chronos_tools.load_chronos_job_config().
     :param verbose: int verbosity level
     """
-    if jobs == []:
+    if not jobs:
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
         output = []

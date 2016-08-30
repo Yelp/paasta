@@ -147,7 +147,7 @@ def main():
             print ""
             continue
         if not has_all_paasta_env(environment):
-            print "# WARNING: %s is not a paasta container, skipping)" % (container_id)
+            print "# WARNING: %s is not a paasta container, skipping)" % container_id
             continue
         service = environment['PAASTA_SERVICE']
         instance = environment['PAASTA_INSTANCE']

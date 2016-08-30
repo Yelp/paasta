@@ -68,7 +68,7 @@ def make_app():
     return config.make_wsgi_app()
 
 
-def main(argv=None):
+def main():
     args = parse_paasta_api_args()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)

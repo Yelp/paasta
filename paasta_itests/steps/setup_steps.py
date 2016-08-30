@@ -69,7 +69,7 @@ def setup_marathon_client():
     marathon_config = marathon_tools.MarathonConfig(system_paasta_config.get_marathon_config())
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
-    return (client, marathon_config, system_paasta_config)
+    return client, marathon_config, system_paasta_config
 
 
 def setup_chronos_client():

@@ -998,7 +998,7 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
         for line in iter(process.stdout.readline, ''):
             # additional indentation is for the paasta status command only
             if stream:
-                if ('paasta_serviceinit status' in command):
+                if 'paasta_serviceinit status' in command:
                     if 'instance: ' in line:
                         print('  ' + line.rstrip('\n'))
                     else:
@@ -1122,7 +1122,7 @@ def decompose_job_id(job_id, spacer=SPACER):
         config_hash = decomposed[3]
     else:
         raise InvalidJobNameError('invalid job id %s' % job_id)
-    return (decomposed[0], decomposed[1], git_hash, config_hash)
+    return decomposed[0], decomposed[1], git_hash, config_hash
 
 
 def build_docker_image_name(upstream_job_name):
@@ -1167,7 +1167,7 @@ def check_docker_image(service, tag):
     images = docker_client.images(name=image_name)
     result = [image for image in images if docker_tag in image['RepoTags']]
     if len(result) > 1:
-        raise ValueError('More than one docker image found with tag %s\n%s' % docker_tag, result)
+        raise ValueError('More than one docker image found with tag %s\n%s' % (docker_tag, result))
     return len(result) == 1
 
 
@@ -1390,7 +1390,7 @@ class DeploymentsJson(dict):
 
 
 def get_paasta_branch_from_deploy_group(identifier):
-    return 'paasta-%s' % (identifier)
+    return 'paasta-%s' % identifier
 
 
 def get_paasta_branch(cluster, instance):
@@ -1474,9 +1474,9 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
         ratio = (num_available / float(expected_count)) * 100
 
     if ratio < crit_threshold:
-        return (True, ratio)
+        return True, ratio
     else:
-        return (False, ratio)
+        return False, ratio
 
 
 def deploy_blacklist_to_constraints(deploy_blacklist):
@@ -1581,12 +1581,12 @@ class ZookeeperPool(object):
         if cls.zk is None:
             cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
             cls.zk.start()
-        cls.counter = cls.counter + 1
+        cls.counter += 1
         return cls.zk
 
     @classmethod
     def __exit__(cls, *args, **kwargs):
-        cls.counter = cls.counter - 1
+        cls.counter -= 1
         if cls.counter == 0:
             cls.zk.stop()
             cls.zk.close()
