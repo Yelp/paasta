@@ -56,6 +56,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.mesos_maintenance import reserve_all_resources
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -241,6 +242,11 @@ def do_bounce(
     )
 
     kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
+
+    for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
+        if task in tasks_to_kill:
+            hostname = task.host
+            reserve_all_resources([hostname])
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():

@@ -172,7 +172,9 @@ def when_setup_service_initiated(context):
         mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
         mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
         mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
-        mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
+        mock.patch('paasta_tools.paasta_maintenance.get_principal', autospec=True),
+        mock.patch('paasta_tools.paasta_maintenance.get_secret', autospec=True),
+        mock.patch.object(mesos.cli.master, 'CFG', config),
     ) as (
         _,
         _,
@@ -183,9 +185,13 @@ def when_setup_service_initiated(context):
         _,
         _,
         _,
-        mock_load_credentials,
+        mock_get_principal,
+        mock_get_secret,
+        _,
     ):
-        mock_load_credentials.side_effect = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        credentials = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        mock_get_principal.return_value = credentials[0]
+        mock_get_secret.return_value = credentials[1]
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
         for _ in xrange(120):
