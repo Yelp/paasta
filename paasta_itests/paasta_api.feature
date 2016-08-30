@@ -5,7 +5,7 @@ Feature: paasta_api
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+     And we wait for "test-service.main" to launch exactly 1 tasks
      Then instance GET should return app_count "1" and an expected number of running instances for "test-service.main"
       And instance GET should return error code "404" for "test-service.non-existent"
 

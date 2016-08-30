@@ -5,7 +5,7 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
   Scenario: marathon_serviceinit can restart tasks
@@ -13,7 +13,7 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
      Then marathon_serviceinit restart should get new task_ids for "test-service.main"
 
   Scenario: paasta_serviceinit can run status on chronos jobs
@@ -41,7 +41,8 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
+     Then marathon_serviceinit restart should get new task_ids for "test-service.main"
      Then paasta_serviceinit status -vv for the service_instance "test-service.main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
@@ -112,16 +113,17 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
       And we run paasta serviceinit "stop" on "test-service.main"
-     Then there should be no matching appids for service "test-service" instance "main"
+      And we wait for "test-service.main" to launch exactly 0 tasks
+     Then "test-service.main" has exactly 0 requested tasks in marathon
 
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app via appid
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
       And we run paasta serviceinit --appid "stop" on "test-service.main"
       And we wait for "test-service.main" to launch exactly 0 tasks
      Then "test-service.main" has exactly 0 requested tasks in marathon
@@ -131,7 +133,7 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
       And we run paasta serviceinit scale --delta "2" on "test-service.main"
       And we wait for "test-service.main" to launch exactly 3 tasks
      Then "test-service.main" has exactly 3 requested tasks in marathon
