@@ -843,7 +843,7 @@ def autoscale_local_cluster(dry_run=False):
     mesos_state = get_mesos_state_from_leader()
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
-        log.info("Autoscaling {0}".format(identifier))
+        log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
             current, target = resource_metrics_provider(resource['id'], mesos_state, resource, pool_settings)
