@@ -18,8 +18,8 @@ import json
 import logging
 import sys
 from socket import getfqdn
-from socket import gethostname
 from socket import gethostbyname
+from socket import gethostname
 
 from dateutil import parser
 from pytimeparse import timeparse
@@ -490,11 +490,11 @@ def is_safe_to_drain(hostname):
             "on localhost."
         )
         return False
-    return are_local_tasks_in_danger()
+    return not are_local_tasks_in_danger()
 
 
 def are_local_tasks_in_danger():
-    return True
+    return False
 
 
 def is_host_drained(hostname):
@@ -604,7 +604,8 @@ def paasta_maintenance():
         return is_host_past_maintenance_start(hostnames[0])
     elif action == 'is_host_past_maintenance_end':
         return is_host_past_maintenance_end(hostnames[0])
-
+    else:
+        raise NotImplementedError("Action: '%s' is not implemented." % action)
 
 if __name__ == '__main__':
     if paasta_maintenance():
