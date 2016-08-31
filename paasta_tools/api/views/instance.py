@@ -24,8 +24,6 @@ from pyramid.view import view_config
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.cli.cmds.status import get_actual_deployments
-from paasta_tools.marathon_tools import get_marathon_app_deploy_status
-from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
@@ -47,17 +45,22 @@ def marathon_job_status(mstatus, client, job_config):
         mstatus['error_message'] = error_msg
         return
 
-    if marathon_tools.is_app_id_running(app_id, client):
-        app = client.get_app(app_id)
-        deploy_status, _ = get_marathon_app_deploy_status(app, app_id, client)
-        mstatus['deploy_status'] = MarathonDeployStatus.tostring(deploy_status)
+    mstatus['app_id'] = app_id
+    mstatus['expected_instance_count'] = job_config.get_instances()
 
-        # by comparing running count with expected count, callers can figure
-        # out if the instance is in Healthy, Warning or Critical state.
-        mstatus['running_instance_count'] = app.tasks_running
-        mstatus['expected_instance_count'] = job_config.get_instances()
+    deploy_status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
+    mstatus['deploy_status'] = marathon_tools.MarathonDeployStatus.tostring(deploy_status)
+
+    # by comparing running count with expected count, callers can figure
+    # out if the instance is in Healthy, Warning or Critical state.
+    if deploy_status == marathon_tools.MarathonDeployStatus.NotRunning:
+        mstatus['running_instance_count'] = 0
     else:
-        mstatus['deploy_status'] = 'Not Running'
+        mstatus['running_instance_count'] = client.get_app(app_id).tasks_running
+
+    if deploy_status == marathon_tools.MarathonDeployStatus.Delayed:
+        _, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
+        mstatus['backoff_seconds'] = backoff_seconds
 
 
 def marathon_instance_status(instance_status, service, instance, verbose):

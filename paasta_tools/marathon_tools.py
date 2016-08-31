@@ -51,7 +51,6 @@ from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
@@ -550,17 +549,6 @@ class MarathonServiceConfig(InstanceConfig):
     def get_accepted_resource_roles(self):
         return self.config_dict.get('accepted_resource_roles', None)
 
-    def get_desired_state_human(self):
-        desired_state = self.get_desired_state()
-        if desired_state == 'start' and self.get_instances() != 0:
-            return PaastaColors.bold('Started')
-        elif desired_state == 'start' and self.get_instances() == 0:
-            return PaastaColors.bold('Stopped')
-        elif desired_state == 'stop':
-            return PaastaColors.red('Stopped')
-        else:
-            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
     def get_replication_crit_percentage(self):
         return self.config_dict.get('replication_threshold', 50)
 
@@ -689,10 +677,9 @@ class InvalidMarathonHealthcheckMode(Exception):
 
 class MarathonDeployStatus:
     """ An enum to represent marathon app deploy status.
-    'Not Running' is NOT included to keep consistent with mesosphere documentation.
     Changing name of the keys will affect both the paasta CLI and API.
     """
-    Running, Deploying, Stopped, Delayed, Waiting = range(0, 5)
+    Running, Deploying, Stopped, Delayed, Waiting, NotRunning = range(0, 6)
 
     @classmethod
     def tostring(cls, val):
@@ -700,8 +687,18 @@ class MarathonDeployStatus:
             if v == val:
                 return k
 
+    @classmethod
+    def fromstring(cls, str):
+        return getattr(cls, str, None)
 
-def get_marathon_app_deploy_status(app, app_id, client):
+
+def get_marathon_app_deploy_status(client, app_id):
+
+    if is_app_id_running(app_id, client):
+        app = client.get_app(app_id)
+    else:
+        return MarathonDeployStatus.NotRunning
+
     # Check the launch queue to see if an app is blocked
     is_overdue, backoff_seconds = get_app_queue_status(client, app_id)
 
@@ -716,25 +713,6 @@ def get_marathon_app_deploy_status(app, app_id, client):
         deploy_status = MarathonDeployStatus.Stopped
     else:
         deploy_status = MarathonDeployStatus.Running
-
-    return deploy_status, backoff_seconds
-
-
-def get_marathon_app_deploy_status_human(app, app_id, client):
-    status, delay = get_marathon_app_deploy_status(app, app_id, client)
-    status_string = MarathonDeployStatus.tostring(status)
-
-    if status == MarathonDeployStatus.Waiting:
-        deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red(status_string)
-    elif status == MarathonDeployStatus.Delayed:
-        deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
-                        PaastaColors.red(status_string), delay)
-    elif status == MarathonDeployStatus.Deploying:
-        deploy_status = PaastaColors.yellow(status_string)
-    elif status == MarathonDeployStatus.Stopped:
-        deploy_status = PaastaColors.grey(status_string)
-    else:
-        deploy_status = PaastaColors.bold(status_string)
 
     return deploy_status
 

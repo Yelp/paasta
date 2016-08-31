@@ -11,12 +11,8 @@
   "produces": ["application/json"],
   "tags": [
     {
-      "name": "instances",
-      "description": "Instances of a service"
-    },
-    {
-      "name": "status",
-      "description": "Status of a serivce instance"
+      "name": "service",
+      "description": "information about a paasta serivce"
     }
   ],
   "paths": {
@@ -51,8 +47,8 @@
           }
         },
         "summary": "List instances of service_name",
-        "operationId": "listInstances",
-        "tags": ["instances"],
+        "operationId": "list_instances",
+        "tags": ["service"],
         "parameters": [
           {
             "in": "path",
@@ -81,8 +77,8 @@
           }
         },
         "summary": "Get status of service_name.instance_name",
-        "operationId": "statusInstance",
-        "tags": ["status"],
+        "operationId": "status_instance",
+        "tags": ["service"],
         "parameters": [
           {
             "in": "path",
@@ -137,6 +133,10 @@
           "format": "int32",
           "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
         },
+        "app_id": {
+          "type": "string",
+          "description": "ID of the desired version of a service instance"
+        },
         "bounce_method": {
           "type": "string",
           "description": "Method to transit between new and old versions of a service",
@@ -145,7 +145,12 @@
         "deploy_status": {
           "type": "string",
           "description": "Deploy status of a marathon service",
-          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "Not Running"]
+          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "NotRunning"]
+        },
+        "backoff_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "backoff in seconds before launching the next task"
         },
         "running_instance_count": {
           "type": "integer",

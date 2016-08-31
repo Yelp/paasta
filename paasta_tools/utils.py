@@ -861,6 +861,9 @@ class SystemPaastaConfig(dict):
     def get_dashboard_links(self):
         return self['dashboard_links']
 
+    def get_api_endpoints(self):
+        return self['api_endpoints']
+
     def get_fsm_template(self):
         fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
         template_path = os.path.join(fsm_path, "template")
