@@ -24,6 +24,7 @@ from math import ceil
 from time import sleep
 
 import requests
+import requests_cache
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
@@ -1068,16 +1069,17 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
     :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
     """
     found = False
-    while not found:
-        try:
-            found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
-        except NotFoundError:
-            pass
-        if found:
-            return
-        else:
-            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
-            sleep(0.5)
+    with requests_cache.disabled():
+        while not found:
+            try:
+                found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
+            except NotFoundError:
+                pass
+            if found:
+                return
+            else:
+                print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
+                sleep(0.5)
 
 
 def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):
