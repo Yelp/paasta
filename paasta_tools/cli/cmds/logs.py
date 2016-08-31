@@ -745,10 +745,12 @@ class ScribeLogReader(LogReader):
             # this method
             @contextmanager
             def fake_context():
+                log.info("Running the equivalent of 'scribereader -f -e %s %s" % (scribe_env, stream_name))
                 yield scribereader.get_stream_tailer(stream_name, host, port, True, -1)
 
             return fake_context()
 
+        log.info("Running the equivalent of 'scribereader -e %s %s" % (scribe_env, stream_name))
         return scribereader.get_stream_reader(stream_name, host, port, start_time, end_time)
 
     def scribe_get_last_n_lines(self, scribe_env, stream_name, line_count):
@@ -948,10 +950,10 @@ def paasta_logs(args):
 
     if args.verbose:
         log.setLevel(logging.DEBUG)
-        levels = [DEFAULT_LOGLEVEL, 'debug']
     else:
         log.setLevel(logging.WARNING)
-        levels = [DEFAULT_LOGLEVEL]
+
+    levels = [DEFAULT_LOGLEVEL, 'debug']
 
     log.info("Going to get logs for %s on clusters %s" % (service, clusters))
 
