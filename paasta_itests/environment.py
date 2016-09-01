@@ -140,6 +140,29 @@ def _clean_up_haproxy_pid(context):
         os.kill(context.haproxy_pid, signal.SIGTERM)
 
 
+def _clean_up_socat_processes(context):
+    if hasattr(context, 'socat_procs'):
+        for proc in context.socat_procs:
+            proc.kill()
+            proc.wait()
+        del context.socat_procs
+
+
+# TODO: remove this.
+def _clean_up_hacheck_process(context):
+    if hasattr(context, 'hacheck_process'):
+        context.hacheck_process.kill()
+        context.hacheck_process.wait()
+        del context.hacheck_process
+
+
+def _clean_up_nerve_process(context):
+    if hasattr(context, 'nerve_process'):
+        context.nerve_process.kill()
+        context.nerve_process.wait()
+        del context.nerve_process
+
+
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
@@ -151,3 +174,6 @@ def after_scenario(context, scenario):
     _clean_up_synapse_config_dir(context)
     _clean_up_zookeeper_discovery(context)
     _clean_up_haproxy_pid(context)
+    _clean_up_socat_processes(context)
+    _clean_up_hacheck_process(context)
+    _clean_up_nerve_process(context)
