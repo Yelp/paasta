@@ -245,7 +245,7 @@ def test_assert_tasks_running():
 def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 5
     mock_quorum_size.return_value = 3
-    output, health = paasta_metastatus.assert_quorum_size({})
+    output, health = paasta_metastatus.assert_quorum_size()
     assert health
     assert 'Quorum: masters: 5 configured quorum: 3 ' in output
 
@@ -255,7 +255,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
 def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 1
     mock_quorum_size.return_value = 3
-    output, health = paasta_metastatus.assert_quorum_size({})
+    output, health = paasta_metastatus.assert_quorum_size()
     assert not health
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 

@@ -39,6 +39,21 @@ instance MAY have:
     left on device' errors if they attempt to exceed these limits, and then be
     unable to write any more data to disk.
 
+  * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
+    to empty dictionary. Each ulimit value is a dictionary with the soft limit
+    specified under the 'soft' key and the optional hard limit specified under
+    the 'hard' key. Ulimit values that are not set are inherited from the
+    default ulimits set on the Docker daemon. Example::
+
+      ulimit:
+        - nofile: {"soft": 1024, "hard": 2048}
+        - nice: {"soft": 20}
+
+  * ``cap_add``: List of capabilities that are passed to Docker. Defaults
+    to empty list. Example::
+
+      "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
+
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``min_instances``: When autoscaling, the minimum number of instances that
@@ -59,7 +74,7 @@ instance MAY have:
 
     By default, the Namespace assigned to a particular Instance in PaaSTA has
     the *same name*, so the ``main`` Instance will correspond to the ``main``
-    Namespace defined in ``smartstack.yaml``. 
+    Namespace defined in ``smartstack.yaml``.
 
     The first instance in this list is assumed to be used by clients and is
     the only one currently monitored, waited for during bounces, etc ...
@@ -159,10 +174,10 @@ instance MAY have:
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_DOCKER_IMAGE``: The docker image name
 
-    Additionally, there are ``MARATHON_`` prefixed variables available. See the
-    `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_
-    for more information about these variables.
+    Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
+    See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -225,7 +240,7 @@ instance MAY have:
    implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
-    to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+    to. The ``step`` parameter in ``deploy.yaml`` refererences this value
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
 
@@ -604,7 +619,7 @@ An example of switching from region to superregion discovery:
 moving from superregion => region) you must add an additional constraint
 to ensure Marathon balances the tasks evenly::
 
-    extra_advertise: [['region', 'GROUP_BY', 2]]
+    extra_constraints: [['region', 'GROUP_BY', 2]]
 
 2. (Optional) Use zkCli.sh to monitor your new registrations for each
 superregion you are changing::

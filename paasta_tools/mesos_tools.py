@@ -23,7 +23,6 @@ from urlparse import urlparse
 import humanize
 import requests
 from kazoo.client import KazooClient
-from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools.utils import format_table
@@ -32,6 +31,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
+ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
 SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
 
@@ -89,12 +89,6 @@ MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master  # noqa
 import mesos.cli.cluster  # noqa
 
-
-# monkey patch MesosMaster.state to use a larger ttl
-@util.CachedProperty(ttl=60)
-def fetch_state(self):
-    return master.CURRENT.fetch("/master/state.json").json()
-master.MesosMaster.state = fetch_state
 
 # Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
 # The method below gets a slave by its ID. Original code here:
@@ -475,10 +469,15 @@ def get_mesos_state_from_leader():
     return state
 
 
-def get_mesos_quorum(state):
+def get_mesos_state_summary_from_leader():
+    res = master.CURRENT.fetch("/master/state-summary")
+    return res.json()
+
+
+def get_mesos_quorum():
     """Returns the configured quorum size.
     :param state: mesos state dictionary"""
-    return int(state['flags']['quorum'])
+    return int(get_master_flags()['flags']['quorum'])
 
 
 def get_all_tasks_from_state(mesos_state):
@@ -489,6 +488,17 @@ def get_all_tasks_from_state(mesos_state):
     return [task for framework in mesos_state.get('frameworks', []) for task in framework.get('tasks', [])]
 
 
+def get_master_flags():
+    res = master.CURRENT.fetch("/master/flags")
+    return res.json()
+
+
+def get_zookeeper_host_path():
+    flags = get_master_flags()
+    parsed = urlparse(flags['flags']['zk'])
+    return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
+
+
 def get_zookeeper_config(state):
     """Returns dict, containing the zookeeper hosts and path.
     :param state: mesos state dictionary"""
@@ -496,15 +506,15 @@ def get_zookeeper_config(state):
     return {'hosts': re_zk.group(1), 'path': re_zk.group(2)}
 
 
-def get_number_of_mesos_masters(zk_config):
+def get_number_of_mesos_masters(host, path):
     """Returns an array, containing mesos masters
     :param zk_config: dict containing information about zookeeper config.
     Masters register themselves in zookeeper by creating ``info_`` entries.
     We count these entries to get the number of masters.
     """
-    zk = KazooClient(hosts=zk_config['hosts'], read_only=True)
+    zk = KazooClient(hosts=host, read_only=True)
     zk.start()
-    root_entries = zk.get_children(zk_config['path'])
+    root_entries = zk.get_children(path)
     result = [info for info in root_entries if info.startswith('json.info_') or info.startswith('info_')]
     zk.stop()
     return len(result)
@@ -641,7 +651,7 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
         }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.error("Task associated with %s but slave not in masters list of slaves" % task.slave['id'])
+            log.debug("Task associated with slave {0} not found in {1} pool".format(task.slave['id'], pool))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1

@@ -129,7 +129,9 @@ def test_log_event():
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_paasta_start_or_stop(
+    mock_list_clusters,
     mock_list_all_instances,
     mock_get_git_url,
     mock_get_instance_config,
@@ -143,6 +145,7 @@ def test_paasta_start_or_stop(
     args = mock.Mock()
     args.clusters = 'cluster1,cluster2'
     args.instances = 'main1,canary'
+    mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.return_value = set(args.instances.split(","))
     args.soa_dir = '/soa/dir'
     mock_get_git_url.return_value = 'fake_git_url'
@@ -195,7 +198,9 @@ def test_paasta_start_or_stop(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_stop_or_start_figures_out_correct_instances(
+    mock_list_clusters,
     mock_list_all_instances,
     mock_get_git_url,
     mock_get_instance_config,
@@ -209,6 +214,7 @@ def test_stop_or_start_figures_out_correct_instances(
     args = mock.Mock()
     args.clusters = 'cluster1,cluster2'
     args.instances = 'main1,canary'
+    mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.side_effect = (
         lambda service, clusters, soa_dir:
             {'main1'} if 'cluster1' in clusters else {'main1', 'canary'}
@@ -254,7 +260,9 @@ def test_stop_or_start_figures_out_correct_instances(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_stop_or_start_handle_ls_remote_failures(
+    mock_list_clusters,
     mock_get_git_url,
     mock_get_instance_config,
     mock_figure_out_service_name,
@@ -263,6 +271,9 @@ def test_stop_or_start_handle_ls_remote_failures(
 ):
     args = mock.Mock()
     args.clusters = 'cluster1'
+    args.instances = None
+
+    mock_list_clusters.return_value = ['cluster1']
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = None
@@ -277,7 +288,11 @@ def test_stop_or_start_handle_ls_remote_failures(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
-def test_start_or_stop_bad_refs(mock_list_all_instances, mock_list_remote_refs, mock_get_instance_config,
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+def test_start_or_stop_bad_refs(mock_list_clusters,
+                                mock_list_all_instances,
+                                mock_list_remote_refs,
+                                mock_get_instance_config,
                                 mock_figure_out_service_name, mock_stdout):
 
     args = mock.Mock()
@@ -285,6 +300,8 @@ def test_start_or_stop_bad_refs(mock_list_all_instances, mock_list_remote_refs, 
     args.clusters = 'fake_cluster1,fake_cluster2'
     args.soa_dir = '/fake/soa/dir'
     args.instances = 'fake_instance'
+
+    mock_list_clusters.return_value = ['fake_cluster1', 'fake_cluster2']
 
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = MarathonServiceConfig(
@@ -299,3 +316,49 @@ def test_start_or_stop_bad_refs(mock_list_all_instances, mock_list_remote_refs, 
     mock_list_all_instances.return_value = {args.instances}
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
     assert "No branches found for" in mock_stdout.getvalue()
+
+
+def test_cluster_list_defaults_to_all():
+    return True
+
+
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
+@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+def test_cluster_throws_exception_for_invalid_cluster_no_instances(
+        mock_list_clusters,
+        mock_stdout,
+        mock_figure_out_service_name):
+    mock_args = mock.Mock()
+    mock_args.soa_dir = '/foo'
+    mock_args.instances = None
+    mock_args.clusters = "fake_cluster_1,fake_cluster_2"
+
+    mock_list_clusters.return_value = ['fake_cluster_2']
+    mock_figure_out_service_name.return_value = 'fake_service'
+
+    assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
+    assert "Invalid cluster name(s) specified: fake_cluster_1" in mock_stdout.getvalue()
+    assert "Valid options: fake_cluster_2" in mock_stdout.getvalue()
+
+
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
+@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+def test_cluster_throws_exception_no_matching_instance_clusters(
+        mock_list_clusters,
+        mock_stdout,
+        mock_figure_out_service_name):
+    mock_args = mock.Mock()
+    mock_args.soa_dir = '/foo'
+    mock_args.clusters = "fake_cluster_1,fake_cluster_2,fake_cluster_3"
+    mock_args.instances = "instance_one,instance_two"
+
+    # this is called twice: once for each of the instances.
+    # the code should flatten these out to be one list.
+    mock_list_clusters.return_value = ['fake_cluster_1', 'fake_cluster_2']
+    mock_figure_out_service_name.return_value = 'fake_service'
+
+    assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
+    assert "Invalid cluster name(s) specified: fake_cluster_3" in mock_stdout.getvalue()
+    assert "Valid options: fake_cluster_1 fake_cluster_2" in mock_stdout.getvalue()

@@ -19,6 +19,7 @@ import logging
 import sys
 from socket import getfqdn
 from socket import gethostbyname
+from socket import gethostname
 
 from dateutil import parser
 from pytimeparse import timeparse
@@ -27,7 +28,7 @@ from requests import Session
 from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_tools import get_mesos_leader
-from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
 from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
@@ -60,6 +61,7 @@ def parse_args():
             'is_host_draining',
             'is_hosts_past_maintenance_end',
             'is_hosts_past_maintenance_start',
+            'is_safe_to_drain',
             'is_safe_to_kill',
             'schedule',
             'status',
@@ -165,7 +167,7 @@ def schedule():
     except HTTPError as e:
         e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
         raise
-    print "%s" % schedule.text
+    return schedule.text
 
 
 def get_hosts_with_state(state):
@@ -469,7 +471,30 @@ def is_safe_to_kill(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    return is_host_drained(hostname) or hostname in get_hosts_past_maintenance_start()
+    return is_host_drained(hostname) or is_host_past_maintenance_start(hostname)
+
+
+def is_hostname_local(hostname):
+    return hostname == 'localhost' or hostname == getfqdn() or hostname == gethostname()
+
+
+def is_safe_to_drain(hostname):
+    """Checks if a host has healthy tasks running locally that have low
+    replication in other places
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    if not is_hostname_local(hostname):
+        print (
+            "Due to the way is_safe_to_drain is implemented, it can only work "
+            "on localhost."
+        )
+        return False
+    return not are_local_tasks_in_danger()
+
+
+def are_local_tasks_in_danger():
+    return False
 
 
 def is_host_drained(hostname):
@@ -478,9 +503,12 @@ def is_host_drained(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    mesos_state = get_mesos_state_from_leader()
+    mesos_state = get_mesos_state_summary_from_leader()
     task_counts = get_mesos_task_count_by_slave(mesos_state)
-    slave_task_count = task_counts[hostname].count
+    if hostname in task_counts:
+        slave_task_count = task_counts[hostname].count
+    else:
+        slave_task_count = 0
     return is_host_draining(hostname=hostname) and slave_task_count == 0
 
 
@@ -511,7 +539,6 @@ def get_hosts_past_maintenance_start():
         for window in schedules['windows']:
             if window['unavailability']['start']['nanoseconds'] < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    print ret
     return ret
 
 
@@ -540,23 +567,6 @@ def paasta_maintenance():
     action = args.action
     hostnames = args.hostname
 
-    if action not in [
-            'down',
-            'drain',
-            'is_host_down',
-            'is_host_drained',
-            'is_host_draining',
-            'is_host_past_maintenance_end',
-            'is_host_past_maintenance_start',
-            'is_safe_to_kill',
-            'schedule',
-            'status',
-            'undrain',
-            'up',
-    ]:
-        print "action must be 'drain', 'undrain', 'down', 'up', 'status', or 'schedule'"
-        return
-
     if action != 'status' and not hostnames:
         print "You must specify one or more hostnames"
         return
@@ -575,11 +585,17 @@ def paasta_maintenance():
     elif action == 'status':
         return status()
     elif action == 'schedule':
-        return schedule()
+        ret = schedule()
+        print "%s" % ret
+        return ret
+    elif action == 'is_safe_to_drain':
+        return is_safe_to_drain(hostnames[0])
     elif action == 'is_safe_to_kill':
         return is_safe_to_kill(hostnames[0])
     elif action == 'is_host_drained':
-        return is_host_drained(hostnames[0])
+        ret = is_host_drained(hostnames[0])
+        print ret
+        return ret
     elif action == 'is_host_down':
         return is_host_down(hostnames[0])
     elif action == 'is_host_draining':
@@ -588,7 +604,8 @@ def paasta_maintenance():
         return is_host_past_maintenance_start(hostnames[0])
     elif action == 'is_host_past_maintenance_end':
         return is_host_past_maintenance_end(hostnames[0])
-
+    else:
+        raise NotImplementedError("Action: '%s' is not implemented." % action)
 
 if __name__ == '__main__':
     if paasta_maintenance():

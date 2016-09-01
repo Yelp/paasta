@@ -8,6 +8,7 @@ Submodules
 
    paasta_tools.api.views.instance
    paasta_tools.api.views.service
+   paasta_tools.api.views.version
 
 Module contents
 ---------------

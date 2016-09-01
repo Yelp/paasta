@@ -453,6 +453,7 @@ def test_status_calls_sergeants(
         instance_whitelist=[],
         system_paasta_config=fake_system_paasta_config,
         verbose=0,
+        use_api_endpoint=False
     )
 
 
@@ -505,7 +506,8 @@ def test_report_status_obeys_cluster_whitelist(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
-        verbose=0
+        verbose=0,
+        use_api_endpoint=False
     )
 
 
@@ -539,7 +541,8 @@ def test_report_status_handle_none_whitelist(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
-        verbose=0
+        verbose=0,
+        use_api_endpoint=False
     )
     mock_report_status_for_cluster.assert_any_call(
         service=service,
@@ -548,7 +551,8 @@ def test_report_status_handle_none_whitelist(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
-        verbose=0
+        verbose=0,
+        use_api_endpoint=False
     )
     mock_report_status_for_cluster.assert_any_call(
         service=service,
@@ -557,5 +561,6 @@ def test_report_status_handle_none_whitelist(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
-        verbose=0
+        verbose=0,
+        use_api_endpoint=False
     )

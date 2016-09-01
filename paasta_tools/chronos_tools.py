@@ -24,7 +24,7 @@ import dateutil
 import isodate
 import monitoring_tools
 import service_configuration_lib
-from tron import command_context
+import tron_command_context
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -773,7 +773,7 @@ def parse_time_variables(input_string, parse_time=None):
         parse_time = datetime.datetime.now()
     # We build up a tron context object that has the right
     # methods to parse tron-style time syntax
-    job_context = command_context.JobRunContext(command_context.CommandContext())
+    job_context = tron_command_context.JobRunContext(tron_command_context.CommandContext())
     # The tron context object needs the run_time attibute set so it knows
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time

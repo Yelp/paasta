@@ -1,3 +1,59 @@
+paasta-tools (0.44.0) UNRELEASED; urgency=medium
+
+  * 0.44.0 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Fri, 26 Aug 2016 13:33:30 -0700
+
+paasta-tools (0.43.0) lucid; urgency=low
+
+  * 0.43.0 tagged with 'make release'
+    Commit:
+
+ -- Guenther Starnberger <gstarnbe@yelp.com>  Thu, 25 Aug 2016 14:13:19 -0700
+
+paasta-tools (0.42.0) lucid; urgency=low
+
+  * 0.42.0 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 24 Aug 2016 09:29:07 -0700
+
+paasta-tools (0.41.0) UNRELEASED; urgency=medium
+
+  * 0.41.0 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Tue, 23 Aug 2016 15:59:38 -0700
+
+paasta-tools (0.40.0) lucid; urgency=low
+
+  * 0.40.0 tagged with 'make release'
+    Commit:
+
+ -- Tobias Cole <tobyc@yelp.com>  Mon, 22 Aug 2016 05:28:29 -0700
+
+paasta-tools (0.39.0) lucid; urgency=low
+
+  * 0.39.0 tagged with 'make release'
+    Commit:
+
+ -- Tobias Cole <tobyc@yelp.com>  Fri, 19 Aug 2016 03:04:02 -0700
+
+paasta-tools (0.38.0) lucid; urgency=low
+
+  * 0.38.0 tagged with 'make release'
+    Commit:
+
+ -- Tobias Cole <tobyc@yelp.com>  Wed, 17 Aug 2016 09:46:31 -0700
+
+paasta-tools (0.37.0) lucid; urgency=low
+
+  * 0.37.0 tagged with 'make release'
+    Commit:
+
+ -- Tobias Cole <tobyc@yelp.com>  Wed, 17 Aug 2016 09:36:27 -0700
+
 paasta-tools (0.37.0) lucid; urgency=low
 
   * 0.37.0 tagged with 'make release'

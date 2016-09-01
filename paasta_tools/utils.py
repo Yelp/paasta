@@ -167,15 +167,51 @@ class InstanceConfig(dict):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
+    def get_ulimit(self):
+        """Get the --ulimit options to be passed to docker
+        Generated from the ulimit configuration option, which is a dictionary
+        of ulimit values. Each value is a dictionary itself, with the soft
+        limit stored under the 'soft' key and the optional hard limit stored
+        under the 'hard' key.
+
+        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
+
+        :returns: A generator of ulimit options to be passed as --ulimit flags"""
+        for key, val in sorted(self.config_dict.get('ulimit', {}).iteritems()):
+            soft = val.get('soft')
+            hard = val.get('hard')
+            if soft is None:
+                raise InvalidInstanceConfig(
+                    'soft limit missing in ulimit configuration for {0}.'.format(key)
+                )
+            combined_val = '%i' % soft
+            if hard is not None:
+                combined_val += ':%i' % hard
+            yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
+
+    def get_cap_add(self):
+        """Get the --cap-add options to be passed to docker
+        Generated from the cap_add configuration option, which is a list of
+        capabilities.
+
+        Example configuration: {'cap_add': ['IPC_LOCK', 'SYS_PTRACE']}
+
+        :returns: A generator of cap_add options to be passed as --cap-add flags"""
+        for value in self.config_dict.get('cap_add', []):
+            yield {"key": "cap-add", "value": "{0}".format(value)}
+
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
         :returns: A list of parameters to be added to docker run"""
-        return [{"key": "memory-swap", "value": self.get_mem_swap()},
-                {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
+                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters.extend(self.get_ulimit())
+        parameters.extend(self.get_cap_add())
+        return parameters
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.
@@ -201,6 +237,7 @@ class InstanceConfig(dict):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
@@ -824,6 +861,9 @@ class SystemPaastaConfig(dict):
     def get_dashboard_links(self):
         return self['dashboard_links']
 
+    def get_api_endpoints(self):
+        return self['api_endpoints']
+
     def get_fsm_template(self):
         fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
         template_path = os.path.join(fsm_path, "template")
@@ -891,6 +931,9 @@ class SystemPaastaConfig(dict):
 
     def get_cluster_autoscaling_resources(self):
         return self.get('cluster_autoscaling_resources', {})
+
+    def get_resource_pool_settings(self):
+        return self.get('resource_pool_settings', {})
 
     def get_cluster_fqdn_format(self):
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
@@ -1153,12 +1196,12 @@ def get_username():
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
-def get_default_cluster_for_service(service):
+def get_default_cluster_for_service(service, soa_dir=DEFAULT_SOA_DIR):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
     except PaastaNotConfiguredError:
-        clusters_deployed_to = list_clusters(service)
+        clusters_deployed_to = list_clusters(service, soa_dir=soa_dir)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
         else:
@@ -1561,3 +1604,11 @@ def calculate_tail_lines(verbose_level):
         return 0
     else:
         return 10 ** (verbose_level - 1)
+
+
+def is_deploy_step(step):
+    """
+    Returns true if the given step deploys to an instancename
+    Returns false if the step is a predefined step-type, e.g. itest or command-*
+    """
+    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))

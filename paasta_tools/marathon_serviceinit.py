@@ -84,10 +84,7 @@ def scale_marathon_job(service, instance, app_id, delta, client, cluster):
     client.scale_app(app_id, delta=int(delta), force=True)
 
 
-def get_bouncing_status(service, instance, client, job_config):
-    apps = marathon_tools.get_matching_appids(service, instance, client)
-    bounce_method = job_config.get_bounce_method()
-    app_count = len(apps)
+def bouncing_status_human(app_count, bounce_method):
     if app_count == 0:
         return PaastaColors.red("Stopped")
     elif app_count == 1:
@@ -98,19 +95,34 @@ def get_bouncing_status(service, instance, client, job_config):
         return PaastaColors.red("Unknown (count: %s)" % app_count)
 
 
+def get_bouncing_status(service, instance, client, job_config):
+    apps = marathon_tools.get_matching_appids(service, instance, client)
+    app_count = len(apps)
+    bounce_method = job_config.get_bounce_method()
+    return bouncing_status_human(app_count, bounce_method)
+
+
+def desired_state_human(desired_state, instances):
+    if desired_state == 'start' and instances != 0:
+        return PaastaColors.bold('Started')
+    elif desired_state == 'start' and instances == 0:
+        return PaastaColors.bold('Stopped')
+    elif desired_state == 'stop':
+        return PaastaColors.red('Stopped')
+    else:
+        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+
+
 def status_desired_state(service, instance, client, job_config):
     status = get_bouncing_status(service, instance, client, job_config)
-    desired_state = job_config.get_desired_state_human()
+    desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 
-def status_marathon_job(service, instance, app_id, normal_instance_count, client):
+def status_marathon_job_human(service, instance, deploy_status, app_id,
+                              running_instances, normal_instance_count):
     name = PaastaColors.cyan(compose_job_id(service, instance))
-    if marathon_tools.is_app_id_running(app_id, client):
-        app = client.get_app(app_id)
-        running_instances = app.tasks_running
-        deploy_status = marathon_tools.get_marathon_app_deploy_status_human(app, app_id, client)
-
+    if deploy_status != 'NotRunning':
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
@@ -125,6 +137,42 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         red_not = PaastaColors.red("NOT")
         status = PaastaColors.red("Critical")
         return "Marathon:   %s - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
+
+
+def marathon_app_deploy_status_human(status, backoff_seconds=None):
+    status_string = marathon_tools.MarathonDeployStatus.tostring(status)
+
+    if status == marathon_tools.MarathonDeployStatus.Waiting:
+        deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red(status_string)
+    elif status == marathon_tools.MarathonDeployStatus.Delayed:
+        deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
+                        PaastaColors.red(status_string), backoff_seconds)
+    elif status == marathon_tools.MarathonDeployStatus.Deploying:
+        deploy_status = PaastaColors.yellow(status_string)
+    elif status == marathon_tools.MarathonDeployStatus.Stopped:
+        deploy_status = PaastaColors.grey(status_string)
+    elif status == marathon_tools.MarathonDeployStatus.Running:
+        deploy_status = PaastaColors.bold(status_string)
+    else:
+        deploy_status = status_string
+
+    return deploy_status
+
+
+def status_marathon_job(service, instance, app_id, normal_instance_count, client):
+    status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
+    if status == marathon_tools.MarathonDeployStatus.Delayed:
+        _, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
+        deploy_status_human = marathon_app_deploy_status_human(status, backoff_seconds)
+    else:
+        deploy_status_human = marathon_app_deploy_status_human(status)
+
+    if status == marathon_tools.MarathonDeployStatus.NotRunning:
+        running_instances = 0
+    else:
+        running_instances = client.get_app(app_id).tasks_running
+    return status_marathon_job_human(service, instance, deploy_status_human, app_id,
+                                     running_instances, normal_instance_count)
 
 
 def get_verbose_status_of_marathon_app(app):

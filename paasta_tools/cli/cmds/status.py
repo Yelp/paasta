@@ -12,19 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import sys
+from distutils.util import strtobool
 from subprocess import CalledProcessError
 
 from service_configuration_lib import read_deploy
 
+from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import get_pipeline_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaCheckMessages
-from paasta_tools.cli.utils import x_mark
+from paasta_tools.marathon_serviceinit import bouncing_status_human
+from paasta_tools.marathon_serviceinit import desired_state_human
+from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
+from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import load_deployments_json
+from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_clusters
@@ -78,11 +84,8 @@ def add_subparser(subparsers):
 
 
 def missing_deployments_message(service):
-    jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service)
-    message = "%s No deployments in deployments.json yet.\n  " \
-              "Has Jenkins run?\n  " \
-              "Check: %s" % (x_mark(), jenkins_url)
+    message = ("%s No deployments in deployments.json yet.\n  "
+               "Has Jenkins run?")
     return message
 
 
@@ -130,8 +133,44 @@ def get_actual_deployments(service, soa_dir):
     return actual_deployments
 
 
+def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose):
+    client = get_paasta_api_client(cluster, system_paasta_config)
+    if not client:
+        print 'Cannot get a paasta-api client'
+        exit(1)
+
+    status = client.service.status_instance(service=service, instance=instance).result()
+    print 'instance: %s' % PaastaColors.blue(instance)
+    print 'Git sha:    %s (desired)' % status.git_sha
+
+    marathon_status = status.marathon
+    if marathon_status.error_message:
+        print marathon_status.error_message
+        return
+
+    bouncing_status = bouncing_status_human(marathon_status.app_count,
+                                            marathon_status.bounce_method)
+    desired_state = desired_state_human(marathon_status.desired_state,
+                                        marathon_status.expected_instance_count)
+    print "State:      %s - Desired state: %s" % (bouncing_status, desired_state)
+
+    status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
+    if status != MarathonDeployStatus.NotRunning:
+        if status == MarathonDeployStatus.Delayed:
+            deploy_status = marathon_app_deploy_status_human(status, marathon_status.backoff_seconds)
+        else:
+            deploy_status = marathon_app_deploy_status_human(status)
+    else:
+        deploy_status = 'NotRunning'
+
+    print status_marathon_job_human(service, instance, deploy_status,
+                                    marathon_status.app_id,
+                                    marathon_status.running_instance_count,
+                                    marathon_status.expected_instance_count)
+
+
 def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
-                              system_paasta_config, verbose=0):
+                              system_paasta_config, verbose=0, use_api_endpoint=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     print
@@ -158,13 +197,18 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             print '    Git sha:    None (not deployed yet)'
 
     if len(deployed_instances) > 0:
-        status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, ','.join(deployed_instances),
-                                                             system_paasta_config, stream=True, verbose=verbose,
-                                                             ignore_ssh_output=True)
-        # Status results are streamed. This print is for possible error messages.
-        if status is not None:
-            for line in status.rstrip().split('\n'):
-                print '    %s' % line
+        if use_api_endpoint:
+            for instance in deployed_instances:
+                paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose=verbose)
+        else:
+            status = execute_paasta_serviceinit_on_remote_master(
+                'status', cluster, service, ','.join(deployed_instances),
+                system_paasta_config, stream=True, verbose=verbose,
+                ignore_ssh_output=True)
+            # Status results are streamed. This print is for possible error messages.
+            if status is not None:
+                for line in status.rstrip().split('\n'):
+                    print '    %s' % line
 
     print report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance')
 
@@ -187,9 +231,7 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
 
 
 def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-                  system_paasta_config, verbose=0):
-    pipeline_url = get_pipeline_url(service)
-    print "Pipeline: %s" % pipeline_url
+                  system_paasta_config, verbose=0, use_api_endpoint=False):
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
@@ -202,6 +244,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
                 instance_whitelist=instance_whitelist,
                 system_paasta_config=system_paasta_config,
                 verbose=verbose,
+                use_api_endpoint=use_api_endpoint
             )
 
     print report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster')
@@ -214,6 +257,10 @@ def paasta_status(args):
     service = figure_out_service_name(args, soa_dir)
     actual_deployments = get_actual_deployments(service, soa_dir)
     system_paasta_config = load_system_paasta_config()
+    if 'USE_API_ENDPOINT' in os.environ:
+        use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
+    else:
+        use_api_endpoint = False
 
     if args.clusters is not None:
         cluster_whitelist = args.clusters.split(",")
@@ -235,6 +282,7 @@ def paasta_status(args):
                 instance_whitelist=instance_whitelist,
                 system_paasta_config=system_paasta_config,
                 verbose=args.verbose,
+                use_api_endpoint=use_api_endpoint
             )
         except CalledProcessError as e:
             print PaastaColors.grey(PaastaColors.bold(e.cmd + " exited with non-zero return code."))

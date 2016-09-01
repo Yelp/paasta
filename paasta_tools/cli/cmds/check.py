@@ -16,7 +16,6 @@
 passes all the markers required to be considered paasta ready."""
 import os
 import re
-import urllib2
 
 from service_configuration_lib import read_service_configuration
 
@@ -37,9 +36,9 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 
@@ -86,7 +85,7 @@ def deploy_check(service_path):
 
 def deploy_has_security_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
-    steps = [step['instancename'] for step in pipeline]
+    steps = [step['step'] for step in pipeline]
     if 'security-check' in steps:
         print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
         return True
@@ -97,7 +96,7 @@ def deploy_has_security_check(service, soa_dir):
 
 def deploy_has_performance_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
-    steps = [step['instancename'] for step in pipeline]
+    steps = [step['step'] for step in pipeline]
     if 'performance-check' in steps:
         print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
         return True
@@ -257,8 +256,8 @@ def deployments_check(service, soa_dir):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
     pipeline_deployments = get_pipeline_config(service, soa_dir)
-    pipeline_steps = [step['instancename'] for step in pipeline_deployments]
-    pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
+    pipeline_steps = [step['step'] for step in pipeline_deployments]
+    pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
     marathon_steps = get_marathon_steps(service, soa_dir)
     chronos_steps = get_chronos_steps(service, soa_dir)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
@@ -291,18 +290,6 @@ def deployments_check(service, soa_dir):
         if len(chronos_steps) > 0:
             print success("All chronos instances have a corresponding deploy.yaml entry")
     return the_return
-
-
-def pipeline_check(service):
-    url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service
-    try:
-        req_status = urllib2.urlopen(url).getcode()
-        if req_status == 200:
-            print PaastaCheckMessages.PIPELINE_FOUND
-        else:
-            print PaastaCheckMessages.PIPELINE_MISSING
-    except urllib2.HTTPError:
-        print PaastaCheckMessages.PIPELINE_MISSING
 
 
 def sensu_check(service, service_path, soa_dir):
@@ -366,7 +353,6 @@ def paasta_check(args):
     deploy_check(service_path)
     deploy_has_security_check(service, soa_dir)
     deploy_has_performance_check(service, soa_dir)
-    pipeline_check(service)
     git_repo_check(service)
     docker_check()
     makefile_check()

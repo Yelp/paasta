@@ -67,7 +67,6 @@ def test_get_service_info():
         assert 'Description: a fake service' in actual
         assert 'http://bla' in actual
         assert 'Git Repo: git@git.yelpcorp.com:services/fake_service' in actual
-        assert 'Jenkins Pipeline: ' in actual
         assert 'Deployed to the following' in actual
         assert 'clusterA (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterA.yelp/') in actual
         assert 'clusterB (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterB.yelp/') in actual

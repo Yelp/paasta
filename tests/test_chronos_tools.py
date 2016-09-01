@@ -354,6 +354,7 @@ class TestChronosTools:
             {"name": "PAASTA_CLUSTER", "value": "fake_cluster"},
             {"name": "PAASTA_SERVICE", "value": "fake_name"},
             {"name": "PAASTA_INSTANCE", "value": "fake_instance"},
+            {"name": "PAASTA_DOCKER_IMAGE", "value": ""},
             {"name": "foo", "value": "bar"},
             {"name": "biz", "value": "baz"},
         ]

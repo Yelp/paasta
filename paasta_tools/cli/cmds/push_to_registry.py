@@ -84,6 +84,7 @@ def paasta_push_to_registry(args):
         cmd,
         timeout=3600,
         log=True,
+        stream=True,
         component='build',
         service=service,
         loglevel='debug'

@@ -18,7 +18,7 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
-  python-dev debhelper python-yaml libyaml-dev python-pytest pyflakes \
+  python-dev libffi-dev libssl-dev debhelper python-yaml libyaml-dev python-pytest pyflakes \
   git help2man zsh wget mesos=0.28.2-2.0.27.ubuntu1404
 
 RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_0.11-1_all.deb && dpkg -i dh-virtualenv_0.11-1_all.deb && apt-get -f install

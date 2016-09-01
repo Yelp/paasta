@@ -22,6 +22,7 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
+from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import SystemPaastaConfig
@@ -887,6 +888,7 @@ class TestMarathonTools:
             'PAASTA_CLUSTER': '',
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
+            'PAASTA_DOCKER_IMAGE': '',
         }
         fake_cpus = .42
         fake_disk = 1234.5
@@ -2023,7 +2025,7 @@ class TestMarathonServiceConfig(object):
             config_dict={},
             branch_dict={'desired_state': 'stop'},
         )
-        assert 'Stopped' in fake_conf.get_desired_state_human()
+        assert 'Stopped' in desired_state_human(fake_conf.get_desired_state(), fake_conf.get_instances())
 
     def test_get_desired_state_human_started_with_instances(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -2033,7 +2035,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'instances': 42},
             branch_dict={'desired_state': 'start'},
         )
-        assert 'Started' in fake_conf.get_desired_state_human()
+        assert 'Started' in desired_state_human(fake_conf.get_desired_state(), fake_conf.get_instances())
 
     def test_get_desired_state_human_with_0_instances(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -2043,7 +2045,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'instances': 0},
             branch_dict={'desired_state': 'start'},
         )
-        assert 'Stopped' in fake_conf.get_desired_state_human()
+        assert 'Stopped' in desired_state_human(fake_conf.get_desired_state(), fake_conf.get_instances())
 
 
 class TestServiceNamespaceConfig(object):
@@ -2446,7 +2448,9 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
     )
     with mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_desired_state', autospec=True,
                            return_value='fake-state'):
-        assert 'Unknown (desired_state: fake-state)' in fake_marathon_service_config.get_desired_state_human()
+        fake_desired_state = desired_state_human(fake_marathon_service_config.get_desired_state(),
+                                                 fake_marathon_service_config.get_instances())
+        assert 'Unknown (desired_state: fake-state)' in fake_desired_state
 
 
 def test_read_namespace_for_service_instance_no_cluster():

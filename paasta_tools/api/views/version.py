@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,10 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# It is imperative that this file not contain any imports from our
-# dependencies. Since this file is imported from setup.py in the
-# setup phase, the dependencies may not exist on disk yet.
-#
-# Don't bump version manually. See `make release` docs in ./Makefile
-__version__ = '0.44.0'
+"""
+PaaSTA service list (instances) etc.
+"""
+from pyramid.view import view_config
+
+from paasta_tools import __version__
+
+
+@view_config(route_name='version', request_method='GET', renderer='json')
+def version(request):
+    return __version__

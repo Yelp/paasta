@@ -39,6 +39,8 @@ from paasta_tools.paasta_maintenance import is_host_drained
 from paasta_tools.paasta_maintenance import is_host_draining
 from paasta_tools.paasta_maintenance import is_host_past_maintenance_end
 from paasta_tools.paasta_maintenance import is_host_past_maintenance_start
+from paasta_tools.paasta_maintenance import is_hostname_local
+from paasta_tools.paasta_maintenance import is_safe_to_drain
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import load_credentials
 from paasta_tools.paasta_maintenance import parse_datetime
@@ -507,18 +509,12 @@ def test_status(
     assert output == "fake_text\n"
 
 
-@mock.patch('sys.stdout', new_callable=StringIO)
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
 def test_schedule(
     mock_get_maintenance_schedule,
-    mock_stdout,
 ):
-    mock_get_maintenance_schedule.return_value.__str__ = mock.Mock()
-    mock_get_maintenance_schedule.return_value.text = 'fake_text'
     schedule()
-    output = mock_stdout.getvalue()
     assert mock_get_maintenance_schedule.call_count == 1
-    assert output == "fake_text\n"
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_status')
@@ -645,21 +641,21 @@ def test_is_safe_to_kill(
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_mesos_task_count_by_slave')
-@mock.patch('paasta_tools.paasta_maintenance.get_mesos_state_from_leader')
+@mock.patch('paasta_tools.paasta_maintenance.get_mesos_state_summary_from_leader')
 @mock.patch('paasta_tools.paasta_maintenance.is_host_draining')
 def test_is_host_drained(
     mock_is_host_draining,
-    mock_get_mesos_state_from_leader,
+    mock_get_mesos_state_summary_from_leader,
     mock_get_mesos_task_count_by_slave,
 ):
     mock_mesos_state = mock.Mock()
     mock_slave_counts = {'host1': mock.Mock(count=3), 'host2': mock.Mock(count=0)}
-    mock_get_mesos_state_from_leader.return_value = mock_mesos_state
+    mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
     mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
     mock_is_host_draining.return_value = True
 
     assert not is_host_drained('host1')
-    assert mock_get_mesos_state_from_leader.called
+    assert mock_get_mesos_state_summary_from_leader.called
     mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
     mock_is_host_draining.assert_called_with(hostname='host1')
 
@@ -671,6 +667,12 @@ def test_is_host_drained(
 
     mock_is_host_draining.return_value = False
     assert not is_host_drained('host2')
+
+    mock_get_mesos_task_count_by_slave.return_value = {}
+    assert not is_host_drained('host3')
+
+    mock_is_host_draining.return_value = True
+    assert is_host_drained('host3')
 
 
 @mock.patch('paasta_tools.paasta_maintenance.get_maintenance_schedule')
@@ -794,3 +796,25 @@ def test_is_host_past_maintenance_end(
     mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
     assert is_host_past_maintenance_end('fake_host')
     assert not is_host_past_maintenance_end('fake_host2')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.is_hostname_local')
+def test_is_safe_to_drain_rejects_non_localhosts(
+    mock_is_hostname_local,
+):
+    mock_is_hostname_local.return_value = False
+    assert is_safe_to_drain('non-localhost') is False
+
+
+@mock.patch('paasta_tools.paasta_maintenance.getfqdn')
+@mock.patch('paasta_tools.paasta_maintenance.gethostname')
+def test_is_hostname_local_works(
+    mock_gethostname,
+    mock_getfqdn,
+):
+    mock_gethostname.return_value = 'foo'
+    mock_getfqdn.return_value = 'foo.bar'
+    assert is_hostname_local('localhost') is True
+    assert is_hostname_local('foo') is True
+    assert is_hostname_local('foo.bar') is True
+    assert is_hostname_local('something_different') is False

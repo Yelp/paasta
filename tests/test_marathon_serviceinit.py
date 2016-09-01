@@ -109,7 +109,7 @@ def test_status_desired_state():
     ) as mock_get_bouncing_status:
         mock_get_bouncing_status.return_value = 'Bouncing (fake_bounce)'
         fake_complete_config = mock.Mock()
-        fake_complete_config.get_desired_state_human = mock.Mock(return_value='Started')
+        fake_complete_config.get_desired_state = mock.Mock(return_value='start')
         actual = marathon_serviceinit.status_desired_state(
             'fake_service',
             'fake_instance',
@@ -316,7 +316,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment
     ):
         output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
         is_app_id_running_patch.assert_called_once_with(app_id, client)
-        get_app_queue_status_patch.assert_called_once_with(client, app_id)
+        get_app_queue_status_patch.assert_called_with(client, app_id)
         assert 'Delayed' in output
 
 

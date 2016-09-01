@@ -31,7 +31,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
@@ -331,7 +330,7 @@ def guess_cluster(service, args):
         cluster = args.cluster
     else:
         try:
-            cluster = get_default_cluster_for_service(service)
+            cluster = get_default_cluster_for_service(service, soa_dir=args.yelpsoa_config_root)
         except NoConfigurationForServiceError:
             sys.stderr.write(PaastaColors.red(
                 'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
@@ -613,22 +612,6 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
         print service_not_found
         exit(1)
     return service
-
-
-def figure_out_cluster(args):
-    """Figures out and validates the input cluster name"""
-    try:
-        cluster = args.cluster or load_system_paasta_config().get_cluster()
-    except IOError:
-        # TODO: Read the new global paasta.json
-        print "Sorry, could not detect the PaaSTA cluster. Please provide one"
-        exit(1)
-    return cluster
-
-
-def get_pipeline_url(service):
-    return PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service)
 
 
 def get_jenkins_build_output_url():
