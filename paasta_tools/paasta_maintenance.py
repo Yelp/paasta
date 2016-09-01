@@ -19,6 +19,7 @@ import logging
 import sys
 from socket import getfqdn
 from socket import gethostbyname
+from socket import gethostname
 
 from dateutil import parser
 from pytimeparse import timeparse
@@ -60,6 +61,7 @@ def parse_args():
             'is_host_draining',
             'is_hosts_past_maintenance_end',
             'is_hosts_past_maintenance_start',
+            'is_safe_to_drain',
             'is_safe_to_kill',
             'schedule',
             'status',
@@ -472,6 +474,29 @@ def is_safe_to_kill(hostname):
     return is_host_drained(hostname) or is_host_past_maintenance_start(hostname)
 
 
+def is_hostname_local(hostname):
+    return hostname == 'localhost' or hostname == getfqdn() or hostname == gethostname()
+
+
+def is_safe_to_drain(hostname):
+    """Checks if a host has healthy tasks running locally that have low
+    replication in other places
+    :param hostname: hostname to check
+    :returns: True or False
+    """
+    if not is_hostname_local(hostname):
+        print (
+            "Due to the way is_safe_to_drain is implemented, it can only work "
+            "on localhost."
+        )
+        return False
+    return not are_local_tasks_in_danger()
+
+
+def are_local_tasks_in_danger():
+    return False
+
+
 def is_host_drained(hostname):
     """Checks if a host has drained successfully by confirming it is
     draining and currently running 0 tasks
@@ -542,23 +567,6 @@ def paasta_maintenance():
     action = args.action
     hostnames = args.hostname
 
-    if action not in [
-            'down',
-            'drain',
-            'is_host_down',
-            'is_host_drained',
-            'is_host_draining',
-            'is_host_past_maintenance_end',
-            'is_host_past_maintenance_start',
-            'is_safe_to_kill',
-            'schedule',
-            'status',
-            'undrain',
-            'up',
-    ]:
-        print "action must be 'drain', 'undrain', 'down', 'up', 'status', or 'schedule'"
-        return
-
     if action != 'status' and not hostnames:
         print "You must specify one or more hostnames"
         return
@@ -580,6 +588,8 @@ def paasta_maintenance():
         ret = schedule()
         print "%s" % ret
         return ret
+    elif action == 'is_safe_to_drain':
+        return is_safe_to_drain(hostnames[0])
     elif action == 'is_safe_to_kill':
         return is_safe_to_kill(hostnames[0])
     elif action == 'is_host_drained':
@@ -594,7 +604,8 @@ def paasta_maintenance():
         return is_host_past_maintenance_start(hostnames[0])
     elif action == 'is_host_past_maintenance_end':
         return is_host_past_maintenance_end(hostnames[0])
-
+    else:
+        raise NotImplementedError("Action: '%s' is not implemented." % action)
 
 if __name__ == '__main__':
     if paasta_maintenance():

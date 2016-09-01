@@ -39,6 +39,8 @@ from paasta_tools.paasta_maintenance import is_host_drained
 from paasta_tools.paasta_maintenance import is_host_draining
 from paasta_tools.paasta_maintenance import is_host_past_maintenance_end
 from paasta_tools.paasta_maintenance import is_host_past_maintenance_start
+from paasta_tools.paasta_maintenance import is_hostname_local
+from paasta_tools.paasta_maintenance import is_safe_to_drain
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.paasta_maintenance import load_credentials
 from paasta_tools.paasta_maintenance import parse_datetime
@@ -794,3 +796,25 @@ def test_is_host_past_maintenance_end(
     mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
     assert is_host_past_maintenance_end('fake_host')
     assert not is_host_past_maintenance_end('fake_host2')
+
+
+@mock.patch('paasta_tools.paasta_maintenance.is_hostname_local')
+def test_is_safe_to_drain_rejects_non_localhosts(
+    mock_is_hostname_local,
+):
+    mock_is_hostname_local.return_value = False
+    assert is_safe_to_drain('non-localhost') is False
+
+
+@mock.patch('paasta_tools.paasta_maintenance.getfqdn')
+@mock.patch('paasta_tools.paasta_maintenance.gethostname')
+def test_is_hostname_local_works(
+    mock_gethostname,
+    mock_getfqdn,
+):
+    mock_gethostname.return_value = 'foo'
+    mock_getfqdn.return_value = 'foo.bar'
+    assert is_hostname_local('localhost') is True
+    assert is_hostname_local('foo') is True
+    assert is_hostname_local('foo.bar') is True
+    assert is_hostname_local('something_different') is False
