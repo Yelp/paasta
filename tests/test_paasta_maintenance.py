@@ -803,7 +803,7 @@ def test_is_safe_to_drain_rejects_non_localhosts(
     mock_is_hostname_local,
 ):
     mock_is_hostname_local.return_value = False
-    assert is_safe_to_drain('non-localhost') == False
+    assert is_safe_to_drain('non-localhost') is False
 
 
 @mock.patch('paasta_tools.paasta_maintenance.getfqdn')
@@ -814,7 +814,7 @@ def test_is_hostname_local_works(
 ):
     mock_gethostname.return_value = 'foo'
     mock_getfqdn.return_value = 'foo.bar'
-    assert is_hostname_local('localhost') == True
-    assert is_hostname_local('foo') == True
-    assert is_hostname_local('foo.bar') == True
-    assert is_hostname_local('something_different') == False
+    assert is_hostname_local('localhost') is True
+    assert is_hostname_local('foo') is True
+    assert is_hostname_local('foo.bar') is True
+    assert is_hostname_local('something_different') is False
