@@ -614,11 +614,6 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     return service
 
 
-def get_pipeline_url(service):
-    return PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service)
-
-
 def get_jenkins_build_output_url():
     """Returns the URL for Jenkins job's output.
     Returns None if it's not available.

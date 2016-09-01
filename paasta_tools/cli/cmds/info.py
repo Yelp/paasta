@@ -16,7 +16,6 @@ from service_configuration_lib import read_service_configuration
 
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import get_pipeline_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
@@ -112,7 +111,6 @@ def get_service_info(service, soa_dir):
     service_configuration = read_service_configuration(service, soa_dir)
     description = service_configuration.get('description', NO_DESCRIPTION_MESSAGE)
     external_link = service_configuration.get('external_link', NO_EXTERNAL_LINK_MESSAGE)
-    pipeline_url = get_pipeline_url(service)
     smartstack_endpoints = get_smartstack_endpoints(service, soa_dir)
     git_url = get_git_url(service, soa_dir)
 
@@ -123,7 +121,6 @@ def get_service_info(service, soa_dir):
     output.append('Monitored By: team %s' % get_team(service=service, overrides={}))
     output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service=service, overrides={})))
     output.append('Git Repo: %s' % git_url)
-    output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')
     output.extend(get_deployments_strings(service, soa_dir))
     if smartstack_endpoints:
