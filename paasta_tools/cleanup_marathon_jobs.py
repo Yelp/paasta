@@ -100,14 +100,6 @@ def delete_app(app_id, client, soa_dir):
             overrides={},
             output="This instance was removed and is no longer running",
         )
-        send_event(
-            service=service,
-            check_name='paasta_bounce_progress.%s' % short_app_id,
-            soa_dir=soa_dir,
-            status=pysensu_yelp.Status.OK,
-            overrides={},
-            output="This instance was removed and is no longer running",
-        )
         log_line = "Deleted stale marathon job that looks lost: %s" % app_id
         _log(
             service=service,
