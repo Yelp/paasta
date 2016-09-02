@@ -44,6 +44,7 @@ setup(
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
         'ephemeral-port-reserve >= 1.0.1',
+        'functools32',
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
         'httplib2 >= 0.9,<= 1.0',
