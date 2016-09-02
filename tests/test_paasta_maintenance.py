@@ -642,7 +642,8 @@ def test_is_host_drained(
     mock_get_mesos_task_count_by_slave,
 ):
     mock_mesos_state = mock.Mock()
-    mock_slave_counts = {'host1': mock.Mock(count=3), 'host2': mock.Mock(count=0)}
+    mock_slave_counts = [{'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
+                         {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})}]
     mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
     mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
     mock_is_host_draining.return_value = True

@@ -642,15 +642,22 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-def get_mesos_task_count_by_slave(mesos_state, pool=None):
+def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
     :param mesos_state: mesos state dict
+    :param slaves_list: a list of slave dicts to count running tasks for.
     :param pool: pool of slaves to return (None means all)
     :returns: dict of {<slave_id>:{'count': <count>, 'slave': <slave_object>, 'chronos_count':<chronos_count>}}
     """
     all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
-    if pool:
+    if slaves_list:
+        slave_hosts = [slave['hostname'] for slave in slaves_list]
+        slaves = {
+            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+            if slave['hostname'] in slave_hosts
+        }
+    elif pool:
         slaves = {
             slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
             if slave['attributes'].get('pool', 'default') == pool
@@ -668,11 +675,17 @@ def get_mesos_task_count_by_slave(mesos_state, pool=None):
             log.debug("Task framework: {0}".format(task.framework.name))
             if task.framework.name == 'chronos':
                 slaves[task.slave['id']]['chronos_count'] += 1
-    slaves = {slave_counts['slave']['hostname']: SlaveTaskCount(**slave_counts) for slave_counts in slaves.values()}
-    for slave in slaves.values():
-        log.debug("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['hostname'],
-                                                                                      slave.count,
-                                                                                      slave.chronos_count))
+    if slaves_list:
+        for slave in slaves_list:
+            slave['task_counts'] = SlaveTaskCount(**slaves[slave['id']])
+        slaves = slaves_list
+    else:
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
+    for slave in slaves:
+        log.debug("Slave: {0}, running {1} tasks, "
+                  "including {2} chronos tasks".format(slave['task_counts'].slave['hostname'],
+                                                       slave['task_counts'].count,
+                                                       slave['task_counts'].chronos_count))
     return slaves
 
 

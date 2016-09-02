@@ -506,8 +506,9 @@ def is_host_drained(hostname):
     """
     mesos_state = get_mesos_state_summary_from_leader()
     task_counts = get_mesos_task_count_by_slave(mesos_state)
-    if hostname in task_counts:
-        slave_task_count = task_counts[hostname].count
+    counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
+    if counts:
+        slave_task_count = counts[0]
     else:
         slave_task_count = 0
     return is_host_draining(hostname=hostname) and slave_task_count == 0
