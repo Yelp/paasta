@@ -154,6 +154,10 @@ class UnknownChronosJobError(Exception):
     pass
 
 
+class MultipleChronosJobs(Exception):
+    pass
+
+
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
@@ -821,8 +825,8 @@ def get_job_for_service_instance(service, instance, include_disabled=True):
     :param service: the service to be queried
     :param instance: the instance to be queried
     :param include_disabled: include disabled jobs in the search. default: True
-    :returns: the most 'current' job for a given service instance; that is the most recent
-    job according to the result of sorting all the matching jobs.
+    :returns: the only job for a given service instance
+    An exception is raised if more than one job is returned.
     """
     chronos_config = load_chronos_config()
     matching_jobs = lookup_chronos_jobs(
@@ -832,10 +836,14 @@ def get_job_for_service_instance(service, instance, include_disabled=True):
         include_disabled=True
     )
     sorted_jobs = sort_jobs(matching_jobs)
-    if len(sorted_jobs) > 0:
+    if len(sorted_jobs) == 1:
         return sorted_jobs[0]
-    else:
+    elif len(sorted_jobs) == 0:
         return None
+    else:
+        raise MultipleChronosJobs(
+            "This function should never multiple jobs, but got: '%s'" % ",".join(map(str, sorted_jobs))
+        )
 
 
 def compose_check_name_for_service_instance(check_name, service, instance):

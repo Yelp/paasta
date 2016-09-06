@@ -1557,7 +1557,7 @@ class TestChronosTools:
     @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospect=True)
     @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospect=True)
     @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospect=True)
-    def test_find_matching_parent_job_none_matching(
+    def test_get_job_for_service_instance_returns_none(
         self,
         mock_lookup_chronos_jobs,
         mock_get_chronos_client,
@@ -1570,7 +1570,7 @@ class TestChronosTools:
     @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True)
-    def test_find_matching_parent_job(
+    def test_get_job_for_service_instance_returns_one(
         self,
         mock_load_chronos_config,
         mock_get_chronos_client, mock_lookup_chronos_jobs,
@@ -1580,6 +1580,20 @@ class TestChronosTools:
         mock_load_chronos_config.return_value = {}
         matching = chronos_tools.get_job_for_service_instance('service', 'instance')
         assert matching == mock_matching_jobs[0]
+
+    @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True)
+    def test_get_job_for_service_instance_raises_on_multiple(
+        self,
+        mock_load_chronos_config,
+        mock_get_chronos_client, mock_lookup_chronos_jobs,
+    ):
+        mock_matching_jobs = [{'name': 'service instance'}, {'name': 'service instance_2'}]
+        mock_lookup_chronos_jobs.return_value = mock_matching_jobs
+        mock_load_chronos_config.return_value = {}
+        with raises(chronos_tools.MultipleChronosJobs):
+            chronos_tools.get_job_for_service_instance('service', 'instance')
 
     def test_determine_disabled_state(self):
         assert chronos_tools.determine_disabled_state('start', False) is False
