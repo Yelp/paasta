@@ -383,7 +383,10 @@ def get_short_task_id(task_id):
 
 def status_mesos_tasks(service, instance, normal_instance_count):
     job_id = marathon_tools.format_job_id(service, instance)
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
+    # We have to add a spacer at the end to make sure we only return
+    # things for service.main and not service.main_foo
+    filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(filter_string)
     count = len(running_and_active_tasks)
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
