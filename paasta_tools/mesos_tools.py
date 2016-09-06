@@ -648,7 +648,7 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :param mesos_state: mesos state dict
     :param slaves_list: a list of slave dicts to count running tasks for.
     :param pool: pool of slaves to return (None means all)
-    :returns: dict of {<slave_id>:{'count': <count>, 'slave': <slave_object>, 'chronos_count':<chronos_count>}}
+    :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
     all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
     if slaves_list:
@@ -687,6 +687,20 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
                                                        slave['task_counts'].count,
                                                        slave['task_counts'].chronos_count))
     return slaves
+
+
+def get_count_running_tasks_on_slave(hostname):
+    """Return the number of tasks running on a paticular slave
+    or 0 if the slave is not found.
+    :param hostname: hostname of the slave
+    :returns: integer count of mesos tasks"""
+    mesos_state = get_mesos_state_summary_from_leader()
+    task_counts = get_mesos_task_count_by_slave(mesos_state)
+    counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
+    if counts:
+        return counts[0]
+    else:
+        return 0
 
 
 def slave_pid_to_ip(slave_pid):

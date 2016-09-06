@@ -604,7 +604,7 @@ def get_spot_fleet_delta(resource, error):
 
 
 def wait_and_terminate(slave, drain_timeout, dry_run, region=None):
-    """Currently kills a slave, will wait for draining to complete soon
+    """Waits for slave to be drained and then terminate
 
     :param slave: dict of slave to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
@@ -654,14 +654,9 @@ def sort_slaves_to_kill(slaves):
     after sorting in preference of which slaves we kill first.
     It sorts first by number of chronos tasks, then by total number of tasks
 
-    :param slaves: slaves dict
-    :returns: list of slaves"""
-    if slaves:
-        slaves_by_task_counts = [slave for slave in
-                                 sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))]
-        return slaves_by_task_counts
-    else:
-        return []
+    :param slaves: list of slaves dict
+    :returns: list of slaves dicts"""
+    return sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))
 
 
 def get_instance_type_weights(sfr):
@@ -746,7 +741,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
     :param resource: resource to scale
     :param current_capacity: integer current SFR capacity
     :param target_capacity: target SFR capacity
-    :param sorted_slaves: list of slaves by order to kill
+    :param pool_settings: pool settings dict with timeout settings
     :param dry_run: Don't drain or make changes to spot fleet if True"""
     target_capacity = int(target_capacity)
     current_capacity = int(current_capacity)
