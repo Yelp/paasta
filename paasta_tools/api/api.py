@@ -21,12 +21,14 @@ import os
 import sys
 
 import requests_cache
+import service_configuration_lib
 from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
 
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +79,9 @@ def main(argv=None):
 
     if args.soa_dir:
         settings.soa_dir = args.soa_dir
+
+    # pyinotify is a better solution than turning off file caching completely
+    service_configuration_lib.disable_yaml_cache()
 
     # Exit on exceptions while loading settings
     settings.cluster = load_system_paasta_config().get_cluster()
