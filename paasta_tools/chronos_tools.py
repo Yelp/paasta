@@ -24,9 +24,9 @@ import dateutil
 import isodate
 import monitoring_tools
 import service_configuration_lib
-import tron_command_context
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
+from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_config_hash
