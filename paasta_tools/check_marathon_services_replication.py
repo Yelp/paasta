@@ -361,12 +361,23 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute=attribute, blacklist=blacklist)
+    filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
+        blacklist=blacklist,
+        whitelist=[],
+    )
+    if not filtered_slaves:
+        raise mesos_tools.NoSlavesAvailableError
+
+    attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+        slaves=filtered_slaves,
+        attribute=attribute
+    )
+
     full_name = compose_job_id(service, namespace)
 
-    for value, hosts in unique_values.iteritems():
+    for value, hosts in attribute_slave_dict.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats
-        synapse_host = hosts[0]
+        synapse_host = hosts[0]['hostname']
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
             synapse_port=system_paasta_config.get_synapse_port(),

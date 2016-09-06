@@ -19,6 +19,7 @@ import humanize
 import isodate
 
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
@@ -304,9 +305,25 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(
-        attribute=discover_location_type, blacklist=monitoring_blacklist)
-    if len(unique_attributes) == 0:
+
+    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
+        blacklist=monitoring_blacklist,
+        whitelist=[]
+    )
+
+    grouped_slaves = get_mesos_slaves_grouped_by_attribute(
+        slaves=filtered_slaves,
+        attribute=discover_location_type,
+    )
+
+    # rebuild the dict, replacing the slave object
+    # with just their hostname
+    grouped_slave_hostname = {
+        attribute_value: [slave['hostname'] for slave in slaves]
+        for attribute_value, slaves in grouped_slaves.items()
+    }
+
+    if len(grouped_slave_hostname) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
         output.append("Smartstack:")
@@ -315,13 +332,13 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
             output.append("  Backends:")
 
         output.extend(pretty_print_smartstack_backends_for_locations(
-            service_instance,
-            tasks,
-            unique_attributes,
-            expected_count,
-            verbose,
-            synapse_port,
-            synapse_haproxy_url_format,
+            service_instance=service_instance,
+            tasks=tasks,
+            locations=grouped_slave_hostname,
+            expected_count=expected_count,
+            verbose=verbose,
+            synapse_port=synapse_port,
+            synapse_haproxy_url_format=synapse_haproxy_url_format,
         ))
     return "\n".join(output)
 

@@ -519,6 +519,21 @@ def get_number_of_mesos_masters(host, path):
     return len(result)
 
 
+def get_all_slaves_for_blacklist_whitelist(blacklist, whitelist):
+    """
+    A wrapper function to get all slaves and filter according to
+    provided blacklist and whitelist.
+
+    :param blacklist: a blacklist, used to filter mesos slaves by attribute
+    :param whitelist: a whitelist, used to filter mesos slaves by attribute
+
+    :returns: a list of mesos slave objects, filtered by those which are acceptable
+    according to the provided blacklist and whitelists.
+    """
+    all_slaves = get_slaves()
+    return filter_mesos_slaves_by_blacklist(all_slaves, blacklist, whitelist)
+
+
 def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 

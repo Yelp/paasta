@@ -844,23 +844,34 @@ def test_send_event_if_under_replication_critical():
 def test_get_smartstack_replication_for_attribute():
     fake_namespace = 'fake_main'
     fake_service = 'fake_service'
-    fake_values_and_hosts = {
-        'fake_value_1': ['fake_host_1', 'fake_host_3'],
-        'fake_other_value': ['fake_host_4'],
-    }
+    mock_filtered_slaves = [
+        {
+            'hostname': 'hostone',
+            'attributes': {
+                'fake_attribute': 'foo'
+            }
+        },
+        {
+            'hostname': 'hostone',
+            'attributes': {
+                'fake_attribute': 'bar'
+            }
+        }
+    ]
+
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-                   return_value=fake_values_and_hosts),
+        mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
+                   return_value=mock_filtered_slaves),
         mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
                    return_value={}, autospec=True),
     ) as (
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_replication_for_services,
     ):
         expected = {
-            'fake_value_1': {},
-            'fake_other_value': {}
+            'foo': {},
+            'bar': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
             attribute='fake_attribute',
@@ -869,14 +880,15 @@ def test_get_smartstack_replication_for_attribute():
             blacklist=[],
             system_paasta_config=fake_system_paasta_config,
         )
+        assert mock_get_all_slaves_for_blacklist_whitelist.called_once_with(
+            blacklist=[],
+            whitelist=[]
+        )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
-            attribute='fake_attribute',
-            blacklist=[],
-        )
+
         mock_get_replication_for_services.assert_any_call(
-            synapse_host='fake_host_1',
+            synapse_host='hostone',
             synapse_port=fake_system_paasta_config.get_synapse_port(),
             synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
             services=['fake_service.fake_main'],

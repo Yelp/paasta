@@ -413,17 +413,24 @@ def test_status_smartstack_backends_normal():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
+            'hostname': 'fakehost',
+            'attributes': {
+                'fake_discover': 'fakelocation'
+            }
+        }]
+
         mock_read_ns.return_value = instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
@@ -432,7 +439,6 @@ def test_status_smartstack_backends_normal():
             (None, other_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -447,11 +453,11 @@ def test_status_smartstack_backends_normal():
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
-            synapse_host='fakehost1',
+            synapse_host='fakehost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        assert "fake_location1" in actual
+        assert "fakelocation" in actual
         assert "Healthy" in actual
 
 
@@ -490,15 +496,15 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_ns.return_value = instance
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {}
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = {}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -527,13 +533,13 @@ def test_status_smartstack_backends_multiple_locations():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
@@ -544,10 +550,20 @@ def test_status_smartstack_backends_multiple_locations():
             (fake_backend, good_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {
-            'fake_location1': ['fakehost1'],
-            'fake_location2': ['fakehost2'],
-        }
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'fakehost',
+                'attributes': {
+                    'fake_discover': 'fakelocation'
+                }
+            },
+            {
+                'hostname': 'fakeotherhost',
+                'attributes': {
+                    'fake_discover': 'fakeotherlocation'
+                }
+            }
+        ]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -562,18 +578,18 @@ def test_status_smartstack_backends_multiple_locations():
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost1',
+            synapse_host='fakehost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost2',
+            synapse_host='fakeotherhost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
-        assert "fake_location2 - %s" % PaastaColors.green('Healthy') in actual
+        assert "fakelocation - %s" % PaastaColors.green('Healthy') in actual
+        assert "fakeotherlocation - %s" % PaastaColors.green('Healthy') in actual
 
 
 def test_status_smartstack_backends_multiple_locations_expected_count():
@@ -591,14 +607,14 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.haproxy_backend_report', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
         mock_haproxy_backend_report,
@@ -610,10 +626,20 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             (fake_backend, good_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {
-            'fake_location1': ['fakehost1'],
-            'fake_location2': ['fakehost2'],
-        }
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'hostname1',
+                'attributes': {
+                    'fake_discover': 'fakelocation'
+                }
+            },
+            {
+                'hostname': 'hostname2',
+                'attributes': {
+                    'fake_discover': 'fakelocation2'
+                }
+            }
+        ]
         marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -628,18 +654,17 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost1',
+            synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost2',
+            synapse_host='hostname2',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        expected_count_per_location = int(
-            normal_count / len(mock_get_mesos_slaves_grouped_by_attribute.return_value))
+        expected_count_per_location = int(normal_count / 2)
         mock_haproxy_backend_report.assert_any_call(expected_count_per_location, 1)
 
 
@@ -664,13 +689,13 @@ def test_status_smartstack_backends_verbose_multiple_apps():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
@@ -683,7 +708,14 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             (None, other_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'hostname1',
+                'attributes': {
+                    'fake_discover': 'fakelocation'
+                }
+            },
+        ]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -698,11 +730,11 @@ def test_status_smartstack_backends_verbose_multiple_apps():
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
-            synapse_host='fakehost1',
+            synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        assert "fake_location1" in actual
+        assert "fakelocation" in actual
         assert "hostname1:1001" in actual
         assert re.search(r"%s[^\n]*hostname2:1002" % re.escape(PaastaColors.GREY), actual)
 
@@ -723,7 +755,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
                    side_effect=[[fake_backend], [fake_other_backend]]),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks',
@@ -731,17 +763,27 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_ns.return_value = instance
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'hostname1',
+                'attributes': {
+                    'fake_discover': 'fakelocation'
+                }
+            },
+            {
+                'hostname': 'hostname2',
+                'attributes': {
+                    'fake_discover': 'fakeotherlocation'
+                }
+            }
+        ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {
-            'fake_location1': ['fakehost1'],
-            'fake_location2': ['fakehost2'],
-        }
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -756,23 +798,23 @@ def test_status_smartstack_backends_verbose_multiple_locations():
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost1',
+            synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
-            synapse_host='fakehost2',
+            synapse_host='hostname2',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
-            attribute='fake_discover',
+        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
             blacklist=[],
+            whitelist=[],
         )
-        assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
+        assert "fakelocation - %s" % PaastaColors.green('Healthy') in actual
         assert "hostname1:1001" in actual
-        assert "fake_location2 - %s" % PaastaColors.green('Healthy') in actual
+        assert "fakeotherlocation - %s" % PaastaColors.green('Healthy') in actual
         assert "hostname2:1002" in actual
 
 
@@ -789,16 +831,24 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_mesos_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
+        mock_get_mesos_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'fake',
+                'attributes': {
+                    'fake_discover': 'fake_location_1'
+                }
+            }
+        ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_ns.return_value = instance
         mock_get_backends.return_value = [fake_backend]
@@ -806,7 +856,6 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             (fake_backend, good_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -835,16 +884,24 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
-        mock_get_mesos_slaves_grouped_by_attribute,
+        mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+            {
+                'hostname': 'fake',
+                'attributes': {
+                    'fake_discover': 'fake_location_1'
+                }
+            }
+        ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_ns.return_value = instance
         mock_get_backends.return_value = [fake_backend]
@@ -852,7 +909,6 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             (fake_backend, None),
         ]
         tasks = [good_task, other_task]
-        mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
