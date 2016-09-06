@@ -14,6 +14,7 @@ Submodules
 .. toctree::
 
    paasta_tools.api.api
+   paasta_tools.api.client
    paasta_tools.api.settings
 
 Module contents
