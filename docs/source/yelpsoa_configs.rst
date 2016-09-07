@@ -336,12 +336,6 @@ Each job configuration MAY specify the following options:
       one is still running. (if N starts and overflows to the next time slot,
       N+1 and any future runs will be canceled until N finishes)
 
-      In PaaSTA this can be worked around to some degree
-      by using the ``cmd`` time parsing documented below. For example, if
-      a job is scheduled to run every 24 hours, and a ``%(day)`` variable
-      substitution is used, PaaSTA will create a new job for *each* new day,
-      allowing the previous job to take more than 24 hours.
-
   * ``parents``: An array of parents jobs. If specified, then the job will not run
     until *all* of the jobs in this array have completed. The parents jobs should be
     in the form of ``service.instance``. For example::
@@ -374,10 +368,6 @@ Each job configuration MAY specify the following options:
       <https://docs.python.org/2/library/string.html#format-string-syntax>`_,
       which means that the special character strings like ``%`` must
       be escaped in order to be used literally.
-
-    * **Note**: Using dynamic date variables in a ``cmd`` will cause PaaSTA
-      to create unique jobs, which can allow the unique jobs to overlap
-      in their runtime. See the documentation on ``schedule`` for more details.
 
   * ``args``: See the `marathon-[clustername].yaml`_ section for details
 
