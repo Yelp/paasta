@@ -353,11 +353,11 @@ def test_format_parents_verbose():
     example_status = (fake_last_datetime, chronos_tools.LastRunState.Success)
     with contextlib.nested(
         mock.patch(
-            'paasta_tools.chronos_tools.get_job_for_service_instance',
+            'paasta_tools.chronos_tools.get_jobs_for_service_instance',
             autospec=True,
-            return_value={
+            return_value=[{
                 'name': 'testservice testinstance'
-            }
+            }]
         ),
         mock.patch(
             'paasta_tools.chronos_tools.get_status_last_run',
