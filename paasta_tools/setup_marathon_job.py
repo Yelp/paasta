@@ -116,44 +116,6 @@ def send_event(name, instance, soa_dir, status, output):
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
-def send_sensu_bounce_keepalive(service, instance, soa_dir, cluster, config):
-    """Send a Sensu event with a special ``ttl``, to let Sensu know that
-    the everything is fine. This event is **not** fired when the bounce is in
-    progress.
-
-    If the bounce goes on for too long, this the ``ttl`` will expire and Sensu
-    will emit a new event saying that this one didn't check in within the expected
-    time-to-live."""
-    ttl = '1h'
-    marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service=service,
-        cluster=cluster,
-        instance=instance,
-        config_dict=config,
-        branch_dict=None,
-    )
-    monitoring_overrides = marathon_service_config.get_monitoring()
-    # Sensu currently emits events for expired ttl checks every 30s
-    monitoring_overrides['check_every'] = '30s'
-    monitoring_overrides['alert_after'] = '2m'
-    monitoring_overrides['runbook'] = 'http://y/paasta-troubleshooting'
-    monitoring_overrides['tip'] = ("Check out `paasta logs`. If the bounce hasn't made progress, "
-                                   "it may mean that the new version isn't healthy.")
-    # Dogfooding this alert till I'm comfortable it doesn't spam people
-    monitoring_overrides['team'] = 'noop'
-    monitoring_overrides['notification_email'] = 'kwa@yelp.com'
-
-    monitoring_tools.send_event(
-        service=service,
-        check_name='paasta_bounce_progress.%s' % compose_job_id(service, instance),
-        overrides=monitoring_overrides,
-        status=pysensu_yelp.Status.OK,
-        output="The bounce is in a steady state",
-        soa_dir=soa_dir,
-        ttl=ttl,
-    )
-
-
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
     marathon_config = marathon_tools.load_marathon_config()
@@ -251,14 +213,7 @@ def do_bounce(
             level='event',
         )
     else:
-        # In a steady state. Let's let Sensu know everything is fine.
-        send_sensu_bounce_keepalive(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-            config=config,
-        )
+        log.debug("Nothing to do, bounce is in a steady state")
 
     actions = bounce_func(
         new_config=config,
