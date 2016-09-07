@@ -25,34 +25,106 @@ Command line options:
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
+- -m, --minimal: Only show service instances that need bouncing
 """
 import argparse
 import sys
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import get_num_at_risk_tasks
+from paasta_tools.marathon_tools import load_marathon_config
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import use_requests_cache
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Lists marathon instances for a service.')
+    parser = argparse.ArgumentParser(
+        description='Lists marathon instances for a service.')
     parser.add_argument('-c', '--cluster', dest="cluster", metavar="CLUSTER",
                         default=None,
                         help="define a specific cluster to read from")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
+    parser.add_argument('-m', '--minimal', dest='minimal', default=False,
+                        help="show only service instances that need bouncing")
     args = parser.parse_args()
     return args
 
 
+@use_requests_cache('list_marathon_services')
+def get_service_instances_that_need_bouncing(soa_dir):
+    def long_job_id_to_short_job_id(long_job_id):
+        service, instance, _, __ = decompose_job_id(long_job_id)
+        return compose_job_id(service, instance)
+
+    cluster = load_system_paasta_config().get_cluster()
+
+    instances = get_services_for_cluster(
+        instance_type='marathon',
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
+    marathon_configs = dict()
+    for service, instance in instances:
+        try:
+            marathon_config = load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            ).format_marathon_app_dict()
+            marathon_configs[marathon_config['id'].lstrip('/')] = marathon_config
+        except NoDockerImageError:
+            # This service hasn't been deployed yet
+            pass
+
+    desired_ids = set(marathon_configs.keys())
+
+    marathon_config = load_marathon_config()
+    marathon_client = get_marathon_client(
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        passwd=marathon_config.get_password(),)
+    current_apps = {app.id.lstrip('/'): app
+                    for app in marathon_client.list_apps()}
+    actual_ids = set(current_apps.keys())
+
+    apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
+    apps_that_need_bouncing = {long_job_id_to_short_job_id(app)
+                               for app in apps_that_need_bouncing}
+
+    for app_id, app in current_apps.items():
+        short_app_id = long_job_id_to_short_job_id(app_id)
+        if short_app_id not in apps_that_need_bouncing:
+            if app.instances != marathon_configs[app_id]['instances'] or \
+                    get_num_at_risk_tasks(app) != 0:
+                apps_that_need_bouncing.add(short_app_id)
+
+    return (app_id.replace('--', '_') for app_id in apps_that_need_bouncing)
+
+
 def main():
     args = parse_args()
-    instances = get_services_for_cluster(cluster=args.cluster, instance_type='marathon', soa_dir=args.soa_dir)
-    composed = []
-    for name, instance in instances:
-        composed.append(compose_job_id(name, instance))
-    print '\n'.join(composed)
+    soa_dir = args.soa_dir
+    cluster = args.cluster
+    if args.minimal:
+        service_instances = get_service_instances_that_need_bouncing(
+            soa_dir=soa_dir)
+    else:
+        instances = get_services_for_cluster(cluster=cluster,
+                                             instance_type='marathon',
+                                             soa_dir=soa_dir)
+        service_instances = []
+        for name, instance in instances:
+            service_instances.append(compose_job_id(name, instance))
+    print '\n'.join(service_instances)
     sys.exit(0)
 
 
