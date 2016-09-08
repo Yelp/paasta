@@ -58,17 +58,6 @@ def parse_args():
     return args
 
 
-def get_current_apps():
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password(),
-    )
-
-    return {app.id.lstrip('/'): app for app in marathon_client.list_apps()}
-
-
 def get_desired_marathon_configs(soa_dir):
     cluster = load_system_paasta_config().get_cluster()
     instances = get_services_for_cluster(
@@ -94,11 +83,11 @@ def get_desired_marathon_configs(soa_dir):
 
 
 @use_requests_cache('list_marathon_services')
-def get_service_instances_that_need_bouncing(soa_dir):
+def get_service_instances_that_need_bouncing(marathon_client, soa_dir):
     desired_marathon_configs = get_desired_marathon_configs(soa_dir)
     desired_ids = set(desired_marathon_configs.keys())
 
-    current_apps = get_current_apps()
+    current_apps = {app.id.lstrip('/'): app for app in marathon_client.list_apps()}
     actual_ids = set(current_apps.keys())
 
     apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
@@ -118,8 +107,14 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     if args.minimal:
+        marathon_config = load_marathon_config()
+        marathon_client = get_marathon_client(
+            url=marathon_config.get_url(),
+            user=marathon_config.get_username(),
+            passwd=marathon_config.get_password(),
+        )
         service_instances = get_service_instances_that_need_bouncing(
-            soa_dir=soa_dir)
+            marathon_client=marathon_client, soa_dir=soa_dir)
     else:
         instances = get_services_for_cluster(cluster=cluster,
                                              instance_type='marathon',
