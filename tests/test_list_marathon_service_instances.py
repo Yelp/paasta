@@ -18,11 +18,6 @@ import mock
 from paasta_tools import list_marathon_service_instances
 
 
-def test_long_job_id_to_short_job_id():
-    assert list_marathon_service_instances.long_job_id_to_short_job_id(
-        'service.instance.git.config') == 'service.instance'
-
-
 def list_get_current_apps():
     with contextlib.nested(
         mock.patch('paasta_tools.list_marathon_service_instances.load_marathon_config'),

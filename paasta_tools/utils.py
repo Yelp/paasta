@@ -1621,3 +1621,8 @@ def use_requests_cache(cache_name, backend='memory', **kwargs):
             return result
         return fun_with_cache
     return wrap
+
+
+def long_job_id_to_short_job_id(long_job_id):
+    service, instance, _, __ = decompose_job_id(long_job_id)
+    return compose_job_id(service, instance)
