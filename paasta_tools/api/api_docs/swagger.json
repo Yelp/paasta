@@ -96,6 +96,87 @@
           }
         ]
       }
+    },
+    "/services/{service}/{instance}/autoscaler": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Desired instance count for a service instance",
+            "schema": {
+              "format": "integer"
+            }
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get status of service_name.instance_name",
+        "operationId": "get_autoscaler_count",
+        "tags": ["autoscaler"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "/services/{service}/{instance}/autoscaler/{desired_instances}": {
+      "put": {
+        "responses": {
+          "202": {
+            "description": "Desired instance count for a service instance",
+            "schema": {
+              "format": "integer"
+            }
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get status of service_name.instance_name",
+        "operationId": "update_autoscaler_count",
+        "tags": ["autoscaler"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Number of desired instances",
+            "name": "desired_instances",
+            "required": true,
+            "type": "integer"
+          }
+        ]
+      }
     }
   },
   "definitions": {
