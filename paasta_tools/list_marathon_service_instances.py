@@ -74,7 +74,7 @@ def get_current_apps():
     return {app.id.lstrip('/'): app for app in marathon_client.list_apps()}
 
 
-def get_desired_marathon_configs(cluster, soa_dir):
+def get_desired_marathon_configs(soa_dir):
     cluster = load_system_paasta_config().get_cluster()
     instances = get_services_for_cluster(
         instance_type='marathon',
