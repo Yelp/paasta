@@ -154,10 +154,6 @@ class UnknownChronosJobError(Exception):
     pass
 
 
-class MultipleChronosJobs(Exception):
-    pass
-
-
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
@@ -426,7 +422,7 @@ class ChronosJobConfig(InstanceConfig):
         else:
             # The input to parents is the normal paasta syntax, but for chronos we have to
             # convert it to what chronos expects, which uses its own spacer
-            complete_config["parents"] = map(paasta_to_chronos_job_name, self.get_parents())
+            complete_config["parents"] = [paasta_to_chronos_job_name(parent) for parent in self.get_parents()]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -832,6 +828,7 @@ def get_jobs_for_service_instance(service, instance, include_disabled=True, incl
     :param service: the service to be queried
     :param instance: the instance to be queried
     :param include_disabled: include disabled jobs in the search. default: True
+    :param include_temporary: include temporary in the search. default: False
     :returns: the jobs for a given service instance
     """
     chronos_config = load_chronos_config()

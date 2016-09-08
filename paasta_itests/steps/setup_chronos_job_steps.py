@@ -26,6 +26,8 @@ def job_exists(context, service, instance):
         client=context.chronos_client,
         service=service,
         instance=instance,
+        include_temporary=True,
+        include_disabled=True,
     )
     assert len(matching_jobs) == 1
 
@@ -68,6 +70,7 @@ def should_be_disabled_jobs(context, disabled, job_count, service, instance):
         instance=instance,
         client=context.chronos_client,
         include_disabled=True,
+        include_temporary=True,
     )
     filtered_jobs = [job for job in all_jobs if job["disabled"] is is_disabled]
     assert len(filtered_jobs) == int(job_count)

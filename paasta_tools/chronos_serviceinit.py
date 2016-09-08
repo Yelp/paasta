@@ -172,7 +172,7 @@ def _format_parents_verbose(job):
     # find matching parent jobs
     parent_jobs = [
         chronos_tools.get_jobs_for_service_instance(
-            *service_instance, include_disabled=False, include_temporary=False)[0]
+            *service_instance, include_disabled=True, include_temporary=False)[0]
         for service_instance in parent_service_instances
     ]
 
