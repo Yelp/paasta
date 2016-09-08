@@ -77,6 +77,28 @@ def test_get_service_instances_that_need_bouncing():
             '/fake/soa/dir')) == {'fake_service.fake_instance'}
 
 
+def test_get_service_instances_that_need_bouncing_two_existing_services():
+    with contextlib.nested(
+        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs'),
+        mock.patch('paasta_tools.list_marathon_service_instances.get_current_apps'),
+        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks'),
+    ) as (
+        mock_get_desired_marathon_configs,
+        mock_get_current_apps,
+        mock_get_num_at_risk_tasks,
+    ):
+        mock_get_desired_marathon_configs.return_value = {
+            'fake--service.fake--instance.sha.config': {'instances': 5},
+        }
+        mock_get_current_apps.return_value = {
+            'fake--service.fake--instance.sha.config': mock.MagicMock(instances=5),
+            'fake--service.fake--instance.sha.config2': mock.MagicMock(instances=5),
+        }
+        mock_get_num_at_risk_tasks.return_value = 0
+        assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
+            '/fake/soa/dir')) == {'fake_service.fake_instance'}
+
+
 def test_get_service_instances_that_need_bouncing_no_difference():
     with contextlib.nested(
         mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs'),
