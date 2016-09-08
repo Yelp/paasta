@@ -31,6 +31,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
+CHRONOS_FRAMEWORK_NAME = 'chronos'
+
 ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
 SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
@@ -651,34 +653,25 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
     all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
-    if slaves_list:
-        slave_hosts = [slave['hostname'] for slave in slaves_list]
-        slaves = {
-            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-            if slave['hostname'] in slave_hosts
-        }
-    elif pool:
-        slaves = {
-            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-            if slave['attributes'].get('pool', 'default') == pool
-        }
-    else:
-        slaves = {
-            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-        }
+    slaves = {
+        slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+    }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.debug("Task associated with slave {0} not found in {1} pool".format(task.slave['id'], pool))
+            log.debug("Slave {0} not found for task".format(task.slave['id']))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1
             log.debug("Task framework: {0}".format(task.framework.name))
-            if task.framework.name == 'chronos':
+            if task.framework.name == CHRONOS_FRAMEWORK_NAME:
                 slaves[task.slave['id']]['chronos_count'] += 1
     if slaves_list:
         for slave in slaves_list:
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['id']])
         slaves = slaves_list
+    elif pool:
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
+                  if slave_counts['slave']['attributes'].get('pool', 'default') == pool]
     else:
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
     for slave in slaves:
