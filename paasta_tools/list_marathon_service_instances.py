@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
-    parser.add_argument('-m', '--minimal', dest='minimal', default=False,
+    parser.add_argument('-m', '--minimal', dest='minimal', action='store_true',
                         help="show only service instances that need bouncing")
     args = parser.parse_args()
     return args
