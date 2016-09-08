@@ -56,7 +56,7 @@ def test_get_desired_marathon_configs():
             format_marathon_app_dict=mock.MagicMock(return_value=mock_app_dict),
         )
         assert list_marathon_service_instances.get_desired_marathon_configs(
-            'fake-cluster', '/fake/soa/dir') == {'service.instance.git.configs': mock_app_dict}
+            '/fake/soa/dir') == {'service.instance.git.configs': mock_app_dict}
 
 
 def test_get_service_instances_that_need_bouncing():
