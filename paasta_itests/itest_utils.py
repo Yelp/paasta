@@ -19,8 +19,11 @@ import time
 import mesos.cli.master
 import mock
 import requests
+import requests_cache
+from marathon import NotFoundError
 
 from paasta_tools import marathon_tools
+from paasta_tools.marathon_tools import app_has_tasks
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
@@ -105,6 +108,30 @@ def wait_for_marathon():
         if response.status_code == 200:
             print "Marathon is up and running!"
             break
+
+
+@timeout()
+def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
+    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+    and retry. Times out after 30 seconds.
+
+    :param client: The marathon client
+    :param app_id: The app id to which the tasks belong
+    :param expected_tasks: The number of tasks to wait for
+    :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
+    """
+    found = False
+    with requests_cache.disabled():
+        while not found:
+            try:
+                found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
+            except NotFoundError:
+                pass
+            if found:
+                return
+            else:
+                print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
+                time.sleep(0.5)
 
 
 def setup_mesos_cli_config(config_file, cluster):

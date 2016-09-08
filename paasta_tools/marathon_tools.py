@@ -21,7 +21,6 @@ import os
 import re
 import socket
 from math import ceil
-from time import sleep
 
 import requests
 import service_configuration_lib
@@ -55,7 +54,6 @@ from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
@@ -1055,29 +1053,6 @@ def get_app_queue_status(client, app_id):
             return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
     return (None, None)
-
-
-@timeout()
-def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
-    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-    and retry. Times out after 30 seconds.
-
-    :param client: The marathon client
-    :param app_id: The app id to which the tasks belong
-    :param expected_tasks: The number of tasks to wait for
-    :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
-    """
-    found = False
-    while not found:
-        try:
-            found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
-        except NotFoundError:
-            pass
-        if found:
-            return
-        else:
-            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
-            sleep(0.5)
 
 
 def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):

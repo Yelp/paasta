@@ -2571,26 +2571,6 @@ def test_read_namespace_for_service_instance_no_cluster():
         mock_get_cluster.assert_called_once_with()
 
 
-def wait_for_app_to_launch_tasks():
-    return_values = [False, None, True]
-
-    def get_mock_return_values(*args):
-        val = return_values.pop()
-        if val is None:
-            raise marathon_tools.NotFoundError
-        return val
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.app_has_tasks', autospec=True, side_effect=get_mock_return_values),
-        mock.patch('paasta_tools.marathon_tools.sleep', autospec=True),
-    ) as (
-        mock_app_has_tasks,
-        mock_sleep,
-    ):
-        marathon_tools.wait_for_app_to_launch_tasks(mock.Mock(), 'app_id', 0)
-        assert mock_app_has_tasks.call_count == 3
-        assert mock_sleep.call_count == 2
-
-
 def test_get_app_queue_status():
     fake_app_id = 'fake_app_id'
     fake_delay = 100
