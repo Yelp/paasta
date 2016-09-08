@@ -58,20 +58,31 @@ def parse_args():
     return args
 
 
-@use_requests_cache('list_marathon_services')
-def get_service_instances_that_need_bouncing(soa_dir):
-    def long_job_id_to_short_job_id(long_job_id):
-        service, instance, _, __ = decompose_job_id(long_job_id)
-        return compose_job_id(service, instance)
+def long_job_id_to_short_job_id(long_job_id):
+    service, instance, _, __ = decompose_job_id(long_job_id)
+    return compose_job_id(service, instance)
 
+
+def get_current_apps():
+    marathon_config = load_marathon_config()
+    marathon_client = get_marathon_client(
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        passwd=marathon_config.get_password(),
+    )
+
+    return {app.id.lstrip('/'): app for app in marathon_client.list_apps()}
+
+
+def get_desired_marathon_configs(cluster, soa_dir):
     cluster = load_system_paasta_config().get_cluster()
-
     instances = get_services_for_cluster(
         instance_type='marathon',
         cluster=cluster,
         soa_dir=soa_dir,
     )
     marathon_configs = dict()
+
     for service, instance in instances:
         try:
             marathon_config = load_marathon_service_config(
@@ -84,27 +95,24 @@ def get_service_instances_that_need_bouncing(soa_dir):
         except NoDockerImageError:
             # This service hasn't been deployed yet
             pass
+    return marathon_configs
 
-    desired_ids = set(marathon_configs.keys())
 
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password(),)
-    current_apps = {app.id.lstrip('/'): app
-                    for app in marathon_client.list_apps()}
+@use_requests_cache('list_marathon_services')
+def get_service_instances_that_need_bouncing(soa_dir):
+    desired_marathon_configs = get_desired_marathon_configs(soa_dir)
+    desired_ids = set(desired_marathon_configs.keys())
+
+    current_apps = get_current_apps()
     actual_ids = set(current_apps.keys())
 
     apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
-    apps_that_need_bouncing = {long_job_id_to_short_job_id(app)
-                               for app in apps_that_need_bouncing}
+    apps_that_need_bouncing = {long_job_id_to_short_job_id(app) for app in apps_that_need_bouncing}
 
     for app_id, app in current_apps.items():
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
-            if app.instances != marathon_configs[app_id]['instances'] or \
-                    get_num_at_risk_tasks(app) != 0:
+            if app.instances != desired_marathon_configs[app_id]['instances'] or get_num_at_risk_tasks(app) != 0:
                 apps_that_need_bouncing.add(short_app_id)
 
     return (app_id.replace('--', '_') for app_id in apps_that_need_bouncing)
