@@ -102,7 +102,7 @@ def get_service_instances_that_need_bouncing(soa_dir):
     actual_ids = set(current_apps.keys())
 
     apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
-    apps_that_need_bouncing = {long_job_id_to_short_job_id(app) for app in apps_that_need_bouncing}
+    apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id in apps_that_need_bouncing}
 
     for app_id, app in current_apps.items():
         short_app_id = long_job_id_to_short_job_id(app_id)
