@@ -134,7 +134,7 @@
         ]
       }
     },
-    "/services/{service}/{instance}/autoscaler/{desired_instances}": {
+    "/services/{service}/{instance}/autoscaler": {
       "post": {
         "responses": {
           "202": {
@@ -169,7 +169,7 @@
             "type": "string"
           },
           {
-            "in": "path",
+            "in": "body",
             "description": "Number of desired instances",
             "name": "desired_instances",
             "required": true,
