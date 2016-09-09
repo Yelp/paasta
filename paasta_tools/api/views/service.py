@@ -18,11 +18,18 @@ PaaSTA service list (instances) etc.
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
+from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_all_instances_for_service
 
 
 @view_config(route_name='service.list', request_method='GET', renderer='json')
 def list_instances(request):
     service = request.swagger_data.get('service')
-    instances = list_all_instances_for_service(service, clusters=[settings.cluster])
+    deploy_group = request.swagger_data.get('deploy_group', False)
+    if deploy_group:
+        instances = [config.get_instance() for config in list(get_instance_config_for_service(DEFAULT_SOA_DIR, service))
+                     if config.get_deploy_group() == deploy_group]
+    else:
+        instances = list_all_instances_for_service(service, clusters=[settings.cluster])
     return {'instances': list(instances)}
