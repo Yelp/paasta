@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from mock import ANY
+from mock import Mock
 from mock import patch
+from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.utils import TimeoutError
 
 
 class fake_args:
@@ -23,6 +26,7 @@ class fake_args:
     git_url = 'git://false.repo/services/test_services'
     commit = 'fake-hash'
     soa_dir = 'fake_soa_dir'
+    block = False
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -75,3 +79,33 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
         ref_mutator=ANY,
         force=True,
     )
+
+
+def is_instance_deployed_side_effect(service, instance, sha):
+    if instance in ['instance1', 'instance2']:
+        return True
+    return False
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.is_instance_deployed')
+@patch('time.sleep', autospec=True)
+def test_wait_for_deployment(mock_sleep, mock_is_instance_deployed, mock__log, mock_get_paasta_api_client):
+    mock_result = {'instances': ['instance1', 'instance2', 'instance3']}
+    mock_list_instances = Mock()
+    mock_list_instances.result.return_value = mock_result
+    mock_paasta_api_client = Mock()
+    mock_get_paasta_api_client.return_value = mock_paasta_api_client
+    mock_paasta_api_client.service.list_instances.return_value = mock_list_instances
+
+    mock_is_instance_deployed.side_effect = is_instance_deployed_side_effect
+    mock_sleep.side_effect = TimeoutError()
+    with raises(TimeoutError):
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+    mock_paasta_api_client.service.list_instances.assert_called_with(service='service', deploy_group='deploy_group_1')
+    mock_is_instance_deployed.assert_called_with('service', 'instance3', 'somesha')
+
+    mock_result = {'instances': ['instance1', 'instance2']}
+    mock_list_instances.result.return_value = mock_result
+    mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
