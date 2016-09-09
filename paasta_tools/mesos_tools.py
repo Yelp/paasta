@@ -31,6 +31,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
+CHRONOS_FRAMEWORK_NAME = 'chronos'
+
 ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
 SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
@@ -642,38 +644,56 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-def get_mesos_task_count_by_slave(mesos_state, pool=None):
+def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
     :param mesos_state: mesos state dict
+    :param slaves_list: a list of slave dicts to count running tasks for.
     :param pool: pool of slaves to return (None means all)
-    :returns: dict of {<slave_id>:{'count': <count>, 'slave': <slave_object>, 'chronos_count':<chronos_count>}}
+    :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
     all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
-    if pool:
-        slaves = {
-            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-            if slave['attributes'].get('pool', 'default') == pool
-        }
-    else:
-        slaves = {
-            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-        }
+    slaves = {
+        slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+    }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.debug("Task associated with slave {0} not found in {1} pool".format(task.slave['id'], pool))
+            log.debug("Slave {0} not found for task".format(task.slave['id']))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1
             log.debug("Task framework: {0}".format(task.framework.name))
-            if task.framework.name == 'chronos':
+            if task.framework.name == CHRONOS_FRAMEWORK_NAME:
                 slaves[task.slave['id']]['chronos_count'] += 1
-    slaves = {slave_counts['slave']['hostname']: SlaveTaskCount(**slave_counts) for slave_counts in slaves.values()}
-    for slave in slaves.values():
-        log.debug("Slave: {0}, running {1} tasks, including {2} chronos tasks".format(slave.slave['hostname'],
-                                                                                      slave.count,
-                                                                                      slave.chronos_count))
+    if slaves_list:
+        for slave in slaves_list:
+            slave['task_counts'] = SlaveTaskCount(**slaves[slave['id']])
+        slaves = slaves_list
+    elif pool:
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
+                  if slave_counts['slave']['attributes'].get('pool', 'default') == pool]
+    else:
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
+    for slave in slaves:
+        log.debug("Slave: {0}, running {1} tasks, "
+                  "including {2} chronos tasks".format(slave['task_counts'].slave['hostname'],
+                                                       slave['task_counts'].count,
+                                                       slave['task_counts'].chronos_count))
     return slaves
+
+
+def get_count_running_tasks_on_slave(hostname):
+    """Return the number of tasks running on a paticular slave
+    or 0 if the slave is not found.
+    :param hostname: hostname of the slave
+    :returns: integer count of mesos tasks"""
+    mesos_state = get_mesos_state_summary_from_leader()
+    task_counts = get_mesos_task_count_by_slave(mesos_state)
+    counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
+    if counts:
+        return counts[0]
+    else:
+        return 0
 
 
 def slave_pid_to_ip(slave_pid):

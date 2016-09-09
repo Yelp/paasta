@@ -27,9 +27,8 @@ from requests import Request
 from requests import Session
 from requests.exceptions import HTTPError
 
+from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
-from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
-from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 log = logging.getLogger(__name__)
@@ -504,13 +503,7 @@ def is_host_drained(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    mesos_state = get_mesos_state_summary_from_leader()
-    task_counts = get_mesos_task_count_by_slave(mesos_state)
-    if hostname in task_counts:
-        slave_task_count = task_counts[hostname].count
-    else:
-        slave_task_count = 0
-    return is_host_draining(hostname=hostname) and slave_task_count == 0
+    return is_host_draining(hostname=hostname) and get_count_running_tasks_on_slave(hostname) == 0
 
 
 def is_host_past_maintenance_start(hostname):

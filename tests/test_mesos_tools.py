@@ -639,10 +639,49 @@ def test_get_mesos_task_count_by_slave():
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
+        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
-                       'host3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}
+        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+
+        # test slaves_list override
+        mock_task2 = mock.Mock()
+        mock_task2.slave = {'id': 'slave2'}
+        mock_task2.framework = mock_marathon
+        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
+        mock_get_running_tasks_from_active_frameworks.return_value = mock_tasks
+        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state,
+                                                        slaves_list=[mock_slave_1, mock_slave_2, mock_slave_3])
+        expected = [{'id': 'slave1', 'attributes': {'pool': 'default'}, 'hostname': 'host1',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
+                    {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
+                    {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+
+
+def test_get_count_running_tasks_on_slave():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_mesos_state_summary_from_leader'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave'),
+    ) as (
+        mock_get_mesos_state_summary_from_leader,
+        mock_get_mesos_task_count_by_slave
+    ):
+        mock_mesos_state = mock.Mock()
+        mock_slave_counts = [{'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
+                             {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})}]
+        mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
+        mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
+
+        assert mesos_tools.get_count_running_tasks_on_slave('host1') == 3
+        assert mesos_tools.get_count_running_tasks_on_slave('host2') == 0
+        assert mesos_tools.get_count_running_tasks_on_slave('host3') == 0
+        assert mock_get_mesos_state_summary_from_leader.called
+        mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)

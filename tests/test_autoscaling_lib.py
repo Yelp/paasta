@@ -605,64 +605,84 @@ def test_scale_aws_spot_fleet_request():
         mock.patch('paasta_tools.autoscaling_lib.undrain', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.set_spot_fleet_request_capacity', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.wait_and_terminate', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_mesos_state_summary_from_leader', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.get_mesos_task_count_by_slave', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib.sort_slaves_to_kill')
     ) as (
         mock_time,
         mock_filter_sfr_slaves,
         mock_drain,
         mock_undrain,
         mock_set_spot_fleet_request_capacity,
-        mock_wait_and_terminate
+        mock_wait_and_terminate,
+        mock_get_mesos_state_summary_from_leader,
+        mock_get_mesos_task_count_by_slave,
+        mock_sort_slaves_to_kill
     ):
 
         mock_sfr = mock.Mock()
-        mock_resource = {'id': 'sfr-blah', 'sfr': mock_sfr, 'region': 'westeros-1'}
+        mock_resource = {'id': 'sfr-blah', 'sfr': mock_sfr, 'region': 'westeros-1', 'pool': 'default'}
         mock_pool_settings = {'drain_timeout': 123}
         mock_set_spot_fleet_request_capacity.return_value = True
+        mock_mesos_state = mock.Mock()
+        mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
 
         # test no scale
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, [], mock_pool_settings, False)
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, mock_pool_settings, False)
         assert not mock_set_spot_fleet_request_capacity.called
 
         # test scale up
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 2, 4, [], mock_pool_settings, False)
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 2, 4, mock_pool_settings, False)
         mock_set_spot_fleet_request_capacity.assert_called_with('sfr-blah', 4, False, region='westeros-1')
 
         # test scale down
-        mock_sfr_sorted_slaves = [{'hostname': 'host1', 'instance_id': 'i-blah123',
-                                   'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
-                                   'ip': '10.1.1.1'},
-                                  {'hostname': 'host2', 'instance_id': 'i-blah456',
-                                   'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 2,
-                                   'ip': '10.2.2.2'}]
+        mock_slave_1 = {'hostname': 'host1', 'instance_id': 'i-blah123',
+                        'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
+                        'ip': '10.1.1.1'}
+        mock_slave_2 = {'hostname': 'host2', 'instance_id': 'i-blah456',
+                        'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 2,
+                        'ip': '10.2.2.2'}
+        mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
+        mock_sfr_sorted_slaves_2 = [mock_slave_2]
+        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves_1
+        mock_get_mesos_task_count_by_slave.return_value = [mock_slave_2]
         mock_time.return_value = int(1)
         mock_start = (1 + 123) * 1000000000
-        terminate_call_1 = mock.call(mock_sfr_sorted_slaves[0], 123, False, region='westeros-1')
-        terminate_call_2 = mock.call(mock_sfr_sorted_slaves[1], 123, False, region='westeros-1')
+        terminate_call_1 = mock.call(mock_sfr_sorted_slaves_1[0], 123, False, region='westeros-1')
+        terminate_call_2 = mock.call(mock_sfr_sorted_slaves_1[1], 123, False, region='westeros-1')
         drain_call_1 = mock.call(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
         drain_call_2 = mock.call(['host2|10.2.2.2'], mock_start, 600 * 1000000000)
         undrain_call_1 = mock.call(['host1|10.1.1.1'])
         undrain_call_2 = mock.call(['host2|10.2.2.2'])
         set_call_1 = mock.call('sfr-blah', 4, False, region='westeros-1')
         set_call_2 = mock.call('sfr-blah', 2, False, region='westeros-1')
-        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
-        mock_sorted_slaves = mock.Mock()
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, mock_pool_settings, False)
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_resource)
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1, mock_sfr_sorted_slaves_2, []]
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_pool_settings, False)
+        assert mock_get_mesos_state_summary_from_leader.called
+        get_task_count_call_1 = mock.call(mock_mesos_state, pool='default')
+        get_task_count_call_2 = mock.call(mock_mesos_state, slaves_list=[mock_slave_2])
+        mock_get_mesos_task_count_by_slave.assert_has_calls([get_task_count_call_1, get_task_count_call_2])
+        mock_filter_sfr_slaves.assert_called_with(mock_get_mesos_task_count_by_slave.return_value, mock_resource)
+        mock_sort_slaves_to_kill.assert_called_with(mock_filter_sfr_slaves.return_value)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2])
         mock_undrain.assert_has_calls([undrain_call_1, undrain_call_2])
+        assert mock_get_mesos_task_count_by_slave.call_count == 3
+        assert mock_sort_slaves_to_kill.call_count == 3
 
         # test scale down stop if it would take us below capacity
-        mock_sfr_sorted_slaves = [{'hostname': 'host1', 'instance_id': 'i-blah123',
-                                   'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
-                                   'ip': '10.1.1.1'},
-                                  {'hostname': 'host2', 'instance_id': 'i-blah456',
-                                   'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 5,
-                                   'ip': '10.2.2.2'}]
-        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_sorted_slaves, mock_pool_settings, False)
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_resource)
+        mock_slave_1 = {'hostname': 'host1', 'instance_id': 'i-blah123',
+                        'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
+                        'ip': '10.1.1.1'}
+        mock_slave_2 = {'hostname': 'host2', 'instance_id': 'i-blah456',
+                        'pid': 'slave(1)@10.2.2.2:5051', 'instance_weight': 5,
+                        'ip': '10.2.2.2'}
+        mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
+        mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves_1
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1, []]
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_pool_settings, False)
+        mock_filter_sfr_slaves.assert_called_with(mock_get_mesos_task_count_by_slave.return_value, mock_resource)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1])
         mock_wait_and_terminate.assert_has_calls([terminate_call_1, terminate_call_2, terminate_call_1])
@@ -673,9 +693,10 @@ def test_scale_aws_spot_fleet_request():
                                    'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
                                    'ip': '10.1.1.1'}]
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
-        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 4, mock_sorted_slaves, mock_pool_settings, False)
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves, []]
+        autoscaling_lib.scale_aws_spot_fleet_request(mock_resource, 5, 4, mock_pool_settings, False)
         set_call_3 = mock.call('sfr-blah', 5, False, region='westeros-1')
-        mock_filter_sfr_slaves.assert_called_with(mock_sorted_slaves, mock_resource)
+        mock_filter_sfr_slaves.assert_called_with(mock_get_mesos_task_count_by_slave.return_value, mock_resource)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1, drain_call_1])
         mock_set_spot_fleet_request_capacity.assert_has_calls([set_call_1, set_call_2, set_call_1,
                                                                set_call_1, set_call_3])
@@ -687,16 +708,12 @@ def test_scale_aws_spot_fleet_request():
 def test_autoscale_local_cluster():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.get_mesos_state_from_leader', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_cluster_metrics_provider', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_scaler', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.sort_slaves_to_kill', autospec=True),
     ) as (
         mock_get_paasta_config,
-        mock_mesos_state,
         mock_get_metrics_provider,
         mock_get_scaler,
-        mock_sort_slaves_to_kill
     ):
 
         mock_scaling_resources = {'id1': {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}}
@@ -714,25 +731,13 @@ def test_autoscale_local_cluster():
 
         # test scale up
         autoscaling_lib.autoscale_local_cluster()
+        assert mock_get_paasta_config.called
         mock_get_metrics_provider.assert_called_with('sfr')
-        mock_metrics_provider.assert_called_with('sfr-blah', mock_mesos_state(),
+        mock_metrics_provider.assert_called_with('sfr-blah',
                                                  {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'},
                                                  {'drain_timeout': 123, 'target_utilization': 0.75})
         mock_get_scaler.assert_called_with('sfr')
-        mock_scaler.assert_called_with({'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}, 2, 6, [],
-                                       {'drain_timeout': 123, 'target_utilization': 0.75}, False)
-
-        # test scale down
-        mock_metrics_provider.return_value = (6, 2)
-        mock_sort_slaves_to_kill.return_value = ['a_slave', 'another_slave']
-        autoscaling_lib.autoscale_local_cluster()
-        mock_get_metrics_provider.assert_called_with('sfr')
-        mock_metrics_provider.assert_called_with('sfr-blah', mock_mesos_state(),
-                                                 {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'},
-                                                 {'drain_timeout': 123, 'target_utilization': 0.75})
-        mock_get_scaler.assert_called_with('sfr')
-        mock_scaler.assert_called_with({'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'},
-                                       6, 2, ['a_slave', 'another_slave'],
+        mock_scaler.assert_called_with({'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}, 2, 6,
                                        {'drain_timeout': 123, 'target_utilization': 0.75}, False)
 
 
@@ -772,27 +777,19 @@ def test_wait_and_terminate():
 
 
 def test_sort_slaves_to_kill():
-    with contextlib.nested(
-        mock.patch('paasta_tools.autoscaling_lib.get_mesos_task_count_by_slave', autospec=True),
-    ) as (
-        mock_get_task_count,
-    ):
-        # test no slaves
-        mock_mesos_state = mock.Mock()
-        ret = autoscaling_lib.sort_slaves_to_kill(mock_mesos_state)
-        assert ret == []
+    # test no slaves
+    ret = autoscaling_lib.sort_slaves_to_kill({})
+    assert ret == []
 
-        mock_get_task_count.return_value = {}
-        mock_slave_1 = mock.Mock()
-        mock_slave_2 = mock.Mock()
-        mock_slave_3 = mock.Mock()
-        mock_task_count = {'pid1': SlaveTaskCount(count=3, slave=mock_slave_1, chronos_count=0),
-                           'pid2': SlaveTaskCount(count=2, slave=mock_slave_2, chronos_count=1),
-                           'pid3': SlaveTaskCount(count=5, slave=mock_slave_3, chronos_count=0)}
-        mock_get_task_count.return_value = mock_task_count
-        ret = autoscaling_lib.sort_slaves_to_kill(mock_mesos_state)
-        mock_get_task_count.assert_called_with(mock_mesos_state, pool='default')
-        assert ret == [mock_slave_1, mock_slave_3, mock_slave_2]
+    mock_slave_1 = mock.Mock()
+    mock_slave_2 = mock.Mock()
+    mock_slave_3 = mock.Mock()
+    mock_slave_1 = {'task_counts': SlaveTaskCount(count=3, slave=mock_slave_1, chronos_count=0)}
+    mock_slave_2 = {'task_counts': SlaveTaskCount(count=2, slave=mock_slave_2, chronos_count=1)}
+    mock_slave_3 = {'task_counts': SlaveTaskCount(count=5, slave=mock_slave_3, chronos_count=0)}
+    mock_task_count = [mock_slave_1, mock_slave_2, mock_slave_3]
+    ret = autoscaling_lib.sort_slaves_to_kill(mock_task_count)
+    assert ret == [mock_slave_1, mock_slave_3, mock_slave_2]
 
 
 def test_get_spot_fleet_instances():
@@ -872,12 +869,17 @@ def test_filter_sfr_slaves():
                           {'InstanceId': 'i-3',
                            'InstanceType': 'm4.whatever'}]
         mock_describe_instances.return_value = mock_instances
-        mock_sfr_sorted_slaves = [{'pid': 'slave(1)@10.1.1.1:5051',
-                                   'hostname': 'host123'},
-                                  {'pid': 'slave(2)@10.2.2.2:5051',
-                                   'hostname': 'host456'},
-                                  {'pid': 'slave(3)@10.3.3.3:5051',
-                                   'hostname': 'host789'}]
+        mock_slave_1 = {'task_counts': SlaveTaskCount(slave={'pid': 'slave(1)@10.1.1.1:5051', 'id': '123',
+                                                             'hostname': 'host123'},
+                                                      count=0, chronos_count=0)}
+        mock_slave_2 = {'task_counts': SlaveTaskCount(slave={'pid': 'slave(2)@10.2.2.2:5051', 'id': '456',
+                                                             'hostname': 'host456'},
+                                                      count=0, chronos_count=0)}
+        mock_slave_3 = {'task_counts': SlaveTaskCount(slave={'pid': 'slave(3)@10.3.3.3:5051', 'id': '789',
+                                                             'hostname': 'host789'},
+                                                      count=0, chronos_count=0)}
+
+        mock_sfr_sorted_slaves = [mock_slave_1, mock_slave_2, mock_slave_3]
         mock_get_instance_call_1 = mock.call('10.1.1.1', mock_instances)
         mock_get_instance_call_3 = mock.call('10.3.3.3', mock_instances)
         mock_get_ip_call_1 = mock.call('slave(1)@10.1.1.1:5051')
@@ -895,13 +897,17 @@ def test_filter_sfr_slaves():
         mock_get_instance_type_weights.assert_called_with(mock_sfr)
         expected = [{'pid': 'slave(1)@10.1.1.1:5051',
                      'instance_id': 'i-1',
+                     'id': '123',
                      'instance_type': 'c4.blah',
+                     'task_counts': mock_slave_1['task_counts'],
                      'hostname': 'host123',
                      'ip': '10.1.1.1',
                      'instance_weight': 2},
                     {'pid': 'slave(3)@10.3.3.3:5051',
                      'instance_id': 'i-3',
+                     'id': '789',
                      'instance_type': 'm4.whatever',
+                     'task_counts': mock_slave_3['task_counts'],
                      'hostname': 'host789',
                      'ip': '10.3.3.3',
                      'instance_weight': 5}]
@@ -977,13 +983,15 @@ def test_spotfleet_metrics_provider():
         mock.patch('paasta_tools.autoscaling_lib.get_resource_utilization_by_grouping', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.slave_pid_to_ip'),
         mock.patch('paasta_tools.autoscaling_lib.get_spot_fleet_delta'),
+        mock.patch('paasta_tools.autoscaling_lib.get_mesos_state_from_leader'),
     ) as (
         mock_get_sfr,
         mock_get_spot_fleet_instances,
         mock_get_sfr_instance_ips,
         mock_get_resource_utilization_by_grouping,
         mock_pid_to_ip,
-        mock_get_spot_fleet_delta
+        mock_get_spot_fleet_delta,
+        mock_get_mesos_state_from_leader
     ):
         mock_resource = {'pool': 'default',
                          'region': 'westeros-1'}
@@ -993,6 +1001,7 @@ def test_spotfleet_metrics_provider():
                                        {'id': 'id2',
                                         'attributes': {'pool': 'default'},
                                         'pid': 'pid2'}]}
+        mock_get_mesos_state_from_leader.return_value = mock_mesos_state
         mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
                             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
         mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
@@ -1003,22 +1012,19 @@ def test_spotfleet_metrics_provider():
         mock_pool_settings = {}
 
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'cancelled'}
-        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state,
-                                                         mock_resource, mock_pool_settings)
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
         mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
         assert not mock_get_spot_fleet_instances.called
         assert ret == (0, 0)
 
         mock_get_sfr.return_value = None
-        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state,
-                                                         mock_resource, mock_pool_settings)
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
         mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
         assert not mock_get_spot_fleet_instances.called
         assert ret == (0, 0)
 
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
-        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_mesos_state,
-                                                         mock_resource, mock_pool_settings)
+        ret = autoscaling_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
         mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
         mock_get_spot_fleet_instances.assert_called_with('sfr-blah', region='westeros-1')
         expected_get_ip_call = mock_get_sfr.return_value.copy()
