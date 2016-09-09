@@ -162,4 +162,4 @@ def tasks_on_host_drained(context, number, host):
     for task in tasks:
         if task.host == host:
             count += 1
-    return count == number
+    assert count == number

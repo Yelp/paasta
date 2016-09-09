@@ -113,8 +113,17 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
+@when(u'there are exactly {num:d} {which} {state} tasks')
+def when_there_are_exactly_num_which_tasks(context, num, which, state):
+    there_are_num_which_tasks(context, num, which, state, True)
+
+
 @when(u'there are {num:d} {which} {state} tasks')
 def when_there_are_num_which_tasks(context, num, which, state):
+    there_are_num_which_tasks(context, num, which, state, False)
+
+
+def there_are_num_which_tasks(context, num, which, state, exact):
     context.max_tasks = num
     app_id = which_id(context, which)
 
@@ -122,13 +131,23 @@ def when_there_are_num_which_tasks(context, num, which, state):
     for _ in xrange(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
+        for task in happy_tasks:
+            print "Happy Task: %s" % task
         happy_count = len(happy_tasks)
         if state == "healthy":
-            if happy_count >= context.max_tasks:
-                return
+            if exact:
+                if happy_count == context.max_tasks:
+                    return
+            else:
+                if happy_count >= context.max_tasks:
+                    return
         elif state == "unhealthy":
-            if len(app.tasks) - happy_count >= context.max_tasks:
-                return
+            if exact:
+                if len(app.tasks) - happy_count == context.max_tasks:
+                    return
+            else:
+                if len(app.tasks) - happy_count >= context.max_tasks:
+                    return
         time.sleep(0.5)
     raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
                     (context.max_tasks, state, app_id, len(app.tasks)))
