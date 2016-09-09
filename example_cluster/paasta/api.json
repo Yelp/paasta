@@ -1,0 +1,5 @@
+{
+  "api_endpoints": {
+    "testcluster": "http://mesosmaster:5054"
+  }
+}

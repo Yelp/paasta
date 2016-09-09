@@ -8,6 +8,7 @@ services:
     build: ../yelp_package/dockerfiles/mesos-paasta/
     ports:
       - '5050:5050'
+      - '5054:5054'
       - 22
     depends_on:
       - mesosbase
