@@ -135,7 +135,7 @@
       }
     },
     "/services/{service}/{instance}/autoscaler/{desired_instances}": {
-      "put": {
+      "post": {
         "responses": {
           "202": {
             "description": "Desired instance count for a service instance",
