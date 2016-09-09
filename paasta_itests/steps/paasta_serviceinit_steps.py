@@ -46,12 +46,6 @@ def run_marathon_app(context, job_id, instances):
         paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
 
 
-@when(u'we wait for it to be deployed')
-def wait_for_deploy(context):
-    print "Sleeping 10 seconds to wait for deployment..."
-    time.sleep(10)
-
-
 @then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
 def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
@@ -86,7 +80,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             cluster
         )
     print "Sleeping 7 seconds to wait for %s to be restarted." % service
-    time.sleep(7)
+    time.sleep(5)
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
@@ -249,5 +243,11 @@ def marathon_app_task_count(context, job_id, task_count):
     tasks = context.marathon_client.get_app(app_id).tasks
     assert len(tasks) == task_count
 
+
+@then(u'there should be no matching appids for service "{service}" instance "{instance}"')
+def no_matching_app_ids(context, service, instance):
+    matching_apps = marathon_tools.get_matching_appids(
+        service=service, instance=instance, client=context.marathon_client)
+    assert len(matching_apps) == 0, matching_apps
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
