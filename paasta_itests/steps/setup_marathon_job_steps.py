@@ -23,7 +23,7 @@ from itest_utils import update_context_marathon_config
 from marathon.exceptions import MarathonHttpError
 
 from paasta_tools import marathon_tools
-from paasta_tools import paasta_maintenance
+from paasta_tools import mesos_maintenance
 from paasta_tools import setup_marathon_job
 from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -94,13 +94,13 @@ def run_until_number_tasks(context, number):
     }
     for _ in xrange(20):
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+            mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
             mock.patch.object(mesos.cli.master, 'CFG', config),
         ) as (
             mock_load_credentials,
             _,
         ):
-            mock_load_credentials.side_effect = paasta_maintenance.load_credentials(
+            mock_load_credentials.side_effect = mesos_maintenance.load_credentials(
                 mesos_secrets='/etc/mesos-slave-secret',
             )
             run_setup_marathon_job(context)
@@ -145,22 +145,22 @@ def mark_host_running_on_at_risk(context):
 
 @when(u'we mark the host "{host}" as at-risk')
 def mark_host_at_risk(context, host):
-    start = paasta_maintenance.datetime_to_nanoseconds(paasta_maintenance.now())
-    duration = paasta_maintenance.parse_timedelta('1h')
+    start = mesos_maintenance.datetime_to_nanoseconds(mesos_maintenance.now())
+    duration = mesos_maintenance.parse_timedelta('1h')
     config = {
         'master': '%s' % get_service_connection_string('mesosmaster'),
         'scheme': 'http',
         'response_timeout': 5,
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_maintenance.load_credentials', autospec=True),
+        mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
         mock.patch.object(mesos.cli.master, 'CFG', config),
     ) as (
         mock_load_credentials,
         _,
     ):
-        mock_load_credentials.side_effect = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
-        paasta_maintenance.drain([host], start, duration)
+        mock_load_credentials.side_effect = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        mesos_maintenance.drain([host], start, duration)
         context.at_risk_host = host
 
 
