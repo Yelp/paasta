@@ -19,15 +19,19 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8
 
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
   python-dev libffi-dev libssl-dev debhelper python-yaml libyaml-dev python-pytest pyflakes \
-  git help2man zsh wget mesos=0.28.2-2.0.27.ubuntu1404
+  git help2man zsh wget zip
 
 RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_0.11-1_all.deb && dpkg -i dh-virtualenv_0.11-1_all.deb && apt-get -f install
 
-RUN apt-get install -yq zip
 # mesos.native is not available on pypi, so we can either build mesos from
 # source or do this, and building from source takes a long time.
-RUN cd /usr/lib/python2.7/site-packages && \
-	zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info
+# Conveniently, the .so's included in this wheel seem to be self-contained and don't link against the system libmesos.
+# So that we know if this changes, we remove the mesos system package after creating the .whl, so itests run without
+# a system mesos package.
+RUN apt-get install -yq mesos=0.28.2-2.0.27.ubuntu1404 && \
+    cd /usr/lib/python2.7/site-packages && \
+	zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info && \
+	apt-get remove -yq mesos
 
 ENV HOME /work
 ENV PWD /work
