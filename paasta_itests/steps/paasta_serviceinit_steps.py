@@ -15,6 +15,7 @@ import time
 
 import itest_utils
 import mock
+import requests_cache
 from behave import then
 from behave import when
 
@@ -52,13 +53,14 @@ def status_marathon_job(context, status, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
 
-    output = marathon_serviceinit.status_marathon_job(
-        service,
-        instance,
-        app_id,
-        normal_instance_count,
-        context.marathon_client
-    )
+    with requests_cache.disabled():
+        output = marathon_serviceinit.status_marathon_job(
+            service,
+            instance,
+            app_id,
+            normal_instance_count,
+            context.marathon_client
+        )
     assert status in output
 
 
@@ -79,8 +81,8 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             context.marathon_client,
             cluster
         )
-    print "Sleeping 7 seconds to wait for %s to be restarted." % service
-    time.sleep(7)
+    print "Sleeping 5 seconds to wait for %s to be restarted." % service
+    time.sleep(5)
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks

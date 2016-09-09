@@ -108,6 +108,7 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
             except NotFoundError:
                 pass
             if found:
+                time.sleep(3)  # Give it a bit more time to actually launch
                 return
             else:
                 print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
