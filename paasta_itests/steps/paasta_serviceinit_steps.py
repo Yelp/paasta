@@ -46,12 +46,6 @@ def run_marathon_app(context, job_id, instances):
         paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
 
 
-@when(u'we wait for it to be deployed')
-def wait_for_deploy(context):
-    print "Sleeping 10 seconds to wait for deployment..."
-    time.sleep(10)
-
-
 @then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
 def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
