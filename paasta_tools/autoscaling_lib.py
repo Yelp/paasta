@@ -38,14 +38,14 @@ from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
+from paasta_tools.mesos_maintenance import drain
+from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
 from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import slave_pid_to_ip
-from paasta_tools.paasta_maintenance import drain
 from paasta_tools.paasta_maintenance import is_safe_to_kill
-from paasta_tools.paasta_maintenance import undrain
 from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
