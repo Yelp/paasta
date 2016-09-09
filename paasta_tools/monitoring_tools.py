@@ -94,9 +94,9 @@ def __get_monitoring_config_value(key, overrides, service, soa_dir=DEFAULT_SOA_D
 def monitoring_defaults(key):
     defaults = {
         'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
-                   'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+                   'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
         'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
-               'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+               'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
         'ticket': False,
         'project': None,
         'realert_every': -1

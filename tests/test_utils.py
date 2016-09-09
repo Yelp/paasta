@@ -1554,3 +1554,7 @@ def test_is_deploy_step():
     assert not utils.is_deploy_step('itest')
     assert not utils.is_deploy_step('performance-check')
     assert not utils.is_deploy_step('command-thingy')
+
+
+def test_long_job_id_to_short_job_id():
+    assert utils.long_job_id_to_short_job_id('service.instance.git.config') == 'service.instance'

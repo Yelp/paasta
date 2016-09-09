@@ -289,34 +289,6 @@ class TestSetupMarathonJob:
                 soa_dir=fake_soa_dir,
             )
 
-    def test_send_bounce_keepalive(self):
-        fake_service = 'fake_service'
-        fake_instance = 'fake_instance'
-        fake_cluster = 'fake_cluster'
-        fake_soa_dir = ''
-        expected_check_name = 'paasta_bounce_progress.%s' % compose_job_id(fake_service, fake_instance)
-        with contextlib.nested(
-            mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
-        ) as (
-            send_event_patch,
-        ):
-            setup_marathon_job.send_sensu_bounce_keepalive(
-                service=fake_service,
-                instance=fake_instance,
-                cluster=fake_cluster,
-                soa_dir=fake_soa_dir,
-                config={},
-            )
-            send_event_patch.assert_called_once_with(
-                service=fake_service,
-                check_name=expected_check_name,
-                overrides=mock.ANY,
-                status=0,
-                output=mock.ANY,
-                soa_dir=fake_soa_dir,
-                ttl='1h',
-            )
-
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
             'create_app': True,
@@ -613,12 +585,10 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.send_sensu_bounce_keepalive', autospec=True),
         ) as (
             mock_log,
             mock_create_marathon_app,
             mock_kill_old_ids,
-            mock_send_sensu_bounce_keepalive,
         ):
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
@@ -643,14 +613,6 @@ class TestSetupMarathonJob:
             assert mock_create_marathon_app.call_count == 0
             assert fake_drain_method.drain.call_count == 0
             assert mock_kill_old_ids.call_count == 0
-            # When doing nothing, we need to send the keepalive heartbeat to Sensu
-            mock_send_sensu_bounce_keepalive.assert_called_once_with(
-                service=fake_service,
-                instance=fake_instance,
-                cluster=self.fake_cluster,
-                soa_dir='fake_soa_dir',
-                config=fake_config,
-            )
 
     def test_do_bounce_when_all_old_tasks_are_unhappy(self):
         old_tasks = [mock.Mock(id=id, app_id='old_app') for id in ['old_one', 'old_two', 'old_three']]
@@ -686,12 +648,10 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.send_sensu_bounce_keepalive', autospec=True),
         ) as (
             mock_log,
             mock_create_marathon_app,
             mock_kill_old_ids,
-            mock_send_sensu_bounce_keepalive,
         ):
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,

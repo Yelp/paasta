@@ -13,6 +13,7 @@
 # limitations under the License.
 import time
 
+import itest_utils
 import mock
 from behave import then
 from behave import when
@@ -237,7 +238,7 @@ def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
-    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
+    itest_utils.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
 
 
 @then(u'"{job_id}" has exactly {task_count:d} requested tasks in marathon')

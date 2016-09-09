@@ -41,6 +41,7 @@ from subprocess import Popen
 from subprocess import STDOUT
 
 import dateutil.tz
+import requests_cache
 import service_configuration_lib
 import yaml
 from docker import Client
@@ -1612,3 +1613,19 @@ def is_deploy_step(step):
     Returns false if the step is a predefined step-type, e.g. itest or command-*
     """
     return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))
+
+
+def use_requests_cache(cache_name, backend='memory', **kwargs):
+    def wrap(fun):
+        def fun_with_cache(*args, **kwargs):
+            requests_cache.install_cache(cache_name, backend=backend, **kwargs)
+            result = fun(*args, **kwargs)
+            requests_cache.uninstall_cache()
+            return result
+        return fun_with_cache
+    return wrap
+
+
+def long_job_id_to_short_job_id(long_job_id):
+    service, instance, _, __ = decompose_job_id(long_job_id)
+    return compose_job_id(service, instance)

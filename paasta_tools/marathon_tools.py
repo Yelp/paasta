@@ -21,7 +21,6 @@ import os
 import re
 import socket
 from math import ceil
-from time import sleep
 
 import requests
 import service_configuration_lib
@@ -32,9 +31,12 @@ from marathon import NotFoundError
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.mesos_tools import NoSlavesAvailableError
 from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -53,7 +55,6 @@ from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
@@ -304,12 +305,44 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         return [[str(val) for val in constraint] for constraint in constraints]
 
     def get_routing_constraints(self, service_namespace_config):
-        discover_level = service_namespace_config.get_discover()
-        locations = get_mesos_slaves_grouped_by_attribute(
-            attribute=discover_level, blacklist=self.get_deploy_blacklist(),
-            whitelist=self.get_deploy_whitelist())
+        """
+        Returns a set of constraints in order to evenly group a marathon
+        application amongst instances of a discovery type.
+        If, for example, a given app's 'discover' key is set to 'region', then this function
+        computes the constraints required to group the app evenly amongst each
+        of the actual 'region' values in the cluster.
+        It does so by querying the value of the region attribute for each slave
+        in the cluster, returning a GROUP_BY constraint where the value is the
+        number of unique regions.
 
-        routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
+        :param service_namespace_config: the config for this service
+        :returns: a set of constraints for marathon
+        """
+        discover_level = service_namespace_config.get_discover()
+        slaves = get_slaves()
+        if not slaves:
+            raise NoSlavesAvailableError(
+                "No slaves could be found in the cluster."
+            )
+        filtered_slaves = filter_mesos_slaves_by_blacklist(
+            slaves=slaves,
+            blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist(),
+        )
+        if not filtered_slaves:
+            raise NoSlavesAvailableError(
+                "No suitable slaves could be found in the cluster for %s.%s"
+                "There are %d total slaves in the cluster, but after filtering"
+                "those available to the app according to the constraints set"
+                "by the deploy_blacklist and deploy_whitelist, there are 0"
+                "available."
+            )
+
+        value_dict = get_mesos_slaves_grouped_by_attribute(
+            filtered_slaves,
+            discover_level
+        )
+        routing_constraints = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
 
     def get_deploy_constraints(self):
@@ -869,29 +902,6 @@ def get_app_queue_status(client, app_id):
             return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
     return (None, None)
-
-
-@timeout()
-def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
-    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-    and retry. Times out after 30 seconds.
-
-    :param client: The marathon client
-    :param app_id: The app id to which the tasks belong
-    :param expected_tasks: The number of tasks to wait for
-    :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
-    """
-    found = False
-    while not found:
-        try:
-            found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
-        except NotFoundError:
-            pass
-        if found:
-            return
-        else:
-            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
-            sleep(0.5)
 
 
 def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):

@@ -9,6 +9,7 @@ Subpackages
     paasta_tools.api
     paasta_tools.cli
     paasta_tools.monitoring
+    paasta_tools.tron
 
 Submodules
 ----------

@@ -238,12 +238,15 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
 
         service_namespace_config = marathon_tools.load_service_namespace_config(service, nerve_ns)
         discover_location_type = service_namespace_config.get_discover()
-        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(discover_location_type)
+        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+            slaves=mesos_tools.get_slaves(),
+            attribute=discover_location_type
+        )
 
         for value, hosts in unique_values.iteritems():
-            synapse_host = hosts[0]
+            synapse_hostname = hosts[0]['hostname']
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
-                synapse_host,
+                synapse_hostname,
                 system_paasta_config.get_synapse_port(),
                 system_paasta_config.get_synapse_haproxy_url_format(),
                 service_namespace,

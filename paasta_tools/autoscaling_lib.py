@@ -39,6 +39,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
 from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import slave_pid_to_ip
@@ -522,7 +523,8 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
-def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, resource, pool_settings):
+def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
+    mesos_state = get_mesos_state_from_leader()
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
@@ -601,25 +603,8 @@ def get_spot_fleet_delta(resource, error):
     return current_capacity, new_capacity
 
 
-def sort_slaves_to_kill(mesos_state, pool='default'):
-    """Pick the best slaves to kill. This returns a list of slaves
-    after sorting in preference of which slaves we kill first.
-    It sorts first by number of chronos tasks, then by total number of tasks
-
-    :param mesos_state: mesos_state dict
-    :param pool: pool of slaves to consider
-    :returns: list of slaves"""
-    slaves = get_mesos_task_count_by_slave(mesos_state, pool=pool)
-    if slaves:
-        slaves_by_task_count = [slave.slave for slave in sorted(slaves.values(),
-                                                                key=lambda x: (x.chronos_count, x.count))]
-        return slaves_by_task_count
-    else:
-        return []
-
-
 def wait_and_terminate(slave, drain_timeout, dry_run, region=None):
-    """Currently kills a slave, will wait for draining to complete soon
+    """Waits for slave to be drained and then terminate
 
     :param slave: dict of slave to kill
     :param dry_run: Don't drain or make changes to spot fleet if True"""
@@ -664,23 +649,33 @@ def wait_and_terminate(slave, drain_timeout, dry_run, region=None):
                 raise
 
 
+def sort_slaves_to_kill(slaves):
+    """Pick the best slaves to kill. This returns a list of slaves
+    after sorting in preference of which slaves we kill first.
+    It sorts first by number of chronos tasks, then by total number of tasks
+
+    :param slaves: list of slaves dict
+    :returns: list of slaves dicts"""
+    return sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))
+
+
 def get_instance_type_weights(sfr):
     launch_specifications = sfr['SpotFleetRequestConfig']['LaunchSpecifications']
     return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
 
 
-def filter_sfr_slaves(sorted_slaves, resource):
+def filter_sfr_slaves(slaves_list, resource):
     sfr = resource['sfr']
     sfr_ips = get_sfr_instance_ips(sfr, region=resource['region'])
     log.debug("IPs in SFR: {0}".format(sfr_ips))
-    sfr_sorted_slaves = [slave for slave in sorted_slaves if slave_pid_to_ip(slave['pid']) in sfr_ips]
-    sfr_sorted_slave_ips = [slave_pid_to_ip(slave['pid']) for slave in sfr_sorted_slaves]
+    sfr_slaves = [slave for slave in slaves_list if slave_pid_to_ip(slave['task_counts'].slave['pid']) in sfr_ips]
+    sfr_slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in sfr_slaves]
     sfr_instance_descriptions = describe_instances([], region=resource['region'],
                                                    instance_filters=[{'Name': 'private-ip-address',
-                                                                      'Values': sfr_sorted_slave_ips}])
-    sfr_sorted_slave_instances = []
-    for slave in sfr_sorted_slaves:
-        ip = slave_pid_to_ip(slave['pid'])
+                                                                      'Values': sfr_slave_ips}])
+    sfr_slave_instances = []
+    for slave in sfr_slaves:
+        ip = slave_pid_to_ip(slave['task_counts'].slave['pid'])
         instances = get_instances_from_ip(ip, sfr_instance_descriptions)
         if not instances:
             log.warning("Couldn't find instance for ip {0}".format(ip))
@@ -689,13 +684,15 @@ def filter_sfr_slaves(sorted_slaves, resource):
             log.error("Found more than one instance with the same private IP {0}. "
                       "This should never happen")
             continue
-        sfr_sorted_slave_instances.append({'ip': ip,
-                                           'hostname': slave['hostname'],
-                                           'pid': slave['pid'],
-                                           'instance_id': instances[0]['InstanceId']})
+        sfr_slave_instances.append({'ip': ip,
+                                    'task_counts': slave['task_counts'],
+                                    'hostname': slave['task_counts'].slave['hostname'],
+                                    'id': slave['task_counts'].slave['id'],
+                                    'pid': slave['task_counts'].slave['pid'],
+                                    'instance_id': instances[0]['InstanceId']})
     ret = []
     instance_type_weights = get_instance_type_weights(sfr)
-    for slave in sfr_sorted_slave_instances:
+    for slave in sfr_slave_instances:
         instance_description = [instance_description for instance_description in sfr_instance_descriptions
                                 if instance_description['InstanceId'] == slave['instance_id']][0]
         slave['instance_type'] = instance_description['InstanceType']
@@ -734,7 +731,7 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, sorted_slaves, pool_settings, dry_run):
+def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, pool_settings, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
     If scaling up we just set target capacity and let AWS take care of the rest
     If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -744,7 +741,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
     :param resource: resource to scale
     :param current_capacity: integer current SFR capacity
     :param target_capacity: target SFR capacity
-    :param sorted_slaves: list of slaves by order to kill
+    :param pool_settings: pool settings dict with timeout settings
     :param dry_run: Don't drain or make changes to spot fleet if True"""
     target_capacity = int(target_capacity)
     current_capacity = int(current_capacity)
@@ -758,18 +755,21 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
         set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run, region=resource['region'])
         return
     elif delta < 0:
-        sfr_sorted_slaves = filter_sfr_slaves(sorted_slaves, resource)
-        log.info("SFR slave kill preference: {0}".format([slave['pid'] for slave in sfr_sorted_slaves]))
-        killable_capacity = sum([slave['instance_weight'] for slave in sfr_sorted_slaves])
+        mesos_state = get_mesos_state_summary_from_leader()
+        slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=resource['pool'])
+        filtered_slaves = filter_sfr_slaves(slaves_list, resource)
+        killable_capacity = sum([slave['instance_weight'] for slave in filtered_slaves])
         amount_to_decrease = delta * -1
         if amount_to_decrease > killable_capacity:
             log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
             return
-        sfr_sorted_slaves.reverse()
         while True:
-            if len(sfr_sorted_slaves) == 0:
+            filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
+            if len(filtered_sorted_slaves) == 0:
                 break
-            slave_to_kill = sfr_sorted_slaves.pop()
+            log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
+            filtered_sorted_slaves.reverse()
+            slave_to_kill = filtered_sorted_slaves.pop()
             # Instance weights can be floats but the target has to be an integer
             # because AWS...
             instance_capacity = slave_to_kill['instance_weight']
@@ -818,6 +818,8 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, so
                 if not dry_run:
                     undrain([drain_host_string])
             current_capacity = new_capacity
+            mesos_state = get_mesos_state_summary_from_leader()
+            filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
 
 
 class ClusterAutoscalingError(Exception):
@@ -840,20 +842,14 @@ def autoscale_local_cluster(dry_run=False):
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     all_pool_settings = system_config.get_resource_pool_settings()
-    mesos_state = get_mesos_state_from_leader()
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
-            current, target = resource_metrics_provider(resource['id'], mesos_state, resource, pool_settings)
+            current, target = resource_metrics_provider(resource['id'], resource, pool_settings)
             log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
             resource_scaler = get_scaler(resource['type'])
-            if target - current < 0:
-                sorted_slaves = sort_slaves_to_kill(mesos_state, pool=resource['pool'])
-                log.debug("Slaves by kill preference: {0}".format(sorted_slaves))
-            else:
-                sorted_slaves = []
-            resource_scaler(resource, current, target, sorted_slaves, pool_settings, dry_run)
+            resource_scaler(resource, current, target, pool_settings, dry_run)
         except ClusterAutoscalingError as e:
             log.error('%s: %s' % (identifier, e))

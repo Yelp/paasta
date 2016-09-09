@@ -62,26 +62,15 @@ instance MAY have:
   * ``max_instances``: When autoscaling, the maximum number of instances that
     marathon will create for a service
 
-  * ``registration_namespaces`` (list of strings): Specifices that this service
-    Instance should register in the provided SmartStack Namespaces. Paasta
-    deploys Instances, SmartStack routes to Namespaces. In SmartStack, each
-    namespace of a service is a separate pools of backend servers that are
-    listening on a particul port. This ``registration_namespaces`` option
-    allows users to make particular instances appear under an *alternative*
-    namespace. For example ``canary`` instances can have
-    ``registration_namespaces: ['main']`` to route their traffic to the same
-    pool as the other ``main`` instances.
-
-    By default, the Namespace assigned to a particular Instance in PaaSTA has
-    the *same name*, so the ``main`` Instance will correspond to the ``main``
-    Namespace defined in ``smartstack.yaml``.
-
-    The first instance in this list is assumed to be used by clients and is
-    the only one currently monitored, waited for during bounces, etc ...
-
-  * ``nerve_ns``: **DEPRECATED**, use ``registration_namespaces`` instead.
-    **WARNING**: do not supply both ``registration_namespaces`` and
-    ``nerve_ns`` as ``registration_namespces`` will take precedence.
+  * ``nerve_ns``: Specifies that this namespace should be routed to by another
+    namespace in SmartStack. In SmartStack, each service has difference pools
+    of backend servers that are listening on a particul port. In PaaSTA we call
+    these "Nerve Namespaces". By default, the Namespace assigned to a particular
+    instance in PaaSTA has the *same name*, so the ``main`` instance will correspond
+    to the ``main`` Nerve namespace defined in ``smartstack.yaml``. This ``nerve_ns``
+    option allows users to make particular instances appear under an *alternative*
+    namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
+    their traffic to the same pool as the other ``main`` instances.
 
   * ``backoff_factor``: PaaSTA will automatically calculate the duration of an
     application's backoff period in case of a failed launch based on the number
@@ -336,12 +325,6 @@ Each job configuration MAY specify the following options:
       one is still running. (if N starts and overflows to the next time slot,
       N+1 and any future runs will be canceled until N finishes)
 
-      In PaaSTA this can be worked around to some degree
-      by using the ``cmd`` time parsing documented below. For example, if
-      a job is scheduled to run every 24 hours, and a ``%(day)`` variable
-      substitution is used, PaaSTA will create a new job for *each* new day,
-      allowing the previous job to take more than 24 hours.
-
   * ``parents``: An array of parents jobs. If specified, then the job will not run
     until *all* of the jobs in this array have completed. The parents jobs should be
     in the form of ``service.instance``. For example::
@@ -374,10 +357,6 @@ Each job configuration MAY specify the following options:
       <https://docs.python.org/2/library/string.html#format-string-syntax>`_,
       which means that the special character strings like ``%`` must
       be escaped in order to be used literally.
-
-    * **Note**: Using dynamic date variables in a ``cmd`` will cause PaaSTA
-      to create unique jobs, which can allow the unique jobs to overlap
-      in their runtime. See the documentation on ``schedule`` for more details.
 
   * ``args``: See the `marathon-[clustername].yaml`_ section for details
 
@@ -470,7 +449,7 @@ The ``main`` key is the service namespace.  Namespaces were introduced for
 PaaSTA services in order to support running multiple daemons from a single
 service codebase. In PaaSTA, each instance in your marathon.yaml maps to a
 smartstack namespace of the same name, unless you specify a different
-``registration_namespaces``.
+``nerve_ns``.
 
 We now describe which keys are supported within a namespace.  Note that all but
 proxy_port are optional.
@@ -731,7 +710,7 @@ A marathon service that overrides options on different instances (canary)::
         page: true
     canary:
       instances: 1
-      registration_namespaces: ['main']
+      nerve_ns: main
       monitoring:
         page: false
         ticket: true

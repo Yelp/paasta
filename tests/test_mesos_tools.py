@@ -281,23 +281,41 @@ def test_get_local_slave_state_connection_error(
         mesos_tools.get_local_slave_state()
 
 
-@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
-def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
-    fake_attribute = 'fake_attribute'
+def test_get_mesos_slaves_grouped_by_attribute():
     fake_value_1 = 'fake_value_1'
     fake_value_2 = 'fake_value_2'
-    mock_fetch_state.return_value = {
-        'slaves': [
+    fake_slaves = [
+        {
+            'hostname': 'fake_host_1',
+            'attributes': {
+                'fake_attribute': fake_value_1,
+            }
+        },
+        {
+            'hostname': 'fake_host_2',
+            'attributes': {
+                'fake_attribute': fake_value_2,
+            }
+        },
+        {
+            'hostname': 'fake_host_3',
+            'attributes': {
+                'fake_attribute': fake_value_1,
+            }
+        },
+        {
+            'hostname': 'fake_host_4',
+            'attributes': {
+                'fake_attribute': 'fake_other_value',
+            }
+        }
+    ]
+    expected = {
+        'fake_value_1': [
             {
                 'hostname': 'fake_host_1',
                 'attributes': {
                     'fake_attribute': fake_value_1,
-                }
-            },
-            {
-                'hostname': 'fake_host_2',
-                'attributes': {
-                    'fake_attribute': fake_value_2,
                 }
             },
             {
@@ -306,6 +324,17 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
                     'fake_attribute': fake_value_1,
                 }
             },
+        ],
+        'fake_value_2': [
+            {
+                'hostname': 'fake_host_2',
+                'attributes': {
+                    'fake_attribute': fake_value_2,
+                }
+            },
+
+        ],
+        'fake_other_value': [
             {
                 'hostname': 'fake_host_4',
                 'attributes': {
@@ -314,22 +343,8 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
             }
         ]
     }
-    expected = {
-        'fake_value_1': ['fake_host_1', 'fake_host_3'],
-        'fake_value_2': ['fake_host_2'],
-        'fake_other_value': ['fake_host_4'],
-    }
-    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute)
+    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_slaves, 'fake_attribute')
     assert actual == expected
-
-
-@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
-def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fetch_state):
-    mock_fetch_state.return_value = {
-        'slaves': []
-    }
-    with raises(mesos_tools.NoSlavesAvailable):
-        mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
 
 
 def test_slave_passes_whitelist():
@@ -348,35 +363,6 @@ def test_slave_passes_whitelist():
     assert slave_passes
     slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, [])
     assert slave_passes
-
-
-@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
-@mock.patch('paasta_tools.mesos_tools.filter_mesos_slaves_by_blacklist', autospec=True)
-def test_get_mesos_slaves_grouped_by_attribute_uses_blacklist(
-    mock_filter_mesos_slaves_by_blacklist,
-    mock_fetch_state
-):
-    fake_blacklist = ['fake_blacklist']
-    fake_whitelist = []
-    fake_slaves = [
-        {
-            'hostname': 'fake_host_1',
-            'attributes': {
-                'fake_attribute': 'fake_value_1',
-            }
-        },
-        {
-            'hostname': 'fake_host_2',
-            'attributes': {
-                'fake_attribute': 'fake_value_1',
-            }
-        }
-    ]
-    mock_fetch_state.return_value = {'slaves': fake_slaves}
-    mock_filter_mesos_slaves_by_blacklist.return_value = fake_slaves
-    mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute', blacklist=fake_blacklist)
-    mock_filter_mesos_slaves_by_blacklist.assert_called_once_with(slaves=fake_slaves, blacklist=fake_blacklist,
-                                                                  whitelist=fake_whitelist)
 
 
 @mock.patch('paasta_tools.mesos_tools.slave_passes_blacklist', autospec=True)
@@ -653,10 +639,49 @@ def test_get_mesos_task_count_by_slave():
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}
+        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         mock_get_running_tasks_from_active_frameworks.assert_called_with('')
-        assert ret == {'host1': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1),
-                       'host2': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2),
-                       'host3': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}
+        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+
+        # test slaves_list override
+        mock_task2 = mock.Mock()
+        mock_task2.slave = {'id': 'slave2'}
+        mock_task2.framework = mock_marathon
+        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
+        mock_get_running_tasks_from_active_frameworks.return_value = mock_tasks
+        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state,
+                                                        slaves_list=[mock_slave_1, mock_slave_2, mock_slave_3])
+        expected = [{'id': 'slave1', 'attributes': {'pool': 'default'}, 'hostname': 'host1',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
+                    {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
+                    {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3',
+                     'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+
+
+def test_get_count_running_tasks_on_slave():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_mesos_state_summary_from_leader'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave'),
+    ) as (
+        mock_get_mesos_state_summary_from_leader,
+        mock_get_mesos_task_count_by_slave
+    ):
+        mock_mesos_state = mock.Mock()
+        mock_slave_counts = [{'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
+                             {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})}]
+        mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
+        mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
+
+        assert mesos_tools.get_count_running_tasks_on_slave('host1') == 3
+        assert mesos_tools.get_count_running_tasks_on_slave('host2') == 0
+        assert mesos_tools.get_count_running_tasks_on_slave('host3') == 0
+        assert mock_get_mesos_state_summary_from_leader.called
+        mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)

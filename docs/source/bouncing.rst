@@ -123,7 +123,7 @@ stronger locking mechanisms like Zookeeper and don't depend on ``instances: 1``.
 **Note2**: Services will incur downtime during the ``downthenup`` bounce and there
 is no protection against unhealthy services.
 
-.. image:: bounce_upthendown.png
+.. image:: bounce_downthenup.png
    :scale: 100%
 
 How to Select A Bounce Method
