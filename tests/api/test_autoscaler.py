@@ -28,7 +28,7 @@ def test_get_autoscaler_count():
         mock_get_zk_instances.return_value = 123
         response = autoscaler.get_autoscaler_count(request)
         assert response == 123
-        mock_get_zk_instances.assert_called_once_with('fake_service', 'fake_instance')
+        mock_get_zk_instances.assert_called_once_with(service='fake_service', instance='fake_instance')
 
 
 def test_update_autoscaler_count():
@@ -36,10 +36,10 @@ def test_update_autoscaler_count():
     request.swagger_data = {
         'service': 'fake_service',
         'instance': 'fake_instance',
+        'desired_instances': 123,
     }
 
-    with mock.patch('paasta_tools.api.views.autoscaler.get_instances_from_zookeeper') as mock_get_zk_instances:
-        mock_get_zk_instances.return_value = 123
-        response = autoscaler.get_autoscaler_count(request)
+    with mock.patch('paasta_tools.api.views.autoscaler.set_instances_for_marathon_service') as mock_set_instances:
+        response = autoscaler.update_autoscaler_count(request)
         assert response == 123
-        mock_get_zk_instances.assert_called_once_with('fake_service', 'fake_instance')
+        mock_set_instances.assert_called_once_with(service='fake_service', instance='fake_instance', instance_count=123)

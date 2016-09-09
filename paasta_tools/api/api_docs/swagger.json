@@ -173,7 +173,9 @@
             "description": "Number of desired instances",
             "name": "desired_instances",
             "required": true,
-            "type": "integer"
+            "schema": {
+              "format": "integer"
+            }
           }
         ]
       }
