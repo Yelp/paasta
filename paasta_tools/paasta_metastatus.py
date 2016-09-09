@@ -537,19 +537,22 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
     :returns: a string representing the ResourceUtilization.
     """
     color_func = PaastaColors.green if healthcheck_utilization_pair[0].healthy else PaastaColors.red
+    utilization = float(healthcheck_utilization_pair[1].total - healthcheck_utilization_pair[1].free)
+    if int(healthcheck_utilization_pair[1].total) == 0:
+        utilization_perc = 100
+    else:
+        utilization_perc = utilization / float(healthcheck_utilization_pair[1].total) * 100
     if humanize and healthcheck_utilization_pair[1].metric != 'cpus':
         return color_func('%s/%s (%.2f%%)' % (
             naturalsize(healthcheck_utilization_pair[1].free * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),
-            float(healthcheck_utilization_pair[1].total - healthcheck_utilization_pair[1].free) /
-            float(healthcheck_utilization_pair[1].total) * 100
+            utilization_perc,
         ))
     else:
         return color_func('%s/%s (%.2f%%)' % (
             healthcheck_utilization_pair[1].free,
             healthcheck_utilization_pair[1].total,
-            float(healthcheck_utilization_pair[1].total - healthcheck_utilization_pair[1].free) /
-            float(healthcheck_utilization_pair[1].total) * 100
+            utilization_perc,
         ))
 
 
