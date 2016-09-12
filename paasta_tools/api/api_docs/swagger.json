@@ -56,14 +56,7 @@
             "name": "service",
             "required": true,
             "type": "string"
-          },
-	  {
-            "in": "query",
-            "description": "Deploy group name",
-            "name": "deploy_group",
-            "required": false,
-            "type": "string"
-	  }
+          }
         ]
       }
     },

@@ -18,9 +18,12 @@ deployment to a cluster.instance.
 import sys
 import time
 
+from bravado.exception import HTTPError
+
 from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
@@ -157,23 +160,46 @@ def paasta_mark_for_deployment(args):
     return ret
 
 
-def is_instance_deployed(service, instance, git_sha):
-    api = client.get_paasta_api_client()
-    status = api.service.status_instance(service=service, instance=instance).result()
-    # if it's a chronos service etc then skip waiting for it to deploy
-    if not status.marathon:
-        return True
-    return git_sha.startswith(status.git_sha) and \
-        status.marathon.app_count == 1 and \
-        status.marathon.deploy_status == 'Running' and \
-        status.marathon.expected_instance_count == status.marathon.running_instance_count
+def are_instances_deployed(cluster, service, instances, git_sha):
+    api = client.get_paasta_api_client(cluster=cluster)
+    if not api:
+        # Assume not deployed if we can't reach API
+        return False
+    statuses = []
+    for instance in instances:
+        try:
+            statuses.append(api.service.status_instance(service=service, instance=instance).result())
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                line = "Can't get status for instance {0}, service {1} in cluster {2}. "\
+                       "This is normally because it is a new service that hasn't been "\
+                       "deployed by PaaSTA yet".format(instance, service, cluster)
+                _log(
+                    service=service,
+                    instance=instance,
+                    line=line,
+                    component='deploy',
+                    level='event'
+                )
+                statuses.append(None)
+    results = []
+    for status in statuses:
+        if not status:
+            results.append(False)
+        # if it's a chronos service etc then skip waiting for it to deploy
+        elif not status.marathon:
+            results.append(True)
+        else:
+            results.append(git_sha.startswith(status.git_sha) and
+                           status.marathon.app_count == 1 and
+                           status.marathon.deploy_status == 'Running' and
+                           status.marathon.expected_instance_count == status.marathon.running_instance_count)
+    return all(results)
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
-    api = client.get_paasta_api_client()
-    instances = api.service.list_instances(service=service,
-                                           deploy_group=deploy_group).result()['instances']
-    if not instances:
+    cluster_map = get_cluster_instance_map_for_service(soa_dir, service, deploy_group)
+    if not cluster_map:
         _log(
             service=service,
             line="Couldn't find any instances for service {0} in deploy group {1}".format(service, deploy_group),
@@ -181,10 +207,16 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             level='event'
         )
         raise NoInstancesFound
+    for cluster in cluster_map.values():
+        cluster['deployed'] = False
     try:
         with Timeout(seconds=timeout):
             while True:
-                if all([is_instance_deployed(service, instance, git_sha) for instance in instances]):
+                for cluster, instances in cluster_map.items():
+                    if not cluster_map[cluster]['deployed']:
+                        cluster_map[cluster]['deployed'] = are_instances_deployed(cluster, service,
+                                                                                  instances['instances'], git_sha)
+                if all([cluster['deployed'] for cluster in cluster_map.values()]):
                     break
                 time.sleep(10)
     except TimeoutError:

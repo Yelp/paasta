@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from bravado.exception import HTTPError
 from mock import ANY
 from mock import Mock
 from mock import patch
@@ -81,31 +82,93 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
     )
 
 
-def is_instance_deployed_side_effect(service, instance, sha):
-    if instance in ['instance1', 'instance2']:
+def mock_status_instance_side_effect(service, instance):
+    if instance in ['instance1', 'instance6', 'notaninstance']:
+        # valid completed instance
+        mock_mstatus = Mock(app_count=1, deploy_status='Running',
+                            expected_instance_count=2,
+                            running_instance_count=2)
+    if instance == 'instance2':
+        # too many marathon apps
+        mock_mstatus = Mock(app_count=2, deploy_status='Running',
+                            expected_instance_count=2,
+                            running_instance_count=2)
+    if instance == 'instance3':
+        # too many running instances
+        mock_mstatus = Mock(app_count=1, deploy_status='Running',
+                            expected_instance_count=2,
+                            running_instance_count=4)
+    if instance == 'instance4':
+        # still Deploying
+        mock_mstatus = Mock(app_count=1, deploy_status='Deploying',
+                            expected_instance_count=2,
+                            running_instance_count=2)
+    if instance == 'instance5':
+        # not a marathon instance
+        mock_mstatus = None
+    mock_status = Mock()
+    mock_status.git_sha = 'somesha'
+    if instance == 'instance6':
+        # running the wrong version
+        mock_status.git_sha = 'anothersha'
+    mock_status.marathon = mock_mstatus
+    mock_result = mock_status
+    mock_status_instance = Mock()
+    mock_status_instance.result.return_value = mock_result
+    if instance == 'notaninstance':
+        # not an instance paasta can find
+        mock_status_instance.result.side_effect = HTTPError(response=Mock(status_code=404))
+    return mock_status_instance
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client')
+def test_are_instances_deployed(mock_get_paasta_api_client, mock__log):
+    mock_paasta_api_client = Mock()
+    mock_get_paasta_api_client.return_value = mock_paasta_api_client
+    mock_paasta_api_client.service.status_instance.side_effect = mock_status_instance_side_effect
+
+    assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance1'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance2', 'instance1'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance3'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance4'], 'somesha')
+    assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance5', 'instance1'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance6'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['notaninstance'], 'somesha')
+
+
+def are_instances_deployed_side_effect(cluster, service, instances, sha):
+    if instances == ['instance1', 'instance2']:
         return True
     return False
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.is_instance_deployed')
+@patch('paasta_tools.cli.cmds.mark_for_deployment.are_instances_deployed')
 @patch('time.sleep', autospec=True)
-def test_wait_for_deployment(mock_sleep, mock_is_instance_deployed, mock__log, mock_get_paasta_api_client):
-    mock_result = {'instances': ['instance1', 'instance2', 'instance3']}
-    mock_list_instances = Mock()
-    mock_list_instances.result.return_value = mock_result
-    mock_paasta_api_client = Mock()
-    mock_get_paasta_api_client.return_value = mock_paasta_api_client
-    mock_paasta_api_client.service.list_instances.return_value = mock_list_instances
+def test_wait_for_deployment(mock_sleep, mock_are_instances_deployed, mock__log,
+                             mock_get_cluster_instance_map_for_service):
+    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2', 'instance3']}}
+    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
 
-    mock_is_instance_deployed.side_effect = is_instance_deployed_side_effect
+    mock_are_instances_deployed.side_effect = are_instances_deployed_side_effect
     mock_sleep.side_effect = TimeoutError()
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
-    mock_paasta_api_client.service.list_instances.assert_called_with(service='service', deploy_group='deploy_group_1')
-    mock_is_instance_deployed.assert_called_with('service', 'instance3', 'somesha')
+    mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
+    mock_are_instances_deployed.assert_called_with('cluster1',
+                                                   'service',
+                                                   mock_cluster_map['cluster1']['instances'],
+                                                   'somesha')
 
-    mock_result = {'instances': ['instance1', 'instance2']}
-    mock_list_instances.result.return_value = mock_result
+    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
+                        'cluster2': {'instances': ['instance1', 'instance2']}}
+    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+
+    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
+                        'cluster2': {'instances': ['instance1', 'instance3']}}
+    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
+    with raises(TimeoutError):
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
