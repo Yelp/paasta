@@ -95,7 +95,8 @@ def chronos_check_job_state(context, field, job_name, value):
         service=service,
         instance=instance,
         client=context.chronos_client,
-        include_disabled=True
+        include_disabled=True,
+        include_temporary=True,
     )
     assert len(jobs) == 1
     # we cast to a string so you can correctly assert that a value is True/False
