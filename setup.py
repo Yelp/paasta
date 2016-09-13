@@ -36,7 +36,7 @@ setup(
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
         'bravado == 8.3.0',
-        'chronos-python == 0.35.0',
+        'chronos-python == 0.36.0',
         'cookiecutter == 1.4.0',
         'cryptography == 1.4',
         # Don't update this unless you have confirmed the client works with
