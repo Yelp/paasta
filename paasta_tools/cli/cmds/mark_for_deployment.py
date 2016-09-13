@@ -31,7 +31,7 @@ from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
-DEFAULT_DEPLOYMENT_TIMEOUT = 1200  # seconds
+DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 
 
 def add_subparser(subparsers):
