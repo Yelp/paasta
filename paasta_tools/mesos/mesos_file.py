@@ -129,11 +129,14 @@ class File(object):
     def _read(self, size=None):
         start = self.tell()
 
-        fn = lambda: self._get_chunk(
-            self.tell(),
-            size=self._length(start, size))
-        pre = lambda x: x == ""
-        post = lambda x: size and (self.tell() - start) >= size
+        def fn():
+            return self._get_chunk(self.tell(), size=self._length(start, size))
+
+        def pre(x):
+            return x == ""
+
+        def post(x):
+            return size and (self.tell() - start) >= size
 
         for blob in util.iter_until(fn, pre, post):
             yield blob
