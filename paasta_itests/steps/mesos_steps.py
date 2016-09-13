@@ -13,12 +13,12 @@
 # limitations under the License.
 import contextlib
 
-import mesos.cli.master
 import mock
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string
 
+import paasta_tools.mesos.master
 from paasta_tools import check_mesos_resource_utilization
 
 
@@ -32,7 +32,7 @@ def check_mesos_utilization(context, percent):
 
     with contextlib.nested(
         mock.patch('paasta_tools.check_mesos_resource_utilization.send_event'),
-        mock.patch.object(mesos.cli.master, 'CFG', config),
+        mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
     ) as (
         mock_events,
         mock_cfg,

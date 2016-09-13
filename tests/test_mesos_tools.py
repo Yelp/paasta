@@ -17,12 +17,12 @@ import random
 import socket
 
 import docker
-import mesos
 import mock
 import requests
 from pytest import mark
 from pytest import raises
 
+import paasta_tools.mesos as mesos
 import paasta_tools.mesos_tools as mesos_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.utils import PaastaColors
@@ -101,7 +101,7 @@ def test_status_mesos_tasks_verbose(test_case):
 
 
 def test_get_cpu_usage_good():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.cpu_limit = .35
     fake_duration = 100
     fake_task.stats = {
@@ -120,7 +120,7 @@ def test_get_cpu_usage_good():
 
 
 def test_get_cpu_usage_bad():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.cpu_limit = 1.1
     fake_duration = 100
     fake_task.stats = {
@@ -139,7 +139,7 @@ def test_get_cpu_usage_bad():
 
 
 def test_get_cpu_usage_handles_missing_stats():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.cpu_limit = 1.1
     fake_duration = 100
     fake_task.stats = {}
@@ -152,7 +152,7 @@ def test_get_cpu_usage_handles_missing_stats():
 
 
 def test_get_mem_usage_good():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.rss = 1024 * 1024 * 10
     fake_task.mem_limit = fake_task.rss * 10
     actual = mesos_tools.get_mem_usage(fake_task)
@@ -160,7 +160,7 @@ def test_get_mem_usage_good():
 
 
 def test_get_mem_usage_bad():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.rss = 1024 * 1024 * 100
     fake_task.mem_limit = fake_task.rss
     actual = mesos_tools.get_mem_usage(fake_task)
@@ -168,7 +168,7 @@ def test_get_mem_usage_bad():
 
 
 def test_get_mem_usage_divide_by_zero():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task = mock.create_autospec(mesos.task.Task)
     fake_task.rss = 1024 * 1024 * 10
     fake_task.mem_limit = 0
     actual = mesos_tools.get_mem_usage(fake_task)
@@ -228,7 +228,7 @@ def test_get_mesos_leader_no_hostname():
 
 def test_get_mesos_leader_cli_mesosmasterconnectionerror():
     with contextlib.nested(
-        mock.patch('mesos.cli.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
+        mock.patch('paasta_tools.mesos.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
     ) as (
         mock_resolve,
     ):
@@ -448,7 +448,7 @@ def test_get_mesos_state_from_leader_works_on_elected_leader():
         "elected_time": 1439503288.00787,
         "failed_tasks": 1,
     }
-    mesos.cli.master.CURRENT.state = good_fake_state
+    mesos.master.CURRENT.state = good_fake_state
     assert mesos_tools.get_mesos_state_from_leader() == good_fake_state
 
 
@@ -462,7 +462,7 @@ def test_get_mesos_state_from_leader_raises_on_non_elected_leader():
         "deactivated_slaves": 0,
         "failed_tasks": 1,
     }
-    mesos.cli.master.CURRENT.state = un_elected_fake_state
+    mesos.master.CURRENT.state = un_elected_fake_state
     with raises(mesos_tools.MasterNotAvailableException):
         assert mesos_tools.get_mesos_state_from_leader() == un_elected_fake_state
 
@@ -554,7 +554,7 @@ def test_format_stdstreams_tail_for_task(test_case):
         """
         fake_iter = mock.MagicMock()
         fake_iter.return_value = reversed(file_lines)
-        fobj = mock.create_autospec(mesos.cli.mesos_file.File)
+        fobj = mock.create_autospec(mesos.mesos_file.File)
         fobj.path = file_path
         fobj.__reversed__ = fake_iter
         return fobj
@@ -599,7 +599,7 @@ def test_format_stdstreams_tail_for_task(test_case):
     mock_cluster_files = gen_mock_cluster_files(file1, file2, raise_what)
     fake_task = {'id': task_id}
     expected = gen_output(task_id, file1, file2, nlines, raise_what)
-    with mock.patch('paasta_tools.mesos_tools.mesos.cli.cluster.files', mock_cluster_files):
+    with mock.patch('paasta_tools.mesos_tools.cluster.files', mock_cluster_files):
         result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
         assert result == expected
 

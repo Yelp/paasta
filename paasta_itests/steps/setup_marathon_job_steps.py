@@ -14,7 +14,6 @@
 import contextlib
 from time import sleep
 
-import mesos.cli.master
 import mock
 from behave import then
 from behave import when
@@ -22,6 +21,7 @@ from itest_utils import get_service_connection_string
 from itest_utils import update_context_marathon_config
 from marathon.exceptions import MarathonHttpError
 
+import paasta_tools.mesos.master
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_maintenance
 from paasta_tools import setup_marathon_job
@@ -95,7 +95,7 @@ def run_until_number_tasks(context, number):
     for _ in xrange(20):
         with contextlib.nested(
             mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-            mock.patch.object(mesos.cli.master, 'CFG', config),
+            mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
         ) as (
             mock_load_credentials,
             _,
@@ -154,7 +154,7 @@ def mark_host_at_risk(context, host):
     }
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-        mock.patch.object(mesos.cli.master, 'CFG', config),
+        mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
     ) as (
         mock_load_credentials,
         _,

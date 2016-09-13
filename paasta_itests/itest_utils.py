@@ -16,12 +16,12 @@ import json
 import os
 import time
 
-import mesos.cli.master
 import mock
 import requests
 import requests_cache
 from marathon import NotFoundError
 
+import paasta_tools.mesos.master
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_tools import app_has_tasks
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -37,7 +37,7 @@ def patch_mesos_cli_master_config():
         "response_timeout": 5,
     }
 
-    with mock.patch.object(mesos.cli.master, 'CFG', mesos_config):
+    with mock.patch.object(paasta_tools.mesos.master, 'CFG', mesos_config):
         yield
 
 
