@@ -24,7 +24,7 @@ from paasta_tools import mesos_maintenance
 from paasta_tools import utils
 from paasta_tools.marathon_tools import get_expected_instance_count_for_namespace
 from paasta_tools.marathon_tools import marathon_services_running_here
-from paasta_tools.marathon_tools import read_namespace_for_service_instance
+from paasta_tools.marathon_tools import read_registration_for_service_instance
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
@@ -131,7 +131,14 @@ def is_healthy_in_haproxy(local_port, backends):
 
 def synapse_replication_is_low(service, instance, system_paasta_config, local_backends):
     crit_threshold = 80
-    namespace = read_namespace_for_service_instance(service=service, instance=instance)
+    reg_svc, reg_namespace, _, __ = utils.decompose_job_id(
+        read_registration_for_service_instance(
+            service=service, instance=instance
+        )
+    )
+    # We only actually care about the replication of where we're registering
+    service, namespace = reg_svc, reg_namespace
+
     smartstack_replication_info = load_smartstack_info_for_service(
         service=service,
         namespace=namespace,
@@ -140,7 +147,8 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
     )
     expected_count = get_expected_instance_count_for_namespace(service=service, namespace=namespace)
     expected_count_per_location = int(expected_count / len(smartstack_replication_info))
-    synapse_name = "%s.%s" % (service, namespace)
+
+    synapse_name = utils.compose_job_id(service, namespace)
     local_replication = get_replication_for_services(
         synapse_host=system_paasta_config.get_default_synapse_host(),
         synapse_port=system_paasta_config.get_synapse_port(),

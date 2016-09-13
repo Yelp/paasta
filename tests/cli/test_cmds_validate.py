@@ -161,7 +161,7 @@ main_http:
   instances: 2
   mem: 250
   disk: 512
-  registration_namespaces: ['main', 'http']
+  registrations: ['foo.bar', 'bar.baz']
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
