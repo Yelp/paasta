@@ -14,7 +14,6 @@
 import contextlib
 import time
 
-import mesos.cli.master
 import mock
 from behave import given
 from behave import then
@@ -22,6 +21,7 @@ from behave import when
 from itest_utils import get_service_connection_string
 from marathon import MarathonHttpError
 
+import paasta_tools.mesos.master
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
@@ -161,7 +161,7 @@ def when_setup_service_initiated(context):
         mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
         mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
         mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-        mock.patch.object(mesos.cli.master, 'CFG', config),
+        mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
     ) as (
         _,
         _,

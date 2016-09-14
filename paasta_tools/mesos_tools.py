@@ -23,8 +23,8 @@ from urlparse import urlparse
 import humanize
 import requests
 from kazoo.client import KazooClient
-from mesos.cli.exceptions import SlaveDoesNotExist
 
+from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import PaastaColors
@@ -81,15 +81,15 @@ def raise_cli_exception(msg):
         raise Exception(msg)
 
 # monkey patch the log.fatal method to raise an exception rather than a sys.exit
-import mesos.cli.log  # noqa
-mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
+import paasta_tools.mesos.log  # noqa
+paasta_tools.mesos.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
 
 
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
-from mesos.cli import master  # noqa
-import mesos.cli.cluster  # noqa
+from paasta_tools.mesos import master  # noqa
+import paasta_tools.mesos.cluster as cluster  # noqa
 
 
 # Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
@@ -103,10 +103,10 @@ import itertools  # noqa
 
 def _mesos_cli_master_MesosMaster_slaves(self, fltr=''):
     return list(map(
-        lambda x: mesos.cli.slave.MesosSlave(x),
+        lambda x: paasta_tools.mesos.slave.MesosSlave(x),
         itertools.ifilter(
             lambda x: fltr == x['id'], self.state['slaves'])))
-mesos.cli.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
+paasta_tools.mesos.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
 
 
 class MesosMasterConnectionError(Exception):
@@ -296,7 +296,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
     output = []
     try:
-        fobjs = list(mesos.cli.cluster.files(lambda x: x, flist=['stdout', 'stderr'], fltr=task['id']))
+        fobjs = list(cluster.files(lambda x: x, flist=['stdout', 'stderr'], fltr=task['id']))
         fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
             output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
