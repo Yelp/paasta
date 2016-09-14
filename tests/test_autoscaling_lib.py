@@ -25,6 +25,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.paasta_metastatus import ResourceInfo
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import TimeoutError
 
 
 def test_get_zookeeper_instances():
@@ -922,10 +923,11 @@ def test_set_spot_fleet_request_capacity():
         mock.patch('paasta_tools.autoscaling_lib.AWS_SPOT_MODIFY_TIMEOUT', autospec=True)
     ) as (
         mock_ec2_client,
-        _,
+        mock_sleep,
         mock_get_sfr,
         _
     ):
+        mock_sleep.side_effect = TimeoutError()
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'modifying'}
         mock_modify_spot_fleet_request = mock.Mock()
         mock_ec2_client.return_value = mock.Mock(modify_spot_fleet_request=mock_modify_spot_fleet_request)
