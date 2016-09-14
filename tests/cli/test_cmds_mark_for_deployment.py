@@ -28,6 +28,7 @@ class fake_args:
     commit = 'fake-hash'
     soa_dir = 'fake_soa_dir'
     block = False
+    verbose = False
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -137,7 +138,7 @@ def test_are_instances_deployed(mock_get_paasta_api_client, mock__log):
     assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['notaninstance'], 'somesha')
 
 
-def are_instances_deployed_side_effect(cluster, service, instances, sha):
+def are_instances_deployed_side_effect(cluster, service, instances, git_sha):
     if instances == ['instance1', 'instance2']:
         return True
     return False
@@ -157,10 +158,10 @@ def test_wait_for_deployment(mock_sleep, mock_are_instances_deployed, mock__log,
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
-    mock_are_instances_deployed.assert_called_with('cluster1',
-                                                   'service',
-                                                   mock_cluster_map['cluster1']['instances'],
-                                                   'somesha')
+    mock_are_instances_deployed.assert_called_with(cluster='cluster1',
+                                                   service='service',
+                                                   instances=mock_cluster_map['cluster1']['instances'],
+                                                   git_sha='somesha')
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance2']}}

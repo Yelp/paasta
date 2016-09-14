@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import logging
 import sys
 import time
 
@@ -32,6 +33,9 @@ from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
+
+
+log = logging.getLogger(__name__)
 
 
 def add_subparser(subparsers):
@@ -93,6 +97,13 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    list_parser.add_argument(
+        '-v', '--verbose',
+        action='count',
+        dest="verbose",
+        default=0,
+        help="Print out more output."
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -128,6 +139,10 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
 
 def paasta_mark_for_deployment(args):
     """Wrapping mark_for_deployment"""
+    if args.verbose:
+        log.setLevel(level=logging.DEBUG)
+    else:
+        log.setLevel(level=logging.INFO)
     deploy_group = args.deploy_group
     service = args.service
     if service and service.startswith('services-'):
@@ -141,18 +156,18 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
+            line = "Waiting for deployment of {0} to {1} complete".format(args.commit, deploy_group)
+            log.info(line)
+            wait_for_deployment(service=args.service,
+                                deploy_group=args.deploy_group,
+                                git_sha=args.commit,
+                                soa_dir=args.soa_dir,
+                                timeout=args.timeout)
+            line = "Deployment of {0} to {1} complete".format(args.commit, deploy_group)
             _log(
                 service=service,
-                line="Waiting for deployment of {0} to {1} complete".format(args.commit, deploy_group),
                 component='deploy',
-                level='event'
-            )
-            wait_for_deployment(args.service, args.deploy_group,
-                                args.commit, args.soa_dir, args.timeout)
-            _log(
-                service=service,
-                line="Deployment of {0} to {1} complete".format(args.commit, deploy_group),
-                component='deploy',
+                line=line,
                 level='event'
             )
         except TimeoutError:
@@ -171,16 +186,9 @@ def are_instances_deployed(cluster, service, instances, git_sha):
             statuses.append(api.service.status_instance(service=service, instance=instance).result())
         except HTTPError as e:
             if e.response.status_code == 404:
-                line = "Can't get status for instance {0}, service {1} in cluster {2}. "\
-                       "This is normally because it is a new service that hasn't been "\
-                       "deployed by PaaSTA yet".format(instance, service, cluster)
-                _log(
-                    service=service,
-                    instance=instance,
-                    line=line,
-                    component='deploy',
-                    level='event'
-                )
+                log.warning("Can't get status for instance {0}, service {1} in cluster {2}. "
+                            "This is normally because it is a new service that hasn't been "
+                            "deployed by PaaSTA yet".format(instance, service, cluster))
                 statuses.append(None)
     results = []
     for status in statuses:
@@ -200,10 +208,11 @@ def are_instances_deployed(cluster, service, instances, git_sha):
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     cluster_map = get_cluster_instance_map_for_service(soa_dir, service, deploy_group)
     if not cluster_map:
+        line = "Couldn't find any instances for service {0} in deploy group {1}".format(service, deploy_group)
         _log(
             service=service,
-            line="Couldn't find any instances for service {0} in deploy group {1}".format(service, deploy_group),
             component='deploy',
+            line=line,
             level='event'
         )
         raise NoInstancesFound
@@ -214,18 +223,34 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             while True:
                 for cluster, instances in cluster_map.items():
                     if not cluster_map[cluster]['deployed']:
-                        cluster_map[cluster]['deployed'] = are_instances_deployed(cluster, service,
-                                                                                  instances['instances'], git_sha)
+                        cluster_map[cluster]['deployed'] = are_instances_deployed(cluster=cluster,
+                                                                                  service=service,
+                                                                                  instances=instances['instances'],
+                                                                                  git_sha=git_sha)
                 if all([cluster['deployed'] for cluster in cluster_map.values()]):
                     break
                 time.sleep(10)
     except TimeoutError:
+        human_status = ["{0}: {1}".format(cluster, data['deployed']) for cluster, data in cluster_map.items()]
+        line = "\nCurrent deployment status of {0} per cluster:\n".format(deploy_group) + "\n".join(human_status)
         _log(
             service=service,
-            line="Timed out after {0} seconds, waiting for {1} in {2} to be deployed by PaaSTA. "
-                 "Try running 'paasta status -s {2} -v' to determine the cause. If the service is slow "
-                 "to start you may wish to increase the timeout".format(timeout, deploy_group, service),
             component='deploy',
+            line=line,
+            level='event'
+        )
+        line = "\n\nTimed out after {0} seconds, waiting for {1} in {2} to be deployed by PaaSTA. \n\n"\
+               "This probably means the deploy hasn't suceeded. The new service might not be healthy or one "\
+               "or more clusters could be having issues.\n\n"\
+               "To debug: try running 'paasta status -s {2} -vv' or 'paasta logs -s {2}' to determine the cause.\n\n"\
+               "{3} is still *marked* for deployment. To rollback, you can run: 'paasta rollback --service "\
+               "{2} --deploy-group {1}'\n\n"\
+               "If the service is known to be slow to start you may wish to increase "\
+               "the timeout on this step.".format(timeout, deploy_group, service, git_sha)
+        _log(
+            service=service,
+            component='deploy',
+            line=line,
             level='event'
         )
         raise
