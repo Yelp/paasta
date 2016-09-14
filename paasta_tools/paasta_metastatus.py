@@ -19,9 +19,8 @@ import sys
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
-from socket import error as socket_error
 
-from httplib2 import ServerNotFoundError
+import chronos
 from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
@@ -626,7 +625,7 @@ def main():
         chronos_client = get_chronos_client(chronos_config)
         try:
             chronos_results = get_chronos_status(chronos_client)
-        except (ServerNotFoundError, socket_error) as e:
+        except (chronos.ChronosAPIError) as e:
             print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
             sys.exit(2)
     else:
