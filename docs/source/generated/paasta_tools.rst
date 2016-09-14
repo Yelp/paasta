@@ -8,6 +8,7 @@ Subpackages
 
     paasta_tools.api
     paasta_tools.cli
+    paasta_tools.mesos
     paasta_tools.monitoring
     paasta_tools.tron
 
@@ -38,6 +39,7 @@ Submodules
    paasta_tools.list_marathon_service_instances
    paasta_tools.marathon_serviceinit
    paasta_tools.marathon_tools
+   paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.paasta_execute_docker_command
