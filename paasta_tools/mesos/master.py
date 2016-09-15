@@ -39,7 +39,6 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
-from .cfg import CURRENT as CFG
 
 ZOOKEEPER_TIMEOUT = 1
 
@@ -55,22 +54,25 @@ MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
 
 class MesosMaster(object):
 
+    def __init__(self, config):
+        self.config = config
+
     def __str__(self):
         return "<master: {0}>".format(self.key())
 
     def key(self):
-        return CFG["master"]
+        return self.config["master"]
 
     @util.CachedProperty()
     def host(self):
-        return "{0}://{1}".format(CFG["scheme"], self.resolve(CFG["master"]))
+        return "{0}://{1}".format(self.config["scheme"], self.resolve(self.config["master"]))
 
     @log.duration
     def fetch(self, url, **kwargs):
         try:
             return requests.get(
                 urlparse.urljoin(self.host, url),
-                timeout=CFG["response_timeout"],
+                timeout=self.config["response_timeout"],
                 **kwargs)
         except requests.exceptions.ConnectionError:
             log.fatal(MISSING_MASTER.format(self.host))
@@ -229,5 +231,3 @@ class MesosMaster(object):
     @util.memoize
     def log(self):
         return mesos_file.File(self, path="/master/log")
-
-CURRENT = MesosMaster()

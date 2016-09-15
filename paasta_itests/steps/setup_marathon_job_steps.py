@@ -21,7 +21,6 @@ from itest_utils import get_service_connection_string
 from itest_utils import update_context_marathon_config
 from marathon.exceptions import MarathonHttpError
 
-import paasta_tools.mesos.master
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_maintenance
 from paasta_tools import setup_marathon_job
@@ -87,18 +86,11 @@ def set_number_instances(context, number):
 
 @when(u'we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
-    config = {
-        'master': '%s' % get_service_connection_string('mesosmaster'),
-        'scheme': 'http',
-        'response_timeout': 5,
-    }
     for _ in xrange(20):
         with contextlib.nested(
             mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-            mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
         ) as (
             mock_load_credentials,
-            _,
         ):
             mock_load_credentials.side_effect = mesos_maintenance.load_credentials(
                 mesos_secrets='/etc/mesos-slave-secret',
@@ -147,17 +139,10 @@ def mark_host_running_on_at_risk(context):
 def mark_host_at_risk(context, host):
     start = mesos_maintenance.datetime_to_nanoseconds(mesos_maintenance.now())
     duration = mesos_maintenance.parse_timedelta('1h')
-    config = {
-        'master': '%s' % get_service_connection_string('mesosmaster'),
-        'scheme': 'http',
-        'response_timeout': 5,
-    }
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-        mock.patch.object(paasta_tools.mesos.master, 'CFG', config),
     ) as (
         mock_load_credentials,
-        _,
     ):
         mock_load_credentials.side_effect = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
         mesos_maintenance.drain([host], start, duration)

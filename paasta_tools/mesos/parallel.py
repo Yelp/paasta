@@ -17,19 +17,17 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import contextlib
-import itertools
 
 import concurrent.futures
 
 from . import exceptions
-from .cfg import CURRENT as CFG
 
 
 @contextlib.contextmanager
-def execute():
+def execute(max_workers):
     try:
         executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=CFG["max_workers"])
+            max_workers=max_workers)
         yield executor
     except KeyboardInterrupt:
         # Threads in the ThreadPoolExecutor are created with
@@ -44,11 +42,11 @@ def execute():
         executor.shutdown(wait=False)
 
 
-def stream(fn, elements):
+def stream(fn, elements, workers):
     """Yield the results of fn as jobs complete."""
     jobs = []
 
-    with execute() as executor:
+    with execute(workers) as executor:
         for elem in elements:
             jobs.append(executor.submit(fn, elem))
 
@@ -57,38 +55,3 @@ def stream(fn, elements):
                 yield job.result()
             except exceptions.SkipResult:
                 pass
-
-
-def by_fn(keyfn, fn, items):
-    """Call fn in parallel across items based on keyfn.
-
-    Extensive caching/memoization is utilized when fetching data.
-    When you run a function against tasks in a completely parallel way, the
-    caching is skipped and there is the possibility that your endpoint will
-    receive multiple requests. For most use cases, this significantly slows
-    the result down (instead of speeding it up).
-
-    The solution to this predicament is to execute fn in parallel but only
-    across a specific partition function (slave ids in this example).
-    """
-
-    # itertools.groupby returns a list of (key, generator) tuples. A job
-    # is submitted and then the local execution context continues. The
-    # partitioned generator is destroyed and you only end up executing fn
-    # over a small subset of the desired partition. Therefore, the list()
-    # conversion when submitting the partition for execution is very
-    # important.
-    for result in stream(
-            lambda (k, part): [fn(i) for i in list(part)],
-            itertools.groupby(items, keyfn)):
-        for l in result:
-            yield l
-
-
-def by_slave(fn, tasks):
-    """Execute a function against tasks partitioned by slave."""
-
-    def keyfn(x):
-        return x.slave["id"]
-    tasks = sorted(tasks, key=keyfn)
-    return by_fn(keyfn, fn, tasks)
