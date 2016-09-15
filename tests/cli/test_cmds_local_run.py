@@ -60,7 +60,7 @@ def test_dry_run(
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
+        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
     mock_figure_out_service_name.return_value = 'fake_service'
 
     # Should pass and produce something
@@ -73,6 +73,47 @@ def test_dry_run(
     # We don't care what the contents are, we just care that it is json loadable.
     expected_out = json.loads(out)
     assert isinstance(expected_out, list)
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
+def test_dry_run_json_dict(
+    mock_get_instance_config,
+    mock_validate_service_instance,
+    mock_paasta_cook_image,
+    mock_load_system_paasta_config,
+    mock_figure_out_service_name,
+    mock_socket_getfqdn,
+    capsys
+):
+    mock_socket_getfqdn.return_value = 'fake_hostname'
+    mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
+    mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
+    mock_get_instance_config.return_value.get_env_dictionary.return_value = {}
+    mock_get_instance_config.return_value.get_mem.return_value = 123
+    mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
+    mock_validate_service_instance.return_value = 'marathon'
+    mock_paasta_cook_image.return_value = 0
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
+    mock_figure_out_service_name.return_value = 'fake_service'
+
+    # Should pass and produce something
+    with raises(SystemExit) as excinfo:
+        main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance', '--json-dict'))
+    ret = excinfo.value.code
+    out, err = capsys.readouterr()
+    assert ret == 0
+
+    # Ensure it's a dict and check some keys
+    expected_out = json.loads(out)
+    assert isinstance(expected_out, dict)
+    assert 'docker_hash' in expected_out
+    assert 'interactive' in expected_out
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.execute_in_container')
@@ -289,6 +330,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = False
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -312,6 +354,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 
@@ -342,6 +385,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.healthcheck_only = False
     args.instance = 'fake_instance'
     args.interactive = True
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -365,6 +409,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 
@@ -399,6 +444,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = True
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -424,6 +470,7 @@ def test_configure_and_run_pulls_image_when_asked(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 

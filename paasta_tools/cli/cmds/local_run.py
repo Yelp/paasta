@@ -303,6 +303,12 @@ def add_subparser(subparsers):
     )
     build_pull_group.set_defaults(action='build')
     list_parser.add_argument(
+        '--json-dict',
+        help='When running dry run, output the arguments as a json dict',
+        action='store_true',
+        dest='dry_run_json_dict',
+    )
+    list_parser.add_argument(
         '-C', '--cmd',
         help=('Run Docker container with particular command, '
               'for example: "bash". By default will use the command or args specified by the '
@@ -450,7 +456,8 @@ def run_docker_container(
     healthcheck_only,
     instance_config,
     soa_dir=DEFAULT_SOA_DIR,
-    dry_run=False
+    dry_run=False,
+    json_dict=False
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -478,7 +485,7 @@ def run_docker_container(
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
-    docker_run_cmd = get_docker_run_cmd(
+    docker_run_args = dict(
         memory=memory,
         random_port=random_port,
         container_name=container_name,
@@ -491,12 +498,16 @@ def run_docker_container(
         net=net,
         docker_params=docker_params,
     )
+    docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     joined_docker_run_cmd = ' '.join(docker_run_cmd)
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
         service, instance, instance_config, random_port, soa_dir=soa_dir)
 
     if dry_run:
-        sys.stdout.write(json.dumps(docker_run_cmd) + '\n')
+        if json_dict:
+            sys.stdout.write(json.dumps(docker_run_args) + '\n')
+        else:
+            sys.stdout.write(json.dumps(docker_run_cmd) + '\n')
         sys.exit(0)
     else:
         sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
@@ -622,12 +633,14 @@ def configure_and_run_docker_container(
 
     instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
+    load_deployments = docker_hash is None or pull_image
+
     try:
         instance_config = get_instance_config(
             service=service,
             instance=instance,
             cluster=cluster,
-            load_deployments=pull_image,
+            load_deployments=load_deployments,
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
@@ -638,7 +651,7 @@ def configure_and_run_docker_container(
                 'soa_dir': soa_dir, 'service': service}))
         return
 
-    if pull_image:
+    if docker_hash is None:
         try:
             docker_url = get_docker_url(
                 system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
@@ -649,6 +662,8 @@ def configure_and_run_docker_container(
                 "or paasta mark-for-deployment has been run for %s" % (instance_config.get_deploy_group(), service)))
             return
         docker_hash = docker_url
+
+    if pull_image:
         docker_pull_image(docker_url)
 
     # if only one volume specified, extra_volumes should be converted to a list
@@ -687,6 +702,7 @@ def configure_and_run_docker_container(
         instance_config=instance_config,
         soa_dir=args.yelpsoa_config_root,
         dry_run=dry_run,
+        json_dict=args.dry_run_json_dict,
     )
 
 
