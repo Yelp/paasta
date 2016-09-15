@@ -1,3 +1,10 @@
+paasta-tools (0.48.2) lucid; urgency=low
+
+  * 0.48.2 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Thu, 15 Sep 2016 16:16:02 -0700
+
 paasta-tools (0.48.1) lucid; urgency=low
 
   * 0.48.1 tagged with 'make release'
