@@ -143,27 +143,26 @@ def paasta_mark_for_deployment(args):
         log.setLevel(level=logging.DEBUG)
     else:
         log.setLevel(level=logging.INFO)
-    deploy_group = args.deploy_group
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service, soa_dir=args.soa_dir)
     ret = mark_for_deployment(
         git_url=args.git_url,
-        deploy_group=deploy_group,
+        deploy_group=args.deploy_group,
         service=service,
         commit=args.commit,
     )
     if args.block:
         try:
-            line = "Waiting for deployment of {0} to {1} complete".format(args.commit, deploy_group)
+            line = "Waiting for deployment of {0} to {1} complete".format(args.commit, args.deploy_group)
             log.info(line)
-            wait_for_deployment(service=args.service,
+            wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
                                 soa_dir=args.soa_dir,
                                 timeout=args.timeout)
-            line = "Deployment of {0} to {1} complete".format(args.commit, deploy_group)
+            line = "Deployment of {0} to {1} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
                 component='deploy',
