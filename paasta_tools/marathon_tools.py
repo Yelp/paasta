@@ -351,11 +351,11 @@ class MarathonServiceConfig(InstanceConfig):
         )
         if not filtered_slaves:
             raise NoSlavesAvailableError(
-                "No suitable slaves could be found in the cluster for %s.%s"
-                "There are %d total slaves in the cluster, but after filtering"
-                "those available to the app according to the constraints set"
-                "by the deploy_blacklist and deploy_whitelist, there are 0"
-                "available."
+                ("No suitable slaves could be found in the cluster for %s.%s"
+                 "There are %d total slaves in the cluster, but after filtering"
+                 " those available to the app according to the constraints set"
+                 " by the deploy_blacklist and deploy_whitelist, there are 0"
+                 " available.") % (self.service, self.instance, len(slaves))
             )
 
         value_dict = get_mesos_slaves_grouped_by_attribute(

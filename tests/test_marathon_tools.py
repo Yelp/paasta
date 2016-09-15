@@ -1544,8 +1544,15 @@ class TestMarathonTools:
                     'force_bounce': '99999',
                 },
             )
-            with raises(NoSlavesAvailableError):
+            with raises(NoSlavesAvailableError) as e:
                 fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
+                assert e.value.message == (
+                    "No suitable slaves could be found in the cluster for fake_name.fake_instance"
+                    "There are 0 total slaves in the cluster, but after filtering"
+                    " those available to the app according to the constraints set"
+                    " by the deploy_blacklist and deploy_whitelist, there are 0"
+                    " available."
+                )
 
     def test_get_routing_constraints_no_slaves_after_filter(self):
         with contextlib.nested(
@@ -1566,8 +1573,15 @@ class TestMarathonTools:
                     'force_bounce': '99999',
                 },
             )
-            with raises(NoSlavesAvailableError):
+            with raises(NoSlavesAvailableError) as e:
                 fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
+                assert e.value.message == (
+                    "No suitable slaves could be found in the cluster for fake_name.fake_instance"
+                    "There are 1 total slaves in the cluster, but after filtering"
+                    " those available to the app according to the constraints set"
+                    " by the deploy_blacklist and deploy_whitelist, there are 0"
+                    " available."
+                )
 
     def test_get_expected_instance_count_for_namespace(self):
         service = 'red'
