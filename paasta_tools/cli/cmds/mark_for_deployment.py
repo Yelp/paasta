@@ -196,6 +196,8 @@ def are_instances_deployed(cluster, service, instances, git_sha):
         # if it's a chronos service etc then skip waiting for it to deploy
         elif not status.marathon:
             results.append(True)
+        elif status.marathon.expected_instance_count == 0 or status.marathon.desired_state == 'stop':
+            results.append(True)
         else:
             results.append(git_sha.startswith(status.git_sha) and
                            status.marathon.app_count == 1 and
