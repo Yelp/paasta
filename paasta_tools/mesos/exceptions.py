@@ -23,6 +23,26 @@ class MesosCLIException(Exception):
     pass
 
 
+class MasterNotAvailableException(Exception):
+    pass
+
+
+class NoSlavesAvailableError(Exception):
+    pass
+
+
+class MultipleSlavesForIDError(Exception):
+    pass
+
+
+class TaskNotFoundException(Exception):
+    pass
+
+
+class FileNotFoundForTaskException(Exception):
+    pass
+
+
 class FileDoesNotExist(MesosCLIException):
     pass
 

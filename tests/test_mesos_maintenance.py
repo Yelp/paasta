@@ -608,22 +608,26 @@ def test_is_host_down(
 
 
 @mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave')
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_state_summary_from_leader')
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master')
 @mock.patch('paasta_tools.mesos_maintenance.is_host_draining')
 def test_is_host_drained(
     mock_is_host_draining,
-    mock_get_mesos_state_summary_from_leader,
+    mock_get_mesos_master,
     mock_get_mesos_task_count_by_slave,
 ):
-    mock_mesos_state = mock.Mock()
+    mock_master = mock.Mock()
+    mock_state_summary = mock.Mock()
+    mock_master.state_summary.return_value = mock_state_summary
+
+    mock_get_mesos_master.return_value = mock_master
+
     mock_slave_counts = {'host1': mock.Mock(count=3), 'host2': mock.Mock(count=0)}
-    mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
     mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
     mock_is_host_draining.return_value = True
 
     assert not is_host_drained('host1')
-    assert mock_get_mesos_state_summary_from_leader.called
-    mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
+    assert mock_master.state_summary.called
+    mock_get_mesos_task_count_by_slave.assert_called_with(mock_state_summary)
     mock_is_host_draining.assert_called_with(hostname='host1')
 
     mock_is_host_draining.return_value = True

@@ -22,7 +22,7 @@ from pytest import raises
 
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
-from paasta_tools.mesos_tools import NoSlavesAvailableError
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import SystemPaastaConfig
