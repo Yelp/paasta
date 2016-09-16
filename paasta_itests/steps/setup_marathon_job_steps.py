@@ -25,7 +25,7 @@ import paasta_tools.mesos.master
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_maintenance
 from paasta_tools import setup_marathon_job
-from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
+from paasta_tools.autoscaling.autoscaling_service_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SystemPaastaConfig
