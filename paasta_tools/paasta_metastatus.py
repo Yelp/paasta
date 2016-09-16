@@ -73,7 +73,7 @@ def get_num_masters():
     return get_number_of_mesos_masters(zookeeper_host_path.host, zookeeper_host_path.path)
 
 
-def get_mesos_cpu_status(metrics):
+def get_mesos_cpu_status(metrics, mesos_state):
     """Takes in the mesos metrics and analyzes them, returning the status.
 
     :param metrics: mesos metrics dictionary
@@ -141,8 +141,8 @@ def percent_used(total, used):
     return round(used / float(total) * 100.0, 2)
 
 
-def assert_cpu_health(metrics, threshold=10):
-    total, used, available = get_mesos_cpu_status(metrics)
+def assert_cpu_health(metrics, mesos_state, threshold=10):
+    total, used, available = get_mesos_cpu_status(metrics, mesos_state)
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
@@ -159,7 +159,7 @@ def assert_cpu_health(metrics, threshold=10):
                                  healthy=False)
 
 
-def assert_memory_health(metrics, threshold=10):
+def assert_memory_health(metrics, mesos_state, threshold=10):
     total = metrics['master/mem_total'] / float(1024)
     used = metrics['master/mem_used'] / float(1024)
     try:
@@ -182,7 +182,7 @@ def assert_memory_health(metrics, threshold=10):
         )
 
 
-def assert_disk_health(metrics, threshold=10):
+def assert_disk_health(metrics, mesos_state, threshold=10):
     total = metrics['master/disk_total'] / float(1024)
     used = metrics['master/disk_used'] / float(1024)
     try:
@@ -312,6 +312,10 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
     for task in tasks:
         task_resources = task['resources']
         resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
+    for slave in slaves:
+        for role in slave['reserved_resources']:
+            filtered_resources = filter_mesos_state_metrics(slave['reserved_resources'][role])
+            resource_free_dict.subtract(Counter(filtered_resources))
     return {
         "free": ResourceInfo(
             cpus=resource_free_dict['cpus'],
@@ -389,20 +393,19 @@ def has_registered_slaves(mesos_state):
     return len(mesos_state.get('slaves', [])) > 0
 
 
-def get_mesos_metrics_health(mesos_metrics):
+def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
     """Perform healthchecks against mesos metrics.
     :param mesos_metrics: a dict exposing the mesos metrics described in
     https://mesos.apache.org/documentation/latest/monitoring/
     :returns: a list of HealthCheckResult tuples
     """
-    metrics_results = run_healthchecks_with_param(mesos_metrics, [
-        assert_cpu_health,
-        assert_memory_health,
-        assert_disk_health,
-        assert_tasks_running,
-        assert_slave_health,
-    ])
-    return metrics_results
+    return [
+        assert_cpu_health(mesos_metrics, mesos_state),
+        assert_memory_health(mesos_metrics, mesos_state),
+        assert_disk_health(mesos_metrics, mesos_state),
+        assert_tasks_running(mesos_metrics),
+        assert_slave_health(mesos_metrics),
+    ]
 
 
 def get_mesos_state_status(mesos_state):
@@ -602,7 +605,7 @@ def main():
         mesos_state=mesos_state,
     )
     metrics = get_mesos_stats()
-    mesos_metrics_status = get_mesos_metrics_health(mesos_metrics=metrics)
+    mesos_metrics_status = get_mesos_resource_utilization_health(mesos_metrics=metrics, mesos_state=mesos_state)
 
     all_mesos_results = mesos_state_status + mesos_metrics_status
 

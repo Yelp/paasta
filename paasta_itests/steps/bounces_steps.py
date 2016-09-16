@@ -131,8 +131,6 @@ def there_are_num_which_tasks(context, num, which, state, exact):
     for _ in xrange(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
-        for task in happy_tasks:
-            print "Happy Task: %s" % task
         happy_count = len(happy_tasks)
         if state == "healthy":
             if exact:

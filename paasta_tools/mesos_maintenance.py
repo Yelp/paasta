@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
 
@@ -31,6 +32,9 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 log = logging.getLogger(__name__)
+Hostname = namedtuple('Hostname', ['host', 'ip'])
+Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
+Resource = namedtuple('Resource', ['name', 'amount'])
 
 
 def base_api():
@@ -44,7 +48,7 @@ def base_api():
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
         timeout = 15
         s = Session()
-        s.auth = load_credentials()
+        s.auth = (get_principal(), get_secret())
         req = Request(method, url, **kwargs)
         prepared = s.prepare_request(req)
         try:
@@ -245,25 +249,64 @@ def build_start_maintenance_payload(hostnames):
     return get_machine_ids(hostnames)
 
 
+def hostnames_to_componenets(hostnames, resolve=False):
+    """Converts a list of 'host[|ip]' entries into namedtuples containing 'host' and 'ip' attributes,
+    optionally performing a DNS lookup to resolve the hostname into an IP address
+    :param hostnames: a list of hostnames where each hostname can be of the form 'host[|ip]'
+    :param resolve: boolean representing whether to lookup the IP address corresponding to the hostname via DNS
+    :returns: a namedtuple containing the hostname and IP components
+    """
+
+    components = []
+    for hostname in hostnames:
+        # This is to allow specifying a hostname as "hostname|ipaddress"
+        # to avoid querying DNS for the IP.
+        if '|' in hostname:
+            (host, ip) = hostname.split('|')
+            components.append(Hostname(host=host, ip=ip))
+        else:
+            ip = gethostbyname(hostname) if resolve else None
+            components.append(Hostname(host=hostname, ip=ip))
+    return components
+
+
 def get_machine_ids(hostnames):
     """Helper function to convert a list of hostnames into a JSON list of hostname/ip pairs.
     :param hostnames: a list of hostnames
     :returns: a dictionary representing the list of machines to bring up/down for maintenance
     """
     machine_ids = []
-    for hostname in hostnames:
-        machine_id = dict()
-        # This is to allow specifying a hostname as "hostname|ipaddress"
-        # to avoid querying DNS for the IP.
-        if '|' in hostname:
-            (host, ip) = hostname.split('|')
-            machine_id['hostname'] = host
-            machine_id['ip'] = ip
-        else:
-            machine_id['hostname'] = hostname
-            machine_id['ip'] = gethostbyname(hostname)
+    components = hostnames_to_componenets(hostnames, resolve=True)
+    for component in components:
+        machine_id = {
+            'hostname': component.host,
+            'ip': component.ip,
+        }
         machine_ids.append(machine_id)
     return machine_ids
+
+
+def build_reservation_payload(resources):
+    """Creates the JSON payload needed to dynamically (un)reserve resources in mesos.
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: a dictionary that can be sent to Mesos to (un)reserve resources
+    """
+    payload = []
+    for resource in resources:
+        payload.append(
+            {
+                "name": resource.name,
+                "type": "SCALAR",
+                "scalar": {
+                    "value": resource.amount,
+                },
+                "role": "maintenance",
+                "reservation": {
+                    "principal": str(get_principal()),
+                },
+            }
+        )
+    return payload
 
 
 def build_maintenance_schedule_payload(hostnames, start=None, duration=None, drain=True):
@@ -331,7 +374,100 @@ def load_credentials(mesos_secrets='/nail/etc/mesos-slave-secret'):
         log.error("%s does not contain Mesos slave credentials in the expected format. "
                   "See http://mesos.apache.org/documentation/latest/authentication/ for details" % mesos_secrets)
         raise
-    return username, password
+    return Credentials(file=mesos_secrets, principal=username, secret=password)
+
+
+def get_principal(mesos_secrets='/nail/etc/mesos-slave-secret'):
+    """Helper function to get the principal from the mesos-slave credentials
+    :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
+    :returns: a string containing the principal/username
+    """
+    return load_credentials(mesos_secrets).principal
+
+
+def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
+    """Helper function to get the secret from the mesos-slave credentials
+    :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
+    :returns: a string containing the secret/password
+    """
+    return load_credentials(mesos_secrets).secret
+
+
+def reserve(slave_id, resources):
+    """Dynamically reserve resources in marathon to prevent tasks from using them.
+    :param slave_id: the id of the mesos slave
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: boolean where 0 represents success and 1 is a failure
+    """
+    log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
+    payload = {
+        'slaveId': slave_id,
+        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
+    }
+    client_fn = reserve_api()
+    try:
+        reserve_output = client_fn(method="POST", endpoint="", data=payload).text
+    except HTTPError as e:
+        e.msg = "Error adding dynamic reservation. Got error: %s" % e.msg
+        raise
+    return reserve_output
+
+
+def unreserve(slave_id, resources):
+    """Dynamically unreserve resources in marathon to allow tasks to using them.
+    :param slave_id: the id of the mesos slave
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: boolean where 0 represents success and 1 is a failure
+    """
+    log.info("Dynamically unreserving resoures on %s: %s" % (slave_id, resources))
+    payload = {
+        'slaveId': slave_id,
+        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
+    }
+    client_fn = unreserve_api()
+    try:
+        unreserve_output = client_fn(method="POST", endpoint="", data=payload).text
+    except HTTPError as e:
+        e.msg = "Error adding dynamic unreservation. Got error: %s" % e.msg
+        raise
+    return unreserve_output
+
+
+def reserve_all_resources(hostnames):
+    mesos_state = get_mesos_state_summary_from_leader()
+    hosts = []
+    components = hostnames_to_componenets(hostnames)
+    for component in components:
+        hosts.append(component.host)
+    for slave in mesos_state['slaves']:
+        if slave['hostname'] in hosts:
+            log.info("Reserving all resources on %s" % slave['hostname'])
+            slave_id = slave['id']
+            resources = []
+            for resource in ['disk', 'mem', 'cpus']:
+                free_resource = slave['resources'][resource] - slave['used_resources'][resource]
+                for role in slave['reserved_resources']:
+                    free_resource -= slave['reserved_resources'][role][resource]
+                resources.append(Resource(name=resource, amount=free_resource))
+            reserve(slave_id=slave_id, resources=resources)
+
+
+def unreserve_all_resources(hostnames):
+    mesos_state = get_mesos_state_summary_from_leader()
+    hosts = []
+    components = hostnames_to_componenets(hostnames)
+    for component in components:
+        hosts.append(component.host)
+    for slave in mesos_state['slaves']:
+        if slave['hostname'] in hosts:
+            log.info("Unreserving all resources on %s" % slave['hostname'])
+            slave_id = slave['id']
+            resources = []
+            for role in slave['reserved_resources']:
+                for resource in ['disk', 'mem', 'cpus']:
+                    reserved_resource = slave['reserved_resources'][role][resource]
+                    resources.append(Resource(name=resource, amount=reserved_resource))
+            unreserve(slave_id=slave_id, resources=resources)
 
 
 def drain(hostnames, start, duration):

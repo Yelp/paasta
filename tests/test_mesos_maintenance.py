@@ -14,6 +14,7 @@
 import argparse
 import datetime
 import json
+from collections import namedtuple
 
 import mock
 import pytest
@@ -46,6 +47,9 @@ from paasta_tools.mesos_maintenance import seconds_to_nanoseconds
 from paasta_tools.mesos_maintenance import status
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_maintenance import up
+
+
+Resource = namedtuple('Resource', ['name', 'amount'])
 
 
 def test_parse_timedelta_none():
@@ -234,8 +238,34 @@ def test_build_maintenance_schedule_payload_no_schedule_undrain(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.load_credentials')
+def test_build_reservation_payload(
+    mock_load_credentials,
+):
+    fake_username = 'username'
+    mock_load_credentials.return_value = mock.MagicMock(principal=fake_username, secret='password')
+    resource = 'cpus'
+    amount = 42
+    resources = [Resource(name=resource, amount=amount)]
+    actual = build_reservation_payload(resources)
+    expected = [
+        {
+            'name': resource,
+            'type': 'SCALAR',
+            'scalar': {
+                'value': amount,
+            },
+            'role': 'maintenance',
+            'reservation': {
+                'principal': fake_username,
+            },
+        },
+    ]
+    assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
 def test_build_maintenance_schedule_payload_schedule(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -371,14 +401,19 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
 def test_load_credentials(
     mock_open,
 ):
+    principal = 'username'
+    secret = 'password'
     credentials = {
-        'principal': 'username',
-        'secret': 'password'
+        'principal': principal,
+        'secret': secret,
     }
 
     mock_open.side_effect = mock.mock_open(read_data=json.dumps(credentials))
 
-    assert load_credentials() == ('username', 'password')
+    credentials = load_credentials()
+
+    assert credentials.principal == principal
+    assert credentials.secret == secret
 
 
 @mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError, autospec=None)
@@ -457,8 +492,46 @@ def test_undrain(
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.master_api', autospec=True)
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload')
+@mock.patch('paasta_tools.mesos_maintenance.reserve_api')
+def test_reserve(
+    mock_reserve_api,
+    mock_build_reservation_payload,
+):
+    fake_slave_id = 'fake-id'
+    fake_resource = 'cpus'
+    fake_amount = 42
+    resources = [Resource(name=fake_resource, amount=fake_amount)]
+    reserve(fake_slave_id, resources)
+    assert mock_build_reservation_payload.call_count == 1
+    expected_args = mock.call(resources)
+    assert mock_build_reservation_payload.call_args == expected_args
+
+    assert mock_reserve_api.call_count == 1
+    assert mock_reserve_api.return_value.call_count == 1
+
+
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload')
+@mock.patch('paasta_tools.mesos_maintenance.unreserve_api')
+def test_unreserve(
+    mock_unreserve_api,
+    mock_build_reservation_payload,
+):
+    fake_slave_id = 'fake-id'
+    fake_resource = 'cpus'
+    fake_amount = 42
+    resources = [Resource(name=fake_resource, amount=fake_amount)]
+    unreserve(fake_slave_id, resources)
+    assert mock_build_reservation_payload.call_count == 1
+    expected_args = mock.call(resources)
+    assert mock_build_reservation_payload.call_args == expected_args
+
+    assert mock_unreserve_api.call_count == 1
+    assert mock_unreserve_api.return_value.call_count == 1
+
+
+@mock.patch('paasta_tools.mesos_maintenance.master_api')
+@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload')
 def test_down(
     mock_build_start_maintenance_payload,
     mock_master_api,
