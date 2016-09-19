@@ -15,7 +15,7 @@
 import argparse
 import logging
 
-from paasta_tools.autoscaling_lib import autoscale_services
+from paasta_tools.autoscaling.autoscaling_service_lib import autoscale_services
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
 

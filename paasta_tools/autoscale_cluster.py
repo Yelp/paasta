@@ -15,7 +15,7 @@
 import argparse
 import logging
 
-from paasta_tools.autoscaling_lib import autoscale_local_cluster
+from paasta_tools.autoscaling.autoscaling_cluster_lib import autoscale_local_cluster
 
 
 log = logging.getLogger(__name__)
