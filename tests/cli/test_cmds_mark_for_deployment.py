@@ -107,6 +107,17 @@ def mock_status_instance_side_effect(service, instance):
     if instance == 'instance5':
         # not a marathon instance
         mock_mstatus = None
+    if instance == 'instance7':
+        # paasta stop'd
+        mock_mstatus = Mock(app_count=1, deploy_status='Stopped',
+                            expected_instance_count=0,
+                            running_instance_count=0,
+                            desired_state='stop')
+    if instance == 'instance8':
+        # paasta has autoscaled to 0
+        mock_mstatus = Mock(app_count=1, deploy_status='Stopped',
+                            expected_instance_count=0,
+                            running_instance_count=0)
     mock_status = Mock()
     mock_status.git_sha = 'somesha'
     if instance == 'instance6':
@@ -136,6 +147,8 @@ def test_are_instances_deployed(mock_get_paasta_api_client, mock__log):
     assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance5', 'instance1'], 'somesha')
     assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance6'], 'somesha')
     assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['notaninstance'], 'somesha')
+    assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance7'], 'somesha')
+    assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance8'], 'somesha')
 
 
 def are_instances_deployed_side_effect(cluster, service, instances, git_sha):
