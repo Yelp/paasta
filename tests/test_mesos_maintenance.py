@@ -76,7 +76,7 @@ def test_parse_datetime():
     assert parse_datetime('November 11, 2011 11:11:11Z') == 1321009871000000000
 
 
-@mock.patch('paasta_tools.mesos_maintenance.now')
+@mock.patch('paasta_tools.mesos_maintenance.now', autospec=True)
 def test_datetime_seconds_from_now(
     mock_now,
 ):
@@ -95,7 +95,7 @@ def test_datetime_to_nanoseconds():
     assert datetime_to_nanoseconds(dt) == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.gethostbyname')
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
 def test_build_start_maintenance_payload(
     mock_gethostbyname,
 ):
@@ -107,7 +107,7 @@ def test_build_start_maintenance_payload(
     assert build_start_maintenance_payload(hostnames) == get_machine_ids(hostnames)
 
 
-@mock.patch('paasta_tools.mesos_maintenance.gethostbyname')
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
 def test_get_machine_ids_one_host(
     mock_gethostbyname,
 ):
@@ -124,7 +124,7 @@ def test_get_machine_ids_one_host(
     assert get_machine_ids(hostnames) == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.gethostbyname')
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
 def test_get_machine_ids_multiple_hosts(
     mock_gethostbyname,
 ):
@@ -178,8 +178,8 @@ def test_get_machine_ids_multiple_hosts_ips():
     assert get_machine_ids(hostnames) == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_no_schedule(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -212,8 +212,8 @@ def test_build_maintenance_schedule_payload_no_schedule(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_no_schedule_undrain(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -234,8 +234,8 @@ def test_build_maintenance_schedule_payload_no_schedule_undrain(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_schedule(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -304,8 +304,8 @@ def test_build_maintenance_schedule_payload_schedule(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_schedule_undrain(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -401,7 +401,7 @@ def test_load_credentials_keyerror(
         assert load_credentials()
 
 
-@mock.patch('paasta_tools.mesos_maintenance.maintenance_api')
+@mock.patch('paasta_tools.mesos_maintenance.maintenance_api', autospec=True)
 def test_get_maintenance_status(
     mock_maintenance_api,
 ):
@@ -411,7 +411,7 @@ def test_get_maintenance_status(
     assert mock_maintenance_api.return_value.call_args == mock.call(method="GET", endpoint="/status")
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client')
+@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 def test_get_maintenance_schedule(
     mock_get_schedule_client,
 ):
@@ -421,8 +421,8 @@ def test_get_maintenance_schedule(
     assert mock_get_schedule_client.return_value.call_args == mock.call(method="GET", endpoint="")
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client')
-@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload')
+@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
 def test_drain(
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
@@ -439,8 +439,8 @@ def test_drain(
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client')
-@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload')
+@mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
 def test_undrain(
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
@@ -457,8 +457,8 @@ def test_undrain(
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.master_api')
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload')
+@mock.patch('paasta_tools.mesos_maintenance.master_api', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
 def test_down(
     mock_build_start_maintenance_payload,
     mock_master_api,
@@ -474,8 +474,8 @@ def test_down(
     assert mock_master_api.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.master_api')
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload')
+@mock.patch('paasta_tools.mesos_maintenance.master_api', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
 def test_up(
     mock_build_start_maintenance_payload,
     mock_master_api,
@@ -491,7 +491,7 @@ def test_up(
     assert mock_master_api.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status', autospec=True)
 def test_status(
     mock_get_maintenance_status,
 ):
@@ -499,7 +499,7 @@ def test_status(
     assert mock_get_maintenance_status.call_count == 1
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
 def test_schedule(
     mock_get_maintenance_schedule,
 ):
@@ -507,7 +507,7 @@ def test_schedule(
     assert mock_get_maintenance_schedule.call_count == 1
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status', autospec=True)
 def test_get_hosts_with_state_none(
     mock_get_maintenance_status,
 ):
@@ -517,7 +517,7 @@ def test_get_hosts_with_state_none(
     assert get_hosts_with_state(state='fake_state') == []
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status', autospec=True)
 def test_get_hosts_with_state_draining(
     mock_get_maintenance_status,
 ):
@@ -543,7 +543,7 @@ def test_get_hosts_with_state_draining(
     assert sorted(get_hosts_with_state(state='draining_machines')) == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status', autospec=True)
 def test_get_hosts_with_state_down(
     mock_get_maintenance_status,
 ):
@@ -569,7 +569,7 @@ def test_get_hosts_with_state_down(
     assert sorted(get_hosts_with_state(state='down_machines')) == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_hosts_with_state')
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_with_state', autospec=True)
 def test_get_draining_hosts(
     mock_get_hosts_with_state,
 ):
@@ -579,7 +579,7 @@ def test_get_draining_hosts(
     assert mock_get_hosts_with_state.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_hosts_with_state')
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_with_state', autospec=True)
 def test_get_down_hosts(
     mock_get_hosts_with_state,
 ):
@@ -589,7 +589,7 @@ def test_get_down_hosts(
     assert mock_get_hosts_with_state.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_draining_hosts')
+@mock.patch('paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True)
 def test_is_host_draining(
     mock_get_draining_hosts,
 ):
@@ -598,7 +598,7 @@ def test_is_host_draining(
     assert not is_host_draining('fake-host3.fakesite.something')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_down_hosts')
+@mock.patch('paasta_tools.mesos_maintenance.get_down_hosts', autospec=True)
 def test_is_host_down(
     mock_get_down_hosts,
 ):
@@ -607,9 +607,9 @@ def test_is_host_down(
     assert not is_host_down('fake-host3.fakesite.something')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave')
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_state_summary_from_leader')
-@mock.patch('paasta_tools.mesos_maintenance.is_host_draining')
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_state_summary_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.is_host_draining', autospec=True)
 def test_is_host_drained(
     mock_is_host_draining,
     mock_get_mesos_state_summary_from_leader,
@@ -642,8 +642,8 @@ def test_is_host_drained(
     assert is_host_drained('host3')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.datetime_to_nanoseconds')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.datetime_to_nanoseconds', autospec=True)
 def test_get_hosts_past_maintenance_start(
     mock_datetime_to_nanoseconds,
     mock_get_maintenance_schedule,
@@ -743,7 +743,7 @@ def test_get_hosts_past_maintenance_end(
     assert actual == []
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start')
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start', autospec=True)
 def test_is_host_past_maintenance_start(
     mock_get_hosts_past_maintenance_start,
 ):
@@ -752,7 +752,7 @@ def test_is_host_past_maintenance_start(
     assert not is_host_past_maintenance_start('fake_host2')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_end')
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_end', autospec=True)
 def test_is_host_past_maintenance_end(
     mock_get_hosts_past_maintenance_end,
 ):

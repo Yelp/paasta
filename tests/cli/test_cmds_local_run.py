@@ -116,7 +116,7 @@ def test_dry_run_json_dict(
     assert 'interactive' in expected_out
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.execute_in_container')
+@mock.patch('paasta_tools.cli.cmds.local_run.execute_in_container', autospec=True)
 def test_perform_cmd_healthcheck_success(mock_exec_container):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -147,7 +147,7 @@ def test_perform_tcp_healthcheck_failure(mock_socket_connect):
     assert '10 seconds' in actual[1]
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_success(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -157,7 +157,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_failure(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -168,7 +168,7 @@ def test_perform_http_healthcheck_failure(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get', side_effect=TimeoutError)
+@mock.patch('requests.get', side_effect=TimeoutError, autospec=True)
 def test_perform_http_healthcheck_timeout(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -180,7 +180,7 @@ def test_perform_http_healthcheck_timeout(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -193,8 +193,8 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -208,8 +208,8 @@ def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck)
     mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -223,8 +223,8 @@ def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -239,8 +239,8 @@ def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -255,8 +255,8 @@ def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -271,8 +271,8 @@ def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     mock_perform_cmd_healthcheck.assert_called_once_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -1217,8 +1217,8 @@ def test_command_function_for_framework_for_marathon():
     assert fn('foo') == 'foo'
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables')
-@mock.patch('paasta_tools.cli.cmds.local_run.datetime')
+@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.datetime', autospec=True)
 def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_time_variables):
     fake_date = mock.Mock()
     mock_datetime.datetime.now.return_value = fake_date

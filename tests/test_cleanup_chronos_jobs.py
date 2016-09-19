@@ -50,19 +50,18 @@ def test_deployed_job_names():
     assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
 
 
-@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance')
+@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance', autospec=True)
 def test_filter_expired_tmp_jobs(mock_get_temporary_jobs):
     two_days_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(days=2)
     one_hour_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(hours=1)
-    mock_get_temporary_jobs.side_effect = [
-                                          [{'name': 'tmp foo bar',
-                                            'lastSuccess': two_days_ago.isoformat()}],
-                                          [{'name': 'tmp anotherservice anotherinstance',
-                                            'lastSuccess': one_hour_ago.isoformat()}]]
+    mock_get_temporary_jobs.side_effect = iter([
+        [{'name': 'tmp foo bar', 'lastSuccess': two_days_ago.isoformat()}],
+        [{'name': 'tmp anotherservice anotherinstance', 'lastSuccess': one_hour_ago.isoformat()}],
+    ])
     actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(mock.Mock(), ['foo bar', 'anotherservice anotherinstance'])
     assert actual == ['foo bar']
 
 
 def test_filter_paasta_jobs():
     expected = ['foo bar']
-    assert cleanup_chronos_jobs.filter_paasta_jobs(['foo bar', 'madeupchronosjob']) == expected
+    assert cleanup_chronos_jobs.filter_paasta_jobs(iter(['foo bar', 'madeupchronosjob'])) == expected
