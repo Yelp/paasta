@@ -295,13 +295,6 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
     service_instance = compose_job_id(service, nerve_ns)
 
-    if instance != nerve_ns:
-        ns_string = PaastaColors.bold(nerve_ns)
-        output.append("Smartstack: N/A - %s is announced in the %s namespace." % (instance, ns_string))
-        # If verbose mode is specified, then continue to show backends anyway, otherwise stop early
-        if not verbose:
-            return "\n".join(output)
-
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
