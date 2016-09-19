@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     paasta_tools.api
+    paasta_tools.autoscaling
     paasta_tools.cli
     paasta_tools.mesos
     paasta_tools.monitoring
@@ -20,7 +21,6 @@ Submodules
    paasta_tools.am_i_mesos_leader
    paasta_tools.autoscale_all_services
    paasta_tools.autoscale_cluster
-   paasta_tools.autoscaling_lib
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
    paasta_tools.check_marathon_services_replication
