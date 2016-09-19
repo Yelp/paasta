@@ -236,7 +236,7 @@ def test_get_mesos_leader_cli_mesosmasterconnectionerror():
             mesos_tools.get_mesos_leader()
 
 
-@mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
+@mock.patch('paasta_tools.mesos_tools.get_mesos_leader', autospec=True)
 def test_is_mesos_leader(mock_get_mesos_leader):
     fake_host = 'toast.host.roast'
     mock_get_mesos_leader.return_value = fake_host
@@ -244,7 +244,7 @@ def test_is_mesos_leader(mock_get_mesos_leader):
     mock_get_mesos_leader.assert_called_once_with()
 
 
-@mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
+@mock.patch('paasta_tools.mesos_tools.get_mesos_leader', autospec=True)
 def test_is_mesos_leader_substring(mock_get_mesos_leader):
     fake_host = 'toast.host.roast'
     mock_get_mesos_leader.return_value = "fake_prefix." + fake_host + ".fake_suffix"
@@ -252,7 +252,7 @@ def test_is_mesos_leader_substring(mock_get_mesos_leader):
     mock_get_mesos_leader.assert_called_once_with()
 
 
-@mock.patch('paasta_tools.mesos_tools.KazooClient')
+@mock.patch('paasta_tools.mesos_tools.KazooClient', autospec=True)
 def test_get_number_of_mesos_masters(
     mock_kazoo,
 ):
@@ -264,8 +264,8 @@ def test_get_number_of_mesos_masters(
     assert mesos_tools.get_number_of_mesos_masters(host, path) == 2
 
 
-@mock.patch('requests.get')
-@mock.patch('socket.getfqdn')
+@mock.patch('requests.get', autospec=True)
+@mock.patch('socket.getfqdn', autospec=True)
 def test_get_local_slave_state_connection_error(
     mock_getfqdn,
     mock_requests_get,

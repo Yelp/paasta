@@ -16,8 +16,8 @@ import mock
 from paasta_tools import paasta_maintenance
 
 
-@mock.patch('paasta_tools.mesos_maintenance.is_host_drained')
-@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start')
+@mock.patch('paasta_tools.mesos_maintenance.is_host_drained', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start', autospec=True)
 def test_is_safe_to_kill(
     mock_get_hosts_past_maintenance_start,
     mock_is_host_drained,
@@ -39,7 +39,7 @@ def test_is_safe_to_kill(
     assert paasta_maintenance.is_safe_to_kill('blah')
 
 
-@mock.patch('paasta_tools.paasta_maintenance.is_hostname_local')
+@mock.patch('paasta_tools.paasta_maintenance.is_hostname_local', autospec=True)
 def test_is_safe_to_drain_rejects_non_localhosts(
     mock_is_hostname_local,
 ):
@@ -47,8 +47,8 @@ def test_is_safe_to_drain_rejects_non_localhosts(
     assert paasta_maintenance.is_safe_to_drain('non-localhost') is False
 
 
-@mock.patch('paasta_tools.paasta_maintenance.getfqdn')
-@mock.patch('paasta_tools.paasta_maintenance.gethostname')
+@mock.patch('paasta_tools.paasta_maintenance.getfqdn', autospec=True)
+@mock.patch('paasta_tools.paasta_maintenance.gethostname', autospec=True)
 def test_is_hostname_local_works(
     mock_gethostname,
     mock_getfqdn,

@@ -683,8 +683,8 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_none_start_ti
     assert actual == 0
 
 
-@mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication')
-@mock.patch('paasta_tools.check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id')
+@mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication', autospec=True)
+@mock.patch('paasta_tools.check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id', autospec=True)  # noqa
 def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instances,
                                                            mock_send_event_if_under_replication):
     service = 'service'
@@ -701,7 +701,7 @@ def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instance
         soa_dir=soa_dir,
         expected_count=10
     )
-    assert mock_send_event_if_under_replication.called_once_with(
+    mock_send_event_if_under_replication.assert_called_once_with(
         service=service,
         instance=instance,
         cluster=cluster,

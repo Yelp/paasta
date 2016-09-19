@@ -114,7 +114,7 @@ def test_get_short_task_id():
     assert chronos_serviceinit.get_short_task_id(task_id) == '1111111111111'
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_name_exists(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -127,7 +127,7 @@ def test_format_chronos_job_name_exists(mock_status):
     assert example_job['name'] in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_temp_job(mock_status):
     example_job = {
         'name': '%s my_service my_instance' % chronos_tools.TMP_JOB_IDENTIFIER,
@@ -140,7 +140,7 @@ def test_format_chronos_job_temp_job(mock_status):
     assert 'Job:     tmp my_service my_instance (Launched by paasta rerun)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_name_does_not_exist(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -153,7 +153,7 @@ def test_format_chronos_job_name_does_not_exist(mock_status):
     assert PaastaColors.red('UNKNOWN') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_disabled(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -167,7 +167,7 @@ def test_format_chronos_job_status_disabled(mock_status):
     assert PaastaColors.grey('Not scheduled') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_enabled(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -181,7 +181,7 @@ def test_format_chronos_job_status_enabled(mock_status):
     assert PaastaColors.green('Scheduled') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', return_value='fake_chronos_status')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', return_value='fake_chronos_status', autospec=True)
 def test_format_chronos_job_chronos_status(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -195,7 +195,7 @@ def test_format_chronos_job_chronos_status(mock_status):
     assert PaastaColors.grey('fake_chronos_status') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_no_last_run(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -211,7 +211,7 @@ def test_format_chronos_job_status_no_last_run(mock_status):
     assert '(never)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_failure_no_success(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -228,7 +228,7 @@ def test_format_chronos_job_status_failure_no_success(mock_status):
     assert 'ago)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_success_no_failure(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -245,7 +245,7 @@ def test_format_chronos_job_status_success_no_failure(mock_status):
     assert 'ago)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_failure_and_then_success(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -262,7 +262,7 @@ def test_format_chronos_job_status_failure_and_then_success(mock_status):
     assert 'ago)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_status_success_and_then_failure(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -279,7 +279,7 @@ def test_format_chronos_job_status_success_and_then_failure(mock_status):
     assert 'ago)' in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_schedule(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -295,7 +295,7 @@ def test_format_chronos_job_schedule(mock_status):
     assert example_job['epsilon'] in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_command(mock_status):
     example_job = {
         'name': 'my_service my_instance',
@@ -309,7 +309,7 @@ def test_format_chronos_job_command(mock_status):
     assert example_job['command'] in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_zero_mesos_tasks(mock_status):
     example_job = {'name': 'my_service my_instance', 'schedule': 'foo'}
     running_tasks = []
@@ -319,7 +319,7 @@ def test_format_chronos_job_zero_mesos_tasks(mock_status):
     assert PaastaColors.grey('Not running') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_one_mesos_task(mock_status):
     example_job = {'name': 'my_service my_instance', 'schedule': 'foo'}
     running_tasks = ['slay the nemean lion']
@@ -329,7 +329,7 @@ def test_format_chronos_job_one_mesos_task(mock_status):
     assert PaastaColors.yellow('Running') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job')
+@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_format_chronos_job_two_mesos_tasks(mock_status):
     example_job = {'name': 'my_service my_instance', 'schedule': 'foo'}
     running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
