@@ -318,7 +318,7 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
                 time.sleep(5)
         except TimeoutError:
             log.error("Spot fleet {0} not in active state so we can't modify it.".format(sfr_id))
-            return False
+            raise FailSetSpotCapacity
     if dry_run:
         return True
     try:
@@ -326,7 +326,7 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
                                                    ExcessCapacityTerminationPolicy='noTermination')
     except ClientError as e:
         log.error("Error modifying spot fleet request: {0}".format(e))
-        return False
+        raise FailSetSpotCapacity
     return ret
 
 
@@ -363,66 +363,94 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
         if amount_to_decrease > killable_capacity:
             log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
             return
-        while True:
-            filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
-            if len(filtered_sorted_slaves) == 0:
-                break
-            log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
-            filtered_sorted_slaves.reverse()
-            slave_to_kill = filtered_sorted_slaves.pop()
-            # Instance weights can be floats but the target has to be an integer
-            # because AWS...
-            instance_capacity = slave_to_kill['instance_weight']
-            new_capacity = int(round(current_capacity - instance_capacity))
-            if new_capacity < target_capacity:
-                log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
-                         " close to our target as we can get".format(slave_to_kill['instance_id'],
-                                                                     slave_to_kill['instance_weight'],
-                                                                     target_capacity))
-                break
-            drain_timeout = pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
-            # The start time of the maintenance window is the point at which
-            # we giveup waiting for the instance to drain and mark it for termination anyway
-            start = int(time.time() + drain_timeout) * 1000000000  # nanoseconds
-            # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
-            # do anything at the end of the maintenance window.
-            duration = 600 * 1000000000  # nanoseconds
-            log.info("Draining {0}".format(slave_to_kill['pid']))
-            if not dry_run:
-                try:
-                    drain_host_string = "{0}|{1}".format(slave_to_kill['hostname'], slave_to_kill['ip'])
-                    drain([drain_host_string], start, duration)
-                except HTTPError as e:
-                    log.error("Failed to start drain "
-                              "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
-                    continue
-            log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
-            if not set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run, region=resource['region']):
-                log.error("Couldn't update spot fleet, stopping autoscaler")
-                log.info("Undraining {0}".format(slave_to_kill['pid']))
-                if not dry_run:
-                    undrain([drain_host_string])
-                break
-            log.info("Waiting for instance to drain before we terminate")
-            try:
-                wait_and_terminate(slave_to_kill, drain_timeout, dry_run, region=resource['region'])
-            except ClientError as e:
-                log.error("Failure when terminating: {0}: {1}".format(slave['pid'], e))
-                log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
-                if not set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run, region=resource['region']):
-                    log.error("Couldn't update spot fleet, stopping autoscaler")
-                    break
-                continue
-            finally:
-                log.info("Undraining {0}".format(slave_to_kill['pid']))
-                if not dry_run:
-                    undrain([drain_host_string])
-            current_capacity = new_capacity
-            mesos_state = get_mesos_master().state_summary()
-            filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
+        downscale_spot_fleet_request(resource=resource,
+                                     filtered_slaves=filtered_slaves,
+                                     current_capacity=current_capacity,
+                                     target_capacity=target_capacity,
+                                     pool_settings=pool_settings,
+                                     dry_run=dry_run)
+
+
+def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_capacity, new_capacity, dry_run):
+    sfr_id = resource['id']
+    drain_timeout = pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
+    # The start time of the maintenance window is the point at which
+    # we giveup waiting for the instance to drain and mark it for termination anyway
+    start = int(time.time() + drain_timeout) * 1000000000  # nanoseconds
+    # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
+    # do anything at the end of the maintenance window.
+    duration = 600 * 1000000000  # nanoseconds
+    log.info("Draining {0}".format(slave_to_kill['pid']))
+    if not dry_run:
+        try:
+            drain_host_string = "{0}|{1}".format(slave_to_kill['hostname'], slave_to_kill['ip'])
+            drain([drain_host_string], start, duration)
+        except HTTPError as e:
+            log.error("Failed to start drain "
+                      "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
+            raise
+    log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
+    try:
+        set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run, region=resource['region'])
+    except FailSetSpotCapacity:
+        log.error("Couldn't update spot fleet, stopping autoscaler")
+        log.info("Undraining {0}".format(slave_to_kill['pid']))
+        if not dry_run:
+            undrain([drain_host_string])
+        raise
+    log.info("Waiting for instance to drain before we terminate")
+    try:
+        wait_and_terminate(slave_to_kill, drain_timeout, dry_run, region=resource['region'])
+    except ClientError as e:
+        log.error("Failure when terminating: {0}: {1}".format(slave_to_kill['pid'], e))
+        log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
+        set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run, region=resource['region'])
+    finally:
+        log.info("Undraining {0}".format(slave_to_kill['pid']))
+        if not dry_run:
+            undrain([drain_host_string])
+
+
+def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, target_capacity, pool_settings, dry_run):
+    while True:
+        filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
+        if len(filtered_sorted_slaves) == 0:
+            break
+        log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
+        filtered_sorted_slaves.reverse()
+        slave_to_kill = filtered_sorted_slaves.pop()
+        # Instance weights can be floats but the target has to be an integer
+        # because AWS...
+        instance_capacity = slave_to_kill['instance_weight']
+        new_capacity = int(round(current_capacity - instance_capacity))
+        if new_capacity < target_capacity:
+            log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
+                     " close to our target as we can get".format(slave_to_kill['instance_id'],
+                                                                 slave_to_kill['instance_weight'],
+                                                                 target_capacity))
+            break
+        try:
+            gracefully_terminate_slave(resource=resource,
+                                       slave_to_kill=slave_to_kill,
+                                       pool_settings=pool_settings,
+                                       current_capacity=current_capacity,
+                                       new_capacity=new_capacity,
+                                       dry_run=dry_run)
+        except HTTPError:
+            # Something wrong draining host so try next host
+            continue
+        except FailSetSpotCapacity:
+            break
+        current_capacity = new_capacity
+        mesos_state = get_mesos_master().state_summary()
+        filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
 
 
 class ClusterAutoscalingError(Exception):
+    pass
+
+
+class FailSetSpotCapacity(Exception):
     pass
 
 
