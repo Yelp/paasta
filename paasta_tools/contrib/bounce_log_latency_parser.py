@@ -1,5 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
+import itertools
 import json
+import sys
 from collections import defaultdict
 from datetime import datetime
 
@@ -40,7 +42,25 @@ def display_bounce_info(timedeltas):
     """
     timedeltas: iterable of timedelta objects
     """
-    std = sorted(timedeltas)
+    std = list(sorted(timedeltas))
     print "Median time to bounce: {} seconds".format(std[len(std) / 2])
     print "10% time to bounce: {}".format(std[len(std) / 10])
     print "90% time to bounce: {}".format(std[len(std) * 9 / 10])
+
+
+def main(filenames):
+    for filename in filenames:
+        print filename
+        print "========================="
+        timedeltas = get_deploy_durations_from_file(filename)
+        for instance, tdlist in timedeltas.items():
+            if timedeltas:
+                print "Instance: %s" % instance
+                display_bounce_info(tdlist)
+        print "Overall:"
+        display_bounce_info(itertools.chain.from_iterable(timedeltas.values()))
+        print "========================="
+
+
+if __name__ == '__main__':
+    main(filenames=sys.argv[1:])
