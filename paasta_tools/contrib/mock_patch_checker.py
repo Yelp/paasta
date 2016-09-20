@@ -1,9 +1,10 @@
 #!/usr/bin/env python2.7
 import compiler
 import sys
+from compiler.visitor import ASTVisitor
 
 
-class MockChecker(object):
+class MockChecker(ASTVisitor):
     def __init__(self):
         self.errors = 0
         self.init_module_imports()
@@ -44,6 +45,8 @@ class MockChecker(object):
                     self.errors += 1
         except AttributeError:
             pass
+        for child in node.getChildNodes():
+            self.visit(child)
 
 
 def main(filenames):
