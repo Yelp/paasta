@@ -791,7 +791,7 @@ def deformat_job_id(job_id):
     return decompose_job_id(job_id)
 
 
-def read_all_namespaces_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def read_all_namespaces_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retreive all registration namespaces for a particular service instance.
 
     For example, the 'main' paasta instance may register in the 'main'
@@ -804,13 +804,13 @@ def read_all_namespaces_for_service_instance(name, instance, cluster=None, soa_d
         cluster = load_system_paasta_config().get_cluster()
 
     marathon_service_config = load_marathon_service_config(
-        name, instance, cluster, load_deployments=False, soa_dir=soa_dir
+        service, instance, cluster, load_deployments=False, soa_dir=soa_dir
     )
 
     return marathon_service_config.get_registration_namespaces()
 
 
-def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def read_namespace_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retreive a service instance's primary registration namespace for a
     particular service instance.
 
@@ -819,7 +819,7 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
     list of registration namespaces.
 
     If one is not defined in the config file, returns instance instead."""
-    return read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir)[0]
+    return read_all_namespaces_for_service_instance(service, instance, cluster, soa_dir)[0]
 
 
 def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):

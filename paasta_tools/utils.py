@@ -1484,7 +1484,7 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
     else:
         ratio = (num_available / float(expected_count)) * 100
 
-    if ratio < crit_threshold:
+    if ratio < int(crit_threshold):
         return (True, ratio)
     else:
         return (False, ratio)
