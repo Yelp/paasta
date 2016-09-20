@@ -233,7 +233,8 @@ def test_get_mesos_leader_no_hostname():
             mesos_tools.get_mesos_leader()
 
 
-def test_get_mesos_leader_cli_mesosmasterconnectionerror():
+@mock.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True)
+def test_get_mesos_leader_cli_mesosmasterconnectionerror(mock_get_mesos_config):
     with contextlib.nested(
         mock.patch('paasta_tools.mesos.master.MesosMaster.resolve',
                    side_effect=mesos.exceptions.MasterNotAvailableException),
@@ -524,7 +525,9 @@ def test_zip_tasks_verbose_output(test_case):
     ['a_task', None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
     ['a_task', None, None, 10, utils.TimeoutError]
 ])
-def test_format_stdstreams_tail_for_task(test_case):
+def test_format_stdstreams_tail_for_task(
+    test_case,
+):
     def gen_mesos_cli_fobj(file_path, file_lines):
         """mesos.cli.cluster.files (0.1.5),
         returns a list of mesos.cli.mesos_file.File
@@ -576,9 +579,10 @@ def test_format_stdstreams_tail_for_task(test_case):
     mock_cluster_files = gen_mock_cluster_files(file1, file2, raise_what)
     fake_task = {'id': task_id}
     expected = gen_output(task_id, file1, file2, nlines, raise_what)
-    with mock.patch('paasta_tools.mesos_tools.cluster.get_files_for_tasks', mock_cluster_files):
-        result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
-        assert result == expected
+    with mock.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True):
+        with mock.patch('paasta_tools.mesos_tools.cluster.get_files_for_tasks', mock_cluster_files, autospec=None):
+            result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
+            assert result == expected
 
 
 def test_slave_pid_to_ip():
