@@ -73,8 +73,9 @@ def test_do_replication_check():
     }
 
     with nested(
-            mock.patch(check_method, return_value=(-1, 'bar')),
-            mock.patch(read_key_method, return_value=-2)):
+        mock.patch(check_method, return_value=(-1, 'bar'), autospec=True),
+        mock.patch(read_key_method, return_value=-2, autospec=True),
+    ):
         expected = {
             'name': 'replication_test_service',
             'status': -1,
@@ -181,16 +182,23 @@ def test_classic_replication_check():
     mock_service_config = {'pow': {'wat': 1}}
     mock_replication = {'pow': -1}
     mock_monitoring = {'pow': 'bar'}
-    mock_check = {'team': 'testing', 'output': 'testing looks good'}
+    mock_check = {
+        'team': 'testing',
+        'output': 'testing looks good',
+        'runbook': 'fake-runbook',
+        'status': 'fake-status',
+        'name': 'fake-name',
+    }
 
     with nested(
-            mock.patch(read_config_method, return_value=mock_service_config),
-            mock.patch(replication_method, return_value=mock_replication),
-            mock.patch(extract_method, return_value=(True, mock_monitoring)),
-            mock.patch(check_method, return_value=mock_check),
-            mock.patch('pysensu_yelp.send_event'),
+            mock.patch(read_config_method, return_value=mock_service_config, autospec=True),
+            mock.patch(replication_method, return_value=mock_replication, autospec=True),
+            mock.patch(extract_method, return_value=(True, mock_monitoring), autospec=True),
+            mock.patch(check_method, return_value=mock_check, autospec=True),
+            mock.patch('pysensu_yelp.send_event', autospec=True),
             mock.patch.object(sys, 'argv', ['check_classic_service_replication.py']),
-            mock.patch(load_system_paasta_config_module, return_value=SystemPaastaConfig({}, '/fake/config'))
+            mock.patch(load_system_paasta_config_module,
+                       return_value=SystemPaastaConfig({}, '/fake/config'), autospec=True),
     ) as (_, _, _, mcheck, _, _, _):
         with pytest.raises(SystemExit) as error:
             check = ClassicServiceReplicationCheck()
@@ -201,8 +209,10 @@ def test_classic_replication_check():
 
 def test_classic_replication_check_connectionerror():
     with nested(
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services',
+                   autospec=True),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__',
+                   autospec=True),
     ) as (
         mock_get_replication_for_services,
         mock_init,
@@ -217,9 +227,11 @@ def test_classic_replication_check_connectionerror():
 
 def test_classic_replication_check_unknownexception():
     with nested(
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services',
+                   autospec=True),
         mock.patch(
-            'paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+            'paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__',
+            autospec=True),
     ) as (
         mock_get_replication_for_services,
         mock_init,

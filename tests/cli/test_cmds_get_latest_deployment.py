@@ -27,9 +27,9 @@ def test_get_latest_deployment():
         soa_dir='',
     )
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO),
-        patch('paasta_tools.cli.cmds.get_latest_deployment.get_latest_deployment_tag', autospec=True,
-              return_value=(None, "FAKE_SHA")),
+        patch('sys.stdout', new_callable=StringIO, autospec=None),
+        patch('paasta_tools.cli.cmds.get_latest_deployment.get_latest_deployment_tag',
+              return_value=(None, "FAKE_SHA"), autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.get_git_url', autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.list_remote_refs', autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True),
@@ -51,9 +51,9 @@ def test_get_latest_deployment_no_deployment_tag():
         soa_dir='',
     )
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO),
-        patch('paasta_tools.cli.cmds.get_latest_deployment.get_latest_deployment_tag', autospec=True,
-              return_value=(None, None)),
+        patch('sys.stdout', new_callable=StringIO, autospec=None),
+        patch('paasta_tools.cli.cmds.get_latest_deployment.get_latest_deployment_tag',
+              return_value=(None, None), autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.get_git_url', autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.list_remote_refs', autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True),

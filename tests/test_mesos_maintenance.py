@@ -607,9 +607,9 @@ def test_is_host_down(
     assert not is_host_down('fake-host3.fakesite.something')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave')
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master')
-@mock.patch('paasta_tools.mesos_maintenance.is_host_draining')
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.is_host_draining', autospec=True)
 def test_is_host_drained(
     mock_is_host_draining,
     mock_get_mesos_master,
