@@ -78,6 +78,17 @@ class TestChronosTools:
         'bad_job': fake_invalid_config_dict,
     }
 
+    fake_dependent_job_config_dict = copy.deepcopy(fake_config_dict)
+    fake_dependent_job_config_dict.pop("schedule")
+    fake_dependent_job_config_dict["parents"] = ["test-service.parent1", "test-service.parent2"]
+    fake_dependent_chronos_job_config = chronos_tools.ChronosJobConfig(
+        service=fake_service,
+        cluster=fake_cluster,
+        instance=fake_job_name,
+        config_dict=fake_dependent_job_config_dict,
+        branch_dict=fake_branch_dict,
+    )
+
     def test_chronos_config_object_normal(self):
         fake_json_contents = {
             'user': 'fake_user',
@@ -976,6 +987,7 @@ class TestChronosTools:
                 service=fake_service,
                 instance=fake_instance,
                 include_disabled=False,
+                include_temporary=False,
             )
 
     def test_get_chronos_status_for_job(self):
@@ -1019,6 +1031,7 @@ class TestChronosTools:
             service=None,
             instance=None,
             include_disabled=True,
+            include_temporary=True,
         )
         assert sorted(actual) == sorted(expected)
 
@@ -1047,6 +1060,7 @@ class TestChronosTools:
             service=fake_service,
             instance=fake_instance,
             include_disabled=False,
+            include_temporary=True,
         )
         assert sorted(actual) == sorted(expected)
 
@@ -1089,6 +1103,7 @@ class TestChronosTools:
             service=fake_service,
             instance=fake_instance,
             include_disabled=True,
+            include_temporary=True,
         )
         assert sorted(actual) == sorted(expected)
 
@@ -1104,6 +1119,7 @@ class TestChronosTools:
             service='whatever',
             instance='whatever',
             include_disabled=False,
+            include_temporary=True,
         )
         # The main thing here is that InvalidJobNameError is not raised.
         assert actual == []
@@ -1160,6 +1176,29 @@ class TestChronosTools:
                 'shell': True,
             }
             assert actual == expected
+
+    def test_create_complete_config_understands_parents(self):
+        fake_owner = 'test_team'
+        fake_config_hash = 'fake_config_hash'
+        with contextlib.nested(
+            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
+                       autospec=True, return_value=self.fake_dependent_chronos_job_config),
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
+        ) as (
+            load_system_paasta_config_patch,
+            load_chronos_job_config_patch,
+            mock_get_team,
+            mock_get_config_hash,
+        ):
+            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
+            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
+            actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
+            assert actual["parents"] == ['test-service parent1', 'test-service parent2']
+            assert "schedule" not in actual
 
     def test_create_complete_config_considers_disabled(self):
         fake_owner = 'test_team'
@@ -1554,23 +1593,10 @@ class TestChronosTools:
     def test_check_format_job_ok(self):
         assert chronos_tools.check_parent_format("foo.bar") is True
 
-    @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospect=True)
-    @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospect=True)
-    @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospect=True)
-    def test_find_matching_parent_job_none_matching(
-        self,
-        mock_lookup_chronos_jobs,
-        mock_get_chronos_client,
-        mock_load_chronos_config,
-    ):
-        mock_lookup_chronos_jobs.return_value = []
-        matching = chronos_tools.get_job_for_service_instance('service', 'instance')
-        assert matching is None
-
     @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True)
-    def test_find_matching_parent_job(
+    def test_get_jobs_for_service_instance_returns_one(
         self,
         mock_load_chronos_config,
         mock_get_chronos_client, mock_lookup_chronos_jobs,
@@ -1578,14 +1604,8 @@ class TestChronosTools:
         mock_matching_jobs = [{'name': 'service instance'}]
         mock_lookup_chronos_jobs.return_value = mock_matching_jobs
         mock_load_chronos_config.return_value = {}
-        matching = chronos_tools.get_job_for_service_instance('service', 'instance')
-        assert matching == mock_matching_jobs[0]
-
-    def test_determine_disabled_state(self):
-        assert chronos_tools.determine_disabled_state('start', False) is False
-        assert chronos_tools.determine_disabled_state('stop', False) is True
-        assert chronos_tools.determine_disabled_state('start', True) is True
-        assert chronos_tools.determine_disabled_state('stop', True) is True
+        matching = chronos_tools.get_jobs_for_service_instance('service', 'instance')
+        assert matching == mock_matching_jobs
 
     def test_filter_non_temporary_jobs(self):
         fake_jobs = [

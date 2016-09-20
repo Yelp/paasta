@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-
 import itest_utils
 from behave import then
 from behave import when
@@ -83,10 +81,8 @@ def check_metastatus_return_code_with_flags(context, flags, expected_return_code
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
     cmd = '../paasta_tools/paasta_metastatus.py%s' % flags
-    env = dict(os.environ)
-    env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
-    print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
-    exit_code, output = _run(cmd, env=env)
+    print 'Running cmd %s' % (cmd)
+    exit_code, output = _run(cmd)
 
     # we don't care about the colouring here, so remove any ansi escape sequences
     escaped_output = remove_ansi_escape_sequences(output)

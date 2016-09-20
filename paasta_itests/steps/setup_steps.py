@@ -133,9 +133,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         print 'Chronos connection already established'
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
-    context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
-    import mesos.cli
-    mesos.cli.cfg.CURRENT.load()
+    mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
     write_etc_paasta(context, {'marathon_config': context.marathon_config}, 'marathon.json')
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
@@ -159,6 +157,11 @@ def working_paasta_cluster_with_registry(context, docker_registry):
             'secret': 'secret4',
         }
     }, 'paasta_native.json')
+    write_etc_paasta(context, {
+        'mesos_config': {
+            "path": mesos_cli_config_filename
+        }
+    }, 'mesos.json')
 
 
 @given(u'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')

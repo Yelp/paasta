@@ -8,11 +8,9 @@ a CRITICAL event to sensu.
 """
 import argparse
 import sys
-from socket import error as socket_error
 
 import chronos
 import pysensu_yelp
-from httplib2 import ServerNotFoundError
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -221,7 +219,7 @@ def main():
                 message=sensu_output,
                 soa_dir=soa_dir,
             )
-    except (ServerNotFoundError, chronos.ChronosAPIError, socket_error) as e:
+    except (chronos.ChronosAPIError) as e:
         print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
         sys.exit(2)
 

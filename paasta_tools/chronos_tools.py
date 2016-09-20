@@ -420,12 +420,9 @@ class ChronosJobConfig(InstanceConfig):
         if self.get_schedule() is not None:
             complete_config['schedule'] = self.get_schedule()
         else:
-            matching_parent_pairs = [(parent, get_job_for_service_instance(*parent.split(".")))
-                                     for parent in self.get_parents()]
-            for parent_pair in matching_parent_pairs:
-                if parent_pair[1] is None:
-                    raise InvalidParentError("%s has no matching jobs in Chronos" % parent_pair[0])
-            complete_config['parents'] = [parent_pair[1]['name'] for parent_pair in matching_parent_pairs]
+            # The input to parents is the normal paasta syntax, but for chronos we have to
+            # convert it to what chronos expects, which uses its own spacer
+            complete_config["parents"] = [paasta_to_chronos_job_name(parent) for parent in self.get_parents()]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -453,6 +450,12 @@ class ChronosJobConfig(InstanceConfig):
             return PaastaColors.bold('Disabled')
         else:
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+
+
+def paasta_to_chronos_job_name(job_name):
+    """Converts a paasta-style job name service.main to what chronos
+    will have in its api as the job name: "service foo" """
+    return job_name.replace(INTERNAL_SPACER, SPACER)
 
 
 def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -669,7 +672,7 @@ def get_chronos_status_for_job(client, service, instance):
             return line[3]
 
 
-def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):
+def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False, include_temporary=False):
     """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
     :param client: Chronos client object
@@ -685,6 +688,7 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
         service=service,
         instance=instance,
         include_disabled=include_disabled,
+        include_temporary=include_temporary,
     )
 
 
@@ -700,7 +704,7 @@ def filter_non_temporary_chronos_jobs(jobs):
     return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
 
 
-def filter_chronos_jobs(jobs, service, instance, include_disabled):
+def filter_chronos_jobs(jobs, service, instance, include_disabled, include_temporary):
     """Filters a list of Chronos jobs based on several criteria.
 
     :param jobs: a list of jobs, as calculated in ``lookup_chronos_jobs()``
@@ -725,7 +729,10 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled):
                 continue
             else:
                 matching_jobs.append(job)
-    return matching_jobs
+    if include_temporary is True:
+        return matching_jobs
+    else:
+        return filter_non_temporary_chronos_jobs(matching_jobs)
 
 
 @timeout()
@@ -816,26 +823,23 @@ def update_job(client, job):
     client.update(job)
 
 
-def get_job_for_service_instance(service, instance, include_disabled=True):
+def get_jobs_for_service_instance(service, instance, include_disabled=True, include_temporary=False):
     """A wrapper for lookup_chronos_jobs that includes building the necessary chronos client.
     :param service: the service to be queried
     :param instance: the instance to be queried
     :param include_disabled: include disabled jobs in the search. default: True
-    :returns: the most 'current' job for a given service instance; that is the most recent
-    job according to the result of sorting all the matching jobs.
+    :param include_temporary: include temporary in the search. default: False
+    :returns: the jobs for a given service instance
     """
     chronos_config = load_chronos_config()
     matching_jobs = lookup_chronos_jobs(
         client=get_chronos_client(chronos_config),
         service=service,
         instance=instance,
-        include_disabled=True
+        include_disabled=include_disabled,
+        include_temporary=include_temporary,
     )
-    sorted_jobs = sort_jobs(matching_jobs)
-    if len(sorted_jobs) > 0:
-        return sorted_jobs[0]
-    else:
-        return None
+    return sort_jobs(matching_jobs)
 
 
 def compose_check_name_for_service_instance(check_name, service, instance):
@@ -853,6 +857,7 @@ def get_temporary_jobs_for_service_instance(client, service, instance):
         service=service,
         instance=instance,
         include_disabled=True,
+        include_temporary=True,
     )
     for job in all_jobs:
         if job['name'].startswith(TMP_JOB_IDENTIFIER):

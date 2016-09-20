@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import itertools
 import json
 import logging
-import os
 import re
 import socket
 from collections import namedtuple
@@ -23,10 +23,15 @@ from urlparse import urlparse
 import humanize
 import requests
 from kazoo.client import KazooClient
-from mesos.cli.exceptions import SlaveDoesNotExist
 
+import paasta_tools.mesos.cluster as cluster
+import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools.mesos.cfg import Config
+from paasta_tools.mesos.exceptions import SlaveDoesNotExist
+from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -37,80 +42,29 @@ ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
 SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
 
+DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-# mesos.cli.master reads its config file at *import* time, so we must have
-# this environment variable set and ready to go at that time so we can
-# read in the config for zookeeper, etc
-if 'MESOS_CLI_CONFIG' not in os.environ:
-    os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
+def get_mesos_config_path():
+    """
+    Determine where to find the configuration for mesos-cli.
+    """
+    return load_system_paasta_config().get_mesos_cli_config().get("path", DEFAULT_MESOS_CLI_CONFIG_LOCATION)
 
 
-class MasterNotAvailableException(Exception):
-    pass
+def get_mesos_config():
+    return Config(get_mesos_config_path())
 
 
-class SlaveNotAvailableException(Exception):
-    pass
-
-
-class NoSlavesAvailableError(Exception):
-    pass
-
-
-class TaskNotFoundException(Exception):
-    pass
-
-
-class FileNotFoundForTaskException(Exception):
-    pass
-
-
-def raise_cli_exception(msg):
-    if msg.startswith("unable to connect to a master"):
-        raise MasterNotAvailableException(msg)
-    if msg.startswith("Slave no longer exists"):
-        raise SlaveNotAvailableException(msg)
-    if msg.startswith("Cannot find a task by that name"):
-        raise TaskNotFoundException(msg)
-    if msg.startswith("No such task has the requested file or directory"):
-        raise FileNotFoundForTaskException(msg)
-    else:
-        raise Exception(msg)
-
-# monkey patch the log.fatal method to raise an exception rather than a sys.exit
-import mesos.cli.log  # noqa
-mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
-
+def get_mesos_master():
+    return MesosMaster(get_mesos_config())
 
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
-from mesos.cli import master  # noqa
-import mesos.cli.cluster  # noqa
-
-
-# Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
-# The method below gets a slave by its ID. Original code here:
-# https://github.com/mesosphere/mesos-cli/blob/master/mesos/cli/master.py#L176
-# uses "in" instead of "==", matching when the wanted ID is a substring of
-# the candidate. Because of that, multiple slaves are returned and mesos-cli
-# finds itself in a buggy "if" branch (hence the AttributeError).
-import itertools  # noqa
-
-
-def _mesos_cli_master_MesosMaster_slaves(self, fltr=''):
-    return list(map(
-        lambda x: mesos.cli.slave.MesosSlave(x),
-        itertools.ifilter(
-            lambda x: fltr == x['id'], self.state['slaves'])))
-mesos.cli.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
-
-
-class MesosMasterConnectionError(Exception):
-    pass
 
 
 class MesosSlaveConnectionError(Exception):
@@ -123,8 +77,8 @@ def get_mesos_leader():
 
     :returns: The current mesos-master hostname"""
     try:
-        url = master.CURRENT.host
-    except MesosMasterConnectionError:
+        url = get_mesos_master().host
+    except mesos_exceptions.MasterNotAvailableException:
         log.debug('mesos.cli failed to provide the master host')
         raise
     log.debug("mesos.cli thinks the master host is: %s" % url)
@@ -158,7 +112,7 @@ def get_current_tasks(job_id):
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
-    return master.CURRENT.tasks(fltr=job_id, active_only=False)
+    return get_mesos_master().tasks(fltr=job_id, active_only=False)
 
 
 def filter_running_tasks(tasks):
@@ -295,8 +249,13 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     """
     error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
     output = []
+    mesos_cli_config = get_mesos_config()
     try:
-        fobjs = list(mesos.cli.cluster.files(lambda x: x, flist=['stdout', 'stderr'], fltr=task['id']))
+        fobjs = list(cluster.get_files_for_tasks(
+            task_list=[task],
+            file_list=['stdout', 'stderr'],
+            max_workers=mesos_cli_config["max_workers"]
+        ))
         fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
             output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
@@ -316,10 +275,10 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             if tail:
                 output.extend(tail[::-1])
             output.append(PaastaColors.blue("      %s EOF" % fobj.path))
-    except (MasterNotAvailableException,
-            SlaveNotAvailableException,
-            TaskNotFoundException,
-            FileNotFoundForTaskException) as e:
+    except (mesos_exceptions.MasterNotAvailableException,
+            mesos_exceptions.SlaveDoesNotExist,
+            mesos_exceptions.TaskNotFoundException,
+            mesos_exceptions.FileNotFoundForTaskException) as e:
         output.append(error_message % (get_short_task_id(task['id']), e.message))
     except TimeoutError:
         output.append(error_message % (get_short_task_id(task['id']), 'timeout'))
@@ -434,7 +393,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
 
 def get_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
-    response = master.CURRENT.fetch('metrics/snapshot')
+    response = get_mesos_master().fetch('metrics/snapshot')
     response.raise_for_status()
     return response.json()
 
@@ -459,22 +418,6 @@ def get_local_slave_state():
     return json.loads(response.text)
 
 
-def get_mesos_state_from_leader():
-    """Fetches mesos state from the leader.
-    Raises an exception if the state doesn't look like it came from an
-    elected leader, as we never want non-leader state data."""
-    state = master.CURRENT.state
-    if 'elected_time' not in state:
-        raise MasterNotAvailableException("We asked for the current leader state, "
-                                          "but it wasn't the elected leader. Please try again.")
-    return state
-
-
-def get_mesos_state_summary_from_leader():
-    res = master.CURRENT.fetch("/master/state-summary")
-    return res.json()
-
-
 def get_mesos_quorum():
     """Returns the configured quorum size.
     :param state: mesos state dictionary"""
@@ -490,7 +433,7 @@ def get_all_tasks_from_state(mesos_state):
 
 
 def get_master_flags():
-    res = master.CURRENT.fetch("/master/flags")
+    res = get_mesos_master().fetch("/master/flags")
     return res.json()
 
 
@@ -555,7 +498,7 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
 
 
 def get_slaves():
-    return master.CURRENT.fetch("/master/slaves").json()['slaves']
+    return get_mesos_master().fetch("/master/slaves").json()['slaves']
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
@@ -687,7 +630,7 @@ def get_count_running_tasks_on_slave(hostname):
     or 0 if the slave is not found.
     :param hostname: hostname of the slave
     :returns: integer count of mesos tasks"""
-    mesos_state = get_mesos_state_summary_from_leader()
+    mesos_state = get_mesos_master().state_summary()
     task_counts = get_mesos_task_count_by_slave(mesos_state)
     counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
     if counts:

@@ -1,7 +1,40 @@
 # Change Log
 
-## [0.47.0](https://github.com/Yelp/paasta/tree/0.47.0) (2016-09-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.0...0.47.0)
+## [v0.47.2](https://github.com/Yelp/paasta/tree/v0.47.2) (2016-09-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.4...v0.47.2)
+
+**Merged pull requests:**
+
+- Removed references to unused healchechk\_port [\#745](https://github.com/Yelp/paasta/pull/745) ([solarkennedy](https://github.com/solarkennedy))
+- \[WIP\] Move mesos\_maintenance stuff into its own file [\#742](https://github.com/Yelp/paasta/pull/742) ([solarkennedy](https://github.com/solarkennedy))
+- Make get\_job\_for\_service\_instance only return one chronos job ever [\#733](https://github.com/Yelp/paasta/pull/733) ([solarkennedy](https://github.com/solarkennedy))
+- Make marathon\_serviceinit filter mesos tasks properly [\#731](https://github.com/Yelp/paasta/pull/731) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.46.4](https://github.com/Yelp/paasta/tree/v0.46.4) (2016-09-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.3...v0.46.4)
+
+**Merged pull requests:**
+
+- Add api to docker playground [\#739](https://github.com/Yelp/paasta/pull/739) ([mattmb](https://github.com/mattmb))
+- Autoscaler box decision [\#728](https://github.com/Yelp/paasta/pull/728) ([mattmb](https://github.com/mattmb))
+
+## [v0.46.3](https://github.com/Yelp/paasta/tree/v0.46.3) (2016-09-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.2...v0.46.3)
+
+**Merged pull requests:**
+
+- Fix potential paasta\_metastatus DivizionByZero [\#741](https://github.com/Yelp/paasta/pull/741) ([nhandler](https://github.com/nhandler))
+
+## [v0.46.2](https://github.com/Yelp/paasta/tree/v0.46.2) (2016-09-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.1...v0.46.2)
+
+**Merged pull requests:**
+
+- Disable caching on wait\_for\_app\_to\_launch\_tasks [\#738](https://github.com/Yelp/paasta/pull/738) ([solarkennedy](https://github.com/solarkennedy))
+- added a flag to list\_marathon\_service\_instances to only show bouncing… [\#736](https://github.com/Yelp/paasta/pull/736) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.46.1](https://github.com/Yelp/paasta/tree/v0.46.1) (2016-09-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.46.0...v0.46.1)
 
 **Closed issues:**
 

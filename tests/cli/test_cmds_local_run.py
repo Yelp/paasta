@@ -60,7 +60,7 @@ def test_dry_run(
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
+        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
     mock_figure_out_service_name.return_value = 'fake_service'
 
     # Should pass and produce something
@@ -75,7 +75,48 @@ def test_dry_run(
     assert isinstance(expected_out, list)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.execute_in_container')
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
+def test_dry_run_json_dict(
+    mock_get_instance_config,
+    mock_validate_service_instance,
+    mock_paasta_cook_image,
+    mock_load_system_paasta_config,
+    mock_figure_out_service_name,
+    mock_socket_getfqdn,
+    capsys
+):
+    mock_socket_getfqdn.return_value = 'fake_hostname'
+    mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
+    mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
+    mock_get_instance_config.return_value.get_env_dictionary.return_value = {}
+    mock_get_instance_config.return_value.get_mem.return_value = 123
+    mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
+    mock_validate_service_instance.return_value = 'marathon'
+    mock_paasta_cook_image.return_value = 0
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
+    mock_figure_out_service_name.return_value = 'fake_service'
+
+    # Should pass and produce something
+    with raises(SystemExit) as excinfo:
+        main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance', '--json-dict'))
+    ret = excinfo.value.code
+    out, err = capsys.readouterr()
+    assert ret == 0
+
+    # Ensure it's a dict and check some keys
+    expected_out = json.loads(out)
+    assert isinstance(expected_out, dict)
+    assert 'docker_hash' in expected_out
+    assert 'interactive' in expected_out
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.execute_in_container', autospec=True)
 def test_perform_cmd_healthcheck_success(mock_exec_container):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -106,7 +147,7 @@ def test_perform_tcp_healthcheck_failure(mock_socket_connect):
     assert '10 seconds' in actual[1]
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_success(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -116,7 +157,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_failure(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -127,7 +168,7 @@ def test_perform_http_healthcheck_failure(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get', side_effect=TimeoutError)
+@mock.patch('requests.get', side_effect=TimeoutError, autospec=True)
 def test_perform_http_healthcheck_timeout(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -139,7 +180,7 @@ def test_perform_http_healthcheck_timeout(mock_http_conn):
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.get', autospec=True)
 def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
@@ -152,8 +193,8 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -167,8 +208,8 @@ def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck)
     mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -182,8 +223,8 @@ def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -198,8 +239,8 @@ def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -214,8 +255,8 @@ def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -230,8 +271,8 @@ def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     mock_perform_cmd_healthcheck.assert_called_once_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck')
-@mock.patch('time.sleep')
+@mock.patch('paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -289,6 +330,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = False
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -312,6 +354,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 
@@ -342,6 +385,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.healthcheck_only = False
     args.instance = 'fake_instance'
     args.interactive = True
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -365,6 +409,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 
@@ -399,6 +444,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = True
+    args.dry_run_json_dict = False
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -424,6 +470,7 @@ def test_configure_and_run_pulls_image_when_asked(
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
+        json_dict=False,
     )
 
 
@@ -1170,8 +1217,8 @@ def test_command_function_for_framework_for_marathon():
     assert fn('foo') == 'foo'
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables')
-@mock.patch('paasta_tools.cli.cmds.local_run.datetime')
+@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.datetime', autospec=True)
 def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_time_variables):
     fake_date = mock.Mock()
     mock_datetime.datetime.now.return_value = fake_date

@@ -540,10 +540,6 @@ You can control your healthchecks with the following keys.
    healthcheck the service. Defaults to ``/status``. This is ignored if
    ``healthcheck_mode`` is ``tcp``.
 
- * ``healthcheck_port``: an alternative port to use for healthchecking your
-   service. This is not required; it defaults to the port your service instance
-   is running on.
-
  * ``healthcheck_timeout_s``: maximum number of seconds that a nerve
    healthcheck may take; defaults to 1.
 

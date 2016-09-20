@@ -7,7 +7,9 @@ Subpackages
 .. toctree::
 
     paasta_tools.api
+    paasta_tools.autoscaling
     paasta_tools.cli
+    paasta_tools.mesos
     paasta_tools.monitoring
     paasta_tools.tron
 
@@ -19,11 +21,9 @@ Submodules
    paasta_tools.am_i_mesos_leader
    paasta_tools.autoscale_all_services
    paasta_tools.autoscale_cluster
-   paasta_tools.autoscaling_lib
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
    paasta_tools.check_marathon_services_replication
-   paasta_tools.check_mesos_resource_utilization
    paasta_tools.chronos_rerun
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
@@ -38,6 +38,7 @@ Submodules
    paasta_tools.list_marathon_service_instances
    paasta_tools.marathon_serviceinit
    paasta_tools.marathon_tools
+   paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.paasta_execute_docker_command

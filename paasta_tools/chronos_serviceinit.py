@@ -170,8 +170,11 @@ def _format_parents_verbose(job):
     parent_service_instances = [tuple(chronos_tools.decompose_job_id(parent)) for parent in parents]
 
     # find matching parent jobs
-    parent_jobs = [chronos_tools.get_job_for_service_instance(*service_instance)
-                   for service_instance in parent_service_instances]
+    parent_jobs = [
+        chronos_tools.get_jobs_for_service_instance(
+            *service_instance, include_disabled=True, include_temporary=False)[0]
+        for service_instance in parent_service_instances
+    ]
 
     # get the status of the last run of each parent job
     parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]

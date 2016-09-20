@@ -31,13 +31,13 @@ from marathon import NotFoundError
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
+from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_slaves
-from paasta_tools.mesos_tools import NoSlavesAvailableError
-from paasta_tools.paasta_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -331,11 +331,11 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         )
         if not filtered_slaves:
             raise NoSlavesAvailableError(
-                "No suitable slaves could be found in the cluster for %s.%s"
-                "There are %d total slaves in the cluster, but after filtering"
-                "those available to the app according to the constraints set"
-                "by the deploy_blacklist and deploy_whitelist, there are 0"
-                "available."
+                ("No suitable slaves could be found in the cluster for %s.%s"
+                 "There are %d total slaves in the cluster, but after filtering"
+                 " those available to the app according to the constraints set"
+                 " by the deploy_blacklist and deploy_whitelist, there are 0"
+                 " available.") % (self.service, self.instance, len(slaves))
             )
 
         value_dict = get_mesos_slaves_grouped_by_attribute(

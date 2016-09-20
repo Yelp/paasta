@@ -19,9 +19,8 @@ import sys
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
-from socket import error as socket_error
 
-from httplib2 import ServerNotFoundError
+import chronos
 from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
@@ -30,13 +29,13 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_all_tasks_from_state
+from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
-from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
@@ -590,8 +589,9 @@ def main():
     chronos_config = None
     args = parse_args()
 
+    master = get_mesos_master()
     try:
-        mesos_state = get_mesos_state_from_leader()
+        mesos_state = master.state
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -626,7 +626,7 @@ def main():
         chronos_client = get_chronos_client(chronos_config)
         try:
             chronos_results = get_chronos_status(chronos_client)
-        except (ServerNotFoundError, socket_error) as e:
+        except (chronos.ChronosAPIError) as e:
             print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
             sys.exit(2)
     else:
