@@ -26,9 +26,7 @@ from paasta_tools.monitoring.check_synapse_replication import (
 from paasta_tools.monitoring.config_providers import (
     extract_monitoring_info
 )
-from paasta_tools.monitoring.replication_utils import (
-    get_replication_for_services
-)
+from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.utils import load_system_paasta_config
 
 

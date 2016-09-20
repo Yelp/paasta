@@ -11,17 +11,94 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import os
 
 import mock
 import requests
 
-from paasta_tools.monitoring.replication_utils import backend_is_up
-from paasta_tools.monitoring.replication_utils import get_registered_marathon_tasks
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
-from paasta_tools.monitoring.replication_utils import ip_port_hostname_from_svname
-from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
+from paasta_tools import smartstack_tools
+from paasta_tools.smartstack_tools import backend_is_up
+from paasta_tools.smartstack_tools import get_registered_marathon_tasks
+from paasta_tools.smartstack_tools import get_replication_for_services
+from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
+from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
+from paasta_tools.utils import SystemPaastaConfig
+
+
+def test_load_smartstack_info_for_service():
+    with contextlib.nested(
+        mock.patch('paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config',
+                   autospec=True),
+        mock.patch('paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute',
+                   autospec=True),
+    ) as (
+        mock_load_service_namespace_config,
+        mock_get_smartstack_replication_for_attribute,
+    ):
+        # just a smoke test for now.
+        smartstack_tools.load_smartstack_info_for_service(
+            service='service',
+            namespace='namespace',
+            soa_dir='fake',
+            blacklist=[],
+            system_paasta_config=SystemPaastaConfig({}, '/fake/config'),
+        )
+
+
+def test_get_smartstack_replication_for_attribute():
+    fake_namespace = 'fake_main'
+    fake_service = 'fake_service'
+    mock_filtered_slaves = [
+        {
+            'hostname': 'hostone',
+            'attributes': {
+                'fake_attribute': 'foo'
+            }
+        },
+        {
+            'hostname': 'hostone',
+            'attributes': {
+                'fake_attribute': 'bar'
+            }
+        }
+    ]
+
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
+                   return_value=mock_filtered_slaves),
+        mock.patch('paasta_tools.smartstack_tools.get_replication_for_services',
+                   return_value={}, autospec=True),
+    ) as (
+        mock_get_all_slaves_for_blacklist_whitelist,
+        mock_get_replication_for_services,
+    ):
+        expected = {
+            'foo': {},
+            'bar': {}
+        }
+        actual = smartstack_tools.get_smartstack_replication_for_attribute(
+            attribute='fake_attribute',
+            service=fake_service,
+            namespace=fake_namespace,
+            blacklist=[],
+            system_paasta_config=fake_system_paasta_config,
+        )
+        assert mock_get_all_slaves_for_blacklist_whitelist.called_once_with(
+            blacklist=[],
+            whitelist=[]
+        )
+        assert actual == expected
+        assert mock_get_replication_for_services.call_count == 2
+
+        mock_get_replication_for_services.assert_any_call(
+            synapse_host='hostone',
+            synapse_port=fake_system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
+            services=['fake_service.fake_main'],
+        )
 
 
 def test_get_replication_for_service():
@@ -78,14 +155,11 @@ def test_get_registered_marathon_tasks():
     ]
 
     with mock.patch(
-        'paasta_tools.monitoring.replication_utils.get_multiple_backends',
-        autospec=True,
+        'paasta_tools.smartstack_tools.get_multiple_backends',
         return_value=backends
     ) as mock_get_multiple_backends:
         with mock.patch(
-            'paasta_tools.monitoring.replication_utils.'
-                'socket.gethostbyname',
-            autospec=True,
+            'paasta_tools.smartstack_tools.socket.gethostbyname',
             side_effect=lambda x: hostnames[x],
         ):
             actual = get_registered_marathon_tasks(
@@ -142,9 +216,7 @@ def test_match_backends_and_tasks():
     tasks = [good_task1, good_task2, bad_task]
 
     with mock.patch(
-        'paasta_tools.monitoring.replication_utils.'
-            'socket.gethostbyname',
-        autospec=True,
+        'paasta_tools.smartstack_tools.socket.gethostbyname',
         side_effect=lambda x: hostnames[x],
     ):
         expected = [

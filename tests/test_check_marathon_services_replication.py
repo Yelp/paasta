@@ -841,60 +841,6 @@ def test_send_event_if_under_replication_critical():
         assert "paasta status -s test_service -i worker -c fake_cluster -vv" in alert_output
 
 
-def test_get_smartstack_replication_for_attribute():
-    fake_namespace = 'fake_main'
-    fake_service = 'fake_service'
-    mock_filtered_slaves = [
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'foo'
-            }
-        },
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'bar'
-            }
-        }
-    ]
-
-    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
-                   return_value=mock_filtered_slaves, autospec=True),
-        mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
-                   return_value={}, autospec=True),
-    ) as (
-        mock_get_all_slaves_for_blacklist_whitelist,
-        mock_get_replication_for_services,
-    ):
-        expected = {
-            'foo': {},
-            'bar': {}
-        }
-        actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            attribute='fake_attribute',
-            service=fake_service,
-            namespace=fake_namespace,
-            blacklist=[],
-            system_paasta_config=fake_system_paasta_config,
-        )
-        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
-            blacklist=[],
-            whitelist=[]
-        )
-        assert actual == expected
-        assert mock_get_replication_for_services.call_count == 2
-
-        mock_get_replication_for_services.assert_any_call(
-            synapse_host='hostone',
-            synapse_port=fake_system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
-            services=['fake_service.fake_main'],
-        )
-
-
 def test_main():
     soa_dir = 'anw'
     crit = 1
@@ -925,23 +871,3 @@ def test_main():
         mock_parse_args.assert_called_once_with()
         mock_get_services_for_cluster.assert_called_once_with(
             cluster='fake_cluster', instance_type='marathon', soa_dir=soa_dir)
-
-
-def test_load_smartstack_info_for_service():
-    with contextlib.nested(
-        mock.patch('paasta_tools.check_marathon_services_replication.marathon_tools.load_service_namespace_config',
-                   autospec=True),
-        mock.patch('paasta_tools.check_marathon_services_replication.get_smartstack_replication_for_attribute',
-                   autospec=True),
-    ) as (
-        mock_load_service_namespace_config,
-        mock_get_smartstack_replication_for_attribute,
-    ):
-        # just a smoke test for now.
-        check_marathon_services_replication.load_smartstack_info_for_service(
-            service='service',
-            namespace='namespace',
-            soa_dir='fake',
-            blacklist=[],
-            system_paasta_config=SystemPaastaConfig({}, '/fake/config'),
-        )

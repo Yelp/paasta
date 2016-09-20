@@ -38,10 +38,9 @@ from datetime import timedelta
 import pysensu_yelp
 
 from paasta_tools import marathon_tools
-from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.monitoring import replication_utils
+from paasta_tools.smartstack_tools import load_smartstack_info_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -314,80 +313,6 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
             soa_dir=soa_dir,
             expected_count=expected_count,
         )
-
-
-def load_smartstack_info_for_service(service, namespace, blacklist, system_paasta_config, soa_dir=DEFAULT_SOA_DIR):
-    """Retrives number of available backends for given services
-
-    :param service_instances: A list of tuples of (service, instance)
-    :param namespaces: list of Smartstack namespaces
-    :param blacklist: A list of blacklisted location tuples in the form (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :returns: a dictionary of the form
-
-    ::
-
-        {
-          'location_type': {
-              'unique_location_name': {
-                  'service.instance': <# ofavailable backends>
-              },
-              'other_unique_location_name': ...
-          }
-        }
-
-    """
-    service_namespace_config = marathon_tools.load_service_namespace_config(service, namespace,
-                                                                            soa_dir=soa_dir)
-    discover_location_type = service_namespace_config.get_discover()
-    return get_smartstack_replication_for_attribute(
-        attribute=discover_location_type,
-        service=service,
-        namespace=namespace,
-        blacklist=blacklist,
-        system_paasta_config=system_paasta_config,
-    )
-
-
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, system_paasta_config):
-    """Loads smartstack replication from a host with the specified attribute
-
-    :param attribute: a Mesos attribute
-    :param service: A service name, like 'example_service'
-    :param namespace: A particular smartstack namespace to inspect, like 'main'
-    :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
-    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
-              (the dictionary will contain keys for unique all attribute values)
-    """
-    replication_info = {}
-    filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
-        blacklist=blacklist,
-        whitelist=[],
-    )
-    if not filtered_slaves:
-        raise mesos_tools.NoSlavesAvailableError
-
-    attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves,
-        attribute=attribute
-    )
-
-    full_name = compose_job_id(service, namespace)
-
-    for value, hosts in attribute_slave_dict.iteritems():
-        # arbitrarily choose the first host with a given attribute to query for replication stats
-        synapse_host = hosts[0]['hostname']
-        repl_info = replication_utils.get_replication_for_services(
-            synapse_host=synapse_host,
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            services=[full_name],
-        )
-        replication_info[value] = repl_info
-
-    return replication_info
 
 
 def main():
