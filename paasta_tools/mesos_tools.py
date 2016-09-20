@@ -649,11 +649,11 @@ def slave_pid_to_ip(slave_pid):
 
 
 def list_framework_ids(active_only=False):
-    return [f.id for f in master.CURRENT.frameworks(active_only=active_only)]
+    return [f.id for f in get_mesos_master().frameworks(active_only=active_only)]
 
 
 def get_all_frameworks(active_only=False):
-    return master.CURRENT.frameworks(active_only=active_only)
+    return get_mesos_master().frameworks(active_only=active_only)
 
 
 def terminate_framework(framework_id):
