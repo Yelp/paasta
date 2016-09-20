@@ -492,7 +492,7 @@ def test_decompose_job_id_with_hashes():
     assert actual == expected
 
 
-@mock.patch('paasta_tools.utils.build_docker_image_name')
+@mock.patch('paasta_tools.utils.build_docker_image_name', autospec=True)
 def test_build_docker_tag(mock_build_docker_image_name):
     upstream_job_name = 'foo'
     upstream_git_commit = 'bar'
@@ -504,7 +504,7 @@ def test_build_docker_tag(mock_build_docker_image_name):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.utils.build_docker_image_name')
+@mock.patch('paasta_tools.utils.build_docker_image_name', autospec=True)
 def test_check_docker_image_false(mock_build_docker_image_name):
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     fake_app = 'fake_app'
@@ -523,7 +523,7 @@ def test_check_docker_image_false(mock_build_docker_image_name):
         assert utils.check_docker_image('test_service', 'tag2') is False
 
 
-@mock.patch('paasta_tools.utils.build_docker_image_name')
+@mock.patch('paasta_tools.utils.build_docker_image_name', autospec=True)
 def test_check_docker_image_true(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'

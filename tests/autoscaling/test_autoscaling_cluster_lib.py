@@ -30,8 +30,7 @@ def test_scale_aws_spot_fleet_request():
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.undrain', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.set_spot_fleet_request_capacity', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.wait_and_terminate', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_state_summary_from_leader',
-                   autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.sort_slaves_to_kill')
     ) as (
@@ -41,7 +40,7 @@ def test_scale_aws_spot_fleet_request():
         mock_undrain,
         mock_set_spot_fleet_request_capacity,
         mock_wait_and_terminate,
-        mock_get_mesos_state_summary_from_leader,
+        mock_get_mesos_master,
         mock_get_mesos_task_count_by_slave,
         mock_sort_slaves_to_kill
     ):
@@ -50,8 +49,12 @@ def test_scale_aws_spot_fleet_request():
         mock_resource = {'id': 'sfr-blah', 'sfr': mock_sfr, 'region': 'westeros-1', 'pool': 'default'}
         mock_pool_settings = {'drain_timeout': 123}
         mock_set_spot_fleet_request_capacity.return_value = True
+
+        mock_master = mock.Mock()
         mock_mesos_state = mock.Mock()
-        mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
+        mock_master.state_summary.return_value = mock_mesos_state
+
+        mock_get_mesos_master.return_value = mock_master
 
         # test no scale
         autoscaling_cluster_lib.scale_aws_spot_fleet_request(mock_resource, 4, 4, mock_pool_settings, False)
@@ -84,7 +87,6 @@ def test_scale_aws_spot_fleet_request():
         set_call_2 = mock.call('sfr-blah', 2, False, region='westeros-1')
         mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1, mock_sfr_sorted_slaves_2, []]
         autoscaling_cluster_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_pool_settings, False)
-        assert mock_get_mesos_state_summary_from_leader.called
         get_task_count_call_1 = mock.call(mock_mesos_state, pool='default')
         get_task_count_call_2 = mock.call(mock_mesos_state, slaves_list=[mock_slave_2])
         mock_get_mesos_task_count_by_slave.assert_has_calls([get_task_count_call_1, get_task_count_call_2])
@@ -413,7 +415,7 @@ def test_spotfleet_metrics_provider():
                    autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip'),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta'),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_state_from_leader'),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master'),
     ) as (
         mock_get_sfr,
         mock_get_spot_fleet_instances,
@@ -421,7 +423,7 @@ def test_spotfleet_metrics_provider():
         mock_get_resource_utilization_by_grouping,
         mock_pid_to_ip,
         mock_get_spot_fleet_delta,
-        mock_get_mesos_state_from_leader
+        mock_get_master
     ):
         mock_resource = {'pool': 'default',
                          'region': 'westeros-1'}
@@ -431,7 +433,10 @@ def test_spotfleet_metrics_provider():
                                        {'id': 'id2',
                                         'attributes': {'pool': 'default'},
                                         'pid': 'pid2'}]}
-        mock_get_mesos_state_from_leader.return_value = mock_mesos_state
+
+        mock_master = mock.Mock()
+        mock_master.state.return_value = mock_mesos_state
+        mock_get_master.return_value = mock_master
         mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
                             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
         mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}

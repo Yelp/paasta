@@ -25,8 +25,7 @@ from paasta_tools.autoscaling.utils import _autoscaling_components
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
-from paasta_tools.mesos_tools import get_mesos_state_from_leader
-from paasta_tools.mesos_tools import get_mesos_state_summary_from_leader
+from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.paasta_maintenance import is_safe_to_kill
@@ -125,7 +124,7 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
-    mesos_state = get_mesos_state_from_leader()
+    mesos_state = get_mesos_master().state()
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
@@ -356,7 +355,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
         set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run, region=resource['region'])
         return
     elif delta < 0:
-        mesos_state = get_mesos_state_summary_from_leader()
+        mesos_state = get_mesos_master().state_summary()
         slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=resource['pool'])
         filtered_slaves = filter_sfr_slaves(slaves_list, resource)
         killable_capacity = sum([slave['instance_weight'] for slave in filtered_slaves])
@@ -419,7 +418,7 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
                 if not dry_run:
                     undrain([drain_host_string])
             current_capacity = new_capacity
-            mesos_state = get_mesos_state_summary_from_leader()
+            mesos_state = get_mesos_master().state_summary()
             filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
 
 

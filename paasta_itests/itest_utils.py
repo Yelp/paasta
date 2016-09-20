@@ -21,39 +21,18 @@ import requests
 import requests_cache
 from marathon import NotFoundError
 
-import paasta_tools.mesos.master
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_tools import app_has_tasks
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
-
-
-@contextlib.contextmanager
-def patch_mesos_cli_master_config():
-    mesos_config = {
-        "master": "%s" % get_service_connection_string('mesosmaster'),
-        "scheme": "http",
-        "response_timeout": 5,
-    }
-
-    with mock.patch.object(paasta_tools.mesos.master, 'CFG', mesos_config):
-        yield
 
 
 def update_context_marathon_config(context):
     whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
     with contextlib.nested(
-        # This seems to be necessary because mesos reads the config file at
-        # import which is sometimes before the tests get a chance to write the
-        # config file
-        patch_mesos_cli_master_config(),
-        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
         mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
         mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
     ) as (
-        _,
-        _,
         _,
         mock_get_max_instances,
     ):

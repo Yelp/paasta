@@ -970,6 +970,13 @@ class SystemPaastaConfig(dict):
         except KeyError:
             return {}
 
+    def get_mesos_cli_config(self):
+        """Get the config for mesos-cli
+
+        :returns: The mesos cli config
+        """
+        return self.get("mesos_config", {})
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
