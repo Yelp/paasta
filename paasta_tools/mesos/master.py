@@ -24,9 +24,6 @@ import re
 import urlparse
 
 import google.protobuf.message
-import kazoo.client
-import kazoo.exceptions
-import kazoo.handlers.threading
 import mesos.interface.mesos_pb2
 import requests
 import requests.exceptions
@@ -76,7 +73,7 @@ class MesosMaster(object):
                 timeout=self.config["response_timeout"],
                 **kwargs)
         except requests.exceptions.ConnectionError:
-            log.fatal(MISSING_MASTER.format(self.host))
+            raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
 
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
@@ -87,24 +84,21 @@ class MesosMaster(object):
 
         retry = KazooRetry(max_tries=10)
         with zookeeper.client(hosts=hosts, read_only=True, connection_retry=retry) as zk:
-            try:
-                def master_id(key):
-                    return int(key.split("_")[-1])
+            def master_id(key):
+                return int(key.split("_")[-1])
 
-                def get_masters():
-                    return [x for x in zk.get_children(path)
-                            if re.search("\d+", x)]
+            def get_masters():
+                return [x for x in zk.get_children(path)
+                        if re.search("\d+", x)]
 
-                leader = sorted(get_masters(), key=lambda x: master_id(x))
+            leader = sorted(get_masters(), key=lambda x: master_id(x))
 
-                if len(leader) == 0:
-                    log.fatal("cannot find any masters at {0}".format(cfg,))
-                data, stat = zk.get(os.path.join(path, leader[0]))
-            except kazoo.exceptions.NoNodeError:
-                log.fatal(INVALID_PATH.format(cfg))
+            if len(leader) == 0:
+                raise exceptions.MasterNotAvailableException("cannot find any masters at {0}".format(cfg,))
+            data, stat = zk.get(os.path.join(path, leader[0]))
 
             if not data:
-                log.fatal("Cannot retrieve valid MasterInfo data from ZooKeeper")
+                exceptions.MasterNotAvailableException("Cannot retrieve valid MasterInfo data from ZooKeeper")
 
             # The serialization of the Master's PID to ZK has changed over time.
             # Prior to 0.20 just the PID value was written to the znode; then the binary
@@ -137,8 +131,10 @@ class MesosMaster(object):
                 # Finally try to just interpret the PID as a string:
                 if '@' in data:
                     return data.split("@")[-1]
-            log.fatal("Could not retrieve the MasterInfo from ZooKeeper; the data in '{}' was:"
-                      "{}".format(path, data))
+                raise exceptions.MasterNotAvailableException(
+                    "Could not retrieve the MasterInfo from ZooKeeper; the data in '{}' was:"
+                    "{}".format(path, data)
+                )
 
     @log.duration
     def resolve(self, cfg):
@@ -161,6 +157,9 @@ class MesosMaster(object):
     def state(self):
         return self.fetch("/master/state.json").json()
 
+    def state_summary(self):
+        return self.fetch("/master/state-summary").json()
+
     @util.memoize
     def slave(self, fltr):
         lst = self.slaves(fltr)
@@ -172,17 +171,20 @@ class MesosMaster(object):
                 "Slave {0} no longer exists.".format(fltr))
 
         elif len(lst) > 1:
-            result = [MULTIPLE_SLAVES]
-            result += ['\t{0}'.format(slave.id) for slave in lst]
-            log.fatal('\n'.join(result))
+            raise exceptions.MultipleSlavesForIDError(
+                "Multiple slaves matching filter %s. %s" % (
+                    fltr,
+                    ",".join([slave.id for slave in lst])
+                )
+            )
 
         return lst[0]
 
     def slaves(self, fltr=""):
         return list(map(
-            lambda x: slave.MesosSlave(x),
+            lambda x: slave.MesosSlave(self.config, x),
             itertools.ifilter(
-                lambda x: fltr in x["id"], self.state["slaves"])))
+                lambda x: fltr == x['id'], self.state['slaves'])))
 
     def _task_list(self, active_only=False):
         keys = ["tasks"]
@@ -195,13 +197,15 @@ class MesosMaster(object):
         lst = self.tasks(fltr)
 
         if len(lst) == 0:
-            log.fatal("Cannot find a task by that name.")
+            raise exceptions.TaskNotFoundException("Cannot find a task with filter %s" % fltr)
 
         elif len(lst) > 1:
-            msg = ["There are multiple tasks with that id. Please choose one:"]
-            msg += ["\t{0}".format(t["id"]) for t in lst]
-            log.fatal("\n".join(msg))
-
+            raise exceptions.MultipleTasksForIDError(
+                "Multiple tasks matching filter %s. %s" % (
+                    fltr,
+                    ",".join([slave.id for task in lst])
+                )
+            )
         return lst[0]
 
     # XXX - need to filter on task state as well as id

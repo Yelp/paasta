@@ -22,8 +22,9 @@ import requests
 from pytest import mark
 from pytest import raises
 
-import paasta_tools.mesos as mesos
-import paasta_tools.mesos_tools as mesos_tools
+from paasta_tools import mesos
+from paasta_tools import mesos_tools
+from paasta_tools import utils
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.utils import PaastaColors
 
@@ -234,11 +235,12 @@ def test_get_mesos_leader_no_hostname():
 
 def test_get_mesos_leader_cli_mesosmasterconnectionerror():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
+        mock.patch('paasta_tools.mesos.master.MesosMaster.resolve',
+                   side_effect=mesos.exceptions.MasterNotAvailableException),
     ) as (
         mock_resolve,
     ):
-        with raises(mesos_tools.MesosMasterConnectionError):
+        with raises(mesos.exceptions.MasterNotAvailableException):
             mesos_tools.get_mesos_leader()
 
 
@@ -443,40 +445,6 @@ def test_slave_passes_blacklist_blocks_blacklisted_locations():
     assert actual is False
 
 
-@mock.patch('paasta_tools.mesos_tools.get_mesos_master')
-def test_get_mesos_state_from_leader_works_on_elected_leader(mock_get_master):
-    # Elected leaders return 'elected_time' to indicate when
-    # they were elected.
-    good_fake_state = {
-        "activated_slaves": 3,
-        "cluster": "test",
-        "completed_frameworks": [],
-        "deactivated_slaves": 0,
-        "elected_time": 1439503288.00787,
-        "failed_tasks": 1,
-    }
-    mock_master = mock.Mock()
-    mock_master.state = good_fake_state
-    mock_get_master.return_value = mock_master
-    assert mesos_tools.get_mesos_state_from_leader() == good_fake_state
-
-
-def test_get_mesos_state_from_leader_raises_on_non_elected_leader():
-    # Non-elected leaders do not return 'elected_time' in their state
-    # because they were not elected.
-    un_elected_fake_state = {
-        "activated_slaves": 3,
-        "cluster": "test",
-        "completed_frameworks": [],
-        "deactivated_slaves": 0,
-        "failed_tasks": 1,
-    }
-    mock_master = mock.Mock()
-    mock_master.state.return_value = un_elected_fake_state
-    with raises(mesos_tools.MasterNotAvailableException):
-        assert mesos_tools.get_mesos_state_from_leader() == un_elected_fake_state
-
-
 def test_get_paasta_execute_docker_healthcheck():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_container_id = 'fake_container_id'
@@ -550,11 +518,11 @@ def test_zip_tasks_verbose_output(test_case):
      ['stdout', ['1', '2']],
      10,
      None],
-    ['a_task', None, None, 10, 'MasterNotAvailableException'],
-    ['a_task', None, None, 10, 'SlaveNotAvailableException'],
-    ['a_task', None, None, 10, 'TaskNotFoundException'],
-    ['a_task', None, None, 10, 'FileNotFoundForTaskException'],
-    ['a_task', None, None, 10, 'TimeoutError']
+    ['a_task', None, None, 10, mesos.exceptions.MasterNotAvailableException],
+    ['a_task', None, None, 10, mesos.exceptions.SlaveDoesNotExist],
+    ['a_task', None, None, 10, mesos.exceptions.TaskNotFoundException],
+    ['a_task', None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
+    ['a_task', None, None, 10, utils.TimeoutError]
 ])
 def test_format_stdstreams_tail_for_task(test_case):
     def gen_mesos_cli_fobj(file_path, file_lines):
@@ -577,8 +545,7 @@ def test_format_stdstreams_tail_for_task(test_case):
             # If we're asked to raise a particular exception we do so.
             # .message is set to the exception class name.
             if raise_what:
-                exception_class = getattr(mesos_tools, raise_what)
-                raise exception_class(exception_class.__name__)
+                raise raise_what(raise_what)
             return [
                 gen_mesos_cli_fobj(file1[0], file1[1]),
                 gen_mesos_cli_fobj(file2[0], file2[1])
@@ -599,7 +566,7 @@ def test_format_stdstreams_tail_for_task(test_case):
                 output.extend(f[1][-nlines:])
                 output.append(PaastaColors.blue("      %s EOF" % f[0]))
         else:
-            if raise_what == 'TimeoutError':
+            if raise_what == utils.TimeoutError:
                 raise_what = 'timeout'
             output.append(error_message % (task_id, raise_what))
         return output
@@ -678,20 +645,23 @@ def test_get_mesos_task_count_by_slave():
 
 def test_get_count_running_tasks_on_slave():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_state_summary_from_leader'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
         mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave'),
     ) as (
-        mock_get_mesos_state_summary_from_leader,
+        mock_get_master,
         mock_get_mesos_task_count_by_slave
     ):
+        mock_master = mock.Mock()
         mock_mesos_state = mock.Mock()
+        mock_master.state_summary.return_value = mock_mesos_state
+        mock_get_master.return_value = mock_master
+
         mock_slave_counts = [{'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
                              {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})}]
-        mock_get_mesos_state_summary_from_leader.return_value = mock_mesos_state
         mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
 
         assert mesos_tools.get_count_running_tasks_on_slave('host1') == 3
         assert mesos_tools.get_count_running_tasks_on_slave('host2') == 0
         assert mesos_tools.get_count_running_tasks_on_slave('host3') == 0
-        assert mock_get_mesos_state_summary_from_leader.called
+        assert mock_master.state_summary.called
         mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)

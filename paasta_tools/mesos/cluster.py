@@ -19,7 +19,6 @@ from __future__ import print_function
 import itertools
 
 from . import exceptions
-from . import log
 from . import parallel
 
 dne = True
@@ -57,4 +56,9 @@ def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
         yield result
 
     if dne and fail:
-        log.fatal("No such task has the requested file or directory")
+        raise exceptions.FileNotFoundForTask(
+            "None of the tasks in %s contin the files in list %s" % (
+                ",".join([task["id"] for task in task]),
+                ",".join(file_list)
+            )
+        )
