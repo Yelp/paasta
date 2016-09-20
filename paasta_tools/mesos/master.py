@@ -30,6 +30,7 @@ import kazoo.handlers.threading
 import mesos.interface.mesos_pb2
 import requests
 import requests.exceptions
+from kazoo.retry import KazooRetry
 
 from . import exceptions
 from . import framework
@@ -82,7 +83,8 @@ class MesosMaster(object):
         hosts, path = cfg[5:].split("/", 1)
         path = "/" + path
 
-        with zookeeper.client(hosts=hosts, read_only=True) as zk:
+        retry = KazooRetry(max_tries=10)
+        with zookeeper.client(hosts=hosts, read_only=True, connection_retry=retry) as zk:
             try:
                 def master_id(key):
                     return int(key.split("_")[-1])
