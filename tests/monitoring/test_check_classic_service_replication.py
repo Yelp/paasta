@@ -27,9 +27,22 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_report_event():
-    with mock.patch('pysensu_yelp.send_event') as mock_call:
-        report_event({'team': 'search_infra'})
-        mock_call.assert_called_with(team='search_infra')
+    with mock.patch('pysensu_yelp.send_event', autospec=True) as mock_call:
+        report_event({
+            'team': 'search_infra',
+            'name': 'Fake Event',
+            'runbook': 'Fake Runbook',
+            'output': 'Foo',
+            'status': 'OK',
+        }
+        )
+        mock_call.assert_called_with(
+            team='search_infra',
+            name='Fake Event',
+            runbook='Fake Runbook',
+            output='Foo',
+            status='OK',
+        )
 
         with pytest.raises(Exception):
             report_event({'foo': 'bar'})
@@ -106,7 +119,7 @@ def test_extract_replication_info_valid_data():
         'team': 'test_team',
         'service_type': 'classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_data):
+    with mock.patch(extract_method, return_value=mock_valid_data, autospec=True):
         expected = (True, mock_valid_data)
         result = extract_replication_info({})
         assert expected == result
@@ -120,7 +133,7 @@ def test_extract_replication_info_non_classic_data():
         'team': 'test_team',
         'service_type': 'not_classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_non_classic_data):
+    with mock.patch(extract_method, return_value=mock_valid_non_classic_data, autospec=True):
         expected = (False, {})
         result = extract_replication_info({})
         assert expected == result
@@ -135,7 +148,7 @@ def test_extract_replication_info_valid_team_no_email():
         'notification_email': None,
         'service_type': 'classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_team_no_email):
+    with mock.patch(extract_method, return_value=mock_valid_team_no_email, autospec=True):
         expected = (True, mock_valid_team_no_email)
         result = extract_replication_info({})
         assert expected == result
@@ -149,7 +162,7 @@ def test_extract_replication_info_invalid_data():
         'team': None,
         'service_type': None,
     }
-    with mock.patch(extract_method, return_value=mock_invalid_data):
+    with mock.patch(extract_method, return_value=mock_invalid_data, autospec=True):
         expected = (False, {})
         result = extract_replication_info({})
         assert expected == result

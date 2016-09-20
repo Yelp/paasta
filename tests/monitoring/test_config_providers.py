@@ -41,7 +41,7 @@ def test_extract_monitoring_info():
     module = 'paasta_tools.monitoring.config_providers'
     extract_method = module + '.extract_classic_monitoring_info'
 
-    with mock.patch(extract_method, return_value=-1):
+    with mock.patch(extract_method, return_value=-1, autospec=True):
         assert extract_monitoring_info('classic', {}) == -1
 
     with pytest.raises(Exception):

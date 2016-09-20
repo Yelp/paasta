@@ -431,9 +431,9 @@ def test_atomic_file_write_itest():
 
 def test_configure_log():
     fake_log_writer_config = {'driver': 'fake', 'options': {'fake_arg': 'something'}}
-    with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
+    with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True) as mock_load_system_paasta_config:
         mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer_config
-        with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
+        with mock.patch('paasta_tools.utils.get_log_writer_class', autospec=True) as mock_get_log_writer_class:
             utils.configure_log()
             mock_get_log_writer_class.assert_called_once_with('fake')
             mock_get_log_writer_class('fake').assert_called_once_with(fake_arg='something')
@@ -510,7 +510,7 @@ def test_check_docker_image_false(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -529,7 +529,7 @@ def test_check_docker_image_true(mock_build_docker_image_name):
     fake_commit = 'fake_commit'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -778,7 +778,7 @@ def test_get_running_mesos_docker_containers():
         }
     ]
 
-    with mock.patch("paasta_tools.utils.get_docker_client") as mock_docker:
+    with mock.patch("paasta_tools.utils.get_docker_client", autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.containers.return_value = fake_container_data
         assert len(utils.get_running_mesos_docker_containers()) == 1
@@ -1449,7 +1449,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock(self):
         """Make sure we flock and unflock when flock=True"""
-        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=True)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
@@ -1460,7 +1460,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock_flock_false(self):
         """Make sure we don't flock/unflock when flock=False"""
-        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=False)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):

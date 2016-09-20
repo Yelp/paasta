@@ -17,7 +17,6 @@ import marathon
 import mock
 from marathon import MarathonHttpError
 from marathon.models import MarathonApp
-from mock import patch
 from pytest import raises
 
 from paasta_tools import marathon_tools
@@ -1411,36 +1410,25 @@ class TestMarathonTools:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_exact(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_exact(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3) is True
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3, exact_matches_only=True) is True
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_less(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_less(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2) is True
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2, exact_matches_only=True) is False
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_more(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_more(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4, exact_matches_only=True) is False
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_add_leading_slash(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
+    def test_add_leading_slash(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}, {}]))
         marathon_tools.app_has_tasks(fake_client, 'fake_app', 4)
-        assert patch_list_tasks.called_with('/fake_app')
+        assert fake_client.list_tasks.called_with('/fake_app')
 
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'

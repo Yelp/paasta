@@ -117,7 +117,7 @@ class TestBounceLib:
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']
         fake_client = mock.MagicMock()
-        with mock.patch('paasta_tools.bounce_lib.delete_marathon_app') as delete_patch:
+        with mock.patch('paasta_tools.bounce_lib.delete_marathon_app', autospec=True) as delete_patch:
             bounce_lib.kill_old_ids(old_ids, fake_client)
             for old_id in old_ids:
                 delete_patch.assert_any_call(old_id, fake_client)

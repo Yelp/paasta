@@ -612,7 +612,7 @@ def test_scribereader_run_code_over_scribe_envs():
 
     with mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True) \
             as determine_scribereader_envs_patch, \
-            mock.patch('paasta_tools.cli.cmds.logs.scribereader'):
+            mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
 
         envs = ['env1', 'env2']
         determine_scribereader_envs_patch.return_value = envs
@@ -900,8 +900,9 @@ def test_determine_scribereader_envs():
 def test_determine_scribereader_additional_envs():
     cluster = 'fake_cluster'
     components = ['fake_component']
-    with mock.patch('paasta_tools.cli.cmds.logs.scribereader'), \
-            mock.patch('paasta_tools.cli.cmds.logs.LOG_COMPONENTS', spec_set=dict) as mock_LOG_COMPONENTS:
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True), \
+            mock.patch('paasta_tools.cli.cmds.logs.LOG_COMPONENTS',
+                       spec_set=dict, autospec=None) as mock_LOG_COMPONENTS:
         cluster_map = {
             cluster: 'fake_scribe_env',
         }
@@ -1052,7 +1053,7 @@ def test_validate_filtering_args_with_invalid_inputs():
 
 
 def test_pick_default_log_mode():
-    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.tail_logs') as tail_logs:
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.tail_logs', autospec=True) as tail_logs:
         args, _ = parse_args(["logs"])
 
         fake_reader = logs.LogReader()
@@ -1063,7 +1064,7 @@ def test_pick_default_log_mode():
         # Only supports tailing so that's the one that should be used
         assert tail_logs.call_count == 1
 
-    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_logs_by_time') as logs_by_time:
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_logs_by_time', autospec=True) as logs_by_time:
         args, _ = parse_args(["logs"])
 
         fake_reader = logs.LogReader()
@@ -1075,7 +1076,7 @@ def test_pick_default_log_mode():
         # Supports tailing and time, but time should be prioritized
         assert logs_by_time.call_count == 1
 
-    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_last_n_logs') as logs_by_lines:
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_last_n_logs', autospec=True) as logs_by_lines:
         args, _ = parse_args(["logs"])
 
         fake_reader = logs.LogReader()

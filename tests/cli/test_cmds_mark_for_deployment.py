@@ -134,7 +134,7 @@ def mock_status_instance_side_effect(service, instance):
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client')
+@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client', autospec=True)
 def test_are_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client = Mock()
     mock_get_paasta_api_client.return_value = mock_paasta_api_client
@@ -159,7 +159,7 @@ def are_instances_deployed_side_effect(cluster, service, instances, git_sha):
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.are_instances_deployed')
+@patch('paasta_tools.cli.cmds.mark_for_deployment.are_instances_deployed', autospec=True)
 @patch('time.sleep', autospec=True)
 def test_wait_for_deployment(mock_sleep, mock_are_instances_deployed, mock__log,
                              mock_get_cluster_instance_map_for_service):

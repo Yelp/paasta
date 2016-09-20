@@ -367,7 +367,7 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, autospec=None)
 def test_load_credentials(
     mock_open,
 ):
@@ -381,7 +381,7 @@ def test_load_credentials(
     assert load_credentials() == ('username', 'password')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError, autospec=None)
 def test_load_credentials_missing_file(
     mock_open,
 ):
@@ -389,7 +389,7 @@ def test_load_credentials_missing_file(
         assert load_credentials()
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, autospec=None)
 def test_load_credentials_keyerror(
     mock_open,
 ):

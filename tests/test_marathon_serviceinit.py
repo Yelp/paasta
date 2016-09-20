@@ -55,7 +55,7 @@ def test_start_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     normal_instance_count = 5
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
@@ -66,7 +66,7 @@ def test_stop_marathon_job():
     service = 'my_service'
     instance = 'my_instance'
     app_id = 'mock_app_id'
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
@@ -78,7 +78,7 @@ def test_scale_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     delta = -1
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.scale_marathon_job(service, instance, app_id, delta, client, cluster)
     client.scale_app.assert_called_once_with(app_id, delta=-1, force=True)
 
@@ -468,7 +468,7 @@ def test_status_smartstack_backends_different_nerve_ns():
     different_ns = 'other_instance'
     normal_count = 10
     tasks = mock.Mock()
-    with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance') as read_ns_mock:
+    with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True) as read_ns_mock:
         read_ns_mock.return_value = different_ns
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -495,8 +495,8 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
     normal_count = 10
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
@@ -945,7 +945,8 @@ def test_get_short_task_id():
 
 
 def test_status_mesos_tasks_working():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = [
             {'id': 1}, {'id': 2}
         ]
@@ -955,7 +956,8 @@ def test_status_mesos_tasks_working():
 
 
 def test_status_mesos_tasks_warning():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = [
             {'id': 1}, {'id': 2}
         ]
@@ -965,7 +967,8 @@ def test_status_mesos_tasks_warning():
 
 
 def test_status_mesos_tasks_critical():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
