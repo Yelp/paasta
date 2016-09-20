@@ -14,7 +14,6 @@
 import datetime
 import json
 import logging
-import os
 import re
 import socket
 from collections import namedtuple
@@ -24,9 +23,12 @@ import humanize
 import requests
 from kazoo.client import KazooClient
 
+from paasta_tools.mesos.cfg import Config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
+from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -37,15 +39,25 @@ ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
 SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
 
 
+DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-# mesos.cli.master reads its config file at *import* time, so we must have
-# this environment variable set and ready to go at that time so we can
-# read in the config for zookeeper, etc
-if 'MESOS_CLI_CONFIG' not in os.environ:
-    os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
+def get_mesos_config_path():
+    """
+    Determine where to find the configuration for mesos-cli.
+    """
+    return load_system_paasta_config().get_mesos_cli_config().get("path", DEFAULT_MESOS_CLI_CONFIG_LOCATION)
+
+
+def get_mesos_config():
+    return Config(get_mesos_config_path())
+
+
+def get_mesos_master():
+    return MesosMaster(get_mesos_config())
 
 
 class MasterNotAvailableException(Exception):
@@ -103,7 +115,7 @@ import itertools  # noqa
 
 def _mesos_cli_master_MesosMaster_slaves(self, fltr=''):
     return list(map(
-        lambda x: paasta_tools.mesos.slave.MesosSlave(x),
+        lambda x: paasta_tools.mesos.slave.MesosSlave(self.config, x),
         itertools.ifilter(
             lambda x: fltr == x['id'], self.state['slaves'])))
 paasta_tools.mesos.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
@@ -123,7 +135,7 @@ def get_mesos_leader():
 
     :returns: The current mesos-master hostname"""
     try:
-        url = master.CURRENT.host
+        url = get_mesos_master().host
     except MesosMasterConnectionError:
         log.debug('mesos.cli failed to provide the master host')
         raise
@@ -158,7 +170,7 @@ def get_current_tasks(job_id):
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
-    return master.CURRENT.tasks(fltr=job_id, active_only=False)
+    return get_mesos_master().tasks(fltr=job_id, active_only=False)
 
 
 def filter_running_tasks(tasks):
@@ -295,8 +307,13 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     """
     error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
     output = []
+    mesos_cli_config = get_mesos_config()
     try:
-        fobjs = list(cluster.files(lambda x: x, flist=['stdout', 'stderr'], fltr=task['id']))
+        fobjs = list(cluster.get_files_for_tasks(
+            task_list=[task],
+            file_list=['stdout', 'stderr'],
+            max_workers=mesos_cli_config["max_workers"]
+        ))
         fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
             output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
@@ -434,7 +451,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
 
 def get_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
-    response = master.CURRENT.fetch('metrics/snapshot')
+    response = get_mesos_master().fetch('metrics/snapshot')
     response.raise_for_status()
     return response.json()
 
@@ -463,7 +480,7 @@ def get_mesos_state_from_leader():
     """Fetches mesos state from the leader.
     Raises an exception if the state doesn't look like it came from an
     elected leader, as we never want non-leader state data."""
-    state = master.CURRENT.state
+    state = get_mesos_master().state
     if 'elected_time' not in state:
         raise MasterNotAvailableException("We asked for the current leader state, "
                                           "but it wasn't the elected leader. Please try again.")
@@ -471,7 +488,7 @@ def get_mesos_state_from_leader():
 
 
 def get_mesos_state_summary_from_leader():
-    res = master.CURRENT.fetch("/master/state-summary")
+    res = get_mesos_master().fetch("/master/state-summary")
     return res.json()
 
 
@@ -490,7 +507,7 @@ def get_all_tasks_from_state(mesos_state):
 
 
 def get_master_flags():
-    res = master.CURRENT.fetch("/master/flags")
+    res = get_mesos_master().fetch("/master/flags")
     return res.json()
 
 
@@ -555,7 +572,7 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
 
 
 def get_slaves():
-    return master.CURRENT.fetch("/master/slaves").json()['slaves']
+    return get_mesos_master().fetch("/master/slaves").json()['slaves']
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):

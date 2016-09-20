@@ -25,12 +25,12 @@ from . import exceptions
 from . import log
 from . import mesos_file
 from . import util
-from .cfg import CURRENT as CFG
 
 
 class MesosSlave(object):
 
-    def __init__(self, items):
+    def __init__(self, config, items):
+        self.config = config
         self.__items = items
 
     def __getitem__(self, name):
@@ -45,7 +45,7 @@ class MesosSlave(object):
     @property
     def host(self):
         return "{0}://{1}:{2}".format(
-            CFG["scheme"],
+            self.config["scheme"],
             self["hostname"],
             self["pid"].split(":")[-1])
 
@@ -53,7 +53,7 @@ class MesosSlave(object):
     def fetch(self, url, **kwargs):
         try:
             return requests.get(urlparse.urljoin(
-                self.host, url), timeout=CFG["response_timeout"], **kwargs)
+                self.host, url), timeout=self.config["response_timeout"], **kwargs)
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(
                 "Unable to connect to the slave at {0}".format(self.host))

@@ -186,30 +186,34 @@ def test_get_zookeeper_config():
 def test_get_mesos_leader():
     fake_url = 'http://93.184.216.34:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
         mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr'),
         mock.patch('paasta_tools.mesos_tools.socket.getfqdn'),
     ) as (
-        mock_CURRENT,
+        mock_get_master,
         mock_gethostbyaddr,
         mock_getfqdn,
     ):
-        mock_CURRENT.host = fake_url
+        mock_master = mock.Mock()
+        mock_master.host = fake_url
+        mock_get_master.return_value = mock_master
         mock_gethostbyaddr.return_value = 'example.org'
         mock_getfqdn.return_value = 'example.org'
         assert mesos_tools.get_mesos_leader() == 'example.org'
 
 
-def test_get_mesos_leader_socket_eroror():
+def test_get_mesos_leader_socket_error():
     fake_url = 'http://93.184.216.34:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
         mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error),
     ) as (
-        mock_CURRENT,
+        mock_get_master,
         mock_gethostbyaddr,
     ):
-        mock_CURRENT.host = fake_url
+        mock_master = mock.Mock()
+        mock_master.host = fake_url
+        mock_get_master.return_value = mock_master
         with raises(socket.error):
             mesos_tools.get_mesos_leader()
 
@@ -217,11 +221,13 @@ def test_get_mesos_leader_socket_eroror():
 def test_get_mesos_leader_no_hostname():
     fake_url = 'localhost:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
     ) as (
-        mock_CURRENT,
+        mock_get_master,
     ):
-        mock_CURRENT.host = fake_url
+        mock_master = mock.Mock()
+        mock_master.host = fake_url
+        mock_get_master.return_value = mock_master
         with raises(ValueError):
             mesos_tools.get_mesos_leader()
 
@@ -437,7 +443,8 @@ def test_slave_passes_blacklist_blocks_blacklisted_locations():
     assert actual is False
 
 
-def test_get_mesos_state_from_leader_works_on_elected_leader():
+@mock.patch('paasta_tools.mesos_tools.get_mesos_master')
+def test_get_mesos_state_from_leader_works_on_elected_leader(mock_get_master):
     # Elected leaders return 'elected_time' to indicate when
     # they were elected.
     good_fake_state = {
@@ -448,7 +455,9 @@ def test_get_mesos_state_from_leader_works_on_elected_leader():
         "elected_time": 1439503288.00787,
         "failed_tasks": 1,
     }
-    mesos.master.CURRENT.state = good_fake_state
+    mock_master = mock.Mock()
+    mock_master.state = good_fake_state
+    mock_get_master.return_value = mock_master
     assert mesos_tools.get_mesos_state_from_leader() == good_fake_state
 
 
@@ -462,7 +471,8 @@ def test_get_mesos_state_from_leader_raises_on_non_elected_leader():
         "deactivated_slaves": 0,
         "failed_tasks": 1,
     }
-    mesos.master.CURRENT.state = un_elected_fake_state
+    mock_master = mock.Mock()
+    mock_master.state.return_value = un_elected_fake_state
     with raises(mesos_tools.MasterNotAvailableException):
         assert mesos_tools.get_mesos_state_from_leader() == un_elected_fake_state
 
@@ -599,7 +609,7 @@ def test_format_stdstreams_tail_for_task(test_case):
     mock_cluster_files = gen_mock_cluster_files(file1, file2, raise_what)
     fake_task = {'id': task_id}
     expected = gen_output(task_id, file1, file2, nlines, raise_what)
-    with mock.patch('paasta_tools.mesos_tools.cluster.files', mock_cluster_files):
+    with mock.patch('paasta_tools.mesos_tools.cluster.get_files_for_tasks', mock_cluster_files):
         result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
         assert result == expected
 

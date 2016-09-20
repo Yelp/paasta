@@ -21,16 +21,14 @@ import itertools
 from . import exceptions
 from . import log
 from . import parallel
-from .master import CURRENT as MASTER
 
 dne = True
 missing_slave = set([])
 
 
-def files(fn, fltr, flist, active_only=False, fail=True):
+def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
     global dne
 
-    tlist = MASTER.tasks(fltr, active_only=active_only)
     dne = True
 
     def process((task, fname)):
@@ -47,14 +45,13 @@ def files(fn, fltr, flist, active_only=False, fail=True):
             raise exceptions.SkipResult
 
         if fobj.exists():
-
             dne = False
-            return fn(fobj)
+            return fobj
 
     elements = itertools.chain(
-        *[[(task, fname) for fname in flist] for task in tlist])
+        *[[(task, fname) for fname in file_list] for task in task_list])
 
-    for result in parallel.stream(process, elements):
+    for result in parallel.stream(process, elements, max_workers):
         if not result:
             continue
         yield result

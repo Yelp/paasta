@@ -47,7 +47,8 @@ class Config(object):
         "/usr/local/etc"
     ]]
 
-    def __init__(self):
+    def __init__(self, config_path):
+        self.config_path = config_path
         self.__items = {self._default_profile: self.DEFAULTS}
         self["profile"] = self._default_profile
 
@@ -92,7 +93,7 @@ class Config(object):
 
     def load(self):
         try:
-            with open(self._get_path(), 'rt') as f:
+            with open(self.config_path, 'rt') as f:
                 try:
                     data = json.load(f)
                 except ValueError as e:
@@ -108,5 +109,3 @@ class Config(object):
     def save(self):
         with open(self._get_path(), "wb") as f:
             f.write(str(self))
-
-CURRENT = Config()
