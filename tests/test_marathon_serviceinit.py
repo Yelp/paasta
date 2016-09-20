@@ -55,7 +55,7 @@ def test_start_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     normal_instance_count = 5
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
@@ -66,7 +66,7 @@ def test_stop_marathon_job():
     service = 'my_service'
     instance = 'my_instance'
     app_id = 'mock_app_id'
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
@@ -78,7 +78,7 @@ def test_scale_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     delta = -1
-    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
         marathon_serviceinit.scale_marathon_job(service, instance, app_id, delta, client, cluster)
     client.scale_app.assert_called_once_with(app_id, delta=-1, force=True)
 
@@ -128,9 +128,9 @@ def test_status_marathon_job_verbose():
     instance = 'my_instance'
     task = mock.Mock()
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app'),
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
     ) as (
         mock_get_matching_appids,
         mock_get_verbose_app,
@@ -153,9 +153,9 @@ def test_status_marathon_job_verbose_when_not_running():
     service = 'my_service'
     instance = 'my_instance'
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app'),
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=False),
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=False, autospec=True),
     ) as (
         mock_get_matching_appids,
         mock_get_verbose_app,
@@ -229,7 +229,7 @@ def test_status_marathon_job_when_running():
     app.deployments = []
     app.instances = normal_instance_count
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
     ) as (
         is_app_id_running_patch,
     ):
@@ -250,7 +250,7 @@ def tests_status_marathon_job_when_running_running_no_tasks():
     app.deployments = []
     app.instances = normal_instance_count
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
     ) as (
         is_app_id_running_patch,
     ):
@@ -265,7 +265,7 @@ def tests_status_marathon_job_when_running_not_running():
     app_id = 'mock_app_id'
     normal_instance_count = 5
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
     ) as (
         is_app_id_running_patch,
     ):
@@ -286,7 +286,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
     app.deployments = ['test_deployment']
     app.instances = normal_instance_count
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
     ) as (
         is_app_id_running_patch,
     ):
@@ -308,8 +308,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment
     app.deployments = ['test_deployment']
     app.instances = normal_instance_count
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(False, 10)),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(False, 10), autospec=True),
     ) as (
         is_app_id_running_patch,
         get_app_queue_status_patch,
@@ -333,8 +333,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment
     app.deployments = ['test_deployment']
     app.instances = normal_instance_count
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0)),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0), autospec=True),
     ) as (
         is_app_id_running_patch,
         get_app_queue_status_patch,
@@ -359,8 +359,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployme
     app.instances = 0
     app.tasks_running = 0
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(None, None)),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_app_queue_status', return_value=(None, None), autospec=True),
     ) as (
         is_app_id_running_patch,
         get_app_queue_status_patch,
@@ -412,8 +412,8 @@ def test_status_smartstack_backends_normal():
 
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
@@ -468,7 +468,7 @@ def test_status_smartstack_backends_different_nerve_ns():
     different_ns = 'other_instance'
     normal_count = 10
     tasks = mock.Mock()
-    with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance') as read_ns_mock:
+    with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True) as read_ns_mock:
         read_ns_mock.return_value = different_ns
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -495,8 +495,8 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
     normal_count = 10
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_read_ns,
@@ -532,8 +532,8 @@ def test_status_smartstack_backends_multiple_locations():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
@@ -606,8 +606,8 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.haproxy_backend_report', autospec=True),
@@ -688,8 +688,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
 
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
@@ -754,8 +754,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
                           'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
                    side_effect=[[fake_backend], [fake_other_backend]]),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks',
@@ -830,8 +830,8 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
@@ -883,8 +883,8 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist'),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
@@ -945,7 +945,8 @@ def test_get_short_task_id():
 
 
 def test_status_mesos_tasks_working():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = [
             {'id': 1}, {'id': 2}
         ]
@@ -955,7 +956,8 @@ def test_status_mesos_tasks_working():
 
 
 def test_status_mesos_tasks_warning():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = [
             {'id': 1}, {'id': 2}
         ]
@@ -965,7 +967,8 @@ def test_status_mesos_tasks_warning():
 
 
 def test_status_mesos_tasks_critical():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch(
+            'paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks', autospec=True) as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)

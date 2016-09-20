@@ -180,7 +180,7 @@ def test_duplicate_frameworks():
     assert not ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client')
+@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
 def test_ok_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = [
@@ -192,7 +192,7 @@ def test_ok_marathon_apps(mock_get_marathon_client):
     assert ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client')
+@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
 def test_no_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = []
@@ -201,7 +201,7 @@ def test_no_marathon_apps(mock_get_marathon_client):
     assert not ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client')
+@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
 def test_marathon_tasks(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
     client.list_tasks.return_value = ["MarathonTask:1"]
@@ -210,7 +210,7 @@ def test_marathon_tasks(mock_get_marathon_client):
     assert ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client')
+@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
 def test_assert_marathon_deployments(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
     client.list_deployments.return_value = ["MarathonDeployment:1"]
@@ -240,8 +240,8 @@ def test_assert_tasks_running():
     assert ok
 
 
-@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
-@patch('paasta_tools.paasta_metastatus.get_num_masters')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum', autospec=True)
+@patch('paasta_tools.paasta_metastatus.get_num_masters', autospec=True)
 def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 5
     mock_quorum_size.return_value = 3
@@ -250,8 +250,8 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert 'Quorum: masters: 5 configured quorum: 3 ' in output
 
 
-@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
-@patch('paasta_tools.paasta_metastatus.get_num_masters')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum', autospec=True)
+@patch('paasta_tools.paasta_metastatus.get_num_masters', autospec=True)
 def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 1
     mock_quorum_size.return_value = 3
@@ -733,7 +733,7 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_zero_huma
     ) == expected
 
 
-@patch('paasta_tools.paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair')
+@patch('paasta_tools.paasta_metastatus.format_table_column_for_healthcheck_resource_utilization_pair', autospec=True)
 def test_format_row_for_resource_utilization_checks(mock_format_row):
     fake_pairs = [
         (Mock(), Mock()),
@@ -744,7 +744,7 @@ def test_format_row_for_resource_utilization_checks(mock_format_row):
     assert mock_format_row.call_count == len(fake_pairs)
 
 
-@patch('paasta_tools.paasta_metastatus.format_row_for_resource_utilization_healthchecks')
+@patch('paasta_tools.paasta_metastatus.format_row_for_resource_utilization_healthchecks', autospec=True)
 def test_get_table_rows_for_resource_usage_dict(mock_format_row):
     fake_pairs = [
         (Mock(), Mock()),

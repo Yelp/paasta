@@ -63,9 +63,9 @@ def test_get_deploy_group_mappings():
     }
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.get_instance_config_for_service',
-                   return_value=fake_service_configs),
+                   return_value=fake_service_configs, autospec=True),
         mock.patch('paasta_tools.remote_git.list_remote_refs',
-                   return_value=fake_remote_refs),
+                   return_value=fake_remote_refs, autospec=True),
     ) as (
         get_instance_config_for_service_patch,
         list_remote_refs_patch,
@@ -103,7 +103,7 @@ def test_get_cluster_instance_map_for_service():
     ]
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.get_instance_config_for_service',
-                   return_value=fake_service_configs),
+                   return_value=fake_service_configs, autospec=True),
     ) as (
         mock_get_instance_config_for_service,
     ):
@@ -138,7 +138,8 @@ def test_main():
             autospec=True,
         ),
         mock.patch('os.path.join', return_value='JOIN', autospec=True),
-        mock.patch('paasta_tools.generate_deployments_for_service.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.generate_deployments_for_service.open',
+                   create=True, return_value=file_mock, autospec=None),
         mock.patch('json.dump', autospec=True),
         mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}, autospec=True),
         mock.patch('paasta_tools.generate_deployments_for_service.atomic_file_write', autospec=True),

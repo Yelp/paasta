@@ -27,9 +27,22 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_report_event():
-    with mock.patch('pysensu_yelp.send_event') as mock_call:
-        report_event({'team': 'search_infra'})
-        mock_call.assert_called_with(team='search_infra')
+    with mock.patch('pysensu_yelp.send_event', autospec=True) as mock_call:
+        report_event({
+            'team': 'search_infra',
+            'name': 'Fake Event',
+            'runbook': 'Fake Runbook',
+            'output': 'Foo',
+            'status': 'OK',
+        }
+        )
+        mock_call.assert_called_with(
+            team='search_infra',
+            name='Fake Event',
+            runbook='Fake Runbook',
+            output='Foo',
+            status='OK',
+        )
 
         with pytest.raises(Exception):
             report_event({'foo': 'bar'})
@@ -60,8 +73,9 @@ def test_do_replication_check():
     }
 
     with nested(
-            mock.patch(check_method, return_value=(-1, 'bar')),
-            mock.patch(read_key_method, return_value=-2)):
+        mock.patch(check_method, return_value=(-1, 'bar'), autospec=True),
+        mock.patch(read_key_method, return_value=-2, autospec=True),
+    ):
         expected = {
             'name': 'replication_test_service',
             'status': -1,
@@ -106,7 +120,7 @@ def test_extract_replication_info_valid_data():
         'team': 'test_team',
         'service_type': 'classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_data):
+    with mock.patch(extract_method, return_value=mock_valid_data, autospec=True):
         expected = (True, mock_valid_data)
         result = extract_replication_info({})
         assert expected == result
@@ -120,7 +134,7 @@ def test_extract_replication_info_non_classic_data():
         'team': 'test_team',
         'service_type': 'not_classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_non_classic_data):
+    with mock.patch(extract_method, return_value=mock_valid_non_classic_data, autospec=True):
         expected = (False, {})
         result = extract_replication_info({})
         assert expected == result
@@ -135,7 +149,7 @@ def test_extract_replication_info_valid_team_no_email():
         'notification_email': None,
         'service_type': 'classic'
     }
-    with mock.patch(extract_method, return_value=mock_valid_team_no_email):
+    with mock.patch(extract_method, return_value=mock_valid_team_no_email, autospec=True):
         expected = (True, mock_valid_team_no_email)
         result = extract_replication_info({})
         assert expected == result
@@ -149,7 +163,7 @@ def test_extract_replication_info_invalid_data():
         'team': None,
         'service_type': None,
     }
-    with mock.patch(extract_method, return_value=mock_invalid_data):
+    with mock.patch(extract_method, return_value=mock_invalid_data, autospec=True):
         expected = (False, {})
         result = extract_replication_info({})
         assert expected == result
@@ -168,16 +182,23 @@ def test_classic_replication_check():
     mock_service_config = {'pow': {'wat': 1}}
     mock_replication = {'pow': -1}
     mock_monitoring = {'pow': 'bar'}
-    mock_check = {'team': 'testing', 'output': 'testing looks good'}
+    mock_check = {
+        'team': 'testing',
+        'output': 'testing looks good',
+        'runbook': 'fake-runbook',
+        'status': 'fake-status',
+        'name': 'fake-name',
+    }
 
     with nested(
-            mock.patch(read_config_method, return_value=mock_service_config),
-            mock.patch(replication_method, return_value=mock_replication),
-            mock.patch(extract_method, return_value=(True, mock_monitoring)),
-            mock.patch(check_method, return_value=mock_check),
-            mock.patch('pysensu_yelp.send_event'),
+            mock.patch(read_config_method, return_value=mock_service_config, autospec=True),
+            mock.patch(replication_method, return_value=mock_replication, autospec=True),
+            mock.patch(extract_method, return_value=(True, mock_monitoring), autospec=True),
+            mock.patch(check_method, return_value=mock_check, autospec=True),
+            mock.patch('pysensu_yelp.send_event', autospec=True),
             mock.patch.object(sys, 'argv', ['check_classic_service_replication.py']),
-            mock.patch(load_system_paasta_config_module, return_value=SystemPaastaConfig({}, '/fake/config'))
+            mock.patch(load_system_paasta_config_module,
+                       return_value=SystemPaastaConfig({}, '/fake/config'), autospec=True),
     ) as (_, _, _, mcheck, _, _, _):
         with pytest.raises(SystemExit) as error:
             check = ClassicServiceReplicationCheck()
@@ -188,8 +209,10 @@ def test_classic_replication_check():
 
 def test_classic_replication_check_connectionerror():
     with nested(
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services',
+                   autospec=True),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__',
+                   autospec=True),
     ) as (
         mock_get_replication_for_services,
         mock_init,
@@ -204,9 +227,11 @@ def test_classic_replication_check_connectionerror():
 
 def test_classic_replication_check_unknownexception():
     with nested(
-        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services',
+                   autospec=True),
         mock.patch(
-            'paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+            'paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__',
+            autospec=True),
     ) as (
         mock_get_replication_for_services,
         mock_init,

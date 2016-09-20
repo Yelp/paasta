@@ -187,9 +187,9 @@ def test_get_zookeeper_config():
 def test_get_mesos_leader():
     fake_url = 'http://93.184.216.34:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
-        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr'),
-        mock.patch('paasta_tools.mesos_tools.socket.getfqdn'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.socket.getfqdn', autospec=True),
     ) as (
         mock_get_master,
         mock_gethostbyaddr,
@@ -206,8 +206,8 @@ def test_get_mesos_leader():
 def test_get_mesos_leader_socket_error():
     fake_url = 'http://93.184.216.34:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
-        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error, autospec=True),
     ) as (
         mock_get_master,
         mock_gethostbyaddr,
@@ -222,7 +222,7 @@ def test_get_mesos_leader_socket_error():
 def test_get_mesos_leader_no_hostname():
     fake_url = 'localhost:5050'
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
     ) as (
         mock_get_master,
     ):
@@ -237,7 +237,7 @@ def test_get_mesos_leader_no_hostname():
 def test_get_mesos_leader_cli_mesosmasterconnectionerror(mock_get_mesos_config):
     with contextlib.nested(
         mock.patch('paasta_tools.mesos.master.MesosMaster.resolve',
-                   side_effect=mesos.exceptions.MasterNotAvailableException),
+                   side_effect=mesos.exceptions.MasterNotAvailableException, autospec=True),
     ) as (
         mock_resolve,
     ):
@@ -592,7 +592,7 @@ def test_slave_pid_to_ip():
 
 def test_get_mesos_task_count_by_slave():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks'),
+        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True),
     ) as (
         mock_get_running_tasks_from_active_frameworks,
     ):
@@ -649,8 +649,8 @@ def test_get_mesos_task_count_by_slave():
 
 def test_get_count_running_tasks_on_slave():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master'),
-        mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave'),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave', autospec=True),
     ) as (
         mock_get_master,
         mock_get_mesos_task_count_by_slave

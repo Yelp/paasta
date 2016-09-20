@@ -26,7 +26,7 @@ from paasta_tools.cli.utils import NoSuchService
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_paasta_generate_pipeline_service_not_found(
         mock_stdout, mock_guess_service_name, mock_validate_service_name):
     # paasta generate cannot guess service name and none is provided

@@ -97,11 +97,11 @@ def test_main():
     fake_timeout = 3
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-                   return_value=fake_container_id),
-        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
+                   return_value=fake_container_id, autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args', autospec=True),
         mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
-                   return_value=('fake_output', 0)),
-        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit')
+                   return_value=('fake_output', 0), autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit', autospec=True),
     ) as (
         get_id_patch,
         args_patch,
@@ -121,11 +121,11 @@ def test_main_with_empty_task_id():
     fake_timeout = 3
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-                   return_value=fake_container_id),
-        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
+                   return_value=fake_container_id, autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args', autospec=True),
         mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
-                   return_value=('fake_output', 0)),
-        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit')
+                   return_value=('fake_output', 0), autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit', autospec=True),
     ) as (
         get_id_patch,
         args_patch,
@@ -142,11 +142,11 @@ def test_main_with_empty_task_id():
 def test_main_container_not_found_failure():
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-                   return_value=None),
+                   return_value=None, autospec=True),
         mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
-                   return_value=('fake_output', 2)),
-        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
-        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit')
+                   return_value=('fake_output', 2), autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args', autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit', autospec=True),
     ) as (
         get_id_patch,
         exec_patch,
@@ -163,11 +163,11 @@ def test_main_cmd_unclean_exit_failure():
     fake_container_id = 'fake_container_id'
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-                   return_value=fake_container_id),
+                   return_value=fake_container_id, autospec=True),
         mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
-                   return_value=('fake_output', 2)),
-        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
-        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit')
+                   return_value=('fake_output', 2), autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args', autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit', autospec=True),
     ) as (
         get_id_patch,
         exec_patch,
@@ -185,11 +185,12 @@ def test_main_timeout_failure():
     fake_timeout = 3
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-                   return_value=fake_container_id),
-        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
+                   return_value=fake_container_id, autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args', autospec=True),
         mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
-                   return_value=('fake_output', 0)),
-        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit', side_effect=TimeoutException())
+                   return_value=('fake_output', 0), autospec=True),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit',
+                   side_effect=TimeoutException, autospec=True),
     ) as (
         get_id_patch,
         args_patch,

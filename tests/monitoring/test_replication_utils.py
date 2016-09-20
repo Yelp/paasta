@@ -79,11 +79,13 @@ def test_get_registered_marathon_tasks():
 
     with mock.patch(
         'paasta_tools.monitoring.replication_utils.get_multiple_backends',
+        autospec=True,
         return_value=backends
     ) as mock_get_multiple_backends:
         with mock.patch(
             'paasta_tools.monitoring.replication_utils.'
                 'socket.gethostbyname',
+            autospec=True,
             side_effect=lambda x: hostnames[x],
         ):
             actual = get_registered_marathon_tasks(
@@ -142,6 +144,7 @@ def test_match_backends_and_tasks():
     with mock.patch(
         'paasta_tools.monitoring.replication_utils.'
             'socket.gethostbyname',
+        autospec=True,
         side_effect=lambda x: hostnames[x],
     ):
         expected = [

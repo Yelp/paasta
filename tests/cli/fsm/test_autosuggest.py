@@ -65,9 +65,9 @@ class TestSuggestSmartstackProxyPort:
             return get_smartstack_proxy_port_from_file_returns.pop(0)
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(
-            mock.patch("os.walk", mock_walk),
+            mock.patch("os.walk", mock_walk, autospec=None),
             mock.patch("paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
-                       mock_get_smartstack_proxy_port_from_file),
+                       mock_get_smartstack_proxy_port_from_file, autospec=None),
         ):
             actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20001, range_max=20003)
         # Sanity check: our mock was called once for each legit port file in
@@ -98,9 +98,9 @@ class TestSuggestSmartstackProxyPort:
             return get_smartstack_proxy_port_from_file_returns.pop(0)
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(
-            mock.patch("os.walk", mock_walk),
+            mock.patch("os.walk", mock_walk, autospec=None),
             mock.patch("paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
-                       mock_get_smartstack_proxy_port_from_file),
+                       mock_get_smartstack_proxy_port_from_file, autospec=None),
         ):
             with raises(Exception) as exc:
                 autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20001,

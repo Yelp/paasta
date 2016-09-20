@@ -38,8 +38,8 @@ class TestCleanupMarathonJobs:
         fake_args = mock.Mock(verbose=False, soa_dir=soa_dir,
                               kill_threshold=0.5, force=False)
         with contextlib.nested(
-            mock.patch('paasta_tools.cleanup_marathon_jobs.parse_args', return_value=fake_args),
-            mock.patch('paasta_tools.cleanup_marathon_jobs.cleanup_apps')
+            mock.patch('paasta_tools.cleanup_marathon_jobs.parse_args', return_value=fake_args, autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.cleanup_apps', autospec=True),
         ) as (
             args_patch,
             cleanup_patch
@@ -207,7 +207,7 @@ class TestCleanupMarathonJobs:
         with contextlib.nested(
             mock.patch('paasta_tools.cleanup_marathon_jobs.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
-            mock.patch('paasta_tools.bounce_lib.delete_marathon_app', side_effect=ValueError('foo')),
+            mock.patch('paasta_tools.bounce_lib.delete_marathon_app', side_effect=ValueError('foo'), autospec=True),
             mock.patch('paasta_tools.cleanup_marathon_jobs._log', autospec=True),
         ) as (
             mock_load_system_paasta_config,

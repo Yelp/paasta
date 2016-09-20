@@ -20,7 +20,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 @mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True)
-@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
     cluster = 'fake_cluster'
 
@@ -35,7 +35,7 @@ def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
     mock_load_system_paasta_config.return_value = fake_system_paasta_config
 
     thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
-    with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
+    with mock.patch(thing_to_patch, autospec=True) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
         metastatus.print_cluster_status(
             cluster,
