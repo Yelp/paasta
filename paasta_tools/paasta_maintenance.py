@@ -22,14 +22,14 @@ from socket import gethostname
 
 from paasta_tools import mesos_maintenance
 from paasta_tools import utils
-from paasta_tools.check_marathon_services_replication import load_smartstack_info_for_service
 from paasta_tools.marathon_tools import get_expected_instance_count_for_namespace
 from paasta_tools.marathon_tools import marathon_services_running_here
 from paasta_tools.marathon_tools import read_namespace_for_service_instance
-from paasta_tools.monitoring.replication_utils import backend_is_up
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
-from paasta_tools.monitoring.replication_utils import ip_port_hostname_from_svname
+from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.smartstack_tools import get_replication_for_services
+from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
+from paasta_tools.smartstack_tools import load_smartstack_info_for_service
 
 log = logging.getLogger(__name__)
 

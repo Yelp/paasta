@@ -23,9 +23,9 @@ from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
-from paasta_tools.monitoring.replication_utils import backend_is_up
-from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
+from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import _log
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
