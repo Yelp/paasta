@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: cf550fcab3f12015f8676b8278b30e1a5bc10e70
+    sha: 18d7035de5388cc7775be57f529c154bf541aab9
     hooks:
     -   id: trailing-whitespace
         language_version: python2.7
@@ -12,13 +12,13 @@
     -   id: check-json
         language_version: python2.7
     -   id: check-yaml
-        # Exclude fsm cookiecutter files
         files: ^(?!.*template).*\.(yaml|yml|eyaml)$
         language_version: python2.7
     -   id: debug-statements
         language_version: python2.7
     -   id: name-tests-test
-        args: [--django]
+        args:
+        - --django
         files: ^tests/.*\.py$
         language_version: python2.7
     -   id: requirements-txt-fixer
@@ -27,7 +27,16 @@
         exclude: ^docs/source/conf.py$
         language_version: python2.7
 -   repo: https://github.com/asottile/reorder_python_imports.git
-    sha: 3d86483455ab5bd06cc1069fdd5ac57be5463f10
+    sha: b022734351abe44d0b05a71a4fa1175287c59b49
     hooks:
     -   id: reorder-python-imports
+        language_version: python2.7
+-   repo: local
+    hooks:
+    -   id: patch-enforce-autospec
+        name: mock.patch enforce autospec
+        description: This hook ensures all mock.patch invocations specify an autospec
+        entry: paasta_tools/contrib/mock_patch_checker.py
+        language: script
+        files: ^tests/.*\.py$
         language_version: python2.7
