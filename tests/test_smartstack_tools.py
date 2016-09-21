@@ -68,7 +68,7 @@ def test_get_smartstack_replication_for_attribute():
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
-                   return_value=mock_filtered_slaves),
+                   return_value=mock_filtered_slaves, autospec=True),
         mock.patch('paasta_tools.smartstack_tools.get_replication_for_services',
                    return_value={}, autospec=True),
     ) as (
@@ -86,7 +86,7 @@ def test_get_smartstack_replication_for_attribute():
             blacklist=[],
             system_paasta_config=fake_system_paasta_config,
         )
-        assert mock_get_all_slaves_for_blacklist_whitelist.called_once_with(
+        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
             blacklist=[],
             whitelist=[]
         )
@@ -156,11 +156,13 @@ def test_get_registered_marathon_tasks():
 
     with mock.patch(
         'paasta_tools.smartstack_tools.get_multiple_backends',
-        return_value=backends
+        return_value=backends,
+        autospec=True,
     ) as mock_get_multiple_backends:
         with mock.patch(
             'paasta_tools.smartstack_tools.socket.gethostbyname',
             side_effect=lambda x: hostnames[x],
+            autospec=True,
         ):
             actual = get_registered_marathon_tasks(
                 'fake_host',
@@ -218,6 +220,7 @@ def test_match_backends_and_tasks():
     with mock.patch(
         'paasta_tools.smartstack_tools.socket.gethostbyname',
         side_effect=lambda x: hostnames[x],
+        autospec=True,
     ):
         expected = [
             (backends[0], good_task1),
