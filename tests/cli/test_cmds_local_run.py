@@ -127,7 +127,7 @@ def test_perform_cmd_healthcheck_success(mock_exec_container):
     mock_exec_container.assert_called_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
 
-@mock.patch('socket.socket.connect_ex')
+@mock.patch('socket.socket.connect_ex', autospec=None)
 def test_perform_tcp_healthcheck_success(mock_socket_connect):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
@@ -136,7 +136,7 @@ def test_perform_tcp_healthcheck_success(mock_socket_connect):
     mock_socket_connect.assert_called_with(('fakehost', 1234))
 
 
-@mock.patch('socket.socket.connect_ex')
+@mock.patch('socket.socket.connect_ex', autospec=None)
 def test_perform_tcp_healthcheck_failure(mock_socket_connect):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
@@ -476,7 +476,7 @@ def test_configure_and_run_pulls_image_when_asked(
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)
@@ -505,7 +505,7 @@ def test_run_success(
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
 def test_run_cook_image_fails(
     mock_paasta_cook_image,
@@ -1176,6 +1176,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
 def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys):
     with mock.patch(
             'time.sleep',
+            autospec=True,
             side_effect=AssertionError('sleep should not have been called'),
     ):
         mock_client = mock.MagicMock(spec_set=docker.Client)

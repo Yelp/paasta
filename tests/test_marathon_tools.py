@@ -17,7 +17,6 @@ import marathon
 import mock
 from marathon import MarathonHttpError
 from marathon.models import MarathonApp
-from mock import patch
 from pytest import raises
 
 from paasta_tools import long_running_service_tools
@@ -248,7 +247,7 @@ class TestMarathonTools:
         from_file = {'marathon_config': {'foo': 'bar'}}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock, autospec=None),
             mock.patch('json.load', autospec=True, return_value=from_file),
             mock.patch('os.path.isdir', autospec=True, return_value=True),
             mock.patch('os.access', autospec=True, return_value=True),
@@ -268,7 +267,8 @@ class TestMarathonTools:
     def test_load_marathon_config_path_dne(self):
         expected = {}
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
+            mock.patch('paasta_tools.marathon_tools.open',
+                       create=True, side_effect=IOError(2, 'a', 'b'), autospec=None),
             mock.patch('os.path.isdir', autospec=True, return_value=True),
             mock.patch('os.access', autospec=True, return_value=True),
         ) as (
@@ -477,7 +477,7 @@ class TestMarathonTools:
         soa_dir = 'an_adventure'
 
         with mock.patch('service_configuration_lib.read_service_configuration',
-                        side_effect=Exception) as read_service_configuration_patch:
+                        side_effect=Exception, autospec=True,) as read_service_configuration_patch:
             with raises(Exception):
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
@@ -784,7 +784,7 @@ class TestMarathonTools:
 
     def test_get_classic_service_information_for_nerve(self):
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_port', return_value=101),
+            mock.patch('service_configuration_lib.read_port', return_value=101, autospec=True),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value={'ten': 10}),
         ) as (
@@ -1412,36 +1412,25 @@ class TestMarathonTools:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_exact(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_exact(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3) is True
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3, exact_matches_only=True) is True
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_less(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_less(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2) is True
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2, exact_matches_only=True) is False
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_app_has_tasks_more(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
-        patch_list_tasks.return_value = [{}, {}, {}]
+    def test_app_has_tasks_more(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}]))
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4, exact_matches_only=True) is False
 
-    @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
-    def test_add_leading_slash(self, patch_list_tasks):
-        fake_client = mock.Mock()
-        fake_client.list_tasks = patch_list_tasks
+    def test_add_leading_slash(self):
+        fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}, {}]))
         marathon_tools.app_has_tasks(fake_client, 'fake_app', 4)
-        assert patch_list_tasks.called_with('/fake_app')
+        assert fake_client.list_tasks.called_with('/fake_app')
 
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
@@ -2199,14 +2188,17 @@ def test_format_marathon_app_dict_no_smartstack():
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
+            autospec=True,
         ),
-        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
+                   return_value=fake_system_paasta_config, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}]),
         mock.patch('paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist', autospec=True, return_value=[{}]),
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': [{}]}),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
+                   return_value=fake_system_paasta_config, autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_format_job_id,
@@ -2274,13 +2266,15 @@ def test_format_marathon_app_dict_with_smartstack():
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
+            autospec=True,
         ),
-        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id, autospec=True,),
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}}),
         mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}]),
         mock.patch('paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist', autospec=True, return_value=[{}]),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
+                   return_value=fake_system_paasta_config, autospec=True),
     ) as (
         mock_load_service_namespace_config,
         mock_format_job_id,
@@ -2364,9 +2358,11 @@ def test_format_marathon_app_dict_utilizes_net():
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
+            autospec=True,
         ),
-        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
+                   return_value=fake_system_paasta_config, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}}),
         mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}]),
@@ -2417,9 +2413,11 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
+            autospec=True,
         ),
-        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
+                   return_value=fake_system_paasta_config, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}}),
         mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}]),

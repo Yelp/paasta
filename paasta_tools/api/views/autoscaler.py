@@ -21,7 +21,7 @@ from paasta_tools.marathon_tools import get_instances_from_zookeeper
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 
 
-@view_config(route_name='service.autoscaler.get', request_method='GET', renderer='json')
+@view_config(route_name='service.autoscaler.get', request_method='GET')
 def get_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
@@ -29,7 +29,7 @@ def get_autoscaler_count(request):
     return desired_instances
 
 
-@view_config(route_name='service.autoscaler.post', request_method='POST', renderer='json')
+@view_config(route_name='service.autoscaler.post', request_method='POST')
 def update_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')

@@ -171,9 +171,9 @@ def test_load_system_paasta_config():
     expected = utils.SystemPaastaConfig(json_load_return_value, '/some/fake/dir')
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
-        mock.patch('os.path.isdir', return_value=True),
-        mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('os.path.isdir', return_value=True, autospec=True),
+        mock.patch('os.access', return_value=True, autospec=True),
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock, autospec=None),
         mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True,
                    return_value=['/some/fake/dir/some_file.json']),
         mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value),
@@ -201,7 +201,7 @@ def test_load_system_paasta_config():
 def test_load_system_paasta_config_file_non_existent_dir():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
-        mock.patch('os.path.isdir', return_value=False),
+        mock.patch('os.path.isdir', return_value=False, autospec=True),
     ) as (
         isdir_patch,
     ):
@@ -214,8 +214,8 @@ def test_load_system_paasta_config_file_non_existent_dir():
 def test_load_system_paasta_config_file_non_readable_dir():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
-        mock.patch('os.path.isdir', return_value=True),
-        mock.patch('os.access', return_value=False),
+        mock.patch('os.path.isdir', return_value=True, autospec=True),
+        mock.patch('os.access', return_value=False, autospec=True),
     ) as (
         isdir_patch,
         access_patch,
@@ -229,9 +229,9 @@ def test_load_system_paasta_config_file_non_readable_dir():
 def test_load_system_paasta_config_file_dne():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
-        mock.patch('os.path.isdir', return_value=True),
-        mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
+        mock.patch('os.path.isdir', return_value=True, autospec=True),
+        mock.patch('os.access', return_value=True, autospec=True),
+        mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b'), autospec=None),
         mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path]),
     ) as (
         isdir_patch,
@@ -250,9 +250,9 @@ def test_load_system_paasta_config_merge_lexographically():
     expected = utils.SystemPaastaConfig({'foo': 'overriding value', 'fake': 'fake_data'}, '/some/fake/dir')
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
-        mock.patch('os.path.isdir', return_value=True),
-        mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('os.path.isdir', return_value=True, autospec=True),
+        mock.patch('os.access', return_value=True, autospec=True),
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock, autospec=None),
         mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True,
                    return_value=['a', 'b']),
         mock.patch('paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
@@ -431,9 +431,9 @@ def test_atomic_file_write_itest():
 
 def test_configure_log():
     fake_log_writer_config = {'driver': 'fake', 'options': {'fake_arg': 'something'}}
-    with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
+    with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True) as mock_load_system_paasta_config:
         mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer_config
-        with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
+        with mock.patch('paasta_tools.utils.get_log_writer_class', autospec=True) as mock_get_log_writer_class:
             utils.configure_log()
             mock_get_log_writer_class.assert_called_once_with('fake')
             mock_get_log_writer_class('fake').assert_called_once_with(fake_arg='something')
@@ -510,7 +510,7 @@ def test_check_docker_image_false(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -529,7 +529,7 @@ def test_check_docker_image_true(mock_build_docker_image_name):
     fake_commit = 'fake_commit'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
-    with mock.patch('paasta_tools.utils.get_docker_client') as mock_docker:
+    with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.images.return_value = [{
             'Created': 1425430339,
@@ -687,7 +687,7 @@ def test_get_services_for_cluster():
         mock.patch('os.path.abspath', autospec=True, return_value='chex_mix'),
         mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
         mock.patch('paasta_tools.utils.get_service_instance_list',
-                   side_effect=lambda a, b, c, d: instances.pop()),
+                   side_effect=lambda a, b, c, d: instances.pop(), autospec=True),
     ) as (
         abspath_patch,
         listdir_patch,
@@ -738,7 +738,7 @@ def test_DeploymentsJson_read():
         },
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock, autospec=None),
         mock.patch('json.load', autospec=True, return_value=fake_json),
         mock.patch('paasta_tools.utils.os.path.isfile', autospec=True, return_value=True),
     ) as (
@@ -779,7 +779,7 @@ def test_get_running_mesos_docker_containers():
         }
     ]
 
-    with mock.patch("paasta_tools.utils.get_docker_client") as mock_docker:
+    with mock.patch("paasta_tools.utils.get_docker_client", autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
         docker_client.containers.return_value = fake_container_data
         assert len(utils.get_running_mesos_docker_containers()) == 1
@@ -1364,7 +1364,7 @@ def test_validate_service_instance_invalid():
         mock.patch('paasta_tools.utils.get_services_for_cluster',
                    autospec=True,
                    side_effect=[mock_marathon_services, mock_chronos_services, mock_paasta_native_services]),
-        mock.patch('sys.exit'),
+        mock.patch('sys.exit', autospec=True),
     ) as (
         get_services_for_cluster_patch,
         sys_exit_patch,
@@ -1451,7 +1451,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock(self):
         """Make sure we flock and unflock when flock=True"""
-        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=True)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
@@ -1462,7 +1462,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock_flock_false(self):
         """Make sure we don't flock/unflock when flock=False"""
-        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=False)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):

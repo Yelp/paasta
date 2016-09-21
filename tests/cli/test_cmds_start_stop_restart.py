@@ -255,7 +255,7 @@ def test_stop_or_start_figures_out_correct_instances(
     assert(ret == 0)
 
 
-@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
@@ -283,7 +283,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     assert "may be down" in mock_stdout.getvalue()
 
 
-@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
@@ -323,7 +323,7 @@ def test_cluster_list_defaults_to_all():
 
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
-@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_for_invalid_cluster_no_instances(
         mock_list_clusters,
@@ -343,7 +343,7 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
 
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
-@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_no_matching_instance_clusters(
         mock_list_clusters,

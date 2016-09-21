@@ -24,7 +24,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@patch('paasta_tools.cli.utils.gethostbyname_ex')
+@patch('paasta_tools.cli.utils.gethostbyname_ex', autospec=True)
 def test_bad_calculate_remote_master(mock_get_by_hostname):
     mock_get_by_hostname.side_effect = gaierror('foo', 'bar')
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
@@ -33,7 +33,7 @@ def test_bad_calculate_remote_master(mock_get_by_hostname):
     assert 'ERROR while doing DNS lookup of paasta-myhost.yelp:\nbar\n' in output
 
 
-@patch('paasta_tools.cli.utils.gethostbyname_ex')
+@patch('paasta_tools.cli.utils.gethostbyname_ex', autospec=True)
 def test_ok_remote_masters(mock_get_by_hostname):
     mock_get_by_hostname.return_value = ('myhost', [], ['1.2.3.4', '1.2.3.5'])
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
@@ -392,8 +392,8 @@ def test_execute_chronos_rerun_on_remote_master(test_case):
         assert bool(mock_run_chronos_rerun.return_value) == mock_run_chronos_rerun.called
 
 
-@patch('paasta_tools.cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.cli.utils.list_services')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.utils.list_services', autospec=True)
 def test_list_service_instances(
     mock_list_services,
     mock_list_instances,
@@ -405,8 +405,8 @@ def test_list_service_instances(
     assert actual == expected
 
 
-@patch('paasta_tools.cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.cli.utils.list_services')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.utils.list_services', autospec=True)
 def test_list_paasta_services(
     mock_list_services,
     mock_list_instances,
@@ -418,9 +418,9 @@ def test_list_paasta_services(
     assert actual == expected
 
 
-@patch('paasta_tools.cli.utils.guess_service_name')
-@patch('paasta_tools.cli.utils.validate_service_name')
-@patch('paasta_tools.cli.utils.list_all_instances_for_service')
+@patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
+@patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
 def test_list_instances_with_autodetect(
     mock_list_instance_for_service,
     mock_validate_service_name,
@@ -436,10 +436,10 @@ def test_list_instances_with_autodetect(
     mock_list_instance_for_service.assert_called_once_with('fake_service')
 
 
-@patch('paasta_tools.cli.utils.guess_service_name')
-@patch('paasta_tools.cli.utils.validate_service_name')
-@patch('paasta_tools.cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.cli.utils.list_services')
+@patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
+@patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.utils.list_services', autospec=True)
 def test_list_instances_no_service(
     mock_list_services,
     mock_list_instance_for_service,

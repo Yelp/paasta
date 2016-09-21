@@ -36,7 +36,7 @@ def test_start_chronos_job():
     job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-        mock.patch('paasta_tools.chronos_serviceinit._log'),
+        mock.patch('paasta_tools.chronos_serviceinit._log', autospec=True),
     ) as (
         mock_client,
         mock__log,
@@ -66,7 +66,7 @@ def test_start_chronos_job_does_not_run_disabled_or_stopped_job():
     job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-        mock.patch('paasta_tools.chronos_serviceinit._log'),
+        mock.patch('paasta_tools.chronos_serviceinit._log', autospec=True),
     ) as (
         mock_client,
         mock__log,
@@ -95,7 +95,7 @@ def test_stop_chronos_job():
                      {'name': 'job_v3', 'disabled': True}]
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-        mock.patch('paasta_tools.chronos_serviceinit._log'),
+        mock.patch('paasta_tools.chronos_serviceinit._log', autospec=True),
     ) as (
         mock_client,
         mock__log,
@@ -417,7 +417,7 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.status_mesos_tasks_verbose', autospec=True,
                    return_value='status_mesos_tasks_verbose output'),
-        mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job'),
+        mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True),
     ) as (
         mock_status_mesos_tasks_verbose,
         mock_chronos_status_for_job,

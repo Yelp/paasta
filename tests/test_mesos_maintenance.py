@@ -367,7 +367,7 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, autospec=None)
 def test_load_credentials(
     mock_open,
 ):
@@ -381,7 +381,7 @@ def test_load_credentials(
     assert load_credentials() == ('username', 'password')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError, autospec=None)
 def test_load_credentials_missing_file(
     mock_open,
 ):
@@ -389,7 +389,7 @@ def test_load_credentials_missing_file(
         assert load_credentials()
 
 
-@mock.patch('paasta_tools.mesos_maintenance.open', create=True)
+@mock.patch('paasta_tools.mesos_maintenance.open', create=True, autospec=None)
 def test_load_credentials_keyerror(
     mock_open,
 ):
@@ -607,9 +607,9 @@ def test_is_host_down(
     assert not is_host_down('fake-host3.fakesite.something')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave')
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master')
-@mock.patch('paasta_tools.mesos_maintenance.is_host_draining')
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.is_host_draining', autospec=True)
 def test_is_host_drained(
     mock_is_host_draining,
     mock_get_mesos_master,

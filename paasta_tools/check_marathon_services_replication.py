@@ -45,6 +45,7 @@ from paasta_tools.monitoring import replication_utils
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
@@ -87,7 +88,7 @@ def parse_args():
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=marathon_tools.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
@@ -315,7 +316,7 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
         )
 
 
-def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist, system_paasta_config):
+def load_smartstack_info_for_service(service, namespace, blacklist, system_paasta_config, soa_dir=DEFAULT_SOA_DIR):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
