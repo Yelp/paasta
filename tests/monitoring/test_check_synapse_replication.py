@@ -86,9 +86,9 @@ def test_run_synapse_check():
         return mock_service_status[name], 'CHECK'
 
     with nested(
-        mock.patch(parse_method, return_value=mock_parse_options),
-        mock.patch(replication_method, return_value=mock_replication),
-        mock.patch(check_replication_method, new=mock_check),
+        mock.patch(parse_method, return_value=mock_parse_options, autospec=True),
+        mock.patch(replication_method, return_value=mock_replication, autospec=True),
+        mock.patch(check_replication_method, new=mock_check, autospec=None),
         mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
                    return_value=SystemPaastaConfig({}, '/fake/config')),
     ):

@@ -32,10 +32,10 @@ from paasta_tools.cli.cmds.validate import validate_chronos
 from paasta_tools.cli.cmds.validate import validate_schema
 
 
-@patch('paasta_tools.cli.cmds.validate.validate_all_schemas')
-@patch('paasta_tools.cli.cmds.validate.validate_chronos')
-@patch('paasta_tools.cli.cmds.validate.get_service_path')
-@patch('paasta_tools.cli.cmds.validate.check_service_path')
+@patch('paasta_tools.cli.cmds.validate.validate_all_schemas', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.validate_chronos', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.get_service_path', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.check_service_path', autospec=True)
 def test_paasta_validate_calls_everything(
     mock_check_service_path,
     mock_get_service_path,
@@ -59,7 +59,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_chronos.called
 
 
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_get_service_path_unknown(
     mock_stdout
 ):
@@ -86,8 +86,8 @@ def test_validate_unknown_service_service_path():
     assert not paasta_validate_soa_configs(service_path)
 
 
-@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
-@patch('paasta_tools.cli.cmds.validate.glob')
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_get_service_path_cwd(
     mock_glob,
     mock_isdir
@@ -103,8 +103,8 @@ def test_get_service_path_cwd(
     assert service_path == os.getcwd()
 
 
-@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
-@patch('paasta_tools.cli.cmds.validate.glob')
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_get_service_path_soa_dir(
     mock_glob,
     mock_isdir
@@ -140,8 +140,8 @@ def test_get_schema_missing():
     assert get_schema('fake_schema') is None
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_list_hashes_good(
     mock_stdout,
     mock_get_file_contents
@@ -169,8 +169,8 @@ main_http:
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_healthcheck_non_cmd(
     mock_stdout,
     mock_get_file_contents
@@ -205,8 +205,8 @@ main_worker:
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_healthcheck_cmd_has_cmd(
     mock_stdout,
     mock_get_file_contents
@@ -243,8 +243,8 @@ main_worker:
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     mock_stdout,
     mock_get_file_contents
@@ -264,8 +264,8 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     assert SCHEMA_INVALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_invalid_key_bad(
     mock_stdout,
     mock_get_file_contents
@@ -284,8 +284,8 @@ def test_marathon_validate_invalid_key_bad(
     assert SCHEMA_INVALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_chronos_validate_schema_list_hashes_good(
     mock_stdout,
     mock_get_file_contents
@@ -307,8 +307,8 @@ def test_chronos_validate_schema_list_hashes_good(
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_file_contents')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     mock_stdout,
     mock_get_file_contents
@@ -328,12 +328,12 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     assert SCHEMA_INVALID in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
-@patch('paasta_tools.cli.cmds.validate.list_clusters')
-@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
-@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
-@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_validate(
     mock_stdout,
     mock_path_to_soa_dir_service,
@@ -364,12 +364,12 @@ def test_failing_chronos_job_validate(
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
-@patch('paasta_tools.cli.cmds.validate.list_clusters')
-@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
-@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
-@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_self_dependent(
     mock_stdout,
     mock_path_to_soa_dir_service,
@@ -401,12 +401,12 @@ def test_failing_chronos_job_self_dependent(
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
-@patch('paasta_tools.cli.cmds.validate.list_clusters')
-@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
-@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
-@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_missing_parent(
     mock_stdout,
     mock_path_to_soa_dir_service,
@@ -438,12 +438,12 @@ def test_failing_chronos_job_missing_parent(
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
-@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
-@patch('paasta_tools.cli.cmds.validate.list_clusters')
-@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
-@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
-@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_validate_chronos_valid_instance(
     mock_stdout,
     mock_path_to_soa_dir_service,
@@ -473,9 +473,9 @@ def test_validate_chronos_valid_instance(
     assert valid_chronos_instance(fake_cluster, fake_instance) in output
 
 
-@patch("paasta_tools.chronos_tools.TMP_JOB_IDENTIFIER", 'tmp')
-@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
-@patch('sys.stdout', new_callable=StringIO)
+@patch("paasta_tools.chronos_tools.TMP_JOB_IDENTIFIER", 'tmp', autospec=None)
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_validate_chronos_tmp_job(
     mock_stdout,
     mock_path_to_soa_dir_service,
@@ -487,7 +487,7 @@ def test_validate_chronos_tmp_job(
         mock_stdout.getvalue()
 
 
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_service_path_none(
     mock_stdout
 ):
@@ -498,8 +498,8 @@ def test_check_service_path_none(
     assert "%s is not a directory" % service_path in output
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir', autospec=True)
 def test_check_service_path_empty(
     mock_isdir,
     mock_stdout
@@ -512,8 +512,8 @@ def test_check_service_path_empty(
     assert "%s does not contain any .yaml files" % service_path in output
 
 
-@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
-@patch('paasta_tools.cli.cmds.validate.glob')
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_check_service_path_good(
     mock_glob,
     mock_isdir

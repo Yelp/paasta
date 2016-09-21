@@ -35,6 +35,7 @@ def test_generate_configuration():
     }
 
     with mock.patch('paasta_tools.generate_services_yaml.get_all_namespaces',
+                    autospec=True,
                     return_value=MOCK_NAMESPACES):
         actual = generate_services_yaml.generate_configuration()
 

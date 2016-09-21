@@ -32,7 +32,7 @@ def test_scale_aws_spot_fleet_request():
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.wait_and_terminate', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.sort_slaves_to_kill')
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.sort_slaves_to_kill', autospec=True),
     ) as (
         mock_time,
         mock_filter_sfr_slaves,
@@ -85,7 +85,7 @@ def test_scale_aws_spot_fleet_request():
         undrain_call_2 = mock.call(['host2|10.2.2.2'])
         set_call_1 = mock.call('sfr-blah', 4, False, region='westeros-1')
         set_call_2 = mock.call('sfr-blah', 2, False, region='westeros-1')
-        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1, mock_sfr_sorted_slaves_2, []]
+        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves_1, mock_sfr_sorted_slaves_2, []])
         autoscaling_cluster_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_pool_settings, False)
         get_task_count_call_1 = mock.call(mock_mesos_state, pool='default')
         get_task_count_call_2 = mock.call(mock_mesos_state, slaves_list=[mock_slave_2])
@@ -108,7 +108,7 @@ def test_scale_aws_spot_fleet_request():
                         'ip': '10.2.2.2'}
         mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves_1
-        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1, []]
+        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves_1, []])
         autoscaling_cluster_lib.scale_aws_spot_fleet_request(mock_resource, 5, 2, mock_pool_settings, False)
         mock_filter_sfr_slaves.assert_called_with(mock_get_mesos_task_count_by_slave.return_value, mock_resource)
         mock_drain.assert_has_calls([drain_call_1, drain_call_2, drain_call_1])
@@ -121,7 +121,7 @@ def test_scale_aws_spot_fleet_request():
                                    'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
                                    'ip': '10.1.1.1'}]
         mock_filter_sfr_slaves.return_value = mock_sfr_sorted_slaves
-        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves, []]
+        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves, []])
         autoscaling_cluster_lib.scale_aws_spot_fleet_request(mock_resource, 5, 4, mock_pool_settings, False)
         set_call_3 = mock.call('sfr-blah', 5, False, region='westeros-1')
         mock_filter_sfr_slaves.assert_called_with(mock_get_mesos_task_count_by_slave.return_value, mock_resource)
@@ -183,7 +183,7 @@ def test_wait_and_terminate():
     with contextlib.nested(
         mock.patch('boto3.client', autospec=True),
         mock.patch('time.sleep', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill'),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True),
     ) as (
         mock_ec2_client,
         _,
@@ -199,7 +199,7 @@ def test_wait_and_terminate():
         mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
         mock_is_safe_to_kill.assert_called_with('hostblah')
 
-        mock_is_safe_to_kill.side_effect = [False, False, True]
+        mock_is_safe_to_kill.side_effect = iter([False, False, True])
         autoscaling_cluster_lib.wait_and_terminate(mock_slave_to_kill, 600, False, region='westeros-1')
         assert mock_is_safe_to_kill.call_count == 4
 
@@ -273,8 +273,8 @@ def test_get_sfr():
 def test_filter_sfr_slaves():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr_instance_ips', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip'),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip'),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.describe_instances', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_instance_type_weights', autospec=True),
     ) as (
@@ -287,9 +287,9 @@ def test_filter_sfr_slaves():
         mock_sfr = mock.Mock()
         mock_resource = {'sfr': mock_sfr, 'region': 'westeros-1'}
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
-        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3',
-                                      '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3']
-        mock_get_instances_from_ip.side_effect = [[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]]
+        mock_pid_to_ip.side_effect = iter(['10.1.1.1', '10.2.2.2', '10.3.3.3',
+                                           '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3'])
+        mock_get_instances_from_ip.side_effect = iter([[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]])
         mock_instances = [{'InstanceId': 'i-1',
                            'InstanceType': 'c4.blah'},
                           {'InstanceId': 'i-2',
@@ -413,9 +413,9 @@ def test_spotfleet_metrics_provider():
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr_instance_ips', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
                    autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip'),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta'),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master'),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
     ) as (
         mock_get_sfr,
         mock_get_spot_fleet_instances,
@@ -440,7 +440,7 @@ def test_spotfleet_metrics_provider():
         mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
                             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
         mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
-        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2']
+        mock_pid_to_ip.side_effect = iter(['10.1.1.1', '10.2.2.2'])
         mock_get_spot_fleet_instances.return_value = [mock.Mock(), mock.Mock()]
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.2.2.2']
         mock_get_spot_fleet_delta.return_value = 1, 2

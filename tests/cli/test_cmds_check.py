@@ -39,20 +39,20 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
-@patch('paasta_tools.cli.cmds.check.git_repo_check')
-@patch('paasta_tools.cli.cmds.check.service_dir_check')
-@patch('paasta_tools.cli.cmds.check.validate_service_name')
-@patch('paasta_tools.cli.cmds.check.figure_out_service_name')
-@patch('paasta_tools.cli.cmds.check.deploy_has_performance_check')
-@patch('paasta_tools.cli.cmds.check.deploy_has_security_check')
-@patch('paasta_tools.cli.cmds.check.deploy_check')
-@patch('paasta_tools.cli.cmds.check.docker_check')
-@patch('paasta_tools.cli.cmds.check.makefile_check')
-@patch('paasta_tools.cli.cmds.check.yaml_check')
-@patch('paasta_tools.cli.cmds.check.deployments_check')
-@patch('paasta_tools.cli.cmds.check.sensu_check')
-@patch('paasta_tools.cli.cmds.check.smartstack_check')
-@patch('paasta_tools.cli.cmds.check.paasta_validate_soa_configs')
+@patch('paasta_tools.cli.cmds.check.git_repo_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.service_dir_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.check.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.check.deploy_has_performance_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.deploy_has_security_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.deploy_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.docker_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.makefile_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.yaml_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.deployments_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.sensu_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.smartstack_check', autospec=True)
+@patch('paasta_tools.cli.cmds.check.paasta_validate_soa_configs', autospec=True)
 def test_check_paasta_check_calls_everything(
         mock_paasta_validate_soa_configs,
         mock_smartstart_check,
@@ -95,7 +95,7 @@ def test_check_paasta_check_calls_everything(
 
 
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
     mock_validate_service_name.return_value = None
     service = 'fake_service'
@@ -109,7 +109,7 @@ def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
 
 
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
     service = 'fake_service'
     soa_dir = '/fake_yelpsoa_configs'
@@ -122,8 +122,8 @@ def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_deploy_check_pass(mock_stdout, mock_is_file_in_dir):
     # Deploy check passes when file found in service path
 
@@ -136,8 +136,8 @@ def test_check_deploy_check_pass(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_deploy_check_fail(mock_stdout, mock_is_file_in_dir):
     # Deploy check fails when file not in service path
 
@@ -150,8 +150,8 @@ def test_check_deploy_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_docker_exists_and_is_valid(
     mock_stdout,
     mock_is_file_in_dir,
@@ -164,8 +164,8 @@ def test_check_docker_exists_and_is_valid(
     assert PaastaCheckMessages.DOCKERFILE_FOUND in output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_docker_check_file_not_found(
     mock_stdout,
     mock_is_file_in_dir
@@ -178,8 +178,8 @@ def test_check_docker_check_file_not_found(
     assert PaastaCheckMessages.DOCKERFILE_MISSING in output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_yaml_check_pass(mock_stdout, mock_is_file_in_dir):
     # marathon.yaml exists and is valid
 
@@ -193,8 +193,8 @@ def test_check_yaml_check_pass(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_yaml_check_fail(mock_stdout, mock_is_file_in_dir):
     # marathon.yaml exists and is valid
 
@@ -207,9 +207,9 @@ def test_check_yaml_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('paasta_tools.cli.cmds.check.get_team')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_team', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_sensu_check_pass(mock_stdout, mock_get_team,
                                 mock_is_file_in_dir):
     # monitoring.yaml exists and team is found
@@ -228,9 +228,9 @@ def test_check_sensu_check_pass(mock_stdout, mock_get_team,
                                           soa_dir='path')
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('paasta_tools.cli.cmds.check.get_team')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_team', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_sensu_team_missing(mock_stdout, mock_get_team,
                                   mock_is_file_in_dir):
     # monitoring.yaml exists but team is not found
@@ -246,8 +246,8 @@ def test_check_sensu_team_missing(mock_stdout, mock_get_team,
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
     # monitoring.yaml doest exist
 
@@ -261,9 +261,9 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
 
 
 @patch('service_configuration_lib.'
-       'read_service_configuration')
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+       'read_service_configuration', autospec=True)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
                                      mock_read_service_info):
     # smartstack.yaml exists and port is found
@@ -291,9 +291,9 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
 
 
 @patch('service_configuration_lib.'
-       'read_service_configuration')
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+       'read_service_configuration', autospec=True)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_smartstack_check_missing_port(
         mock_stdout, mock_is_file_in_dir, mock_read_service_info):
     # smartstack.yaml, instance exists, but no ports found
@@ -317,9 +317,9 @@ def test_check_smartstack_check_missing_port(
 
 
 @patch('paasta_tools.cli.cmds.check.'
-       'read_service_configuration')
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+       'read_service_configuration', autospec=True)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_smartstack_check_missing_instance(
         mock_stdout, mock_is_file_in_dir, mock_read_service_info):
     # smartstack.yaml exists, but no instances found
@@ -337,8 +337,8 @@ def test_check_smartstack_check_missing_instance(
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir')
-@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_file_in_dir):
 
     mock_is_file_in_dir.return_value = False
@@ -349,14 +349,14 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_fi
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check._run')
+@patch('paasta_tools.cli.cmds.check._run', autospec=True)
 def test_makefile_responds_to_good(mock_run):
     mock_run.return_value = (1, 'Output')
     actual = makefile_responds_to('present-target')
     assert actual is True
 
 
-@patch('paasta_tools.cli.cmds.check._run')
+@patch('paasta_tools.cli.cmds.check._run', autospec=True)
 def test_makefile_responds_to_run(mock_run):
     mock_run.return_value = (2, 'Output')
     actual = makefile_responds_to('non-present-target')
@@ -423,8 +423,8 @@ def test_makefile_has_docker_tag_false():
         assert makefile_has_docker_tag(fake_makefile_path) is False
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
 def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -436,8 +436,8 @@ def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
     assert actual is False
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
 def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -450,8 +450,8 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
     assert actual is True
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
 def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -463,8 +463,8 @@ def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
     assert actual is False
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
 def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -477,9 +477,9 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     assert actual is True
 
 
-@patch('paasta_tools.cli.cmds.check.load_marathon_service_config')
-@patch('paasta_tools.cli.cmds.check.list_clusters')
-@patch('paasta_tools.cli.cmds.check.get_service_instance_list')
+@patch('paasta_tools.cli.cmds.check.load_marathon_service_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_service_instance_list', autospec=True)
 def test_get_marathon_steps(
     mock_get_service_instance_list,
     mock_list_clusters,
@@ -487,8 +487,8 @@ def test_get_marathon_steps(
 ):
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
-    mock_load_marathon_service_config.side_effect = \
-        lambda service, instance, cluster, soa_dir, load_deployments: MarathonServiceConfig(
+    mock_load_marathon_service_config.side_effect = lambda service, instance, cluster, soa_dir, load_deployments: \
+        MarathonServiceConfig(
             service=service,
             instance=instance,
             cluster=cluster,
@@ -500,9 +500,9 @@ def test_get_marathon_steps(
     assert actual == expected
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
 def test_marathon_deployments_check_good(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
@@ -523,9 +523,9 @@ def test_marathon_deployments_check_good(
     assert actual is True
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
 def test_marathon_deployments_deploy_but_not_marathon(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
@@ -548,9 +548,9 @@ def test_marathon_deployments_deploy_but_not_marathon(
     assert 'EXTRA' in mock_stdout.getvalue()
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config')
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps')
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
 def test_marathon_deployments_marathon_but_not_deploy(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
@@ -584,12 +584,15 @@ def test_makefile_check():
         ),
         patch(
             'paasta_tools.cli.cmds.check.makefile_has_a_tab',
+            autospec=True,
         ),
         patch(
             'paasta_tools.cli.cmds.check.makefile_responds_to',
+            autospec=True,
         ),
         patch(
             'paasta_tools.cli.cmds.check.makefile_has_docker_tag',
+            autospec=True,
         ),
         patch(
             'paasta_tools.cli.cmds.check.is_file_in_dir',

@@ -1130,7 +1130,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch(
-                'paasta_tools.drain_lib._drain_methods',
+                'paasta_tools.drain_lib._drain_methods', autospec=None,
                 new={'exists1': mock.Mock(), 'exists2': mock.Mock()},
             ),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
@@ -1249,7 +1249,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.drain_lib.get_drain_method', return_value=fake_drain_method),
+            mock.patch('paasta_tools.drain_lib.get_drain_method', return_value=fake_drain_method, autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
         ) as (
             _,
@@ -1392,7 +1392,8 @@ class TestSetupMarathonJob:
 
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func', side_effect=IOError('foo')),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func',
+                       side_effect=IOError('foo'), autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
         ) as (
@@ -1471,7 +1472,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         }
 
         with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks),
+            mock.patch('paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks, autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
         ) as (
             _,
@@ -1535,7 +1536,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         }
 
         with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks),
+            mock.patch('paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks, autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
         ) as (
             _,

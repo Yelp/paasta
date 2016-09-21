@@ -9,7 +9,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import utils
 
 
-@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook', autospec=True)
 def test_compose_monitoring_overrides_for_service(mock_get_runbook):
     mock_get_runbook.return_value = 'myrunbook'
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
@@ -26,7 +26,7 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
     }
 
 
-@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook', autospec=True)
 def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_runbook):
     mock_get_runbook.return_value = 'myrunbook'
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
@@ -43,8 +43,9 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
     }
 
 
-@patch('paasta_tools.check_chronos_jobs.monitoring_tools.service_configuration_lib.read_service_configuration')
-@patch('paasta_tools.check_chronos_jobs.monitoring_tools.read_monitoring_config')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.service_configuration_lib.read_service_configuration',
+       autospec=True)
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.read_monitoring_config', autospec=True)
 def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mock_read_service_config):
     mock_read_monitoring.return_value = {'runbook': 'myrunbook'}
     mock_read_service_config.return_value = {}
@@ -83,7 +84,7 @@ def test_compose_check_name_for_job():
                                                                  'myservice', 'myinstance') == expected_check
 
 
-@patch('paasta_tools.chronos_tools.monitoring_tools.send_event')
+@patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
 def test_send_event_to_sensu(mock_send_event):
     check_chronos_jobs.send_event(
         service='myservice',
@@ -93,27 +94,27 @@ def test_send_event_to_sensu(mock_send_event):
         status_code=0,
         message='this is great',
     )
-    assert mock_send_event.called_once_with(
-        'myservice',
-        'check-chronos-jobs.myservice.myinstance',
-        {},
-        0,
-        'this is great',
-        'soadir',
+    mock_send_event.assert_called_once_with(
+        service='myservice',
+        check_name='check_chronos_jobs.myservice.myinstance',
+        overrides={},
+        status=0,
+        output='this is great',
+        soa_dir='soadir',
     )
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run')
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
 def test_last_run_state_for_jobs(mock_status_last_run):
-    mock_status_last_run.side_effect = [
-        ('faketimestamp', chronos_tools.LastRunState.Success),
-        ('faketimestamp', chronos_tools.LastRunState.Fail),
-        ('faketimestamp', chronos_tools.LastRunState.NotRun),
-    ]
-    assert check_chronos_jobs.last_run_state_for_jobs([{}, {}, {}]) == [
-        ({}, chronos_tools.LastRunState.Success),
-        ({}, chronos_tools.LastRunState.Fail),
-        ({}, chronos_tools.LastRunState.NotRun),
+    mock_status_last_run.side_effect = lambda x: {
+        'a': [('faketimestamp', chronos_tools.LastRunState.Success)],
+        'b': [('faketimestamp', chronos_tools.LastRunState.Fail)],
+        'c': [('faketimestamp', chronos_tools.LastRunState.NotRun)],
+    }[x]
+    assert check_chronos_jobs.last_run_state_for_jobs(['a', 'b', 'c']) == [
+        ('a', ('faketimestamp', chronos_tools.LastRunState.Success)),
+        ('b', ('faketimestamp', chronos_tools.LastRunState.Fail)),
+        ('c', ('faketimestamp', chronos_tools.LastRunState.NotRun)),
     ]
 
 
@@ -251,7 +252,7 @@ def test_sensu_message_status_ok():
     assert status == pysensu_yelp.Status.OK
 
 
-@patch('paasta_tools.check_chronos_jobs.message_for_status')
+@patch('paasta_tools.check_chronos_jobs.message_for_status', autospec=True)
 def test_sensu_message_status_fail(mock_message_for_status):
     mock_message_for_status.return_value = 'my failure message'
     fake_job_id = 'full_job_id'

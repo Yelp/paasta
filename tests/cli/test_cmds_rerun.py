@@ -90,7 +90,7 @@ _planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.in
 ])
 def test_rerun_validations(test_case):
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO),
+        patch('sys.stdout', new_callable=StringIO, autospec=None),
         patch('paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.list_clusters', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.get_actual_deployments', autospec=True),

@@ -18,7 +18,7 @@ from paasta_tools.cli.cmds.push_to_registry import build_command
 from paasta_tools.cli.cmds.push_to_registry import paasta_push_to_registry
 
 
-@patch('paasta_tools.cli.cmds.push_to_registry.build_docker_tag')
+@patch('paasta_tools.cli.cmds.push_to_registry.build_docker_tag', autospec=True)
 def test_build_command(mock_build_docker_tag):
     mock_build_docker_tag.return_value = 'my-docker-registry/services-foo:paasta-asdf'
     expected = 'docker push my-docker-registry/services-foo:paasta-asdf'
@@ -26,7 +26,7 @@ def test_build_command(mock_build_docker_tag):
     assert actual == expected
 
 
-@patch('paasta_tools.cli.cmds.push_to_registry.build_command')
+@patch('paasta_tools.cli.cmds.push_to_registry.build_command', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
@@ -42,7 +42,7 @@ def test_push_to_registry_run_fail(
     assert paasta_push_to_registry(args) == 1
 
 
-@patch('paasta_tools.cli.cmds.push_to_registry.build_command')
+@patch('paasta_tools.cli.cmds.push_to_registry.build_command', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)

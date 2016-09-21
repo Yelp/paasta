@@ -43,7 +43,7 @@ class TestHacheckDrainMethod(object):
             text="Service service in down state since 1435694078.778886 until 1435694178.780000: Drained by Paasta",
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response):
+        with mock.patch('requests.get', return_value=fake_response, autospec=True):
             actual = self.drain_method.get_spool(fake_task)
 
         expected = {
@@ -61,7 +61,7 @@ class TestHacheckDrainMethod(object):
             text="Service service in down state since 1435694078.778886 until 1435694178.780000: Drained by Paasta",
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response):
+        with mock.patch('requests.get', return_value=fake_response, autospec=True):
             assert self.drain_method.is_draining(fake_task) is True
 
     def test_is_draining_no(self):
@@ -70,7 +70,7 @@ class TestHacheckDrainMethod(object):
             text="",
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response):
+        with mock.patch('requests.get', return_value=fake_response, autospec=True):
             assert self.drain_method.is_draining(fake_task) is False
 
 

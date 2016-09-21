@@ -31,7 +31,7 @@ from paasta_tools.cli.utils import PaastaColors
 
 
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_figure_out_service_name_not_found(mock_stdout,
                                            mock_validate_service_name):
     # paasta_status with invalid -s service_name arg results in error
@@ -52,7 +52,7 @@ def test_figure_out_service_name_not_found(mock_stdout,
 
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
                                       mock_validate_service_name):
     # paasta_status with no args and non-service directory results in error
@@ -75,7 +75,7 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_for_cluster_displays_deployed_service(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -115,7 +115,7 @@ def test_report_status_for_cluster_displays_deployed_service(
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_serviceinit_on_remote_master(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -151,7 +151,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -195,7 +195,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_print_cluster_status_missing_deploys_in_red(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -241,7 +241,7 @@ def test_print_cluster_status_missing_deploys_in_red(
 @mark.parametrize('verbosity_level', [0, 2])
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -283,7 +283,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -313,7 +313,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_calls_report_invalid_whitelist_values(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -344,7 +344,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
 @patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_deploy_info', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_status_pending_pipeline_build_message(
         mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
         mock_figure_out_service_name, mock_load_system_paasta_config):
@@ -396,7 +396,7 @@ def test_get_deploy_info_exists(mock_read_deploy):
 
 
 @patch('paasta_tools.cli.cmds.status.read_deploy', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy):
     mock_read_deploy.return_value = False
     expected_output = '%s\n' % PaastaCheckMessages.DEPLOY_YAML_MISSING
@@ -412,7 +412,7 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy):
 @patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_planned_deployments', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_status', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_status_calls_sergeants(
     mock_stdout,
     mock_report_status,
@@ -477,7 +477,7 @@ def test_report_invalid_whitelist_values_with_whitelists():
 
 @patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_obeys_cluster_whitelist(
     mock_stdout,
     mock_report_invalid_whitelist_values,
@@ -513,7 +513,7 @@ def test_report_status_obeys_cluster_whitelist(
 
 @patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_report_status_handle_none_whitelist(
     mock_stdout,
     mock_report_invalid_whitelist_values,
