@@ -75,6 +75,28 @@ def master_api():
     return execute_master_api_request
 
 
+def reserve_api():
+    """Helper function for making API requests to the /reserve API endpoints
+
+    :returns: a function that can be called to make a request to /reserve
+    """
+    def execute_reserve_api_request(method, endpoint, **kwargs):
+        master_api_client = master_api()
+        return master_api_client(method, "/reserve%s" % endpoint, **kwargs)
+    return execute_reserve_api_request
+
+
+def unreserve_api():
+    """Helper function for making API requests to the /unreserve API endpoints
+
+    :returns: a function that can be called to make a request to /unreserve
+    """
+    def execute_unreserve_api_request(method, endpoint, **kwargs):
+        master_api_client = master_api()
+        return master_api_client(method, "/unreserve%s" % endpoint, **kwargs)
+    return execute_unreserve_api_request
+
+
 def maintenance_api():
     """Helper function for making API requests to the /master/maintenance API endpoints
 
@@ -434,7 +456,7 @@ def unreserve(slave_id, resources):
 
 
 def reserve_all_resources(hostnames):
-    mesos_state = get_mesos_state_summary_from_leader()
+    mesos_state = get_mesos_master().state_summary()
     hosts = []
     components = hostnames_to_componenets(hostnames)
     for component in components:
@@ -453,7 +475,7 @@ def reserve_all_resources(hostnames):
 
 
 def unreserve_all_resources(hostnames):
-    mesos_state = get_mesos_state_summary_from_leader()
+    mesos_state = get_mesos_master().state_summary()
     hosts = []
     components = hostnames_to_componenets(hostnames)
     for component in components:
@@ -478,6 +500,7 @@ def drain(hostnames, start, duration):
     :returns: None
     """
     log.info("Draining: %s" % hostnames)
+    reserve_all_resources(hostnames)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
     try:
@@ -495,12 +518,13 @@ def undrain(hostnames):
     :returns: None
     """
     log.info("Undraining: %s" % hostnames)
+    unreserve_all_resources(hostnames)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:
         undrain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
     except HTTPError as e:
-        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
+        e.msg = "Error performing maintenance undrain. Got error: %s" % e.msg
         raise
     return undrain_output
 

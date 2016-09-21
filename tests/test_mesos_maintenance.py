@@ -21,6 +21,7 @@ import pytest
 from dateutil import tz
 
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
+from paasta_tools.mesos_maintenance import build_reservation_payload
 from paasta_tools.mesos_maintenance import build_start_maintenance_payload
 from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
@@ -42,10 +43,12 @@ from paasta_tools.mesos_maintenance import is_host_past_maintenance_start
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import parse_datetime
 from paasta_tools.mesos_maintenance import parse_timedelta
+from paasta_tools.mesos_maintenance import reserve
 from paasta_tools.mesos_maintenance import schedule
 from paasta_tools.mesos_maintenance import seconds_to_nanoseconds
 from paasta_tools.mesos_maintenance import status
 from paasta_tools.mesos_maintenance import undrain
+from paasta_tools.mesos_maintenance import unreserve
 from paasta_tools.mesos_maintenance import up
 
 
@@ -458,16 +461,24 @@ def test_get_maintenance_schedule(
 
 @mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.reserve_all_resources', autospec=True)
 def test_drain(
+    mock_reserve_all_resources,
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
     drain(hostnames=['some-host'], start='some-start', duration='some-duration')
+
     assert mock_build_maintenance_schedule_payload.call_count == 1
     expected_args = mock.call(['some-host'], 'some-start', 'some-duration', drain=True)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
+
+    assert mock_reserve_all_resources.call_count == 1
+    expected_args = mock.call(['some-host'])
+    assert mock_reserve_all_resources.call_args == expected_args
+
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))
@@ -476,16 +487,24 @@ def test_drain(
 
 @mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.unreserve_all_resources', autospec=True)
 def test_undrain(
+    mock_unreserve_all_resources,
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
     undrain(hostnames=['some-host'])
+
     assert mock_build_maintenance_schedule_payload.call_count == 1
     expected_args = mock.call(['some-host'], drain=False)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
+
+    assert mock_unreserve_all_resources.call_count == 1
+    expected_args = mock.call(['some-host'])
+    assert mock_unreserve_all_resources.call_args == expected_args
+
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))

@@ -82,6 +82,11 @@ def get_mesos_cpu_status(metrics, mesos_state):
 
     total = metrics['master/cpus_total']
     used = metrics['master/cpus_used']
+
+    for slave in mesos_state['slaves']:
+        for role in slave['reserved_resources']:
+            used -= slave['reserved_resources'][role]['cpus']
+
     available = total - used
     return total, used, available
 
@@ -162,6 +167,11 @@ def assert_cpu_health(metrics, mesos_state, threshold=10):
 def assert_memory_health(metrics, mesos_state, threshold=10):
     total = metrics['master/mem_total'] / float(1024)
     used = metrics['master/mem_used'] / float(1024)
+
+    for slave in mesos_state['slaves']:
+        for role in slave['reserved_resources']:
+            used -= slave['reserved_resources'][role]['mem']
+
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
@@ -185,6 +195,11 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
 def assert_disk_health(metrics, mesos_state, threshold=10):
     total = metrics['master/disk_total'] / float(1024)
     used = metrics['master/disk_used'] / float(1024)
+
+    for slave in mesos_state['slaves']:
+        for role in slave['reserved_resources']:
+            used -= slave['reserved_resources'][role]['disk']
+
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:

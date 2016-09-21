@@ -614,6 +614,8 @@ def test_get_resource_utilization_per_slave():
                 'disk': 250,
                 'mem': 100,
             },
+            'reserved_resources': {
+            },
             'attributes': {
                 'habitat': 'somenametest-habitat',
             },
@@ -625,6 +627,13 @@ def test_get_resource_utilization_per_slave():
                 'cpus': 500,
                 'disk': 200,
                 'mem': 750,
+            },
+            'reserved_resources': {
+                'some-role': {
+                    'cpus': 10,
+                    'disk': 0,
+                    'mem': 150,
+                },
             },
             'attributes': {
                 'habitat': 'somenametest-habitat-2',
@@ -642,9 +651,9 @@ def test_get_resource_utilization_per_slave():
         mem=850
     )
     assert actual['free'] == paasta_metastatus.ResourceInfo(
-        cpus=555,
+        cpus=545,
         disk=430,
-        mem=830
+        mem=680
     )
 
 

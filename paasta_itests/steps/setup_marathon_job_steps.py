@@ -140,18 +140,16 @@ def mark_host_at_risk(context, host):
     start = mesos_maintenance.datetime_to_nanoseconds(mesos_maintenance.now())
     duration = mesos_maintenance.parse_timedelta('1h')
     with contextlib.nested(
-        mock.patch.object(mesos.cli.master, 'CFG', config),
-        mock.patch('paasta_tools.paasta_maintenance.get_principal', autospec=True),
-        mock.patch('paasta_tools.paasta_maintenance.get_secret', autospec=True),
+        mock.patch('paasta_tools.mesos_maintenance.get_principal', autospec=True),
+        mock.patch('paasta_tools.mesos_maintenance.get_secret', autospec=True),
     ) as (
-        _,
         mock_get_principal,
         mock_get_secret,
     ):
-        credentials = paasta_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
-        mock_get_principal.return_value = credentials[0]
-        mock_get_secret.return_value = credentials[1]
-        paasta_maintenance.drain([host], start, duration)
+        credentials = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        mock_get_principal.return_value = credentials.principal
+        mock_get_secret.return_value = credentials.secret
+        mesos_maintenance.drain([host], start, duration)
         context.at_risk_host = host
 
 
