@@ -15,8 +15,10 @@ import os
 import shutil
 import time
 
+import requests
 from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
+from itest_utils import clear_mesos_tools_cache
 from itest_utils import get_service_connection_string
 from itest_utils import setup_mesos_cli_config
 from itest_utils import wait_for_marathon
@@ -24,6 +26,7 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools import marathon_tools
+from paasta_tools import mesos_tools
 
 
 def before_all(context):
@@ -109,10 +112,25 @@ def _clean_up_zookeeper_autoscaling(context):
         client.close()
 
 
+def _clean_up_paasta_native_frameworks(context):
+    clear_mesos_tools_cache()
+    # context.etc_paasta signals that we actually have configured the mesos-cli.json; without this, we don't know where
+    # to connect to clean up paasta native frameworks.
+    if hasattr(context, 'etc_paasta'):
+        for framework in mesos_tools.get_all_frameworks(active_only=True):
+            if framework.name.startswith('paasta '):
+                print "cleaning up framework %s" % framework.name
+                try:
+                    mesos_tools.terminate_framework(framework.id)
+                except requests.exceptions.HTTPError as e:
+                    print "Got exception when terminating framework %s: %s" % (framework.id, e)
+
+
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)
-    _clean_up_etc_paasta(context)
     _clean_up_zookeeper_autoscaling(context)
+    _clean_up_paasta_native_frameworks(context)  # this must come before _clean_up_etc_paasta
+    _clean_up_etc_paasta(context)
