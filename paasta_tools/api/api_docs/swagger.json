@@ -132,9 +132,7 @@
             "type": "string"
           }
         ]
-      }
-    },
-    "/services/{service}/{instance}/autoscaler": {
+      },
       "post": {
         "responses": {
           "202": {
