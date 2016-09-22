@@ -241,7 +241,7 @@ def test_build_maintenance_schedule_payload_no_schedule_undrain(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.load_credentials')
+@mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True)
 def test_build_reservation_payload(
     mock_load_credentials,
 ):
@@ -267,8 +267,8 @@ def test_build_reservation_payload(
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule')
-@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids')
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_schedule(
     mock_get_machine_ids,
     mock_get_maintenance_schedule,
@@ -511,8 +511,8 @@ def test_undrain(
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload')
-@mock.patch('paasta_tools.mesos_maintenance.reserve_api')
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.reserve_api', autospec=True)
 def test_reserve(
     mock_reserve_api,
     mock_build_reservation_payload,
@@ -530,8 +530,8 @@ def test_reserve(
     assert mock_reserve_api.return_value.call_count == 1
 
 
-@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload')
-@mock.patch('paasta_tools.mesos_maintenance.unreserve_api')
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.unreserve_api', autospec=True)
 def test_unreserve(
     mock_unreserve_api,
     mock_build_reservation_payload,
@@ -549,8 +549,8 @@ def test_unreserve(
     assert mock_unreserve_api.return_value.call_count == 1
 
 
-@mock.patch('paasta_tools.mesos_maintenance.master_api')
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload')
+@mock.patch('paasta_tools.mesos_maintenance.master_api', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
 def test_down(
     mock_build_start_maintenance_payload,
     mock_master_api,
