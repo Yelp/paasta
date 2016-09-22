@@ -128,6 +128,6 @@ def after_scenario(context, scenario):
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)
-    _clean_up_etc_paasta(context)
     _clean_up_zookeeper_autoscaling(context)
-    _clean_up_paasta_native_frameworks(context)
+    _clean_up_paasta_native_frameworks(context)  # this must come before _clean_up_etc_paasta
+    _clean_up_etc_paasta(context)
