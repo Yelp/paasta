@@ -36,11 +36,13 @@ Submodules
    paasta_tools.graceful_app_drain
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
+   paasta_tools.long_running_service_tools
    paasta_tools.marathon_serviceinit
    paasta_tools.marathon_tools
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
+   paasta_tools.native_mesos_scheduler
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
