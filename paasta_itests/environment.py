@@ -114,13 +114,16 @@ def _clean_up_zookeeper_autoscaling(context):
 
 def _clean_up_paasta_native_frameworks(context):
     clear_mesos_tools_cache()
-    for framework in mesos_tools.get_all_frameworks(active_only=True):
-        if framework.name.startswith('paasta '):
-            print "cleaning up framework %s" % framework.name
-            try:
-                mesos_tools.terminate_framework(framework.id)
-            except requests.exceptions.HTTPError as e:
-                print "Got exception when terminating framework %s: %s" % (framework.id, e)
+    # context.etc_paasta signals that we actually have configured the mesos-cli.json; without this, we don't know where
+    # to connect to clean up paasta native frameworks.
+    if hasattr(context, 'etc_paasta'):
+        for framework in mesos_tools.get_all_frameworks(active_only=True):
+            if framework.name.startswith('paasta '):
+                print "cleaning up framework %s" % framework.name
+                try:
+                    mesos_tools.terminate_framework(framework.id)
+                except requests.exceptions.HTTPError as e:
+                    print "Got exception when terminating framework %s: %s" % (framework.id, e)
 
 
 def after_scenario(context, scenario):
