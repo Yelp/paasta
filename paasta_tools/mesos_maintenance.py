@@ -462,8 +462,9 @@ def reserve_all_resources(hostnames):
     for component in components:
         hosts.append(component.host)
     for slave in mesos_state['slaves']:
-        if slave['hostname'] in hosts:
-            log.info("Reserving all resources on %s" % slave['hostname'])
+        hostname = slave['hostname']
+        if hostname in hosts:
+            log.info("Reserving all resources on %s" % hostname)
             slave_id = slave['id']
             resources = []
             for resource in ['disk', 'mem', 'cpus']:
@@ -471,7 +472,11 @@ def reserve_all_resources(hostnames):
                 for role in slave['reserved_resources']:
                     free_resource -= slave['reserved_resources'][role][resource]
                 resources.append(Resource(name=resource, amount=free_resource))
-            reserve(slave_id=slave_id, resources=resources)
+            try:
+                reserve(slave_id=slave_id, resources=resources)
+            except HTTPError:
+                log.debug("Failed reserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+                raise
 
 
 def unreserve_all_resources(hostnames):
@@ -481,15 +486,20 @@ def unreserve_all_resources(hostnames):
     for component in components:
         hosts.append(component.host)
     for slave in mesos_state['slaves']:
-        if slave['hostname'] in hosts:
-            log.info("Unreserving all resources on %s" % slave['hostname'])
+        hostname = slave['hostname']
+        if hostname in hosts:
+            log.info("Unreserving all resources on %s" % hostname)
             slave_id = slave['id']
             resources = []
             for role in slave['reserved_resources']:
                 for resource in ['disk', 'mem', 'cpus']:
                     reserved_resource = slave['reserved_resources'][role][resource]
                     resources.append(Resource(name=resource, amount=reserved_resource))
-            unreserve(slave_id=slave_id, resources=resources)
+            try:
+                unreserve(slave_id=slave_id, resources=resources)
+            except HTTPError:
+                log.debug("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+                raise
 
 
 def drain(hostnames, start, duration):
