@@ -104,7 +104,7 @@ The current number of instance for a service can be accessed through the PaaSTA
 api from the endpoint ``/v1/services/SERVICE_NAME/INSTANCE_NAME/autoscaler``.
 Sending an HTTP GET request will return an integer describing how many
 instances PaaSTA thinks your sevice should have. This endpoint also accepts an
-HTTP POST request with a JSON dictionary of the format ``{'desired_instances':
+HTTP POST request with a JSON payload with the format ``{'desired_instances':
 NUMBER_OF_DESIRED_INSTANCES}``. This endpoint can be used to control the number
 of instances PaaSTA thinks your service should have.
 
