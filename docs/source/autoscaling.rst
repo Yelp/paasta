@@ -100,10 +100,13 @@ The currently available decicion policies are:
 How to create a custom (bespoke) autoscaling method
 ---------------------------------------------------
 
-To set the number of instances for a particular service and instance, have your
-service write to its local Zookeeper cluster. The node that controls the number
-of instances for a particular service is
-``'/mesos-CLUSTER_NAME/autoscaling/SERVICE_NAME/INSTANCE_NAME/instances'``.
+The current number of instance for a service can be accessed through the PaaSTA
+api from the endpoint ``/v1/services/SERVICE_NAME/INSTANCE_NAME/autoscaler``.
+Sending an HTTP GET request will return an integer describing how many
+instances PaaSTA thinks your sevice should have. This endpoint also accepts an
+HTTP POST request with a JSON dictionary of the format ``{'desired_instances':
+NUMBER_OF_DESIRED_INSTANCES}``. This endpoint can be used to control the number
+of instances PaaSTA thinks your service should have.
 
 Finally, remember to set the ``decision_policy`` of the ``autoscaling``
 parameter for each service instance to ``"bespoke"`` or else PaaSTA will
