@@ -72,19 +72,6 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
 
 
-def scale_marathon_job(service, instance, app_id, delta, client, cluster):
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-    _log(
-        service=service,
-        line="EmergencyScale: Scaling %s %s by %d instances" % (name, 'down' if delta < 0 else 'up', abs(int(delta))),
-        component='deploy',
-        level='event',
-        cluster=cluster,
-        instance=instance
-    )
-    client.scale_app(app_id, delta=int(delta), force=True)
-
-
 def bouncing_status_human(app_count, bounce_method):
     if app_count == 0:
         return PaastaColors.red("Stopped")
@@ -402,8 +389,8 @@ def status_mesos_tasks(service, instance, normal_instance_count):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None):
-    """Performs a start/stop/restart/status/scale on an instance
-    :param command: String of start, stop, restart, status or scale
+    """Performs a start/stop/restart/status on an instance
+    :param command: String of start, stop, restart, status
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
@@ -461,8 +448,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 synapse_port=system_config.get_synapse_port(),
                 synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
             )
-    elif command == 'scale':
-        scale_marathon_job(service, instance, app_id, delta, client, cluster)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
