@@ -271,7 +271,7 @@ def build_start_maintenance_payload(hostnames):
     return get_machine_ids(hostnames)
 
 
-def hostnames_to_componenets(hostnames, resolve=False):
+def hostnames_to_components(hostnames, resolve=False):
     """Converts a list of 'host[|ip]' entries into namedtuples containing 'host' and 'ip' attributes,
     optionally performing a DNS lookup to resolve the hostname into an IP address
     :param hostnames: a list of hostnames where each hostname can be of the form 'host[|ip]'
@@ -298,7 +298,7 @@ def get_machine_ids(hostnames):
     :returns: a dictionary representing the list of machines to bring up/down for maintenance
     """
     machine_ids = []
-    components = hostnames_to_componenets(hostnames, resolve=True)
+    components = hostnames_to_components(hostnames, resolve=True)
     for component in components:
         machine_id = {
             'hostname': component.host,
@@ -458,7 +458,7 @@ def unreserve(slave_id, resources):
 def reserve_all_resources(hostnames):
     mesos_state = get_mesos_master().state_summary()
     hosts = []
-    components = hostnames_to_componenets(hostnames)
+    components = hostnames_to_components(hostnames)
     for component in components:
         hosts.append(component.host)
     for slave in mesos_state['slaves']:
@@ -482,7 +482,7 @@ def reserve_all_resources(hostnames):
 def unreserve_all_resources(hostnames):
     mesos_state = get_mesos_master().state_summary()
     hosts = []
-    components = hostnames_to_componenets(hostnames)
+    components = hostnames_to_components(hostnames)
     for component in components:
         hosts.append(component.host)
     for slave in mesos_state['slaves']:
