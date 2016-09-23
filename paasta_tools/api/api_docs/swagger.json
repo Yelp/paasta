@@ -172,7 +172,7 @@
             "name": "desired_instances",
             "required": true,
             "schema": {
-              "format": "integer"
+              "type": "integer"
             }
           }
         ]
