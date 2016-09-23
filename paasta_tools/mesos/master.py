@@ -153,6 +153,7 @@ class MesosMaster(object):
         else:
             return cfg
 
+    @util.CachedProperty(ttl=5)
     def state(self):
         return self.fetch("/master/state.json").json()
 
@@ -183,7 +184,7 @@ class MesosMaster(object):
         return list(map(
             lambda x: slave.MesosSlave(self.config, x),
             itertools.ifilter(
-                lambda x: fltr == x['id'], self.state()['slaves'])))
+                lambda x: fltr == x['id'], self.state['slaves'])))
 
     def _task_list(self, active_only=False):
         keys = ["tasks"]
@@ -224,7 +225,7 @@ class MesosMaster(object):
         keys = ["frameworks"]
         if not active_only:
             keys.append("completed_frameworks")
-        return util.merge(self.state(), *keys)
+        return util.merge(self.state, *keys)
 
     def frameworks(self, active_only=False):
         keys = ["frameworks"]
