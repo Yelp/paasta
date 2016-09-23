@@ -12,10 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Interacts with the framework APIs to start/stop/restart/get status/scale for
-instances. Assumes that the credentials are available, so must run as root.
-"""
 import argparse
 import logging
 import sys
@@ -39,7 +35,7 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Runs start/stop/restart/status/scale on a PaaSTA service in a given cluster.',
+        description='Runs start/stop/restart/status on a PaaSTA service in a given cluster.',
     )
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the service. "
@@ -62,7 +58,7 @@ def parse_args():
                         help="app ID as returned by paasta status -v to operate on")
     parser.add_argument('--delta', dest="delta",
                         help="Number of instances you want to scale up (positive number) or down (negative number)")
-    command_choices = ['start', 'stop', 'restart', 'status', 'scale']
+    command_choices = ['start', 'stop', 'restart', 'status']
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
     return args

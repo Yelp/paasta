@@ -41,35 +41,17 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
+def restart_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service=service,
-        line="EmergencyStart: scaling %s up to %d instances" % (name, normal_instance_count),
+        line="EmergencyRestart: Scaling %s down to 0 instances, then letting them scale back up" % (name),
         component='deploy',
         level='event',
         cluster=cluster,
         instance=instance
     )
-    client.scale_app(app_id, instances=normal_instance_count, force=True)
-
-
-def stop_marathon_job(service, instance, app_id, client, cluster):
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-    _log(
-        service=service,
-        line="EmergencyStop: Scaling %s down to 0 instances" % (name),
-        component='deploy',
-        level='event',
-        cluster=cluster,
-        instance=instance
-    )
-    client.scale_app(app_id, instances=0, force=True)  # TODO do we want to capture the return val of any client calls?
-
-
-def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
-    stop_marathon_job(service, instance, app_id, client, cluster)
-    start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
+    client.scale_app(app_id, instances=0, force=True)
 
 
 def bouncing_status_human(app_count, bounce_method):
@@ -415,12 +397,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
-    if command == 'start':
-        start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
-    elif command == 'stop':
-        stop_marathon_job(service, instance, app_id, client, cluster)
-    elif command == 'restart':
-        restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
+    if command == 'restart':
+        restart_marathon_job(service, instance, app_id, client, cluster)
     elif command == 'status':
         print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
