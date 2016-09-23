@@ -103,7 +103,7 @@
           "200": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "format": "integer"
+              "type": "integer"
             }
           },
           "404": {
@@ -138,7 +138,7 @@
           "202": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "format": "integer"
+              "type": "integer"
             }
           },
           "404": {
