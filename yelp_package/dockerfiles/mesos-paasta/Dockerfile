@@ -7,4 +7,5 @@ RUN mkdir /var/run/sshd
 ADD ./cron.d /etc/cron.d
 RUN mkdir -p /nail/etc
 RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
+RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 ADD ./start.sh /start.sh
