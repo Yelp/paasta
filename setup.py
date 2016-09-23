@@ -45,6 +45,7 @@ setup(
         'dulwich == 0.10.0',
         'ephemeral-port-reserve >= 1.0.1',
         'functools32',
+        'futures',
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
         'httplib2 >= 0.9,<= 1.0',

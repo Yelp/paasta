@@ -1,4 +1,3 @@
-MESOS_CLI_CONFIG=/etc/paasta/mesos-cli.json
 MAILTO=""
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/nail/sys/bin:/usr/sbin:/usr/bin:/sbin:/bin
