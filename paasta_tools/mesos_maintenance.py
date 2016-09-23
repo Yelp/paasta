@@ -163,7 +163,10 @@ def get_hosts_with_state(state):
         raise
     if not status or state not in status:
         return []
-    return [machine['hostname'] for machine in status[state]]
+    if 'id' in status[state][0]:
+        return [machine['id']['hostname'] for machine in status[state]]
+    else:
+        return [machine['hostname'] for machine in status[state]]
 
 
 def get_draining_hosts():
