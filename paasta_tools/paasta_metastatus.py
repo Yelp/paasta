@@ -591,7 +591,7 @@ def main():
 
     master = get_mesos_master()
     try:
-        mesos_state = master.state
+        mesos_state = master.state()
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early

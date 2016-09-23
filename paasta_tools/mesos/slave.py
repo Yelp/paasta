@@ -58,13 +58,12 @@ class MesosSlave(object):
             raise exceptions.SlaveDoesNotExist(
                 "Unable to connect to the slave at {0}".format(self.host))
 
-    @util.CachedProperty(ttl=5)
     def state(self):
         return self.fetch("/slave(1)/state.json").json()
 
     @property
     def frameworks(self):
-        return util.merge(self.state, "frameworks", "completed_frameworks")
+        return util.merge(self.state(), "frameworks", "completed_frameworks")
 
     def task_executor(self, task_id):
         for fw in self.frameworks:
