@@ -124,7 +124,7 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
-    mesos_state = get_mesos_master().state()
+    mesos_state = get_mesos_master().state
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or not sfr['SpotFleetRequestState'] == 'active':
         log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
