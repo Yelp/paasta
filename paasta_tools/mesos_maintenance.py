@@ -58,8 +58,8 @@ def base_api():
             )
             resp.raise_for_status()
             return resp
-        except HTTPError as e:
-            e.msg = "Error executing API request calling %s. Got error: %s" % (url, e.msg)
+        except HTTPError:
+            log.debug("Error executing API request calling %s." % url)
             raise
     return execute_request
 
@@ -143,8 +143,8 @@ def schedule():
     """
     try:
         schedule = get_maintenance_schedule()
-    except HTTPError as e:
-        e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error getting maintenance schedule.")
         raise
     return schedule.text
 
@@ -158,12 +158,12 @@ def get_hosts_with_state(state):
     """
     try:
         status = get_maintenance_status().json()
-    except HTTPError as e:
-        e.msg = "Error getting maintenance status. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error getting maintenance status.")
         raise
     if not status or state not in status:
         return []
-    return [machine['id']['hostname'] for machine in status[state]]
+    return [machine['hostname'] for machine in status[state]]
 
 
 def get_draining_hosts():
@@ -429,8 +429,8 @@ def reserve(slave_id, resources):
     client_fn = reserve_api()
     try:
         reserve_output = client_fn(method="POST", endpoint="", data=payload).text
-    except HTTPError as e:
-        e.msg = "Error adding dynamic reservation. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error adding dynamic reservation.")
         raise
     return reserve_output
 
@@ -449,8 +449,8 @@ def unreserve(slave_id, resources):
     client_fn = unreserve_api()
     try:
         unreserve_output = client_fn(method="POST", endpoint="", data=payload).text
-    except HTTPError as e:
-        e.msg = "Error adding dynamic unreservation. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error adding dynamic unreservation.")
         raise
     return unreserve_output
 
@@ -515,8 +515,8 @@ def drain(hostnames, start, duration):
     client_fn = get_schedule_client()
     try:
         drain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error performing maintenance drain.")
         raise
     return drain_output
 
@@ -533,8 +533,8 @@ def undrain(hostnames):
     client_fn = get_schedule_client()
     try:
         undrain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance undrain. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error performing maintenance undrain.")
         raise
     return undrain_output
 
@@ -549,8 +549,8 @@ def down(hostnames):
     client_fn = master_api()
     try:
         down_output = client_fn(method="POST", endpoint="/machine/down", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance down. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error performing maintenance down.")
         raise
     return down_output
 
@@ -565,8 +565,8 @@ def up(hostnames):
     client_fn = master_api()
     try:
         up_output = client_fn(method="POST", endpoint="/machine/up", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance up. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error performing maintenance up.")
         raise
     return up_output
 
@@ -578,8 +578,8 @@ def status():
     """
     try:
         status = get_maintenance_status()
-    except HTTPError as e:
-        e.msg = "Error performing maintenance status. Got error: %s" % e.msg
+    except HTTPError:
+        log.debug("Error performing maintenance status.")
         raise
     return status.text
 

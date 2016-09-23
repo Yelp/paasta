@@ -616,16 +616,12 @@ def test_get_hosts_with_state_draining(
     fake_status = {
         "draining_machines": [
             {
-                "id": {
-                    "hostname": "fake-host1.fakesite.something",
-                    "ip": "0.0.0.0"
-                }
+                "hostname": "fake-host1.fakesite.something",
+                "ip": "0.0.0.0"
             },
             {
-                "id": {
-                    "hostname": "fake-host2.fakesite.something",
-                    "ip": "0.0.0.1"
-                }
+                "hostname": "fake-host2.fakesite.something",
+                "ip": "0.0.0.1"
             }
         ]
     }
@@ -642,16 +638,12 @@ def test_get_hosts_with_state_down(
     fake_status = {
         "down_machines": [
             {
-                "id": {
-                    "hostname": "fake-host1.fakesite.something",
-                    "ip": "0.0.0.0"
-                }
+                "hostname": "fake-host1.fakesite.something",
+                "ip": "0.0.0.0"
             },
             {
-                "id": {
-                    "hostname": "fake-host2.fakesite.something",
-                    "ip": "0.0.0.1"
-                }
+                "hostname": "fake-host2.fakesite.something",
+                "ip": "0.0.0.1"
             }
         ]
     }
