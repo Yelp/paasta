@@ -101,5 +101,8 @@ setup(
         'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
         'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
         'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
+    ],
+        'paste.app_factory': [
+        'paasta-api-config=paasta_tools.api.api:make_app'
     ]},
 )
