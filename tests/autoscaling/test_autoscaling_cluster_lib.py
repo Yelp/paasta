@@ -186,6 +186,26 @@ def test_downscale_spot_fleet_request():
                                      mock.call(mock_mesos_state, slaves_list=[])]
         mock_get_mesos_task_count_by_slave.assert_has_calls(mock_get_task_count_calls)
 
+        # test non integer scale down
+        # this should result in killing 3 instances,
+        # leaving us on 7.1 provisioned of target 7
+        mock_slave_1 = {'hostname': 'host1', 'instance_id': 'i-blah123',
+                        'instance_weight': 0.3}
+        mock_gracefully_terminate_slave.side_effect = None
+        mock_gracefully_terminate_slave.reset_mock()
+        mock_get_mesos_task_count_by_slave.reset_mock()
+        mock_sort_slaves_to_kill.reset_mock()
+        mock_sfr_sorted_slaves = [mock_slave_1] * 10
+        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves] +
+                                                    [mock_sfr_sorted_slaves[x:-1] for x in range(0, 10)])
+        autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
+                                                             filtered_slaves=mock_filtered_slaves,
+                                                             pool_settings=mock_pool_settings,
+                                                             current_capacity=8,
+                                                             target_capacity=7,
+                                                             dry_run=False)
+        assert mock_gracefully_terminate_slave.call_count == 3
+
 
 def test_gracefully_terminate_slave():
     with contextlib.nested(

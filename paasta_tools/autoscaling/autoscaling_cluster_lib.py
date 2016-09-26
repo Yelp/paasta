@@ -390,6 +390,9 @@ def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_c
                       "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
             raise
     log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
+    # Instance weights can be floats but the target has to be an integer
+    # because this is all AWS allows on the API call to set target capacity
+    new_capacity = int(floor(new_capacity))
     try:
         set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run, region=resource['region'])
     except FailSetSpotCapacity:
@@ -419,10 +422,8 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
         log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
         filtered_sorted_slaves.reverse()
         slave_to_kill = filtered_sorted_slaves.pop()
-        # Instance weights can be floats but the target has to be an integer
-        # because AWS...
         instance_capacity = slave_to_kill['instance_weight']
-        new_capacity = int(round(current_capacity - instance_capacity))
+        new_capacity = current_capacity - instance_capacity
         if new_capacity < target_capacity:
             log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
                      " close to our target as we can get".format(slave_to_kill['instance_id'],
