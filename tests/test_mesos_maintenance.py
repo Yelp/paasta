@@ -22,6 +22,7 @@ from dateutil import tz
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
 from paasta_tools.mesos_maintenance import build_reservation_payload
 from paasta_tools.mesos_maintenance import build_start_maintenance_payload
+from paasta_tools.mesos_maintenance import components_to_hosts
 from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
 from paasta_tools.mesos_maintenance import down
@@ -34,6 +35,8 @@ from paasta_tools.mesos_maintenance import get_hosts_with_state
 from paasta_tools.mesos_maintenance import get_machine_ids
 from paasta_tools.mesos_maintenance import get_maintenance_schedule
 from paasta_tools.mesos_maintenance import get_maintenance_status
+from paasta_tools.mesos_maintenance import Hostname
+from paasta_tools.mesos_maintenance import hostnames_to_components
 from paasta_tools.mesos_maintenance import is_host_down
 from paasta_tools.mesos_maintenance import is_host_drained
 from paasta_tools.mesos_maintenance import is_host_draining
@@ -844,3 +847,39 @@ def test_is_host_past_maintenance_end(
     mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
     assert is_host_past_maintenance_end('fake_host')
     assert not is_host_past_maintenance_end('fake_host2')
+
+
+def test_hostnames_to_components_simple():
+    hostname = 'fake-host'
+    ip = None
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components([hostname])
+    assert actual == expected
+
+
+def test_hostnames_to_components_pipe():
+    hostname = 'fake-host'
+    ip = '127.0.0.1'
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components(["%s|%s" % (hostname, ip)])
+    assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
+def test_hostnames_to_components_resolve(
+    mock_gethostbyname,
+):
+    hostname = 'fake-host'
+    ip = '127.0.0.1'
+    mock_gethostbyname.return_value = ip
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components([hostname], resolve=True)
+    assert actual == expected
+
+
+def test_components_to_hosts():
+    host = 'fake-host'
+    ip = '127.0.0.1'
+    expected = [host]
+    actual = components_to_hosts([Hostname(host=host, ip=ip)])
+    assert actual == expected

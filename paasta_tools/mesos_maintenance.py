@@ -59,8 +59,7 @@ def base_api():
             resp.raise_for_status()
             return resp
         except HTTPError:
-            log.debug("Error executing API request calling %s." % url)
-            raise
+            raise HTTPError("Error executing API request calling %s." % url)
     return execute_request
 
 
@@ -144,8 +143,7 @@ def schedule():
     try:
         schedule = get_maintenance_schedule()
     except HTTPError:
-        log.debug("Error getting maintenance schedule.")
-        raise
+        raise HTTPError("Error getting maintenance schedule.")
     return schedule.text
 
 
@@ -159,8 +157,7 @@ def get_hosts_with_state(state):
     try:
         status = get_maintenance_status().json()
     except HTTPError:
-        log.debug("Error getting maintenance status.")
-        raise
+        raise HTTPError("Error getting maintenance status.")
     if not status or state not in status:
         return []
     if 'id' in status[state][0]:
@@ -433,8 +430,7 @@ def reserve(slave_id, resources):
     try:
         reserve_output = client_fn(method="POST", endpoint="", data=payload).text
     except HTTPError:
-        log.debug("Error adding dynamic reservation.")
-        raise
+        raise HTTPError("Error adding dynamic reservation.")
     return reserve_output
 
 
@@ -453,56 +449,66 @@ def unreserve(slave_id, resources):
     try:
         unreserve_output = client_fn(method="POST", endpoint="", data=payload).text
     except HTTPError:
-        log.debug("Error adding dynamic unreservation.")
-        raise
+        raise HTTPError("Error adding dynamic unreservation.")
     return unreserve_output
 
 
-def reserve_all_resources(hostnames):
-    mesos_state = get_mesos_master().state_summary()
+def components_to_hosts(components):
+    """Convert a list of Component namedtuples to a list of their hosts
+    :param components: a list of Component namedtuples
+    :returns: list of the hosts associated with each Component
+    """
     hosts = []
-    components = hostnames_to_components(hostnames)
     for component in components:
         hosts.append(component.host)
-    for slave in mesos_state['slaves']:
+    return hosts
+
+
+def reserve_all_resources(hostnames):
+    """Dynamically reserve all available resources on the specified hosts
+    :param hostnames: list of hostnames to reserve resources on
+    """
+    mesos_state = get_mesos_master().state_summary()
+    components = hostnames_to_components(hostnames)
+    hosts = components_to_hosts(components)
+    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    for slave in known_slaves:
         hostname = slave['hostname']
-        if hostname in hosts:
-            log.info("Reserving all resources on %s" % hostname)
-            slave_id = slave['id']
-            resources = []
-            for resource in ['disk', 'mem', 'cpus']:
-                free_resource = slave['resources'][resource] - slave['used_resources'][resource]
-                for role in slave['reserved_resources']:
-                    free_resource -= slave['reserved_resources'][role][resource]
-                resources.append(Resource(name=resource, amount=free_resource))
-            try:
-                reserve(slave_id=slave_id, resources=resources)
-            except HTTPError:
-                log.debug("Failed reserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
-                raise
+        log.info("Reserving all resources on %s" % hostname)
+        slave_id = slave['id']
+        resources = []
+        for resource in ['disk', 'mem', 'cpus']:
+            free_resource = slave['resources'][resource] - slave['used_resources'][resource]
+            for role in slave['reserved_resources']:
+                free_resource -= slave['reserved_resources'][role][resource]
+            resources.append(Resource(name=resource, amount=free_resource))
+        try:
+            reserve(slave_id=slave_id, resources=resources)
+        except HTTPError:
+            raise HTTPError("Failed reserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
 
 
 def unreserve_all_resources(hostnames):
+    """Dynamically unreserve all available resources on the specified hosts
+    :param hostnames: list of hostnames to unreserve resources on
+    """
     mesos_state = get_mesos_master().state_summary()
-    hosts = []
     components = hostnames_to_components(hostnames)
-    for component in components:
-        hosts.append(component.host)
-    for slave in mesos_state['slaves']:
+    hosts = components_to_hosts(components)
+    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    for slave in known_slaves:
         hostname = slave['hostname']
-        if hostname in hosts:
-            log.info("Unreserving all resources on %s" % hostname)
-            slave_id = slave['id']
-            resources = []
-            for role in slave['reserved_resources']:
-                for resource in ['disk', 'mem', 'cpus']:
-                    reserved_resource = slave['reserved_resources'][role][resource]
-                    resources.append(Resource(name=resource, amount=reserved_resource))
-            try:
-                unreserve(slave_id=slave_id, resources=resources)
-            except HTTPError:
-                log.debug("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
-                raise
+        log.info("Unreserving all resources on %s" % hostname)
+        slave_id = slave['id']
+        resources = []
+        for role in slave['reserved_resources']:
+            for resource in ['disk', 'mem', 'cpus']:
+                reserved_resource = slave['reserved_resources'][role][resource]
+                resources.append(Resource(name=resource, amount=reserved_resource))
+        try:
+            unreserve(slave_id=slave_id, resources=resources)
+        except HTTPError:
+            raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
 
 
 def drain(hostnames, start, duration):
@@ -519,8 +525,7 @@ def drain(hostnames, start, duration):
     try:
         drain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
     except HTTPError:
-        log.debug("Error performing maintenance drain.")
-        raise
+        raise HTTPError("Error performing maintenance drain.")
     return drain_output
 
 
@@ -537,8 +542,7 @@ def undrain(hostnames):
     try:
         undrain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
     except HTTPError:
-        log.debug("Error performing maintenance undrain.")
-        raise
+        raise HTTPError("Error performing maintenance undrain.")
     return undrain_output
 
 
@@ -553,8 +557,7 @@ def down(hostnames):
     try:
         down_output = client_fn(method="POST", endpoint="/machine/down", data=json.dumps(payload)).text
     except HTTPError:
-        log.debug("Error performing maintenance down.")
-        raise
+        raise HTTPError("Error performing maintenance down.")
     return down_output
 
 
@@ -569,8 +572,7 @@ def up(hostnames):
     try:
         up_output = client_fn(method="POST", endpoint="/machine/up", data=json.dumps(payload)).text
     except HTTPError:
-        log.debug("Error performing maintenance up.")
-        raise
+        raise HTTPError("Error performing maintenance up.")
     return up_output
 
 
@@ -582,8 +584,7 @@ def status():
     try:
         status = get_maintenance_status()
     except HTTPError:
-        log.debug("Error performing maintenance status.")
-        raise
+        raise HTTPError("Error performing maintenance status.")
     return status.text
 
 
