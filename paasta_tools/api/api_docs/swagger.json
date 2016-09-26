@@ -103,7 +103,12 @@
           "200": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "type": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           },
           "404": {
@@ -138,7 +143,12 @@
           "202": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "type": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           },
           "404": {
@@ -168,11 +178,15 @@
           },
           {
             "in": "body",
-            "description": "Number of desired instances",
-            "name": "desired_instances",
+            "name": "json_body",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           }
         ]
