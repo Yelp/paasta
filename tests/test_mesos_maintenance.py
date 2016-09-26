@@ -14,7 +14,6 @@
 import argparse
 import datetime
 import json
-from collections import namedtuple
 
 import mock
 import pytest
@@ -44,15 +43,13 @@ from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import parse_datetime
 from paasta_tools.mesos_maintenance import parse_timedelta
 from paasta_tools.mesos_maintenance import reserve
+from paasta_tools.mesos_maintenance import Resource
 from paasta_tools.mesos_maintenance import schedule
 from paasta_tools.mesos_maintenance import seconds_to_nanoseconds
 from paasta_tools.mesos_maintenance import status
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_maintenance import unreserve
 from paasta_tools.mesos_maintenance import up
-
-
-Resource = namedtuple('Resource', ['name', 'amount'])
 
 
 def test_parse_timedelta_none():
