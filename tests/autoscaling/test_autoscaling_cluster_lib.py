@@ -572,8 +572,7 @@ def test_spotfleet_metrics_provider():
                                        {'id': 'id2',
                                         'attributes': {'pool': 'default'},
                                         'pid': 'pid2'}]}
-        mock_master = mock.Mock()
-        mock_master.state.return_value = mock_mesos_state
+        mock_master = mock.Mock(state=mock_mesos_state)
         mock_get_mesos_master.return_value = mock_master
         mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
                             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
