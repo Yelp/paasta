@@ -15,9 +15,11 @@
 """
 PaaSTA service list (instances) etc.
 """
+from pyramid.response import Response
 from pyramid.view import view_config
 
-from paasta_tools.marathon_tools import get_instances_from_zookeeper
+from paasta_tools.api import settings
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 
 
@@ -25,14 +27,24 @@ from paasta_tools.marathon_tools import set_instances_for_marathon_service
 def get_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    desired_instances = get_instances_from_zookeeper(service=service, instance=instance)
-    return desired_instances
+    cluster = settings.cluster
+    soa_dir = settings.soa_dir
+    service_config = load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+        load_deployments=False,
+    )
+    response_body = {'desired_instances': service_config.get_instances()}
+    return Response(json_body=response_body, status_code=200)
 
 
 @view_config(route_name='service.autoscaler.post', request_method='POST', renderer='json')
 def update_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    desired_instances = request.swagger_data.get('desired_instances')
+    desired_instances = request.swagger_data.get('json_body')['desired_instances']
     set_instances_for_marathon_service(service=service, instance=instance, instance_count=desired_instances)
-    return desired_instances
+    response_body = {'desired_instances': desired_instances}
+    return Response(json_body=response_body, status_code=202)
