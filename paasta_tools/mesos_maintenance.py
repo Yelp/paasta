@@ -200,6 +200,49 @@ def is_host_down(hostname=getfqdn()):
     return hostname in get_down_hosts()
 
 
+def get_hosts_forgotten_draining():
+    """Find hosts that are still marked as draining (rather than down) after the start
+    of their maintenance window. For each of these hosts, either mark them as 'down' for
+    maintenance, adjust the time of their maintenance window, or cancel the maintenance
+    window if it is no longer needed.
+    :returns: a list of hostnames of hosts forgotten draining
+    """
+    draining_hosts = get_draining_hosts()
+    hosts_past_maintenance_start = get_hosts_past_maintenance_start()
+    print("draining_hosts: %s" % draining_hosts)
+    print("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
+    forgotten_draining = list(set(draining_hosts).intersection(hosts_past_maintenance_start))
+    return forgotten_draining
+
+
+def are_hosts_forgotten_draining():
+    """Quick way to test if there are any forgotten draining hosts.
+    :returns: a boolean that is True if there are any forgotten draining
+    hosts and False otherwise
+    """
+    return bool(get_hosts_forgotten_draining())
+
+
+def get_hosts_forgotten_down():
+    """Find hosts that are still marked as down (rather than up) after the end
+    of their maintenance window. For each of these hosts, either mark them as 'up' or
+    adjust the time of their maintenance window.
+    :returns: a list of hostnames of hosts forgotten down
+    """
+    down_hosts = get_down_hosts()
+    hosts_past_maintenance_end = get_hosts_past_maintenance_end()
+    forgotten_down = list(set(down_hosts).intersection(hosts_past_maintenance_end))
+    return forgotten_down
+
+
+def are_hosts_forgotten_down():
+    """Quick way to test if there are any forgotten down hosts.
+    :returns: a boolean that is True if there are any forgotten down
+    hosts and False otherwise
+    """
+    return bool(get_hosts_forgotten_down())
+
+
 def parse_timedelta(value):
     """Return the delta in nanoseconds.
     :param value: a string containing a time format supported by :mod:`pytimeparse`
