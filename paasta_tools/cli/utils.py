@@ -23,6 +23,7 @@ from subprocess import CalledProcessError
 
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
@@ -31,6 +32,8 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
@@ -674,3 +677,69 @@ def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
         invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
 
     return valid_deploy_groups, invalid_deploy_groups
+
+
+def get_subparser(subparsers, function, command, help_text, description):
+    new_parser = subparsers.add_parser(
+        command,
+        help=help_text,
+        description=(description),
+        epilog=(
+            "Note: This command requires SSH and sudo privileges on the remote PaaSTA "
+            "nodes."
+        ),
+    )
+    new_parser.add_argument(
+        '-s', '--service',
+        help='The name of the service you wish to inspect',
+        required=True
+    ).completer = lazy_choices_completer(list_services)
+    new_parser.add_argument(
+        '-c', '--cluster',
+        help="Cluster on which the service is running"
+             "For example: --cluster norcal-prod",
+        required=True
+    ).completer = lazy_choices_completer(list_clusters)
+    new_parser.add_argument(
+        '-i', '--instance',
+        help="The instance that you wish to inspect"
+             "For example: --instance main",
+        required=True,
+        default='main'
+    )  # No completer because we need to know service first and we can't until some other stuff has happened
+    new_parser.add_argument(
+        '-H', '--host',
+        dest="host",
+        default=None,
+        help="Specify a specific host on which to run. Defaults to"
+             " one that is running the service chosen at random"
+    )
+    new_parser.add_argument(
+        '-m', '--mesos-id',
+        dest="mesos_id",
+        default=None,
+        help="A specific mesos task ID, must match a task "
+             "running on the specified host. If not specified we "
+             "will pick a task at random"
+    )
+    new_parser.set_defaults(command=function)
+    return new_parser
+
+
+def get_status_for_instance(cluster, service, instance):
+    api = client.get_paasta_api_client(cluster=cluster)
+    if not api:
+        sys.exit(1)
+    status = api.service.status_instance(service=service, instance=instance).result()
+    if not status.marathon:
+        log.error("Not a marathon service, exiting")
+        sys.exit(1)
+    return status
+
+
+def pick_slave_from_status(status, host=None):
+    if host:
+        return host
+    else:
+        slaves = status.marathon.slaves
+        return slaves[0]

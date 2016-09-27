@@ -640,3 +640,48 @@ def test_run_chronos_rerun(mock_run):
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value
+
+
+def test_get_subparser():
+    mock_subparser = mock.Mock()
+    mock_function = mock.Mock()
+    mock_command = 'test'
+    mock_help_text = 'HALP'
+    mock_description = 'what_i_do'
+    utils.get_subparser(subparsers=mock_subparser,
+                        function=mock_function,
+                        help_text=mock_help_text,
+                        description=mock_description,
+                        command=mock_command)
+    mock_subparser.add_parser.assert_called_with('test',
+                                                 help='HALP',
+                                                 description=('what_i_do'),
+                                                 epilog=("Note: This command requires SSH and "
+                                                         "sudo privileges on the remote PaaSTA nodes."))
+    mock_subparser.add_parser.return_value.set_defaults.assert_called_with(command=mock_function)
+
+
+@patch('paasta_tools.cli.utils.client', autospec=True)
+def test_get_status_for_instance(mock_client):
+    mock_client.get_paasta_api_client.return_value = None
+    with raises(SystemExit):
+        utils.get_status_for_instance('cluster1', 'my-service', 'main')
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1')
+    mock_api = mock.Mock()
+    mock_client.get_paasta_api_client.return_value = mock_api
+    mock_result = mock.Mock(return_value=mock.Mock(marathon=False))
+    mock_api.service.status_instance.return_value = mock.Mock(result=mock_result)
+    with raises(SystemExit):
+        utils.get_status_for_instance('cluster1', 'my-service', 'main')
+    mock_result = mock.Mock(return_value=mock.Mock(marathon=True))
+    mock_api.service.status_instance.return_value = mock.Mock(result=mock_result)
+    utils.get_status_for_instance('cluster1', 'my-service', 'main')
+    mock_api.service.status_instance.assert_called_with(service='my-service',
+                                                        instance='main')
+
+
+def test_pick_slave_from_status():
+    mock_slaves = [1, 2]
+    mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
+    assert utils.pick_slave_from_status(mock_status, host=None) == 1
+    assert utils.pick_slave_from_status(mock_status, host='lolhost') == 'lolhost'
