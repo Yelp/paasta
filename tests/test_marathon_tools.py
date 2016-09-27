@@ -19,6 +19,7 @@ from marathon import MarathonHttpError
 from marathon.models import MarathonApp
 from pytest import raises
 
+from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -76,7 +77,7 @@ class TestMarathonTools:
             },
         ],
     })
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     def test_load_marathon_service_config_happy_path(self):
         fake_name = 'jazz'
@@ -329,7 +330,7 @@ class TestMarathonTools:
         soa_dir = 'drink_up'
         namespace = 'thirsty_mock'
         fake_port = 1234567890
-        fake_nerve = marathon_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
+        fake_nerve = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                        autospec=True, return_value=namespace),
@@ -610,8 +611,8 @@ class TestMarathonTools:
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         namespaces = [['dos'], ['uno']]
-        nerve_dicts = [marathon_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
-                       marathon_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
+        nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
+                       long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
         expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666}),
                     ('no_docstrings.dos', {'binary': 1, 'port': 2222, 'proxy_port': 6666})]
         with contextlib.nested(
@@ -646,10 +647,10 @@ class TestMarathonTools:
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         namespaces = [['quatro'], ['uno', 'dos', 'tres']]
         nerve_dicts = {
-            ('no_test', 'uno'): marathon_tools.ServiceNamespaceConfig({'proxy_port': 6666}),
-            ('no_test', 'dos'): marathon_tools.ServiceNamespaceConfig({'proxy_port': 6667}),
-            ('no_test', 'tres'): marathon_tools.ServiceNamespaceConfig({'proxy_port': 6668}),
-            ('no_docstrings', 'quatro'): marathon_tools.ServiceNamespaceConfig({'proxy_port': 6669})
+            ('no_test', 'uno'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6666}),
+            ('no_test', 'dos'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6667}),
+            ('no_test', 'tres'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6668}),
+            ('no_docstrings', 'quatro'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6669})
         }
         expected = [('no_test.uno', {'port': 1111, 'proxy_port': 6666}),
                     ('no_test.dos', {'port': 1111, 'proxy_port': 6667}),
@@ -688,8 +689,8 @@ class TestMarathonTools:
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         namespaces = [['dos'], ['uno']]
-        nerve_dicts = [marathon_tools.ServiceNamespaceConfig({'binary': 1}),
-                       marathon_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
+        nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1}),
+                       long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
         expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666})]
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.marathon_services_running_here',
@@ -895,7 +896,7 @@ class TestMarathonTools:
         fake_instances = 101
         fake_cmd = None
         fake_args = ['arg1', 'arg2']
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': '/health',
             'discover': 'habitat',
@@ -1161,7 +1162,7 @@ class TestMarathonTools:
         assert fake_conf.get_instances() == 0
 
     def test_get_calculated_constraints_in_config_override_all_others(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1177,7 +1178,7 @@ class TestMarathonTools:
             assert get_slaves_patch.call_count == 0
 
     def test_get_calculated_constraints_default(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1203,7 +1204,7 @@ class TestMarathonTools:
             assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
     def test_get_calculated_constraints_stringifies(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1230,7 +1231,7 @@ class TestMarathonTools:
             assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
     def test_get_calculated_constraints_extra_constraints(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1257,7 +1258,7 @@ class TestMarathonTools:
             assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
     def test_get_calculated_constraints_from_discover(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': '/status',
             'discover': 'habitat',
@@ -1288,7 +1289,7 @@ class TestMarathonTools:
             get_slaves_patch.assert_called_once_with([{}], 'habitat')
 
     def test_get_calculated_constraints_respects_deploy_blacklist(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1317,7 +1318,7 @@ class TestMarathonTools:
             get_slaves_patch.assert_called_once_with([{}], 'region')
 
     def test_get_calculated_constraints_respects_deploy_whitelist(self):
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1678,7 +1679,7 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': fake_path,
         })
@@ -1713,7 +1714,7 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'tcp',
         })
         with contextlib.nested(
@@ -1750,7 +1751,7 @@ class TestMarathonTools:
             },
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
                        autospec=True,
@@ -1783,7 +1784,7 @@ class TestMarathonTools:
             },
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
                        autospec=True,
@@ -1817,7 +1818,7 @@ class TestMarathonTools:
             },
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
                        autospec=True,
@@ -1846,7 +1847,7 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthcheck_mode_default(self):
-        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig(
             service='service',
             cluster='cluster',
@@ -1857,7 +1858,7 @@ class TestMarathonServiceConfig(object):
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
     def test_get_healthcheck_mode_default_from_namespace_config(self):
-        namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 1234})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 1234})
         marathon_config = marathon_tools.MarathonServiceConfig(
             service='service',
             cluster='cluster',
@@ -1868,7 +1869,7 @@ class TestMarathonServiceConfig(object):
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'http'
 
     def test_get_healthcheck_mode_valid(self):
-        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig(
             service='service',
             cluster='cluster',
@@ -1879,7 +1880,7 @@ class TestMarathonServiceConfig(object):
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'tcp'
 
     def test_get_healthcheck_mode_invalid(self):
-        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig(
             service='service',
             cluster='cluster',
@@ -1891,7 +1892,7 @@ class TestMarathonServiceConfig(object):
             marathon_config.get_healthcheck_mode(namespace_config)
 
     def test_get_healthcheck_mode_explicit_none(self):
-        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig(
             service='service',
             cluster='cluster',
@@ -1917,7 +1918,7 @@ class TestMarathonServiceConfig(object):
             },
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': fake_path,
         })
@@ -1945,7 +1946,7 @@ class TestMarathonServiceConfig(object):
             config_dict={},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'http'})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
             {
                 "protocol": "HTTP",
@@ -1968,7 +1969,7 @@ class TestMarathonServiceConfig(object):
             config_dict={},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'tcp'})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'tcp'})
         expected = [
             {
                 "protocol": "TCP",
@@ -1991,7 +1992,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         expected = [
             {
                 "protocol": "COMMAND",
@@ -2018,7 +2019,7 @@ class TestMarathonServiceConfig(object):
                 'healthcheck_cmd': fake_command},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         expected = [
             {
                 "protocol": "COMMAND",
@@ -2040,7 +2041,7 @@ class TestMarathonServiceConfig(object):
             config_dict={},
             branch_dict={},
         )
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
 
     def test_get_healthchecks_invalid_mode(self):
@@ -2051,7 +2052,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'healthcheck_mode': 'none'},
             branch_dict={},
         )
-        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthchecks(namespace_config)
 
@@ -2139,26 +2140,26 @@ class TestMarathonServiceConfig(object):
 class TestServiceNamespaceConfig(object):
 
     def test_get_mode_default(self):
-        assert marathon_tools.ServiceNamespaceConfig().get_mode() is None
+        assert long_running_service_tools.ServiceNamespaceConfig().get_mode() is None
 
     def test_get_mode_default_when_port_specified(self):
         config = {'proxy_port': 1234}
-        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
+        assert long_running_service_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
 
     def test_get_mode_valid(self):
         config = {'mode': 'tcp'}
-        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'tcp'
+        assert long_running_service_tools.ServiceNamespaceConfig(config).get_mode() == 'tcp'
 
     def test_get_mode_invalid(self):
         config = {'mode': 'paasta'}
-        with raises(marathon_tools.InvalidSmartstackMode):
-            marathon_tools.ServiceNamespaceConfig(config).get_mode()
+        with raises(long_running_service_tools.InvalidSmartstackMode):
+            long_running_service_tools.ServiceNamespaceConfig(config).get_mode()
 
     def test_get_healthcheck_uri_default(self):
-        assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
+        assert long_running_service_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
 
     def test_get_discover_default(self):
-        assert marathon_tools.ServiceNamespaceConfig().get_discover() == 'region'
+        assert long_running_service_tools.ServiceNamespaceConfig().get_discover() == 'region'
 
 
 def test_deformat_job_id():
@@ -2181,7 +2182,7 @@ def test_format_marathon_app_dict_no_smartstack():
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     with contextlib.nested(
         mock.patch(
@@ -2259,7 +2260,7 @@ def test_format_marathon_app_dict_with_smartstack():
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 9001})
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 9001})
 
     with contextlib.nested(
         mock.patch(
@@ -2351,7 +2352,7 @@ def test_format_marathon_app_dict_utilizes_net():
         'volumes': fake_system_volumes,
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     with contextlib.nested(
         mock.patch(
@@ -2406,7 +2407,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         'volumes': fake_system_volumes,
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     with contextlib.nested(
         mock.patch(

@@ -23,8 +23,6 @@ import os
 import re
 import urlparse
 
-import google.protobuf.message
-import mesos.interface.mesos_pb2
 import requests
 import requests.exceptions
 from kazoo.retry import KazooRetry
@@ -100,14 +98,6 @@ class MesosMaster(object):
             if not data:
                 exceptions.MasterNotAvailableException("Cannot retrieve valid MasterInfo data from ZooKeeper")
 
-            # The serialization of the Master's PID to ZK has changed over time.
-            # Prior to 0.20 just the PID value was written to the znode; then the binary
-            # serialization of the `MasterInfo` Protobuf was written and then, as of 0.24.x,
-            # the protobuf is actually serialized as JSON.
-            # We try all strategies, starting with the most recent, falling back if we cannot
-            # parse the value.
-
-            # Try JSON first:
             try:
                 parsed = json.loads(data)
                 if parsed and "address" in parsed:
@@ -118,23 +108,7 @@ class MesosMaster(object):
             except ValueError as parse_error:
                 log.debug("[WARN] No JSON content, probably connecting to older Mesos version. "
                           "Reason: {}".format(parse_error))
-
-            # Try to deserialize the MasterInfo protobuf next:
-            try:
-                info = mesos.interface.mesos_pb2.MasterInfo()
-                info.ParseFromString(data)
-                return info.pid
-            except google.protobuf.message.DecodeError as parse_error:
-                log.debug("[WARN] Cannot deserialize Protobuf either, probably connecting to a "
-                          "legacy Mesos version, please consider upgrading. Reason: {}".format(
-                              parse_error))
-                # Finally try to just interpret the PID as a string:
-                if '@' in data:
-                    return data.split("@")[-1]
-                raise exceptions.MasterNotAvailableException(
-                    "Could not retrieve the MasterInfo from ZooKeeper; the data in '{}' was:"
-                    "{}".format(path, data)
-                )
+                raise exceptions.MasterNotAvailableException("Failed to parse mesos master ip from ZK")
 
     @log.duration
     def resolve(self, cfg):
@@ -203,7 +177,7 @@ class MesosMaster(object):
             raise exceptions.MultipleTasksForIDError(
                 "Multiple tasks matching filter %s. %s" % (
                     fltr,
-                    ",".join([slave.id for task in lst])
+                    ",".join([task.id for task in lst])
                 )
             )
         return lst[0]

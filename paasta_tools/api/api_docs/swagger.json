@@ -103,7 +103,12 @@
           "200": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "format": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           },
           "404": {
@@ -132,15 +137,18 @@
             "type": "string"
           }
         ]
-      }
-    },
-    "/services/{service}/{instance}/autoscaler": {
+      },
       "post": {
         "responses": {
           "202": {
             "description": "Desired instance count for a service instance",
             "schema": {
-              "format": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           },
           "404": {
@@ -170,11 +178,15 @@
           },
           {
             "in": "body",
-            "description": "Number of desired instances",
-            "name": "desired_instances",
+            "name": "json_body",
             "required": true,
             "schema": {
-              "format": "integer"
+              "type": "object",
+              "properties": {
+                "desired_instances": {
+                  "type": "integer"
+                }
+              }
             }
           }
         ]

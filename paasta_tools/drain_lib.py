@@ -100,7 +100,8 @@ class TestDrainMethod(DrainMethod):
     safe_to_kill_task_ids = set()
 
     def drain(self, task):
-        self.downed_task_ids.add(task.id)
+        if task.id not in self.safe_to_kill_task_ids:
+            self.downed_task_ids.add(task.id)
 
     def stop_draining(self, task):
         self.downed_task_ids -= set([task.id])

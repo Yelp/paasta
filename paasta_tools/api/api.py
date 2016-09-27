@@ -53,8 +53,10 @@ def parse_paasta_api_args():
     return args
 
 
-def make_app():
+def make_app(global_config=None):
     paasta_api_path = os.path.dirname(sys.modules['paasta_tools.api'].__file__)
+    setup_paasta_api()
+
     config = Configurator(settings={
         'service_name': 'paasta-api',
         'pyramid_swagger.schema_directory': os.path.join(paasta_api_path, 'api_docs'),
@@ -72,16 +74,7 @@ def make_app():
     return config.make_wsgi_app()
 
 
-def main(argv=None):
-    args = parse_paasta_api_args()
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
-    if args.soa_dir:
-        settings.soa_dir = args.soa_dir
-
+def setup_paasta_api():
     # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
@@ -99,6 +92,17 @@ def main(argv=None):
     # are removed only when the same request is made. Expired storage is not a
     # concern here. Thus remove_expired_responses is not needed.
     requests_cache.install_cache("paasta-api", backend="memory", expire_after=30)
+
+
+def main(argv=None):
+    args = parse_paasta_api_args()
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    if args.soa_dir:
+        settings.soa_dir = args.soa_dir
 
     server = WSGIServer(('', int(args.port)), make_app())
     log.info("paasta-api started on port %d with soa_dir %s" % (args.port, settings.soa_dir))

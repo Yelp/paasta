@@ -37,7 +37,14 @@ def test_get_mesos_cpu_status():
         'master/cpus_total': 3,
         'master/cpus_used': 1,
     }
-    total, used, available = paasta_metastatus.get_mesos_cpu_status(fake_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    total, used, available = paasta_metastatus.get_mesos_cpu_status(fake_metrics, fake_mesos_state)
     assert total == 3
     assert used == 1
     assert available == 2
@@ -48,7 +55,14 @@ def test_ok_cpu_health():
         'master/cpus_total': 10,
         'master/cpus_used': 1,
     }
-    ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics, fake_mesos_state)
     assert ok_health
     assert "CPUs: 1.00 / 10 in use (%s)" % PaastaColors.green("10.00%") in ok_output
 
@@ -58,7 +72,14 @@ def test_bad_cpu_health():
         'master/cpus_total': 10,
         'master/cpus_used': 9,
     }
-    failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics, fake_mesos_state)
     assert not failure_health
     assert "CRITICAL: Less than 10% CPUs available. (Currently using 90.00% of 10)" in failure_output
 
@@ -68,7 +89,14 @@ def test_assert_memory_health():
         'master/mem_total': 1024,
         'master/mem_used': 512,
     }
-    ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics, fake_mesos_state)
     assert ok_health
     assert "Memory: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
 
@@ -78,7 +106,14 @@ def test_failing_memory_health():
         'master/mem_total': 1024,
         'master/mem_used': 1000,
     }
-    failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics, fake_mesos_state)
     assert not failure_health
     assert "CRITICAL: Less than 10% memory available. (Currently using 97.66% of 1.00GB)" in failure_output
 
@@ -88,7 +123,14 @@ def test_assert_disk_health():
         'master/disk_total': 1024,
         'master/disk_used': 512,
     }
-    ok_output, ok_health = paasta_metastatus.assert_disk_health(ok_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    ok_output, ok_health = paasta_metastatus.assert_disk_health(ok_metrics, fake_mesos_state)
     assert ok_health
     assert "Disk: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
 
@@ -98,7 +140,14 @@ def test_failing_disk_health():
         'master/disk_total': 1024,
         'master/disk_used': 1000,
     }
-    failure_output, failure_health = paasta_metastatus.assert_disk_health(failure_metrics)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {},
+            },
+        ],
+    }
+    failure_output, failure_health = paasta_metastatus.assert_disk_health(failure_metrics, fake_mesos_state)
     assert not failure_health
     assert "CRITICAL: Less than 10% disk available. (Currently using 97.66%)" in failure_output
 
@@ -337,7 +386,7 @@ def test_main_no_marathon_config():
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_metrics_health', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_resource_utilization_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
@@ -348,7 +397,7 @@ def test_main_no_marathon_config():
         get_mesos_master,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,
-        get_mesos_metrics_health_patch,
+        get_mesos_resource_utilization_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
@@ -360,7 +409,7 @@ def test_main_no_marathon_config():
         get_mesos_stats_patch.return_value = {}
 
         get_mesos_state_status_patch.return_value = []
-        get_mesos_metrics_health_patch.return_value = []
+        get_mesos_resource_utilization_health_patch.return_value = []
 
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.return_value = {}
@@ -377,7 +426,7 @@ def test_main_no_chronos_config():
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
-        patch('paasta_tools.paasta_metastatus.get_mesos_metrics_health', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_resource_utilization_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
@@ -387,7 +436,7 @@ def test_main_no_chronos_config():
         get_mesos_master,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,
-        get_mesos_metrics_health_patch,
+        get_mesos_resource_utilization_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
@@ -404,7 +453,7 @@ def test_main_no_chronos_config():
         get_mesos_stats_patch.return_value = {}
 
         get_mesos_state_status_patch.return_value = []
-        get_mesos_metrics_health_patch.return_value = []
+        get_mesos_resource_utilization_health_patch.return_value = []
 
         load_chronos_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
@@ -565,6 +614,8 @@ def test_get_resource_utilization_per_slave():
                 'disk': 250,
                 'mem': 100,
             },
+            'reserved_resources': {
+            },
             'attributes': {
                 'habitat': 'somenametest-habitat',
             },
@@ -576,6 +627,13 @@ def test_get_resource_utilization_per_slave():
                 'cpus': 500,
                 'disk': 200,
                 'mem': 750,
+            },
+            'reserved_resources': {
+                'some-role': {
+                    'cpus': 10,
+                    'disk': 0,
+                    'mem': 150,
+                },
             },
             'attributes': {
                 'habitat': 'somenametest-habitat-2',
@@ -593,9 +651,9 @@ def test_get_resource_utilization_per_slave():
         mem=850
     )
     assert actual['free'] == paasta_metastatus.ResourceInfo(
-        cpus=555,
+        cpus=545,
         disk=430,
-        mem=830
+        mem=680
     )
 
 

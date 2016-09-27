@@ -9,7 +9,6 @@ Submodules
    paasta_tools.cli.cmds.check
    paasta_tools.cli.cmds.cook_image
    paasta_tools.cli.cmds.emergency_restart
-   paasta_tools.cli.cmds.emergency_scale
    paasta_tools.cli.cmds.emergency_start
    paasta_tools.cli.cmds.emergency_stop
    paasta_tools.cli.cmds.fsm

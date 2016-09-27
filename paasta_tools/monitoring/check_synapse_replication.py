@@ -16,9 +16,7 @@ import argparse
 import sys
 
 from paasta_tools import utils
-from paasta_tools.monitoring.replication_utils import (
-    get_replication_for_services
-)
+from paasta_tools.smartstack_tools import get_replication_for_services
 
 
 def check_replication(service, service_replication,

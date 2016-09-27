@@ -19,6 +19,7 @@ import mock
 from pytest import raises
 
 from paasta_tools import bounce_lib
+from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 from paasta_tools import utils
@@ -58,7 +59,7 @@ class TestSetupMarathonJob:
         soa_dir='no_more',
         verbose=False,
     )
-    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
         'mode': 'http'
     })
 

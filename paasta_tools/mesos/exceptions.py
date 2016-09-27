@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,10 +13,6 @@ from __future__ import print_function
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-class MesosCLIException(Exception):
-    pass
 
 
 class MasterNotAvailableException(Exception):
@@ -43,17 +35,21 @@ class FileNotFoundForTaskException(Exception):
     pass
 
 
-class FileDoesNotExist(MesosCLIException):
+class MultipleTasksForIDError(Exception):
     pass
 
 
-class MissingExecutor(MesosCLIException):
+class FileDoesNotExist(Exception):
     pass
 
 
-class SlaveDoesNotExist(MesosCLIException):
+class MissingExecutor(Exception):
     pass
 
 
-class SkipResult(MesosCLIException):
+class SlaveDoesNotExist(Exception):
+    pass
+
+
+class SkipResult(Exception):
     pass

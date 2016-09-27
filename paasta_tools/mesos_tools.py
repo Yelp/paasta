@@ -646,3 +646,17 @@ def slave_pid_to_ip(slave_pid):
     :returns: ip address"""
     regex = re.compile(r'.+?@([\d\.]+):\d+')
     return regex.match(slave_pid).group(1)
+
+
+def list_framework_ids(active_only=False):
+    return [f.id for f in get_mesos_master().frameworks(active_only=active_only)]
+
+
+def get_all_frameworks(active_only=False):
+    return get_mesos_master().frameworks(active_only=active_only)
+
+
+def terminate_framework(framework_id):
+    resp = requests.post('http://%s:%d/master/teardown' % (get_mesos_leader(), MESOS_MASTER_PORT),
+                         data={"frameworkId": framework_id})
+    resp.raise_for_status()

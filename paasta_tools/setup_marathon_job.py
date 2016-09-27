@@ -56,6 +56,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.mesos_maintenance import reserve_all_resources
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -241,6 +242,11 @@ def do_bounce(
     )
 
     kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
+
+    for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
+        if task in tasks_to_kill:
+            hostname = task.host
+            reserve_all_resources([hostname])
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
@@ -439,8 +445,8 @@ def deploy_service(
     if new_app_running:
         num_at_risk_tasks = get_num_at_risk_tasks(new_app)
         if new_app.instances < config['instances'] + num_at_risk_tasks:
-            log.debug("Scaling %s from %d to %d instances." %
-                      (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
+            log.info("Scaling %s from %d to %d instances." %
+                     (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
             client.scale_app(app_id=new_app.id, instances=config['instances'] + num_at_risk_tasks, force=True)
         # If we have more than the specified number of instances running, we will want to drain some of them.
         # We will start by draining any tasks running on at-risk hosts.

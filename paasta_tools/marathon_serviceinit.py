@@ -23,9 +23,9 @@ from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
-from paasta_tools.monitoring.replication_utils import backend_is_up
-from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
+from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import _log
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
@@ -70,19 +70,6 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
     stop_marathon_job(service, instance, app_id, client, cluster)
     start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
-
-
-def scale_marathon_job(service, instance, app_id, delta, client, cluster):
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-    _log(
-        service=service,
-        line="EmergencyScale: Scaling %s %s by %d instances" % (name, 'down' if delta < 0 else 'up', abs(int(delta))),
-        component='deploy',
-        level='event',
-        cluster=cluster,
-        instance=instance
-    )
-    client.scale_app(app_id, delta=int(delta), force=True)
 
 
 def bouncing_status_human(app_count, bounce_method):
@@ -399,8 +386,8 @@ def status_mesos_tasks(service, instance, normal_instance_count):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None):
-    """Performs a start/stop/restart/status/scale on an instance
-    :param command: String of start, stop, restart, status or scale
+    """Performs a start/stop/restart/status on an instance
+    :param command: String of start, stop, restart, status
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
@@ -458,8 +445,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 synapse_port=system_config.get_synapse_port(),
                 synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
             )
-    elif command == 'scale':
-        scale_marathon_job(service, instance, app_id, delta, client, cluster)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

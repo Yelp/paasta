@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
 
@@ -25,12 +26,15 @@ from requests import Request
 from requests import Session
 from requests.exceptions import HTTPError
 
+from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 log = logging.getLogger(__name__)
+Hostname = namedtuple('Hostname', ['host', 'ip'])
+Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
+Resource = namedtuple('Resource', ['name', 'amount'])
 
 
 def base_api():
@@ -44,7 +48,7 @@ def base_api():
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
         timeout = 15
         s = Session()
-        s.auth = load_credentials()
+        s.auth = (get_principal(), get_secret())
         req = Request(method, url, **kwargs)
         prepared = s.prepare_request(req)
         try:
@@ -54,9 +58,8 @@ def base_api():
             )
             resp.raise_for_status()
             return resp
-        except HTTPError as e:
-            e.msg = "Error executing API request calling %s. Got error: %s" % (url, e.msg)
-            raise
+        except HTTPError:
+            raise HTTPError("Error executing API request calling %s." % url)
     return execute_request
 
 
@@ -69,6 +72,28 @@ def master_api():
         base_api_client = base_api()
         return base_api_client(method, "/master%s" % endpoint, **kwargs)
     return execute_master_api_request
+
+
+def reserve_api():
+    """Helper function for making API requests to the /reserve API endpoints
+
+    :returns: a function that can be called to make a request to /reserve
+    """
+    def execute_reserve_api_request(method, endpoint, **kwargs):
+        master_api_client = master_api()
+        return master_api_client(method, "/reserve%s" % endpoint, **kwargs)
+    return execute_reserve_api_request
+
+
+def unreserve_api():
+    """Helper function for making API requests to the /unreserve API endpoints
+
+    :returns: a function that can be called to make a request to /unreserve
+    """
+    def execute_unreserve_api_request(method, endpoint, **kwargs):
+        master_api_client = master_api()
+        return master_api_client(method, "/unreserve%s" % endpoint, **kwargs)
+    return execute_unreserve_api_request
 
 
 def maintenance_api():
@@ -117,9 +142,8 @@ def schedule():
     """
     try:
         schedule = get_maintenance_schedule()
-    except HTTPError as e:
-        e.msg = "Error getting maintenance schedule. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error getting maintenance schedule.")
     return schedule.text
 
 
@@ -132,12 +156,14 @@ def get_hosts_with_state(state):
     """
     try:
         status = get_maintenance_status().json()
-    except HTTPError as e:
-        e.msg = "Error getting maintenance status. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error getting maintenance status.")
     if not status or state not in status:
         return []
-    return [machine['id']['hostname'] for machine in status[state]]
+    if 'id' in status[state][0]:
+        return [machine['id']['hostname'] for machine in status[state]]
+    else:
+        return [machine['hostname'] for machine in status[state]]
 
 
 def get_draining_hosts():
@@ -245,25 +271,64 @@ def build_start_maintenance_payload(hostnames):
     return get_machine_ids(hostnames)
 
 
+def hostnames_to_components(hostnames, resolve=False):
+    """Converts a list of 'host[|ip]' entries into namedtuples containing 'host' and 'ip' attributes,
+    optionally performing a DNS lookup to resolve the hostname into an IP address
+    :param hostnames: a list of hostnames where each hostname can be of the form 'host[|ip]'
+    :param resolve: boolean representing whether to lookup the IP address corresponding to the hostname via DNS
+    :returns: a namedtuple containing the hostname and IP components
+    """
+
+    components = []
+    for hostname in hostnames:
+        # This is to allow specifying a hostname as "hostname|ipaddress"
+        # to avoid querying DNS for the IP.
+        if '|' in hostname:
+            (host, ip) = hostname.split('|')
+            components.append(Hostname(host=host, ip=ip))
+        else:
+            ip = gethostbyname(hostname) if resolve else None
+            components.append(Hostname(host=hostname, ip=ip))
+    return components
+
+
 def get_machine_ids(hostnames):
     """Helper function to convert a list of hostnames into a JSON list of hostname/ip pairs.
     :param hostnames: a list of hostnames
     :returns: a dictionary representing the list of machines to bring up/down for maintenance
     """
     machine_ids = []
-    for hostname in hostnames:
-        machine_id = dict()
-        # This is to allow specifying a hostname as "hostname|ipaddress"
-        # to avoid querying DNS for the IP.
-        if '|' in hostname:
-            (host, ip) = hostname.split('|')
-            machine_id['hostname'] = host
-            machine_id['ip'] = ip
-        else:
-            machine_id['hostname'] = hostname
-            machine_id['ip'] = gethostbyname(hostname)
+    components = hostnames_to_components(hostnames, resolve=True)
+    for component in components:
+        machine_id = {
+            'hostname': component.host,
+            'ip': component.ip,
+        }
         machine_ids.append(machine_id)
     return machine_ids
+
+
+def build_reservation_payload(resources):
+    """Creates the JSON payload needed to dynamically (un)reserve resources in mesos.
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: a dictionary that can be sent to Mesos to (un)reserve resources
+    """
+    payload = []
+    for resource in resources:
+        payload.append(
+            {
+                "name": resource.name,
+                "type": "SCALAR",
+                "scalar": {
+                    "value": resource.amount,
+                },
+                "role": "maintenance",
+                "reservation": {
+                    "principal": str(get_principal()),
+                },
+            }
+        )
+    return payload
 
 
 def build_maintenance_schedule_payload(hostnames, start=None, duration=None, drain=True):
@@ -331,7 +396,119 @@ def load_credentials(mesos_secrets='/nail/etc/mesos-slave-secret'):
         log.error("%s does not contain Mesos slave credentials in the expected format. "
                   "See http://mesos.apache.org/documentation/latest/authentication/ for details" % mesos_secrets)
         raise
-    return username, password
+    return Credentials(file=mesos_secrets, principal=username, secret=password)
+
+
+def get_principal(mesos_secrets='/nail/etc/mesos-slave-secret'):
+    """Helper function to get the principal from the mesos-slave credentials
+    :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
+    :returns: a string containing the principal/username
+    """
+    return load_credentials(mesos_secrets).principal
+
+
+def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
+    """Helper function to get the secret from the mesos-slave credentials
+    :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
+    :returns: a string containing the secret/password
+    """
+    return load_credentials(mesos_secrets).secret
+
+
+def reserve(slave_id, resources):
+    """Dynamically reserve resources in marathon to prevent tasks from using them.
+    :param slave_id: the id of the mesos slave
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: boolean where 0 represents success and 1 is a failure
+    """
+    log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
+    payload = {
+        'slaveId': slave_id,
+        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
+    }
+    client_fn = reserve_api()
+    try:
+        reserve_output = client_fn(method="POST", endpoint="", data=payload).text
+    except HTTPError:
+        raise HTTPError("Error adding dynamic reservation.")
+    return reserve_output
+
+
+def unreserve(slave_id, resources):
+    """Dynamically unreserve resources in marathon to allow tasks to using them.
+    :param slave_id: the id of the mesos slave
+    :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
+    :returns: boolean where 0 represents success and 1 is a failure
+    """
+    log.info("Dynamically unreserving resoures on %s: %s" % (slave_id, resources))
+    payload = {
+        'slaveId': slave_id,
+        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
+    }
+    client_fn = unreserve_api()
+    try:
+        unreserve_output = client_fn(method="POST", endpoint="", data=payload).text
+    except HTTPError:
+        raise HTTPError("Error adding dynamic unreservation.")
+    return unreserve_output
+
+
+def components_to_hosts(components):
+    """Convert a list of Component namedtuples to a list of their hosts
+    :param components: a list of Component namedtuples
+    :returns: list of the hosts associated with each Component
+    """
+    hosts = []
+    for component in components:
+        hosts.append(component.host)
+    return hosts
+
+
+def reserve_all_resources(hostnames):
+    """Dynamically reserve all available resources on the specified hosts
+    :param hostnames: list of hostnames to reserve resources on
+    """
+    mesos_state = get_mesos_master().state_summary()
+    components = hostnames_to_components(hostnames)
+    hosts = components_to_hosts(components)
+    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    for slave in known_slaves:
+        hostname = slave['hostname']
+        log.info("Reserving all resources on %s" % hostname)
+        slave_id = slave['id']
+        resources = []
+        for resource in ['disk', 'mem', 'cpus']:
+            free_resource = slave['resources'][resource] - slave['used_resources'][resource]
+            for role in slave['reserved_resources']:
+                free_resource -= slave['reserved_resources'][role][resource]
+            resources.append(Resource(name=resource, amount=free_resource))
+        try:
+            reserve(slave_id=slave_id, resources=resources)
+        except HTTPError:
+            raise HTTPError("Failed reserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+
+
+def unreserve_all_resources(hostnames):
+    """Dynamically unreserve all available resources on the specified hosts
+    :param hostnames: list of hostnames to unreserve resources on
+    """
+    mesos_state = get_mesos_master().state_summary()
+    components = hostnames_to_components(hostnames)
+    hosts = components_to_hosts(components)
+    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    for slave in known_slaves:
+        hostname = slave['hostname']
+        log.info("Unreserving all resources on %s" % hostname)
+        slave_id = slave['id']
+        resources = []
+        for role in slave['reserved_resources']:
+            for resource in ['disk', 'mem', 'cpus']:
+                reserved_resource = slave['reserved_resources'][role][resource]
+                resources.append(Resource(name=resource, amount=reserved_resource))
+        try:
+            unreserve(slave_id=slave_id, resources=resources)
+        except HTTPError:
+            raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
 
 
 def drain(hostnames, start, duration):
@@ -342,13 +519,13 @@ def drain(hostnames, start, duration):
     :returns: None
     """
     log.info("Draining: %s" % hostnames)
+    reserve_all_resources(hostnames)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
     try:
         drain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error performing maintenance drain.")
     return drain_output
 
 
@@ -359,13 +536,13 @@ def undrain(hostnames):
     :returns: None
     """
     log.info("Undraining: %s" % hostnames)
+    unreserve_all_resources(hostnames)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:
         undrain_output = client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance drain. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error performing maintenance undrain.")
     return undrain_output
 
 
@@ -379,9 +556,8 @@ def down(hostnames):
     client_fn = master_api()
     try:
         down_output = client_fn(method="POST", endpoint="/machine/down", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance down. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error performing maintenance down.")
     return down_output
 
 
@@ -395,9 +571,8 @@ def up(hostnames):
     client_fn = master_api()
     try:
         up_output = client_fn(method="POST", endpoint="/machine/up", data=json.dumps(payload)).text
-    except HTTPError as e:
-        e.msg = "Error performing maintenance up. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error performing maintenance up.")
     return up_output
 
 
@@ -408,9 +583,8 @@ def status():
     """
     try:
         status = get_maintenance_status()
-    except HTTPError as e:
-        e.msg = "Error performing maintenance status. Got error: %s" % e.msg
-        raise
+    except HTTPError:
+        raise HTTPError("Error performing maintenance status.")
     return status.text
 
 
@@ -420,13 +594,7 @@ def is_host_drained(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    mesos_state = get_mesos_master().state_summary()
-    task_counts = get_mesos_task_count_by_slave(mesos_state)
-    if hostname in task_counts:
-        slave_task_count = task_counts[hostname].count
-    else:
-        slave_task_count = 0
-    return is_host_draining(hostname=hostname) and slave_task_count == 0
+    return is_host_draining(hostname=hostname) and get_count_running_tasks_on_slave(hostname) == 0
 
 
 def is_host_past_maintenance_start(hostname):
