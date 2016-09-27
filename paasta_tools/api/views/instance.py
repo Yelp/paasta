@@ -27,6 +27,7 @@ from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ def marathon_job_status(mstatus, client, job_config):
         return
 
     mstatus['app_id'] = app_id
+    mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_active_frameworks(app_id)})
     mstatus['expected_instance_count'] = job_config.get_instances()
 
     deploy_status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
