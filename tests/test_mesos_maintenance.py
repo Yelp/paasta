@@ -20,7 +20,9 @@ import pytest
 from dateutil import tz
 
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
+from paasta_tools.mesos_maintenance import build_reservation_payload
 from paasta_tools.mesos_maintenance import build_start_maintenance_payload
+from paasta_tools.mesos_maintenance import components_to_hosts
 from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
 from paasta_tools.mesos_maintenance import down
@@ -33,6 +35,8 @@ from paasta_tools.mesos_maintenance import get_hosts_with_state
 from paasta_tools.mesos_maintenance import get_machine_ids
 from paasta_tools.mesos_maintenance import get_maintenance_schedule
 from paasta_tools.mesos_maintenance import get_maintenance_status
+from paasta_tools.mesos_maintenance import Hostname
+from paasta_tools.mesos_maintenance import hostnames_to_components
 from paasta_tools.mesos_maintenance import is_host_down
 from paasta_tools.mesos_maintenance import is_host_drained
 from paasta_tools.mesos_maintenance import is_host_draining
@@ -41,10 +45,13 @@ from paasta_tools.mesos_maintenance import is_host_past_maintenance_start
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import parse_datetime
 from paasta_tools.mesos_maintenance import parse_timedelta
+from paasta_tools.mesos_maintenance import reserve
+from paasta_tools.mesos_maintenance import Resource
 from paasta_tools.mesos_maintenance import schedule
 from paasta_tools.mesos_maintenance import seconds_to_nanoseconds
 from paasta_tools.mesos_maintenance import status
 from paasta_tools.mesos_maintenance import undrain
+from paasta_tools.mesos_maintenance import unreserve
 from paasta_tools.mesos_maintenance import up
 
 
@@ -234,6 +241,32 @@ def test_build_maintenance_schedule_payload_no_schedule_undrain(
     assert actual == expected
 
 
+@mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True)
+def test_build_reservation_payload(
+    mock_load_credentials,
+):
+    fake_username = 'username'
+    mock_load_credentials.return_value = mock.MagicMock(principal=fake_username, secret='password')
+    resource = 'cpus'
+    amount = 42
+    resources = [Resource(name=resource, amount=amount)]
+    actual = build_reservation_payload(resources)
+    expected = [
+        {
+            'name': resource,
+            'type': 'SCALAR',
+            'scalar': {
+                'value': amount,
+            },
+            'role': 'maintenance',
+            'reservation': {
+                'principal': fake_username,
+            },
+        },
+    ]
+    assert actual == expected
+
+
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_schedule(
@@ -371,14 +404,19 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
 def test_load_credentials(
     mock_open,
 ):
+    principal = 'username'
+    secret = 'password'
     credentials = {
-        'principal': 'username',
-        'secret': 'password'
+        'principal': principal,
+        'secret': secret,
     }
 
     mock_open.side_effect = mock.mock_open(read_data=json.dumps(credentials))
 
-    assert load_credentials() == ('username', 'password')
+    credentials = load_credentials()
+
+    assert credentials.principal == principal
+    assert credentials.secret == secret
 
 
 @mock.patch('paasta_tools.mesos_maintenance.open', create=True, side_effect=IOError, autospec=None)
@@ -423,16 +461,24 @@ def test_get_maintenance_schedule(
 
 @mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.reserve_all_resources', autospec=True)
 def test_drain(
+    mock_reserve_all_resources,
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
     drain(hostnames=['some-host'], start='some-start', duration='some-duration')
+
     assert mock_build_maintenance_schedule_payload.call_count == 1
     expected_args = mock.call(['some-host'], 'some-start', 'some-duration', drain=True)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
+
+    assert mock_reserve_all_resources.call_count == 1
+    expected_args = mock.call(['some-host'])
+    assert mock_reserve_all_resources.call_args == expected_args
+
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))
@@ -441,20 +487,66 @@ def test_drain(
 
 @mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.unreserve_all_resources', autospec=True)
 def test_undrain(
+    mock_unreserve_all_resources,
     mock_build_maintenance_schedule_payload,
     mock_get_schedule_client,
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
     undrain(hostnames=['some-host'])
+
     assert mock_build_maintenance_schedule_payload.call_count == 1
     expected_args = mock.call(['some-host'], drain=False)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
+
+    assert mock_unreserve_all_resources.call_count == 1
+    expected_args = mock.call(['some-host'])
+    assert mock_unreserve_all_resources.call_args == expected_args
+
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))
     assert mock_get_schedule_client.return_value.call_args == expected_args
+
+
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.reserve_api', autospec=True)
+def test_reserve(
+    mock_reserve_api,
+    mock_build_reservation_payload,
+):
+    fake_slave_id = 'fake-id'
+    fake_resource = 'cpus'
+    fake_amount = 42
+    resources = [Resource(name=fake_resource, amount=fake_amount)]
+    reserve(fake_slave_id, resources)
+    assert mock_build_reservation_payload.call_count == 1
+    expected_args = mock.call(resources)
+    assert mock_build_reservation_payload.call_args == expected_args
+
+    assert mock_reserve_api.call_count == 1
+    assert mock_reserve_api.return_value.call_count == 1
+
+
+@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.unreserve_api', autospec=True)
+def test_unreserve(
+    mock_unreserve_api,
+    mock_build_reservation_payload,
+):
+    fake_slave_id = 'fake-id'
+    fake_resource = 'cpus'
+    fake_amount = 42
+    resources = [Resource(name=fake_resource, amount=fake_amount)]
+    unreserve(fake_slave_id, resources)
+    assert mock_build_reservation_payload.call_count == 1
+    expected_args = mock.call(resources)
+    assert mock_build_reservation_payload.call_args == expected_args
+
+    assert mock_unreserve_api.call_count == 1
+    assert mock_unreserve_api.return_value.call_count == 1
 
 
 @mock.patch('paasta_tools.mesos_maintenance.master_api', autospec=True)
@@ -524,16 +616,12 @@ def test_get_hosts_with_state_draining(
     fake_status = {
         "draining_machines": [
             {
-                "id": {
-                    "hostname": "fake-host1.fakesite.something",
-                    "ip": "0.0.0.0"
-                }
+                "hostname": "fake-host1.fakesite.something",
+                "ip": "0.0.0.0"
             },
             {
-                "id": {
-                    "hostname": "fake-host2.fakesite.something",
-                    "ip": "0.0.0.1"
-                }
+                "hostname": "fake-host2.fakesite.something",
+                "ip": "0.0.0.1"
             }
         ]
     }
@@ -550,16 +638,12 @@ def test_get_hosts_with_state_down(
     fake_status = {
         "down_machines": [
             {
-                "id": {
-                    "hostname": "fake-host1.fakesite.something",
-                    "ip": "0.0.0.0"
-                }
+                "hostname": "fake-host1.fakesite.something",
+                "ip": "0.0.0.0"
             },
             {
-                "id": {
-                    "hostname": "fake-host2.fakesite.something",
-                    "ip": "0.0.0.1"
-                }
+                "hostname": "fake-host2.fakesite.something",
+                "ip": "0.0.0.1"
             }
         ]
     }
@@ -763,3 +847,39 @@ def test_is_host_past_maintenance_end(
     mock_get_hosts_past_maintenance_end.return_value = ['fake_host']
     assert is_host_past_maintenance_end('fake_host')
     assert not is_host_past_maintenance_end('fake_host2')
+
+
+def test_hostnames_to_components_simple():
+    hostname = 'fake-host'
+    ip = None
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components([hostname])
+    assert actual == expected
+
+
+def test_hostnames_to_components_pipe():
+    hostname = 'fake-host'
+    ip = '127.0.0.1'
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components(["%s|%s" % (hostname, ip)])
+    assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
+def test_hostnames_to_components_resolve(
+    mock_gethostbyname,
+):
+    hostname = 'fake-host'
+    ip = '127.0.0.1'
+    mock_gethostbyname.return_value = ip
+    expected = [Hostname(host=hostname, ip=ip)]
+    actual = hostnames_to_components([hostname], resolve=True)
+    assert actual == expected
+
+
+def test_components_to_hosts():
+    host = 'fake-host'
+    ip = '127.0.0.1'
+    expected = [host]
+    actual = components_to_hosts([Hostname(host=host, ip=ip)])
+    assert actual == expected

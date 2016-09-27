@@ -33,6 +33,8 @@ RUN apt-get install -yq mesos=0.28.2-2.0.27.ubuntu1404 && \
 	zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info && \
 	apt-get remove -yq mesos
 
+ADD mesos-slave-secret /etc/mesos-slave-secret
+
 ENV HOME /work
 ENV PWD /work
 WORKDIR /work

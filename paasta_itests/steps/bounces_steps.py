@@ -113,8 +113,17 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
+@when(u'there are exactly {num:d} {which} {state} tasks')
+def when_there_are_exactly_num_which_tasks(context, num, which, state):
+    there_are_num_which_tasks(context, num, which, state, True)
+
+
 @when(u'there are {num:d} {which} {state} tasks')
 def when_there_are_num_which_tasks(context, num, which, state):
+    there_are_num_which_tasks(context, num, which, state, False)
+
+
+def there_are_num_which_tasks(context, num, which, state, exact):
     context.max_tasks = num
     app_id = which_id(context, which)
 
@@ -124,11 +133,19 @@ def when_there_are_num_which_tasks(context, num, which, state):
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)
         if state == "healthy":
-            if happy_count >= context.max_tasks:
-                return
+            if exact:
+                if happy_count == context.max_tasks:
+                    return
+            else:
+                if happy_count >= context.max_tasks:
+                    return
         elif state == "unhealthy":
-            if len(app.tasks) - happy_count >= context.max_tasks:
-                return
+            if exact:
+                if len(app.tasks) - happy_count == context.max_tasks:
+                    return
+            else:
+                if len(app.tasks) - happy_count >= context.max_tasks:
+                    return
         time.sleep(0.5)
     raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
                     (context.max_tasks, state, app_id, len(app.tasks)))
@@ -153,7 +170,8 @@ def when_setup_service_initiated(context):
         mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
         mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
         mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
-        mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
+        mock.patch('paasta_tools.mesos_maintenance.get_principal', autospec=True),
+        mock.patch('paasta_tools.mesos_maintenance.get_secret', autospec=True),
     ) as (
         _,
         _,
@@ -164,9 +182,12 @@ def when_setup_service_initiated(context):
         _,
         _,
         _,
-        mock_load_credentials,
+        mock_get_principal,
+        mock_get_secret,
     ):
-        mock_load_credentials.side_effect = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        credentials = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
+        mock_get_principal.return_value = credentials.principal
+        mock_get_secret.return_value = credentials.secret
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
         for _ in xrange(120):

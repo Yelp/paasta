@@ -32,13 +32,15 @@ Feature: setup_marathon_job can create a "complete" app
     Given a working paasta cluster
       And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
       And an old app to be destroyed with constraints [["hostname", "UNIQUE"]]
-     When there are 2 old healthy tasks
+     When there are exactly 2 old healthy tasks
      When setup_service is initiated
-      And there are 2 new healthy tasks
+      And there are exactly 2 new healthy tasks
      When we mark a host it is running on as at-risk
      When setup_service is initiated
-      And there are 3 new healthy tasks
+      And there are exactly 3 new healthy tasks
       And we wait a bit for the old app to disappear
+      And setup_service is initiated
+      And there are exactly 2 new healthy tasks
      Then the old app should be gone
       And there should be 0 tasks on that at-risk host
 
@@ -46,10 +48,11 @@ Feature: setup_marathon_job can create a "complete" app
     Given a working paasta cluster
       And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "noop" and constraints [["hostname", "UNIQUE"]]
      When setup_service is initiated
-      And there are 2 new healthy tasks
+      And there are exactly 2 new healthy tasks
      When we mark a host it is running on as at-risk
      When setup_service is initiated
-      And there are 3 new healthy tasks
+      And there are exactly 3 new healthy tasks
      When setup_service is initiated
-      And there are 2 new healthy tasks
+      And there are exactly 2 new healthy tasks
+      And setup_service is initiated
      Then there should be 0 tasks on that at-risk host
