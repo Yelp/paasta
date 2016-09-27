@@ -691,27 +691,24 @@ def test_is_host_down(
     assert not is_host_down('fake-host3.fakesite.something')
 
 
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_task_count_by_slave', autospec=True)
-@mock.patch('paasta_tools.mesos_maintenance.get_mesos_master', autospec=True)
+def sideeffect_mock_get_count_running_tasks_on_slave(hostname):
+    if hostname == 'host1':
+        return 3
+    else:
+        return 0
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_count_running_tasks_on_slave', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.is_host_draining', autospec=True)
 def test_is_host_drained(
     mock_is_host_draining,
-    mock_get_mesos_master,
-    mock_get_mesos_task_count_by_slave,
+    mock_get_count_running_tasks_on_slave,
 ):
-    mock_master = mock.Mock()
-    mock_state_summary = mock.Mock()
-    mock_master.state_summary.return_value = mock_state_summary
-
-    mock_get_mesos_master.return_value = mock_master
-
-    mock_slave_counts = {'host1': mock.Mock(count=3), 'host2': mock.Mock(count=0)}
-    mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
+    mock_get_count_running_tasks_on_slave.side_effect = sideeffect_mock_get_count_running_tasks_on_slave
     mock_is_host_draining.return_value = True
 
     assert not is_host_drained('host1')
-    assert mock_master.state_summary.called
-    mock_get_mesos_task_count_by_slave.assert_called_with(mock_state_summary)
+    mock_get_count_running_tasks_on_slave.assert_called_with('host1')
     mock_is_host_draining.assert_called_with(hostname='host1')
 
     mock_is_host_draining.return_value = True
@@ -723,7 +720,6 @@ def test_is_host_drained(
     mock_is_host_draining.return_value = False
     assert not is_host_drained('host2')
 
-    mock_get_mesos_task_count_by_slave.return_value = {}
     assert not is_host_drained('host3')
 
     mock_is_host_draining.return_value = True
