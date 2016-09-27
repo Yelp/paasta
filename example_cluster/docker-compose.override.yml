@@ -22,10 +22,17 @@ services:
       - ssh-data:/root/.ssh
     command: '/start.sh'
   mesosslave:
+    ports:
+      - 5051
+      - 22
     build: ../yelp_package/dockerfiles/mesos-paasta/
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ssh-data:/root/.ssh
     depends_on:
       - mesosbase
       - zookeeper
+    command: '/start-slave.sh'
   marathon:
     ports:
       - '8080:8080'
