@@ -8,14 +8,6 @@ Feature: paasta_serviceinit
       And we wait for it to be deployed
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
-  Scenario: marathon_serviceinit can restart tasks
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
-     Then marathon_serviceinit restart should get new task_ids for "test-service.main"
-
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
@@ -106,25 +98,5 @@ Feature: paasta_serviceinit
       And we paasta_serviceinit emergency-restart the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is enabled in chronos
       And the job stored as "myjob" has running tasks
-
-  Scenario: paasta_serviceinit can run emergency-stop on a marathon app
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
-      And we run paasta serviceinit "stop" on "test-service.main"
-      And we wait for "test-service.main" to launch exactly 0 tasks
-     Then "test-service.main" has exactly 0 requested tasks in marathon
-
-  Scenario: paasta_serviceinit can run emergency-stop on a marathon app via appid
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
-      And we run paasta serviceinit --appid "stop" on "test-service.main"
-      And we wait for "test-service.main" to launch exactly 0 tasks
-     Then "test-service.main" has exactly 0 requested tasks in marathon
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

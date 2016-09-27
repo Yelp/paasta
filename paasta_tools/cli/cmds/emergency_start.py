@@ -27,13 +27,10 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-start',
-        help="Resumes normal operation of a PaaSTA service instance by scaling to the configured instance count",
+        help="Kicks off a chronos job run. Not implemented for Marathon instances.",
         description=(
-            "'emergency-start' scales a PaaSTA service instance up to the configured instance count for a "
-            "Marathon service. It does nothing to an existing Marathon service that already has the desired "
-            "instance count.\n\n"
-            "On a Chronos job, 'emergency-start' has the effect of forcing a job to run outside of its normal "
-            "schedule."
+            "Chronos Jobs: Forces a job to run outside of its normal schedule.\n"
+            "Marathon Apps: Not implemented.\n"
         ),
     )
     status_parser.add_argument(
@@ -63,12 +60,6 @@ def add_subparser(subparsers):
 def paasta_emergency_start(args):
     """Performs an emergency start on a given service instance on a given cluster
 
-    Warning: This command is not magic and cannot actually get a service to start if it couldn't
-    run before. This includes configurations that prevent the service from running,
-    such as 'instances: 0' (for Marathon apps).
-
-    All it does for Marathon apps is ask Marathon to resume normal operation by scaling up to
-    the instance count defined in the service's config.
     All it does for Chronos jobs is send the latest version of the job config to Chronos and run it immediately.
     """
     system_paasta_config = load_system_paasta_config()
