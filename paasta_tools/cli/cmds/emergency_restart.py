@@ -35,8 +35,6 @@ def add_subparser(subparsers):
             "'emergency-restart' can do this, but at the cost of the safety of the normal "
             "bouncing procedures. In other words, and emergency-restart is fast, but not safe "
             "and will cause dropped traffic.\n\n"
-            "'paasta emergency-restart' is the equivalent to a 'paasta emergency-stop' followed "
-            "by a 'paasta emergency-start'."
         ),
     )
     status_parser.add_argument(

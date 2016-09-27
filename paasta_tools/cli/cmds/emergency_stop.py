@@ -28,19 +28,8 @@ def add_subparser(subparsers):
         'emergency-stop',
         help="Stop a PaaSTA service instance in an emergency",
         description=(
-            "'emergency-stop' stops a Marathon service instance by scaling it down to 0. If the "
-            "provided 'instance' name refers to a Chronos job, 'emergency-stop' will cancel the "
-            "chronos job if it is currently running."
-        ),
-        epilog=(
-            "Warning: 'emergency-stop' does not interact with load balancers, so any in-flight "
-            "traffic will be dropped after stopping. Additionally the 'desired state' of a service "
-            "is not changed after an 'emergency-stop', therefore alerts will fire for the service "
-            "after an emergency stop.\n\n"
-            "'emergency-stop' is not a permanant declaration of state. If the operator wishes to "
-            "stop a service permanently, they should run 'paasta stop', or configure the service to "
-            "have '0' instances. Otherwise, subsequent changes or bounces to a service will start "
-            "it right back up."
+            "Chronos jobs: Stops and kills and inflight run.\n"
+            "Marathon apps: Not implemented."
         ),
     )
     status_parser.add_argument(
@@ -58,11 +47,6 @@ def add_subparser(subparsers):
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-a', '--appid',
-        help="The complete marathon appid to stop. Like 'example-service.main.gitf0cfd3a0.config7a2a00b7",
-        required=False,
-    )
-    status_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
         metavar="SOA_DIR",
@@ -74,13 +58,6 @@ def add_subparser(subparsers):
 
 def paasta_emergency_stop(args):
     """Performs an emergency stop on a given service instance on a given cluster
-
-    Warning: This command does not permanently stop the service. The next time the service is updated
-    (config change, deploy, bounce, etc.), those settings will override the emergency stop.
-
-    If you want this stop to be permanant, adjust the relevant config file to reflect that.
-    For example, this can be done for Marathon apps by setting 'instances: 0', or
-    for Chronos jobs by setting 'disabled: True'. Alternatively, remove the config yaml entirely.
     """
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
@@ -91,7 +68,6 @@ def paasta_emergency_stop(args):
         service=service,
         instances=args.instance,
         system_paasta_config=system_paasta_config,
-        app_id=args.appid
     )
     print "Output: %s" % output
     print "%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:])
