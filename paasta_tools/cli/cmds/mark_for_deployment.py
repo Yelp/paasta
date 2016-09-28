@@ -169,6 +169,16 @@ def paasta_mark_for_deployment(args):
                 line=line,
                 level='event'
             )
+        except KeyboardInterrupt:
+            print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
+            print "If you wish to see the status, run:"
+            print ""
+            print "    paasta status -s %s -v" % service
+            print ""
+            print "Or if you wish to rollback:"
+            print ""
+            print "    paasta rollback -s %s -d %s" % (service, args.deploy_group)
+            sys.exit(1)
         except TimeoutError:
             sys.exit(1)
     return ret

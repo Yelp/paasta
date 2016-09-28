@@ -28,9 +28,11 @@ RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-v
 # Conveniently, the .so's included in this wheel seem to be self-contained and don't link against the system libmesos.
 # So that we know if this changes, we remove the mesos system package after creating the .whl, so itests run without
 # a system mesos package.
-RUN apt-get install -yq mesos=0.28.2-2.0.27.ubuntu1404 && \
+RUN apt-get install -yq mesos=1.0.1-2.0.93.ubuntu1404 && \
     cd /usr/lib/python2.7/site-packages && \
-	zip -r /root/mesos.native-0.28.2-py27-none-any.whl mesos/native mesos.native-0.28.2.dist-info && \
+	zip -r /root/mesos.native-1.0.1-py27-none-any.whl mesos/native mesos.native-1.0.1.dist-info && \
+	zip -r /root/mesos.executor-1.0.1-py27-none-any.whl mesos/executor mesos.executor-1.0.1.dist-info && \
+	zip -r /root/mesos.scheduler-1.0.1-py27-none-any.whl mesos/scheduler mesos.scheduler-1.0.1.dist-info && \
 	apt-get remove -yq mesos
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
