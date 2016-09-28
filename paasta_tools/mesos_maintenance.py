@@ -202,9 +202,7 @@ def is_host_down(hostname=getfqdn()):
 
 def get_hosts_forgotten_draining():
     """Find hosts that are still marked as draining (rather than down) after the start
-    of their maintenance window. For each of these hosts, either mark them as 'down' for
-    maintenance, adjust the time of their maintenance window, or cancel the maintenance
-    window if it is no longer needed.
+    of their maintenance window.
     :returns: a list of hostnames of hosts forgotten draining
     """
     draining_hosts = get_draining_hosts()
@@ -225,8 +223,7 @@ def are_hosts_forgotten_draining():
 
 def get_hosts_forgotten_down():
     """Find hosts that are still marked as down (rather than up) after the end
-    of their maintenance window. For each of these hosts, either mark them as 'up' or
-    adjust the time of their maintenance window.
+    of their maintenance window.
     :returns: a list of hostnames of hosts forgotten down
     """
     down_hosts = get_down_hosts()
