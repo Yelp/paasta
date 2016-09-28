@@ -31,6 +31,7 @@ RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-v
 RUN apt-get install -yq mesos=1.0.1-2.0.93.ubuntu1404 && \
     cd /usr/lib/python2.7/site-packages && \
 	zip -r /root/mesos.native-1.0.1-py27-none-any.whl mesos/native mesos.native-1.0.1.dist-info && \
+	zip -r /root/mesos.executor-1.0.1-py27-none-any.whl mesos/executor mesos.executor-1.0.1.dist-info && \
 	apt-get remove -yq mesos
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
