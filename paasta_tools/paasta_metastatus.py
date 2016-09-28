@@ -563,7 +563,8 @@ def status_for_results(healthcheck_results):
     return [result.healthy for result in healthcheck_results]
 
 
-def print_results_for_healthchecks(ok, results, verbose, indent=2):
+def print_results_for_healthchecks(summary, ok, results, verbose, indent=2):
+    print summary
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:
@@ -632,7 +633,6 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
 
 def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, humanize):
     """ A wrapper method to join together
-
 
     :param attribute: The attribute value and formatted columns to be shown in
     a single row.  :param attribute_value: The value of the attribute
@@ -707,20 +707,9 @@ def main():
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    if args.verbose == 0:
-        print mesos_summary
-        print marathon_summary
-        print chronos_summary
-    elif args.verbose == 1:
-        print mesos_summary
-        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
-        print marathon_summary
-        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
-        print chronos_summary
-        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
-    else:
-        print mesos_summary
-        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
+    print "Master paasta_tools version: {0}".format(__version__)
+    print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
+    if args.verbose > 1:
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
             resource_info_dict = get_resource_utilization_by_grouping(key_func_for_attribute(grouping), mesos_state)
@@ -773,12 +762,8 @@ def main():
                 all_rows.extend(table_rows)
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
-
-        print marathon_summary
-        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
-        print chronos_summary
-        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
-        print "Master paasta_tools version: {0}".format(__version__)
+    print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
+    print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
     if not healthy_exit:
         sys.exit(2)
