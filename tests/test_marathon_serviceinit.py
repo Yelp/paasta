@@ -429,7 +429,7 @@ def test_status_smartstack_backends_normal():
 def test_status_smartstack_backends_different_nerve_ns():
     service = 'my_service'
     instance = 'my_instance'
-    different_ns = 'other_instance'
+    different_ns = 'different_ns'
     service_instance = compose_job_id(service, different_ns)
 
     cluster = 'fake_cluster'
