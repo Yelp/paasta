@@ -12,13 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
-
 import requests
+from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import timeout
-from service_configuration_lib import read_extra_service_information
 
 
 def add_subparser(subparsers):
