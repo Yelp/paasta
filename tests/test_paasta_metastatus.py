@@ -261,7 +261,7 @@ def test_assert_inactive_frameworks():
         'master/frameworks_inactive': 0,
     }
     hcr = paasta_metastatus.assert_inactive_frameworks(metrics)
-    assert not hcr.healthy
+    assert hcr.healthy
     assert "Inactive Frameworks: expected: 0 actual: 0" in hcr.message
 
 
@@ -438,8 +438,15 @@ def test_main_no_marathon_config():
         fake_args = Mock(
             verbose=0,
         )
-        get_mesos_master = Mock()
-        get_mesos_master.state_summary.return_value = {}
+        fake_master = Mock(autospace=True)
+        fake_master.metrics_snapshot.return_value = {
+            'master/frameworks_active': 2,
+            'master/frameworks_inactive': 0,
+            'master/frameworks_connected': 2,
+            'master/frameworks_disconnected': 0,
+        }
+        fake_master.state.return_value = {}
+        get_mesos_master.return_value = fake_master
 
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
@@ -475,8 +482,15 @@ def test_main_no_chronos_config():
         fake_args = Mock(
             verbose=0,
         )
-        get_mesos_master = Mock()
-        get_mesos_master.state.return_value = {}
+        fake_master = Mock(autospace=True)
+        fake_master.metrics_snapshot.return_value = {
+            'master/frameworks_active': 2,
+            'master/frameworks_inactive': 0,
+            'master/frameworks_connected': 2,
+            'master/frameworks_disconnected': 0,
+        }
+        fake_master.state.return_value = {}
+        get_mesos_master.return_value = fake_master
 
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.return_value = {}
