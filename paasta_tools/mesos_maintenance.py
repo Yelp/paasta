@@ -206,10 +206,14 @@ def get_hosts_forgotten_draining():
     :returns: a list of hostnames of hosts forgotten draining
     """
     draining_hosts = get_draining_hosts()
+    log.debug("draining_hosts: %s" % draining_hosts)
+
     hosts_past_maintenance_start = get_hosts_past_maintenance_start()
-    print("draining_hosts: %s" % draining_hosts)
-    print("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
+    log.debug("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
+
     forgotten_draining = list(set(draining_hosts).intersection(hosts_past_maintenance_start))
+    log.debug("forgotten_draining: %s" % forgotten_draining)
+
     return forgotten_draining
 
 
@@ -227,8 +231,14 @@ def get_hosts_forgotten_down():
     :returns: a list of hostnames of hosts forgotten down
     """
     down_hosts = get_down_hosts()
+    log.debug("down_hosts: %s" % down_hosts)
+
     hosts_past_maintenance_end = get_hosts_past_maintenance_end()
+    log.debug("hosts_past_maintenance_end: %s" % hosts_past_maintenance_end)
+
     forgotten_down = list(set(down_hosts).intersection(hosts_past_maintenance_end))
+    log.debug("forgotten_down: %s" % forgotten_down)
+
     return forgotten_down
 
 
