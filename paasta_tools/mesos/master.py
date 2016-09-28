@@ -204,6 +204,9 @@ class MesosMaster(object):
     def frameworks(self, active_only=False):
         return [framework.Framework(f) for f in self._framework_list(active_only)]
 
+    def metrics_snapshot(self):
+        return self.fetch("/metrics/snapshot").json()
+
     @property
     @util.memoize
     def log(self):

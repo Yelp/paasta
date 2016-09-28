@@ -391,13 +391,6 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
     return "\n".join(output)
 
 
-def get_mesos_stats():
-    """Queries the mesos stats api and returns a dictionary of the results"""
-    response = get_mesos_master().fetch('metrics/snapshot')
-    response.raise_for_status()
-    return response.json()
-
-
 def get_local_slave_state():
     """Fetches mesos slave state and returns it as a dict."""
     hostname = socket.getfqdn()

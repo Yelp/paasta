@@ -33,7 +33,6 @@ from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.utils import format_table
@@ -43,6 +42,8 @@ from paasta_tools.utils import print_with_indent
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
+
+EXPECTED_HEALTHY_FRAMEWORKS = 2
 
 
 def parse_args():
@@ -269,6 +270,42 @@ def assert_slave_health(metrics):
     )
 
 
+def assert_connected_frameworks(mesos_metrics):
+    connected_frameworks = mesos_metrics['master/frameworks_connected']
+    healthy = connected_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
+    return HealthCheckResult(
+        message="Connected Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, connected_frameworks),
+        healthy=healthy
+    )
+
+
+def assert_disconnected_frameworks(mesos_metrics):
+    disconnected_frameworks = mesos_metrics['master/frameworks_disconnected']
+    healthy = disconnected_frameworks == 0
+    return HealthCheckResult(
+        message="Disconnected Frameworks: expected: 0 actual: %d" % disconnected_frameworks,
+        healthy=healthy
+    )
+
+
+def assert_active_frameworks(mesos_metrics):
+    active_frameworks = mesos_metrics['master/frameworks_active']
+    healthy = active_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
+    return HealthCheckResult(
+        message="Active Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, active_frameworks),
+        healthy=healthy
+    )
+
+
+def assert_inactive_frameworks(mesos_metrics):
+    inactive_frameworks = mesos_metrics['master/frameworks_inactive']
+    healthy = inactive_frameworks == 0
+    return HealthCheckResult(
+        message="Inactive Frameworks: expected: 0 actual: %d" % inactive_frameworks,
+        healthy=healthy
+    )
+
+
 def assert_quorum_size():
     masters, quorum = get_num_masters(), get_mesos_quorum()
     if quorum_ok(masters, quorum):
@@ -420,6 +457,14 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
         assert_disk_health(mesos_metrics, mesos_state),
         assert_tasks_running(mesos_metrics),
         assert_slave_health(mesos_metrics),
+    ]
+
+
+def get_framework_metrics_status(metrics):
+    return [
+        assert_connected_frameworks(metrics),
+        assert_disconnected_frameworks(metrics),
+        assert_inactive_frameworks(metrics)
     ]
 
 
@@ -619,10 +664,12 @@ def main():
     mesos_state_status = get_mesos_state_status(
         mesos_state=mesos_state,
     )
-    metrics = get_mesos_stats()
-    mesos_metrics_status = get_mesos_resource_utilization_health(mesos_metrics=metrics, mesos_state=mesos_state)
 
-    all_mesos_results = mesos_state_status + mesos_metrics_status
+    metrics = master.metrics_snapshot()
+    mesos_metrics_status = get_mesos_resource_utilization_health(mesos_metrics=metrics, mesos_state=mesos_state)
+    framework_metrics_healthchecks = get_framework_metrics_status(metrics=metrics)
+
+    all_mesos_results = mesos_state_status + mesos_metrics_status + framework_metrics_healthchecks
 
     # Check to see if Marathon should be running here by checking for config
     marathon_config = marathon_tools.load_marathon_config()
