@@ -16,18 +16,16 @@ import sys
 
 import requests
 
-from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import get_username
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import timeout
+from service_configuration_lib import read_extra_service_information
 
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'performance-check',
-        description='Performs a performance check (not implemented)',
-        help='Performs a performance check (not implemented)',
+        description='Performs a performance check',
+        help='Performs a performance check',
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -35,47 +33,47 @@ def add_subparser(subparsers):
              'Jenkins job name, will be stripped.',
     )
     list_parser.add_argument(
-        '-c', '--commit',
-        help='Git sha of the image to check',
-    )
-    list_parser.add_argument(
-        '-i', '--image',
-        help='Optional docker image to performance check. Must be available on a registry for '
-             'use, like http://docker-dev.yelpcorp.com/example_service-kwa-test1',
+        '-d', '--soa-dir',
+        dest='soa_dir',
+        metavar='SOA_DIR',
+        default=DEFAULT_SOA_DIR,
+        help='Define a different soa config directory',
     )
     list_parser.set_defaults(command=perform_performance_check)
 
 
-def load_performance_check_config():
-    try:
-        return load_system_paasta_config().get_performance_check_config()
-    except PaastaNotConfiguredError as e:
-        print "No performance check config to use. Safely bailing."
-        print e.strerror
-        sys.exit(0)
-
-
-def submit_performance_check_job(service, commit, image):
-    performance_check_config = load_performance_check_config()
-    payload = {
-        'service': service,
-        'commit': commit,
-        'submitter': get_username(),
-        'image': image,
-    }
-    r = requests.post(
-        url=performance_check_config['endpoint'],
-        data=payload,
-        headers={'User-Agent': get_user_agent()}
+def load_performance_check_config(service, soa_dir):
+    performance_check_config = read_extra_service_information(
+        service_name=service,
+        extra_info='performance-check',
+        soa_dir=soa_dir,
     )
-    print "Posted a submission to the PaaSTA performance-check service:"
-    print r.text
+
+    if not performance_check_config:
+        raise Exception("No performance check config found. Check your performance-check.yaml file.")
+    return performance_check_config
+
+
+def submit_performance_check_job(service, soa_dir):
+    performance_check_config = load_performance_check_config(service, soa_dir)
+    endpoint = performance_check_config.pop('endpoint')
+    r = requests.post(
+        url=endpoint,
+        params=performance_check_config,
+    )
+    r.raise_for_status()
+    print "Posted a submission to the PaaSTA performance-check service."
+    print "Endpoint: {}".format(endpoint)
+    print "Parameters: {}".format(performance_check_config)
 
 
 @timeout()
 def perform_performance_check(args):
     try:
-        submit_performance_check_job(service=args.service, commit=args.commit, image=args.image)
+        submit_performance_check_job(
+            service=args.service,
+            soa_dir=args.soa_dir,
+        )
     except Exception as e:
         print "Something went wrong with the performance check. Safely bailing. No need to panic."
         print "Here was the error:"
