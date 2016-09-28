@@ -15,6 +15,7 @@ import contextlib
 
 import mock
 from botocore.exceptions import ClientError
+from math import floor
 from pytest import raises
 from requests.exceptions import HTTPError
 
@@ -287,24 +288,67 @@ def test_gracefully_terminate_slave():
         assert not mock_wait_and_terminate.called
 
 
+def is_resource_cancelled_sideeffect(resource):
+    if resource['id'] == 'sfr-blah3':
+        return True
+    return False
+
+
 def test_autoscale_local_cluster():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_resource_cancelled', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True),
+    ) as (
+        mock_get_paasta_config,
+        mock_is_resource_cancelled,
+        mock_autoscale_cluster_resource,
+    ):
+
+        mock_scaling_resources = {'id1': {'id': 'sfr-blah1', 'type': 'sfr', 'pool': 'default'},
+                                  'id2': {'id': 'sfr-blah2', 'type': 'sfr', 'pool': 'default'},
+                                  'id3': {'id': 'sfr-blah3', 'type': 'sfr', 'pool': 'default'}}
+        mock_scaling_result = {'id1': {'id': 'sfr-blah1', 'type': 'sfr', 'pool': 'default', 'cancelled': False},
+                               'id2': {'id': 'sfr-blah2', 'type': 'sfr', 'pool': 'default', 'cancelled': False},
+                               'id3': {'id': 'sfr-blah3', 'type': 'sfr', 'pool': 'default', 'cancelled': True}}
+        mock_resource_pool_settings = {'default': {'drain_timeout': 123, 'target_utilization': 0.75}}
+        mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_scaling_resources)
+        mock_get_resource_pool_settings = mock.Mock(return_value=mock_resource_pool_settings)
+        mock_is_resource_cancelled.side_effect = is_resource_cancelled_sideeffect
+        mock_get_resources = mock.Mock(get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
+                                       get_resource_pool_settings=mock_get_resource_pool_settings)
+        mock_get_paasta_config.return_value = mock_get_resources
+
+        autoscaling_cluster_lib.autoscale_local_cluster()
+        assert mock_get_paasta_config.called
+        mock_is_resource_cancelled.assert_called_with(mock_scaling_resources['id1'])
+        autoscale_calls = [mock.call(identifier='id3',
+                                     resource=mock_scaling_result['id3'],
+                                     dry_run=False,
+                                     all_pool_settings=mock_resource_pool_settings),
+                           mock.call(identifier='id1',
+                                     resource=mock_scaling_result['id1'],
+                                     dry_run=False,
+                                     all_pool_settings=mock_resource_pool_settings),
+                           mock.call(identifier='id2',
+                                     resource=mock_scaling_result['id2'],
+                                     dry_run=False,
+                                     all_pool_settings=mock_resource_pool_settings)]
+        assert mock_autoscale_cluster_resource.call_args_list[0] == autoscale_calls[0]
+        mock_autoscale_cluster_resource.assert_has_calls(autoscale_calls, any_order=True)
+
+
+def test_autoscale_cluster_resource():
+    with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_cluster_metrics_provider', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_scaler', autospec=True),
     ) as (
-        mock_get_paasta_config,
         mock_get_metrics_provider,
         mock_get_scaler,
     ):
 
-        mock_scaling_resources = {'id1': {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}}
+        mock_scaling_resource = {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}
         mock_resource_pool_settings = {'default': {'drain_timeout': 123, 'target_utilization': 0.75}}
-        mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_scaling_resources)
-        mock_get_resource_pool_settings = mock.Mock(return_value=mock_resource_pool_settings)
-        mock_get_resources = mock.Mock(get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
-                                       get_resource_pool_settings=mock_get_resource_pool_settings)
-        mock_get_paasta_config.return_value = mock_get_resources
         mock_metrics_provider = mock.Mock()
         mock_metrics_provider.return_value = (2, 6)
         mock_get_metrics_provider.return_value = mock_metrics_provider
@@ -312,8 +356,10 @@ def test_autoscale_local_cluster():
         mock_get_scaler.return_value = mock_scaler
 
         # test scale up
-        autoscaling_cluster_lib.autoscale_local_cluster()
-        assert mock_get_paasta_config.called
+        autoscaling_cluster_lib.autoscale_cluster_resource(identifier='id1',
+                                                           resource=mock_scaling_resource,
+                                                           all_pool_settings=mock_resource_pool_settings,
+                                                           dry_run=False)
         mock_get_metrics_provider.assert_called_with('sfr')
         mock_metrics_provider.assert_called_with('sfr-blah',
                                                  {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'},
@@ -565,27 +611,141 @@ def test_describe_instance():
         assert ret is None
 
 
+def test_get_spot_fleet_delta():
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 5}},
+                     'min_capacity': 2,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, -0.2)
+    assert ret == (5, 4)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 7.3}},
+                     'min_capacity': 2,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, -0.2)
+    assert ret == (7.3, 6)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 5}},
+                     'min_capacity': 2,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, 0.2)
+    assert ret == (5, 6)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 10}},
+                     'min_capacity': 2,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, 0.2)
+    assert ret == (10, 10)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 2}},
+                     'min_capacity': 2,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, -0.2)
+    assert ret == (2, 2)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 2}},
+                     'min_capacity': 0,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, -1)
+    assert ret == (2, 1)
+
+    mock_resource = {'sfr': {'SpotFleetRequestConfig': {'FulfilledCapacity': 20}},
+                     'min_capacity': 0,
+                     'max_capacity': 100}
+    ret = autoscaling_cluster_lib.get_spot_fleet_delta(mock_resource, -0.5)
+    assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
+
+
+
 def test_spotfleet_metrics_provider():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_instances', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr_utilization_error', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.cleanup_cancelled_sfr_config', autospec=True),
+    ) as (
+        mock_get_sfr,
+        mock_get_spot_fleet_instances,
+        mock_get_spot_fleet_delta,
+        mock_get_sfr_utilization_error,
+        mock_cleanup_cancelled_sfr_config
+    ):
+        mock_resource = {'pool': 'default',
+                         'region': 'westeros-1'}
+        mock_get_spot_fleet_delta.return_value = 1, 2
+        mock_pool_settings = {}
+
+        # cancelled SFR
+        mock_get_spot_fleet_instances.return_value = [mock.Mock(), mock.Mock()]
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'cancelled'}
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
+        mock_cleanup_cancelled_sfr_config.assert_called_with('sfr-blah')
+        assert not mock_get_spot_fleet_instances.called
+        assert ret == (0, 0)
+
+        # deleted SFR
+        mock_cleanup_cancelled_sfr_config.reset_mock()
+        mock_get_sfr.return_value = None
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
+        mock_cleanup_cancelled_sfr_config.assert_called_with('sfr-blah')
+        assert not mock_get_spot_fleet_instances.called
+        assert ret == (0, 0)
+
+        # active SFR
+        mock_cleanup_cancelled_sfr_config.reset_mock()
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
+        mock_get_sfr_utilization_error.return_value = float(0.3)
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
+        mock_resource_with_active = mock_resource.copy()
+        mock_resource_with_active['sfr'] = mock_get_sfr.return_value
+        mock_resource_with_active['sfr']['ActiveInstances'] = mock_get_spot_fleet_instances.return_value
+        mock_get_sfr_utilization_error.assert_called_with('sfr-blah', mock_resource_with_active, mock_pool_settings)
+        mock_get_spot_fleet_delta.assert_called_with(mock_resource, float(0.3))
+        assert not mock_cleanup_cancelled_sfr_config.called
+        assert ret == (1, 2)
+
+        # cancelled_running SFR
+        mock_cleanup_cancelled_sfr_config.reset_mock()
+        mock_get_spot_fleet_delta.reset_mock()
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'cancelled_running'}
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
+        assert not mock_cleanup_cancelled_sfr_config.called
+        assert ret == (0, 0)
+        mock_get_spot_fleet_delta.return_value = 2, 1
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        assert ret == (2, 0)
+        mock_get_spot_fleet_delta.return_value = 4, 2
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        assert ret == (4, 2)
+
+        # unknown SFR
+        mock_cleanup_cancelled_sfr_config.reset_mock()
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'not-a-state'}
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        assert ret == (0, 0)
+
+
+def test_get_sfr_utilization_error():
+    with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr_instance_ips', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
                    autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
     ) as (
-        mock_get_sfr,
-        mock_get_spot_fleet_instances,
         mock_get_sfr_instance_ips,
         mock_get_resource_utilization_by_grouping,
         mock_pid_to_ip,
-        mock_get_spot_fleet_delta,
         mock_get_mesos_master
     ):
+
         mock_resource = {'pool': 'default',
-                         'region': 'westeros-1'}
+                         'region': 'westeros-1',
+                         'sfr': {'ActiveInstances': [mock.Mock(), mock.Mock()]}}
         mock_mesos_state = {'slaves': [{'id': 'id1',
                                         'attributes': {'pool': 'default'},
                                         'pid': 'pid1'},
@@ -594,35 +754,53 @@ def test_spotfleet_metrics_provider():
                                         'pid': 'pid2'}]}
         mock_master = mock.Mock(state=mock_mesos_state)
         mock_get_mesos_master.return_value = mock_master
-        mock_utilization = {'free': ResourceInfo(cpus=5.0, mem=2048.0, disk=20.0),
+        mock_utilization = {'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
                             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
         mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
-        mock_pid_to_ip.side_effect = iter(['10.1.1.1', '10.2.2.2'])
-        mock_get_spot_fleet_instances.return_value = [mock.Mock(), mock.Mock()]
+        mock_pid_to_ip.side_effect = pid_to_ip_sideeffect
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.2.2.2']
-        mock_get_spot_fleet_delta.return_value = 1, 2
-        mock_pool_settings = {}
+        mock_pool_settings = {'target_utilization': 0.8}
 
-        mock_get_sfr.return_value = {'SpotFleetRequestState': 'cancelled'}
-        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
-        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
-        assert not mock_get_spot_fleet_instances.called
-        assert ret == (0, 0)
+        ret = autoscaling_cluster_lib.get_sfr_utilization_error('sfr-blah', mock_resource, mock_pool_settings)
+        assert mock_get_mesos_master.called
+        assert ret == 0.5 - 0.8
 
-        mock_get_sfr.return_value = None
-        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
-        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
-        assert not mock_get_spot_fleet_instances.called
-        assert ret == (0, 0)
+        mock_mesos_state['slaves'].pop()
+        mock_master = mock.Mock(state=mock_mesos_state)
+        with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
+            autoscaling_cluster_lib.get_sfr_utilization_error('sfr-blah', mock_resource, mock_pool_settings)
 
-        mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
-        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
-        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
-        mock_get_spot_fleet_instances.assert_called_with('sfr-blah', region='westeros-1')
-        expected_get_ip_call = mock_get_sfr.return_value.copy()
-        expected_get_ip_call['ActiveInstances'] = mock_get_spot_fleet_instances.return_value
-        mock_get_sfr_instance_ips.assert_called_with(expected_get_ip_call, region='westeros-1')
-        mock_pid_to_ip.assert_has_calls([mock.call('pid1'), mock.call('pid2')])
-        mock_get_resource_utilization_by_grouping.assert_called_with(mock.ANY, mock_mesos_state)
-        mock_get_spot_fleet_delta.assert_called_with(mock_resource, float(0.5) - float(0.8))
-        assert ret == (1, 2)
+
+def pid_to_ip_sideeffect(pid):
+    pid_to_ip = {'pid1': '10.1.1.1',
+                 'pid2': '10.2.2.2'}
+    return pid_to_ip[pid]
+
+def test_is_resource_cancelled():
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr', autospec=True),
+    ) as (
+        mock_get_sfr,
+    ):
+        mock_resource = {'id': 'sfr-1', 'type': 'aws_spot_fleet_request', 'region': 'westeros-1'}
+        mock_sfr = {'SpotFleetRequestState': 'cancelled'}
+        mock_get_sfr.return_value = mock_sfr
+        assert autoscaling_cluster_lib.is_resource_cancelled(mock_resource)
+
+        mock_sfr = {'SpotFleetRequestState': 'cancelled_running'}
+        mock_get_sfr.return_value = mock_sfr
+        assert autoscaling_cluster_lib.is_resource_cancelled(mock_resource)
+
+        mock_sfr = {'SpotFleetRequestState': 'active'}
+        mock_get_sfr.return_value = mock_sfr
+        assert not autoscaling_cluster_lib.is_resource_cancelled(mock_resource)
+
+        mock_sfr = {}
+        mock_get_sfr.return_value = mock_sfr
+        mock_resource = {'id': 'sfr-1', 'type': 'aws_asg', 'region': 'westeros-1'}
+        assert not autoscaling_cluster_lib.is_resource_cancelled(mock_resource)
+
+        mock_sfr = None
+        mock_get_sfr.return_value = mock_sfr
+        mock_resource = {'id': 'sfr-1', 'type': 'aws_spot_fleet_request', 'region': 'westeros-1'}
+        assert autoscaling_cluster_lib.is_resource_cancelled(mock_resource)
