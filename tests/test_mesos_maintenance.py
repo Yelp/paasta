@@ -19,6 +19,8 @@ import mock
 import pytest
 from dateutil import tz
 
+from paasta_tools.mesos_maintenance import are_hosts_forgotten_down
+from paasta_tools.mesos_maintenance import are_hosts_forgotten_draining
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
 from paasta_tools.mesos_maintenance import build_reservation_payload
 from paasta_tools.mesos_maintenance import build_start_maintenance_payload
@@ -29,6 +31,8 @@ from paasta_tools.mesos_maintenance import down
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import get_down_hosts
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.mesos_maintenance import get_hosts_forgotten_down
+from paasta_tools.mesos_maintenance import get_hosts_forgotten_draining
 from paasta_tools.mesos_maintenance import get_hosts_past_maintenance_end
 from paasta_tools.mesos_maintenance import get_hosts_past_maintenance_start
 from paasta_tools.mesos_maintenance import get_hosts_with_state
@@ -879,3 +883,47 @@ def test_components_to_hosts():
     expected = [host]
     actual = components_to_hosts([Hostname(host=host, ip=ip)])
     assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start', autospec=True)
+def test_get_hosts_forgotten_draining(
+    mock_get_hosts_past_maintenance_start,
+    mock_get_draining_hosts,
+):
+    mock_get_draining_hosts.return_value = ['fake-host1', 'fake-host2']
+    mock_get_hosts_past_maintenance_start.return_value = ['fake-host2']
+    assert get_hosts_forgotten_draining() == ['fake-host2']
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_forgotten_draining', autospec=True)
+def test_are_hosts_forgotten_draining(
+    mock_get_hosts_forgotten_draining,
+):
+    mock_get_hosts_forgotten_draining.return_value = ['fake-host']
+    assert are_hosts_forgotten_draining()
+
+    mock_get_hosts_forgotten_draining.return_value = []
+    assert not are_hosts_forgotten_draining()
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_down_hosts', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_past_maintenance_end', autospec=True)
+def test_get_hosts_forgotten_down(
+    mock_get_hosts_past_maintenance_end,
+    mock_get_down_hosts,
+):
+    mock_get_down_hosts.return_value = ['fake-host1', 'fake-host2']
+    mock_get_hosts_past_maintenance_end.return_value = ['fake-host2']
+    assert get_hosts_forgotten_down() == ['fake-host2']
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_hosts_forgotten_down', autospec=True)
+def test_are_hosts_forgotten_down(
+    mock_get_hosts_forgotten_down,
+):
+    mock_get_hosts_forgotten_down.return_value = ['fake-host']
+    assert are_hosts_forgotten_down()
+
+    mock_get_hosts_forgotten_down.return_value = []
+    assert not are_hosts_forgotten_down()
