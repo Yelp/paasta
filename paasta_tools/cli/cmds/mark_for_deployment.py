@@ -23,14 +23,18 @@ from bravado.exception import HTTPError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
+from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
+
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 
@@ -146,7 +150,24 @@ def paasta_mark_for_deployment(args):
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
+
     validate_service_name(service, soa_dir=args.soa_dir)
+    in_use_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
+        service=service,
+        soa_dir=args.soa_dir,
+    )}
+    _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
+
+    if len(invalid_deploy_groups) == 1:
+        print PaastaColors.red(
+            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups))
+        print PaastaColors.red(
+            "This isn't technically wrong because you can mark-for-deployment before deploying there")
+        print PaastaColors.red("but this is probably a typo. Did you mean one of these in-use deploy groups?:")
+        print PaastaColors.red("   %s" % (",").join(in_use_deploy_groups))
+        print ""
+        print PaastaColors.red("Continuing regardless...")
+
     ret = mark_for_deployment(
         git_url=args.git_url,
         deploy_group=args.deploy_group,

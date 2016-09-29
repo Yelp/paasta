@@ -19,6 +19,7 @@ from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -104,24 +105,6 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
             if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
                 previously_deployed_shas[sha] = tstamp
     return previously_deployed_shas.items()
-
-
-def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
-    """Given two lists of deploy groups, return the intersection and difference between them.
-
-    :param service_deploy_groups: instances actually belonging to a service
-    :param args_deploy_groups: the desired instances
-    :returns: a tuple with (common, difference) indicating deploy groups common in both
-        lists and those only in args_deploy_groups
-    """
-    if len(args_deploy_groups) is 0:
-        valid_deploy_groups = set(service_deploy_groups)
-        invalid_deploy_groups = set([])
-    else:
-        valid_deploy_groups = set(args_deploy_groups).intersection(service_deploy_groups)
-        invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
-
-    return valid_deploy_groups, invalid_deploy_groups
 
 
 def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_dir):
