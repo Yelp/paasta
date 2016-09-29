@@ -41,19 +41,20 @@ def add_subparser(subparsers):
 
 
 def load_performance_check_config(service, soa_dir):
-    performance_check_config = read_extra_service_information(
+    return read_extra_service_information(
         service_name=service,
         extra_info='performance-check',
         soa_dir=soa_dir,
     )
 
-    if not performance_check_config:
-        raise Exception("No performance check config found. Check your performance-check.yaml file.")
-    return performance_check_config
-
 
 def submit_performance_check_job(service, soa_dir):
     performance_check_config = load_performance_check_config(service, soa_dir)
+
+    if not performance_check_config:
+        print "No performance-check.yaml. Skipping performance-check."
+        return
+
     endpoint = performance_check_config.pop('endpoint')
     r = requests.post(
         url=endpoint,
