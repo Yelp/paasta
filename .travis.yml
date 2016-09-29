@@ -10,6 +10,7 @@ env:
   - TOXENV=general_itests
   - TOXENV=paasta_itests
   - MAKE_TARGET=itest_trusty
+  - MAKE_TARGET=itest_xenial
 sudo: required
 services:
   - docker

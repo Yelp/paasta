@@ -21,6 +21,7 @@ UID:=`id -u`
 GID:=`id -g`
 DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_lucid_container
 DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_container
+DOCKER_RUN_XENIAL:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_xenial_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -68,6 +69,23 @@ package_trusty: build_trusty_docker
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
 itest_trusty: package_trusty bintray.json
 	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
+
+build_xenial_docker:
+	[ -d ../dist ] || mkdir ../dist
+	cd dockerfiles/xenial/ && docker build -t "paastatools_xenial_container" .
+package_xenial: build_xenial_docker
+	# Copy these files to .old before maybe clobbering them
+	cp ../requirements.txt ../requirements.txt.old
+	cp ../debian/changelog ../debian/changelog.old
+	$(ADD_MISSING_DEPS_MAYBE)
+	$(ADD_YELP_PREFIX_MAYBE)
+	$(DOCKER_RUN_XENIAL) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
+	# then move them back
+	mv ../requirements.txt.old ../requirements.txt
+	mv ../debian/changelog.old ../debian/changelog
+	$(DOCKER_RUN_XENIAL) chown -R $(UID):$(GID) /work
+itest_xenial: package_xenial
+	$(DOCKER_RUN_XENIAL) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 DATE := $(shell date +'%Y-%m-%d' -d "`dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`")
 PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
