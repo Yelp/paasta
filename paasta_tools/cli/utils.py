@@ -656,3 +656,21 @@ def extract_tags(paasta_tag):
     regex = r'^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$'
     regex_match = re.match(regex, paasta_tag)
     return regex_match.groupdict() if regex_match else {}
+
+
+def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
+    """Given two lists of deploy groups, return the intersection and difference between them.
+
+    :param service_deploy_groups: instances actually belonging to a service
+    :param args_deploy_groups: the desired instances
+    :returns: a tuple with (common, difference) indicating deploy groups common in both
+        lists and those only in args_deploy_groups
+    """
+    if len(args_deploy_groups) is 0:
+        valid_deploy_groups = set(service_deploy_groups)
+        invalid_deploy_groups = set([])
+    else:
+        valid_deploy_groups = set(args_deploy_groups).intersection(service_deploy_groups)
+        invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
+
+    return valid_deploy_groups, invalid_deploy_groups
