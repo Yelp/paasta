@@ -33,7 +33,6 @@ from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.utils import format_table
@@ -43,6 +42,8 @@ from paasta_tools.utils import print_with_indent
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
+
+EXPECTED_HEALTHY_FRAMEWORKS = 2
 
 
 def parse_args():
@@ -269,6 +270,42 @@ def assert_slave_health(metrics):
     )
 
 
+def assert_connected_frameworks(mesos_metrics):
+    connected_frameworks = mesos_metrics['master/frameworks_connected']
+    healthy = connected_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
+    return HealthCheckResult(
+        message="Connected Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, connected_frameworks),
+        healthy=healthy
+    )
+
+
+def assert_disconnected_frameworks(mesos_metrics):
+    disconnected_frameworks = mesos_metrics['master/frameworks_disconnected']
+    healthy = disconnected_frameworks == 0
+    return HealthCheckResult(
+        message="Disconnected Frameworks: expected: 0 actual: %d" % disconnected_frameworks,
+        healthy=healthy
+    )
+
+
+def assert_active_frameworks(mesos_metrics):
+    active_frameworks = mesos_metrics['master/frameworks_active']
+    healthy = active_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
+    return HealthCheckResult(
+        message="Active Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, active_frameworks),
+        healthy=healthy
+    )
+
+
+def assert_inactive_frameworks(mesos_metrics):
+    inactive_frameworks = mesos_metrics['master/frameworks_inactive']
+    healthy = inactive_frameworks == 0
+    return HealthCheckResult(
+        message="Inactive Frameworks: expected: 0 actual: %d" % inactive_frameworks,
+        healthy=healthy
+    )
+
+
 def assert_quorum_size():
     masters, quorum = get_num_masters(), get_mesos_quorum()
     if quorum_ok(masters, quorum):
@@ -423,6 +460,14 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
     ]
 
 
+def get_framework_metrics_status(metrics):
+    return [
+        assert_connected_frameworks(metrics),
+        assert_disconnected_frameworks(metrics),
+        assert_inactive_frameworks(metrics)
+    ]
+
+
 def get_mesos_state_status(mesos_state):
     """Perform healthchecks against mesos state.
     :param mesos_state: a dict exposing the mesos state described in
@@ -518,7 +563,8 @@ def status_for_results(healthcheck_results):
     return [result.healthy for result in healthcheck_results]
 
 
-def print_results_for_healthchecks(ok, results, verbose, indent=2):
+def print_results_for_healthchecks(summary, ok, results, verbose, indent=2):
+    print summary
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:
@@ -588,7 +634,6 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
 def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, humanize):
     """ A wrapper method to join together
 
-
     :param attribute: The attribute value and formatted columns to be shown in
     a single row.  :param attribute_value: The value of the attribute
     associated with the row. This becomes index 0 in the array returned.
@@ -619,10 +664,12 @@ def main():
     mesos_state_status = get_mesos_state_status(
         mesos_state=mesos_state,
     )
-    metrics = get_mesos_stats()
-    mesos_metrics_status = get_mesos_resource_utilization_health(mesos_metrics=metrics, mesos_state=mesos_state)
 
-    all_mesos_results = mesos_state_status + mesos_metrics_status
+    metrics = master.metrics_snapshot()
+    mesos_metrics_status = get_mesos_resource_utilization_health(mesos_metrics=metrics, mesos_state=mesos_state)
+    framework_metrics_healthchecks = get_framework_metrics_status(metrics=metrics)
+
+    all_mesos_results = mesos_state_status + mesos_metrics_status + framework_metrics_healthchecks
 
     # Check to see if Marathon should be running here by checking for config
     marathon_config = marathon_tools.load_marathon_config()
@@ -660,20 +707,9 @@ def main():
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    if args.verbose == 0:
-        print mesos_summary
-        print marathon_summary
-        print chronos_summary
-    elif args.verbose == 1:
-        print mesos_summary
-        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
-        print marathon_summary
-        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
-        print chronos_summary
-        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
-    else:
-        print mesos_summary
-        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
+    print "Master paasta_tools version: {0}".format(__version__)
+    print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
+    if args.verbose > 1:
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
             resource_info_dict = get_resource_utilization_by_grouping(key_func_for_attribute(grouping), mesos_state)
@@ -726,12 +762,8 @@ def main():
                 all_rows.extend(table_rows)
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
-
-        print marathon_summary
-        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
-        print chronos_summary
-        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
-        print "Master paasta_tools version: {0}".format(__version__)
+    print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
+    print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
     if not healthy_exit:
         sys.exit(2)

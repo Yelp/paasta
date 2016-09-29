@@ -59,7 +59,7 @@ class MesosMaster(object):
     def key(self):
         return self.config["master"]
 
-    @util.CachedProperty()
+    @util.CachedProperty(ttl=5)
     def host(self):
         return "{0}://{1}".format(self.config["scheme"], self.resolve(self.config["master"]))
 
@@ -199,13 +199,13 @@ class MesosMaster(object):
         keys = ["frameworks"]
         if not active_only:
             keys.append("completed_frameworks")
-        return util.merge(self.state, *keys)
+        return util.merge(self.fetch("/master/frameworks").json(), *keys)
 
     def frameworks(self, active_only=False):
-        keys = ["frameworks"]
-        if not active_only:
-            keys.append("completed_frameworks")
-        return list(map(lambda x: framework.Framework(x), self._framework_list(active_only)))
+        return [framework.Framework(f) for f in self._framework_list(active_only)]
+
+    def metrics_snapshot(self):
+        return self.fetch("/metrics/snapshot").json()
 
     @property
     @util.memoize

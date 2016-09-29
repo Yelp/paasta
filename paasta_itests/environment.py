@@ -121,7 +121,7 @@ def _clean_up_paasta_native_frameworks(context):
     # context.etc_paasta signals that we actually have configured the mesos-cli.json; without this, we don't know where
     # to connect to clean up paasta native frameworks.
     if hasattr(context, 'etc_paasta'):
-        for framework in mesos_tools.get_all_frameworks(active_only=True):
+        for framework in mesos_tools.get_mesos_master().frameworks(active_only=True):
             if framework.name.startswith('paasta '):
                 print "cleaning up framework %s" % framework.name
                 try:

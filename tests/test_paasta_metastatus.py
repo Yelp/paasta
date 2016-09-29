@@ -229,6 +229,42 @@ def test_duplicate_frameworks():
     assert not ok
 
 
+def assert_connected_frameworks():
+    metrics = {
+        'master/frameworks_connected': 2,
+    }
+    hcr = paasta_metastatus.assert_connected_frameworks(metrics)
+    assert hcr.healthy
+    assert "Connected Frameworks: expected: 2 actual: 2" in hcr.message
+
+
+def assert_disconnected_frameworks():
+    metrics = {
+        'master/frameworks_disconnected': 1
+    }
+    hcr = paasta_metastatus.assert_connected_frameworks(metrics)
+    assert not hcr.healthy
+    assert "Disconnected Frameworks: expected: 0 actual: 1" in hcr.message
+
+
+def test_assert_active_frameworks():
+    metrics = {
+        'master/frameworks_active': 2
+    }
+    hcr = paasta_metastatus.assert_active_frameworks(metrics)
+    assert hcr.healthy
+    assert "Active Frameworks: expected: 2 actual: 2" in hcr.message
+
+
+def test_assert_inactive_frameworks():
+    metrics = {
+        'master/frameworks_inactive': 0,
+    }
+    hcr = paasta_metastatus.assert_inactive_frameworks(metrics)
+    assert hcr.healthy
+    assert "Inactive Frameworks: expected: 0 actual: 0" in hcr.message
+
+
 @patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
 def test_ok_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
@@ -385,7 +421,6 @@ def test_main_no_marathon_config():
         patch('paasta_tools.paasta_metastatus.get_mesos_master', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
-        patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_resource_utilization_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
@@ -396,7 +431,6 @@ def test_main_no_marathon_config():
         load_get_chronos_status_patch,
         get_mesos_master,
         get_mesos_state_status_patch,
-        get_mesos_stats_patch,
         get_mesos_resource_utilization_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
@@ -404,9 +438,15 @@ def test_main_no_marathon_config():
         fake_args = Mock(
             verbose=0,
         )
-        get_mesos_master = Mock()
-        get_mesos_master.state_summary.return_value = {}
-        get_mesos_stats_patch.return_value = {}
+        fake_master = Mock(autospace=True)
+        fake_master.metrics_snapshot.return_value = {
+            'master/frameworks_active': 2,
+            'master/frameworks_inactive': 0,
+            'master/frameworks_connected': 2,
+            'master/frameworks_disconnected': 0,
+        }
+        fake_master.state.return_value = {}
+        get_mesos_master.return_value = fake_master
 
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
@@ -425,7 +465,6 @@ def test_main_no_chronos_config():
         patch('paasta_tools.paasta_metastatus.get_mesos_master', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
-        patch('paasta_tools.paasta_metastatus.get_mesos_stats', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_resource_utilization_health', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
@@ -435,7 +474,6 @@ def test_main_no_chronos_config():
         load_chronos_config_patch,
         get_mesos_master,
         get_mesos_state_status_patch,
-        get_mesos_stats_patch,
         get_mesos_resource_utilization_health_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
@@ -444,13 +482,18 @@ def test_main_no_chronos_config():
         fake_args = Mock(
             verbose=0,
         )
-        get_mesos_master = Mock()
-        get_mesos_master.state.return_value = {}
+        fake_master = Mock(autospace=True)
+        fake_master.metrics_snapshot.return_value = {
+            'master/frameworks_active': 2,
+            'master/frameworks_inactive': 0,
+            'master/frameworks_connected': 2,
+            'master/frameworks_disconnected': 0,
+        }
+        fake_master.state.return_value = {}
+        get_mesos_master.return_value = fake_master
 
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.return_value = {}
-
-        get_mesos_stats_patch.return_value = {}
 
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
