@@ -5,7 +5,7 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
   Scenario: paasta_serviceinit can run status on chronos jobs
@@ -33,7 +33,7 @@ Feature: paasta_serviceinit
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon app "test-service.main" with "1" instances
-      And we wait for it to be deployed
+      And we wait for "test-service.main" to launch exactly 1 tasks
      Then paasta_serviceinit status -vv for the service_instance "test-service.main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
