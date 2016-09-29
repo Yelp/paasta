@@ -429,26 +429,74 @@ def test_status_smartstack_backends_normal():
 def test_status_smartstack_backends_different_nerve_ns():
     service = 'my_service'
     instance = 'my_instance'
+    different_ns = 'different_ns'
+    service_instance = compose_job_id(service, different_ns)
+
     cluster = 'fake_cluster'
-    different_ns = 'other_instance'
-    normal_count = 10
-    tasks = mock.Mock()
-    with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True) as read_ns_mock:
-        read_ns_mock.return_value = different_ns
+    good_task = mock.Mock()
+    bad_task = mock.Mock()
+    other_task = mock.Mock()
+    haproxy_backends_by_task = {
+        good_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+                    'check_status': 'L7OK', 'check_duration': 1},
+        bad_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+                   'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
+                   'check_status': 'L7OK', 'check_duration': 1},
+    }
+
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True)
+    ) as (
+        mock_load_service_namespace_config,
+        mock_read_ns,
+        mock_get_all_slaves_for_blacklist_whitelist,
+        mock_get_backends,
+        mock_match_backends_and_tasks,
+        mock_read_ns
+    ):
+        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
+        mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
+            'hostname': 'fakehost',
+            'attributes': {
+                'fake_discover': 'fakelocation'
+            }
+        }]
+
+        mock_read_ns.return_value = instance
+        mock_get_backends.return_value = haproxy_backends_by_task.values()
+        mock_match_backends_and_tasks.return_value = [
+            (haproxy_backends_by_task[good_task], good_task),
+            (haproxy_backends_by_task[bad_task], None),
+            (None, other_task),
+        ]
+        mock_read_ns.return_value = different_ns
+        tasks = [good_task, other_task]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
             tasks=tasks,
-            expected_count=normal_count,
+            expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        assert "is announced in the" in actual
-        assert different_ns in actual
+        mock_get_backends.assert_called_once_with(
+            service_instance,
+            synapse_host='fakehost',
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+        )
+        assert "fakelocation" in actual
+        assert "Healthy" in actual
 
 
 def test_status_smartstack_backends_no_smartstack_replication_info():
