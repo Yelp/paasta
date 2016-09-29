@@ -19,78 +19,48 @@ SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_lucid_container
-DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_container
-DOCKER_RUN_XENIAL:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_xenial_container
+DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
 	ACTUAL_PACKAGE_VERSION:=$(RELEASE)-yelp1
-	ADD_YELP_PREFIX_MAYBE:=dch -v $(ACTUAL_PACKAGE_VERSION) --changelog ../debian/changelog $$'Build for yelp: add scribereader to virtualenv'
+	ADD_YELP_PREFIX_MAYBE=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
 	ADD_YELP_PREFIX_MAYBE:=$(NOOP)
 	ACTUAL_PACKAGE_VERSION:=$(RELEASE)
 endif
 
-
-build_lucid_docker:
+build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/lucid/ && docker build -t "paastatools_lucid_container" .
-package_lucid: build_lucid_docker
+	cd dockerfiles/$*/ && docker build -t "paastatools_$*_container" .
+
+.SECONDEXPANSION:
+itest_%: package_$$* bintray_$$*
+	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
+
+package_%: build_$$*_docker
 	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_YELP_PREFIX_MAYBE)
-	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
+
+	$(DOCKER_RUN) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
-	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
-itest_lucid: package_lucid
-	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
+	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
 
-
-build_trusty_docker:
-	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/trusty/ && docker build -t "paastatools_trusty_container" .
-package_trusty: build_trusty_docker
-	# Copy these files to .old before maybe clobbering them
-	cp ../requirements.txt ../requirements.txt.old
-	cp ../debian/changelog ../debian/changelog.old
-	$(ADD_MISSING_DEPS_MAYBE)
-	$(ADD_YELP_PREFIX_MAYBE)
-	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
-	# then move them back
-	mv ../requirements.txt.old ../requirements.txt
-	mv ../debian/changelog.old ../debian/changelog
-	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
-itest_trusty: package_trusty bintray.json
-	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
-
-build_xenial_docker:
-	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/xenial/ && docker build -t "paastatools_xenial_container" .
-package_xenial: build_xenial_docker
-	# Copy these files to .old before maybe clobbering them
-	cp ../requirements.txt ../requirements.txt.old
-	cp ../debian/changelog ../debian/changelog.old
-	$(ADD_MISSING_DEPS_MAYBE)
-	$(ADD_YELP_PREFIX_MAYBE)
-	$(DOCKER_RUN_XENIAL) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
-	# then move them back
-	mv ../requirements.txt.old ../requirements.txt
-	mv ../debian/changelog.old ../debian/changelog
-	$(DOCKER_RUN_XENIAL) chown -R $(UID):$(GID) /work
-itest_xenial: package_xenial
-	$(DOCKER_RUN_XENIAL) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 DATE := $(shell date +'%Y-%m-%d' -d "`dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`")
 PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
-bintray.json: bintray.json.in ../debian/changelog
-	sed -e 's/@DATE@/$(DATE)/g' -e 's/@PAASTAVERSION@/$(PAASTAVERSION)/g' $< > $@
+bintray_%: bintray.json.in ../debian/changelog
+	sed -e 's/@DATE@/$(DATE)/g' \
+	    -e 's/@PAASTAVERSION@/$(PAASTAVERSION)/g' \
+	    -e 's/@DISTRIBUTION@/$*/g' \
+	    bintray.json.in > bintray.json
 
 clean:
 	rm -rf dist/
