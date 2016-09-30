@@ -40,14 +40,18 @@ def test_get_mesos_cpu_status():
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'cpus': 1,
+                    },
+                },
             },
         ],
     }
     total, used, available = paasta_metastatus.get_mesos_cpu_status(fake_metrics, fake_mesos_state)
     assert total == 3
-    assert used == 1
-    assert available == 2
+    assert used == 2
+    assert available == 1
 
 
 def test_ok_cpu_health():
