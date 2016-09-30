@@ -86,7 +86,7 @@ def get_mesos_cpu_status(metrics, mesos_state):
 
     for slave in mesos_state['slaves']:
         for role in slave['reserved_resources']:
-            used -= slave['reserved_resources'][role]['cpus']
+            used += slave['reserved_resources'][role]['cpus']
 
     available = total - used
     return total, used, available
@@ -171,7 +171,7 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
 
     for slave in mesos_state['slaves']:
         for role in slave['reserved_resources']:
-            used -= slave['reserved_resources'][role]['mem']
+            used += slave['reserved_resources'][role]['mem']
 
     try:
         perc_used = percent_used(total, used)
@@ -199,7 +199,7 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
 
     for slave in mesos_state['slaves']:
         for role in slave['reserved_resources']:
-            used -= slave['reserved_resources'][role]['disk']
+            used += slave['reserved_resources'][role]['disk']
 
     try:
         perc_used = percent_used(total, used)
