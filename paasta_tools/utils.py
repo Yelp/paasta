@@ -952,15 +952,6 @@ class SystemPaastaConfig(dict):
         except KeyError:
             return {}
 
-    def get_performance_check_config(self):
-        """Get the performance check config
-
-        :returns: The performance_check config dictionary"""
-        try:
-            return self['performance_check']
-        except KeyError:
-            return {}
-
     def get_marathon_config(self):
         """Get the marathon config
 
