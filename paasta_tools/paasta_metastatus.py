@@ -44,6 +44,8 @@ ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
 
 EXPECTED_HEALTHY_FRAMEWORKS = 2
+HIGH_QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.highQueueSize'
+QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.queueSize'
 
 
 def parse_args():
@@ -517,12 +519,29 @@ def assert_chronos_scheduled_jobs(client):
     return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=True)
 
 
+def assert_chronos_queued_jobs(client):
+    high_priority_queue_size = client.metrics()['gauges'][HIGH_QUEUE_GAUGE]['value']
+    normal_priority_queue_size = client.metrics()['gauges'][QUEUE_GAUGE]['value']
+    all_jobs_queued = high_priority_queue_size + normal_priority_queue_size
+    num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
+
+    try:
+        perc_used = percent_used(all_jobs_queued, num_jobs)
+    except ZeroDivisionError:
+        perc_used = 0
+    return HealthCheckResult(
+        message="Jobs Queued: %s (%s%%)" % (all_jobs_queued, perc_used),
+        healthy=True
+    )
+
+
 def get_chronos_status(chronos_client):
     """Gather information about chronos.
     :return: string containing the status
     """
     return run_healthchecks_with_param(chronos_client, [
         assert_chronos_scheduled_jobs,
+        assert_chronos_queued_jobs,
     ])
 
 

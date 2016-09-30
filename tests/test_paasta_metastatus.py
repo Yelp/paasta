@@ -405,16 +405,41 @@ def test_assert_chronos_scheduled_jobs():
     assert results == ('Enabled chronos jobs: 1', True)
 
 
-def test_get_chronos_status():
-    client = Mock()
-    client.list.return_value = [
-        {'name': 'fake_job1', 'disabled': False},
-        {'name': 'fake_job2', 'disabled': False},
+def test_assert_chronos_queued_jobs():
+    mock_client = Mock()
+    mock_client.metrics.return_value = {
+        'gauges': {
+            paasta_metastatus.HIGH_QUEUE_GAUGE: {'value': 0},
+            paasta_metastatus.QUEUE_GAUGE: {'value': 0}
+        }
+    }
+    mock_client.list.return_value = [
+        {'name': 'myjob', 'disabled': False},
+        {'name': 'myjob', 'disabled': True},
     ]
-    expected_jobs_output = ("Enabled chronos jobs: 2", True)
-    results = paasta_metastatus.get_chronos_status(client)
+    assert paasta_metastatus.assert_chronos_queued_jobs(mock_client) == paasta_metastatus.HealthCheckResult(
+        message="Jobs Queued: 0 (0%)",
+        healthy=True
+    )
 
-    assert expected_jobs_output in results
+
+@patch('paasta_tools.paasta_metastatus.assert_chronos_queued_jobs', autospec=True)
+@patch('paasta_tools.paasta_metastatus.assert_chronos_scheduled_jobs', autospec=True)
+def test_get_chronos_status(mock_queued_jobs, mock_scheduled_jobs):
+    mock_scheduled_jobs_result = paasta_metastatus.HealthCheckResult(
+        message='Enabled chronos jobs: 1',
+        healthy=True
+    )
+    mock_queued_jobs_result = paasta_metastatus.HealthCheckResult(
+        message="Jobs Queued: 0 (0%)",
+        healthy=True
+    )
+    mock_queued_jobs.return_value = mock_queued_jobs_result
+    mock_scheduled_jobs.return_value = mock_scheduled_jobs_result
+
+    expected_results = [mock_queued_jobs_result, mock_scheduled_jobs_result]
+
+    assert paasta_metastatus.get_chronos_status(Mock()) == expected_results
 
 
 def test_main_no_marathon_config():
