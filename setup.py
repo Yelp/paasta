@@ -74,6 +74,7 @@ setup(
         'paasta_tools/autoscale_all_services.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/cleanup_marathon_jobs.py',
+        'paasta_tools/cleanup_maintenance.py',
         'paasta_tools/paasta_deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',
         'paasta_tools/generate_all_deployments',
