@@ -169,11 +169,13 @@ def assert_cpu_health(metrics, mesos_state, threshold=10):
 
 def assert_memory_health(metrics, mesos_state, threshold=10):
     total = metrics['master/mem_total'] / float(1024)
-    used = metrics['master/mem_used'] / float(1024)
+    used = metrics['master/mem_used']
 
     for slave in mesos_state['slaves']:
         for role in slave['reserved_resources']:
             used += slave['reserved_resources'][role]['mem']
+
+    used /= float(1024)
 
     try:
         perc_used = percent_used(total, used)
@@ -197,11 +199,13 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
 
 def assert_disk_health(metrics, mesos_state, threshold=10):
     total = metrics['master/disk_total'] / float(1024)
-    used = metrics['master/disk_used'] / float(1024)
+    used = metrics['master/disk_used']
 
     for slave in mesos_state['slaves']:
         for role in slave['reserved_resources']:
             used += slave['reserved_resources'][role]['disk']
+
+    used /= float(1024)
 
     try:
         perc_used = percent_used(total, used)

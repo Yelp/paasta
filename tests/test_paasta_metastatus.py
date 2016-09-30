@@ -57,12 +57,16 @@ def test_get_mesos_cpu_status():
 def test_ok_cpu_health():
     ok_metrics = {
         'master/cpus_total': 10,
-        'master/cpus_used': 1,
+        'master/cpus_used': 0.5,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'cpus': 0.5,
+                    },
+                },
             },
         ],
     }
@@ -74,12 +78,16 @@ def test_ok_cpu_health():
 def test_bad_cpu_health():
     failure_metrics = {
         'master/cpus_total': 10,
-        'master/cpus_used': 9,
+        'master/cpus_used': 8,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'cpus': 1,
+                    },
+                },
             },
         ],
     }
@@ -91,12 +99,16 @@ def test_bad_cpu_health():
 def test_assert_memory_health():
     ok_metrics = {
         'master/mem_total': 1024,
-        'master/mem_used': 512,
+        'master/mem_used': 256,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'mem': 256,
+                    },
+                },
             },
         ],
     }
@@ -108,12 +120,16 @@ def test_assert_memory_health():
 def test_failing_memory_health():
     failure_metrics = {
         'master/mem_total': 1024,
-        'master/mem_used': 1000,
+        'master/mem_used': 500,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'mem': 500,
+                    },
+                },
             },
         ],
     }
@@ -125,12 +141,16 @@ def test_failing_memory_health():
 def test_assert_disk_health():
     ok_metrics = {
         'master/disk_total': 1024,
-        'master/disk_used': 512,
+        'master/disk_used': 256,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'disk': 256,
+                    },
+                },
             },
         ],
     }
@@ -142,12 +162,16 @@ def test_assert_disk_health():
 def test_failing_disk_health():
     failure_metrics = {
         'master/disk_total': 1024,
-        'master/disk_used': 1000,
+        'master/disk_used': 500,
     }
     fake_mesos_state = {
         'slaves': [
             {
-                'reserved_resources': {},
+                'reserved_resources': {
+                    'some-role': {
+                        'disk': 500,
+                    },
+                },
             },
         ],
     }
