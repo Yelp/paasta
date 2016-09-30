@@ -57,7 +57,7 @@ def unreserve_all_resources_on_non_draining_hosts():
     """Unreserve all resources on non-draining hosts"""
     log.debug("Unreserving all resources on non-draining hosts")
     slaves = get_slaves()
-    hostnames = map((lambda slave: slave['hostname']), slaves)
+    hostnames = [slave['hostname'] for slave in slaves]
     draining_hosts = get_draining_hosts()
     non_draining_hosts = list(set(hostnames) - set(draining_hosts))
     unreserve_all_resources(hostnames=non_draining_hosts)
