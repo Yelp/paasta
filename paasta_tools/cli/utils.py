@@ -33,7 +33,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance

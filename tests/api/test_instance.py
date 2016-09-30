@@ -97,6 +97,8 @@ def test_marathon_job_status(
     expected = {'deploy_status': 'Running',
                 'running_instance_count': 5,
                 'expected_instance_count': 5,
-                'app_id': 'mock_app_id',
-                'slaves': ['host2', 'host1']}
+                'app_id': 'mock_app_id'}
+    expected_slaves = ['host2', 'host1']
+    slaves = mstatus.pop('slaves')
+    assert len(slaves) == len(expected_slaves) and sorted(slaves) == sorted(expected_slaves)
     assert mstatus == expected

@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+
 import mock
 from mock import patch
-from paasta_tools.cli.cmds import sysdig
 from pytest import raises
-import sys
+
+from paasta_tools.cli.cmds import sysdig
 
 
 @patch('paasta_tools.cli.cmds.sysdig.get_subparser', autospec=True)
@@ -91,14 +93,14 @@ def test_format_mesos_command():
     assert ret == expected
 
 
-@patch('paasta_tools.cli.cmds.sysdig.load_system_paasta_config', autosec=True)
-@patch('paasta_tools.cli.cmds.sysdig.calculate_remote_masters', autosec=True)
-@patch('paasta_tools.cli.cmds.sysdig.find_connectable_master', autosec=True)
+@patch('paasta_tools.cli.cmds.sysdig.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.sysdig.calculate_remote_masters', autospec=True)
+@patch('paasta_tools.cli.cmds.sysdig.find_connectable_master', autospec=True)
 def test_get_any_mesos_master(mock_find_connectable_master, mock_calculate_remote_masters, mock_load_system_config):
     mock_calculate_remote_masters.return_value = ([], 'fakeERROR')
     with raises(SystemExit):
         sysdig.get_any_mesos_master('cluster1')
-    mock_load_system_config.assert_called()
+    assert mock_load_system_config.called
     mock_calculate_remote_masters.assert_called_with('cluster1',
                                                      mock_load_system_config.return_value)
 

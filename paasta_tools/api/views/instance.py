@@ -24,10 +24,10 @@ from pyramid.view import view_config
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
-from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 
 
 log = logging.getLogger(__name__)

@@ -14,21 +14,21 @@
 # limitations under the License.
 import subprocess
 
-from paasta_tools.mesos_tools import get_container_name
-from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import get_status_for_instance
+from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import pick_slave_from_status
+from paasta_tools.mesos_tools import get_container_name
 
 
 def add_subparser(subparsers):
-    new_parser = get_subparser(description="'paasta docker_stop' works by picking a container running your service "
-                                           "at random. It then runs docker stop <container_id> to stop the container. "
-                                           "You should expect marathon to then replace the dead container. "
-                                           "Note this doesn't do any draining of the connections to this container!",
-                               help_text="Docker stop a container running your service",
-                               command='docker_stop',
-                               function=paasta_docker_stop,
-                               subparsers=subparsers)
+    get_subparser(description="'paasta docker_stop' works by picking a container running your service "
+                              "at random. It then runs docker stop <container_id> to stop the container. "
+                              "You should expect marathon to then replace the dead container. "
+                              "Note this doesn't do any draining of the connections to this container!",
+                  help_text="Docker stop a container running your service",
+                  command='docker_stop',
+                  function=paasta_docker_stop,
+                  subparsers=subparsers)
 
 
 def paasta_docker_stop(args):

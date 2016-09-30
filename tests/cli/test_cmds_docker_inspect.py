@@ -13,6 +13,7 @@
 # limitations under the License.
 import mock
 from mock import patch
+
 from paasta_tools.cli.cmds import docker_inspect
 
 
@@ -28,7 +29,7 @@ def test_add_subparser(mock_get_subparser):
 @patch('paasta_tools.cli.cmds.docker_inspect.pick_slave_from_status', autospec=True)
 @patch('paasta_tools.cli.cmds.docker_inspect.get_status_for_instance', autospec=True)
 def test_paasta_docker_inspect(mock_get_status_for_instance, mock_pick_slave_from_status, mock_get_container_name,
-                            mock_subprocess):
+                               mock_subprocess):
     mock_status = mock.Mock(marathon=mock.Mock(app_id='appID1'))
     mock_get_status_for_instance.return_value = mock_status
     mock_args = mock.Mock(cluster='cluster1',
@@ -36,7 +37,7 @@ def test_paasta_docker_inspect(mock_get_status_for_instance, mock_pick_slave_fro
                           instance='mock_instance',
                           host='host1',
                           mesos_id=None)
-    mock_pick_slave_from_status.return_value='host1'
+    mock_pick_slave_from_status.return_value = 'host1'
 
     docker_inspect.paasta_docker_inspect(mock_args)
     mock_get_status_for_instance.assert_called_with(cluster='cluster1',

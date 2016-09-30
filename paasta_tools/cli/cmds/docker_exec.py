@@ -14,10 +14,10 @@
 # limitations under the License.
 import subprocess
 
-from paasta_tools.mesos_tools import get_container_name
-from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import get_status_for_instance
+from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import pick_slave_from_status
+from paasta_tools.mesos_tools import get_container_name
 
 
 def add_subparser(subparsers):
@@ -30,6 +30,7 @@ def add_subparser(subparsers):
                                subparsers=subparsers)
     new_parser.add_argument('exec_command',
                             help='Command to append to docker docker_exec',
+                            nargs='?',
                             default='/bin/bash')
 
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 import mock
 from mock import patch
+
 from paasta_tools.cli.cmds import docker_exec
 
 
@@ -23,6 +24,7 @@ def test_add_subparser(mock_get_subparser):
     assert mock_get_subparser.called
     mock_get_subparser.return_value.add_argument.assert_called_with('exec_command',
                                                                     help='Command to append to docker docker_exec',
+                                                                    nargs='?',
                                                                     default='/bin/bash')
 
 
@@ -40,7 +42,7 @@ def test_paasta_docker_exec(mock_get_status_for_instance, mock_pick_slave_from_s
                           host='host1',
                           mesos_id=None,
                           exec_command='/bin/bash')
-    mock_pick_slave_from_status.return_value='host1'
+    mock_pick_slave_from_status.return_value = 'host1'
 
     docker_exec.paasta_docker_exec(mock_args)
     mock_get_status_for_instance.assert_called_with(cluster='cluster1',

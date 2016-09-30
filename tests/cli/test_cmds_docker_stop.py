@@ -13,6 +13,7 @@
 # limitations under the License.
 import mock
 from mock import patch
+
 from paasta_tools.cli.cmds import docker_stop
 
 
@@ -36,7 +37,7 @@ def test_paasta_docker_stop(mock_get_status_for_instance, mock_pick_slave_from_s
                           instance='mock_instance',
                           host='host1',
                           mesos_id=None)
-    mock_pick_slave_from_status.return_value='host1'
+    mock_pick_slave_from_status.return_value = 'host1'
 
     docker_stop.paasta_docker_stop(mock_args)
     mock_get_status_for_instance.assert_called_with(cluster='cluster1',

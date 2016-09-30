@@ -686,7 +686,7 @@ def test_get_container_name():
         mock_executor = {'tasks': [{'slave_id': 'fake_slave'}], 'container': 'abc123'}
         mock_task_1 = mock.Mock(slave={'hostname': 'host1'},
                                 executor=mock_executor,
-                                __getitem__=mock.Mock(side_effect = mock_getitem))
+                                __getitem__=mock.Mock(side_effect=mock_getitem))
         mock_get_running_tasks_from_active_frameworks.return_value = [mock_task_1]
         expected = 'mesos-fake_slave.abc123'
 
@@ -704,4 +704,3 @@ def test_get_container_name():
 
         with raises(TaskNotFound):
             ret = mesos_tools.get_container_name('fake_app_id', slave_hostname='not-found')
-

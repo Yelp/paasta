@@ -19,8 +19,8 @@ from urlparse import urlparse
 
 from paasta_tools.cli.utils import calculate_remote_masters
 from paasta_tools.cli.utils import find_connectable_master
-from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import get_status_for_instance
+from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import pick_slave_from_status
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.mesos_tools import get_mesos_master
