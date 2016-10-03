@@ -73,7 +73,7 @@ def perform_performance_check(args):
     if service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service, args.soa_dir)
-    print service
+
     try:
         submit_performance_check_job(
             service=service,
