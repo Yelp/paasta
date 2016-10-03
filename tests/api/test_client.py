@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+from bravado.exception import HTTPError
+from bravado.requests_client import RequestsResponseAdapter
 
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
@@ -59,5 +61,24 @@ def test_paasta_status():
 
     with mock.patch('bravado.http_future.HttpFuture.result', autospec=True) as mock_result:
         mock_result.return_value = fake_status_obj
+        paasta_status_on_api_endpoint('fake_cluster', 'fake_service', 'fake_instance',
+                                      system_paasta_config, verbose=False)
+
+
+def test_paasta_status_exception():
+    system_paasta_config = SystemPaastaConfig({
+        'api_endpoints': {
+            'fake_cluster': "http://fake_cluster:5054"
+        },
+        'cluster': 'fake_cluster'
+    }, 'fake_directory')
+
+    with mock.patch('paasta_tools.cli.cmds.status.get_paasta_api_client', autospec=True) as mock_get_paasta_api_client:
+        requests_response = mock.Mock(status_code=500, reason='Internal Server Error')
+        incoming_response = RequestsResponseAdapter(requests_response)
+
+        mock_swagger_client = mock.Mock()
+        mock_swagger_client.service.status_instance.side_effect = HTTPError(incoming_response)
+        mock_get_paasta_api_client.return_value = mock_swagger_client
         paasta_status_on_api_endpoint('fake_cluster', 'fake_service', 'fake_instance',
                                       system_paasta_config, verbose=False)

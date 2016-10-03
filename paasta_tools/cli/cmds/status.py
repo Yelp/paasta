@@ -17,6 +17,7 @@ import sys
 from distutils.util import strtobool
 from subprocess import CalledProcessError
 
+from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
 from paasta_tools.api.client import get_paasta_api_client
@@ -139,7 +140,12 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
         print 'Cannot get a paasta-api client'
         exit(1)
 
-    status = client.service.status_instance(service=service, instance=instance).result()
+    try:
+        status = client.service.status_instance(service=service, instance=instance).result()
+    except HTTPError as exc:
+        print exc.response.text
+        return
+
     print 'instance: %s' % PaastaColors.blue(instance)
     print 'Git sha:    %s (desired)' % status.git_sha
 
