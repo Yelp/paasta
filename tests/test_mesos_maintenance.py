@@ -779,6 +779,50 @@ def test_get_hosts_past_maintenance_start(
 
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.datetime_to_nanoseconds', autospec=True)
+def test_get_hosts_past_maintenance_start_grace(
+    mock_datetime_to_nanoseconds,
+    mock_get_maintenance_schedule,
+):
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    }
+                }
+            }
+        ]
+    }
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 7
+    ret = get_hosts_past_maintenance_start(grace=1)
+    assert ret == ['host2']
+
+    ret = get_hosts_past_maintenance_start(grace=5)
+    assert ret == []
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.datetime_to_nanoseconds', autospec=True)
 def test_get_hosts_past_maintenance_end(
     mock_datetime_to_nanoseconds,
     mock_get_maintenance_schedule,
@@ -828,6 +872,56 @@ def test_get_hosts_past_maintenance_end(
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
     mock_datetime_to_nanoseconds.return_value = 19
     actual = get_hosts_past_maintenance_end()
+    assert actual == []
+
+
+@mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.datetime_to_nanoseconds', autospec=True)
+def test_get_hosts_past_maintenance_end_grace(
+    mock_datetime_to_nanoseconds,
+    mock_get_maintenance_schedule,
+):
+    mock_schedule = {
+        "windows": [
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host3"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 10
+                    },
+                    "duration": {
+                        "nanoseconds": 20
+                    }
+                }
+            },
+            {
+                "machine_ids": [
+                    {
+                        "hostname": "host2"
+                    }
+                ],
+                "unavailability": {
+                    "start": {
+                        "nanoseconds": 5
+                    },
+                    "duration": {
+                        "nanoseconds": 10
+                    }
+                }
+            }
+        ]
+    }
+    mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
+    mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
+    mock_datetime_to_nanoseconds.return_value = 19
+    actual = get_hosts_past_maintenance_end(grace=2)
+    assert actual == ['host2']
+
+    actual = get_hosts_past_maintenance_end(grace=5)
     assert actual == []
 
 

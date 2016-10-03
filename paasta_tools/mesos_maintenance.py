@@ -200,15 +200,17 @@ def is_host_down(hostname=getfqdn()):
     return hostname in get_down_hosts()
 
 
-def get_hosts_forgotten_draining():
+def get_hosts_forgotten_draining(grace=0):
     """Find hosts that are still marked as draining (rather than down) after the start
     of their maintenance window.
+    :param grace: integer number of nanoseconds to allow a host to be left in the draining
+    state after the start of its maintenance window before we consider it forgotten.
     :returns: a list of hostnames of hosts forgotten draining
     """
     draining_hosts = get_draining_hosts()
     log.debug("draining_hosts: %s" % draining_hosts)
 
-    hosts_past_maintenance_start = get_hosts_past_maintenance_start()
+    hosts_past_maintenance_start = get_hosts_past_maintenance_start(grace=grace)
     log.debug("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
 
     forgotten_draining = list(set(draining_hosts).intersection(hosts_past_maintenance_start))
@@ -225,15 +227,17 @@ def are_hosts_forgotten_draining():
     return bool(get_hosts_forgotten_draining())
 
 
-def get_hosts_forgotten_down():
+def get_hosts_forgotten_down(grace=0):
     """Find hosts that are still marked as down (rather than up) after the end
     of their maintenance window.
+    :param grace: integer number of nanoseconds to allow a host to be left in the down
+    state after the end of its maintenance window before we consider it forgotten.
     :returns: a list of hostnames of hosts forgotten down
     """
     down_hosts = get_down_hosts()
     log.debug("down_hosts: %s" % down_hosts)
 
-    hosts_past_maintenance_end = get_hosts_past_maintenance_end()
+    hosts_past_maintenance_end = get_hosts_past_maintenance_end(grace=grace)
     log.debug("hosts_past_maintenance_end: %s" % hosts_past_maintenance_end)
 
     forgotten_down = list(set(down_hosts).intersection(hosts_past_maintenance_end))
@@ -663,12 +667,14 @@ def is_host_past_maintenance_end(hostname):
     return hostname in get_hosts_past_maintenance_end()
 
 
-def get_hosts_past_maintenance_start():
+def get_hosts_past_maintenance_start(grace=0):
     """Get a list of hosts that have reached the start of their maintenance window
+    :param grace: integer number of nanoseconds to allow a host to be left in the draining
+    state after the start of its maintenance window before we consider it past its maintenance start
     :returns: List of hostnames
     """
     schedules = get_maintenance_schedule().json()
-    current_time = datetime_to_nanoseconds(now())
+    current_time = datetime_to_nanoseconds(now()) - grace
     ret = []
     if 'windows' in schedules:
         for window in schedules['windows']:
@@ -678,12 +684,14 @@ def get_hosts_past_maintenance_start():
     return ret
 
 
-def get_hosts_past_maintenance_end():
+def get_hosts_past_maintenance_end(grace=0):
     """Get a list of hosts that have reached the end of their maintenance window
+    :param grace: integer number of nanoseconds to allow a host to be left in the down
+    state after the end of its maintenance window before we consider it past its maintenance end
     :returns: List of hostnames
     """
     schedules = get_maintenance_schedule().json()
-    current_time = datetime_to_nanoseconds(now())
+    current_time = datetime_to_nanoseconds(now()) - grace
     ret = []
     if 'windows' in schedules:
         for window in schedules['windows']:

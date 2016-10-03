@@ -26,6 +26,7 @@ from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_maintenance import get_hosts_forgotten_down
 from paasta_tools.mesos_maintenance import get_hosts_forgotten_draining
 from paasta_tools.mesos_maintenance import reserve_all_resources
+from paasta_tools.mesos_maintenance import seconds_to_nanoseconds
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_maintenance import unreserve_all_resources
 from paasta_tools.mesos_maintenance import up
@@ -44,13 +45,15 @@ def parse_args():
 def cleanup_forgotten_draining():
     """Clean up hosts forgotten draining"""
     log.debug("Cleaning up hosts forgotten draining")
-    undrain(hostnames=get_hosts_forgotten_draining())
+    hosts_forgotten_draining = get_hosts_forgotten_draining(grace=seconds_to_nanoseconds(10 * 60))
+    undrain(hostnames=hosts_forgotten_draining)
 
 
 def cleanup_forgotten_down():
     """Clean up hosts forgotten down"""
     log.debug("Cleaning up hosts forgotten down")
-    up(hostnames=get_hosts_forgotten_down())
+    hosts_forgotten_down = get_hosts_forgotten_down(grace=seconds_to_nanoseconds(10 * 60))
+    up(hostnames=hosts_forgotten_down)
 
 
 def unreserve_all_resources_on_non_draining_hosts():
