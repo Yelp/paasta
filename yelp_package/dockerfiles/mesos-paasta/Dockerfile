@@ -9,3 +9,4 @@ RUN mkdir -p /nail/etc
 RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 ADD ./start.sh /start.sh
+ADD ./start-slave.sh /start-slave.sh
