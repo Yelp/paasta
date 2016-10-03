@@ -113,9 +113,9 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
     status_string = marathon_tools.MarathonDeployStatus.tostring(status)
 
     if status == marathon_tools.MarathonDeployStatus.Waiting:
-        deploy_status = "%s (new tasks are not launching due to lack of capacity)" % PaastaColors.red(status_string)
+        deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
     elif status == marathon_tools.MarathonDeployStatus.Delayed:
-        deploy_status = "%s (next task won't launch for %s seconds due to previous failures)" % (
+        deploy_status = "%s (tasks are crashing, next won't launch for another %s seconds)" % (
                         PaastaColors.red(status_string), backoff_seconds)
     elif status == marathon_tools.MarathonDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
