@@ -15,6 +15,7 @@
 import requests
 from service_configuration_lib import read_extra_service_information
 
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import timeout
 
@@ -68,9 +69,14 @@ def submit_performance_check_job(service, soa_dir):
 
 @timeout()
 def perform_performance_check(args):
+    service = args.service
+    if service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service, args.soa_dir)
+    print service
     try:
         submit_performance_check_job(
-            service=args.service,
+            service=service,
             soa_dir=args.soa_dir,
         )
     except Exception as e:
