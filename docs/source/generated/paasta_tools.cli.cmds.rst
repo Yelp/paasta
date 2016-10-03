@@ -8,6 +8,9 @@ Submodules
 
    paasta_tools.cli.cmds.check
    paasta_tools.cli.cmds.cook_image
+   paasta_tools.cli.cmds.docker_exec
+   paasta_tools.cli.cmds.docker_inspect
+   paasta_tools.cli.cmds.docker_stop
    paasta_tools.cli.cmds.emergency_restart
    paasta_tools.cli.cmds.emergency_start
    paasta_tools.cli.cmds.emergency_stop
@@ -29,6 +32,7 @@ Submodules
    paasta_tools.cli.cmds.security_check
    paasta_tools.cli.cmds.start_stop_restart
    paasta_tools.cli.cmds.status
+   paasta_tools.cli.cmds.sysdig
    paasta_tools.cli.cmds.validate
 
 Module contents
