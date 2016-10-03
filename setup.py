@@ -74,7 +74,6 @@ setup(
         'paasta_tools/autoscale_all_services.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/cleanup_marathon_jobs.py',
-        'paasta_tools/cleanup_maintenance.py',
         'paasta_tools/paasta_deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',
         'paasta_tools/generate_all_deployments',
@@ -102,6 +101,7 @@ setup(
         'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
         'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
         'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
+        'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
     ],
         'paste.app_factory': [
         'paasta-api-config=paasta_tools.api.api:make_app'

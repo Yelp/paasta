@@ -72,7 +72,7 @@ def reserve_all_resources_on_draining_hosts():
     reserve_all_resources(hostnames=get_draining_hosts())
 
 
-def cleanup_maintenance():
+def main():
     log.debug("Cleaning up maintenance cruft")
     parse_args()
 
@@ -83,6 +83,6 @@ def cleanup_maintenance():
 
 
 if __name__ == "__main__":
-    if cleanup_maintenance():
+    if main():
         sys.exit(0)
     sys.exit(1)
