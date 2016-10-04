@@ -101,7 +101,7 @@
       "get": {
         "responses": {
           "200": {
-            "description": "Desired instance count for a service instance",
+            "description": "Get desired instance count for a service instance",
             "schema": {
               "type": "object",
               "properties": {
@@ -141,12 +141,15 @@
       "post": {
         "responses": {
           "202": {
-            "description": "Desired instance count for a service instance",
+            "description": "Set desired instance count for a service instance",
             "schema": {
               "type": "object",
               "properties": {
                 "desired_instances": {
                   "type": "integer"
+                },
+                "status": {
+                  "type": "string"
                 }
               }
             }

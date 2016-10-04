@@ -15,22 +15,18 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
-import logging
 import traceback
 
-from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
+from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
-
-
-log = logging.getLogger(__name__)
 
 
 def chronos_instance_status(instance_status, service, instance, verbose):
@@ -79,27 +75,6 @@ def marathon_instance_status(instance_status, service, instance, verbose):
     return mstatus
 
 
-class InstanceFailure(Exception):
-    def __init__(self, msg, err):
-        self.msg = msg
-        self.err = err
-
-
-@view_config(context=InstanceFailure)
-def instance_failure_response(exc, request):
-    """Construct an HTTP response with an error status code. This happens when
-    the API service has to stop on a 'hard' error. In contrast, the API service
-    continues to produce results on a 'soft' error. It will place a 'message'
-    field in the output. Multiple 'soft' errors are concatenated in the same
-    'message' field when errors happen in the same hierarchy.
-    """
-    log.error(exc.msg)
-
-    response = Response('ERROR: %s' % exc.msg)
-    response.status_int = exc.err
-    return response
-
-
 @view_config(route_name='service.instance.status', request_method='GET', renderer='json')
 def instance_status(request):
     service = request.swagger_data.get('service')
@@ -114,13 +89,13 @@ def instance_status(request):
         actual_deployments = get_actual_deployments(service, settings.soa_dir)
     except:
         error_message = traceback.format_exc()
-        raise InstanceFailure(error_message, 500)
+        raise ApiFailure(error_message, 500)
 
     version = get_deployment_version(actual_deployments, settings.cluster, instance)
     # exit if the deployment key is not found
     if not version:
         error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
-        raise InstanceFailure(error_message, 404)
+        raise ApiFailure(error_message, 404)
 
     instance_status['git_sha'] = version
 
@@ -132,9 +107,9 @@ def instance_status(request):
             instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
-            raise InstanceFailure(error_message, 404)
+            raise ApiFailure(error_message, 404)
     except:
         error_message = traceback.format_exc()
-        raise InstanceFailure(error_message, 500)
+        raise ApiFailure(error_message, 500)
 
     return instance_status

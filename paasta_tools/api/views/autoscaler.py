@@ -19,6 +19,7 @@ from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
+from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 
@@ -29,13 +30,18 @@ def get_autoscaler_count(request):
     instance = request.swagger_data.get('instance')
     cluster = settings.cluster
     soa_dir = settings.soa_dir
-    service_config = load_marathon_service_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-        load_deployments=False,
-    )
+    try:
+        service_config = load_marathon_service_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            load_deployments=False,
+        )
+    except:
+        error_message = 'Unable to load service config for %s.%s' % (service, instance)
+        raise ApiFailure(error_message, 404)
+
     response_body = {'desired_instances': service_config.get_instances()}
     return Response(json_body=response_body, status_code=200)
 
@@ -45,6 +51,36 @@ def update_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
     desired_instances = request.swagger_data.get('json_body')['desired_instances']
+
+    try:
+        service_config = load_marathon_service_config(
+            service=service,
+            instance=instance,
+            cluster=settings.cluster,
+            soa_dir=settings.soa_dir,
+            load_deployments=False,
+        )
+    except:
+        error_message = 'Unable to load service config for %s.%s' % (service, instance)
+        raise ApiFailure(error_message, 404)
+
+    max_instances = service_config.get_max_instances()
+    if max_instances is None:
+        error_message = 'Autoscaling is not enabled for %s.%s' % (service, instance)
+        raise ApiFailure(error_message, 404)
+
+    min_instances = service_config.get_min_instances()
+
+    # Dump whatever number from the client to zk. get_instances() will limit
+    # readings from zk to [min_instances, max_instances].
     set_instances_for_marathon_service(service=service, instance=instance, instance_count=desired_instances)
-    response_body = {'desired_instances': desired_instances}
+    status = 'SUCCESS'
+    if desired_instances > max_instances:
+        desired_instances = max_instances
+        status = 'WARNING desired_instances is greater than max_instances %d' % max_instances
+    elif desired_instances < min_instances:
+        desired_instances = min_instances
+        status = 'WARNING desired_instances is less than min_instances %d' % min_instances
+
+    response_body = {'desired_instances': desired_instances, 'status': status}
     return Response(json_body=response_body, status_code=202)
