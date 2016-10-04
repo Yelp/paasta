@@ -28,6 +28,7 @@ Submodules
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
    paasta_tools.cleanup_chronos_jobs
+   paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.drain_lib
    paasta_tools.generate_deployments_for_service
