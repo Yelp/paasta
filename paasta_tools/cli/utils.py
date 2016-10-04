@@ -338,7 +338,7 @@ def guess_cluster(service, args):
                 'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
             sys.exit(2)
         sys.stderr.write(PaastaColors.yellow(
-            'Guesing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
+            'Guessing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
     return cluster
 
 
