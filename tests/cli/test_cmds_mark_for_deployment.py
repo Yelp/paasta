@@ -84,7 +84,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
 
 
 def mock_status_instance_side_effect(service, instance):
-    if instance in ['instance1', 'instance6', 'notaninstance']:
+    if instance in ['instance1', 'instance6', 'notaninstance', 'api_error']:
         # valid completed instance
         mock_mstatus = Mock(app_count=1, deploy_status='Running',
                             expected_instance_count=2,
@@ -130,6 +130,9 @@ def mock_status_instance_side_effect(service, instance):
     if instance == 'notaninstance':
         # not an instance paasta can find
         mock_status_instance.result.side_effect = HTTPError(response=Mock(status_code=404))
+    if instance == 'api_error':
+        # not an instance paasta can find
+        mock_status_instance.result.side_effect = HTTPError(response=Mock(status_code=500))
     return mock_status_instance
 
 
@@ -147,6 +150,7 @@ def test_are_instances_deployed(mock_get_paasta_api_client, mock__log):
     assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance5', 'instance1'], 'somesha')
     assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance6'], 'somesha')
     assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['notaninstance'], 'somesha')
+    assert not mark_for_deployment.are_instances_deployed('cluster', 'service1', ['api_error'], 'somesha')
     assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance7'], 'somesha')
     assert mark_for_deployment.are_instances_deployed('cluster', 'service1', ['instance8'], 'somesha')
 
