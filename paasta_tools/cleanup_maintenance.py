@@ -38,6 +38,8 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Cleans up forgotten maintenance cruft.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        dest="verbose", default=False)
     args = parser.parse_args()
     return args
 
@@ -46,14 +48,20 @@ def cleanup_forgotten_draining():
     """Clean up hosts forgotten draining"""
     log.debug("Cleaning up hosts forgotten draining")
     hosts_forgotten_draining = get_hosts_forgotten_draining(grace=seconds_to_nanoseconds(10 * 60))
-    undrain(hostnames=hosts_forgotten_draining)
+    if hosts_forgotten_draining:
+        undrain(hostnames=hosts_forgotten_draining)
+    else:
+        log.debug("No hosts forgotten draining")
 
 
 def cleanup_forgotten_down():
     """Clean up hosts forgotten down"""
     log.debug("Cleaning up hosts forgotten down")
     hosts_forgotten_down = get_hosts_forgotten_down(grace=seconds_to_nanoseconds(10 * 60))
-    up(hostnames=hosts_forgotten_down)
+    if hosts_forgotten_down:
+        up(hostnames=hosts_forgotten_down)
+    else:
+        log.debug("No hosts forgotten down")
 
 
 def unreserve_all_resources_on_non_draining_hosts():
@@ -63,18 +71,30 @@ def unreserve_all_resources_on_non_draining_hosts():
     hostnames = [slave['hostname'] for slave in slaves]
     draining_hosts = get_draining_hosts()
     non_draining_hosts = list(set(hostnames) - set(draining_hosts))
-    unreserve_all_resources(hostnames=non_draining_hosts)
+    if non_draining_hosts:
+        unreserve_all_resources(hostnames=non_draining_hosts)
+    else:
+        log.debug("No non-draining hosts")
 
 
 def reserve_all_resources_on_draining_hosts():
     """Reserve all resources on draining hosts"""
     log.debug("Reserving all resources on draining hosts")
-    reserve_all_resources(hostnames=get_draining_hosts())
+    draining_hosts = get_draining_hosts()
+    if draining_hosts:
+        reserve_all_resources(hostnames=draining_hosts)
+    else:
+        log.debug("No draining hosts")
 
 
 def main():
     log.debug("Cleaning up maintenance cruft")
-    parse_args()
+    args = parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     cleanup_forgotten_draining()
     cleanup_forgotten_down()
