@@ -199,7 +199,11 @@ class MesosMaster(object):
         keys = ["frameworks"]
         if not active_only:
             keys.append("completed_frameworks")
-        return util.merge(self.fetch("/master/frameworks").json(), *keys)
+        return util.merge(self._frameworks, *keys)
+
+    @util.CachedProperty(ttl=5)
+    def _frameworks(self):
+        return self.fetch("/master/frameworks").json()
 
     def frameworks(self, active_only=False):
         return [framework.Framework(f) for f in self._framework_list(active_only)]
