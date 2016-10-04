@@ -10,6 +10,7 @@ usr/share/python/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cle
 usr/share/python/paasta-tools/bin/paasta_check_chronos_jobs usr/bin/check_chronos_jobs
 usr/share/python/paasta-tools/bin/paasta_check_chronos_jobs usr/bin/paasta_check_chronos_jobs
 usr/share/python/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
+usr/share/python/paasta-tools/bin/cleanup_maintenance.py usr/bin/cleanup_maintenance
 usr/share/python/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/deploy_chronos_jobs
 usr/share/python/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chronos_jobs
 usr/share/python/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
