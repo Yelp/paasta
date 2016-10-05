@@ -100,7 +100,6 @@ def _format_job_name(job):
 
 
 def _format_disabled_status(job):
-    status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.grey("Not scheduled")
     else:

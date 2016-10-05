@@ -56,9 +56,9 @@ def restart_marathon_job(service, instance, app_id, client, cluster):
 
 def bouncing_status_human(app_count, bounce_method):
     if app_count == 0:
-        return PaastaColors.red("Stopped")
+        return PaastaColors.red("Disabled")
     elif app_count == 1:
-        return PaastaColors.green("Running")
+        return PaastaColors.green("Configured")
     elif app_count > 1:
         return PaastaColors.yellow("Bouncing (%s)" % bounce_method)
     else:
@@ -200,7 +200,7 @@ def status_marathon_job_verbose(service, instance, client):
             all_tasks.extend(tasks)
             all_output.append(output)
         else:
-            all_output.append("Warning: App %s not running." % app_id)
+            all_output.append("Warning: App %s is not running yet." % app_id)
     return all_tasks, "\n".join(all_output)
 
 
