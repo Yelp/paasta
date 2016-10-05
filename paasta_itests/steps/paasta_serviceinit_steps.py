@@ -140,7 +140,7 @@ def paasta_serviceinit_status_single_instance(context, service, instances):
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
-    assert "Running" in output
+    assert "Configured" in output
     assert exit_code == 0
 
 
@@ -155,7 +155,7 @@ def paasta_serviceinit_status_multi_instances(context, service, instances):
     print  # sacrificial line for behave to eat instead of our output
 
     # one service is deployed and the other is not
-    assert "Running" in output
+    assert "Configured" in output
     assert exit_code != 0
 
 
