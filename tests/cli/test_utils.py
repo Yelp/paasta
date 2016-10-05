@@ -16,6 +16,8 @@ import contextlib
 from socket import gaierror
 
 import mock
+from bravado.exception import HTTPError
+from bravado.exception import HTTPNotFound
 from mock import patch
 from pytest import mark
 from pytest import raises
@@ -718,3 +720,53 @@ def test_list_deploy_groups_parses_configs(
     ]
     actual = utils.list_deploy_groups(service="foo")
     assert actual == set(['fake_deploy_group', 'fake_cluster.fake_instance'])
+
+
+@patch('paasta_tools.cli.utils.client', autospec=True)
+def test_get_task_from_instance(mock_client):
+    mock_client.get_paasta_api_client.return_value = None
+    with raises(SystemExit):
+        utils.get_task_from_instance('cluster1', 'my-service', 'main')
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1')
+    mock_api = mock.Mock()
+    mock_client.get_paasta_api_client.return_value = mock_api
+    mock_task_1 = mock.Mock()
+    mock_task_2 = mock.Mock()
+    mock_tasks = [mock_task_1, mock_task_2]
+    mock_result = mock.Mock(return_value=mock_tasks)
+    mock_api.service.tasks_instance.return_value = mock.Mock(result=mock_result)
+    ret = utils.get_task_from_instance('cluster1', 'my-service', 'main')
+    mock_api.service.tasks_instance.assert_called_with(service='my-service',
+                                                       instance='main',
+                                                       slave_hostname=None,
+                                                       task_id=None)
+    assert ret == mock_task_1
+
+    mock_result = mock.Mock(return_value=[])
+    mock_api.service.tasks_instance.return_value = mock.Mock(result=mock_result)
+    with raises(SystemExit):
+        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
+                                           slave_hostname='test',
+                                           task_id='123')
+
+    mock_api.service.tasks_instance.side_effect = HTTPError(response=mock.Mock(status_code=500))
+    with raises(SystemExit):
+        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
+                                           slave_hostname='test',
+                                           task_id='123')
+    mock_api.service.tasks_instance.assert_called_with(service='my-service',
+                                                       instance='main',
+                                                       slave_hostname='test',
+                                                       task_id='123')
+
+    mock_api.service.tasks_instance.side_effect = HTTPNotFound(response=mock.Mock(status_code=404))
+    with raises(SystemExit):
+        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
+                                           slave_hostname='test',
+                                           task_id='123')
+
+
+def test_get_container_name():
+    mock_task = mock.Mock(slave_id='slave1', container_id='container1')
+    ret = utils.get_container_name(mock_task)
+    assert ret == 'mesos-slave1.container1'

@@ -14,11 +14,11 @@
 import marathon
 import mock
 from pyramid import testing
+from pytest import raises
 
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
-from paasta_tools.api.views.instance import instance_status
-from paasta_tools.api.views.instance import marathon_job_status
+from paasta_tools.api.views import instance
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_job_status', autospec=True)
@@ -63,7 +63,7 @@ def test_instances_status(
     request = testing.DummyRequest()
     request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
 
-    response = instance_status(request)
+    response = instance.instance_status(request)
     assert response['marathon']['bounce_method'] == 'fake_bounce'
     assert response['marathon']['desired_state'] == 'start'
 
@@ -93,7 +93,7 @@ def test_marathon_job_status(
     job_config.get_instances.return_value = 5
 
     mstatus = {}
-    marathon_job_status(mstatus, client, job_config)
+    instance.marathon_job_status(mstatus, client, job_config)
     expected = {'deploy_status': 'Running',
                 'running_instance_count': 5,
                 'expected_instance_count': 5,
@@ -102,3 +102,39 @@ def test_marathon_job_status(
     slaves = mstatus.pop('slaves')
     assert len(slaves) == len(expected_slaves) and sorted(slaves) == sorted(expected_slaves)
     assert mstatus == expected
+
+
+@mock.patch('paasta_tools.api.views.instance.instance_status', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_tasks_from_app_id', autospec=True)
+def test_instance_tasks(mock_get_tasks_from_app_id, mock_instance_status):
+    mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1'})
+    mock_instance_status.return_value = {'marathon': {'app_id': 'app1'}}
+
+    mock_executor = {'tasks': [{'slave_id': 'fake_slave1'}], 'container': 'abc123'}
+    mock_task_1 = mock.Mock(slave={'hostname': 'host1'},
+                            executor=mock_executor,
+                            __getitem__=mock.Mock(side_effect=mock_getitem))
+    mock_executor = {'tasks': [{'slave_id': 'fake_slave2'}], 'container': 'abc123'}
+    mock_task_2 = mock.Mock(slave={'hostname': 'host2'},
+                            executor=mock_executor,
+                            __getitem__=mock.Mock(side_effect=mock_getitem))
+    mock_get_tasks_from_app_id.return_value = [mock_task_1, mock_task_2]
+    ret = instance.instance_tasks(mock_request)
+    expected = [{'task_id': 'fakeID',
+                 'slave_id': 'fake_slave1',
+                 'slave_hostname': 'host1',
+                 'container_id': 'abc123'},
+                {'task_id': 'fakeID',
+                 'slave_id': 'fake_slave2',
+                 'slave_hostname': 'host2',
+                 'container_id': 'abc123'}]
+    assert len(ret) == len(expected) and sorted(expected) == sorted(ret)
+
+    mock_instance_status.return_value = {'chronos': {}}
+    with raises(instance.InstanceFailure):
+        ret = instance.instance_tasks(mock_request)
+
+
+def mock_getitem(key):
+    if key == 'id':
+        return 'fakeID'

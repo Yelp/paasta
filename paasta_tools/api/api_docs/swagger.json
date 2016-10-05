@@ -97,6 +97,60 @@
         ]
       }
     },
+    "/services/{service}/{instance}/tasks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of tasks associated with an instance",
+            "schema": {
+                "$ref":"#/definitions/InstanceTasks"
+            }
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get mesos tasks of service_name.instance_name",
+        "operationId": "tasks_instance",
+        "tags": ["service"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "description": "mesos task id",
+            "name": "task_id",
+            "required": false,
+            "type": "string"
+	  },
+          {
+            "in": "query",
+            "description": "slave hostname to filter tasks by",
+            "name": "slave_hostname",
+            "required": false,
+            "type": "string"
+	  }
+        ]
+      }
+    },
     "/services/{service}/{instance}/autoscaler": {
       "get": {
         "responses": {
@@ -270,6 +324,32 @@
         "app_count",
         "bounce_method"
       ]
+    },
+    "InstanceTasks": {
+      "type": "array",
+      "description": "List of tasks associated with instance",
+      "items": {"$ref": "#/definitions/InstanceTask"}
+    },
+    "InstanceTask": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Mesos task ID"
+        },
+        "container_id": {
+          "type": "string",
+          "description": "Mesos container ID"
+        },
+        "slave_id": {
+          "type": "string",
+          "description": "Mesos slave ID"
+        },
+        "slave_hostname": {
+          "type": "string",
+          "description": "Slave hostname"
+        }
+      }
     }
   }
 }

@@ -22,6 +22,8 @@ from socket import gaierror
 from socket import gethostbyname_ex
 from subprocess import CalledProcessError
 
+from bravado.exception import HTTPError
+from bravado.exception import HTTPNotFound
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.api import client
@@ -794,3 +796,34 @@ def get_instance_configs_for_service(service, soa_dir):
                 soa_dir=soa_dir,
                 load_deployments=False,
             )
+
+
+def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None):
+    api = client.get_paasta_api_client(cluster=cluster)
+    if not api:
+        sys.exit(1)
+    try:
+        tasks = api.service.tasks_instance(service=service,
+                                           instance=instance,
+                                           slave_hostname=slave_hostname,
+                                           task_id=task_id).result()
+    except HTTPNotFound:
+        log.error("Cannot find instance {0}, for service {1}, in cluster {2}".format(instance,
+                                                                                     service,
+                                                                                     cluster))
+        sys.exit(1)
+    except HTTPError as e:
+        log.error("Problem with API call to find task details")
+        log.error(e.response.text)
+        sys.exit(1)
+    if not tasks:
+        log.error("Cannot find any tasks on host: {0} or with task_id: {1}".format(slave_hostname,
+                                                                                   task_id))
+        sys.exit(1)
+    task = tasks[0]
+    return task
+
+
+def get_container_name(task):
+    container_name = "mesos-{0}.{1}".format(task.slave_id, task.container_id)
+    return container_name

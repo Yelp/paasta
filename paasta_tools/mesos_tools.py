@@ -655,21 +655,10 @@ def terminate_framework(framework_id):
     resp.raise_for_status()
 
 
-def get_container_name(app_id, slave_hostname=None, task_id=None):
+def get_tasks_from_app_id(app_id, slave_hostname=None, task_id=None):
     tasks = get_running_tasks_from_active_frameworks(app_id)
-    try:
-        if task_id:
-            task = next(task for task in tasks if task['id'] == task_id)
-        elif slave_hostname:
-            task = next(task for task in tasks if slave_hostname in task.slave['hostname'])
-        else:
-            raise TaskNotFound("Couldn't find task")
-    except StopIteration:
-        raise TaskNotFound("Couldn't find task")
-    container_name = "mesos-{0}.{1}".format(task.executor['tasks'][0]['slave_id'],
-                                            task.executor['container'])
-    return container_name
-
-
-class TaskNotFound(Exception):
-    pass
+    if task_id:
+        tasks = [task for task in tasks if task['id'] == task_id]
+    elif slave_hostname:
+        tasks = [task for task in tasks if slave_hostname in task.slave['hostname']]
+    return tasks

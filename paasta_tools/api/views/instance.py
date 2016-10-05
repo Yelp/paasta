@@ -24,6 +24,7 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
@@ -113,3 +114,20 @@ def instance_status(request):
         raise ApiFailure(error_message, 500)
 
     return instance_status
+
+
+@view_config(route_name='service.instance.tasks', request_method='GET', renderer='json')
+def instance_tasks(request):
+    status = instance_status(request)
+    task_id = request.swagger_data.get('task_id', None)
+    slave_hostname = request.swagger_data.get('slave_hostname', None)
+    try:
+        mstatus = status['marathon']
+    except KeyError:
+        raise InstanceFailure("Only marathon tasks supported", 400)
+    tasks = get_tasks_from_app_id(mstatus['app_id'], slave_hostname=slave_hostname, task_id=task_id)
+    tasks = [{'task_id': task['id'],
+              'slave_id': task.executor['tasks'][0]['slave_id'],
+              'slave_hostname': task.slave['hostname'],
+              'container_id': task.executor['container']} for task in tasks]
+    return tasks
