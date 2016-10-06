@@ -21,18 +21,13 @@ import itertools
 from . import exceptions
 from . import parallel
 
-dne = True
 missing_slave = set([])
 
 
 def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
-    global dne
-
-    dne = True
+    no_files_found = True
 
     def process((task, fname)):
-        global dne
-
         try:
             fobj = task.file(fname)
         except exceptions.SlaveDoesNotExist:
@@ -44,18 +39,17 @@ def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
             raise exceptions.SkipResult
 
         if fobj.exists():
-            dne = False
             return fobj
 
     elements = itertools.chain(
         *[[(task, fname) for fname in file_list] for task in task_list])
 
     for result in parallel.stream(process, elements, max_workers):
-        if not result:
-            continue
-        yield result
+        if result:
+            no_files_found = False
+            yield result
 
-    if dne and fail:
+    if no_files_found and fail:
         raise exceptions.FileNotFoundForTaskException(
             "None of the tasks in %s contain the files in list %s" % (
                 ",".join([task["id"] for task in task_list]),
