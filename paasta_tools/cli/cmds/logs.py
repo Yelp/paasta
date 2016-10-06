@@ -813,15 +813,15 @@ class ScribeLogReader(LogReader):
         envs = []
         for component in components:
             # If a component has a 'source_env', we use that
-            # otherwise we lookup what scribe env is associated with a given cluster
-            env = LOG_COMPONENTS[component].get('source_env', self.cluster_to_scribe_env(cluster))
+            # otherwise we lookup a list of scribe envs associated with a given cluster
+            cluster_envs = LOG_COMPONENTS[component].get('source_envs', self.cluster_to_scribe_envs(cluster))
             if 'additional_source_envs' in LOG_COMPONENTS[component]:
                 envs += LOG_COMPONENTS[component]['additional_source_envs']
-            envs.append(env)
+            envs += cluster_envs
         return set(envs)
 
-    def cluster_to_scribe_env(self, cluster):
-        """Looks up the particular scribe env associated with a given paasta cluster.
+    def cluster_to_scribe_envs(self, cluster):
+        """Looks up the list of scribe envs associated with a given paasta cluster.
 
         Scribe has its own "environment" key, which doesn't always map 1:1 with our
         cluster names, so we have to maintain a manual mapping.
@@ -829,12 +829,12 @@ class ScribeLogReader(LogReader):
         This mapping is deployed as a config file via puppet as part of the public
         config deployed to every server.
         """
-        env = self.cluster_map.get(cluster, None)
-        if env is None:
+        envs = self.cluster_map.get(cluster, None)
+        if envs is None:
             print "I don't know where scribe logs for %s live?" % cluster
             sys.exit(1)
         else:
-            return env
+            return envs
 
 
 def generate_start_end_time(from_string="30m", to_string=None):

@@ -499,7 +499,7 @@ LOG_COMPONENTS = OrderedDict([
     ('build', {
         'color': PaastaColors.blue,
         'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-        'source_env': 'devc',
+        'source_envs': ['devc'],
     }),
     ('deploy', {
         'color': PaastaColors.cyan,

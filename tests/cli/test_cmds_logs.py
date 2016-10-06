@@ -39,16 +39,16 @@ except ImportError:
 
 def test_cluster_to_scribe_env_good():
     with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
-        scribe_log_reader = logs.ScribeLogReader(cluster_map={'mesosstage': 'env1'})
-        actual = scribe_log_reader.cluster_to_scribe_env('mesosstage')
-        assert actual == 'env1'
+        scribe_log_reader = logs.ScribeLogReader(cluster_map={'mesosstage': ['env1']})
+        actual = scribe_log_reader.cluster_to_scribe_envs('mesosstage')
+        assert actual == ['env1']
 
 
 def test_cluster_to_scribe_env_bad():
     with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
         scribe_log_reader = logs.ScribeLogReader(cluster_map={})
         with raises(SystemExit) as sys_exit:
-            scribe_log_reader.cluster_to_scribe_env('dne')
+            scribe_log_reader.cluster_to_scribe_envs('dne')
             assert sys_exit.value.code == 1
 
 
@@ -891,10 +891,10 @@ def test_determine_scribereader_envs():
         mock_scribereader,
     ):
         cluster_map = {
-            cluster: 'fake_scribe_env',
+            cluster: ['fake_scribe_env', 'another_region'],
         }
         actual = logs.ScribeLogReader(cluster_map=cluster_map).determine_scribereader_envs(components, cluster)
-        assert actual == set(['devc', 'fake_scribe_env'])
+        assert actual == set(['devc', 'fake_scribe_env', 'another_region'])
 
 
 def test_determine_scribereader_additional_envs():
@@ -904,7 +904,7 @@ def test_determine_scribereader_additional_envs():
             mock.patch('paasta_tools.cli.cmds.logs.LOG_COMPONENTS',
                        spec_set=dict, autospec=None) as mock_LOG_COMPONENTS:
         cluster_map = {
-            cluster: 'fake_scribe_env',
+            cluster: ['fake_scribe_env'],
         }
         LOG_COMPONENTS = {
             'fake_component': {
