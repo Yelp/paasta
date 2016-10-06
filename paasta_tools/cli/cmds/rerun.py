@@ -26,6 +26,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SPACER
 
@@ -139,7 +140,7 @@ def paasta_rerun(args):
                 print ("  Warning: \"%s\" uses time variables interpolation, "
                        "please supply a `--execution_date` argument." % args.instance)
                 continue
-        except chronos_tools.UnknownChronosJobError as e:
+        except NoConfigurationForServiceError as e:
             print "  Warning: %s" % e.message
             continue
         if execution_date is None:

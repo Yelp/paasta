@@ -20,6 +20,7 @@ from mock import Mock
 from pytest import raises
 
 from paasta_tools import chronos_tools
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -224,7 +225,7 @@ class TestChronosTools:
             mock_read_chronos_jobs_for_service,
         ):
             mock_read_chronos_jobs_for_service.return_value = []
-            with raises(chronos_tools.UnknownChronosJobError) as exc:
+            with raises(NoConfigurationForServiceError) as exc:
                 chronos_tools.load_chronos_job_config(service='fake_service',
                                                       instance='fake_job',
                                                       cluster='fake_cluster',

@@ -79,7 +79,7 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native')
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
 
 class InvalidInstanceConfig(Exception):
@@ -391,9 +391,9 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         if (service, instance) in services:
             return instance_type
     else:
-        print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
-               % (compose_job_id(service, instance), cluster))
-        sys.exit(3)
+        raise NoConfigurationForServiceError(
+            "Error: %s doesn't look like it has been deployed to this cluster! (%s)" % (
+                compose_job_id(service, instance), cluster))
 
 
 def compose(func_one, func_two):
@@ -947,19 +947,19 @@ class SystemPaastaConfig(dict):
         """Get the chronos config
 
         :returns: The chronos config dictionary"""
-        try:
-            return self['chronos_config']
-        except KeyError:
-            return {}
+        return self.get('chronos_config', {})
 
     def get_marathon_config(self):
         """Get the marathon config
 
         :returns: The marathon config dictionary"""
-        try:
-            return self['marathon_config']
-        except KeyError:
-            return {}
+        return self.get('marathon_config', {})
+
+    def get_adhoc_config(self):
+        """Get the adhoc job config
+
+        :returns: The adhoc job config dictionary"""
+        return self.get('adhoc_config', {})
 
     def get_paasta_native_config(self):
         return self.get('paasta_native', {})

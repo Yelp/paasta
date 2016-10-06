@@ -959,7 +959,10 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     or (None, None) if no healthcheck
     """
     smartstack_config = load_service_namespace_config(service, instance, soa_dir)
-    mode = service_manifest.get_healthcheck_mode(smartstack_config)
+    try:
+        mode = service_manifest.get_healthcheck_mode(smartstack_config)
+    except AttributeError:
+        mode = None
     hostname = socket.getfqdn()
 
     if mode == "http":

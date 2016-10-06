@@ -29,13 +29,12 @@ import ephemeral_port_reserve
 import requests
 from docker import errors
 
+from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import guess_cluster
-from paasta_tools.cli.utils import guess_instance
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
@@ -49,6 +48,7 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
@@ -265,7 +265,8 @@ def add_subparser(subparsers):
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '-c', '--cluster',
-        help='The name of the cluster you wish to simulate. If omitted, attempts to guess a cluster to simulate',
+        help=("The name of the cluster you wish to simulate. "
+              "If omitted, uses the default cluster defined in the paasta local-run configs"),
     ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -318,9 +319,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help='Simulate a docker run for a particular instance of the service, like "main" or "canary"',
+        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'. "
+              "Defaults to 'interactive'"),
         required=False,
-        default=None,
+        default='interactive',
     ).completer = lazy_choices_completer(list_instances)
     list_parser.add_argument(
         '-v', '--verbose',
@@ -595,10 +597,15 @@ def command_function_for_framework(framework):
         interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
         return interpolated_command
 
+    def format_adhoc_command(cmd):
+        return cmd
+
     if framework == 'chronos':
         return format_chronos_command
     elif framework == 'marathon':
         return format_marathon_command
+    elif framework == 'adhoc':
+        return format_adhoc_command
     else:
         raise ValueError("Invalid Framework")
 
@@ -609,6 +616,7 @@ def configure_and_run_docker_container(
         service,
         instance,
         cluster,
+        system_paasta_config,
         args,
         pull_image=False,
         dry_run=False
@@ -617,25 +625,17 @@ def configure_and_run_docker_container(
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    try:
-        system_paasta_config = load_system_paasta_config()
-    except PaastaNotConfiguredError:
-        sys.stdout.write(PaastaColors.yellow(
-            "Warning: Couldn't load config files from '/etc/paasta'. This indicates\n"
-            "PaaSTA is not configured locally on this host, and local-run may not behave\n"
-            "the same way it would behave on a server configured for PaaSTA.\n"
-        ))
-        system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
     soa_dir = args.yelpsoa_config_root
 
     volumes = list()
 
-    instance_type = validate_service_instance(service, instance, cluster, soa_dir)
-
     load_deployments = docker_hash is None or pull_image
 
+    interactive = args.interactive
+
     try:
+        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
         instance_config = get_instance_config(
             service=service,
             instance=instance,
@@ -643,6 +643,29 @@ def configure_and_run_docker_container(
             load_deployments=load_deployments,
             soa_dir=soa_dir,
         )
+    except NoConfigurationForServiceError as e:
+        if instance == 'interactive':
+            if not pull_image:
+                instance_type = 'adhoc'
+                instance_config = AdhocJobConfig(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    config_dict={
+                        'cpus': 1,
+                        'mem': 1024,
+                        'disk': 1024,
+                    },
+                    branch_dict={},
+                )
+                interactive = True
+            else:
+                sys.stderr.write(PaastaColors.red(
+                    "Error: you cannot use the default 'interactive' image with 'pull_image' specified.\n"))
+                return
+        else:
+            sys.stderr.write(e.strerror + '\n')
+            return
     except NoDeploymentsAvailable:
         sys.stderr.write(PaastaColors.red(
             "Error: No deployments.json found in %(soa_dir)s/%(service)s.\n"
@@ -674,7 +697,7 @@ def configure_and_run_docker_container(
     for volume in system_paasta_config.get_volumes() + extra_volumes:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
-    if args.interactive is True and args.cmd is None:
+    if interactive is True and args.cmd is None:
         command = ['bash']
     elif args.cmd:
         command = shlex.split(args.cmd, posix=False)
@@ -694,7 +717,7 @@ def configure_and_run_docker_container(
         instance=instance,
         docker_hash=docker_hash,
         volumes=volumes,
-        interactive=args.interactive,
+        interactive=interactive,
         command=command,
         hostname=hostname,
         healthcheck=args.healthcheck,
@@ -712,9 +735,31 @@ def paasta_local_run(args):
         sys.stderr.write("If you meant to pull the docker image from the registry, explicitly pass --pull\n")
         return 1
 
+    try:
+        system_paasta_config = load_system_paasta_config()
+    except PaastaNotConfiguredError:
+        sys.stdout.write(PaastaColors.yellow(
+            "Warning: Couldn't load config files from '/etc/paasta'. This indicates\n"
+            "PaaSTA is not configured locally on this host, and local-run may not behave\n"
+            "the same way it would behave on a server configured for PaaSTA.\n"
+        ))
+        system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
+
+    adhoc_config = system_paasta_config.get_adhoc_config()
+
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
-    cluster = guess_cluster(service=service, args=args)
-    instance = guess_instance(service=service, cluster=cluster, args=args)
+    if args.cluster:
+        cluster = args.cluster
+    else:
+        try:
+            cluster = adhoc_config['default_cluster']
+        except KeyError:
+            sys.stderr.write(PaastaColors.yellow(
+                "PaaSTA on this machine has not been configured with a default cluster.\n"
+                "In the future this behaviour will be depricated and you'll have to specify a cluster.\n"
+                "For now the default cluster is being set to 'testopia'.\n"))
+            cluster = 'testopia'
+    instance = args.instance
     docker_client = get_docker_client()
 
     if args.action == 'build':
@@ -741,6 +786,7 @@ def paasta_local_run(args):
             cluster=cluster,
             args=args,
             pull_image=pull_image,
+            system_paasta_config=system_paasta_config,
             dry_run=args.action == 'dry_run',
         )
     except errors.APIError as e:

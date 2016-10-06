@@ -27,6 +27,7 @@ import datetime
 
 from paasta_tools import chronos_tools
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
@@ -174,7 +175,7 @@ def main():
             args.service_instance, cluster)
         print error_msg
         raise e
-    except chronos_tools.UnknownChronosJobError as e:
+    except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))

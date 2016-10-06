@@ -26,6 +26,7 @@ from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
@@ -37,7 +38,6 @@ from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -306,44 +306,6 @@ def guess_service_name():
     :return : A string representing the service name
     """
     return os.path.basename(os.getcwd())
-
-
-def guess_instance(service, cluster, args):
-    """Returns instance from args if available, otherwise uses 'main' if it is a valid instance,
-    otherwise takes a good guess and returns the first instance available"""
-    if args.instance:
-        instance = args.instance
-    else:
-        try:
-            instances = list_all_instances_for_service(
-                service=service, clusters=[cluster], instance_type=None, soa_dir=args.yelpsoa_config_root)
-            if 'main' in instances:
-                instance = 'main'
-            else:
-                instance = list(instances)[0]
-        except NoConfigurationForServiceError:
-            sys.stderr.write(PaastaColors.red(
-                'Could not automatically detect instance to emulate. Please specify one with the --instance option.\n'))
-            sys.exit(2)
-        sys.stderr.write(PaastaColors.yellow(
-            'Guessing instance configuration for %s. To override, use the --instance option.\n' % instance))
-    return instance
-
-
-def guess_cluster(service, args):
-    """Returns the cluster from args if available, otherwise uses the "default" one"""
-    if args.cluster:
-        cluster = args.cluster
-    else:
-        try:
-            cluster = get_default_cluster_for_service(service, soa_dir=args.yelpsoa_config_root)
-        except NoConfigurationForServiceError:
-            sys.stderr.write(PaastaColors.red(
-                'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
-            sys.exit(2)
-        sys.stderr.write(PaastaColors.yellow(
-            'Guessing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
-    return cluster
 
 
 def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
@@ -643,6 +605,8 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
         instance_config_load_function = load_marathon_service_config
     elif instance_type == 'chronos':
         instance_config_load_function = load_chronos_job_config
+    elif instance_type == 'adhoc':
+        instance_config_load_function = load_adhoc_job_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
