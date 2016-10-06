@@ -24,7 +24,7 @@ from . import parallel
 missing_slave = set([])
 
 
-def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
+def get_files_for_tasks(task_list, file_list, max_workers):
     no_files_found = True
 
     def process((task, fname)):
@@ -49,7 +49,7 @@ def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
             no_files_found = False
             yield result
 
-    if no_files_found and fail:
+    if no_files_found:
         raise exceptions.FileNotFoundForTaskException(
             "None of the tasks in %s contain the files in list %s" % (
                 ",".join([task["id"] for task in task_list]),
