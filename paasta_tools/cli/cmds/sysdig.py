@@ -85,5 +85,5 @@ def paasta_sysdig(args):
 
 def format_mesos_command(slave, app_id, mesos_url, marathon_url):
     sysdig_mesos = '{0},{1}'.format(mesos_url, marathon_url)
-    command = 'sudo csysdig -m {0} marathon.app.id="{1}" -v mesos_tasks'.format(sysdig_mesos, app_id)
+    command = 'sudo csysdig -m {0} marathon.app.id="/{1}" -v mesos_tasks'.format(sysdig_mesos, app_id)
     return slave + ":" + command
