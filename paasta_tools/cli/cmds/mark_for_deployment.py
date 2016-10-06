@@ -219,7 +219,10 @@ def are_instances_deployed(cluster, service, instances, git_sha):
                 log.warning("Can't get status for instance {0}, service {1} in cluster {2}. "
                             "This is normally because it is a new service that hasn't been "
                             "deployed by PaaSTA yet".format(instance, service, cluster))
-                statuses.append(None)
+            else:
+                log.warning("Error getting service status from PaaSTA API: {0}: {1}".format(e.response.status_code,
+                                                                                            e.response.text))
+            statuses.append(None)
     results = []
     for status in statuses:
         if not status:
@@ -234,7 +237,7 @@ def are_instances_deployed(cluster, service, instances, git_sha):
                            status.marathon.app_count == 1 and
                            status.marathon.deploy_status == 'Running' and
                            status.marathon.expected_instance_count == status.marathon.running_instance_count)
-    return all(results)
+    return results and all(results)
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
