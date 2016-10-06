@@ -57,8 +57,8 @@ def get_files_for_tasks(task_list, file_list, max_workers, fail=True):
 
     if dne and fail:
         raise exceptions.FileNotFoundForTaskException(
-            "None of the tasks in %s contin the files in list %s" % (
-                ",".join([task["id"] for task in task]),
+            "None of the tasks in %s contain the files in list %s" % (
+                ",".join([task["id"] for task in task_list]),
                 ",".join(file_list)
             )
         )
