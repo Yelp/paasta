@@ -664,7 +664,7 @@ def configure_and_run_docker_container(
                     "Error: you cannot use the default 'interactive' image with 'pull_image' specified.\n"))
                 return
         else:
-            sys.stderr.write(e.strerror + '\n')
+            sys.stderr.write(str(e) + '\n')
             return
     except NoDeploymentsAvailable:
         sys.stderr.write(PaastaColors.red(

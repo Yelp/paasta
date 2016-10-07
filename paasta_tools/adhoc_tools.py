@@ -13,7 +13,6 @@
 # limitations under the License.
 import logging
 
-import monitoring_tools
 import service_configuration_lib
 
 from paasta_tools.utils import deep_merge_dictionaries
@@ -72,13 +71,3 @@ class AdhocJobConfig(InstanceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
-
-    def get_service(self):
-        return self.service
-
-    def get_job_name(self):
-        return self.instance
-
-    def get_owner(self):
-        overrides = self.get_monitoring()
-        return monitoring_tools.get_team(overrides=overrides, service=self.get_service())

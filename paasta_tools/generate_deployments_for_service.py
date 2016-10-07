@@ -45,6 +45,9 @@ import re
 
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.adhoc_tools import load_adhoc_job_config
+from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
@@ -64,6 +67,52 @@ def parse_args():
                         help="Service name to make the deployments.json for")
     args = parser.parse_args()
     return args
+
+
+def get_instance_config_for_service(soa_dir, service):
+    for cluster in list_clusters(
+        service=service,
+        soa_dir=soa_dir,
+    ):
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='marathon',
+            soa_dir=soa_dir,
+        ):
+            yield load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='chronos',
+            soa_dir=soa_dir,
+        ):
+            yield load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='adhoc',
+            soa_dir=soa_dir,
+        ):
+            yield load_adhoc_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
 
 
 def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None):
