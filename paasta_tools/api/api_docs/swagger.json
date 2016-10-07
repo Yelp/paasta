@@ -136,17 +136,71 @@
           },
           {
             "in": "query",
-            "description": "mesos task id",
-            "name": "task_id",
+            "description": "slave hostname to filter tasks by",
+            "name": "slave_hostname",
             "required": false,
             "type": "string"
 	  },
           {
             "in": "query",
-            "description": "slave hostname to filter tasks by",
-            "name": "slave_hostname",
+            "description": "Return slave and executor for task",
+            "name": "verbose",
             "required": false,
+            "type": "boolean"
+	  }
+        ]
+      }
+    },
+    "/services/{service}/{instance}/tasks/{task_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Task associated with an instance with specified ID",
+            "schema": {
+                "$ref":"#/definitions/InstanceTask"
+            }
+          },
+          "404": {
+            "description": "Task with ID not found"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get mesos task of service_name.instance_name by task_id",
+        "operationId": "task_instance",
+        "tags": ["service"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
             "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "mesos task id",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+	  },
+          {
+            "in": "query",
+            "description": "Return slave and executor for task",
+            "name": "verbose",
+            "required": false,
+            "type": "boolean"
 	  }
         ]
       }
@@ -331,25 +385,7 @@
       "items": {"$ref": "#/definitions/InstanceTask"}
     },
     "InstanceTask": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "Mesos task ID"
-        },
-        "container_id": {
-          "type": "string",
-          "description": "Mesos container ID"
-        },
-        "slave_id": {
-          "type": "string",
-          "description": "Mesos slave ID"
-        },
-        "slave_hostname": {
-          "type": "string",
-          "description": "Slave hostname"
-        }
-      }
+      "type": "object"
     }
   }
 }

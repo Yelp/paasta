@@ -69,6 +69,7 @@ def make_app(global_config=None):
     config.include('pyramid_swagger')
     config.add_route('service.instance.status', '/v1/services/{service}/{instance}/status')
     config.add_route('service.instance.tasks', '/v1/services/{service}/{instance}/tasks')
+    config.add_route('service.instance.tasks.task', '/v1/services/{service}/{instance}/tasks/{task_id}')
     config.add_route('service.list', '/v1/services/{service}')
     config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")

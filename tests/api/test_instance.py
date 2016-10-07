@@ -19,6 +19,7 @@ from pytest import raises
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
+from paasta_tools.api.views.exception import ApiFailure
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_job_status', autospec=True)
@@ -104,37 +105,91 @@ def test_marathon_job_status(
     assert mstatus == expected
 
 
+@mock.patch('paasta_tools.api.views.instance.add_executor_info', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.add_slave_info', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.instance_status', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.get_tasks_from_app_id', autospec=True)
-def test_instance_tasks(mock_get_tasks_from_app_id, mock_instance_status):
+def test_instance_tasks(mock_get_tasks_from_app_id, mock_instance_status, mock_add_slave_info, mock_add_executor_info):
     mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1'})
     mock_instance_status.return_value = {'marathon': {'app_id': 'app1'}}
 
-    mock_executor = {'tasks': [{'slave_id': 'fake_slave1'}], 'container': 'abc123'}
-    mock_task_1 = mock.Mock(slave={'hostname': 'host1'},
-                            executor=mock_executor,
-                            __getitem__=mock.Mock(side_effect=mock_getitem))
-    mock_executor = {'tasks': [{'slave_id': 'fake_slave2'}], 'container': 'abc123'}
-    mock_task_2 = mock.Mock(slave={'hostname': 'host2'},
-                            executor=mock_executor,
-                            __getitem__=mock.Mock(side_effect=mock_getitem))
+    mock_task_1 = mock.Mock()
+    mock_task_2 = mock.Mock()
     mock_get_tasks_from_app_id.return_value = [mock_task_1, mock_task_2]
     ret = instance.instance_tasks(mock_request)
-    expected = [{'task_id': 'fakeID',
-                 'slave_id': 'fake_slave1',
-                 'slave_hostname': 'host1',
-                 'container_id': 'abc123'},
-                {'task_id': 'fakeID',
-                 'slave_id': 'fake_slave2',
-                 'slave_hostname': 'host2',
-                 'container_id': 'abc123'}]
+    assert not mock_add_slave_info.called
+    assert not mock_add_executor_info.called
+
+    mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1', 'verbose': True})
+    ret = instance.instance_tasks(mock_request)
+    mock_add_executor_info.assert_has_calls([mock.call(mock_task_1), mock.call(mock_task_2)])
+    mock_add_slave_info.assert_has_calls([mock.call(mock_add_executor_info.return_value),
+                                          mock.call(mock_add_executor_info.return_value)])
+    expected = [mock_add_slave_info.return_value._Task__items,
+                mock_add_slave_info.return_value._Task__items]
     assert len(ret) == len(expected) and sorted(expected) == sorted(ret)
 
     mock_instance_status.return_value = {'chronos': {}}
-    with raises(instance.InstanceFailure):
+    with raises(ApiFailure):
         ret = instance.instance_tasks(mock_request)
+
+
+@mock.patch('paasta_tools.api.views.instance.add_executor_info', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.add_slave_info', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.instance_status', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_task', autospec=True)
+def test_instance_task(mock_get_task, mock_instance_status, mock_add_slave_info, mock_add_executor_info):
+    mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1'})
+    mock_instance_status.return_value = {'marathon': {'app_id': 'app1'}}
+
+    mock_task_1 = mock.Mock()
+    mock_get_task.return_value = mock_task_1
+    ret = instance.instance_task(mock_request)
+    assert not mock_add_slave_info.called
+    assert not mock_add_executor_info.called
+    assert ret == mock_task_1._Task__items
+
+    mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1', 'verbose': True})
+    ret = instance.instance_task(mock_request)
+    mock_add_slave_info.assert_called_with(mock_task_1)
+    mock_add_executor_info.assert_called_with(mock_add_slave_info.return_value)
+    expected = mock_add_executor_info.return_value._Task__items
+    assert ret == expected
+
+    mock_instance_status.return_value = {'chronos': {}}
+    with raises(ApiFailure):
+        ret = instance.instance_task(mock_request)
 
 
 def mock_getitem(key):
     if key == 'id':
         return 'fakeID'
+
+
+def test_add_executor_info():
+    mock_mesos_task = mock.Mock()
+    mock_executor = {'tasks': [mock_mesos_task],
+                     'some': 'thing',
+                     'completed_tasks': [mock_mesos_task],
+                     'queued_tasks': [mock_mesos_task]}
+    mock_task = mock.Mock(_Task__items={'a': 'thing'},
+                          executor=mock_executor)
+    ret = instance.add_executor_info(mock_task)
+    expected = {'a': 'thing',
+                'executor': {'some': 'thing'}}
+    assert ret._Task__items == expected
+    with raises(KeyError):
+        ret._Task__items['executor']['completed_tasks']
+    with raises(KeyError):
+        ret._Task__items['executor']['tasks']
+    with raises(KeyError):
+        ret._Task__items['executor']['queued_tasks']
+
+
+def test_add_slave_info():
+    mock_slave = mock.Mock(_MesosSlave__items={'some': 'thing'})
+    mock_task = mock.Mock(_Task__items={'a': 'thing'},
+                          slave=mock_slave)
+    expected = {'a': 'thing',
+                'slave': {'some': 'thing'}}
+    assert instance.add_slave_info(mock_task)._Task__items == expected

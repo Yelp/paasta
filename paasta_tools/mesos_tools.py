@@ -115,12 +115,16 @@ def get_current_tasks(job_id):
     return get_mesos_master().tasks(fltr=job_id, active_only=False)
 
 
+def is_task_running(task):
+    return task['state'] == 'TASK_RUNNING'
+
+
 def filter_running_tasks(tasks):
     """ Filters those tasks where it's state is TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of running tasks
     """
-    return [task for task in tasks if task['state'] == 'TASK_RUNNING']
+    return [task for task in tasks if is_task_running(task)]
 
 
 def filter_not_running_tasks(tasks):
@@ -128,7 +132,7 @@ def filter_not_running_tasks(tasks):
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of tasks *not* running
     """
-    return [task for task in tasks if task['state'] != 'TASK_RUNNING']
+    return [task for task in tasks if not is_task_running(task)]
 
 
 def get_running_tasks_from_active_frameworks(job_id=''):
@@ -655,10 +659,34 @@ def terminate_framework(framework_id):
     resp.raise_for_status()
 
 
-def get_tasks_from_app_id(app_id, slave_hostname=None, task_id=None):
+def get_tasks_from_app_id(app_id, slave_hostname=None):
     tasks = get_running_tasks_from_active_frameworks(app_id)
-    if task_id:
-        tasks = [task for task in tasks if task['id'] == task_id]
-    elif slave_hostname:
-        tasks = [task for task in tasks if slave_hostname in task.slave['hostname']]
+    if slave_hostname:
+        tasks = [task for task in tasks if filter_task_by_hostname(task, slave_hostname)]
     return tasks
+
+
+def get_task(task_id, app_id=''):
+    tasks = get_running_tasks_from_active_frameworks(app_id)
+    tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
+    if len(tasks) < 1:
+        raise TaskNotFound("Couldn't find task for given id: {0}".format(task_id))
+    if len(tasks) > 1:
+        raise TooManyTasks("Found more than one task with id: {0}, this should not happen!".format(task_id))
+    return tasks[0]
+
+
+def filter_task_by_task_id(task, task_id):
+    return task['id'] == task_id
+
+
+def filter_task_by_hostname(task, hostname):
+    return task.slave['hostname'].startswith(hostname)
+
+
+class TaskNotFound(Exception):
+    pass
+
+
+class TooManyTasks(Exception):
+    pass

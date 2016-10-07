@@ -798,32 +798,50 @@ def get_instance_configs_for_service(service, soa_dir):
             )
 
 
-def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None):
+class PaastaTaskNotFound(Exception):
+    pass
+
+
+def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None, verbose=True):
     api = client.get_paasta_api_client(cluster=cluster)
     if not api:
-        sys.exit(1)
+        log.error("Could not get API client for cluster {0}".format(cluster))
+        raise PaastaTaskNotFound
+    if task_id:
+        log.warning("Specifying a task_id, so ignoring hostname if specified")
+        task = api.service.task_instance(service=service,
+                                         instance=instance,
+                                         verbose=True,
+                                         task_id=task_id).result()
+        return task
     try:
+        if task_id:
+            log.warning("Specifying a task_id, so ignoring hostname if specified")
+            task = api.service.task_instance(service=service,
+                                             instance=instance,
+                                             verbose=True,
+                                             task_id=task_id).result()
+            return task
         tasks = api.service.tasks_instance(service=service,
                                            instance=instance,
-                                           slave_hostname=slave_hostname,
-                                           task_id=task_id).result()
+                                           verbose=True,
+                                           slave_hostname=slave_hostname).result()
     except HTTPNotFound:
         log.error("Cannot find instance {0}, for service {1}, in cluster {2}".format(instance,
                                                                                      service,
                                                                                      cluster))
-        sys.exit(1)
+        raise PaastaTaskNotFound
     except HTTPError as e:
         log.error("Problem with API call to find task details")
         log.error(e.response.text)
-        sys.exit(1)
+        raise PaastaTaskNotFound
     if not tasks:
         log.error("Cannot find any tasks on host: {0} or with task_id: {1}".format(slave_hostname,
                                                                                    task_id))
-        sys.exit(1)
-    task = tasks[0]
-    return task
+        raise PaastaTaskNotFound
+    return tasks[0]
 
 
 def get_container_name(task):
-    container_name = "mesos-{0}.{1}".format(task.slave_id, task.container_id)
+    container_name = "mesos-{0}.{1}".format(task.slave_id, task.executor['container'])
     return container_name
