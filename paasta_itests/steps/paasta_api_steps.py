@@ -15,8 +15,8 @@ from behave import then
 from pyramid import testing
 
 from paasta_tools.api import settings
+from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.api.views.instance import instance_status
-from paasta_tools.api.views.instance import InstanceFailure
 from paasta_tools.utils import decompose_job_id
 
 
@@ -44,7 +44,7 @@ def service_instance_status_error(context, error_code, job_id):
     response = None
     try:
         response = instance_status(request)
-    except InstanceFailure as exc:
+    except ApiFailure as exc:
         assert 'not found' in exc.msg
         assert exc.err == int(error_code)
     except:
