@@ -211,7 +211,7 @@ def simulate_healthcheck_on_service(
             if time.time() < graceperiod_end_time:
                 color = PaastaColors.grey
                 msg = '(disregarded due to grace period)'
-                extra_msg = ''
+                extra_msg = ' (via: {}. Result: {})'.format(healthcheck_link, healthcheck_result[1])
             else:
                 # If we've exceeded the grace period, we start incrementing attempts
                 after_grace_period_attempts += 1
@@ -219,7 +219,7 @@ def simulate_healthcheck_on_service(
                 msg = '(Attempt {} of {})'.format(
                     after_grace_period_attempts, max_failures,
                 )
-                extra_msg = ' (via: {})'.format(healthcheck_link)
+                extra_msg = ' (via: {}. Result: {})'.format(healthcheck_link, healthcheck_result[1])
 
             sys.stdout.write('{}{}\n'.format(
                 color('Healthcheck failed! {}'.format(msg)),
