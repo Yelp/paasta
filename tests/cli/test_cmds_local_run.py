@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import json
 import pipes
 import shlex
@@ -36,6 +37,7 @@ from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
@@ -469,6 +471,58 @@ def test_configure_and_run_pulls_image_when_asked(
         dry_run=False,
         json_dict=False,
     )
+
+
+def test_configure_and_run_docker_container_defaults_to_interactive_instance():
+    with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True),
+    ) as (
+        mock_validate_service_instance,
+        mock_socket_get_fqdn,
+        mock_run_docker_container,
+    ):
+        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+        mock_socket_get_fqdn.return_value = 'fake_hostname'
+
+        mock_system_paasta_config = SystemPaastaConfig(
+            {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
+        args = mock.MagicMock()
+        args.cmd = None
+        args.service = 'fake_service'
+        args.instance = 'fake_instance'
+        args.healthcheck = False
+        args.healthcheck_only = False
+        args.interactive = False
+        args.dry_run_json_dict = False
+
+        assert configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_hash='fake_hash',
+            service='fake_service',
+            instance='interactive',
+            cluster='fake_cluster',
+            args=args,
+            system_paasta_config=mock_system_paasta_config,
+        ) is None
+        mock_run_docker_container.assert_called_once_with(
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='interactive',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=True,
+            command=['bash'],
+            hostname='fake_hostname',
+            healthcheck=args.healthcheck,
+            healthcheck_only=args.healthcheck_only,
+            instance_config=mock.ANY,
+            soa_dir=args.yelpsoa_config_root,
+            dry_run=False,
+            json_dict=False,
+        )
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)

@@ -4,4 +4,4 @@ sample_adhoc_job:
     mem: 100
     disk: 450
     instances: 1
-    cmd: 'echo Hello && sleep 5 && exit 42 '
+    cmd: 'echo Hello && sleep 5 && exit 42'
