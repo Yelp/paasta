@@ -83,6 +83,9 @@ def perform_http_healthcheck(url, timeout):
             "Multiple content-type headers detected in response."
             " The Mesos healthcheck system will treat this as a failure!"))
         return (False, "http request succeeded, code %d" % res.status_code)
+    # check if there is response content in the body
+    if len(res.content) < 1:
+        return (False, "0 length response body detected.")
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     elif res.status_code >= 200 and res.status_code < 400:
         return (True, "http request succeeded, code %d" % res.status_code)
