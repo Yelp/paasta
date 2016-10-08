@@ -77,6 +77,13 @@ class MetricsProviderNoDataError(ValueError):
     pass
 
 
+def average(iterable):
+    """
+    Returns the average value of an iterable
+    """
+    return sum(iterable) / len(iterable)
+
+
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
 def threshold_decision_policy(current_instances, error, **kwargs):
     """
@@ -149,17 +156,23 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-@register_autoscaling_component('http', SERVICE_METRICS_PROVIDER_KEY)
-def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
-    """
-    Gets the average utilization of a service across all of its tasks, where the utilization of
-    a task is read from a HTTP endpoint on the host.
+def get_json_body_from_service(host, port, endpoint):
+    return requests.get(
+        'http://%s:%s/%s' % (host, port, endpoint),
+        headers={'User-Agent': get_user_agent()},
+    ).json()
 
-    The HTTP endpoint must return JSON with a 'utilization' key with a value from 0 to 1.
+
+def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
+    """
+    Gets the average utilization of a serivce across all of its tasks by
+    fetching json from an http endpoint and applying a function that maps it to
+    a utilization
 
     :param marathon_service_config: the MarathonServiceConfig to get data from
     :param marathon_tasks: Marathon tasks to get data from
-    :param mesos_tasks: Mesos tasks to get data from
+    :param endpoint: The http endpoint to get the uwsgi stats from
+    :param json_mapper: A function that takes a dictionary for a task and returns that task's utilization
 
     :returns: the service's average utilization, from 0 to 1
     """
@@ -168,17 +181,56 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
     utilization = []
     for task in marathon_tasks:
         try:
-            endpoint_utilization = requests.get(
-                'http://%s:%s/%s' % (task.host, task.ports[0], endpoint),
-                headers={'User-Agent': get_user_agent()}
-            ).json()['utilization']
-            utilization.append(float(endpoint_utilization))
+            utilization.append(json_mapper(get_json_body_from_service(task.host, task.ports[0], endpoint)))
         except Exception:
             pass
     if not utilization:
         raise MetricsProviderNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
-    return sum(utilization) / len(utilization)
+    return average(utilization)
+
+
+@register_autoscaling_component('uwsgi', SERVICE_METRICS_PROVIDER_KEY)
+def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='uwsgi_stats', *args, **kwargs):
+    """
+    Gets the average utilization of a service across all of its tasks, where
+    the utilization of a task is the percentage of non-idle workers as read
+    from the UWSGI stats endpoint
+
+    :param marathon_service_config: the MarathonServiceConfig to get data from
+    :param marathon_tasks: Marathon tasks to get data from
+    :param endpoint: The http endpoint to get the uwsgi stats from
+
+    :returns: the service's average utilization, from 0 to 1
+    """
+
+    def uwsgi_mapper(json):
+        workers = json['workers']
+        utilization = [1.0 if worker['status'] != 'idle' else 0.0 for worker in workers]
+        return average(utilization)
+
+    return get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, uwsgi_mapper)
+
+
+@register_autoscaling_component('http', SERVICE_METRICS_PROVIDER_KEY)
+def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status', *args, **kwargs):
+    """
+    Gets the average utilization of a service across all of its tasks, where
+    the utilization of a task is read from a HTTP endpoint on the host. The
+    HTTP endpoint must return JSON with a 'utilization' key with a value from 0
+    to 1.
+
+    :param marathon_service_config: the MarathonServiceConfig to get data from
+    :param marathon_tasks: Marathon tasks to get data from
+    :param endpoint: The http endpoint to get the task utilization from
+
+    :returns: the service's average utilization, from 0 to 1
+    """
+
+    def utilization_mapper(json):
+        return float(json['utilization'])
+
+    return get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, utilization_mapper)
 
 
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
@@ -239,7 +291,7 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
                                          This is expected for its first run.""")
 
     task_utilization = utilization.values()
-    average_utilization = sum(task_utilization) / len(task_utilization)
+    average_utilization = average(task_utilization)
 
     return average_utilization
 
