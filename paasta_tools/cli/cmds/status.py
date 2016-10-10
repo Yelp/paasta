@@ -150,7 +150,10 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     print 'Git sha:    %s (desired)' % status.git_sha
 
     marathon_status = status.marathon
-    if marathon_status.error_message:
+    if marathon_status is None:
+        print "Not implemented: Looks like %s is not a Marathon instance" % instance
+        return
+    elif marathon_status.error_message:
         print marathon_status.error_message
         return
 
