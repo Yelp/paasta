@@ -238,7 +238,7 @@
         "bounce_method": {
           "type": "string",
           "description": "Method to transit between new and old versions of a service",
-          "enum": ["brutal", "upthendown", "downthenup ", "crossover"]
+          "enum": ["brutal", "upthendown", "downthenup", "crossover"]
         },
         "deploy_status": {
           "type": "string",
