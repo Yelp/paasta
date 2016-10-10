@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    paasta_tools.api.views.autoscaler
+   paasta_tools.api.views.exception
    paasta_tools.api.views.instance
    paasta_tools.api.views.service
    paasta_tools.api.views.version
