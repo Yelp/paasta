@@ -955,11 +955,11 @@ class SystemPaastaConfig(dict):
         :returns: The marathon config dictionary"""
         return self.get('marathon_config', {})
 
-    def get_adhoc_config(self):
-        """Get the adhoc job config
+    def get_local_run_config(self):
+        """Get the local-run config
 
-        :returns: The adhoc job config dictionary"""
-        return self.get('adhoc_config', {})
+        :returns: The local-run job config dictionary"""
+        return self.get('local_run_config', {})
 
     def get_paasta_native_config(self):
         return self.get('paasta_native', {})

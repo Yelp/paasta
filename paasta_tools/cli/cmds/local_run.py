@@ -29,7 +29,7 @@ import ephemeral_port_reserve
 import requests
 from docker import errors
 
-from paasta_tools.adhoc_tools import AdhocJobConfig
+from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
@@ -319,10 +319,9 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'. "
-              "Defaults to 'interactive'"),
+        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'. "),
         required=False,
-        default='interactive',
+        default=None,
     ).completer = lazy_choices_completer(list_instances)
     list_parser.add_argument(
         '-v', '--verbose',
@@ -644,25 +643,11 @@ def configure_and_run_docker_container(
             soa_dir=soa_dir,
         )
     except NoConfigurationForServiceError as e:
-        if instance == 'interactive':
-            if not pull_image:
-                instance_type = 'adhoc'
-                instance_config = AdhocJobConfig(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    config_dict={
-                        'cpus': 1,
-                        'mem': 1024,
-                        'disk': 1024,
-                    },
-                    branch_dict={},
-                )
-                interactive = True
-            else:
-                sys.stderr.write(PaastaColors.red(
-                    "Error: you cannot use the default 'interactive' image with 'pull_image' specified.\n"))
-                return
+        if instance is None:
+            instance_type = 'adhoc'
+            instance = 'interactive'
+            instance_config = get_default_interactive_config(service=service, cluster=cluster)
+            interactive = True
         else:
             sys.stderr.write(str(e) + '\n')
             return
@@ -745,18 +730,17 @@ def paasta_local_run(args):
         ))
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
-    adhoc_config = system_paasta_config.get_adhoc_config()
+    local_run_config = system_paasta_config.get_local_run_config()
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     if args.cluster:
         cluster = args.cluster
     else:
         try:
-            cluster = adhoc_config['default_cluster']
+            cluster = local_run_config['default_cluster']
         except KeyError:
             sys.stderr.write(PaastaColors.yellow(
                 "PaaSTA on this machine has not been configured with a default cluster.\n"
-                "In the future this behaviour will be depricated and you'll have to specify a cluster.\n"
                 "For now the default cluster is being set to 'testopia'.\n"))
             cluster = 'testopia'
     instance = args.instance

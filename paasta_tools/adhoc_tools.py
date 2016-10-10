@@ -71,3 +71,30 @@ class AdhocJobConfig(InstanceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+
+def get_default_interactive_config(service, cluster):
+    default_job_config = {
+        'cpus': 1,
+        'mem': 1024,
+        'disk': 1024
+    }
+
+    try:
+        job_config = load_adhoc_job_config(service=service, instance='interactive', cluster=cluster)
+    except NoConfigurationForServiceError:
+        job_config = AdhocJobConfig(
+            service=service,
+            instance='interactive',
+            cluster=cluster,
+            config_dict={},
+            branch_dict={},
+        )
+
+    for key, value in default_job_config.items():
+        job_config.config_dict.setdefault(key, value)
+
+    if 'deploy_group' not in job_config.config_dict:
+        pass  # TODO: find deploy group
+
+    return job_config
