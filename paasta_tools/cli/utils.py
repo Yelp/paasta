@@ -32,6 +32,7 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -661,20 +662,29 @@ def extract_tags(paasta_tag):
     return regex_match.groupdict() if regex_match else {}
 
 
-def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
+def list_deploy_groups(parsed_args=None, service=None, soa_dir=DEFAULT_SOA_DIR, **kwargs):
+    if service is None:
+        service = parsed_args.service or guess_service_name()
+    return set([config.get_deploy_group() for config in get_instance_configs_for_service(
+        service=service,
+        soa_dir=soa_dir,
+    )])
+
+
+def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
     """Given two lists of deploy groups, return the intersection and difference between them.
 
-    :param service_deploy_groups: instances actually belonging to a service
+    :param all_deploy_groups: instances actually belonging to a service
     :param args_deploy_groups: the desired instances
     :returns: a tuple with (common, difference) indicating deploy groups common in both
         lists and those only in args_deploy_groups
     """
     if len(args_deploy_groups) is 0:
-        valid_deploy_groups = set(service_deploy_groups)
+        valid_deploy_groups = set(all_deploy_groups)
         invalid_deploy_groups = set([])
     else:
-        valid_deploy_groups = set(args_deploy_groups).intersection(service_deploy_groups)
-        invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
+        valid_deploy_groups = set(args_deploy_groups).intersection(all_deploy_groups)
+        invalid_deploy_groups = set(args_deploy_groups).difference(all_deploy_groups)
 
     return valid_deploy_groups, invalid_deploy_groups
 
@@ -751,3 +761,36 @@ def pick_slave_from_status(status, host=None):
     else:
         slaves = status.marathon.slaves
         return slaves[0]
+
+
+def get_instance_configs_for_service(service, soa_dir):
+    for cluster in list_clusters(
+        service=service,
+        soa_dir=soa_dir,
+    ):
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='marathon',
+            soa_dir=soa_dir,
+        ):
+            yield load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='chronos',
+            soa_dir=soa_dir,
+        ):
+            yield load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )

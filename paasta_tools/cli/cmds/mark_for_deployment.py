@@ -24,13 +24,16 @@ from bravado.exception import HTTPError
 from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cli.utils import validate_full_git_sha
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
-from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
+from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import Timeout
@@ -59,11 +62,13 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-u', '--git-url',
-        help='Git url for service -- where magic mark-for-deployment tags are pushed',
-        required=True,
+        help=(
+            'Git url for service -- where magic mark-for-deployment tags are pushed. '
+            'Defaults to the normal git URL for the service.'),
+        default=None
     )
     list_parser.add_argument(
-        '-c', '--commit',
+        '-c', '-k', '--commit',
         help='Git sha to mark for deployment',
         required=True,
         type=validate_full_git_sha,
@@ -71,16 +76,16 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-l', '--deploy-group', '--clusterinstance',
         help='Mark the service ready for deployment in this deploy group (e.g. '
-             'cluster1.canary, cluster2.main). --clusterinstance is depricated and '
+             'cluster1.canary, cluster2.main). --clusterinstance is deprecated and '
              'should be replaced with --deploy-group',
         required=True,
-    )
+    ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
         '-s', '--service',
         help='Name of the service which you wish to mark for deployment. Leading '
         '"services-" will be stripped.',
         required=True,
-    )
+    ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '--wait-for-deployment',
         help='Set to poll paasta and wait for the deployment to finish, '
@@ -149,15 +154,16 @@ def paasta_mark_for_deployment(args):
         log.setLevel(level=logging.DEBUG)
     else:
         log.setLevel(level=logging.INFO)
+
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
-
     validate_service_name(service, soa_dir=args.soa_dir)
-    in_use_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
+
+    in_use_deploy_groups = list_deploy_groups(
         service=service,
         soa_dir=args.soa_dir,
-    )}
+    )
     _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
 
     if len(invalid_deploy_groups) == 1:
@@ -169,6 +175,9 @@ def paasta_mark_for_deployment(args):
         print PaastaColors.red("   %s" % (",").join(in_use_deploy_groups))
         print ""
         print PaastaColors.red("Continuing regardless...")
+
+    if args.git_url is None:
+        args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
     ret = mark_for_deployment(
         git_url=args.git_url,

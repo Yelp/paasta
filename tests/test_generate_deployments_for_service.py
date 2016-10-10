@@ -62,17 +62,17 @@ def test_get_deploy_group_mappings():
         },
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.generate_deployments_for_service.get_instance_config_for_service',
+        mock.patch('paasta_tools.generate_deployments_for_service.get_instance_configs_for_service',
                    return_value=fake_service_configs, autospec=True),
         mock.patch('paasta_tools.remote_git.list_remote_refs',
                    return_value=fake_remote_refs, autospec=True),
     ) as (
-        get_instance_config_for_service_patch,
+        get_instance_configs_for_service_patch,
         list_remote_refs_patch,
     ):
         actual = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
                                                                             fake_service, fake_old_mappings)
-        get_instance_config_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
+        get_instance_configs_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
         assert expected == actual
 
@@ -102,13 +102,13 @@ def test_get_cluster_instance_map_for_service():
         ),
     ]
     with contextlib.nested(
-        mock.patch('paasta_tools.generate_deployments_for_service.get_instance_config_for_service',
+        mock.patch('paasta_tools.generate_deployments_for_service.get_instance_configs_for_service',
                    return_value=fake_service_configs, autospec=True),
     ) as (
-        mock_get_instance_config_for_service,
+        mock_get_instance_configs_for_service,
     ):
         ret = generate_deployments_for_service.get_cluster_instance_map_for_service('/nail/blah', 'service1', 'try_me')
-        mock_get_instance_config_for_service.assert_called_with('/nail/blah', 'service1')
+        mock_get_instance_configs_for_service.assert_called_with(soa_dir='/nail/blah', service='service1')
         expected = {'clusterA': {'instances': ['canary']}, 'clusterB': {'instances': ['main']}}
         assert ret == expected
 

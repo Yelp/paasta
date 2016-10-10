@@ -18,10 +18,10 @@ from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
-from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -55,19 +55,19 @@ def add_subparser(subparsers):
         type=validate_full_git_sha,
     ).completer = lazy_choices_completer(list_previously_deployed_shas)
     list_parser.add_argument(
-        '-d', '--deploy-groups',
+        '-l', '--deploy-groups',
         help='Mark one or more deploy groups to roll back (e.g. '
         '"all.main", "all.main,all.canary"). If no deploy groups specified,'
         ' all deploy groups for that service are rolled back',
         default='',
         required=False,
-    )
+    ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
         '-s', '--service',
         help='Name of the service to rollback (e.g. "service1")',
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-y', '--soa-dir',
+        '-y', '-d', '--soa-dir',
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -84,15 +84,14 @@ def list_previously_deployed_shas(parsed_args, **kwargs):
 
 
 def get_git_shas_for_service(service, deploy_groups, soa_dir):
-    """Returns a list of 2-tuples of the form (sha, timestamp) for each deploy tag in a service's git
-    repository"""
+    """Returns a dictionary of 2-tuples of the form (timestamp, deploy_group) for each deploy sha"""
     if service is None:
         return []
     git_url = get_git_url(service=service, soa_dir=soa_dir)
-    all_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
+    all_deploy_groups = list_deploy_groups(
         service=service,
         soa_dir=soa_dir,
-    )}
+    )
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
     previously_deployed_shas = {}
     for ref, sha in list_remote_refs(git_url).items():
@@ -105,7 +104,7 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
         else:
             # note that all strings are greater than ''
             if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
-                previously_deployed_shas[sha] = tstamp
+                previously_deployed_shas[sha] = (tstamp, deploy_group)
     return previously_deployed_shas.items()
 
 
@@ -115,14 +114,18 @@ def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_d
 
     print "Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:"
     git_shas = sorted(get_git_shas_for_service(service, deploy_groups, soa_dir), key=lambda x: x[1], reverse=True)[:10]
-    rows = [('Timestamp -- UTC', 'Git SHA')]
-    rows.extend([('%s (%s)' % (timestamp, format_timestamp(timestamp)), sha) for sha, timestamp in git_shas])
+    rows = [('Timestamp -- UTC', 'Human time', 'deploy_group', 'Git SHA')]
+    for sha, (timestamp, deploy_group) in git_shas:
+        print timestamp
+        rows.extend([(timestamp, format_timestamp(timestamp), deploy_group, sha)])
     for line in format_table(rows):
         print line
     if len(git_shas) >= 2:
-        sha, tstamp = git_shas[1]
+        print ""
+        sha, (timestamp, deploy_group) = git_shas[1]
         deploy_groups_arg_line = '-d %s ' % ','.join(deploy_groups) if any_given_deploy_groups else ''
-        print "For example, to roll back to the second to last commit from %s, run:" % format_timestamp(tstamp)
+        print "For example, to use the second to last commit from %s used on %s, run:" % (
+            format_timestamp(timestamp), PaastaColors.bold(deploy_group))
         print PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha))
 
 
@@ -138,11 +141,8 @@ def paasta_rollback(args):
     git_url = get_git_url(service, soa_dir)
     given_deploy_groups = {deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group}
 
-    service_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
-        service=service,
-        soa_dir=soa_dir,
-    )}
-    deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
+    all_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
+    deploy_groups, invalid = validate_given_deploy_groups(all_deploy_groups, given_deploy_groups)
 
     if len(invalid) > 0:
         print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
