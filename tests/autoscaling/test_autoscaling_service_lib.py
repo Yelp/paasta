@@ -24,11 +24,6 @@ from paasta_tools.autoscaling import autoscaling_service_lib
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
-def test_average():
-    iterable = [1.0, 2.0, 3.0]
-    assert autoscaling_service_lib.average(iterable) == 2.0
-
-
 def test_get_zookeeper_instances():
     fake_marathon_config = marathon_tools.MarathonServiceConfig(
         service='service',
@@ -365,9 +360,9 @@ def test_uwsgi_metrics_provider():
         mock_get_json_body_from_service.return_value = {
             'workers': [
                 {'status': 'idle'},
-                {'status': 'not-idle'},
-                {'status': 'not-idle'},
-                {'status': 'not-idle'},
+                {'status': 'busy'},
+                {'status': 'busy'},
+                {'status': 'busy'},
             ],
         }
         assert autoscaling_service_lib.uwsgi_metrics_provider(

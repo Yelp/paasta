@@ -1627,3 +1627,10 @@ def use_requests_cache(cache_name, backend='memory', **kwargs):
 def long_job_id_to_short_job_id(long_job_id):
     service, instance, _, __ = decompose_job_id(long_job_id)
     return compose_job_id(service, instance)
+
+
+def mean(iterable):
+    """
+    Returns the average value of an iterable
+    """
+    return sum(iterable) / len(iterable)
