@@ -717,6 +717,9 @@ def test_spotfleet_metrics_provider():
         assert ret == (0, 0)
         mock_get_spot_fleet_delta.return_value = 2, 1
         ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)
+        mock_capacity_resource = mock_resource.copy()
+        mock_capacity_resource['min_capacity'] = 0
+        mock_get_spot_fleet_delta.assert_called_with(mock_capacity_resource, float(-1))
         assert ret == (2, 0)
         mock_get_spot_fleet_delta.return_value = 4, 2
         ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah', mock_resource, mock_pool_settings)

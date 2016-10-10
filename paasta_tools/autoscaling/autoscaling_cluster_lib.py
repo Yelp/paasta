@@ -139,6 +139,7 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
         return 0, 0
     current, target = get_spot_fleet_delta(resource, error)
     if sfr['SpotFleetRequestState'] == 'cancelled_running':
+        resource['min_capacity'] = 0
         if current - target < 0:
             log.info("Not scaling cancelled SFR {0} because we are under provisioned".format(spotfleet_request_id))
             return 0, 0
