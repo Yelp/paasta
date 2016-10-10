@@ -176,8 +176,14 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
     for task in marathon_tasks:
         try:
             utilization.append(json_mapper(get_json_body_from_service(task.host, task.ports[0], endpoint)))
-        except Exception:
-            pass
+        except requests.exceptions.Timeout:
+            # If we time out querying an endpoint, assume the task is fully loaded
+            # This won't trigger in the event of DNS error or when a request is refused
+            # a requests.exception.ConnectionError is raised in those cases
+            utilization.append(1.0)
+        except Exception as e:
+            log.debug('Caught excpetion when querying %s on %s:%s : %s' % (
+                marathon_service_config.get_service(), task.host, task.ports[0], str(e)))
     if not utilization:
         raise MetricsProviderNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))

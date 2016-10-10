@@ -18,6 +18,7 @@ from datetime import timedelta
 import mock
 from kazoo.exceptions import NoNodeError
 from pytest import raises
+from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
@@ -315,6 +316,19 @@ def test_get_http_utilization_for_all_tasks():
         ) == 0.5
 
 
+def test_get_http_utilization_for_all_tasks_timeout():
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
+    mock_json_mapper = mock.Mock(side_effect=Timeout)
+
+    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
+        assert autoscaling_service_lib.get_http_utilization_for_all_tasks(
+            marathon_service_config=mock.Mock(),
+            marathon_tasks=fake_marathon_tasks,
+            endpoint='fake-endpoint',
+            json_mapper=mock_json_mapper,
+        ) == 1.0
+
+
 def test_get_http_utilization_for_all_tasks_no_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -324,9 +338,15 @@ def test_get_http_utilization_for_all_tasks_no_data():
         branch_dict={},
     )
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
-    mock_json_mapper = mock.Mock(side_effect=autoscaling_service_lib.MetricsProviderNoDataError)
+    mock_json_mapper = mock.Mock(side_effect=KeyError('Detailed message'))  # KeyError simulates an invalid response
 
-    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.log.debug', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True),
+    ) as (
+        mock_log_debug,
+        _,
+    ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.get_http_utilization_for_all_tasks(
                 fake_marathon_service_config,
@@ -334,6 +354,8 @@ def test_get_http_utilization_for_all_tasks_no_data():
                 endpoint='fake-endpoint',
                 json_mapper=mock_json_mapper,
             )
+        mock_log_debug.assert_called_once_with(
+            "Caught excpetion when querying fake-service on fake_host:30101 : 'Detailed message'")
 
 
 def test_http_metrics_provider():
