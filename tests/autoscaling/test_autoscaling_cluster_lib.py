@@ -183,8 +183,7 @@ def test_downscale_spot_fleet_request():
                                                    mock.call(mock_get_mesos_task_count_by_slave.return_value)])
         assert mock_get_mesos_master.called
         mock_gracefully_terminate_slave.assert_has_calls([mock_terminate_call_1, mock_terminate_call_2])
-        mock_get_task_count_calls = [mock.call(mock_mesos_state, slaves_list=[mock_slave_2]),
-                                     mock.call(mock_mesos_state, slaves_list=[])]
+        mock_get_task_count_calls = [mock.call(mock_mesos_state, slaves_list=[mock_slave_2])]
         mock_get_mesos_task_count_by_slave.assert_has_calls(mock_get_task_count_calls)
 
         # test non integer scale down

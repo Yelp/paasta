@@ -442,6 +442,7 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
     while True:
         filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
         if len(filtered_sorted_slaves) == 0:
+            log.info("ALL slaves killed so moving on to next pool!")
             break
         log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
         filtered_sorted_slaves.reverse()
@@ -468,7 +469,10 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
             break
         current_capacity = new_capacity
         mesos_state = get_mesos_master().state_summary()
-        filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
+        if filtered_sorted_slaves:
+            filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
+        else:
+            filtered_slaves = filtered_sorted_slaves
 
 
 class ClusterAutoscalingError(Exception):
