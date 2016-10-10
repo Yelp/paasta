@@ -89,7 +89,7 @@ The currently available metrics providers are:
     ``http://$HOST:$PORT/$endpoint``). Defaults to 'status'.
 
 :uwsgi:
-  Makes a request on a HTTP endpoint on your service. Extects a response with a
+  Makes a request on a HTTP endpoint on your service. Expects a response with a
   JSON body containing the current uwsgi state (see `this page
   <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_ for the
   expected format). Uses the percentage of non-idle workers as the utilization
