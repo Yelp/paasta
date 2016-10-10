@@ -181,6 +181,8 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
             # This won't trigger in the event of DNS error or when a request is refused
             # a requests.exception.ConnectionError is raised in those cases
             utilization.append(1.0)
+            log.debug('Recieved a timeout when querying %s on %s:%s. Assuming the service is at full utilization.' % (
+                marathon_service_config.get_service(), task.host, task.ports[0]))
         except Exception as e:
             log.debug('Caught excpetion when querying %s on %s:%s : %s' % (
                 marathon_service_config.get_service(), task.host, task.ports[0], str(e)))
