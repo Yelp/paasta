@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import contextlib
 from socket import gaierror
 
@@ -685,3 +686,10 @@ def test_pick_slave_from_status():
     mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
     assert utils.pick_slave_from_status(mock_status, host=None) == 1
     assert utils.pick_slave_from_status(mock_status, host='lolhost') == 'lolhost'
+
+
+def test_git_sha_validation():
+    assert utils.validate_full_git_sha(
+        '060ce8bc10efe0030c048a4711ad5dd85de5adac') == '060ce8bc10efe0030c048a4711ad5dd85de5adac'
+    with raises(argparse.ArgumentTypeError):
+        utils.validate_full_git_sha('BAD')

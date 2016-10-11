@@ -19,6 +19,7 @@ from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.remote_git import list_remote_refs
@@ -51,6 +52,7 @@ def add_subparser(subparsers):
         "A commit to rollback to is required for paasta rollback to run. However if one is not provided, "
         "paasta rollback will instead output a list of valid git shas to rollback to.",
         required=False,
+        type=validate_full_git_sha,
     ).completer = lazy_choices_completer(list_previously_deployed_shas)
     list_parser.add_argument(
         '-d', '--deploy-groups',

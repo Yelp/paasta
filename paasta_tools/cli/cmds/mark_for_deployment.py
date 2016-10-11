@@ -23,6 +23,7 @@ from bravado.exception import HTTPError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
@@ -65,6 +66,7 @@ def add_subparser(subparsers):
         '-c', '--commit',
         help='Git sha to mark for deployment',
         required=True,
+        type=validate_full_git_sha,
     )
     list_parser.add_argument(
         '-l', '--deploy-group', '--clusterinstance',
