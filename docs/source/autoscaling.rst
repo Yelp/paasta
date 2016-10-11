@@ -75,13 +75,31 @@ Metrics providers
 The currently available metrics providers are:
 
 :mesos_cpu:
-  The default autoscaling method if none is provided. Tries to use cpu usage to predict when to autoscale.
+  The default autoscaling method if none is provided. Tries to use cpu usage to
+  predict when to autoscale.
 :http:
-  Makes a request on a HTTP endpoint on your service. Expects a JSON-formatted dictionary with a ``'utilization'`` field containing a number between 0 and 1.
+  Makes a request on a HTTP endpoint on your service. Expects a JSON-formatted
+  dictionary with a ``'utilization'`` field containing a number between 0 and
+  1.
 
-  Autoscaling parameters:
+  Extra parameters:
 
-  :endpoint: the path to perform the HTTP request on (the requested URL will be ``http://$HOST:$PORT/endpoint``). Defaults to 'status'.
+  :endpoint:
+    the path to perform the HTTP request on (the requested URL will be
+    ``http://$HOST:$PORT/$endpoint``). Defaults to 'status'.
+
+:uwsgi:
+  Makes a request on a HTTP endpoint on your service. Expects a response with a
+  JSON body containing the current uwsgi state (see `this page
+  <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_ for the
+  expected format). Uses the percentage of non-idle workers as the utilization
+  metric.
+
+  Extra parameters:
+
+  :endpoint:
+    the path to perform the HTTP request on (the requested URL will be
+    ``http://$HOST:$PORT/$endpoint``). Defaults to 'uwsgi_stats'.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
@@ -89,7 +107,9 @@ Decision policies
 The currently available decicion policies are:
 
 :pid:
-  Uses a PID controller to determine when to autoscale a service. See `this page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on PIDs.
+  Uses a PID controller to determine when to autoscale a service. See `this
+  page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on
+  PIDs.
 
 :threshold:
   Autoscales when a service's utilization exceeds beyond a certain threshold.

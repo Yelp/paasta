@@ -18,6 +18,7 @@ from datetime import timedelta
 import mock
 from kazoo.exceptions import NoNodeError
 from pytest import raises
+from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
@@ -290,7 +291,45 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         ], any_order=True)
 
 
-def test_http_metrics_provider():
+def test_get_json_body_from_service():
+    with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_service_lib.requests.get', autospec=True) as mock_request_get:
+        mock_request_get.return_value = mock.Mock(json=mock.Mock(return_value=mock.sentinel.json_body))
+        assert autoscaling_service_lib.get_json_body_from_service(
+            'fake-host', 'fake-port', 'fake-endpoint') == mock.sentinel.json_body
+        mock_request_get.assert_called_once_with(
+            'http://fake-host:fake-port/fake-endpoint',
+            headers={'User-Agent': mock.ANY},
+        )
+
+
+def test_get_http_utilization_for_all_tasks():
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
+    mock_json_mapper = mock.Mock(return_value=0.5)
+
+    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
+        assert autoscaling_service_lib.get_http_utilization_for_all_tasks(
+            marathon_service_config=mock.Mock(),
+            marathon_tasks=fake_marathon_tasks,
+            endpoint='fake-endpoint',
+            json_mapper=mock_json_mapper,
+        ) == 0.5
+
+
+def test_get_http_utilization_for_all_tasks_timeout():
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
+    mock_json_mapper = mock.Mock(side_effect=Timeout)
+
+    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
+        assert autoscaling_service_lib.get_http_utilization_for_all_tasks(
+            marathon_service_config=mock.Mock(),
+            marathon_tasks=fake_marathon_tasks,
+            endpoint='fake-endpoint',
+            json_mapper=mock_json_mapper,
+        ) == 1.0
+
+
+def test_get_http_utilization_for_all_tasks_no_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -299,29 +338,59 @@ def test_http_metrics_provider():
         branch_dict={},
     )
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
-    mock_request_result = mock.Mock(json=mock.Mock(return_value={'utilization': '0.5'}))
-    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.requests.get',
-                    autospec=True, return_value=mock_request_result):
-        assert autoscaling_service_lib.http_metrics_provider(
-            fake_marathon_service_config, fake_marathon_tasks, mock.Mock()) == 0.5
+    mock_json_mapper = mock.Mock(side_effect=KeyError('Detailed message'))  # KeyError simulates an invalid response
 
-
-def test_http_metrics_provider_no_data():
-    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service='fake-service',
-        instance='fake-instance',
-        cluster='fake-cluster',
-        config_dict={},
-        branch_dict={},
-    )
-    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
-    mock_request_result = mock.Mock(json=mock.Mock(return_value='malformed_result'))
-    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.requests.get',
-                    autospec=True, return_value=mock_request_result):
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.log.debug', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True),
+    ) as (
+        mock_log_debug,
+        _,
+    ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
-            autoscaling_service_lib.http_metrics_provider(fake_marathon_service_config,
-                                                          fake_marathon_tasks,
-                                                          mock.Mock()) == 0.5
+            autoscaling_service_lib.get_http_utilization_for_all_tasks(
+                fake_marathon_service_config,
+                fake_marathon_tasks,
+                endpoint='fake-endpoint',
+                json_mapper=mock_json_mapper,
+            )
+        mock_log_debug.assert_called_once_with(
+            "Caught excpetion when querying fake-service on fake_host:30101 : 'Detailed message'")
+
+
+def test_http_metrics_provider():
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
+
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
+        autospec=True,
+    ) as mock_get_json_body_from_service:
+        mock_get_json_body_from_service.return_value = {'utilization': 0.5}
+        assert autoscaling_service_lib.http_metrics_provider(
+            marathon_service_config=mock.Mock(),
+            marathon_tasks=fake_marathon_tasks,
+        ) == 0.5
+
+
+def test_uwsgi_metrics_provider():
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
+
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
+        autospec=True,
+    ) as mock_get_json_body_from_service:
+        mock_get_json_body_from_service.return_value = {
+            'workers': [
+                {'status': 'idle'},
+                {'status': 'busy'},
+                {'status': 'busy'},
+                {'status': 'busy'},
+            ],
+        }
+        assert autoscaling_service_lib.uwsgi_metrics_provider(
+            marathon_service_config=mock.Mock(),
+            marathon_tasks=fake_marathon_tasks,
+        ) == 0.75
 
 
 def test_mesos_cpu_metrics_provider_no_data_mesos():

@@ -1558,3 +1558,8 @@ def test_is_deploy_step():
 
 def test_long_job_id_to_short_job_id():
     assert utils.long_job_id_to_short_job_id('service.instance.git.config') == 'service.instance'
+
+
+def test_mean():
+    iterable = [1.0, 2.0, 3.0]
+    assert utils.mean(iterable) == 2.0
