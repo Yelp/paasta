@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import time
 from math import ceil
 from math import floor
@@ -123,11 +124,11 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
-def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
+def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, config_folder, dry_run=False):
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or sfr['SpotFleetRequestState'] == 'cancelled':
         log.error("SFR not found, removing config file.".format(spotfleet_request_id))
-        cleanup_cancelled_sfr_config(spotfleet_request_id)
+        cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=dry_run)
         return 0, 0
     elif sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
         sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
@@ -150,11 +151,13 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
     return current, target
 
 
-def cleanup_cancelled_sfr_config(spotfleet_request_id):
-    # This will remove the config file of the spot fleet from disk when implemented
-    # this will prevent us iterating over cancelled SFRs every time.
-    # For now just log that we would have.
-    log.info("Would have deleted SFR config for {0}".format(spotfleet_request_id))
+def cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=False):
+    sfr_file_name = "{0}.json".format(spotfleet_request_id)
+    sfr_config_full_path = [os.path.join(walk[0], sfr_file_name)
+                            for walk in os.walk(config_folder) if sfr_file_name in walk[2]][0]
+    if not dry_run:
+        os.remove(sfr_config_full_path)
+    log.info("Deleted SFR config {0}".format(sfr_config_full_path))
 
 
 def get_sfr_utilization_error(spotfleet_request_id, resource, pool_settings):
@@ -504,7 +507,7 @@ def is_resource_cancelled(resource):
     return False
 
 
-def autoscale_local_cluster(dry_run=False):
+def autoscale_local_cluster(config_folder, dry_run=False):
     if dry_run:
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
@@ -518,15 +521,20 @@ def autoscale_local_cluster(dry_run=False):
         autoscale_cluster_resource(identifier=identifier,
                                    resource=resource,
                                    dry_run=dry_run,
-                                   all_pool_settings=all_pool_settings)
+                                   all_pool_settings=all_pool_settings,
+                                   config_folder=config_folder)
 
 
-def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run):
+def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run, config_folder):
     pool_settings = all_pool_settings.get(resource['pool'], {})
     log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
     resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
     try:
-        current, target = resource_metrics_provider(resource['id'], resource, pool_settings)
+        current, target = resource_metrics_provider(resource['id'],
+                                                    resource=resource,
+                                                    pool_settings=pool_settings,
+                                                    config_folder=config_folder,
+                                                    dry_run=dry_run)
         log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
         resource_scaler = get_scaler(resource['type'])
         resource_scaler(resource, current, target, pool_settings, dry_run)
