@@ -16,6 +16,7 @@
 image to a registry.
 """
 from paasta_tools.cli.utils import get_jenkins_build_output_url
+from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
@@ -49,6 +50,7 @@ def add_subparser(subparsers):
         '-c', '--commit',
         help='Git sha after which to name the remote image',
         required=True,
+        type=validate_full_git_sha,
     )
     list_parser.add_argument(
         '-d', '--soa-dir',

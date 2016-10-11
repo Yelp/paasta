@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import fnmatch
 import logging
 import os
@@ -676,6 +677,14 @@ def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
         invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
 
     return valid_deploy_groups, invalid_deploy_groups
+
+
+def validate_full_git_sha(value):
+    pattern = re.compile('[a-f0-9]{40}')
+    if not pattern.match(value):
+        raise argparse.ArgumentTypeError(
+            "%s is not a full git sha, and PaaSTA needs the full sha" % value)
+    return value
 
 
 def get_subparser(subparsers, function, command, help_text, description):
