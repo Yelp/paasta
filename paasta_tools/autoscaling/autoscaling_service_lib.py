@@ -44,6 +44,7 @@ from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import mean
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
 
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
@@ -401,6 +402,7 @@ def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
     return configs
 
 
+@use_requests_cache('service_autoscaler')
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     try:
         with create_autoscaling_lock():
