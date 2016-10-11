@@ -23,10 +23,10 @@ from bravado.exception import HTTPError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service

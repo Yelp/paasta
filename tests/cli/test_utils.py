@@ -21,6 +21,7 @@ from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -693,3 +694,27 @@ def test_git_sha_validation():
         '060ce8bc10efe0030c048a4711ad5dd85de5adac') == '060ce8bc10efe0030c048a4711ad5dd85de5adac'
     with raises(argparse.ArgumentTypeError):
         utils.validate_full_git_sha('BAD')
+
+
+@patch('paasta_tools.cli.utils.get_instance_configs_for_service', autospec=True)
+def test_list_deploy_groups_parses_configs(
+    mock_get_instance_configs_for_service,
+):
+    mock_get_instance_configs_for_service.return_value = [
+        MarathonServiceConfig(
+            service='foo',
+            cluster='',
+            instance='',
+            config_dict={'deploy_group': 'fake_deploy_group'},
+            branch_dict={},
+        ),
+        MarathonServiceConfig(
+            service='foo',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        ),
+    ]
+    actual = utils.list_deploy_groups(service="foo")
+    assert actual == set(['fake_deploy_group', 'fake_cluster.fake_instance'])
