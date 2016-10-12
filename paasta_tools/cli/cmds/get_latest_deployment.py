@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
@@ -33,10 +34,10 @@ def add_subparser(subparsers):
         required=True,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-i', '--deploy-group',
+        '-l', '--deploy-group',
         help='Name of the deploy group which you want to get the latest deployment for.',
         required=True,
-    )
+    ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
         '-d', '--soa-dir',
         help='A directory from which soa-configs should be read from',
