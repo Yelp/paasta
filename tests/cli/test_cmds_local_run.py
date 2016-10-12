@@ -1145,7 +1145,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
 ):
     # change time to make sure we are sufficiently past grace period
     mock_run_healthcheck_on_container.side_effect = iter([
-        (False, "noop"), (False, "noop"), (True, "noop")])
+        (False, "400 noop"), (False, "400 noop"), (True, "200 noop")])
 
     mock_time.side_effect = [0, 1, 5]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -1170,6 +1170,8 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     out, _ = capsys.readouterr()
     assert out.count('Healthcheck failed! (disregarded due to grace period)') == 1
     assert out.count('Healthcheck failed! (Attempt') == 1
+    assert out.count('200 noop') == 1
+    assert out.count('400 noop') == 2
     assert out.count('Healthcheck succeeded!') == 1
 
 
