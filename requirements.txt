@@ -27,6 +27,7 @@ ordereddict==1.1
 path.py==8.1
 ply==3.4
 prettytable==0.7.2
+progressbar2==3.10.1
 protobuf==2.6.1
 pyasn1==0.1.8
 pycrypto==2.6.1
