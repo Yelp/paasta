@@ -32,6 +32,10 @@ def add_subparser(subparsers):
              'Jenkins job name, will be stripped.',
     )
     list_parser.add_argument(
+        '-k', '--commit',
+        help='Git commit sha.',
+    )
+    list_parser.add_argument(
         '-d', '--soa-dir',
         dest='soa_dir',
         metavar='SOA_DIR',
