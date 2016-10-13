@@ -27,7 +27,8 @@ def each_command():
         for action in parser._actions
         if isinstance(action, argparse._SubParsersAction)
     ]
-    choices = tuple(subparsers.choices)
+    # Remove our dummy help command, paasta help --help is nonsense
+    choices = tuple(set(subparsers.choices) - {'help'})
     assert choices
     assert 'local-run' in choices
     return choices
@@ -40,3 +41,9 @@ def test_help(cmd, capsys):
         main((cmd, '--help'))
     assert excinfo.value.code == 0
     assert cmd in capsys.readouterr()[0]
+
+
+def test_invalid_arguments_returns_non_zero():
+    with pytest.raises(SystemExit) as excinfo:
+        main(('get-latest-deployment', '--herp'))
+    assert excinfo.value.code == 1
