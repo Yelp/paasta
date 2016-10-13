@@ -211,7 +211,7 @@ def kill_old_ids(old_ids, client):
         try:
             log.info("Killing %s", app)
             delete_marathon_app(app, client)
-        except:
+        except Exception:
             continue
 
 

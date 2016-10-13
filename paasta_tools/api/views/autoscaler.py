@@ -38,7 +38,7 @@ def get_autoscaler_count(request):
             soa_dir=soa_dir,
             load_deployments=False,
         )
-    except:
+    except Exception:
         error_message = 'Unable to load service config for %s.%s' % (service, instance)
         raise ApiFailure(error_message, 404)
 
@@ -60,7 +60,7 @@ def update_autoscaler_count(request):
             soa_dir=settings.soa_dir,
             load_deployments=False,
         )
-    except:
+    except Exception:
         error_message = 'Unable to load service config for %s.%s' % (service, instance)
         raise ApiFailure(error_message, 404)
 

@@ -39,4 +39,8 @@
         entry: paasta_tools/contrib/mock_patch_checker.py
         language: script
         files: ^tests/.*\.py$
-        language_version: python2.7
+    -   id: no-catchall-except
+        name: Prevent catchall except
+        entry: 'except:$'
+        language: pcre
+        files: '\.py$'

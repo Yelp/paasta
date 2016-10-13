@@ -47,7 +47,5 @@ def service_instance_status_error(context, error_code, job_id):
     except ApiFailure as exc:
         assert 'not found' in exc.msg
         assert exc.err == int(error_code)
-    except:
-        raise
 
     assert not response

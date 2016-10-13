@@ -90,7 +90,7 @@ def instance_status(request):
 
     try:
         actual_deployments = get_actual_deployments(service, settings.soa_dir)
-    except:
+    except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
@@ -111,7 +111,7 @@ def instance_status(request):
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
             raise ApiFailure(error_message, 404)
-    except:
+    except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
@@ -131,7 +131,7 @@ def instance_task(request):
         task = get_task(task_id, app_id=mstatus['app_id'])
     except TaskNotFound:
         raise ApiFailure("Task with id {0} not found".format(task_id), 404)
-    except:
+    except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
     if verbose:
