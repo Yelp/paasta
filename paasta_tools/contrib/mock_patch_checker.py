@@ -31,20 +31,20 @@ class MockChecker(ast.NodeVisitor):
         self.init_module_imports()
         self.visit(file_ast)
 
-    def CallUsesMockPatch(self, node):
-        try:
-            return node.func.value.id == 'mock' and node.func.attr == 'patch'
-        except AttributeError:
-            return False
-
-    def CallUsesPatch(self, node):
+    def _call_uses_patch(self, node):
         try:
             return node.func.id == 'patch'
         except AttributeError:
             return False
 
+    def _call_uses_mock_patch(self, node):
+        try:
+            return node.func.value.id == 'mock' and node.func.attr == 'patch'
+        except AttributeError:
+            return False
+
     def visit_Import(self, node):
-        if (name for name in node.names if 'mock' == name.name):
+        if [name for name in node.names if 'mock' == name.name]:
             self.imported_mock = True
 
     def visit_ImportFrom(self, node):
@@ -53,15 +53,14 @@ class MockChecker(ast.NodeVisitor):
 
     def visit_Call(self, node):
         try:
-            if (self.imported_patch and self.CallUsesPatch(node)) or \
-                    (self.imported_mock and self.CallUsesMockPatch(node)):
+            if (self.imported_patch and self._call_uses_patch(node)) or \
+                    (self.imported_mock and self._call_uses_mock_patch(node)):
                 if not any([keyword for keyword in node.keywords if keyword.arg == 'autospec']):
                     print "%s:%d: Found a mock without an autospec!" % (self.current_filename, node.lineno)
                     self.errors += 1
         except AttributeError:
             pass
-        for child in ast.iter_child_nodes(node):
-            self.visit(child)
+        self.generic_visit(node)
 
 
 def main(filenames):
