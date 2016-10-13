@@ -157,8 +157,8 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
 
 def instances_deployed_side_effect(cluster, service, instances, git_sha):
     if instances == ['instance1', 'instance2']:
-        return True
-    return False
+        return 2
+    return 0
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
@@ -183,8 +183,7 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance2']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
-    with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance3']}}

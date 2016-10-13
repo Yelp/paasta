@@ -190,11 +190,11 @@ def paasta_mark_for_deployment(args):
     if args.block:
         try:
             print "Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group)
-            wait_for_deployment(service=service,
-                                deploy_group=args.deploy_group,
-                                git_sha=args.commit,
-                                soa_dir=args.soa_dir,
-                                timeout=args.timeout)
+            ret = wait_for_deployment(service=service,
+                                      deploy_group=args.deploy_group,
+                                      git_sha=args.commit,
+                                      soa_dir=args.soa_dir,
+                                      timeout=args.timeout)
             line = "Deployment of {0} for {1} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
@@ -255,31 +255,30 @@ def instances_deployed(cluster, service, instances, git_sha):
                       service, status.instance, cluster))
             results.append(True)
         else:
-            if status.marathon.app_count == 1:
-                if git_sha.startswith(status.git_sha):
-                    if status.marathon.deploy_status == 'Running':
-                        if status.marathon.expected_instance_count == status.marathon.running_instance_count:
-                            log.debug("{}.{} on {} looks 100% deployed at {} instances on {}".format(
-                                      service, status.instance, cluster, status.marathon.running_instance_count,
-                                      status.git_sha))
-                            results.append(True)
-                        else:
-                            log.debug("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
-                                service, status.instance, cluster, status.marathon.running_instance_count,
-                                status.marathon.expected_instance_count))
-                            results.append(False)
-                    else:
-                        log.debug("{}.{} on {} in't running yet: {}".format(service, status.instance, cluster,
-                                                                            status.marathon.deploy_status))
-                        results.append(False)
-                else:
-                    log.debug("{}.{} on {} doesn't have the right sha yet: {}".format(
-                              service, status.instance, cluster, status.git_sha))
-                    results.append(False)
-            else:
+            if status.marathon.app_count != 1:
                 log.debug("{}.{} on {} is still bouncing, {} versions running".format(
                           service, status.instance, cluster, status.marathon.app_count))
                 results.append(False)
+                continue
+            if not git_sha.startswith(status.git_sha):
+                log.debug("{}.{} on {} doesn't have the right sha yet: {}".format(
+                          service, status.instance, cluster, status.git_sha))
+                results.append(False)
+                continue
+            if status.marathon.deploy_status != 'Running':
+                log.debug("{}.{} on {} in't running yet: {}".format(
+                          service, status.instance, cluster, status.marathon.deploy_status))
+                results.append(False)
+                continue
+            if status.marathon.expected_instance_count != status.marathon.running_instance_count:
+                log.debug("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
+                          service, status.instance, cluster, status.marathon.running_instance_count,
+                          status.marathon.expected_instance_count))
+                results.append(False)
+                continue
+            log.debug("{}.{} on {} looks 100% deployed at {} instances on {}".format(
+                      service, status.instance, cluster, status.marathon.running_instance_count, status.git_sha))
+            results.append(True)
 
     return sum(results)
 
@@ -340,6 +339,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             level='event'
         )
         raise
+    return True
 
 
 class NoInstancesFound(Exception):
