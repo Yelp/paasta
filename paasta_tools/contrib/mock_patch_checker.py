@@ -1,10 +1,9 @@
 #!/usr/bin/env python2.7
-import compiler
+import ast
 import sys
-from compiler.visitor import ASTVisitor
 
 
-class MockChecker(ASTVisitor):
+class MockChecker(ast.NodeVisitor):
     def __init__(self):
         self.errors = 0
         self.init_module_imports()
@@ -20,32 +19,48 @@ class MockChecker(ASTVisitor):
     def check_file(self, filename):
         self.current_filename = filename
         try:
-            ast = compiler.parseFile(filename)
-        except SyntaxError, error:
-            print "SyntaxError on file %s:%d" % (filename, error.lineno)
+            with open(filename, 'r') as fd:
+                try:
+                    file_ast = ast.parse(fd.read())
+                except SyntaxError as error:
+                    print "SyntaxError on file %s:%d" % (filename, error.lineno)
+                    return
+        except IOError:
+            print "Error opening filename: %s" % filename
             return
-        compiler.walk(ast, self)
         self.init_module_imports()
+        self.visit(file_ast)
 
-    def visitImport(self, node):
-        if (name for name in node.names if 'mock' in name):
+    def CallUsesMockPatch(self, node):
+        try:
+            return node.func.value.id == 'mock' and node.func.attr == 'patch'
+        except AttributeError:
+            return False
+
+    def CallUsesPatch(self, node):
+        try:
+            return node.func.id == 'patch'
+        except AttributeError:
+            return False
+
+    def visit_Import(self, node):
+        if (name for name in node.names if 'mock' == name.name):
             self.imported_mock = True
 
-    def visitFrom(self, node):
-        if node.modname == 'mock' and (name for name in node.names if 'patch' in name):
+    def visit_ImportFrom(self, node):
+        if node.module == 'mock' and (name for name in node.names if 'patch' == name.name):
             self.imported_patch = True
 
-    def visitCallFunc(self, node):
+    def visit_Call(self, node):
         try:
-            if (self.imported_patch and node.node.name == 'patch') or \
-                    (self.imported_mock and node.node.expr.name == 'mock' and node.node.attrname == 'patch'):
-                if not any(
-                        [arg for arg in node.args if isinstance(arg, compiler.ast.Keyword) and arg.name == 'autospec']):
+            if (self.imported_patch and self.CallUsesPatch(node)) or \
+                    (self.imported_mock and self.CallUsesMockPatch(node)):
+                if not any([keyword for keyword in node.keywords if keyword.arg == 'autospec']):
                     print "%s:%d: Found a mock without an autospec!" % (self.current_filename, node.lineno)
                     self.errors += 1
         except AttributeError:
             pass
-        for child in node.getChildNodes():
+        for child in ast.iter_child_nodes(node):
             self.visit(child)
 
 
