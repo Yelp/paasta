@@ -34,7 +34,7 @@ def add_subparser(subparsers):
         required=True,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-l', '--deploy-group',
+        '-i', '-l', '--deploy-group',
         help='Name of the deploy group which you want to get the latest deployment for.',
         required=True,
     ).completer = lazy_choices_completer(list_deploy_groups)
