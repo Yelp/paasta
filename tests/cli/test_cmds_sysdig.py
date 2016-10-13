@@ -89,7 +89,7 @@ def test_paasta_sysdig(mock_get_status_for_instance,
 
 def test_format_mesos_command():
     ret = sysdig.format_mesos_command('slave1', 'appID1', 'http://foo', 'http://user:pass@blah')
-    expected = 'slave1:sudo csysdig -m http://foo,http://user:pass@blah marathon.app.id="appID1" -v mesos_tasks'
+    expected = 'slave1:sudo csysdig -m http://foo,http://user:pass@blah marathon.app.id="/appID1" -v mesos_tasks'
     assert ret == expected
 
 

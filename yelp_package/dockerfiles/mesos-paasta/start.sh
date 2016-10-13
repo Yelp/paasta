@@ -16,5 +16,9 @@ pip install --no-index --find-links=/var/tmp/pip_cache -e /work
 while read link; do echo $link|sed -e 's/usr\/share\/python\/paasta-tools\//\/usr\/local\//'| sed -e 's/\ usr/\ \/usr/'| xargs ln -s; done < /work/debian/paasta-tools.links
 /usr/sbin/rsyslogd
 cron
-pserve /work/paasta_tools/api/development.ini --reload &
-mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets --hostname=$(hostname)
+mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets --hostname=$(hostname) &
+while true; do
+    pserve /work/paasta_tools/api/development.ini --reload
+    echo "RESTARTING API IN 5 SECONDS"
+    sleep 5
+done

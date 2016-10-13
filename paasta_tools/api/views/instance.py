@@ -24,6 +24,9 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.mesos_tools import get_task
+from paasta_tools.mesos_tools import get_tasks_from_app_id
+from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
@@ -113,3 +116,54 @@ def instance_status(request):
         raise ApiFailure(error_message, 500)
 
     return instance_status
+
+
+@view_config(route_name='service.instance.tasks.task', request_method='GET', renderer='json')
+def instance_task(request):
+    status = instance_status(request)
+    task_id = request.swagger_data.get('task_id', None)
+    verbose = request.swagger_data.get('verbose', False)
+    try:
+        mstatus = status['marathon']
+    except KeyError:
+        raise ApiFailure("Only marathon tasks supported", 400)
+    try:
+        task = get_task(task_id, app_id=mstatus['app_id'])
+    except TaskNotFound:
+        raise ApiFailure("Task with id {0} not found".format(task_id), 404)
+    except:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+    if verbose:
+        task = add_slave_info(task)
+        task = add_executor_info(task)
+    return task._Task__items
+
+
+@view_config(route_name='service.instance.tasks', request_method='GET', renderer='json')
+def instance_tasks(request):
+    status = instance_status(request)
+    slave_hostname = request.swagger_data.get('slave_hostname', None)
+    verbose = request.swagger_data.get('verbose', False)
+    try:
+        mstatus = status['marathon']
+    except KeyError:
+        raise ApiFailure("Only marathon tasks supported", 400)
+    tasks = get_tasks_from_app_id(mstatus['app_id'], slave_hostname=slave_hostname)
+    if verbose:
+        tasks = [add_executor_info(task) for task in tasks]
+        tasks = [add_slave_info(task) for task in tasks]
+    return [task._Task__items for task in tasks]
+
+
+def add_executor_info(task):
+    task._Task__items['executor'] = task.executor.copy()
+    task._Task__items['executor'].pop('tasks', None)
+    task._Task__items['executor'].pop('completed_tasks', None)
+    task._Task__items['executor'].pop('queued_tasks', None)
+    return task
+
+
+def add_slave_info(task):
+    task._Task__items['slave'] = task.slave._MesosSlave__items.copy()
+    return task

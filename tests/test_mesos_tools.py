@@ -26,7 +26,6 @@ from paasta_tools import mesos
 from paasta_tools import mesos_tools
 from paasta_tools import utils
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.utils import PaastaColors
 
 
@@ -677,30 +676,56 @@ def mock_getitem(key):
         return 'fakeID'
 
 
-def test_get_container_name():
+def test_get_tasks_from_app_id():
     with contextlib.nested(
-            mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True),
     ) as (
         mock_get_running_tasks_from_active_frameworks,
     ):
-        mock_executor = {'tasks': [{'slave_id': 'fake_slave'}], 'container': 'abc123'}
-        mock_task_1 = mock.Mock(slave={'hostname': 'host1'},
-                                executor=mock_executor,
-                                __getitem__=mock.Mock(side_effect=mock_getitem))
-        mock_get_running_tasks_from_active_frameworks.return_value = [mock_task_1]
-        expected = 'mesos-fake_slave.abc123'
+        mock_task_1 = mock.Mock(slave={'hostname': 'host1'})
+        mock_task_2 = mock.Mock(slave={'hostname': 'host2'})
+        mock_task_3 = mock.Mock(slave={'hostname': 'host2.domain'})
+        mock_get_running_tasks_from_active_frameworks.return_value = [mock_task_1, mock_task_2, mock_task_3]
 
-        ret = mesos_tools.get_container_name('fake_app_id', slave_hostname='host1')
-        assert ret == expected
+        ret = mesos_tools.get_tasks_from_app_id('app_id')
+        mock_get_running_tasks_from_active_frameworks.assert_called_with('app_id')
+        expected = [mock_task_1, mock_task_2, mock_task_3]
+        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
 
-        ret = mesos_tools.get_container_name('fake_app_id', task_id='fakeID')
-        assert ret == expected
+        ret = mesos_tools.get_tasks_from_app_id('app_id', slave_hostname='host2')
+        mock_get_running_tasks_from_active_frameworks.assert_called_with('app_id')
+        expected = [mock_task_2, mock_task_3]
+        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
 
-        with raises(TaskNotFound):
-            ret = mesos_tools.get_container_name('fake_app_id')
 
-        with raises(TaskNotFound):
-            ret = mesos_tools.get_container_name('fake_app_id', task_id='not-found')
+def test_get_task():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True),
+    ) as (
+        mock_get_running_tasks_from_active_frameworks,
+    ):
+        mock_task_1 = {'id': '123'}
+        mock_task_2 = {'id': '789'}
+        mock_task_3 = {'id': '789'}
+        mock_get_running_tasks_from_active_frameworks.return_value = [mock_task_1, mock_task_2, mock_task_3]
+        ret = mesos_tools.get_task('123', app_id='app_id')
+        mock_get_running_tasks_from_active_frameworks.assert_called_with('app_id')
+        assert ret == mock_task_1
 
-        with raises(TaskNotFound):
-            ret = mesos_tools.get_container_name('fake_app_id', slave_hostname='not-found')
+        with raises(mesos_tools.TaskNotFound):
+            mesos_tools.get_task('111', app_id='app_id')
+
+        with raises(mesos_tools.TooManyTasks):
+            mesos_tools.get_task('789', app_id='app_id')
+
+
+def test_filter_task_by_hostname():
+    mock_task = mock.Mock(slave={'hostname': 'host1'})
+    assert mesos_tools.filter_task_by_hostname(mock_task, 'host1')
+    assert not mesos_tools.filter_task_by_hostname(mock_task, 'host2')
+
+
+def test_filter_task_by_task_id():
+    mock_task = {'id': '123'}
+    assert mesos_tools.filter_task_by_task_id(mock_task, '123')
+    assert not mesos_tools.filter_task_by_task_id(mock_task, '456')

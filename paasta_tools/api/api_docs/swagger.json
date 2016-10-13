@@ -97,6 +97,114 @@
         ]
       }
     },
+    "/services/{service}/{instance}/tasks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of tasks associated with an instance",
+            "schema": {
+                "$ref":"#/definitions/InstanceTasks"
+            }
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get mesos tasks of service_name.instance_name",
+        "operationId": "tasks_instance",
+        "tags": ["service"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "description": "slave hostname to filter tasks by",
+            "name": "slave_hostname",
+            "required": false,
+            "type": "string"
+	  },
+          {
+            "in": "query",
+            "description": "Return slave and executor for task",
+            "name": "verbose",
+            "required": false,
+            "type": "boolean"
+	  }
+        ]
+      }
+    },
+    "/services/{service}/{instance}/tasks/{task_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Task associated with an instance with specified ID",
+            "schema": {
+                "$ref":"#/definitions/InstanceTask"
+            }
+          },
+          "404": {
+            "description": "Task with ID not found"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get mesos task of service_name.instance_name by task_id",
+        "operationId": "task_instance",
+        "tags": ["service"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "mesos task id",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+	  },
+          {
+            "in": "query",
+            "description": "Return slave and executor for task",
+            "name": "verbose",
+            "required": false,
+            "type": "boolean"
+	  }
+        ]
+      }
+    },
     "/services/{service}/{instance}/autoscaler": {
       "get": {
         "responses": {
@@ -270,6 +378,14 @@
         "app_count",
         "bounce_method"
       ]
+    },
+    "InstanceTasks": {
+      "type": "array",
+      "description": "List of tasks associated with instance",
+      "items": {"$ref": "#/definitions/InstanceTask"}
+    },
+    "InstanceTask": {
+      "type": "object"
     }
   }
 }
