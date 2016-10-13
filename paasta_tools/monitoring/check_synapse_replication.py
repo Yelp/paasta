@@ -76,7 +76,7 @@ def parse_range(str_range):
         int_range[1] = sys.maxint
     try:
         return tuple(map(int, int_range))
-    except:
+    except Exception:
         fail("Failed to parse range {0}".format(str_range))
 
 

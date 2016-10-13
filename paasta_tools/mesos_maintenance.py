@@ -277,7 +277,7 @@ def parse_datetime(value):
     error_msg = "'%s' is not a valid datetime expression" % value
     try:
         dt = parser.parse(value)
-    except:
+    except Exception:
         raise argparse.ArgumentTypeError(error_msg)
     if not dt:
         raise argparse.ArgumentTypeError(error_msg)

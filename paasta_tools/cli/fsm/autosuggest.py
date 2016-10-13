@@ -47,7 +47,7 @@ def suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20000, range_ma
                 try:
                     proxy_port = _get_smartstack_proxy_port_from_file(root, f)
                     available_proxy_ports.discard(proxy_port)
-                except:
+                except Exception:
                     pass
 
     try:
