@@ -35,7 +35,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
         print("Argument parse error: %s" % message)
         print("\n")
         self.print_help()
-        sys.exit(0)
+        sys.exit(1)
 
 
 def add_subparser(command, subparsers):
