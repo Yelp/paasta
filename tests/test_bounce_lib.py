@@ -106,7 +106,7 @@ class TestBounceLib:
             wait_patch,
         ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
-            fake_client.delete_app.assert_called_once_with(fake_id, force=False)
+            fake_client.delete_app.assert_called_once_with(fake_id, force=True)
             wait_patch.assert_called_once_with(fake_id, fake_client)
             assert lock_patch.called
 

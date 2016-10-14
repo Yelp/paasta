@@ -192,7 +192,7 @@ def delete_marathon_app(app_id, client):
     :param app_id: The marathon app id to be deleted
     :param client: A MarathonClient object"""
     with nested(create_app_lock(), time_limit(1)):
-        client.delete_app(app_id, force=False)
+        client.delete_app(app_id, force=True)
         wait_for_delete(app_id, client)
 
 
