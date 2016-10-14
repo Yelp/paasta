@@ -17,10 +17,8 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
-from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_git_url
 
 
 def add_subparser(subparsers):
@@ -53,13 +51,7 @@ def paasta_get_latest_deployment(args):
     soa_dir = args.soa_dir
     validate_service_name(service, soa_dir)
 
-    git_url = get_git_url(
-        service=service,
-        soa_dir=soa_dir,
-    )
-    remote_refs = list_remote_refs(git_url)
-
-    _, git_sha = get_latest_deployment_tag(remote_refs, deploy_group)
+    git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group, soa_dir=soa_dir)
     if not git_sha:
         print PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service))
         return 1

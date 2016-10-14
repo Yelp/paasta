@@ -33,7 +33,9 @@ class fake_args:
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
 def test_paasta_mark_for_deployment_acts_like_main(
+    mock_get_currently_deployed_sha,
     mock_mark_for_deployment,
     mock_validate_service_name,
 ):
