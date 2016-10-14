@@ -16,7 +16,6 @@
 deployment to a cluster.instance.
 """
 import logging
-import sys
 import time
 
 import progressbar
@@ -31,6 +30,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -181,6 +181,12 @@ def paasta_mark_for_deployment(args):
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
+    old_git_sha = get_currently_deployed_sha(service=service, deploy_group=args.deploy_group)
+    if old_git_sha == args.commit:
+        print "Warning: The sha asked to be deployed already matches what is set to be deployed:"
+        print old_git_sha
+        print "Continuing anyway."
+
     ret = mark_for_deployment(
         git_url=args.git_url,
         deploy_group=args.deploy_group,
@@ -202,19 +208,19 @@ def paasta_mark_for_deployment(args):
                 line=line,
                 level='event'
             )
-        except KeyboardInterrupt:
-            print "Waiting for deployment aborted."
-            print "PaaSTA %s continue to try to deploy this code." % PaastaColors.bold('will')
+        except (KeyboardInterrupt, TimeoutError):
+            print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
             print "If you wish to see the status, run:"
             print ""
             print "    paasta status -s %s -v" % service
             print ""
-            print "Or if you wish to rollback:"
-            print ""
-            print "    paasta rollback -s %s -d %s" % (service, args.deploy_group)
-            sys.exit(1)
-        except TimeoutError:
-            sys.exit(1)
+            ret = 1
+    if old_git_sha is not None and old_git_sha != args.commit:
+        print ""
+        print "If you wish to roll back, you can run:"
+        print ""
+        print PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
+            service, args.deploy_group, old_git_sha))
     return ret
 
 
