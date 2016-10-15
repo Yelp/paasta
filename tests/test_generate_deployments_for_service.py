@@ -61,6 +61,28 @@ def test_get_deploy_group_mappings():
             'force_bounce': '123',
         },
     }
+    expected_v2 = {
+        'deployments': {
+            'try_me': {
+                'docker_image': 'services-fake_service:paasta-123456',
+                'git_sha': '123456',
+            },
+            'no_thanks': {
+                'docker_image': 'services-fake_service:paasta-789009',
+                'git_sha': '789009',
+            },
+        },
+        'controls': {
+            'fake_service:paasta-clusterA.main': {
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'fake_service:paasta-clusterB.main': {
+                'desired_state': 'stop',
+                'force_bounce': '123',
+            },
+        },
+    }
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.get_instance_configs_for_service',
                    return_value=fake_service_configs, autospec=True),
@@ -70,11 +92,12 @@ def test_get_deploy_group_mappings():
         get_instance_configs_for_service_patch,
         list_remote_refs_patch,
     ):
-        actual = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
-                                                                            fake_service, fake_old_mappings)
+        actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
+                                                                                       fake_service, fake_old_mappings)
         get_instance_configs_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
         assert expected == actual
+        assert expected_v2 == actual_v2
 
 
 def test_get_cluster_instance_map_for_service():
@@ -134,7 +157,7 @@ def test_main():
         mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
         mock.patch(
             'paasta_tools.generate_deployments_for_service.get_deploy_group_mappings',
-            return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}},
+            return_value=({'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}, mock.sentinel.v2_mappings),
             autospec=True,
         ),
         mock.patch('os.path.join', return_value='JOIN', autospec=True),
@@ -171,7 +194,8 @@ def test_main():
             {
                 'v1': {
                     'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
-                }
+                },
+                'v2': mock.sentinel.v2_mappings,
             },
             atomic_file_write_patch().__enter__()
         )
@@ -192,8 +216,12 @@ def test_get_deployments_dict():
         },
     }
 
-    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(branch_mappings) == {
+    v2_mappings = mock.sentinel.v2_mappings
+
+    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(
+        branch_mappings, v2_mappings) == {
         'v1': branch_mappings,
+        'v2': mock.sentinel.v2_mappings,
     }
 
 

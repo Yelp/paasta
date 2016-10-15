@@ -1387,11 +1387,38 @@ def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
         raise NoDeploymentsAvailable
 
 
+def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJson(json.load(f)['v2'])
+    else:
+        raise NoDeploymentsAvailable
+
+
 class DeploymentsJson(dict):
 
     def get_branch_dict(self, service, branch):
         full_branch = '%s:%s' % (service, branch)
         return self.get(full_branch, {})
+
+    def get_docker_image_for_deploy_group(self, deploy_group):
+        try:
+            return self['deployments'][deploy_group]['docker_image']
+        except KeyError:
+            raise NoDeploymentsAvailable
+
+    def get_git_sha_for_deploy_group(self, deploy_group):
+        try:
+            return self['deployments'][deploy_group]['git_sha']
+        except KeyError:
+            raise NoDeploymentsAvailable
+
+    def get_desired_state_for_branch(self, control_branch):
+        return self['controls'][control_branch].get('desired_state', 'start')
+
+    def get_force_bounce_for_branch(self, control_branch):
+        return self['controls'][control_branch].get('force_bounce', None)
 
 
 def get_paasta_branch_from_deploy_group(identifier):
