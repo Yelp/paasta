@@ -673,24 +673,6 @@ def list_deploy_groups(parsed_args=None, service=None, soa_dir=DEFAULT_SOA_DIR, 
     )])
 
 
-def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
-    """Given two lists of deploy groups, return the intersection and difference between them.
-
-    :param all_deploy_groups: instances actually belonging to a service
-    :param args_deploy_groups: the desired instances
-    :returns: a tuple with (common, difference) indicating deploy groups common in both
-        lists and those only in args_deploy_groups
-    """
-    if len(args_deploy_groups) is 0:
-        valid_deploy_groups = set(all_deploy_groups)
-        invalid_deploy_groups = set([])
-    else:
-        valid_deploy_groups = set(args_deploy_groups).intersection(all_deploy_groups)
-        invalid_deploy_groups = set(args_deploy_groups).difference(all_deploy_groups)
-
-    return valid_deploy_groups, invalid_deploy_groups
-
-
 def validate_full_git_sha(value):
     pattern = re.compile('[a-f0-9]{40}')
     if not pattern.match(value):

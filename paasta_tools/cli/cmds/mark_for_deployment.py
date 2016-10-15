@@ -27,7 +27,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_full_git_sha
-from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
@@ -164,11 +163,9 @@ def paasta_mark_for_deployment(args):
         service=service,
         soa_dir=args.soa_dir,
     )
-    _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
-
-    if len(invalid_deploy_groups) == 1:
+    if args.deploy_group not in in_use_deploy_groups:
         print PaastaColors.red(
-            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups))
+            "ERROR: '%s' are not currently used anywhere.\n" % args.deploy_group)
         print PaastaColors.red(
             "This isn't technically wrong because you can mark-for-deployment before deploying there")
         print PaastaColors.red("but this is probably a typo. Did you mean one of these in-use deploy groups?:")
