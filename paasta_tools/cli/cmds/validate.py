@@ -243,7 +243,7 @@ def validate_chronos(service_path):
 
 
 def paasta_validate_soa_configs(service_path):
-    """Analyze the service in serivce_path to determine if the conf files are valid
+    """Analyze the service in service_path to determine if the conf files are valid
 
     :param service_path: Path to directory containing soa conf yaml files for service
     """
