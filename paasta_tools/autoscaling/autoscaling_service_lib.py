@@ -160,7 +160,7 @@ def get_json_body_from_service(host, port, endpoint):
 
 def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
     """
-    Gets the mean utilization of a serivce across all of its tasks by fetching
+    Gets the mean utilization of a service across all of its tasks by fetching
     json from an http endpoint and applying a function that maps it to a
     utilization
 
