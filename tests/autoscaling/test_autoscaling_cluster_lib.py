@@ -320,7 +320,10 @@ def test_autoscale_local_cluster():
 
         autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
         assert mock_get_paasta_config.called
-        mock_is_resource_cancelled.assert_called_with(mock_scaling_resources['id1'])
+        is_cancelled_calls = [mock.call(mock_scaling_resources['id1']),
+                              mock.call(mock_scaling_resources['id2']),
+                              mock.call(mock_scaling_resources['id3'])]
+        mock_is_resource_cancelled.assert_has_calls(is_cancelled_calls, any_order=True)
         autoscale_calls = [mock.call(identifier='id3',
                                      resource=mock_scaling_result['id3'],
                                      config_folder='/nail/blah',
