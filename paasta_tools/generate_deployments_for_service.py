@@ -150,6 +150,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = '%s:paasta-%s' % (service, control_branch)
+            control_branch_alias_v2 = '%s:%s' % (service, control_branch)
             docker_image = build_docker_image_name(service, commit_sha)
             log.info('Mapping %s to docker image %s', control_branch, docker_image)
             mapping = mappings.setdefault(control_branch_alias, {})
@@ -164,8 +165,8 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
             )
             mapping['desired_state'] = desired_state
             mapping['force_bounce'] = force_bounce
-            v2_mappings['controls'].setdefault(control_branch_alias, {})['desired_state'] = desired_state
-            v2_mappings['controls'][control_branch_alias]['force_bounce'] = force_bounce
+            v2_mappings['controls'].setdefault(control_branch_alias_v2, {})['desired_state'] = desired_state
+            v2_mappings['controls'][control_branch_alias_v2]['force_bounce'] = force_bounce
     return mappings, v2_mappings
 
 
@@ -191,7 +192,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     """
     # (?:paasta-){1,2} supports a previous mistake where some tags would be called
     # paasta-paasta-cluster.instance
-    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
+    tag_pattern = r'^refs/tags/(?:paasta-){0,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
 
     states = []
     (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)

@@ -73,11 +73,11 @@ def test_get_deploy_group_mappings():
             },
         },
         'controls': {
-            'fake_service:paasta-clusterA.main': {
+            'fake_service:clusterA.main': {
                 'desired_state': 'start',
                 'force_bounce': None,
             },
-            'fake_service:paasta-clusterB.main': {
+            'fake_service:clusterB.main': {
                 'desired_state': 'stop',
                 'force_bounce': '123',
             },

@@ -17,4 +17,3 @@ Feature: Per-Service Deployments.json can be written and read back
 	Given a test git repo is setup with commits
 	 When paasta mark-for-deployments is run against the repo
 	 Then the repository should be correctly tagged
-	  And the repository should not have old style branches

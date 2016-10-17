@@ -117,7 +117,7 @@ class InstanceConfig(dict):
         return self.service
 
     def get_branch(self):
-        return SPACER.join((self.get_cluster(), self.get_instance()))
+        return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
 
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
@@ -1399,7 +1399,7 @@ def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
 class DeploymentsJson(dict):
 
     def get_branch_dict(self, service, branch):
-        full_branch = '%s:%s' % (service, branch)
+        full_branch = '%s:paasta-%s' % (service, branch)
         return self.get(full_branch, {})
 
     def get_docker_image_for_deploy_group(self, deploy_group):
@@ -1421,12 +1421,8 @@ class DeploymentsJson(dict):
         return self['controls'][control_branch].get('force_bounce', None)
 
 
-def get_paasta_branch_from_deploy_group(identifier):
-    return 'paasta-%s' % (identifier)
-
-
 def get_paasta_branch(cluster, instance):
-    return get_paasta_branch_from_deploy_group('%s.%s' % (cluster, instance))
+    return SPACER.join((cluster, instance))
 
 
 def parse_timestamp(tstamp):
