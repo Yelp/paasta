@@ -646,7 +646,7 @@ def configure_and_run_docker_container(
         if instance is None:
             instance_type = 'adhoc'
             instance = 'interactive'
-            instance_config = get_default_interactive_config(service=service, cluster=cluster)
+            instance_config = get_default_interactive_config(service=service, cluster=cluster, soa_dir=soa_dir)
             interactive = True
         else:
             sys.stderr.write(str(e) + '\n')
@@ -667,7 +667,7 @@ def configure_and_run_docker_container(
             sys.stderr.write(PaastaColors.red(
                 "Error: No sha has been marked for deployment for the %s deploy group.\n"
                 "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s" % (instance_config.get_deploy_group(), service)))
+                "or paasta mark-for-deployment has been run for %s\n" % (instance_config.get_deploy_group(), service)))
             return
         docker_hash = docker_url
 

@@ -20,7 +20,7 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 
 
@@ -49,7 +49,7 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
     branch_dict = {}
     if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
         deploy_group = general_config.get('deploy_group', branch)
         branch_dict = deployments_json.get_branch_dict_v2(service, branch, deploy_group)
@@ -92,14 +92,14 @@ def get_default_interactive_config(service, cluster, soa_dir):
             config_dict={},
             branch_dict={},
         )
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
+        deploy_groups = [(deploy_group, deploy_group) for deploy_group in deployments_json['deployments'].keys()]
+        deploy_group = choice.Menu(deploy_groups).ask()
+
+        job_config.config_dict['deploy_group'] = deploy_group
+        job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
 
     for key, value in default_job_config.items():
         job_config.config_dict.setdefault(key, value)
-
-    if 'deploy_group' not in job_config.config_dict:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        deploy_groups = deployments_json['deployments'].keys()
-        deploy_group = choice.Menu(deploy_groups).ask()
-        job_config.config_dict['deploy_group'] = deploy_group
 
     return job_config
