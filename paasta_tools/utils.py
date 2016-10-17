@@ -1195,19 +1195,6 @@ def get_username():
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
-def get_default_cluster_for_service(service, soa_dir=DEFAULT_SOA_DIR):
-    cluster = None
-    try:
-        cluster = load_system_paasta_config().get_cluster()
-    except PaastaNotConfiguredError:
-        clusters_deployed_to = list_clusters(service, soa_dir=soa_dir)
-        if len(clusters_deployed_to) > 0:
-            cluster = clusters_deployed_to[0]
-        else:
-            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service)
-    return cluster
-
-
 def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     if service is None:
         service = '*'
@@ -1401,6 +1388,16 @@ class DeploymentsJson(dict):
     def get_branch_dict(self, service, branch):
         full_branch = '%s:paasta-%s' % (service, branch)
         return self.get(full_branch, {})
+
+    def get_branch_dict_v2(self, service, branch, deploy_group):
+        full_branch = '%s:%s' % (service, branch)
+        branch_dict = {
+            'deploy_group': self.get_docker_image_for_deploy_group(deploy_group),
+            'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
+            'desired_state': self.get_desired_state_for_branch(full_branch),
+            'force_bounce': self.get_force_bounce_for_branch(full_branch),
+        }
+        return branch_dict
 
     def get_docker_image_for_deploy_group(self, deploy_group):
         try:

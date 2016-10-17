@@ -34,7 +34,6 @@ from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters

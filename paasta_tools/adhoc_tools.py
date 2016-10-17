@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 
+import choice
 import service_configuration_lib
 
 from paasta_tools.utils import deep_merge_dictionaries
@@ -50,7 +51,8 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        branch_dict = deployments_json.get_branch_dict(service, branch)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict_v2(service, branch, deploy_group)
 
     return AdhocJobConfig(
         service=service,
@@ -73,7 +75,7 @@ class AdhocJobConfig(InstanceConfig):
         )
 
 
-def get_default_interactive_config(service, cluster):
+def get_default_interactive_config(service, cluster, soa_dir):
     default_job_config = {
         'cpus': 1,
         'mem': 1024,
@@ -95,6 +97,9 @@ def get_default_interactive_config(service, cluster):
         job_config.config_dict.setdefault(key, value)
 
     if 'deploy_group' not in job_config.config_dict:
-        pass  # TODO: find deploy group
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        deploy_groups = deployments_json['deployments'].keys()
+        deploy_group = choice.Menu(deploy_groups).ask()
+        job_config.config_dict['deploy_group'] = deploy_group
 
     return job_config

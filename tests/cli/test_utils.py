@@ -24,7 +24,6 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 
 
