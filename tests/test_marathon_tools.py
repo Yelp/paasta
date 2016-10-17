@@ -236,7 +236,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'paasta-amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1

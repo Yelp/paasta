@@ -232,7 +232,7 @@ def write_soa_dir_deployments(context, service, disabled, instance):
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {
-                '%s:%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
+                '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
                     'docker_image': 'test-image-foobar%d' % context.tag_version,
                     'desired_state': desired_state,
                 }

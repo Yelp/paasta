@@ -124,6 +124,10 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
       the other properties of this app have not changed.
     """
     mappings = {}
+    v2_mappings = {
+        'deployments': {},
+        'controls': {},
+    }
 
     service_configs = get_instance_configs_for_service(
         soa_dir=soa_dir,
@@ -146,10 +150,13 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = '%s:paasta-%s' % (service, control_branch)
+            control_branch_alias_v2 = '%s:%s' % (service, control_branch)
             docker_image = build_docker_image_name(service, commit_sha)
             log.info('Mapping %s to docker image %s', control_branch, docker_image)
             mapping = mappings.setdefault(control_branch_alias, {})
             mapping['docker_image'] = docker_image
+            v2_mappings['deployments'].setdefault(deploy_group, {})['docker_image'] = docker_image
+            v2_mappings['deployments'][deploy_group]['git_sha'] = commit_sha
 
             desired_state, force_bounce = get_desired_state(
                 branch=control_branch,
@@ -158,7 +165,9 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
             )
             mapping['desired_state'] = desired_state
             mapping['force_bounce'] = force_bounce
-    return mappings
+            v2_mappings['controls'].setdefault(control_branch_alias_v2, {})['desired_state'] = desired_state
+            v2_mappings['controls'][control_branch_alias_v2]['force_bounce'] = force_bounce
+    return mappings, v2_mappings
 
 
 def build_docker_image_name(service, sha):
@@ -183,7 +192,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     """
     # (?:paasta-){1,2} supports a previous mistake where some tags would be called
     # paasta-paasta-cluster.instance
-    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
+    tag_pattern = r'^refs/tags/(?:paasta-){0,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
 
     states = []
     (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
@@ -204,8 +213,8 @@ def get_desired_state(branch, remote_refs, deploy_group):
         return ('start', None)
 
 
-def get_deployments_dict_from_deploy_group_mappings(deploy_group_mappings):
-    return {'v1': deploy_group_mappings}
+def get_deployments_dict_from_deploy_group_mappings(deploy_group_mappings, v2_deploy_group_mappings):
+    return {'v1': deploy_group_mappings, 'v2': v2_deploy_group_mappings}
 
 
 def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
@@ -230,13 +239,13 @@ def generate_deployments_for_service(service, soa_dir):
             old_mappings = get_deploy_group_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
-    mappings = get_deploy_group_mappings(
+    mappings, v2_mappings = get_deploy_group_mappings(
         soa_dir=soa_dir,
         service=service,
         old_mappings=old_mappings,
     )
 
-    deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings)
+    deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings, v2_mappings)
 
     with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
         json.dump(deployments_dict, f)

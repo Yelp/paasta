@@ -132,14 +132,14 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_service_configuration(
         service,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
         service,
         marathon_conf_file,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
 
     if instance not in instance_configs:
