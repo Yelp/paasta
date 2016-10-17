@@ -225,7 +225,7 @@ def instances_deployed(cluster, service, instances, git_sha):
         return False
     statuses = []
     for instance in instances:
-        log.debug("Inspecting the deployment status of {}.{} on {}".format(service, instance, cluster))
+        log.info("Inspecting the deployment status of {}.{} on {}".format(service, instance, cluster))
         try:
             status = api.service.status_instance(service=service, instance=instance).result()
             statuses.append(status)
@@ -244,40 +244,40 @@ def instances_deployed(cluster, service, instances, git_sha):
     results = []
     for status in statuses:
         if not status:
-            log.debug("No status for an unknown instance in {}. Not deployed yet.".format(cluster))
+            log.info("No status for an unknown instance in {}. Not deployed yet.".format(cluster))
             results.append(False)
         elif not status.marathon:
-            log.debug("{}.{} in {} is not a Marathon job. Marked as deployed.".format(
-                      service, status.instance, cluster))
+            log.info("{}.{} in {} is not a Marathon job. Marked as deployed.".format(
+                service, status.instance, cluster))
             results.append(True)
         elif status.marathon.expected_instance_count == 0 or status.marathon.desired_state == 'stop':
-            log.debug("{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                      service, status.instance, cluster))
+            log.info("{}.{} in {} is marked as stopped. Marked as deployed.".format(
+                service, status.instance, cluster))
             results.append(True)
         else:
             if status.marathon.app_count != 1:
-                log.debug("{}.{} on {} is still bouncing, {} versions running".format(
-                          service, status.instance, cluster, status.marathon.app_count))
+                log.info("{}.{} on {} is still bouncing, {} versions running".format(
+                    service, status.instance, cluster, status.marathon.app_count))
                 results.append(False)
                 continue
             if not git_sha.startswith(status.git_sha):
-                log.debug("{}.{} on {} doesn't have the right sha yet: {}".format(
-                          service, status.instance, cluster, status.git_sha))
+                log.info("{}.{} on {} doesn't have the right sha yet: {}".format(
+                    service, status.instance, cluster, status.git_sha))
                 results.append(False)
                 continue
             if status.marathon.deploy_status != 'Running':
-                log.debug("{}.{} on {} in't running yet: {}".format(
-                          service, status.instance, cluster, status.marathon.deploy_status))
+                log.info("{}.{} on {} in't running yet: {}".format(
+                    service, status.instance, cluster, status.marathon.deploy_status))
                 results.append(False)
                 continue
             if status.marathon.expected_instance_count != status.marathon.running_instance_count:
-                log.debug("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
-                          service, status.instance, cluster, status.marathon.running_instance_count,
-                          status.marathon.expected_instance_count))
+                log.info("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
+                    service, status.instance, cluster, status.marathon.running_instance_count,
+                    status.marathon.expected_instance_count))
                 results.append(False)
                 continue
-            log.debug("{}.{} on {} looks 100% deployed at {} instances on {}".format(
-                      service, status.instance, cluster, status.marathon.running_instance_count, status.git_sha))
+            log.info("{}.{} on {} looks 100% deployed at {} instances on {}".format(
+                service, status.instance, cluster, status.marathon.running_instance_count, status.git_sha))
             results.append(True)
 
     return sum(results)
@@ -309,7 +309,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                             git_sha=git_sha)
                         if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
                             instance_csv = ", ".join(cluster_map[cluster]['instances'])
-                            print "Deploy to %s complete! (%s)" % (cluster, instance_csv)
+                            print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
                     bar.update(sum([v["deployed"] for v in cluster_map.values()]))
                 if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
                     bar.finish()
