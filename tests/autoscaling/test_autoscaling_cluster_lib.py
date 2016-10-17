@@ -667,17 +667,20 @@ def test_spotfleet_metrics_provider():
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_spot_fleet_delta', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_sfr_utilization_error', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.cleanup_cancelled_sfr_config', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_aws_launching_sfr_instances', autospec=True),
     ) as (
         mock_get_sfr,
         mock_get_spot_fleet_instances,
         mock_get_spot_fleet_delta,
         mock_get_sfr_utilization_error,
-        mock_cleanup_cancelled_sfr_config
+        mock_cleanup_cancelled_sfr_config,
+        mock_is_aws_launching_sfr_instances
     ):
         mock_resource = {'pool': 'default',
                          'region': 'westeros-1'}
         mock_get_spot_fleet_delta.return_value = 1, 2
         mock_pool_settings = {}
+        mock_is_aws_launching_sfr_instances.return_value = False
 
         # cancelled SFR
         mock_get_spot_fleet_instances.return_value = [mock.Mock(), mock.Mock()]
@@ -720,6 +723,17 @@ def test_spotfleet_metrics_provider():
         assert not mock_cleanup_cancelled_sfr_config.called
         assert ret == (1, 2)
 
+        # active SFR with AWS still provisioning
+        mock_cleanup_cancelled_sfr_config.reset_mock()
+        mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
+        mock_is_aws_launching_sfr_instances.return_value = True
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah',
+                                                                 resource=mock_resource,
+                                                                 pool_settings=mock_pool_settings,
+                                                                 config_folder='/nail/blah')
+        mock_get_sfr.assert_called_with('sfr-blah', region='westeros-1')
+        assert ret == (0, 0)
+
         # cancelled_running SFR
         mock_cleanup_cancelled_sfr_config.reset_mock()
         mock_get_spot_fleet_delta.reset_mock()
@@ -750,11 +764,25 @@ def test_spotfleet_metrics_provider():
         # unknown SFR
         mock_cleanup_cancelled_sfr_config.reset_mock()
         mock_get_sfr.return_value = {'SpotFleetRequestState': 'not-a-state'}
-        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah',
-                                                                 resource=mock_resource,
-                                                                 pool_settings=mock_pool_settings,
-                                                                 config_folder='/nail/blah')
-        assert ret == (0, 0)
+        with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
+            ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah',
+                                                                     resource=mock_resource,
+                                                                     pool_settings=mock_pool_settings,
+                                                                     config_folder='/nail/blah')
+
+
+def test_is_aws_launching_sfr_instances():
+    mock_sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 5,
+                                           'TargetCapacity': 10}}
+    assert autoscaling_cluster_lib.is_aws_launching_sfr_instances(mock_sfr)
+
+    mock_sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 10,
+                                           'TargetCapacity': 5}}
+    assert not autoscaling_cluster_lib.is_aws_launching_sfr_instances(mock_sfr)
+
+    mock_sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 10,
+                                           'TargetCapacity': 10}}
+    assert not autoscaling_cluster_lib.is_aws_launching_sfr_instances(mock_sfr)
 
 
 def test_get_sfr_utilization_error():

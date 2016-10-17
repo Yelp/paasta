@@ -134,14 +134,22 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
         sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
         resource['sfr'] = sfr
         error = get_sfr_utilization_error(spotfleet_request_id, resource, pool_settings)
+    elif sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
+        log.warning("Not scaling an SFR in state: {0} so {1}, skipping...".format(sfr['SpotFleetRequestState'],
+                                                                                  spotfleet_request_id))
+        return 0, 0
     else:
-        log.warning("Unexpected SFR state: {0} for {1}, skipping...".format(sfr['SpotFleetRequestState'],
-                                                                            spotfleet_request_id))
+        log.error("Unexpected SFR state: {0} for {1}".format(sfr['SpotFleetRequestState'],
+                                                             spotfleet_request_id))
+        raise ClusterAutoscalingError
+    if is_aws_launching_sfr_instances(sfr) and sfr['SpotFleetRequestState'] == 'active':
+        log.warning("AWS hasn't reached the TargetCapacity that is currently set. We won't make any "
+                    "changes this time as we should wait for AWS to launch more instances first.")
         return 0, 0
     current, target = get_spot_fleet_delta(resource, error)
     if sfr['SpotFleetRequestState'] == 'cancelled_running':
         resource['min_capacity'] = 0
-        if current - target < 0:
+        if current < target:
             log.info("Not scaling cancelled SFR {0} because we are under provisioned".format(spotfleet_request_id))
             return 0, 0
         else:
@@ -149,6 +157,12 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
             if target == 1:
                 target = 0
     return current, target
+
+
+def is_aws_launching_sfr_instances(sfr):
+    fulfilled_capacity = sfr['SpotFleetRequestConfig']['FulfilledCapacity']
+    target_capacity = sfr['SpotFleetRequestConfig']['TargetCapacity']
+    return target_capacity > fulfilled_capacity
 
 
 def cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=False):
