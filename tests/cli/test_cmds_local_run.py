@@ -20,6 +20,7 @@ import docker
 import mock
 from pytest import raises
 
+from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
 from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
@@ -478,10 +479,12 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
         mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
     ) as (
         mock_validate_service_instance,
         mock_socket_get_fqdn,
         mock_run_docker_container,
+        mock_get_default_interactive_config,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -492,17 +495,18 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
         args = mock.MagicMock()
         args.cmd = None
         args.service = 'fake_service'
-        args.instance = 'fake_instance'
         args.healthcheck = False
         args.healthcheck_only = False
         args.interactive = False
         args.dry_run_json_dict = False
 
+        mock_config = mock.create_autospec(AdhocJobConfig)
+        mock_get_default_interactive_config.return_value = mock_config
         assert configure_and_run_docker_container(
             docker_client=mock_docker_client,
             docker_hash='fake_hash',
             service='fake_service',
-            instance='interactive',
+            instance=None,
             cluster='fake_cluster',
             args=args,
             system_paasta_config=mock_system_paasta_config,
@@ -518,7 +522,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             hostname='fake_hostname',
             healthcheck=args.healthcheck,
             healthcheck_only=args.healthcheck_only,
-            instance_config=mock.ANY,
+            instance_config=mock_config,
             soa_dir=args.yelpsoa_config_root,
             dry_run=False,
             json_dict=False,

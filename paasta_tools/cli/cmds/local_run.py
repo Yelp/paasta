@@ -634,23 +634,23 @@ def configure_and_run_docker_container(
     interactive = args.interactive
 
     try:
-        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
-        instance_config = get_instance_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            load_deployments=load_deployments,
-            soa_dir=soa_dir,
-        )
-    except NoConfigurationForServiceError as e:
         if instance is None:
             instance_type = 'adhoc'
             instance = 'interactive'
             instance_config = get_default_interactive_config(service=service, cluster=cluster, soa_dir=soa_dir)
             interactive = True
         else:
-            sys.stderr.write(str(e) + '\n')
-            return
+            instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=load_deployments,
+                soa_dir=soa_dir,
+            )
+    except NoConfigurationForServiceError as e:
+        sys.stderr.write(str(e) + '\n')
+        return
     except NoDeploymentsAvailable:
         sys.stderr.write(PaastaColors.red(
             "Error: No deployments.json found in %(soa_dir)s/%(service)s.\n"

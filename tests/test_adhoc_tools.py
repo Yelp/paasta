@@ -1,0 +1,53 @@
+# Copyright 2015-2016 Yelp Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import contextlib
+
+import mock
+import pytest
+
+from paasta_tools import adhoc_tools
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoTtyError
+
+
+def test_get_default_interactive_config():
+    with contextlib.nested(
+        mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
+    ) as (
+        mock_load_adhoc_job_config,
+    ):
+        mock_load_adhoc_job_config.return_value = adhoc_tools.AdhocJobConfig(
+            service='fake_service',
+            instance='interactive',
+            cluster='fake_cluster',
+            config_dict={},
+            branch_dict={},
+        )
+        result = adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
+        assert result.get_cpus() == 1
+        assert result.get_mem() == 1024
+        assert result.get_dick() == 1024
+
+
+def test_get_default_interactive_config_raises_no_deployments_no_tty():
+    with contextlib.nested(
+        mock.patch('paasta_tools.adhoc_tools.prompt_pick_one', autospec=True),
+        mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
+    ) as (
+        mock_prompt_pick_one,
+        _,
+    ):
+        mock_prompt_pick_one.side_effect = NoTtyError
+        with pytest.raises(NoDeploymentsAvailable):
+            adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')

@@ -40,6 +40,7 @@ from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 
+import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
@@ -1654,3 +1655,19 @@ def mean(iterable):
     Returns the average value of an iterable
     """
     return sum(iterable) / len(iterable)
+
+
+class NoTtyError(Exception):
+    pass
+
+
+def prompt_pick_one(sequence):
+    if not sys.stdin.isatty():
+        raise NoTtyError
+    global_actions = ['Quit']
+    choices = [(item, item) for item in sequence]
+    result = choice.Menu(choices, global_actions=global_actions).ask()
+    if isinstance(result, tuple) and result[1] == 'Quit':
+        return None
+    else:
+        return result

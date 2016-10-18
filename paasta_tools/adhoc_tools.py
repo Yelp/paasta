@@ -13,7 +13,6 @@
 # limitations under the License.
 import logging
 
-import choice
 import service_configuration_lib
 
 from paasta_tools.utils import deep_merge_dictionaries
@@ -22,6 +21,9 @@ from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoTtyError
+from paasta_tools.utils import prompt_pick_one
 
 
 log = logging.getLogger(__name__)
@@ -93,11 +95,14 @@ def get_default_interactive_config(service, cluster, soa_dir):
             branch_dict={},
         )
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        deploy_groups = [(deploy_group, deploy_group) for deploy_group in deployments_json['deployments'].keys()]
-        deploy_group = choice.Menu(deploy_groups).ask()
+        try:
+            deploy_group = prompt_pick_one(deployments_json['deployments'].keys())
+        except NoTtyError:
+            raise NoDeploymentsAvailable
 
-        job_config.config_dict['deploy_group'] = deploy_group
-        job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
+        if deploy_group is not None:
+            job_config.config_dict['deploy_group'] = deploy_group
+            job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
 
     for key, value in default_job_config.items():
         job_config.config_dict.setdefault(key, value)
