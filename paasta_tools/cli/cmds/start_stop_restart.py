@@ -74,7 +74,7 @@ def add_subparser(subparsers):
 
 
 def format_tag(branch, force_bounce, desired_state):
-    return 'refs/tags/%s-%s-%s' % (branch, force_bounce, desired_state)
+    return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
 
 
 def make_mutate_refs_func(service_config, force_bounce, desired_state):
