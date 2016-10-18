@@ -1664,10 +1664,11 @@ class NoTtyError(Exception):
 def prompt_pick_one(sequence):
     if not sys.stdin.isatty():
         raise NoTtyError
-    global_actions = ['Quit']
+    QUIT_ACTION = 'Quit'
+    global_actions = [QUIT_ACTION]
     choices = [(item, item) for item in sequence]
     result = choice.Menu(choices, global_actions=global_actions).ask()
-    if isinstance(result, tuple) and result[1] == 'Quit':
+    if isinstance(result, tuple) and result[1] == QUIT_ACTION:
         return None
     else:
         return result

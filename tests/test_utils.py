@@ -1542,3 +1542,36 @@ def test_long_job_id_to_short_job_id():
 def test_mean():
     iterable = [1.0, 2.0, 3.0]
     assert utils.mean(iterable) == 2.0
+
+
+def test_prompt_pick_one():
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.sys.stdin.isatty', autospec=True),
+        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
+    ) as (
+        mock_isatty,
+        mock_menu,
+    ):
+        mock_isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value='choiceA'))
+        assert utils.prompt_pick_one(['choiceA']) == 'choiceA'
+
+
+def test_prompt_pick_one_quit():
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.sys.stdin.isatty', autospec=True),
+        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
+    ) as (
+        mock_isatty,
+        mock_menu,
+    ):
+        mock_isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'Quit')))
+        assert utils.prompt_pick_one(['choiceA']) is None
+
+
+def test_prompt_pick_one_raises_no_tty():
+    with mock.patch('paasta_tools.utils.sys.stdin.isatty', autospec=True) as mock_isatty:
+        mock_isatty.return_value = False
+        with raises(utils.NoTtyError):
+            utils.prompt_pick_one(['choiceA', 'choiceB'])
