@@ -13,7 +13,7 @@ ephemeral-port-reserve==1.0.1
 future>=0.15.2
 futures==3.0.1
 gevent==1.1.1
-httplib2==0.9
+httplib2==0.9.1
 humanize==0.5.1
 importlib==1.0.3
 isodate==0.5.1
@@ -51,5 +51,5 @@ thriftpy==0.1.15
 ujson==1.35
 websocket-client==0.32.0
 wsgiref==0.1.2
-yelp-clog==2.2.10
+yelp-clog==2.2.11
 zope.interface==4.1.2
