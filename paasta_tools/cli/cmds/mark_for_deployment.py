@@ -19,7 +19,9 @@ import logging
 import sys
 import time
 
+import progressbar
 from bravado.exception import HTTPError
+from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -187,14 +189,13 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            line = "Waiting for deployment of {0} to {1} complete".format(args.commit, args.deploy_group)
-            log.info(line)
+            print "Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group)
             wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
                                 soa_dir=args.soa_dir,
                                 timeout=args.timeout)
-            line = "Deployment of {0} to {1} complete".format(args.commit, args.deploy_group)
+            line = "Deployment of {0} for {1} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
                 component='deploy',
@@ -202,7 +203,8 @@ def paasta_mark_for_deployment(args):
                 level='event'
             )
         except KeyboardInterrupt:
-            print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
+            print "Waiting for deployment aborted."
+            print "PaaSTA %s continue to try to deploy this code." % PaastaColors.bold('will')
             print "If you wish to see the status, run:"
             print ""
             print "    paasta status -s %s -v" % service
@@ -216,15 +218,17 @@ def paasta_mark_for_deployment(args):
     return ret
 
 
-def are_instances_deployed(cluster, service, instances, git_sha):
+def instances_deployed(cluster, service, instances, git_sha):
     api = client.get_paasta_api_client(cluster=cluster)
     if not api:
-        # Assume not deployed if we can't reach API
+        log.warning("Couldn't reach the PaaSTA api for {}! Assuming it is not deployed there yet.".format(cluster))
         return False
     statuses = []
     for instance in instances:
+        log.info("Inspecting the deployment status of {}.{} on {}".format(service, instance, cluster))
         try:
-            statuses.append(api.service.status_instance(service=service, instance=instance).result())
+            status = api.service.status_instance(service=service, instance=instance).result()
+            statuses.append(status)
         except HTTPError as e:
             if e.response.status_code == 404:
                 log.warning("Can't get status for instance {0}, service {1} in cluster {2}. "
@@ -234,21 +238,49 @@ def are_instances_deployed(cluster, service, instances, git_sha):
                 log.warning("Error getting service status from PaaSTA API: {0}: {1}".format(e.response.status_code,
                                                                                             e.response.text))
             statuses.append(None)
+        except ConnectionError as e:
+            log.warning("Error getting service status from PaaSTA API for {0}: {1}".format(cluster, e))
+            statuses.append(None)
     results = []
     for status in statuses:
         if not status:
+            log.info("No status for an unknown instance in {}. Not deployed yet.".format(cluster))
             results.append(False)
-        # if it's a chronos service etc then skip waiting for it to deploy
         elif not status.marathon:
+            log.info("{}.{} in {} is not a Marathon job. Marked as deployed.".format(
+                service, status.instance, cluster))
             results.append(True)
         elif status.marathon.expected_instance_count == 0 or status.marathon.desired_state == 'stop':
+            log.info("{}.{} in {} is marked as stopped. Marked as deployed.".format(
+                service, status.instance, cluster))
             results.append(True)
         else:
-            results.append(git_sha.startswith(status.git_sha) and
-                           status.marathon.app_count == 1 and
-                           status.marathon.deploy_status == 'Running' and
-                           status.marathon.expected_instance_count == status.marathon.running_instance_count)
-    return results and all(results)
+            if status.marathon.app_count != 1:
+                log.info("{}.{} on {} is still bouncing, {} versions running".format(
+                    service, status.instance, cluster, status.marathon.app_count))
+                results.append(False)
+                continue
+            if not git_sha.startswith(status.git_sha):
+                log.info("{}.{} on {} doesn't have the right sha yet: {}".format(
+                    service, status.instance, cluster, status.git_sha))
+                results.append(False)
+                continue
+            if status.marathon.deploy_status != 'Running':
+                log.info("{}.{} on {} in't running yet: {}".format(
+                    service, status.instance, cluster, status.marathon.deploy_status))
+                results.append(False)
+                continue
+            if status.marathon.expected_instance_count != status.marathon.running_instance_count:
+                log.info("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
+                    service, status.instance, cluster, status.marathon.running_instance_count,
+                    status.marathon.expected_instance_count))
+                results.append(False)
+                continue
+            log.info("{}.{} on {} looks 100% deployed at {} instances on {}".format(
+                service, status.instance, cluster, status.marathon.running_instance_count, status.git_sha))
+            results.append(True)
+
+    return sum(results)
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
@@ -263,19 +295,26 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         )
         raise NoInstancesFound
     for cluster in cluster_map.values():
-        cluster['deployed'] = False
+        cluster['deployed'] = 0
     try:
         with Timeout(seconds=timeout):
-            while True:
+            total_instances = sum([len(v["instances"]) for v in cluster_map.values()])
+            with progressbar.ProgressBar(maxval=total_instances) as bar:
                 for cluster, instances in cluster_map.items():
-                    if not cluster_map[cluster]['deployed']:
-                        cluster_map[cluster]['deployed'] = are_instances_deployed(cluster=cluster,
-                                                                                  service=service,
-                                                                                  instances=instances['instances'],
-                                                                                  git_sha=git_sha)
-                if all([cluster['deployed'] for cluster in cluster_map.values()]):
-                    break
-                time.sleep(10)
+                    if cluster_map[cluster]['deployed'] != len(cluster_map[cluster]['instances']):
+                        cluster_map[cluster]['deployed'] = instances_deployed(
+                            cluster=cluster,
+                            service=service,
+                            instances=instances['instances'],
+                            git_sha=git_sha)
+                        if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
+                            instance_csv = ", ".join(cluster_map[cluster]['instances'])
+                            print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
+                    bar.update(sum([v["deployed"] for v in cluster_map.values()]))
+                if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
+                    bar.finish()
+                else:
+                    time.sleep(10)
     except TimeoutError:
         human_status = ["{0}: {1}".format(cluster, data['deployed']) for cluster, data in cluster_map.items()]
         line = "\nCurrent deployment status of {0} per cluster:\n".format(deploy_group) + "\n".join(human_status)
@@ -300,6 +339,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             level='event'
         )
         raise
+    return True
 
 
 class NoInstancesFound(Exception):
