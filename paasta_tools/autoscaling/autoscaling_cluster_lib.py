@@ -133,7 +133,15 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
     elif sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
         sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
         resource['sfr'] = sfr
-        error = get_sfr_utilization_error(spotfleet_request_id, resource, pool_settings)
+        desired_instances = len(sfr['ActiveInstances'])
+        mesos_state = get_mesos_master().state
+        slaves = get_sfr_slaves(resource, mesos_state)
+        error = get_mesos_utilization_error(spotfleet_request_id,
+                                            resource=resource,
+                                            pool_settings=pool_settings,
+                                            slaves=slaves,
+                                            mesos_state=mesos_state,
+                                            desired_instances=desired_instances)
     elif sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
         log.warning("Not scaling an SFR in state: {0} so {1}, skipping...".format(sfr['SpotFleetRequestState'],
                                                                                   spotfleet_request_id))
@@ -149,13 +157,18 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
     current, target = get_spot_fleet_delta(resource, error)
     if sfr['SpotFleetRequestState'] == 'cancelled_running':
         resource['min_capacity'] = 0
-        if current < target:
+        slaves = get_pool_slaves(resource, mesos_state)
+        pool_error = get_mesos_utilization_error(spotfleet_request_id,
+                                                 resource=resource,
+                                                 pool_settings=pool_settings,
+                                                 slaves=slaves,
+                                                 mesos_state=mesos_state)
+        if pool_error > 0:
             log.info("Not scaling cancelled SFR {0} because we are under provisioned".format(spotfleet_request_id))
             return 0, 0
-        else:
-            current, target = get_spot_fleet_delta(resource, -1)
-            if target == 1:
-                target = 0
+        current, target = get_spot_fleet_delta(resource, -1)
+        if target == 1:
+            target = 0
     return current, target
 
 
@@ -167,33 +180,56 @@ def is_aws_launching_sfr_instances(sfr):
 
 def cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=False):
     sfr_file_name = "{0}.json".format(spotfleet_request_id)
-    sfr_config_full_path = [os.path.join(walk[0], sfr_file_name)
-                            for walk in os.walk(config_folder) if sfr_file_name in walk[2]][0]
+    sfr_configs_to_delete = [os.path.join(walk[0], sfr_file_name)
+                             for walk in os.walk(config_folder) if sfr_file_name in walk[2]]
+    if not sfr_configs_to_delete:
+        log.info("SFR config for {0} not found".format(spotfleet_request_id))
+        return
     if not dry_run:
-        os.remove(sfr_config_full_path)
-    log.info("Deleted SFR config {0}".format(sfr_config_full_path))
+        os.remove(sfr_configs_to_delete[0])
+    log.info("Deleted SFR config {0}".format(sfr_configs_to_delete[0]))
 
 
-def get_sfr_utilization_error(spotfleet_request_id, resource, pool_settings):
-    mesos_state = get_mesos_master().state
-    sfr = resource['sfr']
-    desired_instances = len(sfr['ActiveInstances'])
-    instance_ips = get_sfr_instance_ips(sfr, region=resource['region'])
+def get_sfr_slaves(resource, mesos_state):
+    instance_ips = get_sfr_instance_ips(resource['sfr'], region=resource['region'])
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
         slave['attributes'].get('pool', 'default') == resource['pool']
     }
+    return slaves
+
+
+def get_pool_slaves(resource, mesos_state):
+    slaves = {
+        slave['id']: slave for slave in mesos_state.get('slaves', [])
+        if slave['attributes'].get('pool', 'default') == resource['pool']
+    }
+    return slaves
+
+
+def get_mesos_utilization_error(spotfleet_request_id,
+                                resource,
+                                pool_settings,
+                                slaves,
+                                mesos_state,
+                                desired_instances=None):
     current_instances = len(slaves)
-    log.info("Found %.2f%% slaves registered in mesos for this SFR (%d/%d)" % (
-             float(float(current_instances) / float(desired_instances)) * 100, current_instances, desired_instances))
-    if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
-        error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
-                         "Refusing to scale because we either need to wait for the requests to be "
-                         "filled, or the new instances are not healthy for some reason.\n"
-                         "(cowardly refusing to go past %.2f%% missing instances)") % (
-            current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+    if desired_instances == 0:
+        error_message = ("No instances are active, not scaling until the instances are launched")
         raise ClusterAutoscalingError(error_message)
+    if desired_instances:
+        log.info("Found %.2f%% slaves registered in mesos for this resource (%d/%d)" % (
+                 float(float(current_instances) / float(desired_instances)) * 100,
+                 current_instances,
+                 desired_instances))
+        if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
+            error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
+                             "Refusing to scale because we either need to wait for the requests to be "
+                             "filled, or the new instances are not healthy for some reason.\n"
+                             "(cowardly refusing to go past %.2f%% missing instances)") % (
+                current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+            raise ClusterAutoscalingError(error_message)
 
     pool_utilization_dict = get_resource_utilization_by_grouping(
         lambda slave: slave['attributes']['pool'],
