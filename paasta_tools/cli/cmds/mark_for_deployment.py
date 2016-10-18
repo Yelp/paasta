@@ -190,11 +190,11 @@ def paasta_mark_for_deployment(args):
     if args.block:
         try:
             print "Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group)
-            ret = wait_for_deployment(service=service,
-                                      deploy_group=args.deploy_group,
-                                      git_sha=args.commit,
-                                      soa_dir=args.soa_dir,
-                                      timeout=args.timeout)
+            wait_for_deployment(service=service,
+                                deploy_group=args.deploy_group,
+                                git_sha=args.commit,
+                                soa_dir=args.soa_dir,
+                                timeout=args.timeout)
             line = "Deployment of {0} for {1} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
