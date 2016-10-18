@@ -22,7 +22,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 def test_format_tag():
-    expected = 'refs/tags/BRANCHNAME-TIMESTAMP-stop'
+    expected = 'refs/tags/paasta-BRANCHNAME-TIMESTAMP-stop'
     actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
@@ -84,7 +84,7 @@ def test_make_mutate_refs_func():
 
     expected = dict(old_refs)
     expected.update({
-        'refs/tags/fake_cluster.fake_instance-FORCEBOUNCE-stop': 'hash_for_a',
+        'refs/tags/paasta-fake_cluster.fake_instance-FORCEBOUNCE-stop': 'hash_for_a',
     })
 
     actual = mutate_refs(old_refs)
