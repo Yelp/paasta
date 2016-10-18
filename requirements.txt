@@ -30,6 +30,7 @@ prettytable==0.7.2
 progressbar2==3.10.1
 protobuf==2.6.1
 pyasn1==0.1.8
+pycparser==2.14
 pycrypto==2.6.1
 Pygments==2.0.2
 pyramid==1.7
