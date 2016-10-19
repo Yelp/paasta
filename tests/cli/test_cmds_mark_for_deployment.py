@@ -171,7 +171,9 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
 
     mock_instances_deployed.side_effect = instances_deployed_side_effect
-    mock_sleep.side_effect = TimeoutError()
+    mock_sleeper = MockSleep()
+    mock_sleep.side_effect = mock_sleeper.mock_sleep_side_effect
+
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
@@ -188,5 +190,17 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
+    mock_sleeper.call_count = 0
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+
+
+class MockSleep:
+    def __init__(self):
+        self.call_count = 0
+
+    def mock_sleep_side_effect(self, time):
+        if self.call_count == 5:
+            raise TimeoutError()
+        self.call_count += 1
+        return
