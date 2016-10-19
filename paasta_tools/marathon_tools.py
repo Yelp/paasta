@@ -986,10 +986,10 @@ def kill_task(client, app_id, task_id, scale):
         # last task decrements the number of instances below zero, causing an "Object is not
         # valid" message or a "Bean is not valid" message.
         if 'is not valid' in e.error_message and e.status_code == 422:
-            log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
+            log.warning("Got 'is not valid' when killing task %s. Continuing anyway." % task_id)
             return []
         elif 'does not exist' in e.error_message and e.status_code == 404:
-            log.debug("Probably tried to kill a task id that was already dead. Continuing.")
+            log.warning("Got 'does not exist' when killing task %s. Continuing anyway." % task_id)
             return []
         else:
             raise
