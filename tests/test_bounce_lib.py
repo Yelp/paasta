@@ -101,12 +101,16 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None),
             mock.patch('paasta_tools.bounce_lib.wait_for_delete', autospec=True),
+            mock.patch('time.sleep', autospec=True)
         ) as (
             lock_patch,
             wait_patch,
+            sleep_patch
         ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
+            fake_client.scale_app.assert_called_once_with(fake_id, instances=0, force=True)
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
+            sleep_patch.assert_called_once_with(1)
             wait_patch.assert_called_once_with(fake_id, fake_client)
             assert lock_patch.called
 
