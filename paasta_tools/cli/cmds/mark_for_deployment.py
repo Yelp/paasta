@@ -300,21 +300,22 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         with Timeout(seconds=timeout):
             total_instances = sum([len(v["instances"]) for v in cluster_map.values()])
             with progressbar.ProgressBar(maxval=total_instances) as bar:
-                for cluster, instances in cluster_map.items():
-                    if cluster_map[cluster]['deployed'] != len(cluster_map[cluster]['instances']):
-                        cluster_map[cluster]['deployed'] = instances_deployed(
-                            cluster=cluster,
-                            service=service,
-                            instances=instances['instances'],
-                            git_sha=git_sha)
-                        if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
-                            instance_csv = ", ".join(cluster_map[cluster]['instances'])
-                            print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
-                    bar.update(sum([v["deployed"] for v in cluster_map.values()]))
-                if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
-                    bar.finish()
-                else:
-                    time.sleep(10)
+                while True:
+                    for cluster, instances in cluster_map.items():
+                        if cluster_map[cluster]['deployed'] != len(cluster_map[cluster]['instances']):
+                            cluster_map[cluster]['deployed'] = instances_deployed(
+                                cluster=cluster,
+                                service=service,
+                                instances=instances['instances'],
+                                git_sha=git_sha)
+                            if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
+                                instance_csv = ", ".join(cluster_map[cluster]['instances'])
+                                print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
+                        bar.update(sum([v["deployed"] for v in cluster_map.values()]))
+                    if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
+                        break
+                    else:
+                        time.sleep(10)
     except TimeoutError:
         human_status = ["{0}: {1}".format(cluster, data['deployed']) for cluster, data in cluster_map.items()]
         line = "\nCurrent deployment status of {0} per cluster:\n".format(deploy_group) + "\n".join(human_status)
