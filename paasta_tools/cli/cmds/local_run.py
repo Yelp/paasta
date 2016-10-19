@@ -319,7 +319,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'. "),
+        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
         required=False,
         default=None,
     ).completer = lazy_choices_completer(list_instances)
@@ -739,10 +739,10 @@ def paasta_local_run(args):
         try:
             cluster = local_run_config['default_cluster']
         except KeyError:
-            sys.stderr.write(PaastaColors.yellow(
+            sys.stderr.write(PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster.\n"
-                "For now the default cluster is being set to 'testopia'.\n"))
-            cluster = 'testopia'
+                "Please pass one to local-run using '-c'.\n"))
+            return 1
     instance = args.instance
     docker_client = get_docker_client()
 
