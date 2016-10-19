@@ -97,7 +97,7 @@ def test_downscale_spot_fleet_request():
                         'instance_weight': 1}
         mock_slave_2 = {'hostname': 'host2', 'instance_id': 'i-blah456',
                         'instance_weight': 2}
-        mock_resource = mock.Mock()
+        mock_resource = {'sfr': {'SpotFleetRequestState': 'active'}}
         mock_filtered_slaves = mock.Mock()
         mock_pool_settings = mock.Mock()
         mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
@@ -123,7 +123,7 @@ def test_downscale_spot_fleet_request():
                                           new_capacity=3)
 
         # test stop when reach capacity
-        mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
+        mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2[:]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
                                                              pool_settings=mock_pool_settings,
@@ -131,6 +131,18 @@ def test_downscale_spot_fleet_request():
                                                              target_capacity=4,
                                                              dry_run=False)
         assert not mock_gracefully_terminate_slave.called
+
+        # test we kill at least one instance if SFR cancelled
+        mock_resource = {'sfr': {'SpotFleetRequestState': 'cancelled_running'}}
+        mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2[:]
+        autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
+                                                             filtered_slaves=mock_filtered_slaves,
+                                                             pool_settings=mock_pool_settings,
+                                                             current_capacity=5,
+                                                             target_capacity=4,
+                                                             dry_run=False)
+        assert mock_gracefully_terminate_slave.call_count == 1
+        mock_resource = {'sfr': {'SpotFleetRequestState': 'active'}}
 
         # test stop if FailSetSpotCapacity
         mock_gracefully_terminate_slave.side_effect = autoscaling_cluster_lib.FailSetSpotCapacity

@@ -492,6 +492,7 @@ def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_c
 
 
 def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, target_capacity, pool_settings, dry_run):
+    killed_slaves = 0
     while True:
         filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
         if len(filtered_sorted_slaves) == 0:
@@ -507,7 +508,10 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
                      " close to our target as we can get".format(slave_to_kill['instance_id'],
                                                                  slave_to_kill['instance_weight'],
                                                                  target_capacity))
-            break
+            if resource['sfr']['SpotFleetRequestState'] == 'cancelled_running' and killed_slaves == 0:
+                log.info("This is a cancelled SFR so we must kill at least one slave to prevent it lingering")
+            else:
+                break
         try:
             gracefully_terminate_slave(resource=resource,
                                        slave_to_kill=slave_to_kill,
@@ -515,6 +519,7 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
                                        current_capacity=current_capacity,
                                        new_capacity=new_capacity,
                                        dry_run=dry_run)
+            killed_slaves += 1
         except HTTPError:
             # Something wrong draining host so try next host
             continue
