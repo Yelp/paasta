@@ -14,13 +14,10 @@
 import contextlib
 
 import mock
-import pytest
 
 from paasta_tools import adhoc_tools
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoTtyError
 
 
 def test_get_default_interactive_config():
@@ -40,22 +37,6 @@ def test_get_default_interactive_config():
         assert result.get_cpus() == 1
         assert result.get_mem() == 1024
         assert result.get_disk() == 1024
-
-
-def test_get_default_interactive_config_raises_no_deployments_no_tty():
-    with contextlib.nested(
-        mock.patch('paasta_tools.adhoc_tools.prompt_pick_one', autospec=True),
-        mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
-        mock.patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True),
-    ) as (
-        mock_prompt_pick_one,
-        mock_load_adhoc_job_config,
-        _,
-    ):
-        mock_prompt_pick_one.side_effect = NoTtyError
-        mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
-        with pytest.raises(NoDeploymentsAvailable):
-            adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
 
 
 def test_get_default_interactive_config_reads_from_tty():

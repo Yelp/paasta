@@ -1570,8 +1570,7 @@ def test_prompt_pick_one_quit():
         assert utils.prompt_pick_one(['choiceA']) is None
 
 
-def test_prompt_pick_one_raises_no_tty():
+def test_prompt_pick_one_returns_none_no_tty():
     with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
         mock_stdin.isatty.return_value = False
-        with raises(utils.NoTtyError):
-            utils.prompt_pick_one(['choiceA', 'choiceB'])
+        assert utils.prompt_pick_one(['choiceA', 'choiceB']) is None

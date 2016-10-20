@@ -21,8 +21,6 @@ from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoTtyError
 from paasta_tools.utils import prompt_pick_one
 
 
@@ -95,10 +93,7 @@ def get_default_interactive_config(service, cluster, soa_dir):
             branch_dict={},
         )
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        try:
-            deploy_group = prompt_pick_one(deployments_json['deployments'].keys())
-        except NoTtyError:
-            raise NoDeploymentsAvailable
+        deploy_group = prompt_pick_one(deployments_json['deployments'].keys())
 
         if deploy_group is not None:
             job_config.config_dict['deploy_group'] = deploy_group

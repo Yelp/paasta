@@ -1657,13 +1657,9 @@ def mean(iterable):
     return sum(iterable) / len(iterable)
 
 
-class NoTtyError(Exception):
-    pass
-
-
 def prompt_pick_one(sequence):
     if not sys.stdin.isatty():
-        raise NoTtyError
+        return None
     QUIT_ACTION = 'Quit'
     global_actions = [QUIT_ACTION]
     choices = [(item, item) for item in sequence]
