@@ -663,6 +663,22 @@ Here is a list of options that PaaSTA will pass through:
    failing before an actual alert should be fired. Currently defaults to ``2m``
    for the replication alert.
 
+ * ``realert_every``: An integer (not a time unit) representing how many checks
+   to execute between sending alerts. The default settings is ``-1``, which is
+   a special value indicating exponential backoff. For example, given a check
+   that runs once per minute, a setting of ``-1`` would fire alerts on minutes
+   1,2,4,8,16, etc.
+
+   A setting of ``60`` would fire events on minutes 1, 61, 121, etc.
+
+   How often alerts are actually sent out is a function of this ``realert_every``
+   setting and the frequency at which a check runs, which in PaaSTA is once per
+   minute.
+
+ * ``check_every``: **Not a setting that can be configured!!** This setting is
+   described for completeness. In PaaSTA the check interval is not user-configurable
+   and is hard-coded at ``1m``.
+
 
 Monitoring Examples
 ^^^^^^^^^^^^^^^^^^^
