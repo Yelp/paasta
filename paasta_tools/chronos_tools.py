@@ -38,8 +38,8 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -169,16 +169,18 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
+    general_config = service_chronos_jobs[instance]
     branch_dict = {}
     if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
-        branch_dict = deployments_json.get_branch_dict(service, branch)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict_v2(service, branch, deploy_group)
     return ChronosJobConfig(
         service=service,
         cluster=cluster,
         instance=instance,
-        config_dict=service_chronos_jobs[instance],
+        config_dict=general_config,
         branch_dict=branch_dict,
     )
 

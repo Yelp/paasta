@@ -240,7 +240,21 @@ def write_soa_dir_deployments(context, service, disabled, instance):
                     'docker_image': 'test-image-foobar%d' % context.tag_version,
                     'desired_state': desired_state,
                 }
-            }
+            },
+            'v2': {
+                'deployments': {
+                    utils.get_paasta_branch(context.cluster, instance): {
+                        'docker_image': 'test-image-foobar%d' % context.tag_version,
+                        'git_sha': context.tag_version
+                    },
+                },
+                'controls': {
+                    '%s:%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
+                        'desired_state': desired_state,
+                        'force_bounce': None,
+                    },
+                },
+            },
         }))
 
 
