@@ -1393,7 +1393,7 @@ class DeploymentsJson(dict):
     def get_branch_dict_v2(self, service, branch, deploy_group):
         full_branch = '%s:%s' % (service, branch)
         branch_dict = {
-            'deploy_group': self.get_docker_image_for_deploy_group(deploy_group),
+            'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
             'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
             'desired_state': self.get_desired_state_for_branch(full_branch),
             'force_bounce': self.get_force_bounce_for_branch(full_branch),
