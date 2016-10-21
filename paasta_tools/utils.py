@@ -1439,6 +1439,12 @@ def get_paasta_branch(cluster, instance):
     return SPACER.join((cluster, instance))
 
 
+def decompose_paasta_control_branch(control_branch):
+    service, branch = control_branch.split(':')
+    cluster, instance = branch.split('.')
+    return service, cluster, instance
+
+
 def parse_timestamp(tstamp):
     return datetime.datetime.strptime(tstamp, '%Y%m%dT%H%M%S')
 

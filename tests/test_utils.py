@@ -1640,3 +1640,7 @@ def test_prompt_pick_one_exits_no_choices():
         mock_stdin.isatty.return_value = True
         with raises(SystemExit):
             utils.prompt_pick_one([], 'test')
+
+
+def test_decompose_paasta_control_branch():
+    assert utils.decompose_paasta_control_branch('service:cluster.instance') == ('service', 'cluster', 'instance')
