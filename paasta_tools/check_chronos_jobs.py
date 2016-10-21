@@ -123,7 +123,7 @@ def message_for_status(status, service, instance, cluster):
             "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
             "You can view the logs for the job with:\n"
             "\n"
-            "    paasta logs -s %(service)s -c %(cluster)s\n"
+            "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
             "\n"
             "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
             "\n"

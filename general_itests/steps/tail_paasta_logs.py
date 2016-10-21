@@ -30,6 +30,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
     context.levels = ['fake_level1', 'fake_level2']
     context.components = ['deploy', 'monitoring']
     context.clusters = ['fake_cluster1', 'fake_cluster2']
+    context.instances = ['fake_instance']
     with contextlib.nested(
         mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
@@ -53,6 +54,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             levels,
             components,
             clusters,
+            instances,
             queue,
             filter_fn,
             parse_fn=None
@@ -68,7 +70,8 @@ def tail_paasta_logs_let_threads_be_threads(context):
         scribe_tail_patch.side_effect = scribe_tail_side_effect
 
         context.scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
-        context.scribe_log_reader.tail_logs(service, context.levels, context.components, context.clusters)
+        context.scribe_log_reader.tail_logs(
+            service, context.levels, context.components, context.clusters, context.instances)
 
 
 @then(u'one message is displayed from each scribe env')
