@@ -1941,31 +1941,6 @@ class TestMarathonServiceConfig(object):
         assert 'Stopped' in desired_state_human(fake_conf.get_desired_state(), fake_conf.get_instances())
 
 
-class TestServiceNamespaceConfig(object):
-
-    def test_get_mode_default(self):
-        assert long_running_service_tools.ServiceNamespaceConfig().get_mode() is None
-
-    def test_get_mode_default_when_port_specified(self):
-        config = {'proxy_port': 1234}
-        assert long_running_service_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
-
-    def test_get_mode_valid(self):
-        config = {'mode': 'tcp'}
-        assert long_running_service_tools.ServiceNamespaceConfig(config).get_mode() == 'tcp'
-
-    def test_get_mode_invalid(self):
-        config = {'mode': 'paasta'}
-        with raises(long_running_service_tools.InvalidSmartstackMode):
-            long_running_service_tools.ServiceNamespaceConfig(config).get_mode()
-
-    def test_get_healthcheck_uri_default(self):
-        assert long_running_service_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
-
-    def test_get_discover_default(self):
-        assert long_running_service_tools.ServiceNamespaceConfig().get_discover() == 'region'
-
-
 def test_deformat_job_id():
     expected = ('ser_vice', 'in_stance', 'git_hash', 'config_hash')
     assert marathon_tools.deformat_job_id('ser--vice.in--stance.git--hash.config--hash') == expected
