@@ -78,8 +78,8 @@ class AdhocJobConfig(LongRunningServiceConfig):
 
 def get_default_interactive_config(service, cluster, soa_dir):
     default_job_config = {
-        'cpus': 1,
-        'mem': 1024,
+        'cpus': 4,
+        'mem': 10240,
         'disk': 1024
     }
 

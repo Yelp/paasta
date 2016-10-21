@@ -34,8 +34,8 @@ def test_get_default_interactive_config():
             branch_dict={'deploy_group': 'fake_deploy_group'},
         )
         result = adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
-        assert result.get_cpus() == 1
-        assert result.get_mem() == 1024
+        assert result.get_cpus() == 4
+        assert result.get_mem() == 10240
         assert result.get_disk() == 1024
 
 
