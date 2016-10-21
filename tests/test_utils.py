@@ -1554,7 +1554,7 @@ def test_prompt_pick_one():
     ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value='choiceA'))
-        assert utils.prompt_pick_one(['choiceA']) == 'choiceA'
+        assert utils.prompt_pick_one(['choiceA'], 'test') == 'choiceA'
 
 
 def test_prompt_pick_one_quit():
@@ -1567,10 +1567,26 @@ def test_prompt_pick_one_quit():
     ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'Quit')))
-        assert utils.prompt_pick_one(['choiceA']) is None
+        with raises(SystemExit):
+            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_keyboard_interrupt():
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
+        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
+    ) as (
+        mock_stdin,
+        mock_menu,
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=KeyboardInterrupt))
+        with raises(SystemExit):
+            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
 
 
 def test_prompt_pick_one_returns_none_no_tty():
     with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
         mock_stdin.isatty.return_value = False
-        assert utils.prompt_pick_one(['choiceA', 'choiceB']) is None
+        with raises(SystemExit):
+            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')

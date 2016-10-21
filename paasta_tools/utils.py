@@ -1657,14 +1657,24 @@ def mean(iterable):
     return sum(iterable) / len(iterable)
 
 
-def prompt_pick_one(sequence):
+def prompt_pick_one(sequence, choosing):
     if not sys.stdin.isatty():
-        return None
+        sys.stderr.write('No {choosing} specified and no TTY present to ask.'
+                         ' Please specify a {choosing} using the cli.\n'.format(choosing=choosing))
+        sys.exit(1)
+
     QUIT_ACTION = 'Quit'
     global_actions = [QUIT_ACTION]
     choices = [(item, item) for item in sequence]
-    result = choice.Menu(choices, global_actions=global_actions).ask()
+
+    chooser = choice.Menu(choices, global_actions=global_actions)
+    chooser.title = 'Please pick a {choosing} from the choices below:'.format(choosing=choosing)
+    try:
+        result = chooser.ask()
+    except KeyboardInterrupt:
+        sys.exit(1)
+
     if isinstance(result, tuple) and result[1] == QUIT_ACTION:
-        return None
+        sys.exit(1)
     else:
         return result
