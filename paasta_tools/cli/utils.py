@@ -759,6 +759,19 @@ def get_instance_configs_for_service(service, soa_dir):
                 soa_dir=soa_dir,
                 load_deployments=False,
             )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='adhoc',
+            soa_dir=soa_dir,
+        ):
+            yield load_adhoc_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
 
 
 class PaastaTaskNotFound(Exception):

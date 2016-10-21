@@ -1413,10 +1413,16 @@ class DeploymentsJson(dict):
             raise NoDeploymentsAvailable
 
     def get_desired_state_for_branch(self, control_branch):
-        return self['controls'][control_branch].get('desired_state', 'start')
+        try:
+            return self['controls'][control_branch].get('desired_state', 'start')
+        except KeyError:
+            raise NoDeploymentsAvailable
 
     def get_force_bounce_for_branch(self, control_branch):
-        return self['controls'][control_branch].get('force_bounce', None)
+        try:
+            return self['controls'][control_branch].get('force_bounce', None)
+        except KeyError:
+            raise NoDeploymentsAvailable
 
 
 def get_paasta_branch(cluster, instance):

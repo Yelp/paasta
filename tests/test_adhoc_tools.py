@@ -31,7 +31,7 @@ def test_get_default_interactive_config():
             instance='interactive',
             cluster='fake_cluster',
             config_dict={},
-            branch_dict={},
+            branch_dict={'deploy_group': 'fake_deploy_group'},
         )
         result = adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
         assert result.get_cpus() == 1
