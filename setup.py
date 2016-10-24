@@ -36,7 +36,6 @@ setup(
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
         'bravado == 8.4.0',
-        'choice == 0.1',
         'chronos-python == 0.37.0',
         'cookiecutter == 1.4.0',
         'cryptography == 1.4',
