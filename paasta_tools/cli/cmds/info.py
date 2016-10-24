@@ -27,7 +27,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import decompose_paasta_control_branch
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
-from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -79,7 +79,7 @@ def get_smartstack_endpoints(service, soa_dir):
 def get_deployments_strings(service, soa_dir):
     output = []
     try:
-        deployments = load_v2_deployments_json(service=service, soa_dir=soa_dir)
+        deployments = load_deployments_json(service=service, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:

@@ -31,7 +31,7 @@ from paasta_tools.utils import DeploymentsJson
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.load_marathon_service_config', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.api.views.instance.load_v2_deployments_json', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.load_deployments_json', autospec=True)
 def test_instances_status(
     mock_load_deployments_json,
     mock_get_instance_config,

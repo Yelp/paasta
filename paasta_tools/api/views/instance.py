@@ -30,7 +30,7 @@ from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
@@ -96,7 +96,7 @@ def instance_status(request):
     cluster = settings.cluster
 
     try:
-        deployments_json = load_v2_deployments_json(service=service, soa_dir=soa_dir)
+        deployments_json = load_deployments_json(service=service, soa_dir=soa_dir)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)

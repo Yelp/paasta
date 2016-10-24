@@ -163,7 +163,7 @@ class TestChronosTools:
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
         with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,),
+            mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
         ) as (
             mock_load_deployments_json,
@@ -182,7 +182,7 @@ class TestChronosTools:
     def test_load_chronos_job_config(self):
         fake_soa_dir = '/tmp/'
         with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,),
+            mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
             mock_load_deployments_json,
@@ -203,7 +203,7 @@ class TestChronosTools:
     def test_load_chronos_job_config_can_ignore_deployments(self):
         fake_soa_dir = '/tmp/'
         with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,),
+            mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
             mock_load_deployments_json,

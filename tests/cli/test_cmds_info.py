@@ -31,7 +31,7 @@ def test_get_service_info():
         mock.patch('paasta_tools.cli.cmds.info.get_runbook', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.read_service_configuration', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.info.load_v2_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.get_smartstack_endpoints', autospec=True),
     ) as (
         mock_get_team,
@@ -123,7 +123,7 @@ def test_get_smartstack_endpoints_tcp():
 
 def test_get_deployments_strings_default_case_with_smartstack():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_v2_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
     ) as (
         mock_load_deployments_json,
@@ -149,7 +149,7 @@ def test_get_deployments_strings_default_case_with_smartstack():
 
 def test_get_deployments_strings_protocol_tcp_case():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_v2_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
     ) as (mock_load_deployments_json, mock_load_service_namespace_config):
         mock_load_deployments_json.return_value = DeploymentsJson({
@@ -166,7 +166,7 @@ def test_get_deployments_strings_protocol_tcp_case():
 
 def test_get_deployments_strings_non_listening_service():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_v2_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
     ) as (mock_load_deployments_json, mock_load_service_namespace_config):
         mock_load_deployments_json.return_value = DeploymentsJson({
@@ -183,7 +183,7 @@ def test_get_deployments_strings_non_listening_service():
 
 def test_get_deployments_strings_no_deployments():
     with mock.patch(
-        'paasta_tools.cli.cmds.info.load_v2_deployments_json', autospec=True
+        'paasta_tools.cli.cmds.info.load_deployments_json', autospec=True
     ) as mock_load_deployments_json:
         mock_load_deployments_json.side_effect = NoDeploymentsAvailable
         actual = info.get_deployments_strings('unused', '/fake/soa/dir')

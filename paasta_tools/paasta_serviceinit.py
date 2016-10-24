@@ -28,9 +28,9 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -98,7 +98,7 @@ def main():
     cluster = load_system_paasta_config().get_cluster()
     soa_dir = args.soa_dir
 
-    deployments_json = load_v2_deployments_json(service=service, soa_dir=soa_dir)
+    deployments_json = load_deployments_json(service=service, soa_dir=soa_dir)
 
     for instance in instances:
         instance_config = get_instance_config(service=service, instance=instance, cluster=cluster, soa_dir=soa_dir)

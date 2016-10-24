@@ -88,7 +88,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True),
             mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
             mock.patch('paasta_tools.marathon_tools.deep_merge_dictionaries', autospec=True),
@@ -115,7 +115,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True),
             mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
         ) as (
@@ -198,7 +198,7 @@ class TestMarathonTools:
         },
         deployments_json_mock = mock.Mock(
             spec=DeploymentsJson,
-            get_branch_dict_v2=mock.Mock(return_value=fake_branch_dict),
+            get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
         with contextlib.nested(
@@ -213,7 +213,7 @@ class TestMarathonTools:
                 return_value={fake_instance: config_copy},
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.load_v2_deployments_json',
+                'paasta_tools.marathon_tools.load_deployments_json',
                 autospec=True,
                 return_value=deployments_json_mock,
             ),
@@ -244,7 +244,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict_v2.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1

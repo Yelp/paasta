@@ -393,7 +393,7 @@ def test_status_pending_pipeline_build_message(
 
 
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
-@patch('paasta_tools.cli.cmds.status.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_deployments_json', autospec=True)
 def test_get_actual_deployments(mock_get_deployments, mock_get_instance_configs_for_serivce,):
     mock_get_deployments.return_value = utils.DeploymentsJson({
         'deployments': {
