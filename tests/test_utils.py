@@ -705,18 +705,6 @@ def test_DeploymentsJson_read():
     fake_dir = '/var/dir_of_fake'
     fake_path = '/var/dir_of_fake/fake_service/deployments.json'
     fake_json = {
-        'v1': {
-            'no_srv:blaster': {
-                'docker_image': 'test_rocker:9.9',
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'dont_care:about': {
-                'docker_image': 'this:guy',
-                'desired_state': 'stop',
-                'force_bounce': '12345',
-            },
-        },
         'v2': {
             'deployments': {
                 'blaster': {
@@ -749,14 +737,12 @@ def test_DeploymentsJson_read():
         json_patch,
         isfile_patch,
     ):
-        actual = utils.load_deployments_json('fake_service', fake_dir)
-        actual_v2 = utils.load_v2_deployments_json('fake_service', fake_dir)
+        actual = utils.load_v2_deployments_json('fake_service', fake_dir)
         open_patch.assert_called_with(fake_path)
         assert open_patch.call_count == 2
         json_patch.assert_called_with(file_mock.__enter__())
         assert json_patch.call_count == 2
-        assert actual == fake_json['v1']
-        assert actual_v2 == fake_json['v2']
+        assert actual == fake_json['v2']
 
 
 def test_get_docker_url_no_error():

@@ -1376,15 +1376,6 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v1'])
-    else:
-        raise NoDeploymentsAvailable
-
-
 def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
