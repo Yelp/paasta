@@ -27,6 +27,9 @@ def parse_args():
                         help="Print out more output.")
     parser.add_argument('-d', '--dry-run', action='store_true',
                         help="Perform no actions, only print what to do")
+    parser.add_argument('-a', '--autoscaler-configs',
+                        help="Path to autoscaler config files",
+                        default='/etc/paasta/cluster_autoscaling')
     args = parser.parse_args()
     return args
 
@@ -41,7 +44,7 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING, format=log_format)
 
-    autoscale_local_cluster(dry_run=args.dry_run)
+    autoscale_local_cluster(dry_run=args.dry_run, config_folder=args.autoscaler_configs)
 
 
 if __name__ == '__main__':

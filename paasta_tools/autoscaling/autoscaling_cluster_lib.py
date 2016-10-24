@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import time
 from math import ceil
 from math import floor
@@ -123,31 +124,112 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
-def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
-    mesos_state = get_mesos_master().state
+def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, config_folder, dry_run=False):
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
-    if not sfr or not sfr['SpotFleetRequestState'] == 'active':
-        log.error("Ignoring SFR {0} that does not exist or is not active.".format(spotfleet_request_id))
+    if not sfr or sfr['SpotFleetRequestState'] == 'cancelled':
+        log.error("SFR not found, removing config file.".format(spotfleet_request_id))
+        cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=dry_run)
         return 0, 0
-    sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
-    resource['sfr'] = sfr
-    desired_instances = len(sfr['ActiveInstances'])
-    instance_ips = get_sfr_instance_ips(sfr, region=resource['region'])
+    elif sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
+        sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
+        resource['sfr'] = sfr
+        desired_instances = len(sfr['ActiveInstances'])
+        mesos_state = get_mesos_master().state
+        slaves = get_sfr_slaves(resource, mesos_state)
+        error = get_mesos_utilization_error(spotfleet_request_id,
+                                            resource=resource,
+                                            pool_settings=pool_settings,
+                                            slaves=slaves,
+                                            mesos_state=mesos_state,
+                                            desired_instances=desired_instances)
+    elif sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
+        log.warning("Not scaling an SFR in state: {0} so {1}, skipping...".format(sfr['SpotFleetRequestState'],
+                                                                                  spotfleet_request_id))
+        return 0, 0
+    else:
+        log.error("Unexpected SFR state: {0} for {1}".format(sfr['SpotFleetRequestState'],
+                                                             spotfleet_request_id))
+        raise ClusterAutoscalingError
+    if is_aws_launching_sfr_instances(sfr) and sfr['SpotFleetRequestState'] == 'active':
+        log.warning("AWS hasn't reached the TargetCapacity that is currently set. We won't make any "
+                    "changes this time as we should wait for AWS to launch more instances first.")
+        return 0, 0
+    current, target = get_spot_fleet_delta(resource, error)
+    if sfr['SpotFleetRequestState'] == 'cancelled_running':
+        resource['min_capacity'] = 0
+        slaves = get_pool_slaves(resource, mesos_state)
+        pool_error = get_mesos_utilization_error(spotfleet_request_id,
+                                                 resource=resource,
+                                                 pool_settings=pool_settings,
+                                                 slaves=slaves,
+                                                 mesos_state=mesos_state)
+        if pool_error > 0:
+            log.info("Not scaling cancelled SFR {0} because we are under provisioned".format(spotfleet_request_id))
+            return 0, 0
+        current, target = get_spot_fleet_delta(resource, -1)
+        if target == 1:
+            target = 0
+    return current, target
+
+
+def is_aws_launching_sfr_instances(sfr):
+    fulfilled_capacity = sfr['SpotFleetRequestConfig']['FulfilledCapacity']
+    target_capacity = sfr['SpotFleetRequestConfig']['TargetCapacity']
+    return target_capacity > fulfilled_capacity
+
+
+def cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=False):
+    sfr_file_name = "{0}.json".format(spotfleet_request_id)
+    sfr_configs_to_delete = [os.path.join(walk[0], sfr_file_name)
+                             for walk in os.walk(config_folder) if sfr_file_name in walk[2]]
+    if not sfr_configs_to_delete:
+        log.info("SFR config for {0} not found".format(spotfleet_request_id))
+        return
+    if not dry_run:
+        os.remove(sfr_configs_to_delete[0])
+    log.info("Deleted SFR config {0}".format(sfr_configs_to_delete[0]))
+
+
+def get_sfr_slaves(resource, mesos_state):
+    instance_ips = get_sfr_instance_ips(resource['sfr'], region=resource['region'])
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
         slave['attributes'].get('pool', 'default') == resource['pool']
     }
+    return slaves
+
+
+def get_pool_slaves(resource, mesos_state):
+    slaves = {
+        slave['id']: slave for slave in mesos_state.get('slaves', [])
+        if slave['attributes'].get('pool', 'default') == resource['pool']
+    }
+    return slaves
+
+
+def get_mesos_utilization_error(spotfleet_request_id,
+                                resource,
+                                pool_settings,
+                                slaves,
+                                mesos_state,
+                                desired_instances=None):
     current_instances = len(slaves)
-    log.info("Found %.2f%% slaves registered in mesos for this SFR (%d/%d)" % (
-             float(float(current_instances) / float(desired_instances)) * 100, current_instances, desired_instances))
-    if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
-        error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
-                         "Refusing to scale because we either need to wait for the requests to be "
-                         "filled, or the new instances are not healthy for some reason.\n"
-                         "(cowardly refusing to go past %.2f%% missing instances)") % (
-            current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+    if desired_instances == 0:
+        error_message = ("No instances are active, not scaling until the instances are launched")
         raise ClusterAutoscalingError(error_message)
+    if desired_instances:
+        log.info("Found %.2f%% slaves registered in mesos for this resource (%d/%d)" % (
+                 float(float(current_instances) / float(desired_instances)) * 100,
+                 current_instances,
+                 desired_instances))
+        if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
+            error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
+                             "Refusing to scale because we either need to wait for the requests to be "
+                             "filled, or the new instances are not healthy for some reason.\n"
+                             "(cowardly refusing to go past %.2f%% missing instances)") % (
+                current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+            raise ClusterAutoscalingError(error_message)
 
     pool_utilization_dict = get_resource_utilization_by_grouping(
         lambda slave: slave['attributes']['pool'],
@@ -162,19 +244,11 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings):
         for pair in zip(free_pool_resources, total_pool_resources)
     ])
     target_utilization = pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
-    error = utilization - target_utilization
-    current, target = get_spot_fleet_delta(resource, error)
-    return current, target
+    return utilization - target_utilization
 
 
 def get_spot_fleet_delta(resource, error):
-    ec2_client = boto3.client('ec2', region_name=resource['region'])
-    spot_fleet_request = ec2_client.describe_spot_fleet_requests(
-        SpotFleetRequestIds=[resource['id']])['SpotFleetRequestConfigs'][0]
-    if spot_fleet_request['SpotFleetRequestState'] != 'active':
-        raise ClusterAutoscalingError('Can not scale non-active spot fleet requests. This one is "%s"' %
-                                      spot_fleet_request['SpotFleetRequestState'])
-    current_capacity = int(spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity'])
+    current_capacity = float(resource['sfr']['SpotFleetRequestConfig']['FulfilledCapacity'])
     ideal_capacity = int(ceil((1 + error) * current_capacity))
     log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
     new_capacity = int(min(
@@ -313,6 +387,10 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
                 state = get_sfr(sfr_id, region=region)['SpotFleetRequestState']
                 if state == 'active':
                     break
+                if state == 'cancelled_running':
+                    log.info("Not updating target capacity because this is a cancelled SFR, "
+                             "we are just draining and killing the instances")
+                    return
                 log.debug("SFR {0} in state {1}, waiting for state: active".format(sfr_id, state))
                 log.debug("Sleep 5 seconds")
                 time.sleep(5)
@@ -344,7 +422,6 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
     :param pool_settings: pool settings dict with timeout settings
     :param dry_run: Don't drain or make changes to spot fleet if True"""
     target_capacity = int(target_capacity)
-    current_capacity = int(current_capacity)
     delta = target_capacity - current_capacity
     sfr_id = resource['id']
     if delta == 0:
@@ -418,6 +495,7 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
     while True:
         filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
         if len(filtered_sorted_slaves) == 0:
+            log.info("ALL slaves killed so moving on to next pool!")
             break
         log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
         filtered_sorted_slaves.reverse()
@@ -444,7 +522,10 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
             break
         current_capacity = new_capacity
         mesos_state = get_mesos_master().state_summary()
-        filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
+        if filtered_sorted_slaves:
+            filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
+        else:
+            filtered_slaves = filtered_sorted_slaves
 
 
 class ClusterAutoscalingError(Exception):
@@ -465,20 +546,47 @@ def get_instances_from_ip(ip, instance_descriptions):
     return instances
 
 
-def autoscale_local_cluster(dry_run=False):
+def is_resource_cancelled(resource):
+    if resource['type'] == 'aws_spot_fleet_request':
+        sfr = get_sfr(resource['id'], region=resource['region'])
+        if not sfr:
+            return True
+        state = sfr['SpotFleetRequestState']
+        if state in ['cancelled', 'cancelled_running']:
+            return True
+    return False
+
+
+def autoscale_local_cluster(config_folder, dry_run=False):
     if dry_run:
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     all_pool_settings = system_config.get_resource_pool_settings()
     for identifier, resource in autoscaling_resources.items():
-        pool_settings = all_pool_settings.get(resource['pool'], {})
-        log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
-        resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
-        try:
-            current, target = resource_metrics_provider(resource['id'], resource, pool_settings)
-            log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
-            resource_scaler = get_scaler(resource['type'])
-            resource_scaler(resource, current, target, pool_settings, dry_run)
-        except ClusterAutoscalingError as e:
-            log.error('%s: %s' % (identifier, e))
+        autoscaling_resources[identifier]['cancelled'] = is_resource_cancelled(resource)
+    autoscaling_resources = [(identifier, resource) for identifier, resource in autoscaling_resources.items()]
+    sorted_autoscaling_resources = sorted(autoscaling_resources, key=lambda x: (x[1]['cancelled']), reverse=True)
+    for identifier, resource in sorted_autoscaling_resources:
+        autoscale_cluster_resource(identifier=identifier,
+                                   resource=resource,
+                                   dry_run=dry_run,
+                                   all_pool_settings=all_pool_settings,
+                                   config_folder=config_folder)
+
+
+def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run, config_folder):
+    pool_settings = all_pool_settings.get(resource['pool'], {})
+    log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
+    resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
+    try:
+        current, target = resource_metrics_provider(resource['id'],
+                                                    resource=resource,
+                                                    pool_settings=pool_settings,
+                                                    config_folder=config_folder,
+                                                    dry_run=dry_run)
+        log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
+        resource_scaler = get_scaler(resource['type'])
+        resource_scaler(resource, current, target, pool_settings, dry_run)
+    except ClusterAutoscalingError as e:
+        log.error('%s: %s' % (identifier, e))
