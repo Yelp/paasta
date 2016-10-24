@@ -1,9 +1,11 @@
 import logging
+import socket
 
 import service_configuration_lib
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InvalidInstanceConfig
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
@@ -52,6 +54,63 @@ class LongRunningServiceConfig(InstanceConfig):
             registration_namespaces.append(self.config_dict.get('nerve_ns'))
 
         return registration_namespaces or [self.instance]
+
+    def get_healthcheck_uri(self, service_namespace_config):
+        return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+
+    def get_healthcheck_cmd(self):
+        cmd = self.config_dict.get('healthcheck_cmd', None)
+        if cmd is None:
+            raise InvalidInstanceConfig("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+        else:
+            return cmd
+
+    def get_healthcheck_grace_period_seconds(self):
+        """How long Marathon should give a service to come up before counting failed healthchecks."""
+        return self.config_dict.get('healthcheck_grace_period_seconds', 60)
+
+    def get_healthcheck_interval_seconds(self):
+        return self.config_dict.get('healthcheck_interval_seconds', 10)
+
+    def get_healthcheck_timeout_seconds(self):
+        return self.config_dict.get('healthcheck_timeout_seconds', 10)
+
+    def get_healthcheck_max_consecutive_failures(self):
+        return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
+
+    def get_healthcheck_mode(self, service_namespace_config):
+        mode = self.config_dict.get('healthcheck_mode', None)
+        if mode is None:
+            mode = service_namespace_config.get_mode()
+        elif mode not in ['http', 'tcp', 'cmd', None]:
+            raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
+        return mode
+
+
+class InvalidHealthcheckMode(Exception):
+    pass
+
+
+def get_healthcheck_for_instance(service, instance, service_manifest, random_port, soa_dir=DEFAULT_SOA_DIR):
+    """
+    Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
+    or (None, None) if no healthcheck
+    """
+    smartstack_config = load_service_namespace_config(service, instance, soa_dir)
+    mode = service_manifest.get_healthcheck_mode(smartstack_config)
+    hostname = socket.getfqdn()
+
+    if mode == "http":
+        path = service_manifest.get_healthcheck_uri(smartstack_config)
+        healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
+    elif mode == "tcp":
+        healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
+    elif mode == 'cmd':
+        healthcheck_command = service_manifest.get_healthcheck_cmd()
+    else:
+        mode = None
+        healthcheck_command = None
+    return (mode, healthcheck_command)
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):

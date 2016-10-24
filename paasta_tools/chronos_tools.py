@@ -38,6 +38,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
@@ -150,10 +151,6 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-class UnknownChronosJobError(Exception):
-    pass
-
-
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
@@ -168,7 +165,7 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
-        raise UnknownChronosJobError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
+        raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
     branch_dict = {}
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)

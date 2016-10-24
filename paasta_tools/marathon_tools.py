@@ -19,7 +19,6 @@ make the PaaSTA stack work.
 import logging
 import os
 import re
-import socket
 from math import ceil
 
 import requests
@@ -29,6 +28,7 @@ from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -50,7 +50,6 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -502,40 +501,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         elif mode is None:
             healthchecks = []
         else:
-            raise InvalidMarathonHealthcheckMode(
+            raise InvalidHealthcheckMode(
                 "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
         return healthchecks
-
-    def get_healthcheck_uri(self, service_namespace_config):
-        return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
-
-    def get_healthcheck_cmd(self):
-        cmd = self.config_dict.get('healthcheck_cmd', None)
-        if cmd is None:
-            raise InvalidInstanceConfig("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
-        else:
-            return cmd
-
-    def get_healthcheck_mode(self, service_namespace_config):
-        mode = self.config_dict.get('healthcheck_mode', None)
-        if mode is None:
-            mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd', None]:
-            raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
-        return mode
-
-    def get_healthcheck_grace_period_seconds(self):
-        """How long Marathon should give a service to come up before counting failed healthchecks."""
-        return self.config_dict.get('healthcheck_grace_period_seconds', 60)
-
-    def get_healthcheck_interval_seconds(self):
-        return self.config_dict.get('healthcheck_interval_seconds', 10)
-
-    def get_healthcheck_timeout_seconds(self):
-        return self.config_dict.get('healthcheck_timeout_seconds', 10)
-
-    def get_healthcheck_max_consecutive_failures(self):
-        return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
     def get_bounce_health_params(self, service_namespace_config):
         default = {}
@@ -551,10 +519,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_replication_crit_percentage(self):
         return self.config_dict.get('replication_threshold', 50)
-
-
-class InvalidMarathonHealthcheckMode(Exception):
-    pass
 
 
 class MarathonDeployStatus:
@@ -951,28 +915,6 @@ def get_matching_apps(servicename, instance, client, embed_failures=False):
     jobid = format_job_id(servicename, instance)
     expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
     return [app for app in client.list_apps(embed_failures=embed_failures) if app.id.startswith(expected_prefix)]
-
-
-def get_healthcheck_for_instance(service, instance, service_manifest, random_port, soa_dir=DEFAULT_SOA_DIR):
-    """
-    Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
-    or (None, None) if no healthcheck
-    """
-    smartstack_config = load_service_namespace_config(service, instance, soa_dir)
-    mode = service_manifest.get_healthcheck_mode(smartstack_config)
-    hostname = socket.getfqdn()
-
-    if mode == "http":
-        path = service_manifest.get_healthcheck_uri(smartstack_config)
-        healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
-    elif mode == "tcp":
-        healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
-    elif mode == 'cmd':
-        healthcheck_command = service_manifest.get_healthcheck_cmd()
-    else:
-        mode = None
-        healthcheck_command = None
-    return (mode, healthcheck_command)
 
 
 def kill_task(client, app_id, task_id, scale):
