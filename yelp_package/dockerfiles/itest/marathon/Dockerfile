@@ -13,6 +13,10 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
+
+RUN apt-get update && apt-get -y install apt-transport-https
+
+RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 RUN apt-get update && apt-get -y install libsasl2-modules mesos=1.0.1-2.0.93.ubuntu1404
@@ -25,7 +29,7 @@ RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
 
-RUN apt-get -y install libsasl2-modules marathon=1.3.0-1.0.506.ubuntu1404
+RUN apt-get -y --allow-unauthenticated install marathon=1.4.0-0.1.20161021221011.snap19.ubuntu1404
 
 RUN echo -n "secret2" > /etc/marathon_framework_secret
 
