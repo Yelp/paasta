@@ -116,19 +116,18 @@ def docker_check():
 
 
 def makefile_responds_to(target):
-    """Runs `make -q <target>` to detect if a makefile responds to the
+    """Runs `make --dry-run <target>` to detect if a makefile responds to the
     specified target."""
-    cmd = 'make -q %s' % target
+    # `make -q` is commonly used to detect whether a Makefile responds to a specified target.
+    # However, this doesn't work when the Makefile includes the common pattern `$(MAKE) -c SOMETHING $(MFLAGS)`,
+    # and `SOMETHING/Makefile` needs to be updated; the `$(MAKE)` means that line executes even in question mode,
+    # and passing `$(MFLAGS)` (which includes `-q` in our case) means that the command causes a Make error even when successful.
+    cmd = 'make --dry-run %s' % target
     # Per the docs
     # http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make
-    # 0 and 1 are ok. 2 Means Error
-    # In question mode:
-    # http://linux.die.net/man/1/make (see Exit Status)
-    # 0 - Nothing to do
-    # 1 - Things to do
-    # 2 - Don't know what you are talking about
+    # 0 means OK, 2 means error
     returncode, _ = _run(cmd, timeout=5)
-    return returncode in [0, 1]
+    return returncode == 0
 
 
 def makefile_has_a_tab(makefile_path):
