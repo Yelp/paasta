@@ -18,7 +18,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.adhoc_tools
    paasta_tools.am_i_mesos_leader
    paasta_tools.autoscale_all_services
    paasta_tools.autoscale_cluster
