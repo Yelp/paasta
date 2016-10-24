@@ -233,23 +233,18 @@ def write_soa_dir_deployments(context, service, disabled, instance):
 
     if not os.path.exists(os.path.join(context.soa_dir, service)):
         os.makedirs(os.path.join(context.soa_dir, service))
+    branch = utils.get_paasta_branch(context.cluster, instance)
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
-            'v1': {
-                '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
-                    'docker_image': 'test-image-foobar%d' % context.tag_version,
-                    'desired_state': desired_state,
-                }
-            },
             'v2': {
                 'deployments': {
-                    utils.get_paasta_branch(context.cluster, instance): {
+                    branch: {
                         'docker_image': 'test-image-foobar%d' % context.tag_version,
-                        'git_sha': context.tag_version
+                        'git_sha': 'test_git_sha',
                     },
                 },
                 'controls': {
-                    '%s:%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
+                    '%s:%s' % (service, branch): {
                         'desired_state': desired_state,
                         'force_bounce': None,
                     },

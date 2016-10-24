@@ -105,15 +105,9 @@ def main():
         # For an instance, there might be multiple versions running, e.g. in crossover bouncing.
         # In addition, mesos master does not have information of a chronos service's git hash.
         # The git sha in deployment.json is simply used here.
-<<<<<<< 467531157ea6a0787caf387e67951d7c644fa6d8
-        version = get_deployment_version(actual_deployments, cluster, instance)
+        version = deployments_json.get_git_sha_for_deploy_group(instance_config.get_deploy_group())
         paasta_print('instance: %s' % PaastaColors.blue(instance))
         paasta_print('Git sha:    %s (desired)' % version)
-=======
-        version = deployments_json.get_git_sha_for_deploy_group(instance_config.get_deploy_group())
-        print 'instance: %s' % PaastaColors.blue(instance)
-        print 'Git sha:    %s (desired)' % version
->>>>>>> converted everything to v2 except rerun and status
 
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)

@@ -31,6 +31,7 @@ from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
 
@@ -100,7 +101,12 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    instance_config = get_instance_config(service=service, instance=instance, cluster=cluster, soa_dir=soa_dir)
+    try:
+        instance_config = get_instance_config(service=service, instance=instance, cluster=cluster, soa_dir=soa_dir)
+    except NoConfigurationForServiceError:
+        error_message = 'Config not found for service %s instance %s in cluster %s' % (service, instance, cluster)
+        raise ApiFailure(error_message, 404)
+
     version = deployments_json.get_git_sha_for_deploy_group(instance_config.get_deploy_group())
     # exit if the deployment key is not found
     if not version:

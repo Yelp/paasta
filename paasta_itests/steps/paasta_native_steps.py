@@ -121,12 +121,19 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
         }))
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as f:
         json.dump({
-            'v1': {
-                '%s:paasta-%s.%s' % (service, context.cluster, instance): {
-                    'docker_image': 'busybox',
-                    'desired_state': 'start',
-                    'force_bounce': None,
-                }
+            'v2': {
+                'controls': {
+                    '%s:%s.%s' % (service, context.cluster, instance): {
+                        'desired_state': 'start',
+                        'force_bounce': None,
+                    },
+                },
+                'deployments': {
+                    '%s.%s' % (context.cluster, instance): {
+                        'docker_image': 'busybox',
+                        'git_sha': 'DEADBEEF',
+                    },
+                },
             }
         }, f)
 

@@ -739,9 +739,9 @@ def test_DeploymentsJson_read():
     ):
         actual = utils.load_v2_deployments_json('fake_service', fake_dir)
         open_patch.assert_called_with(fake_path)
-        assert open_patch.call_count == 2
+        assert open_patch.call_count == 1
         json_patch.assert_called_with(file_mock.__enter__())
-        assert json_patch.call_count == 2
+        assert json_patch.call_count == 1
         assert actual == fake_json['v2']
 
 
