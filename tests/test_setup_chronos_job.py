@@ -22,7 +22,6 @@ from pytest import raises
 from paasta_tools import chronos_tools
 from paasta_tools import setup_chronos_job
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -163,7 +162,7 @@ class TestSetupChronosJob:
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.create_complete_config',
                        autospec=True,
-                       side_effect=NoConfigurationForServiceError('test bad configuration')),
+                       side_effect=chronos_tools.UnknownChronosJobError('test bad configuration')),
             mock.patch('paasta_tools.setup_chronos_job.setup_job',
                        return_value=(0, 'it_is_finished'),
                        autospec=True),

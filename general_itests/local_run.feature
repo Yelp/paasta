@@ -18,9 +18,3 @@ Feature: paasta local-run can be used
       And a simple service to test
      When we run paasta local-run in non-interactive mode on a chronos job with cmd set to 'echo hello && sleep 5'
      Then we should see the expected return code
-
-  Scenario: Running paasta local-run against an adhoc job
-     Given Docker is available
-       And a simple service to test
-      When we run paasta local-run on an interactive job
-      Then we should see the expected return code

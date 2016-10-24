@@ -40,7 +40,6 @@ from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 
-import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
@@ -80,7 +79,7 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native')
 
 
 class InvalidInstanceConfig(Exception):
@@ -392,9 +391,9 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         if (service, instance) in services:
             return instance_type
     else:
-        raise NoConfigurationForServiceError(
-            "Error: %s doesn't look like it has been deployed to this cluster! (%s)" % (
-                compose_job_id(service, instance), cluster))
+        print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
+               % (compose_job_id(service, instance), cluster))
+        sys.exit(3)
 
 
 def compose(func_one, func_two):
@@ -948,19 +947,19 @@ class SystemPaastaConfig(dict):
         """Get the chronos config
 
         :returns: The chronos config dictionary"""
-        return self.get('chronos_config', {})
+        try:
+            return self['chronos_config']
+        except KeyError:
+            return {}
 
     def get_marathon_config(self):
         """Get the marathon config
 
         :returns: The marathon config dictionary"""
-        return self.get('marathon_config', {})
-
-    def get_local_run_config(self):
-        """Get the local-run config
-
-        :returns: The local-run job config dictionary"""
-        return self.get('local_run_config', {})
+        try:
+            return self['marathon_config']
+        except KeyError:
+            return {}
 
     def get_paasta_native_config(self):
         return self.get('paasta_native', {})
@@ -1196,6 +1195,19 @@ def get_username():
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
+def get_default_cluster_for_service(service, soa_dir=DEFAULT_SOA_DIR):
+    cluster = None
+    try:
+        cluster = load_system_paasta_config().get_cluster()
+    except PaastaNotConfiguredError:
+        clusters_deployed_to = list_clusters(service, soa_dir=soa_dir)
+        if len(clusters_deployed_to) > 0:
+            cluster = clusters_deployed_to[0]
+        else:
+            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service)
+    return cluster
+
+
 def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     if service is None:
         service = '*'
@@ -1390,16 +1402,6 @@ class DeploymentsJson(dict):
         full_branch = '%s:paasta-%s' % (service, branch)
         return self.get(full_branch, {})
 
-    def get_branch_dict_v2(self, service, branch, deploy_group):
-        full_branch = '%s:%s' % (service, branch)
-        branch_dict = {
-            'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
-            'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
-            'desired_state': self.get_desired_state_for_branch(full_branch),
-            'force_bounce': self.get_force_bounce_for_branch(full_branch),
-        }
-        return branch_dict
-
     def get_docker_image_for_deploy_group(self, deploy_group):
         try:
             return self['deployments'][deploy_group]['docker_image']
@@ -1413,16 +1415,10 @@ class DeploymentsJson(dict):
             raise NoDeploymentsAvailable
 
     def get_desired_state_for_branch(self, control_branch):
-        try:
-            return self['controls'][control_branch].get('desired_state', 'start')
-        except KeyError:
-            raise NoDeploymentsAvailable
+        return self['controls'][control_branch].get('desired_state', 'start')
 
     def get_force_bounce_for_branch(self, control_branch):
-        try:
-            return self['controls'][control_branch].get('force_bounce', None)
-        except KeyError:
-            raise NoDeploymentsAvailable
+        return self['controls'][control_branch].get('force_bounce', None)
 
 
 def get_paasta_branch(cluster, instance):
@@ -1661,27 +1657,3 @@ def mean(iterable):
     Returns the average value of an iterable
     """
     return sum(iterable) / len(iterable)
-
-
-def prompt_pick_one(sequence, choosing):
-    if not sys.stdin.isatty():
-        sys.stderr.write('No {choosing} specified and no TTY present to ask.'
-                         ' Please specify a {choosing} using the cli.\n'.format(choosing=choosing))
-        sys.exit(1)
-
-    QUIT_ACTION = 'Quit'
-    global_actions = [QUIT_ACTION]
-    choices = [(item, item) for item in sequence]
-
-    chooser = choice.Menu(choices, global_actions=global_actions)
-    chooser.title = 'Please pick a {choosing} from the choices below:'.format(choosing=choosing)
-    try:
-        result = chooser.ask()
-    except KeyboardInterrupt:
-        sys.stdout.write('\n')
-        sys.exit(1)
-
-    if isinstance(result, tuple) and result[1] == QUIT_ACTION:
-        sys.exit(1)
-    else:
-        return result

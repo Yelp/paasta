@@ -548,6 +548,36 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
+def test_get_default_cluster_for_service():
+    fake_service = 'fake_service'
+    fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.list_clusters', autospec=True, return_value=fake_clusters),
+        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
+    ) as (
+        mock_list_clusters,
+        mock_load_system_paasta_config,
+    ):
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
+        assert utils.get_default_cluster_for_service(fake_service) == 'fake_cluster-1'
+        mock_list_clusters.assert_called_once_with(fake_service, soa_dir=mock.ANY)
+
+
+def test_get_default_cluster_for_service_empty_deploy_config():
+    fake_service = 'fake_service'
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.list_clusters', autospec=True, return_value=[]),
+        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
+    ) as (
+        mock_list_clusters,
+        mock_load_system_paasta_config,
+    ):
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
+        with raises(utils.NoConfigurationForServiceError):
+            utils.get_default_cluster_for_service(fake_service)
+        mock_list_clusters.assert_called_once_with(fake_service, soa_dir=mock.ANY)
+
+
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = '/nail/etc/services'
     fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
@@ -632,16 +662,8 @@ def test_get_service_instance_list():
     fake_dir = '/nail/home/hipster'
     fake_job_config = {fake_instance_1: {},
                        fake_instance_2: {}}
-    expected = [
-        (fake_name, fake_instance_1),
-        (fake_name, fake_instance_1),
-        (fake_name, fake_instance_1),
-        (fake_name, fake_instance_1),
-        (fake_name, fake_instance_2),
-        (fake_name, fake_instance_2),
-        (fake_name, fake_instance_2),
-        (fake_name, fake_instance_2),
-    ]
+    expected = [(fake_name, fake_instance_1), (fake_name, fake_instance_1), (fake_name, fake_instance_1),
+                (fake_name, fake_instance_2), (fake_name, fake_instance_2), (fake_name, fake_instance_2), ]
     with contextlib.nested(
         mock.patch('paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
                    return_value=fake_job_config),
@@ -652,7 +674,7 @@ def test_get_service_instance_list():
         read_extra_info_patch.assert_any_call(fake_name, 'marathon-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'chronos-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'paasta_native-16floz', soa_dir=fake_dir)
-        assert read_extra_info_patch.call_count == 4
+        assert read_extra_info_patch.call_count == 3
         assert sorted(expected) == sorted(actual)
 
 
@@ -1334,7 +1356,6 @@ def test_validate_service_instance_invalid():
     mock_marathon_services = [('service1', 'main'), ('service2', 'main')]
     mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]
     mock_paasta_native_services = [('service1', 'main2'), ('service2', 'main2')]
-    mock_adhoc_services = [('service1', 'interactive'), ('service2', 'interactive')]
     my_service = 'bad_service'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
@@ -1342,12 +1363,11 @@ def test_validate_service_instance_invalid():
     with contextlib.nested(
         mock.patch('paasta_tools.utils.get_services_for_cluster',
                    autospec=True,
-                   side_effect=[mock_marathon_services, mock_chronos_services,
-                                mock_paasta_native_services, mock_adhoc_services]),
-        raises(utils.NoConfigurationForServiceError),
+                   side_effect=[mock_marathon_services, mock_chronos_services, mock_paasta_native_services]),
+        mock.patch('sys.exit', autospec=True),
     ) as (
         get_services_for_cluster_patch,
-        _,
+        sys_exit_patch,
     ):
         utils.validate_service_instance(
             my_service,
@@ -1355,6 +1375,7 @@ def test_validate_service_instance_invalid():
             fake_cluster,
             fake_soa_dir,
         )
+        sys_exit_patch.assert_called_once_with(3)
 
 
 def test_terminal_len():
@@ -1542,51 +1563,3 @@ def test_long_job_id_to_short_job_id():
 def test_mean():
     iterable = [1.0, 2.0, 3.0]
     assert utils.mean(iterable) == 2.0
-
-
-def test_prompt_pick_one():
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
-        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
-    ) as (
-        mock_stdin,
-        mock_menu,
-    ):
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value='choiceA'))
-        assert utils.prompt_pick_one(['choiceA'], 'test') == 'choiceA'
-
-
-def test_prompt_pick_one_quit():
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
-        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
-    ) as (
-        mock_stdin,
-        mock_menu,
-    ):
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'Quit')))
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_keyboard_interrupt():
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
-        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
-    ) as (
-        mock_stdin,
-        mock_menu,
-    ):
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=KeyboardInterrupt))
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_returns_none_no_tty():
-    with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
-        mock_stdin.isatty.return_value = False
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')

@@ -132,7 +132,7 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        for file_type in ['chronos', 'marathon', 'adhoc']:
+        for file_type in ['chronos', 'marathon']:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
