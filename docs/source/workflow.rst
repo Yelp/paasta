@@ -87,6 +87,9 @@ sometimes for end-to-end tests. PaaSTA supports this use case through ``paasta
 local-run``, which supports building images locally, as well as using the same
 image as a "live" deployment.
 
+See the `adhoc instances <adhoc_instances.html>`_ doc for more information on
+running adhoc instances using ``paasta local-run``.
+
 Alternative names: Adhoc batches, interactive batches, one-off dynos, one-off
 tasks
 
