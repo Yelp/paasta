@@ -351,7 +351,7 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_fi
 
 @patch('paasta_tools.cli.cmds.check._run', autospec=True)
 def test_makefile_responds_to_good(mock_run):
-    mock_run.return_value = (1, 'Output')
+    mock_run.return_value = (0, 'Output')
     actual = makefile_responds_to('present-target')
     assert actual is True
 
