@@ -558,6 +558,8 @@ def is_resource_cancelled(resource):
 
 
 def autoscale_local_cluster(config_folder, dry_run=False):
+    log.debug("Sleep 20s to throttle AWS API calls")
+    time.sleep(20)
     if dry_run:
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
@@ -565,6 +567,8 @@ def autoscale_local_cluster(config_folder, dry_run=False):
     all_pool_settings = system_config.get_resource_pool_settings()
     for identifier, resource in autoscaling_resources.items():
         autoscaling_resources[identifier]['cancelled'] = is_resource_cancelled(resource)
+        log.debug("Sleep 3s to throttle AWS API calls")
+        time.sleep(3)
     autoscaling_resources = [(identifier, resource) for identifier, resource in autoscaling_resources.items()]
     sorted_autoscaling_resources = sorted(autoscaling_resources, key=lambda x: (x[1]['cancelled']), reverse=True)
     for identifier, resource in sorted_autoscaling_resources:
@@ -573,6 +577,8 @@ def autoscale_local_cluster(config_folder, dry_run=False):
                                    dry_run=dry_run,
                                    all_pool_settings=all_pool_settings,
                                    config_folder=config_folder)
+        log.debug("Sleep 3s to throttle AWS API calls")
+        time.sleep(3)
 
 
 def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run, config_folder):
