@@ -578,7 +578,11 @@ def autoscale_local_cluster(config_folder, dry_run=False):
 def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run, config_folder):
     pool_settings = all_pool_settings.get(resource['pool'], {})
     log.info("Autoscaling {0} in pool, {1}".format(identifier, resource['pool']))
-    resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
+    try:
+        resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
+    except KeyError:
+        log.warning("Couldn't find a metric provider for resource of type: {0}".format(resource['type']))
+        return
     try:
         current, target = resource_metrics_provider(resource['id'],
                                                     resource=resource,
