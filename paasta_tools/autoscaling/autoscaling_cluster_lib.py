@@ -42,7 +42,7 @@ from paasta_tools.utils import TimeoutError
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
 DEFAULT_DRAIN_TIMEOUT = 600  # seconds
-SCALER_KEY = 'scaler'
+SETTER_KEY = 'setter'
 
 AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
@@ -59,11 +59,11 @@ def get_cluster_metrics_provider(name):
     return _autoscaling_components[CLUSTER_METRICS_PROVIDER_KEY][name]
 
 
-def get_scaler(name):
+def get_setter(name):
     """
-    Returns a scaler matching the given name.
+    Returns a setter matching the given name.
     """
-    return _autoscaling_components[SCALER_KEY][name]
+    return _autoscaling_components[SETTER_KEY][name]
 
 
 def get_spot_fleet_instances(spotfleet_request_id, region=None):
@@ -73,9 +73,18 @@ def get_spot_fleet_instances(spotfleet_request_id, region=None):
     return spot_fleet_instances
 
 
-def get_sfr_instance_ips(sfr, region=None):
-    spot_fleet_instances = sfr['ActiveInstances']
-    instance_descriptions = describe_instances([instance['InstanceId'] for instance in spot_fleet_instances],
+def get_asg(asg_name, region=None):
+    asg_client = boto3.client('autoscaling', region_name=region)
+    asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+    try:
+        return asgs['AutoScalingGroups'][0]
+    except IndexError:
+        log.warning("No ASG found in this account with name: {0}".format(asg_name))
+        return None
+
+
+def get_instance_ips(instances, region=None):
+    instance_descriptions = describe_instances([instance['InstanceId'] for instance in instances],
                                                region=region)
     instance_ips = []
     for instance in instance_descriptions:
@@ -127,21 +136,45 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
     return instances
 
 
+@register_autoscaling_component('aws_autoscaling_group', CLUSTER_METRICS_PROVIDER_KEY)
+def asg_metrics_provider(asg_name, resource, pool_settings, config_folder, dry_run=False):
+    asg = get_asg(asg_name, region=resource['region'])
+    if not asg:
+        log.warning("ASG {0} not found, removing config file".format(asg_name))
+        cleanup_cancelled_config(asg_name, config_folder, dry_run=dry_run)
+        return 0, 0
+    if is_aws_launching_asg_instances(asg):
+        log.warning("ASG still launching new instances so we won't make any"
+                    "changes this time.")
+        return 0, 0
+    resource['ActiveInstances'] = asg['Instances']
+    # do we need this
+    resource['asg'] = asg
+    desired_instances = len(resource['ActiveInstances'])
+    mesos_state = get_mesos_master().state
+    slaves = get_aws_slaves(resource, mesos_state)
+    error = get_mesos_utilization_error(resource=resource,
+                                        pool_settings=pool_settings,
+                                        slaves=slaves,
+                                        mesos_state=mesos_state,
+                                        desired_instances=desired_instances)
+    return get_asg_delta(resource, error)
+
+
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
 def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, config_folder, dry_run=False):
     sfr = get_sfr(spotfleet_request_id, region=resource['region'])
     if not sfr or sfr['SpotFleetRequestState'] == 'cancelled':
         log.error("SFR not found, removing config file.".format(spotfleet_request_id))
-        cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=dry_run)
+        cleanup_cancelled_config(spotfleet_request_id, config_folder, dry_run=dry_run)
         return 0, 0
     elif sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
-        sfr['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
+        resource['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
         resource['sfr'] = sfr
-        desired_instances = len(sfr['ActiveInstances'])
+        desired_instances = len(resource['ActiveInstances'])
         mesos_state = get_mesos_master().state
-        slaves = get_sfr_slaves(resource, mesos_state)
-        error = get_mesos_utilization_error(spotfleet_request_id,
-                                            resource=resource,
+        slaves = get_aws_slaves(resource, mesos_state)
+        error = get_mesos_utilization_error(resource=resource,
                                             pool_settings=pool_settings,
                                             slaves=slaves,
                                             mesos_state=mesos_state,
@@ -162,8 +195,7 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
     if sfr['SpotFleetRequestState'] == 'cancelled_running':
         resource['min_capacity'] = 0
         slaves = get_pool_slaves(resource, mesos_state)
-        pool_error = get_mesos_utilization_error(spotfleet_request_id,
-                                                 resource=resource,
+        pool_error = get_mesos_utilization_error(resource=resource,
                                                  pool_settings=pool_settings,
                                                  slaves=slaves,
                                                  mesos_state=mesos_state)
@@ -182,20 +214,26 @@ def is_aws_launching_sfr_instances(sfr):
     return target_capacity > fulfilled_capacity
 
 
-def cleanup_cancelled_sfr_config(spotfleet_request_id, config_folder, dry_run=False):
-    sfr_file_name = "{0}.json".format(spotfleet_request_id)
-    sfr_configs_to_delete = [os.path.join(walk[0], sfr_file_name)
-                             for walk in os.walk(config_folder) if sfr_file_name in walk[2]]
-    if not sfr_configs_to_delete:
-        log.info("SFR config for {0} not found".format(spotfleet_request_id))
+def is_aws_launching_asg_instances(asg):
+    fulfilled_capacity = len(asg['Instances'])
+    target_capacity = asg['DesiredCapacity']
+    return target_capacity > fulfilled_capacity
+
+
+def cleanup_cancelled_config(resource_id, config_folder, dry_run=False):
+    file_name = "{0}.json".format(resource_id)
+    configs_to_delete = [os.path.join(walk[0], file_name)
+                         for walk in os.walk(config_folder) if file_name in walk[2]]
+    if not configs_to_delete:
+        log.info("Resource config for {0} not found".format(resource_id))
         return
     if not dry_run:
-        os.remove(sfr_configs_to_delete[0])
-    log.info("Deleted SFR config {0}".format(sfr_configs_to_delete[0]))
+        os.remove(configs_to_delete[0])
+    log.info("Deleted Resource config {0}".format(configs_to_delete[0]))
 
 
-def get_sfr_slaves(resource, mesos_state):
-    instance_ips = get_sfr_instance_ips(resource['sfr'], region=resource['region'])
+def get_aws_slaves(resource, mesos_state):
+    instance_ips = get_instance_ips(resource['ActiveInstances'], region=resource['region'])
     slaves = {
         slave['id']: slave for slave in mesos_state.get('slaves', [])
         if slave_pid_to_ip(slave['pid']) in instance_ips and
@@ -212,8 +250,7 @@ def get_pool_slaves(resource, mesos_state):
     return slaves
 
 
-def get_mesos_utilization_error(spotfleet_request_id,
-                                resource,
+def get_mesos_utilization_error(resource,
                                 pool_settings,
                                 slaves,
                                 mesos_state,
@@ -249,6 +286,35 @@ def get_mesos_utilization_error(spotfleet_request_id,
     ])
     target_utilization = pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
     return utilization - target_utilization
+
+
+def get_asg_delta(resource, error):
+    current_capacity = len(resource['asg']['Instances'])
+    ideal_capacity = int(ceil((1 + error) * current_capacity))
+    new_capacity = int(min(
+        max(
+            resource['min_capacity'],
+            floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
+            ideal_capacity,
+            0,
+        ),
+        ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
+        # if max and min set to 0 we still drain gradually
+        max(resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)))
+    ))
+    log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
+    if ideal_capacity > resource['max_capacity']:
+        log.warning("Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
+            ideal_capacity, resource['max_capacity']))
+    if ideal_capacity < resource['min_capacity']:
+        log.warning("Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
+            ideal_capacity, resource['min_capacity']))
+    if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
+            ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
+        log.warning(
+            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
+            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
+    return current_capacity, new_capacity
 
 
 def get_spot_fleet_delta(resource, error):
@@ -337,24 +403,31 @@ def sort_slaves_to_kill(slaves):
     return sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))
 
 
-def get_instance_type_weights(sfr):
-    launch_specifications = sfr['SpotFleetRequestConfig']['LaunchSpecifications']
-    return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
+def get_instance_type_weights(resource):
+    if resource['type'] == 'aws_spot_fleet_request':
+        launch_specifications = resource['sfr']['SpotFleetRequestConfig']['LaunchSpecifications']
+        return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
+    else:
+        return StaticWeight()
 
 
-def filter_sfr_slaves(slaves_list, resource):
-    sfr = resource['sfr']
-    sfr_ips = get_sfr_instance_ips(sfr, region=resource['region'])
-    log.debug("IPs in SFR: {0}".format(sfr_ips))
-    sfr_slaves = [slave for slave in slaves_list if slave_pid_to_ip(slave['task_counts'].slave['pid']) in sfr_ips]
-    sfr_slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in sfr_slaves]
-    sfr_instance_descriptions = describe_instances([], region=resource['region'],
-                                                   instance_filters=[{'Name': 'private-ip-address',
-                                                                      'Values': sfr_slave_ips}])
-    sfr_slave_instances = []
-    for slave in sfr_slaves:
+class StaticWeight:
+    def __getattr__(self, attr):
+        return lambda x: 1
+
+
+def filter_aws_slaves(slaves_list, resource):
+    ips = get_instance_ips(resource['ActiveInstances'], region=resource['region'])
+    log.debug("IPs in AWS resources: {0}".format(ips))
+    slaves = [slave for slave in slaves_list if slave_pid_to_ip(slave['task_counts'].slave['pid']) in ips]
+    slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
+    instance_descriptions = describe_instances([], region=resource['region'],
+                                               instance_filters=[{'Name': 'private-ip-address',
+                                                                  'Values': slave_ips}])
+    slave_instances = []
+    for slave in slaves:
         ip = slave_pid_to_ip(slave['task_counts'].slave['pid'])
-        instances = get_instances_from_ip(ip, sfr_instance_descriptions)
+        instances = get_instances_from_ip(ip, instance_descriptions)
         if not instances:
             log.warning("Couldn't find instance for ip {0}".format(ip))
             continue
@@ -362,16 +435,16 @@ def filter_sfr_slaves(slaves_list, resource):
             log.error("Found more than one instance with the same private IP {0}. "
                       "This should never happen")
             continue
-        sfr_slave_instances.append({'ip': ip,
-                                    'task_counts': slave['task_counts'],
-                                    'hostname': slave['task_counts'].slave['hostname'],
-                                    'id': slave['task_counts'].slave['id'],
-                                    'pid': slave['task_counts'].slave['pid'],
-                                    'instance_id': instances[0]['InstanceId']})
+        slave_instances.append({'ip': ip,
+                                'task_counts': slave['task_counts'],
+                                'hostname': slave['task_counts'].slave['hostname'],
+                                'id': slave['task_counts'].slave['id'],
+                                'pid': slave['task_counts'].slave['pid'],
+                                'instance_id': instances[0]['InstanceId']})
     ret = []
-    instance_type_weights = get_instance_type_weights(sfr)
-    for slave in sfr_slave_instances:
-        instance_description = [instance_description for instance_description in sfr_instance_descriptions
+    instance_type_weights = get_instance_type_weights(resource)
+    for slave in slave_instances:
+        instance_description = [instance_description for instance_description in instance_descriptions
                                 if instance_description['InstanceId'] == slave['instance_id']][0]
         slave['instance_type'] = instance_description['InstanceType']
         slave['instance_weight'] = instance_type_weights[slave['instance_type']]
@@ -379,6 +452,7 @@ def filter_sfr_slaves(slaves_list, resource):
     return ret
 
 
+@register_autoscaling_component('aws_spot_fleet_request', SETTER_KEY)
 def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
     """ AWS won't modify a request that is already modifying. This
     function ensures we wait a few seconds in case we've just modified
@@ -400,7 +474,7 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
                 time.sleep(5)
         except TimeoutError:
             log.error("Spot fleet {0} not in active state so we can't modify it.".format(sfr_id))
-            raise FailSetSpotCapacity
+            raise FailSetResourceCapacity
     if dry_run:
         return True
     try:
@@ -408,12 +482,25 @@ def set_spot_fleet_request_capacity(sfr_id, capacity, dry_run, region=None):
                                                    ExcessCapacityTerminationPolicy='noTermination')
     except ClientError as e:
         log.error("Error modifying spot fleet request: {0}".format(e))
-        raise FailSetSpotCapacity
+        raise FailSetResourceCapacity
     return ret
 
 
-@register_autoscaling_component('aws_spot_fleet_request', SCALER_KEY)
-def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, pool_settings, dry_run):
+@register_autoscaling_component('aws_autoscaling_group', SETTER_KEY)
+def set_asg_capacity(asg_name, capacity, dry_run, region=None):
+    if dry_run:
+        return
+    asg_client = boto3.client('autoscaling', region_name=region)
+    try:
+        ret = asg_client.update_auto_scaling_group(AutoScalingGroupName=asg_name,
+                                                   DesiredCapacity=capacity)
+    except ClientError as e:
+        log.error("Error modifying ASG: {0}".format(e))
+        raise FailSetResourceCapacity
+    return ret
+
+
+def scale_resource(resource, current_capacity, target_capacity, pool_settings, dry_run):
     """Scales a spot fleet request by delta to reach target capacity
     If scaling up we just set target capacity and let AWS take care of the rest
     If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -427,33 +514,33 @@ def scale_aws_spot_fleet_request(resource, current_capacity, target_capacity, po
     :param dry_run: Don't drain or make changes to spot fleet if True"""
     target_capacity = int(target_capacity)
     delta = target_capacity - current_capacity
-    sfr_id = resource['id']
     if delta == 0:
         log.info("Already at target capacity: {0}".format(target_capacity))
         return
     elif delta > 0:
-        log.info("Increasing spot fleet capacity to: {0}".format(target_capacity))
-        set_spot_fleet_request_capacity(sfr_id, target_capacity, dry_run, region=resource['region'])
+        log.info("Increasing resource capacity to: {0}".format(target_capacity))
+        resource_setter = get_setter(resource['type'])
+        resource_setter(resource['id'], target_capacity, dry_run, region=resource['region'])
         return
     elif delta < 0:
         mesos_state = get_mesos_master().state_summary()
         slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=resource['pool'])
-        filtered_slaves = filter_sfr_slaves(slaves_list, resource)
+        filtered_slaves = filter_aws_slaves(slaves_list, resource)
         killable_capacity = sum([slave['instance_weight'] for slave in filtered_slaves])
         amount_to_decrease = delta * -1
         if amount_to_decrease > killable_capacity:
             log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
             return
-        downscale_spot_fleet_request(resource=resource,
-                                     filtered_slaves=filtered_slaves,
-                                     current_capacity=current_capacity,
-                                     target_capacity=target_capacity,
-                                     pool_settings=pool_settings,
-                                     dry_run=dry_run)
+        downscale_aws_resource(resource=resource,
+                               filtered_slaves=filtered_slaves,
+                               current_capacity=current_capacity,
+                               target_capacity=target_capacity,
+                               pool_settings=pool_settings,
+                               dry_run=dry_run)
 
 
 def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_capacity, new_capacity, dry_run):
-    sfr_id = resource['id']
+    resource_setter = get_setter(resource['type'])
     drain_timeout = pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
     # The start time of the maintenance window is the point at which
     # we giveup waiting for the instance to drain and mark it for termination anyway
@@ -470,14 +557,14 @@ def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_c
             log.error("Failed to start drain "
                       "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
             raise
-    log.info("Decreasing spot fleet capacity from {0} to: {1}".format(current_capacity, new_capacity))
+    log.info("Decreasing resource from {0} to: {1}".format(current_capacity, new_capacity))
     # Instance weights can be floats but the target has to be an integer
     # because this is all AWS allows on the API call to set target capacity
     new_capacity = int(floor(new_capacity))
     try:
-        set_spot_fleet_request_capacity(sfr_id, new_capacity, dry_run, region=resource['region'])
-    except FailSetSpotCapacity:
-        log.error("Couldn't update spot fleet, stopping autoscaler")
+        resource_setter(resource['id'], new_capacity, dry_run, region=resource['region'])
+    except FailSetResourceCapacity:
+        log.error("Couldn't update resource capacity, stopping autoscaler")
         log.info("Undraining {0}".format(slave_to_kill['pid']))
         if not dry_run:
             undrain([drain_host_string])
@@ -487,22 +574,22 @@ def gracefully_terminate_slave(resource, slave_to_kill, pool_settings, current_c
         wait_and_terminate(slave_to_kill, drain_timeout, dry_run, region=resource['region'])
     except ClientError as e:
         log.error("Failure when terminating: {0}: {1}".format(slave_to_kill['pid'], e))
-        log.error("Setting spot fleet capacity back to {0}".format(current_capacity))
-        set_spot_fleet_request_capacity(sfr_id, current_capacity, dry_run, region=resource['region'])
+        log.error("Setting resource capacity back to {0}".format(current_capacity))
+        resource_setter(resource['id'], current_capacity, dry_run, region=resource['region'])
     finally:
         log.info("Undraining {0}".format(slave_to_kill['pid']))
         if not dry_run:
             undrain([drain_host_string])
 
 
-def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, target_capacity, pool_settings, dry_run):
+def downscale_aws_resource(resource, filtered_slaves, current_capacity, target_capacity, pool_settings, dry_run):
     killed_slaves = 0
     while True:
         filtered_sorted_slaves = sort_slaves_to_kill(filtered_slaves)
         if len(filtered_sorted_slaves) == 0:
-            log.info("ALL slaves killed so moving on to next pool!")
+            log.info("ALL slaves killed so moving on to next resource!")
             break
-        log.info("SFR slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
+        log.info("Resource slave kill preference: {0}".format([slave['hostname'] for slave in filtered_sorted_slaves]))
         filtered_sorted_slaves.reverse()
         slave_to_kill = filtered_sorted_slaves.pop()
         instance_capacity = slave_to_kill['instance_weight']
@@ -512,7 +599,7 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
                      " close to our target as we can get".format(slave_to_kill['instance_id'],
                                                                  slave_to_kill['instance_weight'],
                                                                  target_capacity))
-            if killed_slaves == 0:
+            if resource['type'] == 'aws_spot_fleet_request' and killed_slaves == 0:
                 log.info("This is a SFR so we must kill at least one slave to prevent the autoscaler "
                          "getting stuck whilst scaling down gradually")
             else:
@@ -528,7 +615,7 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
         except HTTPError:
             # Something wrong draining host so try next host
             continue
-        except FailSetSpotCapacity:
+        except FailSetResourceCapacity:
             break
         current_capacity = new_capacity
         mesos_state = get_mesos_master().state_summary()
@@ -542,7 +629,7 @@ class ClusterAutoscalingError(Exception):
     pass
 
 
-class FailSetSpotCapacity(Exception):
+class FailSetResourceCapacity(Exception):
     pass
 
 
@@ -563,6 +650,9 @@ def is_resource_cancelled(resource):
             return True
         state = sfr['SpotFleetRequestState']
         if state in ['cancelled', 'cancelled_running']:
+            return True
+    elif resource['type'] == 'aws_autoscaling_group':
+        if not get_asg(resource['id'], region=resource['region']):
             return True
     return False
 
@@ -606,7 +696,6 @@ def autoscale_cluster_resource(identifier, resource, all_pool_settings, dry_run,
                                                     config_folder=config_folder,
                                                     dry_run=dry_run)
         log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
-        resource_scaler = get_scaler(resource['type'])
-        resource_scaler(resource, current, target, pool_settings, dry_run)
+        scale_resource(resource, current, target, pool_settings, dry_run)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (identifier, e))
