@@ -310,10 +310,12 @@ def test_autoscale_local_cluster():
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_resource_cancelled', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True),
+        mock.patch('time.sleep', autospec=True)
     ) as (
         mock_get_paasta_config,
         mock_is_resource_cancelled,
         mock_autoscale_cluster_resource,
+        _,
     ):
 
         mock_scaling_resources = {'id1': {'id': 'sfr-blah1', 'type': 'sfr', 'pool': 'default'},
