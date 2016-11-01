@@ -110,13 +110,17 @@ def main(argv=None):
     Ensure we kill any child pids before we quit
     """
     logging.basicConfig()
-    args, parser = parse_args(argv)
-    if args.command is None:
-        parser.print_help()
-        return_code = 0
-    else:
-        return_code = args.command(args)
+    try:
+        args, parser = parse_args(argv)
+        if args.command is None:
+            parser.print_help()
+            return_code = 0
+        else:
+            return_code = args.command(args)
+    except KeyboardInterrupt:
+        return_code = 1
     sys.exit(return_code)
+
 
 if __name__ == '__main__':
     main()
