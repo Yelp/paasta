@@ -194,7 +194,7 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
 
 @register_autoscaling_component('uwsgi', SERVICE_METRICS_PROVIDER_KEY)
-def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='uwsgi_stats', *args, **kwargs):
+def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status/uwsgi', *args, **kwargs):
     """
     Gets the mean utilization of a service across all of its tasks, where
     the utilization of a task is the percentage of non-idle workers as read
