@@ -215,7 +215,7 @@ def test_message_for_status_fail():
     )
     assert "Last run of job myservice.myinstance failed.\n" in actual
     # Assert that there are helpful action items in the output
-    assert "paasta logs -s myservice -c mycluster\n" in actual
+    assert "paasta logs -s myservice -i myinstance -c mycluster\n" in actual
     assert "paasta status -s myservice -i myinstance -c mycluster -vv\n" in actual
     assert "paasta rerun -s myservice -i myinstance -c mycluster -d {datetime}\n" in actual
 
