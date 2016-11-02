@@ -1,0 +1,90 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#adhoc-clustername-yaml",
+    "type": "object",
+    "minProperties": 1,
+    "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+            "cpus": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1
+            },
+            "mem": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
+            "disk": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
+            "cmd": {
+                "type": "string"
+            },
+            "args": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "env": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+            },
+            "extra_volumes": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                },
+                "uniqueItems": true
+            },
+            "deploy_group": {
+                "type": "string"
+            },
+            "net": {
+                "type": "string"
+            },
+            "ulimit": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "soft": {
+                            "type": "number"
+                        },
+                        "hard": {
+                            "type": "number"
+                        }
+                    },
+                    "required": ["soft"],
+                    "additionalProperties": false
+                }
+            },
+            "cap_add": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "cfs_period_us": {
+                "type": "integer",
+                "minimum": "1000",
+                "maximum": "1000000",
+                "exclusiveMinimum": false
+            },
+            "cpu_burst_pct": {
+                "type": "integer",
+                "minimum": "0",
+                "exclusiveMinimum": false
+            }
+        }
+    }
+}

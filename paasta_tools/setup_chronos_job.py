@@ -51,6 +51,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
@@ -90,7 +91,7 @@ def send_event(service, instance, soa_dir, status, output):
             cluster=cluster,
             soa_dir=soa_dir,
         ).get_monitoring()
-    except chronos_tools.UnknownChronosJobError:
+    except NoConfigurationForServiceError:
         monitoring_overrides = {}
     # In order to let sensu know how often to expect this check to fire,
     # we need to set the ``check_every`` to the frequency of our cron job, which
@@ -192,7 +193,7 @@ def main():
         )
         log.error(error_msg)
         sys.exit(0)
-    except chronos_tools.UnknownChronosJobError as e:
+    except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
