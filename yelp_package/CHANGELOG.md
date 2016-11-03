@@ -1,7 +1,14 @@
 # Change Log
 
-## [0.55.4](https://github.com/Yelp/paasta/tree/0.55.4) (2016-11-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.3...0.55.4)
+## [0.56.0](https://github.com/Yelp/paasta/tree/0.56.0) (2016-11-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.4...0.56.0)
+
+**Merged pull requests:**
+
+- Multiple registrations [\#859](https://github.com/Yelp/paasta/pull/859) ([jolynch](https://github.com/jolynch))
+
+## [v0.55.4](https://github.com/Yelp/paasta/tree/v0.55.4) (2016-11-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.3...v0.55.4)
 
 **Closed issues:**
 
