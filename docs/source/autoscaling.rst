@@ -99,7 +99,7 @@ The currently available metrics providers are:
 
   :endpoint:
     the path to perform the HTTP request on (the requested URL will be
-    ``http://$HOST:$PORT/$endpoint``). Defaults to 'uwsgi_stats'.
+    ``http://$HOST:$PORT/$endpoint``). Defaults to 'status/uwsgi'.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
