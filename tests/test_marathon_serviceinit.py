@@ -377,13 +377,13 @@ def test_status_smartstack_backends_normal():
 
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
@@ -396,7 +396,7 @@ def test_status_smartstack_backends_normal():
             }
         }]
 
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
@@ -447,18 +447,16 @@ def test_status_smartstack_backends_different_nerve_ns():
 
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True)
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
-        mock_read_ns
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
@@ -468,14 +466,14 @@ def test_status_smartstack_backends_different_nerve_ns():
             }
         }]
 
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
             (haproxy_backends_by_task[bad_task], None),
             (None, other_task),
         ]
-        mock_read_ns.return_value = different_ns
+        mock_read_reg.return_value = compose_job_id(service, different_ns)
         tasks = [good_task, other_task]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -508,15 +506,15 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
     normal_count = 10
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_all_slaves_for_blacklist_whitelist.return_value = {}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -545,19 +543,19 @@ def test_status_smartstack_backends_multiple_locations():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -619,21 +617,21 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.haproxy_backend_report', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
         mock_haproxy_backend_report,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -701,19 +699,19 @@ def test_status_smartstack_backends_verbose_multiple_apps():
 
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
@@ -767,7 +765,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
                           'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
                    side_effect=[[fake_backend], [fake_other_backend]]),
@@ -775,13 +773,13 @@ def test_status_smartstack_backends_verbose_multiple_locations():
                    autospec=True, side_effect=[[(fake_backend, good_task)], [(fake_other_backend, good_task)]]),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = service_instance
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [
             {
                 'hostname': 'hostname1',
@@ -843,13 +841,13 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_mesos_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
@@ -863,7 +861,7 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             }
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = compose_job_id(service, instance)
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -896,13 +894,13 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
                     'check_status': 'L7OK', 'check_duration': 1}
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
     ) as (
         mock_load_service_namespace_config,
-        mock_read_ns,
+        mock_read_reg,
         mock_get_all_slaves_for_blacklist_whitelist,
         mock_get_backends,
         mock_match_backends_and_tasks,
@@ -916,7 +914,7 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             }
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_ns.return_value = instance
+        mock_read_reg.return_value = compose_job_id(service, instance)
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, None),

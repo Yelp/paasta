@@ -62,14 +62,19 @@ instance MAY have:
   * ``max_instances``: When autoscaling, the maximum number of instances that
     marathon will create for a service
 
-  * ``nerve_ns``: Specifies that this namespace should be routed to by another
-    namespace in SmartStack. In SmartStack, each service has difference pools
-    of backend servers that are listening on a particul port. In PaaSTA we call
-    these "Nerve Namespaces". By default, the Namespace assigned to a particular
-    instance in PaaSTA has the *same name*, so the ``main`` instance will correspond
-    to the ``main`` Nerve namespace defined in ``smartstack.yaml``. This ``nerve_ns``
-    option allows users to make particular instances appear under an *alternative*
-    namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
+  * ``nerve_ns``: **DEPRECATED** please use ``registrations``.
+
+  * ``registrations``: A list of SmartStack registrations (service.namespace)
+    where instances of this PaaSTA service ought register in. In SmartStack,
+    each service has difference pools of backend servers that are listening on
+    a particul port. In PaaSTA we call these "Registrations". By default, the
+    Registration assigned to a particular instance in PaaSTA has the *same name*,
+    so a service ``foo`` with a ``main`` instance will correspond to the
+    ``foo.main`` Registration. This would correspond to the SmartStack
+    namespace defined in the Registration service's ``smartstack.yaml``. This
+    ``registrations`` option allows users to make PaaSTA instances appear
+    under an *alternative* namespace (or even service). For example
+    ``canary`` instances can have ``registrations: ['foo.main']`` to route
     their traffic to the same pool as the other ``main`` instances.
 
   * ``backoff_factor``: PaaSTA will automatically calculate the duration of an
@@ -449,7 +454,7 @@ The ``main`` key is the service namespace.  Namespaces were introduced for
 PaaSTA services in order to support running multiple daemons from a single
 service codebase. In PaaSTA, each instance in your marathon.yaml maps to a
 smartstack namespace of the same name, unless you specify a different
-``nerve_ns``.
+``registrations``.
 
 We now describe which keys are supported within a namespace.  Note that all but
 proxy_port are optional.
@@ -722,7 +727,7 @@ A marathon service that overrides options on different instances (canary)::
         page: true
     canary:
       instances: 1
-      nerve_ns: main
+      registrations: ['service.main']
       monitoring:
         page: false
         ticket: true

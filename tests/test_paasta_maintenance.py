@@ -119,7 +119,7 @@ def test_are_local_tasks_in_danger_is_true_with_an_healthy_service_in_danger(
     assert mock_synapse_replication_is_low.call_count == 1
 
 
-@mock.patch('paasta_tools.paasta_maintenance.read_namespace_for_service_instance', autospec=True)
+@mock.patch('paasta_tools.paasta_maintenance.read_registration_for_service_instance', autospec=True)
 @mock.patch('paasta_tools.paasta_maintenance.load_smartstack_info_for_service', autospec=True)
 @mock.patch('paasta_tools.paasta_maintenance.get_expected_instance_count_for_namespace', autospec=True)
 @mock.patch('paasta_tools.paasta_maintenance.get_replication_for_services', autospec=True)
@@ -127,9 +127,9 @@ def test_synapse_replication_is_low_understands_underreplicated_services(
     mock_get_replication_for_services,
     mock_get_expected_instance_count_for_namespace,
     mock_load_smartstack_info_for_service,
-    mock_read_namespace_for_service_instance,
+    mock_read_registration_for_service_instance,
 ):
-    mock_read_namespace_for_service_instance.return_value = "main"
+    mock_read_registration_for_service_instance.return_value = "service.main"
     mock_get_expected_instance_count_for_namespace.return_value = 3
     mock_load_smartstack_info_for_service.return_value = {
         "local_region": {"service.main": "up"}

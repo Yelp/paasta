@@ -38,7 +38,7 @@ Now let’s take a look at how instances are linked to a deploy group by taking 
    canary:
      cpus: .1
      mem: 301
-     nerve_ns: main
+     registrations: ['service.main']
      instances: 1
      deploy_group: dev-stage.everything
    main:

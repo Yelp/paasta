@@ -109,24 +109,31 @@ def check_smartstack_replication_for_instance(
     the corresponding yelpsoa config.
 
     :param service: A string like example_service
-    :param namespace: A nerve namespace, like "main"
+    :param instance: A PaaSTA instance, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
-    namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
-    if namespace != instance:
-        log.debug("Instance %s is announced under namespace: %s. "
-                  "Not checking replication for it" % (instance, namespace))
-        return
     full_name = compose_job_id(service, instance)
+
+    primary_registration = marathon_tools.read_registration_for_service_instance(
+        service, instance, soa_dir=soa_dir
+    )
+
+    if primary_registration != full_name:
+        log.debug(
+            '%s is announced under: %s. '
+            'Not checking replication for it' % (full_name, primary_registration)
+        )
+        return
+
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
         service=service,
-        namespace=namespace,
+        namespace=instance,
         soa_dir=soa_dir,
         blacklist=monitoring_blacklist,
         system_paasta_config=system_paasta_config,

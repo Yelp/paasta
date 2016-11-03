@@ -332,8 +332,8 @@ class TestMarathonTools:
         fake_port = 1234567890
         fake_nerve = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
-                       autospec=True, return_value=namespace),
+            mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
+                       autospec=True, return_value=compose_job_id(name, namespace)),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
                        autospec=True, return_value=fake_nerve)
         ) as (
@@ -353,8 +353,8 @@ class TestMarathonTools:
         namespace = 'thirsty_mock'
         expected = None
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
-                       autospec=True, return_value=namespace),
+            mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
+                       autospec=True, return_value=compose_job_id(name, namespace)),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
                        autospec=True, return_value={})
         ) as (
@@ -483,7 +483,7 @@ class TestMarathonTools:
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_namespace_for_service_instance_has_value_with_nerve_ns(self, load_config_patch):
+    def test_read_registration_for_service_instance_has_value_with_nerve_ns(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
@@ -496,48 +496,55 @@ class TestMarathonTools:
             config_dict={'nerve_ns': namespace},
             branch_dict={},
         )
-        actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == namespace
+        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
+        assert actual == compose_job_id(name, namespace)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_namespace_for_service_instance_has_value(self, load_config_patch):
+    def test_read_registration_for_service_instance_has_value(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
-        namespace = 'spacename'
         soa_dir = 'dirdirdir'
         load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
             service=name,
             cluster=cluster,
             instance=instance,
-            config_dict={'registration_namespaces': [namespace, 'something else']},
+            config_dict={
+                'registrations': [
+                    compose_job_id(name, instance),
+                    compose_job_id(name, 'something else')
+                ]
+            },
             branch_dict={},
         )
-        actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == namespace
+        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
+        assert actual == compose_job_id(name, instance)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_all_namespaces_for_service_instance_has_value(self, load_config_patch):
+    def test_read_all_registrations_for_service_instance_has_value(self, load_config_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
         namespaces = ['spacename', 'spaceiscool', 'rocketsarecooler']
+        registrations = [compose_job_id(name, ns) for ns in namespaces]
         soa_dir = 'dirdirdir'
         load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
             service=name,
             cluster=cluster,
             instance=instance,
-            config_dict={'registration_namespaces': namespaces},
+            config_dict={'registrations': registrations},
             branch_dict={},
         )
-        actual_registrations = marathon_tools.read_all_namespaces_for_service_instance(name, instance, cluster, soa_dir)
-        assert set(actual_registrations) == set(namespaces)
+        actual_registrations = marathon_tools.read_all_registrations_for_service_instance(
+            name, instance, cluster, soa_dir
+        )
+        assert set(actual_registrations) == set(registrations)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_namespace_for_service_instance_no_value(self, load_config_patch):
+    def test_read_registration_for_service_instance_no_value(self, load_config_patch):
         name = 'wall_light'
         instance = 'ceiling_light'
         cluster = 'no_light'
@@ -550,8 +557,8 @@ class TestMarathonTools:
             branch_dict={},
         )
 
-        actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == instance
+        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
+        assert actual == compose_job_id(name, instance)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
     @mock.patch('paasta_tools.marathon_tools.get_local_slave_state', autospec=True)
@@ -610,7 +617,10 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
-        namespaces = [['dos'], ['uno']]
+        registrations = [
+            ['no_docstrings.dos'],
+            ['no_test.uno']
+        ]
         nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
                        long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
         expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666}),
@@ -619,9 +629,9 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.marathon_services_running_here',
                        autospec=True,
                        return_value=fake_marathon_services),
-            mock.patch('paasta_tools.marathon_tools.read_all_namespaces_for_service_instance',
+            mock.patch('paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
                        autospec=True,
-                       side_effect=lambda a, b, c, d: namespaces.pop()),
+                       side_effect=lambda a, b, c, d: registrations.pop()),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
                        autospec=True,
                        side_effect=lambda a, b, c: nerve_dicts.pop()),
@@ -645,7 +655,10 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
-        namespaces = [['quatro'], ['uno', 'dos', 'tres']]
+        namespaces = [
+            ['no_docstrings.quatro'],
+            ['no_test.uno', 'no_test.dos', 'no_test.tres']
+        ]
         nerve_dicts = {
             ('no_test', 'uno'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6666}),
             ('no_test', 'dos'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6667}),
@@ -660,7 +673,7 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.marathon_services_running_here',
                        autospec=True,
                        return_value=fake_marathon_services),
-            mock.patch('paasta_tools.marathon_tools.read_all_namespaces_for_service_instance',
+            mock.patch('paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
                        autospec=True,
                        side_effect=lambda a, b, c, d: namespaces.pop()),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
@@ -688,7 +701,10 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
-        namespaces = [['dos'], ['uno']]
+        registrations = [
+            ['no_docstrings.dos'],
+            ['no_test.uno']
+        ]
         nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1}),
                        long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
         expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666})]
@@ -696,9 +712,9 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.marathon_services_running_here',
                        autospec=True,
                        return_value=fake_marathon_services),
-            mock.patch('paasta_tools.marathon_tools.read_all_namespaces_for_service_instance',
+            mock.patch('paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
                        autospec=True,
-                       side_effect=lambda a, b, c, d: namespaces.pop()),
+                       side_effect=lambda a, b, c, d: registrations.pop()),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
                        autospec=True,
                        side_effect=lambda a, b, c: nerve_dicts.pop()),
@@ -2569,7 +2585,7 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
         assert 'Unknown (desired_state: fake-state)' in fake_desired_state
 
 
-def test_read_namespace_for_service_instance_no_cluster():
+def test_read_registration_for_service_instance_no_cluster():
     mock_get_cluster = mock.Mock()
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
@@ -2580,7 +2596,7 @@ def test_read_namespace_for_service_instance_no_cluster():
         _,
         _,
     ):
-        marathon_tools.read_namespace_for_service_instance(mock.Mock(), mock.Mock())
+        marathon_tools.read_registration_for_service_instance(mock.Mock(), mock.Mock())
         mock_get_cluster.assert_called_once_with()
 
 
