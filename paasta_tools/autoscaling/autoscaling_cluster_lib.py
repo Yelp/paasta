@@ -508,8 +508,9 @@ def downscale_spot_fleet_request(resource, filtered_slaves, current_capacity, ta
                      " close to our target as we can get".format(slave_to_kill['instance_id'],
                                                                  slave_to_kill['instance_weight'],
                                                                  target_capacity))
-            if resource['sfr']['SpotFleetRequestState'] == 'cancelled_running' and killed_slaves == 0:
-                log.info("This is a cancelled SFR so we must kill at least one slave to prevent it lingering")
+            if killed_slaves == 0:
+                log.info("This is a SFR so we must kill at least one slave to prevent the autoscaler "
+                         "getting stuck whilst scaling down gradually")
             else:
                 break
         try:
