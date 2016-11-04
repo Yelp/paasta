@@ -261,8 +261,9 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     return: A newline separated string of the smarststack backend status
     """
     output = []
-    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
-    service_instance = compose_job_id(service, nerve_ns)
+    service_instance = marathon_tools.read_registration_for_service_instance(
+        service, instance, cluster
+    )
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()

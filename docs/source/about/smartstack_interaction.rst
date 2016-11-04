@@ -220,7 +220,7 @@ the same Nerve namespace. Consider this example::
         cmd: myserver.py
     canary:
         instances: 1
-        nerve_ns: main
+        registrations: ['service.main']
         cmd: myserver.py --experiment
 
 With this example, the ``canary`` instance gets advertised *under* the ``main`` Nerve
@@ -241,13 +241,13 @@ Sharding is another use case for using alternative namespaces::
     #marathon.yaml
     shard1:
         instances: 10
-        nerve_ns: main
+        registrations: ['service.main']
     shard2:
         instances: 10
-        nerve_ns: main
+        registrations: ['service.main']
     shard3:
         instances: 10
-        nerve_ns: main
+        registrations: ['service.main']
 
 These shards all end up being load-balanced in the same "main" pool. More
 complex YAML definitions can take advantage of YAML's

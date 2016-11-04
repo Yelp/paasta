@@ -122,18 +122,7 @@ def test_downscale_spot_fleet_request():
                                           dry_run=False,
                                           new_capacity=3)
 
-        # test stop when reach capacity
-        mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2[:]
-        autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
-                                                             filtered_slaves=mock_filtered_slaves,
-                                                             pool_settings=mock_pool_settings,
-                                                             current_capacity=5,
-                                                             target_capacity=4,
-                                                             dry_run=False)
-        assert not mock_gracefully_terminate_slave.called
-
-        # test we kill at least one instance if SFR cancelled
-        mock_resource = {'sfr': {'SpotFleetRequestState': 'cancelled_running'}}
+        # test we kill only one instance on scale down and then reach capacity
         mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2[:]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
@@ -142,7 +131,6 @@ def test_downscale_spot_fleet_request():
                                                              target_capacity=4,
                                                              dry_run=False)
         assert mock_gracefully_terminate_slave.call_count == 1
-        mock_resource = {'sfr': {'SpotFleetRequestState': 'active'}}
 
         # test stop if FailSetSpotCapacity
         mock_gracefully_terminate_slave.side_effect = autoscaling_cluster_lib.FailSetSpotCapacity

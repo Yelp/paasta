@@ -1,7 +1,99 @@
 # Change Log
 
-## [0.52.1](https://github.com/Yelp/paasta/tree/0.52.1) (2016-10-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.52.0...0.52.1)
+## [0.56.0](https://github.com/Yelp/paasta/tree/0.56.0) (2016-11-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.4...0.56.0)
+
+**Merged pull requests:**
+
+- Multiple registrations [\#859](https://github.com/Yelp/paasta/pull/859) ([jolynch](https://github.com/jolynch))
+
+## [v0.55.4](https://github.com/Yelp/paasta/tree/v0.55.4) (2016-11-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.3...v0.55.4)
+
+**Closed issues:**
+
+- paasta logs should have --instance option [\#585](https://github.com/Yelp/paasta/issues/585)
+
+**Merged pull requests:**
+
+- Fix stuck downscaling of SFRs [\#877](https://github.com/Yelp/paasta/pull/877) ([mattmb](https://github.com/mattmb))
+- Fix the build again again [\#876](https://github.com/Yelp/paasta/pull/876) ([mjksmith](https://github.com/mjksmith))
+- updated the uwsgi metrics provider default endpoint [\#875](https://github.com/Yelp/paasta/pull/875) ([mjksmith](https://github.com/mjksmith))
+- Fix the build again [\#874](https://github.com/Yelp/paasta/pull/874) ([mjksmith](https://github.com/mjksmith))
+- Globally catch KeyboardInterrupt and exit 1 on cli commands [\#872](https://github.com/Yelp/paasta/pull/872) ([solarkennedy](https://github.com/solarkennedy))
+- Install sphinxcontrib-programoutput from github [\#870](https://github.com/Yelp/paasta/pull/870) ([mattmb](https://github.com/mattmb))
+- fix typo [\#869](https://github.com/Yelp/paasta/pull/869) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Sleep to throttle AWS API calls to SFR API [\#867](https://github.com/Yelp/paasta/pull/867) ([mattmb](https://github.com/mattmb))
+- added "instances" option for paasta logs [\#866](https://github.com/Yelp/paasta/pull/866) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.55.3](https://github.com/Yelp/paasta/tree/v0.55.3) (2016-10-27)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.2...v0.55.3)
+
+**Merged pull requests:**
+
+- Fix downscaling cancelled SFRs [\#868](https://github.com/Yelp/paasta/pull/868) ([mattmb](https://github.com/mattmb))
+- Skip unimplemented autoscaler resources [\#865](https://github.com/Yelp/paasta/pull/865) ([mattmb](https://github.com/mattmb))
+- Update `makefile\_responds\_to` to handle common recursive Makefile pattern [\#862](https://github.com/Yelp/paasta/pull/862) ([Uberi](https://github.com/Uberi))
+
+## [v0.55.2](https://github.com/Yelp/paasta/tree/v0.55.2) (2016-10-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.1...v0.55.2)
+
+**Merged pull requests:**
+
+- Revert "added support for adhoc jobs" [\#863](https://github.com/Yelp/paasta/pull/863) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.55.1](https://github.com/Yelp/paasta/tree/v0.55.1) (2016-10-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.0...v0.55.1)
+
+**Merged pull requests:**
+
+- Use marathon 1.4.0-snap18 in our itests [\#860](https://github.com/Yelp/paasta/pull/860) ([nhandler](https://github.com/nhandler))
+- added support for adhoc jobs [\#825](https://github.com/Yelp/paasta/pull/825) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.55.0](https://github.com/Yelp/paasta/tree/v0.55.0) (2016-10-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.54.0...v0.55.0)
+
+**Merged pull requests:**
+
+- Added docs on realert\_every [\#858](https://github.com/Yelp/paasta/pull/858) ([solarkennedy](https://github.com/solarkennedy))
+- Add code to cleanup cancelled SFRs [\#821](https://github.com/Yelp/paasta/pull/821) ([mattmb](https://github.com/mattmb))
+
+## [v0.54.0](https://github.com/Yelp/paasta/tree/v0.54.0) (2016-10-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.53.2...v0.54.0)
+
+**Merged pull requests:**
+
+- Revert "Try not scaling down before deleting marathon apps." [\#857](https://github.com/Yelp/paasta/pull/857) ([solarkennedy](https://github.com/solarkennedy))
+- Increase the log level when trying to kill non-existant tasks [\#856](https://github.com/Yelp/paasta/pull/856) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.53.2](https://github.com/Yelp/paasta/tree/v0.53.2) (2016-10-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.53.1...v0.53.2)
+
+**Merged pull requests:**
+
+- Fix waiting on mark for deployment [\#854](https://github.com/Yelp/paasta/pull/854) ([mattmb](https://github.com/mattmb))
+
+## [v0.53.1](https://github.com/Yelp/paasta/tree/v0.53.1) (2016-10-18)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.53.0...v0.53.1)
+
+**Merged pull requests:**
+
+- dont jump the gun adopting v2 deployments [\#851](https://github.com/Yelp/paasta/pull/851) ([mjksmith](https://github.com/mjksmith))
+- Don't set the return code of mark-for-deployment as True [\#850](https://github.com/Yelp/paasta/pull/850) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.53.0](https://github.com/Yelp/paasta/tree/v0.53.0) (2016-10-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.52.1...v0.53.0)
+
+**Merged pull requests:**
+
+- 'serivce' is spelled 'service' [\#849](https://github.com/Yelp/paasta/pull/849) ([ealter](https://github.com/ealter))
+- store docker image by deploy group [\#848](https://github.com/Yelp/paasta/pull/848) ([mjksmith](https://github.com/mjksmith))
+- Try not scaling down before deleting marathon apps. [\#845](https://github.com/Yelp/paasta/pull/845) ([solarkennedy](https://github.com/solarkennedy))
+- Suppress help for unused commit param in performance-check [\#844](https://github.com/Yelp/paasta/pull/844) ([kaisen](https://github.com/kaisen))
+- Made mark-for-deployment way more verbose and have a progress bar [\#837](https://github.com/Yelp/paasta/pull/837) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.52.1](https://github.com/Yelp/paasta/tree/v0.52.1) (2016-10-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.52.0...v0.52.1)
 
 **Implemented enhancements:**
 

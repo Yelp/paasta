@@ -104,7 +104,7 @@
                 "type": "integer",
                 "default": 300
             },
-            "registration_namespaces": {
+            "registrations": {
                 "type": "array",
                 "items": {
                     "type": "string"

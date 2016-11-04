@@ -3,9 +3,12 @@ import socket
 
 import service_configuration_lib
 
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import InvalidJobNameError
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
@@ -44,16 +47,27 @@ class LongRunningServiceConfig(InstanceConfig):
 
     # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self):
-        return self.get_registration_namespaces()[0]
+        return decompose_job_id(self.get_registrations()[0])[1]
 
-    def get_registration_namespaces(self):
-        registration_namespaces = self.config_dict.get('registration_namespaces', [])
+    def get_registrations(self):
+        registrations = self.config_dict.get('registrations', [])
+        for registration in registrations:
+            try:
+                decompose_job_id(registration)
+            except InvalidJobNameError:
+                log.error(
+                    'Provided registration {0} for service '
+                    '{1} is invalid'.format(registration, self.service)
+                )
+
         # Backwards compatbility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
-        if not registration_namespaces and 'nerve_ns' in self.config_dict:
-            registration_namespaces.append(self.config_dict.get('nerve_ns'))
+        if not registrations and 'nerve_ns' in self.config_dict:
+            registrations.append(
+                compose_job_id(self.service, self.config_dict['nerve_ns'])
+            )
 
-        return registration_namespaces or [self.instance]
+        return registrations or [compose_job_id(self.service, self.instance)]
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
