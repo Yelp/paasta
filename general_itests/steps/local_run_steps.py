@@ -42,6 +42,7 @@ def non_interactive_local_run(context, var, val):
                         "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
                         "--service fake_simple_service "
                         "--cluster test-cluster "
+                        "--instance main "
                         "--build "
                         '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, val))
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=60)
@@ -75,6 +76,18 @@ def local_run_on_chronos_job(context):
                          "--instance chronos_job "
                          "--build "
                          "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'")
+        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
+
+
+@when(u'we run paasta local-run on an interactive job')
+def local_run_on_adhoc_job(context):
+    with Path("fake_simple_service"):
+        local_run_cmd = ("paasta local-run "
+                         "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
+                         "--service fake_simple_service "
+                         "--cluster test-cluster "
+                         "--instance sample_adhoc_job "
+                         "--build ")
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
 
 
