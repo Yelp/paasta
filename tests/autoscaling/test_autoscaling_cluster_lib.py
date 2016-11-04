@@ -625,6 +625,13 @@ def test_set_asg_capacity():
         mock_update_auto_scaling_group.assert_called_with(AutoScalingGroupName='asg-blah',
                                                           DesiredCapacity=2)
 
+        with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
+            mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 1}}, 'blah')
+            autoscaling_cluster_lib.set_asg_capacity('asg-blah', 2, False, region='westeros-1')
+
+        mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 'ValidationError'}}, 'blah')
+        autoscaling_cluster_lib.set_asg_capacity('asg-blah', 2, False, region='westeros-1')
+
 
 def test_get_instance_type_weights():
     mock_launch_specs = [{'InstanceType': 'c4.blah',
