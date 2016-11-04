@@ -73,19 +73,18 @@ def last_run_state_for_jobs(jobs):
 def sensu_event_for_last_run_state(state):
     """
     Given a LastRunState, return a corresponding sensu event type.
-    Raise a ValueError in the case that the state is not valid.
+    Will return None in the case that the job has not run yet,
+    indicating that no Sensu alert should be sent.
+    Raises ValueError in the case that the state is not valid.
     """
-    if state not in (
-        chronos_tools.LastRunState.Fail,
-        chronos_tools.LastRunState.Success,
-        chronos_tools.LastRunState.NotRun,
-    ):
-        raise ValueError('Expected valid LastRunState. Found %s' % state)
-
     if state is chronos_tools.LastRunState.Fail:
         return pysensu_yelp.Status.CRITICAL
-    else:
+    elif state is chronos_tools.LastRunState.Success:
         return pysensu_yelp.Status.OK
+    elif state is chronos_tools.LastRunState.NotRun:
+        return None
+    else:
+        raise ValueError('Expected valid LastRunState. Found %s' % state)
 
 
 def build_service_job_mapping(client, configured_jobs):
@@ -116,8 +115,6 @@ def build_service_job_mapping(client, configured_jobs):
 
 
 def message_for_status(status, service, instance, cluster):
-    if status not in (pysensu_yelp.Status.CRITICAL, pysensu_yelp.Status.OK, pysensu_yelp.Status.UNKNOWN):
-        raise ValueError('unknown sensu status: %s' % status)
     if status == pysensu_yelp.Status.CRITICAL:
         return (
             "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
@@ -143,8 +140,12 @@ def message_for_status(status, service, instance, cluster):
         }
     elif status == pysensu_yelp.Status.UNKNOWN:
         return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
-    else:
+    elif status == pysensu_yelp.Status.OK:
         return 'Last run of job %s%s%s Succeded' % (service, utils.SPACER, instance)
+    elif status is None:
+        return None
+    else:
+        raise ValueError('unknown sensu status: %s' % status)
 
 
 def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, job_state_pairs):
@@ -207,18 +208,19 @@ def main():
                 cluster=cluster,
                 job_state_pairs=job_state_pairs
             )
-            monitoring_overrides = compose_monitoring_overrides_for_service(
-                chronos_job_config=chronos_job_config,
-                soa_dir=soa_dir
-            )
-            send_event(
-                service=service,
-                instance=instance,
-                monitoring_overrides=monitoring_overrides,
-                status_code=sensu_status,
-                message=sensu_output,
-                soa_dir=soa_dir,
-            )
+            if sensu_status is not None:
+                monitoring_overrides = compose_monitoring_overrides_for_service(
+                    chronos_job_config=chronos_job_config,
+                    soa_dir=soa_dir
+                )
+                send_event(
+                    service=service,
+                    instance=instance,
+                    monitoring_overrides=monitoring_overrides,
+                    status_code=sensu_status,
+                    message=sensu_output,
+                    soa_dir=soa_dir,
+                )
     except (chronos.ChronosAPIError) as e:
         print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
         sys.exit(2)
