@@ -204,7 +204,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def get_max_instances(self):
         return self.config_dict.get('max_instances', None)
 
-    def get_instances(self):
+    def get_desired_instances(self):
         """Get the number of instances specified in zookeeper or the service's marathon configuration.
         If the number of instances in zookeeper is less than min_instances, returns min_instances.
         If the number of instances in zookeeper is greater than max_instances, returns max_instances.
@@ -215,29 +215,34 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                   specified or if desired_state is not 'start'.
                   """
         if self.get_desired_state() == 'start':
-            if self.get_max_instances() is not None:
-                try:
-                    zk_instances = get_instances_from_zookeeper(
-                        service=self.service,
-                        instance=self.instance,
-                    )
-                    log.debug("Got %d instances out of zookeeper" % zk_instances)
-                except NoNodeError:
-                    log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
-                    return self.get_max_instances()
-                else:
-                    limited_instances = self.limit_instance_count(zk_instances)
-                    if limited_instances != zk_instances:
-                        log.warning("Returning limited instance count %d. (zk had %d)" % (
-                                    limited_instances, zk_instances))
-                    return limited_instances
-            else:
-                instances = self.config_dict.get('instances', 1)
-                log.debug("Autoscaling not enabled, returning %d instances" % instances)
-                return instances
+            return self.get_instances()
         else:
             log.debug("Instance is set to stop. Returning '0' instances")
             return 0
+
+    def get_instances(self):
+        """Gets the number of instances for a service, ignoring whether the user has requested
+        the service to be started or stopped"""
+        if self.get_max_instances() is not None:
+            try:
+                zk_instances = get_instances_from_zookeeper(
+                    service=self.service,
+                    instance=self.instance,
+                )
+                log.debug("Got %d instances out of zookeeper" % zk_instances)
+            except NoNodeError:
+                log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
+                return self.get_max_instances()
+            else:
+                limited_instances = self.limit_instance_count(zk_instances)
+                if limited_instances != zk_instances:
+                    log.warning("Returning limited instance count %d. (zk had %d)" % (
+                                limited_instances, zk_instances))
+                return limited_instances
+        else:
+            instances = self.config_dict.get('instances', 1)
+            log.debug("Autoscaling not enabled, returning %d instances" % instances)
+            return instances
 
     def get_autoscaling_params(self):
         default_params = {
@@ -403,7 +408,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
             'constraints': self.get_calculated_constraints(service_namespace_config),
-            'instances': self.get_instances(),
+            'instances': self.get_desired_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
