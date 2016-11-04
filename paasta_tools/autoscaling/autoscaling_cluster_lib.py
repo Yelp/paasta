@@ -150,14 +150,18 @@ def asg_metrics_provider(asg_name, resource, pool_settings, config_folder, dry_r
     resource['ActiveInstances'] = asg['Instances']
     # do we need this
     resource['asg'] = asg
-    desired_instances = len(resource['ActiveInstances'])
+    expected_instances = len(resource['ActiveInstances'])
+    if expected_instances == 0:
+        log.warning("This ASG has no instances, delta should be 1 to "
+                    "launch first instance unless max/min capacity override")
+        return get_asg_delta(resource, 1)
     mesos_state = get_mesos_master().state
     slaves = get_aws_slaves(resource, mesos_state)
     error = get_mesos_utilization_error(resource=resource,
                                         pool_settings=pool_settings,
                                         slaves=slaves,
                                         mesos_state=mesos_state,
-                                        desired_instances=desired_instances)
+                                        expected_instances=expected_instances)
     return get_asg_delta(resource, error)
 
 
@@ -171,14 +175,18 @@ def spotfleet_metrics_provider(spotfleet_request_id, resource, pool_settings, co
     elif sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
         resource['ActiveInstances'] = get_spot_fleet_instances(spotfleet_request_id, region=resource['region'])
         resource['sfr'] = sfr
-        desired_instances = len(resource['ActiveInstances'])
+        expected_instances = len(resource['ActiveInstances'])
+        if expected_instances == 0:
+            log.warning("No instances found in SFR, this shouldn't be possible so we "
+                        "do nothing")
+            return 0, 0
         mesos_state = get_mesos_master().state
         slaves = get_aws_slaves(resource, mesos_state)
         error = get_mesos_utilization_error(resource=resource,
                                             pool_settings=pool_settings,
                                             slaves=slaves,
                                             mesos_state=mesos_state,
-                                            desired_instances=desired_instances)
+                                            expected_instances=expected_instances)
     elif sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
         log.warning("Not scaling an SFR in state: {0} so {1}, skipping...".format(sfr['SpotFleetRequestState'],
                                                                                   spotfleet_request_id))
@@ -254,22 +262,22 @@ def get_mesos_utilization_error(resource,
                                 pool_settings,
                                 slaves,
                                 mesos_state,
-                                desired_instances=None):
+                                expected_instances=None):
     current_instances = len(slaves)
-    if desired_instances == 0:
-        error_message = ("No instances are active, not scaling until the instances are launched")
+    if current_instances == 0:
+        error_message = ("No instances are active, not scaling until the instances are attached to mesos")
         raise ClusterAutoscalingError(error_message)
-    if desired_instances:
+    if expected_instances:
         log.info("Found %.2f%% slaves registered in mesos for this resource (%d/%d)" % (
-                 float(float(current_instances) / float(desired_instances)) * 100,
+                 float(float(current_instances) / float(expected_instances)) * 100,
                  current_instances,
-                 desired_instances))
-        if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
+                 expected_instances))
+        if float(current_instances) / expected_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
             error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
                              "Refusing to scale because we either need to wait for the requests to be "
                              "filled, or the new instances are not healthy for some reason.\n"
                              "(cowardly refusing to go past %.2f%% missing instances)") % (
-                current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+                current_instances, expected_instances, MISSING_SLAVE_PANIC_THRESHOLD)
             raise ClusterAutoscalingError(error_message)
 
     pool_utilization_dict = get_resource_utilization_by_grouping(
@@ -290,30 +298,32 @@ def get_mesos_utilization_error(resource,
 
 def get_asg_delta(resource, error):
     current_capacity = len(resource['asg']['Instances'])
-    ideal_capacity = int(ceil((1 + error) * current_capacity))
-    new_capacity = int(min(
-        max(
-            resource['min_capacity'],
-            floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
-            ideal_capacity,
-            0,
-        ),
-        ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
-        # if max and min set to 0 we still drain gradually
-        max(resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)))
-    ))
-    log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
+    if current_capacity == 0:
+        new_capacity = int(min(
+            max(1, resource['min_capacity']),
+            resource['max_capacity']))
+        ideal_capacity = new_capacity
+    else:
+        ideal_capacity = int(ceil((1 + error) * current_capacity))
+        new_capacity = int(min(
+            max(
+                resource['min_capacity'],
+                floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
+                ideal_capacity,
+                0,
+            ),
+            ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
+            # if max and min set to 0 we still drain gradually
+            max(resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)))
+        ))
+    log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
+    log.debug("The capacity we will scale to is %d instances" % new_capacity)
     if ideal_capacity > resource['max_capacity']:
         log.warning("Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
             ideal_capacity, resource['max_capacity']))
     if ideal_capacity < resource['min_capacity']:
         log.warning("Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
             ideal_capacity, resource['min_capacity']))
-    if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
-            ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
-        log.warning(
-            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
-            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
     return current_capacity, new_capacity
 
 
@@ -331,19 +341,14 @@ def get_spot_fleet_delta(resource, error):
         ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
         resource['max_capacity'],
     ))
-    log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
-
+    log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
+    log.debug("The capacity we will scale to is %d instances" % new_capacity)
     if ideal_capacity > resource['max_capacity']:
         log.warning("Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
             ideal_capacity, resource['max_capacity']))
     if ideal_capacity < resource['min_capacity']:
         log.warning("Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
             ideal_capacity, resource['min_capacity']))
-    if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
-            ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
-        log.warning(
-            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
-            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
     return current_capacity, new_capacity
 
 

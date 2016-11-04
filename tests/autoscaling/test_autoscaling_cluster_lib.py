@@ -754,6 +754,13 @@ def test_get_asg_delta():
     ret = autoscaling_cluster_lib.get_asg_delta(mock_resource, -1)
     assert ret == (1, 0)
 
+    # zero instances means we should launch one
+    mock_resource = {'asg': {'Instances': []},
+                     'min_capacity': 0,
+                     'max_capacity': 10}
+    ret = autoscaling_cluster_lib.get_asg_delta(mock_resource, -1)
+    assert ret == (0, 1)
+
     mock_resource = {'asg': {'Instances': [mock.Mock()] * 20},
                      'min_capacity': 0,
                      'max_capacity': 100}
@@ -826,7 +833,7 @@ def test_asg_metrics_provider():
         mock_get_mesos_utilization_error.assert_called_with(resource=mock_resource_with_active,
                                                             slaves=mock_get_aws_slaves.return_value,
                                                             mesos_state=mock_mesos_state,
-                                                            desired_instances=2,
+                                                            expected_instances=2,
                                                             pool_settings=mock_pool_settings)
         mock_get_asg_delta.assert_called_with(mock_resource, float(0.3))
         assert not mock_cleanup_cancelled_config.called
@@ -841,6 +848,15 @@ def test_asg_metrics_provider():
                                                            config_folder='/nail/blah')
         mock_get_asg.assert_called_with('asg-blah', region='westeros-1')
         assert ret == (0, 0)
+
+        # ASG with no instances
+        mock_is_aws_launching_asg_instances.return_value = False
+        mock_get_asg.return_value = {'Instances': []}
+        autoscaling_cluster_lib.asg_metrics_provider('asg-blah',
+                                                     resource=mock_resource,
+                                                     pool_settings=mock_pool_settings,
+                                                     config_folder='/nail/blah')
+        mock_get_asg_delta.assert_called_with(mock_resource, 1)
 
 
 def test_spotfleet_metrics_provider():
@@ -917,7 +933,7 @@ def test_spotfleet_metrics_provider():
         mock_get_mesos_utilization_error.assert_called_with(resource=mock_resource_with_active,
                                                             slaves=mock_get_aws_slaves.return_value,
                                                             mesos_state=mock_mesos_state,
-                                                            desired_instances=2,
+                                                            expected_instances=2,
                                                             pool_settings=mock_pool_settings)
         mock_get_spot_fleet_delta.assert_called_with(mock_resource, float(0.3))
         assert not mock_cleanup_cancelled_config.called
@@ -957,7 +973,7 @@ def test_spotfleet_metrics_provider():
         get_utilization_calls = [mock.call(resource=mock_capacity_resource,
                                            slaves=mock_slaves,
                                            mesos_state=mock_mesos_state,
-                                           desired_instances=2,
+                                           expected_instances=2,
                                            pool_settings=mock_pool_settings),
                                  mock.call(resource=mock_capacity_resource,
                                            slaves=mock_get_pool_slaves.return_value,
@@ -977,6 +993,14 @@ def test_spotfleet_metrics_provider():
         mock_get_mesos_utilization_error.return_value = 0.2
         ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah',
                                                                  resource=mock_resource,
+                                                                 pool_settings=mock_pool_settings,
+                                                                 config_folder='/nail/blah')
+        assert ret == (0, 0)
+
+        # SFR with no instances
+        mock_resource_with_active['ActiveInstances'] = 0
+        ret = autoscaling_cluster_lib.spotfleet_metrics_provider('sfr-blah',
+                                                                 resource=mock_resource_with_active,
                                                                  pool_settings=mock_pool_settings,
                                                                  config_folder='/nail/blah')
         assert ret == (0, 0)
@@ -1084,7 +1108,7 @@ def test_get_mesos_utilization_error():
             pool_settings=mock_pool_settings,
             slaves=mock_mesos_state['slaves'],
             mesos_state=mock_mesos_state,
-            desired_instances=2)
+            expected_instances=2)
         assert ret == 0.5 - 0.8
 
         mock_mesos_state['slaves'].pop()
@@ -1094,14 +1118,7 @@ def test_get_mesos_utilization_error():
                 pool_settings=mock_pool_settings,
                 slaves=mock_mesos_state['slaves'],
                 mesos_state=mock_mesos_state,
-                desired_instances=2)
-        with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
-            autoscaling_cluster_lib.get_mesos_utilization_error(
-                resource=mock_resource,
-                pool_settings=mock_pool_settings,
-                slaves=mock_mesos_state['slaves'],
-                mesos_state=mock_mesos_state,
-                desired_instances=0)
+                expected_instances=2)
 
 
 def test_is_resource_cancelled():
