@@ -115,15 +115,16 @@ def describe_instances(instance_ids, region=None, instance_filters=None):
         instance_filters = []
     ec2_client = boto3.client('ec2', region_name=region)
     try:
-        instances = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
+        instance_descriptions = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
             log.warn('Cannot find one or more instance from IDs {0}'.format(instance_ids))
             return None
         else:
             raise
-    ret = [reservation['Instances'][0] for reservation in instances['Reservations']]
-    return ret
+    instance_reservations = [reservation['Instances'] for reservation in instance_descriptions['Reservations']]
+    instances = [instance for reservation in instance_reservations for instance in reservation]
+    return instances
 
 
 @register_autoscaling_component('aws_spot_fleet_request', CLUSTER_METRICS_PROVIDER_KEY)
