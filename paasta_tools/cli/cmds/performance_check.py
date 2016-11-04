@@ -59,7 +59,7 @@ def submit_performance_check_job(service, soa_dir):
     performance_check_config = load_performance_check_config(service, soa_dir)
 
     if not performance_check_config:
-        print "No performance-check.yaml. Skipping performance-check."
+        print("No performance-check.yaml. Skipping performance-check.")
         return
 
     endpoint = performance_check_config.pop('endpoint')
@@ -68,9 +68,9 @@ def submit_performance_check_job(service, soa_dir):
         params=performance_check_config,
     )
     r.raise_for_status()
-    print "Posted a submission to the PaaSTA performance-check service."
-    print "Endpoint: {}".format(endpoint)
-    print "Parameters: {}".format(performance_check_config)
+    print("Posted a submission to the PaaSTA performance-check service.")
+    print("Endpoint: {}".format(endpoint))
+    print("Parameters: {}".format(performance_check_config))
 
 
 @timeout()
@@ -86,6 +86,6 @@ def perform_performance_check(args):
             soa_dir=args.soa_dir,
         )
     except Exception as e:
-        print "Something went wrong with the performance check. Safely bailing. No need to panic."
-        print "Here was the error:"
-        print str(e)
+        print("Something went wrong with the performance check. Safely bailing. No need to panic.")
+        print("Here was the error:")
+        print(str(e))

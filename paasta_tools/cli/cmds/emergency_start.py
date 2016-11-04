@@ -64,7 +64,7 @@ def paasta_emergency_start(args):
     """
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
-    print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
+    print("Performing an emergency start on %s..." % compose_job_id(service, args.instance))
     return_code, output = execute_paasta_serviceinit_on_remote_master(
         subcommand='start',
         cluster=args.cluster,
@@ -72,9 +72,9 @@ def paasta_emergency_start(args):
         instances=args.instance,
         system_paasta_config=system_paasta_config
     )
-    print "%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:])
-    print "Output: %s" % PaastaColors.grey(output)
-    print "Run this command to see the status:"
-    print "paasta status --service %s --clusters %s" % (service, args.cluster)
+    print("%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:]))
+    print("Output: %s" % PaastaColors.grey(output))
+    print("Run this command to see the status:")
+    print("paasta status --service %s --clusters %s" % (service, args.cluster))
 
     return return_code

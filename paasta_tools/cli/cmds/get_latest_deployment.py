@@ -53,8 +53,8 @@ def paasta_get_latest_deployment(args):
 
     git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group, soa_dir=soa_dir)
     if not git_sha:
-        print PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service))
+        print(PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service)))
         return 1
     else:
-        print git_sha
+        print(git_sha)
         return 0

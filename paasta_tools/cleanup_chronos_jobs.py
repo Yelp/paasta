@@ -189,22 +189,22 @@ def main():
                 pass
 
     if len(to_delete) == 0:
-        print 'No Chronos Jobs to remove'
+        print('No Chronos Jobs to remove')
     else:
         if len(task_successes) > 0:
-            print format_list_output("Successfully Removed Tasks (if any were running) for:",
-                                     [job[0] for job in task_successes])
+            print(format_list_output("Successfully Removed Tasks (if any were running) for:",
+                                     [job[0] for job in task_successes]))
 
         # if there are any failures, print and exit appropriately
         if len(task_failures) > 0:
-            print format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures])
+            print(format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures]))
 
         if len(job_successes) > 0:
-            print format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes])
+            print(format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes]))
 
         # if there are any failures, print and exit appropriately
         if len(job_failures) > 0:
-            print format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures])
+            print(format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures]))
 
         if len(job_failures) > 0 or len(task_failures) > 0:
             sys.exit(1)

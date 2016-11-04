@@ -85,10 +85,10 @@ def print_cluster_status(cluster, system_paasta_config, humanize, groupings, ver
         verbose=verbose
     )
 
-    print "Cluster: %s" % cluster
-    print get_cluster_dashboards(cluster)
-    print output
-    print ""
+    print("Cluster: %s" % cluster)
+    print(get_cluster_dashboards(cluster))
+    print(output)
+    print("")
 
     return return_code
 
@@ -138,6 +138,6 @@ def paasta_metastatus(args):
                 )
             )
         else:
-            print "Cluster %s doesn't look like a valid cluster?" % args.clusters
-            print "Try using tab completion to help complete the cluster name"
+            print("Cluster %s doesn't look like a valid cluster?" % args.clusters)
+            print("Try using tab completion to help complete the cluster name")
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1

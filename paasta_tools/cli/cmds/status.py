@@ -92,7 +92,7 @@ def missing_deployments_message(service):
 def get_deploy_info(deploy_file_path):
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        print(PaastaCheckMessages.DEPLOY_YAML_MISSING)
         exit(1)
     return deploy_info
 
@@ -136,31 +136,31 @@ def get_actual_deployments(service, soa_dir):
 def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose):
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
-        print 'Cannot get a paasta-api client'
+        print('Cannot get a paasta-api client')
         exit(1)
 
     try:
         status = client.service.status_instance(service=service, instance=instance).result()
     except HTTPError as exc:
-        print exc.response.text
+        print(exc.response.text)
         return exc.status_code
 
-    print 'instance: %s' % PaastaColors.blue(instance)
-    print 'Git sha:    %s (desired)' % status.git_sha
+    print('instance: %s' % PaastaColors.blue(instance))
+    print('Git sha:    %s (desired)' % status.git_sha)
 
     marathon_status = status.marathon
     if marathon_status is None:
-        print "Not implemented: Looks like %s is not a Marathon instance" % instance
+        print("Not implemented: Looks like %s is not a Marathon instance" % instance)
         return 0
     elif marathon_status.error_message:
-        print marathon_status.error_message
+        print(marathon_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(marathon_status.app_count,
                                             marathon_status.bounce_method)
     desired_state = desired_state_human(marathon_status.desired_state,
                                         marathon_status.expected_instance_count)
-    print "State:      %s - Desired state: %s" % (bouncing_status, desired_state)
+    print("State:      %s - Desired state: %s" % (bouncing_status, desired_state))
 
     status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
     if status != MarathonDeployStatus.NotRunning:
@@ -171,10 +171,16 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     else:
         deploy_status = 'NotRunning'
 
-    print status_marathon_job_human(service, instance, deploy_status,
-                                    marathon_status.app_id,
-                                    marathon_status.running_instance_count,
-                                    marathon_status.expected_instance_count)
+    print(
+        status_marathon_job_human(
+            service,
+            instance,
+            deploy_status,
+            marathon_status.app_id,
+            marathon_status.running_instance_count,
+            marathon_status.expected_instance_count,
+        )
+    )
     return 0
 
 
@@ -182,8 +188,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
                               system_paasta_config, verbose=0, use_api_endpoint=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
-    print
-    print "cluster: %s" % cluster
+    print()
+    print("cluster: %s" % cluster)
     seen_instances = []
     deployed_instances = []
 
@@ -202,8 +208,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
 
         # Case: service NOT deployed to cluster.instance
         else:
-            print '  instance: %s' % PaastaColors.red(instance)
-            print '    Git sha:    None (not deployed yet)'
+            print('  instance: %s' % PaastaColors.red(instance))
+            print('    Git sha:    None (not deployed yet)')
 
     return_code = 0
     if len(deployed_instances) > 0:
@@ -228,9 +234,9 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             # Status results are streamed. This print is for possible error messages.
             if status is not None:
                 for line in status.rstrip().split('\n'):
-                    print '    %s' % line
+                    print('    %s' % line)
 
-    print report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance')
+    print(report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance'))
 
     return return_code
 
@@ -271,7 +277,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
         if not cluster_whitelist or cluster in cluster_whitelist
     ]
 
-    print report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster')
+    print(report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster'))
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1
 
 
@@ -310,5 +316,5 @@ def paasta_status(args):
         )
         return return_code
     else:
-        print missing_deployments_message(service)
+        print(missing_deployments_message(service))
         return 1

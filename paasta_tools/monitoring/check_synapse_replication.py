@@ -116,7 +116,7 @@ def parse_synapse_check_options(system_paasta_config):
 
 
 def fail(message, code):
-    print message
+    print(message)
     sys.exit(code)
 
 
@@ -136,7 +136,7 @@ def run_synapse_check():
             code, message = check_replication(name, replication,
                                               options.warn, options.crit)
             all_codes.append(code)
-            print message
+            print(message)
         sys.exit(max(all_codes))
     except Exception, e:
         fail('UNKNOWN: {0}'.format(e), 3)

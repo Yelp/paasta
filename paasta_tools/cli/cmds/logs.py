@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PaaSTA log reader for humans"""
+from __future__ import print_function
+
 import argparse
 import datetime
 import logging
@@ -366,9 +368,9 @@ def print_log(line, requested_levels, raw_mode=False):
     something.
     """
     if raw_mode:
-        print line,  # suppress trailing newline since scribereader already attached one
+        print(line, end=' ')  # suppress trailing newline since scribereader already attached one
     else:
-        print prettify_log_line(line, requested_levels)
+        print(prettify_log_line(line, requested_levels))
 
 
 def prettify_timestamp(timestamp):
@@ -898,7 +900,7 @@ class ScribeLogReader(LogReader):
         """
         env = self.cluster_map.get(cluster, None)
         if env is None:
-            print "I don't know where scribe logs for %s live?" % cluster
+            print("I don't know where scribe logs for %s live?" % cluster)
             sys.exit(1)
         else:
             return env

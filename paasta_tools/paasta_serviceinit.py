@@ -103,8 +103,8 @@ def main():
         # In addition, mesos master does not have information of a chronos service's git hash.
         # The git sha in deployment.json is simply used here.
         version = get_deployment_version(actual_deployments, cluster, instance)
-        print 'instance: %s' % PaastaColors.blue(instance)
-        print 'Git sha:    %s (desired)' % version
+        print('instance: %s' % PaastaColors.blue(instance))
+        print('Git sha:    %s (desired)' % version)
 
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)

@@ -137,4 +137,4 @@ def paasta_info(args):
     """Prints general information about a service"""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir=soa_dir)
-    print get_service_info(service, soa_dir)
+    print(get_service_info(service, soa_dir))

@@ -49,4 +49,4 @@ def paasta_list(args):
         services = list_paasta_services()
 
     for service in services:
-        print service
+        print(service)

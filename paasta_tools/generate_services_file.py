@@ -46,7 +46,7 @@ def main():
     strings = []
     for service in sorted(os.listdir(DEFAULT_SOA_DIR)):
         strings.extend(get_service_lines_for_service(service))
-    print "\n".join(strings)
+    print("\n".join(strings))
     sys.exit(0)
 
 

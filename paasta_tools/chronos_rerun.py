@@ -173,13 +173,13 @@ def main():
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
             args.service_instance, cluster)
-        print error_msg
+        print(error_msg)
         raise e
     except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
-        print error_msg
+        print(error_msg)
         raise e
     except chronos_tools.InvalidParentError as e:
         raise e

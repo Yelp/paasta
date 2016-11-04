@@ -120,28 +120,28 @@ def paasta_rerun(args):
         clusters = deployed_clusters
 
     for cluster in clusters:
-        print "cluster: %s" % cluster
+        print("cluster: %s" % cluster)
 
         if cluster not in all_clusters:
-            print "  Warning: \"%s\" does not look like a valid cluster." % cluster
+            print("  Warning: \"%s\" does not look like a valid cluster." % cluster)
             continue
         if cluster not in deployed_clusters:
-            print "  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster)
+            print("  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster))
             continue
         if not deployed_cluster_instance[cluster].get(args.instance, False):
-            print ("  Warning: instance \"%s\" is either invalid "
-                   "or has not been deployed to \"%s\" yet." % (args.instance, cluster))
+            print(("  Warning: instance \"%s\" is either invalid "
+                   "or has not been deployed to \"%s\" yet." % (args.instance, cluster)))
             continue
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
                 service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir)
             if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
-                print ("  Warning: \"%s\" uses time variables interpolation, "
-                       "please supply a `--execution_date` argument." % args.instance)
+                print(("  Warning: \"%s\" uses time variables interpolation, "
+                       "please supply a `--execution_date` argument." % args.instance))
                 continue
         except NoConfigurationForServiceError as e:
-            print "  Warning: %s" % e.message
+            print("  Warning: %s" % e.message)
             continue
         if execution_date is None:
             execution_date = _get_default_execution_date()
@@ -155,7 +155,7 @@ def paasta_rerun(args):
             system_paasta_config=system_paasta_config,
         )
         if rc == 0:
-            print PaastaColors.green('  successfully created job')
+            print(PaastaColors.green('  successfully created job'))
         else:
-            print PaastaColors.red('  error')
-            print output
+            print(PaastaColors.red('  error'))
+            print(output)

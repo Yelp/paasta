@@ -175,10 +175,10 @@ def paasta_start_or_stop(args, desired_state):
         clusters = args.clusters.split(",")
         invalid_clusters = [cluster for cluster in clusters if cluster not in valid_clusters]
         if invalid_clusters:
-            print(
+            print((
                 "Invalid cluster name(s) specified: %s."
                 "Valid options: %s"
-            ) % (" ".join(invalid_clusters), " ".join(valid_clusters))
+            ) % (" ".join(invalid_clusters), " ".join(valid_clusters)))
             return 1
     else:
         clusters = valid_clusters
@@ -193,7 +193,7 @@ def paasta_start_or_stop(args, desired_state):
             "Try again from somewhere where the git server can be reached, "
             "like your developer environment."
         ) % str(e)
-        print msg
+        print(msg)
         return 1
 
     invalid_deploy_groups = []
@@ -239,9 +239,9 @@ def paasta_start_or_stop(args, desired_state):
 
     return_val = 0
     if invalid_deploy_groups:
-        print "No branches found for %s in %s." % \
-            (", ".join(invalid_deploy_groups), remote_refs)
-        print "Has %s been deployed there yet?" % service
+        print("No branches found for %s in %s." %
+              (", ".join(invalid_deploy_groups), remote_refs))
+        print("Has %s been deployed there yet?" % service)
         return_val = 1
 
     return return_val

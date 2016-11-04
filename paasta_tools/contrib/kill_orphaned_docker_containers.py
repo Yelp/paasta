@@ -36,16 +36,16 @@ def main():
             orphaned_containers.append((container["Names"][0].strip("/"), mesos_task_id))
 
     if orphaned_containers:
-        print "CRIT: Docker containers are orphaned: %s%s" % (", ".join(
+        print("CRIT: Docker containers are orphaned: %s%s" % (", ".join(
             "%s (%s)" % (container_name, mesos_task_id)
             for container_name, mesos_task_id in orphaned_containers
-        ), " and will be killed" if args.force else "")
+        ), " and will be killed" if args.force else ""))
         if args.force:
             for container_name, mesos_task_id in orphaned_containers:
                 docker_client.kill(container_name)
         sys.exit(1)
     else:
-        print "OK: All mesos task IDs accounted for"
+        print("OK: All mesos task IDs accounted for")
         sys.exit(0)
 
 

@@ -35,5 +35,5 @@ def add_subparser(subparsers):
 
 
 def perform_security_check(args):
-    print 'Not implemented yet'
+    print('Not implemented yet')
     return 0

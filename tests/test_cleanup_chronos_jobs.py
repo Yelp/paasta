@@ -32,7 +32,7 @@ def test_cleanup_jobs():
     result = cleanup_chronos_jobs.cleanup_jobs(chronos_client, ['foo', 'bar', 'baz'])
 
     # I'd like to just compare the lists, but you can't compare exception objects.
-    print result
+    print(result)
     assert result[0] == ('foo', None)
     assert result[1] == ('bar', None)
     assert result[2][0] == 'baz'

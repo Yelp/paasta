@@ -112,21 +112,21 @@ def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_d
     def format_timestamp(tstamp):
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
-    print "Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:"
+    print("Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:")
     git_shas = sorted(get_git_shas_for_service(service, deploy_groups, soa_dir), key=lambda x: x[1], reverse=True)[:10]
     rows = [('Timestamp -- UTC', 'Human time', 'deploy_group', 'Git SHA')]
     for sha, (timestamp, deploy_group) in git_shas:
-        print timestamp
+        print(timestamp)
         rows.extend([(timestamp, format_timestamp(timestamp), deploy_group, sha)])
     for line in format_table(rows):
-        print line
+        print(line)
     if len(git_shas) >= 2:
-        print ""
+        print("")
         sha, (timestamp, deploy_group) = git_shas[1]
         deploy_groups_arg_line = '-d %s ' % ','.join(deploy_groups) if any_given_deploy_groups else ''
-        print "For example, to use the second to last commit from %s used on %s, run:" % (
-            format_timestamp(timestamp), PaastaColors.bold(deploy_group))
-        print PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha))
+        print("For example, to use the second to last commit from %s used on %s, run:" % (
+            format_timestamp(timestamp), PaastaColors.bold(deploy_group)))
+        print(PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha)))
 
 
 def paasta_rollback(args):
@@ -145,10 +145,10 @@ def paasta_rollback(args):
     deploy_groups, invalid = validate_given_deploy_groups(all_deploy_groups, given_deploy_groups)
 
     if len(invalid) > 0:
-        print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
+        print(PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid)))
 
     if len(deploy_groups) == 0:
-        print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service))
+        print(PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service)))
         return 1
 
     commit = args.commit

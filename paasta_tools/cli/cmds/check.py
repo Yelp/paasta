@@ -78,19 +78,19 @@ def deploy_check(service_path):
 
     :param service_path: path to a directory containing deploy.yaml"""
     if is_file_in_dir('deploy.yaml', service_path):
-        print PaastaCheckMessages.DEPLOY_YAML_FOUND
+        print(PaastaCheckMessages.DEPLOY_YAML_FOUND)
     else:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        print(PaastaCheckMessages.DEPLOY_YAML_MISSING)
 
 
 def deploy_has_security_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
     steps = [step['step'] for step in pipeline]
     if 'security-check' in steps:
-        print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
+        print(PaastaCheckMessages.DEPLOY_SECURITY_FOUND)
         return True
     else:
-        print PaastaCheckMessages.DEPLOY_SECURITY_MISSING
+        print(PaastaCheckMessages.DEPLOY_SECURITY_MISSING)
         return False
 
 
@@ -98,10 +98,10 @@ def deploy_has_performance_check(service, soa_dir):
     pipeline = get_pipeline_config(service, soa_dir)
     steps = [step['step'] for step in pipeline]
     if 'performance-check' in steps:
-        print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
+        print(PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND)
         return True
     else:
-        print PaastaCheckMessages.DEPLOY_PERFORMANCE_MISSING
+        print(PaastaCheckMessages.DEPLOY_PERFORMANCE_MISSING)
         return False
 
 
@@ -110,9 +110,9 @@ def docker_check():
     Prints suitable message depending on outcome"""
     docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
     if docker_file_path:
-        print PaastaCheckMessages.DOCKERFILE_FOUND
+        print(PaastaCheckMessages.DOCKERFILE_FOUND)
     else:
-        print PaastaCheckMessages.DOCKERFILE_MISSING
+        print(PaastaCheckMessages.DOCKERFILE_MISSING)
 
 
 def makefile_responds_to(target):
@@ -140,34 +140,34 @@ def makefile_check():
     it to ensure it is paasta-ready"""
     makefile_path = is_file_in_dir('Makefile', os.getcwd())
     if makefile_path:
-        print PaastaCheckMessages.MAKEFILE_FOUND
+        print(PaastaCheckMessages.MAKEFILE_FOUND)
 
         if makefile_has_a_tab(makefile_path):
-            print PaastaCheckMessages.MAKEFILE_HAS_A_TAB
+            print(PaastaCheckMessages.MAKEFILE_HAS_A_TAB)
         else:
-            print PaastaCheckMessages.MAKEFILE_HAS_NO_TABS
+            print(PaastaCheckMessages.MAKEFILE_HAS_NO_TABS)
 
         if makefile_has_docker_tag(makefile_path):
-            print PaastaCheckMessages.MAKEFILE_HAS_DOCKER_TAG
+            print(PaastaCheckMessages.MAKEFILE_HAS_DOCKER_TAG)
         else:
-            print PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG
+            print(PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG)
 
         if makefile_responds_to('cook-image'):
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE)
         else:
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL)
 
         if makefile_responds_to('itest'):
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST)
         else:
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL)
 
         if makefile_responds_to('test'):
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_TEST)
         else:
-            print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST_FAIL
+            print(PaastaCheckMessages.MAKEFILE_RESPONDS_TEST_FAIL)
     else:
-        print PaastaCheckMessages.MAKEFILE_MISSING
+        print(PaastaCheckMessages.MAKEFILE_MISSING)
 
 
 def git_repo_check(service):
@@ -175,9 +175,9 @@ def git_repo_check(service):
     cmd = 'git ls-remote %s' % git_url
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
-        print PaastaCheckMessages.GIT_REPO_FOUND
+        print(PaastaCheckMessages.GIT_REPO_FOUND)
     else:
-        print PaastaCheckMessages.git_repo_missing(git_url)
+        print(PaastaCheckMessages.git_repo_missing(git_url))
 
 
 def yaml_check(service_path):
@@ -189,13 +189,13 @@ def yaml_check(service_path):
     """
     found_yaml = False
     if is_file_in_dir('marathon*.yaml', service_path):
-        print PaastaCheckMessages.MARATHON_YAML_FOUND
+        print(PaastaCheckMessages.MARATHON_YAML_FOUND)
         found_yaml = True
     if is_file_in_dir('chronos*.yaml', service_path):
-        print PaastaCheckMessages.CHRONOS_YAML_FOUND
+        print(PaastaCheckMessages.CHRONOS_YAML_FOUND)
         found_yaml = True
     if not found_yaml:
-        print PaastaCheckMessages.YAML_MISSING
+        print(PaastaCheckMessages.YAML_MISSING)
 
 
 def get_chronos_steps(service, soa_dir):
@@ -257,32 +257,32 @@ def deployments_check(service, soa_dir):
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
     in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
-        print "%s There are some instance(s) you have asked to run in marathon that" % x_mark()
-        print "  do not have a corresponding entry in deploy.yaml:"
-        print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
-        print "  You should probably configure these to use a 'deploy_group' or"
-        print "  add entries to deploy.yaml for them so they are deployed to those clusters."
+        print("%s There are some instance(s) you have asked to run in marathon that" % x_mark())
+        print("  do not have a corresponding entry in deploy.yaml:")
+        print("  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy)))
+        print("  You should probably configure these to use a 'deploy_group' or")
+        print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
         the_return = False
     if len(in_chronos_not_deploy) > 0:
-        print "%s There are some instance(s) you have asked to run in chronos that" % x_mark()
-        print "  do not have a corresponding entry in deploy.yaml:"
-        print "  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy))
-        print "  You should probably configure these to use a 'deploy_group' or"
-        print "  add entries to deploy.yaml for them so they are deployed to those clusters."
+        print("%s There are some instance(s) you have asked to run in chronos that" % x_mark())
+        print("  do not have a corresponding entry in deploy.yaml:")
+        print("  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy)))
+        print("  You should probably configure these to use a 'deploy_group' or")
+        print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
         the_return = False
     in_deploy_not_marathon_chronos = set(pipeline_steps) - set(marathon_steps) - set(chronos_steps)
     if len(in_deploy_not_marathon_chronos) > 0:
-        print "%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark()
-        print "  by any marathon or chronos instance:"
-        print "  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon_chronos)))
-        print "  You should probably delete these deploy.yaml entries if they are unused."
+        print("%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark())
+        print("  by any marathon or chronos instance:")
+        print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon_chronos))))
+        print("  You should probably delete these deploy.yaml entries if they are unused.")
         the_return = False
     if the_return is True:
-        print success("All entries in deploy.yaml correspond to a marathon or chronos entry")
+        print(success("All entries in deploy.yaml correspond to a marathon or chronos entry"))
         if len(marathon_steps) > 0:
-            print success("All marathon instances have a corresponding deploy.yaml entry")
+            print(success("All marathon instances have a corresponding deploy.yaml entry"))
         if len(chronos_steps) > 0:
-            print success("All chronos instances have a corresponding deploy.yaml entry")
+            print(success("All chronos instances have a corresponding deploy.yaml entry"))
     return the_return
 
 
@@ -293,14 +293,14 @@ def sensu_check(service, service_path, soa_dir):
     :param service: name of service currently being examined
     :param service_path: path to loction of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
-        print PaastaCheckMessages.SENSU_MONITORING_FOUND
+        print(PaastaCheckMessages.SENSU_MONITORING_FOUND)
         team = get_team(service=service, overrides={}, soa_dir=soa_dir)
         if team is None:
-            print PaastaCheckMessages.SENSU_TEAM_MISSING
+            print(PaastaCheckMessages.SENSU_TEAM_MISSING)
         else:
-            print PaastaCheckMessages.sensu_team_found(team)
+            print(PaastaCheckMessages.sensu_team_found(team))
     else:
-        print PaastaCheckMessages.SENSU_MONITORING_MISSING
+        print(PaastaCheckMessages.SENSU_MONITORING_MISSING)
 
 
 def service_dir_check(service, soa_dir):
@@ -309,9 +309,9 @@ def service_dir_check(service, soa_dir):
     """
     try:
         validate_service_name(service, soa_dir)
-        print PaastaCheckMessages.service_dir_found(service, soa_dir)
+        print(PaastaCheckMessages.service_dir_found(service, soa_dir))
     except NoSuchService:
-        print PaastaCheckMessages.service_dir_missing(service, soa_dir)
+        print(PaastaCheckMessages.service_dir_missing(service, soa_dir))
 
 
 def smartstack_check(service, service_path, soa_dir):
@@ -321,19 +321,19 @@ def smartstack_check(service, service_path, soa_dir):
     :param service: name of service currently being examined
     :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
-        print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
+        print(PaastaCheckMessages.SMARTSTACK_YAML_FOUND)
         instances = get_all_namespaces_for_service(service=service, soa_dir=soa_dir)
         if len(instances) > 0:
             for namespace, config in get_all_namespaces_for_service(service=service,
                                                                     soa_dir=soa_dir,
                                                                     full_name=False):
                 if 'proxy_port' in config:
-                    print PaastaCheckMessages.smartstack_port_found(
-                        namespace, config.get('proxy_port'))
+                    print(PaastaCheckMessages.smartstack_port_found(
+                        namespace, config.get('proxy_port')))
                 else:
-                    print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
+                    print(PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
         else:
-            print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
+            print(PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
 
 def paasta_check(args):

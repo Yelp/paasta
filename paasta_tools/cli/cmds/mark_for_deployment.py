@@ -182,23 +182,23 @@ def paasta_mark_for_deployment(args):
     _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
 
     if len(invalid_deploy_groups) == 1:
-        print PaastaColors.red(
-            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups))
-        print PaastaColors.red(
-            "This isn't technically wrong because you can mark-for-deployment before deploying there")
-        print PaastaColors.red("but this is probably a typo. Did you mean one of these in-use deploy groups?:")
-        print PaastaColors.red("   %s" % (",").join(in_use_deploy_groups))
-        print ""
-        print PaastaColors.red("Continuing regardless...")
+        print(PaastaColors.red(
+            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups)))
+        print(PaastaColors.red(
+            "This isn't technically wrong because you can mark-for-deployment before deploying there"))
+        print(PaastaColors.red("but this is probably a typo. Did you mean one of these in-use deploy groups?:"))
+        print(PaastaColors.red("   %s" % (",").join(in_use_deploy_groups)))
+        print("")
+        print(PaastaColors.red("Continuing regardless..."))
 
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
     old_git_sha = get_currently_deployed_sha(service=service, deploy_group=args.deploy_group)
     if old_git_sha == args.commit:
-        print "Warning: The sha asked to be deployed already matches what is set to be deployed:"
-        print old_git_sha
-        print "Continuing anyway."
+        print("Warning: The sha asked to be deployed already matches what is set to be deployed:")
+        print(old_git_sha)
+        print("Continuing anyway.")
 
     ret = mark_for_deployment(
         git_url=args.git_url,
@@ -208,7 +208,7 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            print "Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group)
+            print("Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group))
             wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
@@ -224,12 +224,12 @@ def paasta_mark_for_deployment(args):
         except (KeyboardInterrupt, TimeoutError):
             if args.auto_rollback is True:
                 if old_git_sha == args.commit:
-                    print "Error: --auto-rollback was requested, but the previous sha"
-                    print "is the same that was requested with --commit. Can't rollback"
-                    print "automatically."
+                    print("Error: --auto-rollback was requested, but the previous sha")
+                    print("is the same that was requested with --commit. Can't rollback")
+                    print("automatically.")
                 else:
-                    print "Auto-Rollback requested. Marking the previous sha"
-                    print "(%s) for %s as desired." % (args.deploy_group, old_git_sha)
+                    print("Auto-Rollback requested. Marking the previous sha")
+                    print("(%s) for %s as desired." % (args.deploy_group, old_git_sha))
                     mark_for_deployment(
                         git_url=args.git_url,
                         deploy_group=args.deploy_group,
@@ -237,18 +237,19 @@ def paasta_mark_for_deployment(args):
                         commit=old_git_sha,
                     )
             else:
-                print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
-                print "If you wish to see the status, run:"
-                print ""
-                print "    paasta status -s %s -v" % service
-                print ""
+                print("Waiting for deployment aborted. PaaSTA will continue to try to deploy this code.")
+                print("If you wish to see the status, run:")
+                print("")
+                print("    paasta status -s %s -v" % service)
+                print("")
             ret = 1
     if old_git_sha is not None and old_git_sha != args.commit:
-        print ""
-        print "If you wish to roll back, you can run:"
-        print ""
-        print PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
+        print("")
+        print("If you wish to roll back, you can run:")
+        print("")
+        print(PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
             service, args.deploy_group, old_git_sha))
+        )
     return ret
 
 
@@ -344,7 +345,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                                 git_sha=git_sha)
                             if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
                                 instance_csv = ", ".join(cluster_map[cluster]['instances'])
-                                print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
+                                print("Deploy to %s complete! (instances: %s)" % (cluster, instance_csv))
                         bar.update(sum([v["deployed"] for v in cluster_map.values()]))
                     if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
                         break

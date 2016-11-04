@@ -741,7 +741,7 @@ def wait_for_job(client, job_name):
         if found:
             return True
         else:
-            print "waiting for job %s to launch. retrying" % (job_name)
+            print("waiting for job %s to launch. retrying" % (job_name))
             sleep(0.5)
 
 

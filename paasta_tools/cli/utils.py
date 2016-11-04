@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import print_function
+
 import argparse
 import fnmatch
 import logging
@@ -575,7 +577,7 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
-        print service_not_found
+        print(service_not_found)
         exit(1)
     return service
 

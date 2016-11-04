@@ -1595,7 +1595,7 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         def _print(line, level=None):
-            print line
+            print(line)
         fake_log_bounce_action = mock.Mock(side_effect=_print)
 
         setup_marathon_job.drain_tasks_and_find_tasks_to_kill(

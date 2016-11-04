@@ -23,7 +23,7 @@ def get_deployments():
 
 def main():
     parse_args()
-    print len(get_deployments())
+    print(len(get_deployments()))
 
 
 if __name__ == "__main__":

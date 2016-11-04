@@ -47,7 +47,7 @@ def check_exit_code(context, expected_exit_code):
     except AssertionError:
         # behave likes to back up by two lines and then print some stuff, which clobbers my output, so I stick some
         # extra newlines on here.
-        print "Output of setup_chronos_job:\n" + context.output + "\n\n"
+        print("Output of setup_chronos_job:\n" + context.output + "\n\n")
         raise
 
 

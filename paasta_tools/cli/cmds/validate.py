@@ -90,7 +90,7 @@ def validate_schema(file_path, file_type):
     """
     schema = get_schema(file_type)
     if (schema is None):
-        print '%s: %s' % (SCHEMA_NOT_FOUND, file_path)
+        print('%s: %s' % (SCHEMA_NOT_FOUND, file_path))
         return
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
@@ -98,7 +98,7 @@ def validate_schema(file_path, file_type):
     try:
         config_file = get_file_contents(file_path)
     except IOError:
-        print '%s: %s' % (FAILED_READING_FILE, file_path)
+        print('%s: %s' % (FAILED_READING_FILE, file_path))
         return False
     if extension == '.yaml':
         config_file_object = yaml.load(config_file)
@@ -109,12 +109,12 @@ def validate_schema(file_path, file_type):
     try:
         validator.validate(config_file_object)
     except ValidationError:
-        print '%s: %s' % (SCHEMA_INVALID, file_path)
+        print('%s: %s' % (SCHEMA_INVALID, file_path))
 
         errors = validator.iter_errors(config_file_object)
-        print '  Validation Message: %s' % exceptions.best_match(errors).message
+        print('  Validation Message: %s' % exceptions.best_match(errors).message)
     else:
-        print '%s: %s' % (SCHEMA_VALID, basename)
+        print('%s: %s' % (SCHEMA_VALID, basename))
         return True
 
 
@@ -165,12 +165,12 @@ def check_service_path(service_path):
     :param service_path: Path to directory that should contain yaml files
     """
     if not service_path or not os.path.isdir(service_path):
-        print failure("%s is not a directory" % service_path,
-                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+        print(failure("%s is not a directory" % service_path,
+                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html"))
         return False
     if not glob(os.path.join(service_path, "*.yaml")):
-        print failure("%s does not contain any .yaml files" % service_path,
-                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+        print(failure("%s does not contain any .yaml files" % service_path,
+                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html"))
         return False
     return True
 
@@ -187,7 +187,7 @@ def get_service_path(service, soa_dir):
         if soa_dir == os.getcwd():
             service_path = os.getcwd()
         else:
-            print UNKNOWN_SERVICE
+            print(UNKNOWN_SERVICE)
             return None
     return service_path
 
@@ -208,8 +208,8 @@ def validate_chronos(service_path):
     returncode = True
 
     if service.startswith(TMP_JOB_IDENTIFIER):
-        print ("Services using scheduled tasks cannot be named %s, as it clashes with the"
-               " identifier used for temporary jobs" % TMP_JOB_IDENTIFIER)
+        print(("Services using scheduled tasks cannot be named %s, as it clashes with the"
+               " identifier used for temporary jobs" % TMP_JOB_IDENTIFIER))
         return False
     for cluster in list_clusters(service, soa_dir, instance_type):
         services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
@@ -235,10 +235,10 @@ def validate_chronos(service_path):
             unique_check_msgs = list(set(check_msgs))
 
             if not checks_passed:
-                print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
+                print(invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs)))
                 returncode = False
             else:
-                print valid_chronos_instance(cluster, instance)
+                print(valid_chronos_instance(cluster, instance))
     return returncode
 
 

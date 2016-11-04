@@ -78,7 +78,7 @@ def get_paasta_config(yelpsoa_config_root):
 
 
 def write_paasta_config(variables, template, destination):
-    print "Using cookiecutter template from %s" % template
+    print("Using cookiecutter template from %s" % template)
     cookiecutter(
         template=template,
         extra_context=variables,
@@ -101,12 +101,12 @@ def paasta_fsm(args):
         destination=destination,
     )
 
-    print PaastaColors.yellow("               _  _(o)_(o)_  _")
-    print PaastaColors.red("             ._\`:_ F S M _:' \_,")
-    print PaastaColors.green("                 / (`---'\ `-.")
-    print PaastaColors.cyan("              ,-`  _)    (_,")
-    print "With My Noodly Appendage I Have Written Configs!"
-    print
-    print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
-    print "Remember To Add, Commit, And Push When You're Done:"
-    print
+    print(PaastaColors.yellow("               _  _(o)_(o)_  _"))
+    print(PaastaColors.red("             ._\`:_ F S M _:' \_,"))
+    print(PaastaColors.green("                 / (`---'\ `-."))
+    print(PaastaColors.cyan("              ,-`  _)    (_,"))
+    print("With My Noodly Appendage I Have Written Configs!")
+    print()
+    print("Customize Them If It Makes You Happy -- http://y/paasta For Details")
+    print("Remember To Add, Commit, And Push When You're Done:")
+    print()

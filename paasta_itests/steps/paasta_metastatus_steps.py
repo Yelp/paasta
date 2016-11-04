@@ -81,13 +81,13 @@ def check_metastatus_return_code_with_flags(context, flags, expected_return_code
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
     cmd = '../paasta_tools/paasta_metastatus.py%s' % flags
-    print 'Running cmd %s' % (cmd)
+    print('Running cmd %s' % (cmd))
     exit_code, output = _run(cmd)
 
     # we don't care about the colouring here, so remove any ansi escape sequences
     escaped_output = remove_ansi_escape_sequences(output)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print '\n'
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print('\n')
 
     assert exit_code == int(expected_return_code)
     assert expected_output in escaped_output

@@ -26,10 +26,10 @@ from paasta_tools.mesos_tools import is_mesos_leader
 
 def main():
     if is_mesos_leader():
-        print True
+        print(True)
         exit(0)
     else:
-        print False
+        print(False)
         exit(1)
 
 

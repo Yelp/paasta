@@ -106,10 +106,10 @@ def is_safe_to_drain(hostname):
     :returns: True or False
     """
     if not is_hostname_local(hostname):
-        print (
+        print((
             "Due to the way is_safe_to_drain is implemented, it can only work "
             "on localhost."
-        )
+        ))
         return False
     return not are_local_tasks_in_danger()
 
@@ -204,7 +204,7 @@ def paasta_maintenance():
     hostnames = args.hostname
 
     if action != 'status' and not hostnames:
-        print "You must specify one or more hostnames"
+        print("You must specify one or more hostnames")
         return
 
     start = args.start
@@ -239,7 +239,7 @@ def paasta_maintenance():
         ret = mesos_maintenance.is_host_past_maintenance_end(hostnames[0])
     else:
         raise NotImplementedError("Action: '%s' is not implemented." % action)
-    print ret
+    print(ret)
     return ret
 
 

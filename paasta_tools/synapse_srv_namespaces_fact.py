@@ -34,7 +34,7 @@ def main():
         if 'proxy_port' in config:
             strings.append('%s:%s' % (full_name, config['proxy_port']))
     strings = sorted(strings)
-    print "synapse_srv_namespaces=" + ','.join(strings)
+    print("synapse_srv_namespaces=" + ','.join(strings))
     sys.exit(0)
 
 

@@ -41,7 +41,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs or has
     # been previously stopped.
     if complete_job_config['disabled']:
-        print PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first.")
+        print(PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first."))
     else:
         log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
         _log(
@@ -112,7 +112,7 @@ def _prettify_time(time):
     try:
         dt = isodate.parse_datetime(time)
     except isodate.isoerror.ISO8601Error:
-        print "unable to parse datetime %s" % time
+        print("unable to parse datetime %s" % time)
         raise
     dt_localtime = datetime_from_utc_to_local(dt)
     pretty_dt = "%s, %s" % (
@@ -405,7 +405,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        print status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose)
+        print(status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose))
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

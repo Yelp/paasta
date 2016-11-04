@@ -123,14 +123,14 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     if not hasattr(context, 'marathon_client'):
         context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
     else:
-        print 'Marathon connection already established'
+        print('Marathon connection already established')
 
     if not hasattr(context, 'chronos_client'):
         context.chronos_config = setup_chronos_config()
         context.chronos_client = setup_chronos_client()
         context.jobs = {}
     else:
-        print 'Chronos connection already established'
+        print('Chronos connection already established')
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)

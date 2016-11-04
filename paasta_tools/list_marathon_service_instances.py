@@ -122,7 +122,7 @@ def main():
         service_instances = []
         for name, instance in instances:
             service_instances.append(compose_job_id(name, instance))
-    print '\n'.join(service_instances)
+    print('\n'.join(service_instances))
     sys.exit(0)
 
 

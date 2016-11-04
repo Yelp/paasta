@@ -43,9 +43,9 @@ def delete_apps(context, job_id, cluster_name):
 @then(u'we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"')
 def run_cleanup_marathon_job(context, flags, expected_return_code):
     cmd = '../paasta_tools/cleanup_marathon_jobs.py --soa-dir %s %s' % (context.soa_dir, flags)
-    print 'Running cmd %s' % (cmd)
+    print('Running cmd %s' % (cmd))
     exit_code, output = _run(cmd)
-    print output
+    print(output)
 
     assert exit_code == int(expected_return_code)
 

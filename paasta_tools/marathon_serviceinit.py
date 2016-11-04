@@ -382,7 +382,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
             app_id = job_config.format_marathon_app_dict()['id']
         except NoDockerImageError:
             job_id = compose_job_id(service, instance)
-            print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
+            print("Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id)
             return 1
 
     normal_instance_count = job_config.get_instances()
@@ -394,21 +394,21 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     if command == 'restart':
         restart_marathon_job(service, instance, app_id, client, cluster)
     elif command == 'status':
-        print status_desired_state(service, instance, client, job_config)
-        print status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        print(status_desired_state(service, instance, client, job_config))
+        print(status_marathon_job(service, instance, app_id, normal_instance_count, client))
         tasks, out = status_marathon_job_verbose(service, instance, client)
         if verbose > 0:
-            print out
-        print status_mesos_tasks(service, instance, normal_instance_count)
+            print(out)
+        print(status_mesos_tasks(service, instance, normal_instance_count))
         if verbose > 0:
             tail_lines = calculate_tail_lines(verbose_level=verbose)
-            print status_mesos_tasks_verbose(
+            print(status_mesos_tasks_verbose(
                 job_id=app_id,
                 get_short_task_id=get_short_task_id,
                 tail_lines=tail_lines,
-            )
+            ))
         if proxy_port is not None:
-            print status_smartstack_backends(
+            print(status_smartstack_backends(
                 service=service,
                 instance=instance,
                 cluster=cluster,
@@ -419,7 +419,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 verbose=verbose > 0,
                 synapse_port=system_config.get_synapse_port(),
                 synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
-            )
+            ))
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

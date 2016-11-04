@@ -81,12 +81,12 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             context.marathon_client,
             cluster
         )
-    print "Sleeping 5 seconds to wait for %s to be restarted." % service
+    print("Sleeping 5 seconds to wait for %s to be restarted." % service)
     time.sleep(5)
     new_tasks = context.marathon_client.get_app(app_id).tasks
-    print "Tasks before the restart: %s" % old_tasks
-    print "Tasks after  the restart: %s" % new_tasks
-    print  # sacrificial line for behave to eat instead of our output
+    print("Tasks before the restart: %s" % old_tasks)
+    print("Tasks after  the restart: %s" % new_tasks)
+    print()  # sacrificial line for behave to eat instead of our output
     assert old_tasks != new_tasks
 
 
@@ -94,10 +94,10 @@ def marathon_restart_gets_new_task_ids(context, job_id):
        ' exits with return code 0 and the correct output'))
 def chronos_status_returns_healthy(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
     assert "Disabled" in output
@@ -108,10 +108,10 @@ def chronos_status_returns_healthy(context, service_instance):
        ' exits with return code 0 and the correct output'))
 def chronos_status_verbose_returns_healthy(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
     assert "Running Tasks:" in output
@@ -121,10 +121,10 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
        ' exits with return code 0 and the correct output'))
 def paasta_serviceinit_tail_stdstreams(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status -vv" % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
     assert "stdout EOF" in output
@@ -135,10 +135,10 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
 def paasta_serviceinit_status_single_instance(context, service, instances):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert "Configured" in output
     assert exit_code == 0
@@ -149,10 +149,10 @@ def paasta_serviceinit_status_single_instance(context, service, instances):
 def paasta_serviceinit_status_multi_instances(context, service, instances):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     # one service is deployed and the other is not
     assert "Configured" in output
@@ -162,10 +162,10 @@ def paasta_serviceinit_status_multi_instances(context, service, instances):
 @when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 
@@ -173,10 +173,10 @@ def chronos_emergency_stop_job(context, service_instance):
 @when(u'we paasta_serviceinit emergency-start the service_instance "{service_instance}"')
 def chronos_emergency_start_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s start' % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 
@@ -184,10 +184,10 @@ def chronos_emergency_start_job(context, service_instance):
 @when(u'we paasta_serviceinit emergency-restart the service_instance "{service_instance}"')
 def chronos_emergency_restart_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s restart' % (context.soa_dir, service_instance)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 
@@ -195,10 +195,10 @@ def chronos_emergency_restart_job(context, service_instance):
 @when(u'we run paasta serviceinit "{command}" on "{job_id}"')
 def paasta_serviceinit_command(context, command, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s %s' % (context.soa_dir, job_id, command)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 
@@ -209,10 +209,10 @@ def paasta_serviceinit_command_appid(context, command, job_id):
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s --appid %s %s %s' \
           % (context.soa_dir, app_id, job_id, command)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 
@@ -221,10 +221,10 @@ def paasta_serviceinit_command_appid(context, command, job_id):
 def paasta_serviceinit_command_scale(context, delta, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s scale --delta %s' \
           % (context.soa_dir, job_id, delta)
-    print 'Running cmd %s' % cmd
+    print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print  # sacrificial line for behave to eat instead of our output
+    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
 

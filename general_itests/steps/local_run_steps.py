@@ -50,8 +50,8 @@ def non_interactive_local_run(context, var, val):
 
 @then(u'we should see the expected return code')
 def see_expected_return_code(context):
-    print context.local_run_output
-    print context.local_run_return_code
+    print(context.local_run_output)
+    print(context.local_run_return_code)
     assert context.local_run_return_code == 42
 
 

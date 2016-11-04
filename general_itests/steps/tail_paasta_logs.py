@@ -60,7 +60,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             parse_fn=None
         ):
             # The print here is just for debugging
-            print 'fake log line added for %s' % scribe_env
+            print('fake log line added for %s' % scribe_env)
             queue.put('fake log line added for %s' % scribe_env)
             # This sleep() was the straw that broke the camel's back
             # and forced me to move this test into the integration

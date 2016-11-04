@@ -35,7 +35,7 @@ Adding a new PaaSTA command:
 
     ```
     def some_method(args):
-        print "Executing foo"
+        print("Executing foo")
     ```
 
     That is all :)

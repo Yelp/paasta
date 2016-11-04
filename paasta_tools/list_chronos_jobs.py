@@ -49,7 +49,7 @@ def main():
     jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
     # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
     composed = ['%s%s%s' % (name, chronos_tools.INTERNAL_SPACER, job) for name, job in jobs]
-    print '\n'.join(composed)
+    print('\n'.join(composed))
     sys.exit(0)
 
 

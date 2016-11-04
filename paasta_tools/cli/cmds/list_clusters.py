@@ -38,4 +38,4 @@ def add_subparser(subparsers):
 
 def paasta_list_clusters(args, **kwargs):
     for cluster in list_clusters(soa_dir=args.soa_dir):
-        print cluster
+        print(cluster)

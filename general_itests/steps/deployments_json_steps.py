@@ -40,7 +40,7 @@ from paasta_tools.utils import load_deployments_json
 def step_impl_given(context):
     context.test_git_repo_dir = tempfile.mkdtemp('paasta_tools_deployments_json_itest')
     context.test_git_repo = Repo.init(context.test_git_repo_dir)
-    print 'Temp repo in %s' % context.test_git_repo_dir
+    print('Temp repo in %s' % context.test_git_repo_dir)
 
     blob = Blob.from_string("My file content\n")
     tree = Tree()

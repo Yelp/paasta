@@ -95,14 +95,14 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
-        print "Registered with framework ID %s" % frameworkId.value
+        print("Registered with framework ID %s" % frameworkId.value)
 
         self.reconcile_start_time = time.time()
         driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
         if self.within_reconcile_backoff():
-            print "Declining all offers since we started reconciliation too recently"
+            print("Declining all offers since we started reconciliation too recently")
             for offer in offers:
                 driver.declineOffer(offer.id)
             return
@@ -205,8 +205,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
         # update tasks
         task_id = update.task_id.value
         state = update.state
-        print "Task %s is in state %s" % \
-            (task_id, mesos_pb2.TaskState.Name(state))
+        print("Task %s is in state %s" %
+              (task_id, mesos_pb2.TaskState.Name(state)))
         if state == TASK_LOST or \
                 state == TASK_KILLED or \
                 state == TASK_FAILED or \

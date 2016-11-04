@@ -100,7 +100,7 @@ def main():
             soa_dir=soa_dir,
         )
 
-        print "Sleeping for 10 seconds to give the tasks time to drain"
+        print("Sleeping for 10 seconds to give the tasks time to drain")
         time.sleep(10)
 
     print("Sucessfully killed {0}".format(full_appid))
