@@ -136,9 +136,9 @@ def test_downscale_spot_fleet_request():
         mock_gracefully_terminate_slave.side_effect = autoscaling_cluster_lib.FailSetSpotCapacity
         mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
         mock_sfr_sorted_slaves_2 = [mock_slave_2]
-        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves_1,
-                                                     mock_sfr_sorted_slaves_2,
-                                                     []])
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1,
+                                                mock_sfr_sorted_slaves_2,
+                                                []]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
                                                              pool_settings=mock_pool_settings,
@@ -152,9 +152,9 @@ def test_downscale_spot_fleet_request():
         mock_gracefully_terminate_slave.reset_mock()
         mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
         mock_sfr_sorted_slaves_2 = [mock_slave_2]
-        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves_1,
-                                                     mock_sfr_sorted_slaves_2,
-                                                     []])
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1,
+                                                mock_sfr_sorted_slaves_2,
+                                                []]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
                                                              pool_settings=mock_pool_settings,
@@ -170,9 +170,9 @@ def test_downscale_spot_fleet_request():
         mock_sort_slaves_to_kill.reset_mock()
         mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
         mock_sfr_sorted_slaves_2 = [mock_slave_2]
-        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves_1,
-                                                     mock_sfr_sorted_slaves_2,
-                                                     []])
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves_1,
+                                                mock_sfr_sorted_slaves_2,
+                                                []]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
                                                              pool_settings=mock_pool_settings,
@@ -196,8 +196,8 @@ def test_downscale_spot_fleet_request():
         mock_get_mesos_task_count_by_slave.reset_mock()
         mock_sort_slaves_to_kill.reset_mock()
         mock_sfr_sorted_slaves = [mock_slave_1] * 10
-        mock_sort_slaves_to_kill.side_effect = iter([mock_sfr_sorted_slaves] +
-                                                    [mock_sfr_sorted_slaves[x:-1] for x in range(0, 10)])
+        mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves] + \
+            [mock_sfr_sorted_slaves[x:-1] for x in range(0, 10)]
         autoscaling_cluster_lib.downscale_spot_fleet_request(resource=mock_resource,
                                                              filtered_slaves=mock_filtered_slaves,
                                                              pool_settings=mock_pool_settings,
@@ -409,7 +409,7 @@ def test_wait_and_terminate():
         mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
         mock_is_safe_to_kill.assert_called_with('hostblah')
 
-        mock_is_safe_to_kill.side_effect = iter([False, False, True])
+        mock_is_safe_to_kill.side_effect = [False, False, True]
         autoscaling_cluster_lib.wait_and_terminate(mock_slave_to_kill, 600, False, region='westeros-1')
         assert mock_is_safe_to_kill.call_count == 4
 
@@ -497,9 +497,9 @@ def test_filter_sfr_slaves():
         mock_sfr = mock.Mock()
         mock_resource = {'sfr': mock_sfr, 'region': 'westeros-1'}
         mock_get_sfr_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
-        mock_pid_to_ip.side_effect = iter(['10.1.1.1', '10.2.2.2', '10.3.3.3',
-                                           '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3'])
-        mock_get_instances_from_ip.side_effect = iter([[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]])
+        mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3',
+                                      '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3']
+        mock_get_instances_from_ip.side_effect = [[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]]
         mock_instances = [{'InstanceId': 'i-1',
                            'InstanceType': 'c4.blah'},
                           {'InstanceId': 'i-2',
