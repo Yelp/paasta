@@ -414,7 +414,12 @@ Each job configuration MAY specify the following options:
 
   * ``deploy_whitelist``: See the `marathon-[clustername].yaml`_ section for details
 
-  * ``deploy_blacklist``: *Not currently supported*.
+  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
+
+      ``deploy_blacklist: [["region", "uswest1-prod"]]``
+
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 
