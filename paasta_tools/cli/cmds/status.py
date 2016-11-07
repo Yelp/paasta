@@ -15,7 +15,6 @@
 import os
 import sys
 from distutils.util import strtobool
-from subprocess import CalledProcessError
 
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
@@ -144,7 +143,7 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
         status = client.service.status_instance(service=service, instance=instance).result()
     except HTTPError as exc:
         print exc.response.text
-        return
+        return exc.status_code
 
     print 'instance: %s' % PaastaColors.blue(instance)
     print 'Git sha:    %s (desired)' % status.git_sha
@@ -152,10 +151,10 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     marathon_status = status.marathon
     if marathon_status is None:
         print "Not implemented: Looks like %s is not a Marathon instance" % instance
-        return
+        return 0
     elif marathon_status.error_message:
         print marathon_status.error_message
-        return
+        return 1
 
     bouncing_status = bouncing_status_human(marathon_status.app_count,
                                             marathon_status.bounce_method)
@@ -176,6 +175,7 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
                                     marathon_status.app_id,
                                     marathon_status.running_instance_count,
                                     marathon_status.expected_instance_count)
+    return 0
 
 
 def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
@@ -205,12 +205,23 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             print '  instance: %s' % PaastaColors.red(instance)
             print '    Git sha:    None (not deployed yet)'
 
+    return_code = 0
     if len(deployed_instances) > 0:
         if use_api_endpoint:
-            for instance in deployed_instances:
-                paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose=verbose)
+            return_codes = [
+                paasta_status_on_api_endpoint(
+                    cluster,
+                    service,
+                    deployed_instance,
+                    system_paasta_config,
+                    verbose=verbose,
+                )
+                for deployed_instance in deployed_instances
+            ]
+            if any(return_code != 200 for return_code in return_codes):
+                return_code = 1
         else:
-            status = execute_paasta_serviceinit_on_remote_master(
+            return_code, status = execute_paasta_serviceinit_on_remote_master(
                 'status', cluster, service, ','.join(deployed_instances),
                 system_paasta_config, stream=True, verbose=verbose,
                 ignore_ssh_output=True)
@@ -220,6 +231,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
                     print '    %s' % line
 
     print report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance')
+
+    return return_code
 
 
 def report_invalid_whitelist_values(whitelist, items, item_type):
@@ -243,20 +256,23 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
                   system_paasta_config, verbose=0, use_api_endpoint=False):
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
-    for cluster in deployed_clusters:
-        if not cluster_whitelist or cluster in cluster_whitelist:
-            report_status_for_cluster(
-                service=service,
-                cluster=cluster,
-                deploy_pipeline=deploy_pipeline,
-                actual_deployments=actual_deployments,
-                instance_whitelist=instance_whitelist,
-                system_paasta_config=system_paasta_config,
-                verbose=verbose,
-                use_api_endpoint=use_api_endpoint
-            )
+    return_codes = [
+        report_status_for_cluster(
+            service=service,
+            cluster=cluster,
+            deploy_pipeline=deploy_pipeline,
+            actual_deployments=actual_deployments,
+            instance_whitelist=instance_whitelist,
+            system_paasta_config=system_paasta_config,
+            verbose=verbose,
+            use_api_endpoint=use_api_endpoint
+        )
+        for cluster in deployed_clusters
+        if not cluster_whitelist or cluster in cluster_whitelist
+    ]
 
     print report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster')
+    return 0 if all([return_code == 0 for return_code in return_codes]) else 1
 
 
 def paasta_status(args):
@@ -282,20 +298,17 @@ def paasta_status(args):
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-        try:
-            report_status(
-                service=service,
-                deploy_pipeline=deploy_pipeline,
-                actual_deployments=actual_deployments,
-                cluster_whitelist=cluster_whitelist,
-                instance_whitelist=instance_whitelist,
-                system_paasta_config=system_paasta_config,
-                verbose=args.verbose,
-                use_api_endpoint=use_api_endpoint
-            )
-        except CalledProcessError as e:
-            print PaastaColors.grey(PaastaColors.bold(e.cmd + " exited with non-zero return code."))
-            print PaastaColors.grey(e.output)
-            return e.returncode
+        return_code = report_status(
+            service=service,
+            deploy_pipeline=deploy_pipeline,
+            actual_deployments=actual_deployments,
+            cluster_whitelist=cluster_whitelist,
+            instance_whitelist=instance_whitelist,
+            system_paasta_config=system_paasta_config,
+            verbose=args.verbose,
+            use_api_endpoint=use_api_endpoint
+        )
+        return return_code
     else:
         print missing_deployments_message(service)
+        return 1

@@ -36,7 +36,7 @@ def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
 
     thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
     with mock.patch(thing_to_patch, autospec=True) as mock_execute_paasta_metastatus_on_remote_master:
-        mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
+        mock_execute_paasta_metastatus_on_remote_master.return_value = mock.sentinel.return_vlaue, 'mock_status'
         metastatus.print_cluster_status(
             cluster,
             fake_system_paasta_config,

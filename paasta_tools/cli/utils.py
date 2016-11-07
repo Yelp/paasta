@@ -20,7 +20,6 @@ import re
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
-from subprocess import CalledProcessError
 
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
@@ -470,15 +469,13 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
         verbose_flag,
         app_id_flag,
         delta_flag,
-        subcommand
+        subcommand,
     ]
     command_without_empty_strings = [part for part in command_parts if part != '']
     command = ' '.join(command_without_empty_strings)
     log.debug("Running Command: %s" % command)
     return_code, output = _run(command, timeout=timeout, stream=stream)
-    if return_code != 0:
-        raise CalledProcessError(return_code, command, output)
-    return output
+    return return_code, output
 
 
 def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instances, system_paasta_config,
@@ -488,11 +485,12 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     """
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
-        return 'ERROR: %s' % output
+        return 255, 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+            255,
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
         )
     if ignore_ssh_output:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
@@ -513,10 +511,10 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0):
     cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
     command = ('ssh -A -n %s sudo paasta_metastatus %s' % (
         master,
-        cmd_args
+        cmd_args,
     )).strip()
-    _, output = _run(command, timeout=timeout)
-    return output
+    return_code, output = _run(command, timeout=timeout)
+    return return_code, output
 
 
 def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose):
@@ -525,11 +523,12 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
     """
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
-        return 'ERROR: %s' % output
+        return 255, 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+            255,
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
         )
     return run_paasta_metastatus(master, humanize, groupings, verbose)
 
