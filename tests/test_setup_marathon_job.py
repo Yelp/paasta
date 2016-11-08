@@ -95,6 +95,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -105,7 +106,10 @@ class TestSetupMarathonJob:
             sensu_patch,
             sys_exit_patch,
             _,
+            get_all_marathon_apps_patch,
         ):
+            mock_apps = mock.Mock()
+            get_all_marathon_apps_patch.return_value = mock_apps
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
             parse_args_patch.assert_called_once_with()
@@ -126,6 +130,7 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_service_config,
+                mock_apps,
                 'no_more',
             )
             sys_exit_patch.assert_called_once_with(0)
@@ -161,6 +166,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -170,7 +176,10 @@ class TestSetupMarathonJob:
             load_system_paasta_config_patch,
             sensu_patch,
             sys_exit_patch,
+            get_all_marathon_apps_patch,
         ):
+            mock_apps = mock.Mock()
+            get_all_marathon_apps_patch.return_value = mock_apps
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
             parse_args_patch.assert_called_once_with()
@@ -189,6 +198,7 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_service_config,
+                mock_apps,
                 'no_more',
             )
             sys_exit_patch.assert_called_once_with(0)
@@ -693,6 +703,7 @@ class TestSetupMarathonJob:
         fake_nerve_ns = 'nerve'
         fake_bounce_health_params = {}
         fake_soa_dir = '/soa/dir'
+        fake_marathon_apps = mock.Mock()
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
@@ -721,6 +732,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_jobid,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce_method,
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
@@ -728,6 +740,7 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
             )
+            mock_get_matching_apps.assert_called_with(fake_service, fake_instance, fake_marathon_apps)
             fake_client.scale_app.assert_called_once_with(
                 app_id='/some_id',
                 instances=5,
@@ -749,6 +762,7 @@ class TestSetupMarathonJob:
         fake_nerve_ns = 'nerve'
         fake_bounce_health_params = {}
         fake_soa_dir = '/soa/dir'
+        fake_marathon_apps = mock.Mock()
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
@@ -786,6 +800,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_jobid,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce_method,
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
@@ -814,6 +829,7 @@ class TestSetupMarathonJob:
         fake_nerve_ns = 'nerve'
         fake_bounce_health_params = {}
         fake_soa_dir = '/soa/dir'
+        fake_marathon_apps = mock.Mock()
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
@@ -855,6 +871,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_jobid,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce_method,
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
@@ -880,6 +897,7 @@ class TestSetupMarathonJob:
         fake_nerve_ns = 'nerve'
         fake_bounce_health_params = {}
         fake_soa_dir = '/soa/dir'
+        fake_marathon_apps = mock.Mock()
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
@@ -926,6 +944,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_jobid,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce_method,
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
@@ -982,6 +1001,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 client=fake_client,
                 service_marathon_config=self.fake_marathon_service_config,
+                marathon_apps=None,
                 soa_dir=None,
             )
             format_marathon_app_dict_patch.assert_called_once_with()
@@ -1064,10 +1084,12 @@ class TestSetupMarathonJob:
             get_bounce_margin_factor_patch,
             _,
         ):
+            mock_marathon_apps = mock.Mock()
             status, output = setup_marathon_job.setup_service(
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
+                marathon_apps=mock_marathon_apps,
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
@@ -1084,6 +1106,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=full_id,
                 config=fake_complete,
                 client=fake_client,
+                marathon_apps=mock_marathon_apps,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
                 drain_method_params=fake_drain_method_params,
@@ -1107,6 +1130,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 client=None,
                 service_marathon_config=self.fake_marathon_service_config,
+                marathon_apps=None,
                 soa_dir=None,
             )
             assert status == 1
@@ -1119,9 +1143,9 @@ class TestSetupMarathonJob:
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_apps))
+            list_apps=mock.Mock(return_value=fake_marathon_apps))
         fake_config = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: drain_method not recognized: doesntexist. Must be one of (exists1, exists2)'
@@ -1148,6 +1172,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
@@ -1164,9 +1189,9 @@ class TestSetupMarathonJob:
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_apps))
+            list_apps=mock.Mock(return_value=fake_marathon_apps))
         fake_config = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
@@ -1189,6 +1214,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=fake_marathon_apps,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
@@ -1198,7 +1224,6 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 1
         assert expected == actual
-        fake_client.list_apps.assert_called_once_with(embed_failures=True)
         assert fake_client.create_app.call_count == 0
 
     def test_deploy_service_known_bounce(self):
@@ -1270,6 +1295,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=[old_app],
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method_name,
                 drain_method_params={},
@@ -1278,7 +1304,6 @@ class TestSetupMarathonJob:
                 soa_dir='fake_soa_dir',
             )
             assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
-            fake_client.list_apps.assert_called_once_with(embed_failures=True)
             assert fake_client.create_app.call_count == 0
             fake_bounce_func.assert_called_once_with(
                 new_config=fake_config,
@@ -1371,6 +1396,7 @@ class TestSetupMarathonJob:
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
+                marathon_apps=[old_app],
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
@@ -1411,6 +1437,7 @@ class TestSetupMarathonJob:
                     marathon_jobid=fake_id,
                     config=fake_config,
                     client=fake_client,
+                    marathon_apps=fake_apps,
                     bounce_method=fake_bounce,
                     drain_method_name=fake_drain_method,
                     drain_method_params={},

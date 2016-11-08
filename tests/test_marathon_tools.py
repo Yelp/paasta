@@ -1649,14 +1649,22 @@ class TestMarathonTools:
             mock.Mock(id='/prefixed--fake--service.fake--instance.something'),
         ]
 
-        list_apps_mock = mock.Mock(return_value=apps)
-        fake_client = mock.Mock(list_apps=list_apps_mock)
         expected = [
             '/fake--service.fake--instance.bouncingold',
             '/fake--service.fake--instance.bouncingnew',
         ]
-        actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
+        actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', apps)
         assert actual == expected
+
+    def test_get_all_marathon_apps(self):
+        apps = [
+            mock.Mock(id='/fake--service.fake--instance.bouncingold'),
+            mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
+        ]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
+        actual = marathon_tools.get_all_marathon_apps(fake_client)
+        assert actual == apps
 
 
 class TestMarathonServiceConfig(object):

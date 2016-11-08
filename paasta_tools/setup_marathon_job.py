@@ -363,6 +363,7 @@ def deploy_service(
     marathon_jobid,
     config,
     client,
+    marathon_apps,
     bounce_method,
     drain_method_name,
     drain_method_params,
@@ -400,7 +401,7 @@ def deploy_service(
 
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
-    existing_apps = marathon_tools.get_matching_apps(service, instance, client, embed_failures=True)
+    existing_apps = marathon_tools.get_matching_apps(service, instance, marathon_apps)
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
     serviceinstance = "%s.%s" % (service, instance)
@@ -534,7 +535,7 @@ def deploy_service(
     return (0, 'Service deployed.')
 
 
-def setup_service(service, instance, client, service_marathon_config, soa_dir):
+def setup_service(service, instance, client, service_marathon_config, marathon_apps, soa_dir):
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
@@ -568,6 +569,7 @@ def setup_service(service, instance, client, service_marathon_config, soa_dir):
         marathon_jobid=full_id,
         config=marathon_app_dict,
         client=client,
+        marathon_apps=marathon_apps,
         bounce_method=service_marathon_config.get_bounce_method(),
         drain_method_name=service_marathon_config.get_drain_method(service_namespace_config),
         drain_method_params=service_marathon_config.get_drain_method_params(service_namespace_config),
@@ -604,6 +606,7 @@ def main():
     marathon_config = get_main_marathon_config()
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
+    marathon_apps = marathon_tools.get_all_marathon_apps(client, embed_failures=True)
 
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:
@@ -613,7 +616,7 @@ def main():
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
             num_failed_deployments = num_failed_deployments + 1
         else:
-            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
+            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
                 num_failed_deployments = num_failed_deployments + 1
 
     requests_cache.uninstall_cache()
@@ -624,7 +627,7 @@ def main():
     sys.exit(1 if num_failed_deployments else 0)
 
 
-def deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
+def deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
     try:
         service_instance_config = marathon_tools.load_marathon_service_config(
             service,
@@ -643,7 +646,7 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config)
         return 1
 
     try:
-        status, output = setup_service(service, instance, client, service_instance_config, soa_dir)
+        status, output = setup_service(service, instance, client, service_instance_config, marathon_apps, soa_dir)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, soa_dir, sensu_status, output)
         return 0
