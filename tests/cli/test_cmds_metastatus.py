@@ -103,7 +103,7 @@ def test_get_cluster_dashboards_unknown_cluster():
         assert 'No dashboards configured for fake_cluster' in output_text
 
 
-def paasta_metastatus_returns_zero_all_clusters_ok():
+def test_paasta_metastatus_returns_zero_all_clusters_ok():
     args = mock.Mock(
         soa_dir=mock.sentinel.soa_dir,
         clusters='cluster1,cluster2,cluster3',
@@ -123,9 +123,10 @@ def paasta_metastatus_returns_zero_all_clusters_ok():
 
         return_code = metastatus.paasta_metastatus(args)
         assert return_code == 0
+        assert mock_print_cluster_status.call_count == 3
 
 
-def paasta_metastatus_returns_one_on_error():
+def test_paasta_metastatus_returns_one_on_error():
     args = mock.Mock(
         soa_dir=mock.sentinel.soa_dir,
         clusters='cluster1,cluster2,cluster3',
@@ -145,3 +146,4 @@ def paasta_metastatus_returns_one_on_error():
 
         return_code = metastatus.paasta_metastatus(args)
         assert return_code == 1
+        assert mock_print_cluster_status.call_count == 3
