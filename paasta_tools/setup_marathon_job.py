@@ -241,7 +241,8 @@ def do_bounce(
         at_risk_tasks=bounce_lib.flatten_tasks(old_app_at_risk_tasks),
     )
 
-    kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
+    if tasks_to_kill:
+        kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
 
     for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
         if task in tasks_to_kill:
