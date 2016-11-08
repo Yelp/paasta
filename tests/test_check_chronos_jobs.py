@@ -130,7 +130,7 @@ def test_sensu_event_for_last_run_state_fail():
 
 def test_sensu_event_for_last_run_state_not_run():
     result = check_chronos_jobs.sensu_event_for_last_run_state(chronos_tools.LastRunState.NotRun)
-    assert result == pysensu_yelp.Status.OK
+    assert result is None
 
 
 def test_sensu_event_for_last_run_state_invalid():
