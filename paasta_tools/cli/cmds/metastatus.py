@@ -140,4 +140,4 @@ def paasta_metastatus(args):
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
-    return all([return_code == 0 for return_code in return_codes])
+    return 0 if all([return_code == 0 for return_code in return_codes]) else 1
