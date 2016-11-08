@@ -192,10 +192,12 @@ def when_setup_service_initiated(context):
         # 120 * 0.5 = 60 seconds
         for _ in xrange(120):
             try:
+                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
                 (code, message) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
                     client=context.marathon_client,
+                    marathon_apps=marathon_apps,
                     service_marathon_config=context.new_marathon_service_config,
                     soa_dir='/nail/etc/services',
                 )

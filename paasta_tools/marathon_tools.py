@@ -917,7 +917,8 @@ def get_matching_appids(servicename, instance, client):
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    return [app.id for app in get_matching_apps(servicename, instance, client)]
+    marathon_apps = get_all_marathon_apps(client)
+    return [app.id for app in get_matching_apps(servicename, instance, marathon_apps)]
 
 
 def get_matching_apps(servicename, instance, marathon_apps):
