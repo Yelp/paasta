@@ -251,6 +251,10 @@ options:
     defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then
     PaaSTA will execute ``healthcheck_cmd`` and examine the return code.
 
+  * ``healthcheck_port``: an alternative port to use for healthchecking your
+    service. This is not required; it defaults to the port your service instance
+    is running on.
+
   * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
     command is executed inside the container as a healthcheck. It must exit
     with status code 0 to signify a successful healthcheck. Any other exit code

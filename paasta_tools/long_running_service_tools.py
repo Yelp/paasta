@@ -134,6 +134,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
 
     - proxy_port: the proxy port defined for the given namespace
     - healthcheck_mode: the mode for the healthcheck (http or tcp)
+    - healthcheck_port: An alternate port to use for health checking
     - healthcheck_uri: URI target for healthchecking
     - healthcheck_timeout_s: healthcheck timeout in seconds
     - updown_timeout_s: updown_service timeout in seconds
@@ -169,6 +170,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     key_whitelist = set([
         'healthcheck_mode',
         'healthcheck_uri',
+        'healthcheck_port',
         'healthcheck_timeout_s',
         'updown_timeout_s',
         'proxy_port',
