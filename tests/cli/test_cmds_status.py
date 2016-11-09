@@ -16,6 +16,7 @@ from StringIO import StringIO
 from mock import MagicMock
 from mock import Mock
 from mock import patch
+from mock import sentinel
 from pytest import mark
 from pytest import raises
 
@@ -90,7 +91,10 @@ def test_report_status_for_cluster_displays_deployed_service(
     instance_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE'
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        fake_status,
+    )
     expected_output = (
         "\n"
         "cluster: fake_cluster\n"
@@ -130,7 +134,10 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     instance_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        fake_status,
+    )
     expected_output = (
         "    status: SOMETHING FAKE\n"
         "    and then something fake\n"
@@ -170,7 +177,10 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     instance_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE'
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        fake_status,
+    )
     expected_output = (
         "\n"
         "cluster: fake_cluster\n"
@@ -213,7 +223,10 @@ def test_print_cluster_status_missing_deploys_in_red(
     instance_whitelist = []
     fake_status = 'status: SOMETHING FAKE'
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        fake_status,
+    )
     expected_output = (
         "\n"
         "cluster: a_cluster\n"
@@ -260,7 +273,10 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     fake_output = "Marathon: 5 instances"
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_output
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        fake_output,
+    )
     expected_output = "    %s\n" % fake_output
     status.report_status_for_cluster(
         service=service,
@@ -297,6 +313,11 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
     }
     instance_whitelist = ['fake_instance_a']
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
+
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        sentinel.return_value,
+        'fake_output'
+    )
 
     status.report_status_for_cluster(
         service=service,
@@ -434,6 +455,7 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments.return_value = actual_deployments
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     mock_load_system_paasta_config.return_value = fake_system_paasta_config
+    mock_report_status.return_value = sentinel.return_value
 
     args = MagicMock()
     args.service = service
@@ -441,7 +463,9 @@ def test_status_calls_sergeants(
     args.instances = None
     args.verbose = False
     args.soa_dir = '/fake/soa/dir'
-    paasta_status(args)
+    return_value = paasta_status(args)
+
+    assert return_value == sentinel.return_value
 
     mock_figure_out_service_name.assert_called_once_with(args, '/fake/soa/dir')
     mock_get_actual_deployments.assert_called_once_with(service, '/fake/soa/dir')
@@ -473,6 +497,66 @@ def test_report_invalid_whitelist_values_with_whitelists():
     assert 'Warning' in actual
     assert item_type in actual
     assert 'bogus1' in actual
+
+
+@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+def test_report_status_returns_zero_when_clusters_pass(
+    mock_stdout,
+    mock_report_invalid_whitelist_values,
+    mock_report_status_for_cluster,
+):
+    service = 'fake_service'
+    cluster_whitelist = []
+    instance_whitelist = []
+    deploy_pipeline = actual_deployments = [
+        'cluster1.main', 'cluster2.main', 'cluster3.main']
+    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
+
+    mock_report_status_for_cluster.side_effect = [0, 0, 0]
+
+    return_value = report_status(
+        service=service,
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        cluster_whitelist=cluster_whitelist,
+        instance_whitelist=instance_whitelist,
+        system_paasta_config=fake_system_paasta_config,
+    )
+
+    assert return_value == 0
+    assert mock_report_status_for_cluster.call_count == 3
+
+
+@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
+def test_report_status_returns_one_when_clusters_pass(
+    mock_stdout,
+    mock_report_invalid_whitelist_values,
+    mock_report_status_for_cluster,
+):
+    service = 'fake_service'
+    cluster_whitelist = []
+    instance_whitelist = []
+    deploy_pipeline = actual_deployments = [
+        'cluster1.main', 'cluster2.main', 'cluster3.main']
+    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
+
+    mock_report_status_for_cluster.side_effect = [0, 0, 255]
+
+    return_value = report_status(
+        service=service,
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        cluster_whitelist=cluster_whitelist,
+        instance_whitelist=instance_whitelist,
+        system_paasta_config=fake_system_paasta_config,
+    )
+
+    assert return_value == 1
+    assert mock_report_status_for_cluster.call_count == 3
 
 
 @patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)

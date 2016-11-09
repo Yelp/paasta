@@ -145,9 +145,9 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
         'lastSuccess': '2016-07-26T22:00:00+00:00',
         'lastError': '2016-07-26T22:01:00+00:00'
     }
-    mock_lookup_chronos_jobs.side_effect = iter([[
+    mock_lookup_chronos_jobs.side_effect = [[
         fake_job
-    ]])
+    ]]
 
     fake_configured_jobs = [('service1', 'chronos_job')]
     fake_client = Mock(list=Mock(return_value=[('service1', 'chronos_job')]))
@@ -162,10 +162,10 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
         'lastSuccess': '2016-07-26T22:12:00+00:00',
     }
     reran_job = chronos_rerun.set_tmp_naming_scheme(reran_job)
-    mock_lookup_chronos_jobs.side_effect = iter([[
+    mock_lookup_chronos_jobs.side_effect = [[
         fake_job,
         reran_job
-    ]])
+    ]]
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
         ('service1', 'chronos_job'): [(reran_job, chronos_tools.LastRunState.Success)]
     }
@@ -174,9 +174,6 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
 def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
-    # iter() is a workaround
-    # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
-    # for a bug in mock (http://bugs.python.org/issue17826)
     services = ['service1', 'service2', 'service3']
     latest_time = '2016-07-26T22:03:00+00:00'
     fake_jobs = [[
@@ -192,8 +189,8 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
             'name': service + ' foo'
         }
     ] for service in services]
-    mock_lookup_chronos_jobs.side_effect = iter(fake_jobs)
-    mock_filter_enabled_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
+    mock_lookup_chronos_jobs.side_effect = fake_jobs
+    mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for _ in range(0, 3)]
 
     fake_configured_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]
     fake_client = Mock(list=Mock(return_value=[('service1', 'main'), ('service2', 'main'), ('service3', 'main')]))

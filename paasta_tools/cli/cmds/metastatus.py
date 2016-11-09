@@ -77,16 +77,20 @@ def add_subparser(subparsers):
 def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
-    print "Cluster: %s" % cluster
-    print get_cluster_dashboards(cluster)
-    print execute_paasta_metastatus_on_remote_master(
+    return_code, output = execute_paasta_metastatus_on_remote_master(
         cluster=cluster,
         system_paasta_config=system_paasta_config,
         humanize=humanize,
         groupings=groupings,
         verbose=verbose
     )
+
+    print "Cluster: %s" % cluster
+    print get_cluster_dashboards(cluster)
+    print output
     print ""
+
+    return return_code
 
 
 def figure_out_clusters_to_inspect(args, all_clusters):
@@ -121,15 +125,19 @@ def paasta_metastatus(args):
     system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
+    return_codes = []
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(
-                cluster=cluster,
-                system_paasta_config=system_paasta_config,
-                humanize=args.humanize,
-                groupings=args.groupings,
-                verbose=args.verbose
+            return_codes.append(
+                print_cluster_status(
+                    cluster=cluster,
+                    system_paasta_config=system_paasta_config,
+                    humanize=args.humanize,
+                    groupings=args.groupings,
+                    verbose=args.verbose,
+                )
             )
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
+    return 0 if all([return_code == 0 for return_code in return_codes]) else 1

@@ -1135,8 +1135,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
 @mock.patch('time.sleep', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_healthcheck_on_container, mock_sleep):
-    mock_run_healthcheck_on_container.side_effect = iter([
-        (False, ""), (False, ""), (False, ""), (False, ""), (True, "")])
+    mock_run_healthcheck_on_container.side_effect = [(False, ""), (False, ""), (False, ""), (False, ""), (True, "")]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = MarathonServiceConfig(
         service='fake_name',
@@ -1199,8 +1198,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     capsys,
 ):
     # change time to make sure we are sufficiently past grace period
-    mock_run_healthcheck_on_container.side_effect = iter([
-        (False, "400 noop"), (False, "400 noop"), (True, "200 noop")])
+    mock_run_healthcheck_on_container.side_effect = [(False, "400 noop"), (False, "400 noop"), (True, "200 noop")]
 
     mock_time.side_effect = [0, 1, 5]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
