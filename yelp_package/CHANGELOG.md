@@ -1,7 +1,27 @@
 # Change Log
 
-## [0.56.0](https://github.com/Yelp/paasta/tree/0.56.0) (2016-11-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.4...0.56.0)
+## [0.56.2](https://github.com/Yelp/paasta/tree/0.56.2) (2016-11-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.1...0.56.2)
+
+**Fixed bugs:**
+
+- paasta status exits 0 when it cannot ssh \(should be nonzero\) [\#718](https://github.com/Yelp/paasta/issues/718)
+
+**Merged pull requests:**
+
+- Added back in healthcheck\_port smartstack parameter [\#885](https://github.com/Yelp/paasta/pull/885) ([solarkennedy](https://github.com/solarkennedy))
+- Made paasta status and paasta metastatus return nonzero on ssh error [\#883](https://github.com/Yelp/paasta/pull/883) ([mjksmith](https://github.com/mjksmith))
+- Make check\_chronos\_jobs ignore fresh jobs [\#871](https://github.com/Yelp/paasta/pull/871) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.1](https://github.com/Yelp/paasta/tree/v0.56.1) (2016-11-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.0...v0.56.1)
+
+**Merged pull requests:**
+
+- Revert "Revert "added support for adhoc jobs"" [\#873](https://github.com/Yelp/paasta/pull/873) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.56.0](https://github.com/Yelp/paasta/tree/v0.56.0) (2016-11-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.55.4...v0.56.0)
 
 **Merged pull requests:**
 
