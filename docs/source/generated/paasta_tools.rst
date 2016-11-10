@@ -31,6 +31,7 @@ Submodules
    paasta_tools.cleanup_chronos_jobs
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
+   paasta_tools.deployment_utils
    paasta_tools.drain_lib
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
