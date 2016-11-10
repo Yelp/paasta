@@ -28,6 +28,7 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.kubernetes_tools import load_kubernetes_pod_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
@@ -605,6 +606,8 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
         instance_config_load_function = load_chronos_job_config
     elif instance_type == 'adhoc':
         instance_config_load_function = load_adhoc_job_config
+    elif instance_type == 'kubernetes':
+        instance_config_load_function = load_kubernetes_pod_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
@@ -765,6 +768,19 @@ def get_instance_configs_for_service(service, soa_dir):
             soa_dir=soa_dir,
         ):
             yield load_adhoc_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=False,
+            )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='kubernetes',
+            soa_dir=soa_dir,
+        ):
+            yield load_kubernetes_pod_config(
                 service=service,
                 instance=instance,
                 cluster=cluster,
