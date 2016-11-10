@@ -354,6 +354,14 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-u', '--kubernetes',
+        help='Launches the container using Kubernetes',
+        dest='use_kubernetes',
+        action='store_true',
+        required=False,
+        default=False,
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -599,12 +607,17 @@ def command_function_for_framework(framework):
     def format_adhoc_command(cmd):
         return cmd
 
+    def format_kubernetes_command(cmd):
+        return cmd
+
     if framework == 'chronos':
         return format_chronos_command
     elif framework == 'marathon':
         return format_marathon_command
     elif framework == 'adhoc':
         return format_adhoc_command
+    elif framework == 'kubernetes':
+        return format_kubernetes_command 
     else:
         raise ValueError("Invalid Framework")
 
