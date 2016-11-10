@@ -80,7 +80,7 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes')
 
 
 class InvalidInstanceConfig(Exception):
