@@ -101,3 +101,15 @@ def local_run_on_chronos_job_with_cmd(context):
                          "--instance chronos_job_with_cmd "
                          "--build ")
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
+
+
+@when(u'we run paasta local-run on a Kubernetes service in non-interactive mode')
+def local_run_on_kubernetes_pod(context):
+    with Path("fake_simple_service"):
+        localrun_cmd = ("paasta local-run "
+                        "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
+                        "--service fake_simple_service "
+                        "--cluster test-cluster "
+                        "--instance sample_kubernetes_pod "
+                        "--build ")
+        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=60)

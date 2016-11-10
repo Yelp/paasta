@@ -7,6 +7,12 @@ Feature: paasta local-run can be used
      Then we should see the expected return code
       And we should see the environment variable "FOO" with the value "BAR" in the ouput
 
+  Scenario: Running paasta local-run in non-interactive mode on a Kubernetes service
+    Given Docker is available
+      And a simple service to test
+     When we run paasta local-run on a Kubernetes service in non-interactive mode
+     Then we should see the expected return code
+
   Scenario: Running paasta local-run in non-interactive mode on a Chronos job
     Given Docker is available
       And a simple service to test

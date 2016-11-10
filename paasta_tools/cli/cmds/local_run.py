@@ -617,7 +617,7 @@ def command_function_for_framework(framework):
     elif framework == 'adhoc':
         return format_adhoc_command
     elif framework == 'kubernetes':
-        return format_kubernetes_command 
+        return format_kubernetes_command
     else:
         raise ValueError("Invalid Framework")
 

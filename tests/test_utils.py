@@ -630,8 +630,10 @@ def test_get_service_instance_list():
     fake_instance_2 = 'water'
     fake_cluster = '16floz'
     fake_dir = '/nail/home/hipster'
-    fake_job_config = {fake_instance_1: {},
-                       fake_instance_2: {}}
+    fake_job_config = {
+        fake_instance_1: {},
+        fake_instance_2: {},
+    }
     expected = [
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
@@ -644,16 +646,13 @@ def test_get_service_instance_list():
         (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
     ]
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
-                   return_value=fake_job_config),
-    ) as (
-        read_extra_info_patch,
-    ):
+    with mock.patch('paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
+                    return_value=fake_job_config) as read_extra_info_patch:
         actual = utils.get_service_instance_list(fake_name, fake_cluster, soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'marathon-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'chronos-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'paasta_native-16floz', soa_dir=fake_dir)
+        read_extra_info_patch.assert_any_call(fake_name, 'adhoc-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'kubernetes-16floz', soa_dir=fake_dir)
         assert read_extra_info_patch.call_count == 5
         assert sorted(expected) == sorted(actual)
@@ -1338,17 +1337,23 @@ def test_validate_service_instance_invalid():
     mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]
     mock_paasta_native_services = [('service1', 'main2'), ('service2', 'main2')]
     mock_adhoc_services = [('service1', 'interactive'), ('service2', 'interactive')]
-    mock_kubernetes_services = [('service1', 'kub1'), ('service2', 'kub2')]
+    mock_kubernetes_services = [('service1', 'main_kubernetes'), ('service2', 'main_kubernetes')]
     my_service = 'bad_service'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
     fake_soa_dir = 'fake_soa_dir'
     with contextlib.nested(
-        mock.patch('paasta_tools.utils.get_services_for_cluster',
-                   autospec=True,
-                   side_effect=[mock_marathon_services, mock_chronos_services,
-                                mock_paasta_native_services, mock_adhoc_services,
-                                mock_kubernetes_services]),
+        mock.patch(
+            'paasta_tools.utils.get_services_for_cluster',
+            autospec=True,
+            side_effect=[
+                mock_marathon_services,
+                mock_chronos_services,
+                mock_paasta_native_services,
+                mock_adhoc_services,
+                mock_kubernetes_services,
+            ]
+        ),
         raises(utils.NoConfigurationForServiceError),
     ) as (
         get_services_for_cluster_patch,
