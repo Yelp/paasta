@@ -1,6 +1,7 @@
 -r requirements.txt
 flake8==2.5.0
 git+git://github.com/solarkennedy/sphinxcontrib-programoutput#egg=package-two
+ipdb==0.10.1
 mock==2.0.0
 pep8==1.5.7
 pre-commit==0.7.6
@@ -8,3 +9,4 @@ pylint==1.6.4
 pytest==2.7.3
 pytest-cov==2.2.0
 sphinx==1.4.1
+
