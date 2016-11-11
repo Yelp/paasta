@@ -84,7 +84,39 @@ class KubernetesPodConfig(LongRunningServiceConfig):
         instance = self.get_instance()
         git_sha = self.branch_dict['git_sha']
 
+        docker_registry = load_system_paasta_config().get_docker_registry()
+        resource_requirements = {
+            'cpu': self.get_cpus(),
+            'memory': '%dMi' % self.get_mem(),
+        }
+
+        container_spec = {
+            'name': 'container1',
+            'image': '%s/%s' % (
+                docker_registry,
+                self.branch_dict['docker_image'],
+            ),
+            'env': {},
+            'imagePullPolicy': 'Always',
+            'ports': [
+                {
+                    'containerPort': 8888,
+                    'name': 'port0',
+                }
+            ],
+            'resources': {
+                'requests': resource_requirements,
+                'limits': resource_requirements,
+            },
+        }
+
         cmd = self.get_cmd()
+        if cmd:
+            container_spec['command'] = [cmd]
+
+        args = self.get_args()
+        if args:
+            container_spec['args'] = args
 
         complete_dict = {
             'metadata': {
@@ -96,10 +128,6 @@ class KubernetesPodConfig(LongRunningServiceConfig):
                 },
             },
             'spec': {
-                'imagePullSecrets': {
-                    'name': 'dockersecret',
-                    'namespace': 'default',
-                },
                 'replicas': 1,
                 'template': {
                     'metadata': {
@@ -112,19 +140,7 @@ class KubernetesPodConfig(LongRunningServiceConfig):
                     },
                     'spec': {
                         'containers': [
-                            {
-                                'name': 'container1',
-                                'image': self.branch_dict['docker_image'],
-                                'command': [cmd] if cmd else [],
-                                'args': [],
-                                'env': {},
-                                'imagePullPolicy': 'Always',
-                                'ports': [],
-                                'resources': {
-                                    'cpu': self.get_cpus(),
-                                    'memory': '%dM' % self.get_mem(),
-                                },
-                            },
+                            container_spec,
                         ],
                         'restartPolicy': 'Always',
                         'volumes': [],
@@ -146,6 +162,38 @@ class KubernetesPodConfig(LongRunningServiceConfig):
         )
 
         return complete_dict
+
+    def format_kubernetes_service_dict(self, deployment_config):
+        service_config = {
+            'metadata': {
+                'name': 'my-service'
+            },
+            'spec': {
+                'selector': deployment_config['metadata']['labels'],
+                'ports': [
+                    {
+                        'protocol': 'TCP',
+                        'targetPort': port_def['containerPort'],
+                        'port': 80 + increment,
+                    }
+                    for increment, port_def in enumerate(
+                        deployment_config['spec']['template']['spec']['containers'][0]['ports'],
+                    )
+                ],
+            },
+        }
+
+        return service_config
+
+    def get_args(self):
+        """
+        Gets args for the service. Overloads the default method since
+        kubernetes can have args with no cmd specified.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: An array of args specified in the config, ``[]`` if not specified
+        """
+        return self.config_dict.get('args', [])
 
 
 def replace_underscores(string):
@@ -177,8 +225,9 @@ class KubeClient(object):
             },
         )
 
-    def create_deployment(self, config):
-        pykube.Deployment(self.api, config).create()
+    def create_deployment(self, deployment_config, service_config):
+        pykube.Deployment(self.api, deployment_config).create()
+        pykube.Service(self.api, service_config).create()
 
 
 def format_pod_name(service, instance):

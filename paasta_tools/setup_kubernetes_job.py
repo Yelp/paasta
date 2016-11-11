@@ -124,7 +124,8 @@ def send_event(
 def deploy_service(
     service,
     instance,
-    config,
+    deployment_config,
+    service_config,
     client,
 ):
     """
@@ -133,7 +134,8 @@ def deploy_service(
 
     :param service: The name of the service to deploy
     :param instance: The instance of the service to deploy
-    :param config: The complete configuration dict to send to kubernetes
+    :param deployment_config: The deployment configuration dict to send to kubernetes
+    :param service_config: The service configuration dict to send to kubernetes
     :param client: A KubeClient object
     :returns: A tuple of (status, output) to be used with send_sensu_event
     """
@@ -155,13 +157,13 @@ def deploy_service(
     already_deployed = False
 
     for deployment in existing_deployments:
-        if deployment.obj['metadata']['name'] == config['metadata']['name']:
+        if deployment.obj['metadata']['name'] == deployment_config['metadata']['name']:
             already_deployed = True
         else:
             deployment.delete()
 
     if not already_deployed:
-        client.create_deployment(config)
+        client.create_deployment(deployment_config, service_config)
 
     return (0, 'Service deployed.')
 
@@ -187,7 +189,7 @@ def setup_service(
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
-        kubernetes_pod_dict = service_kubernetes_config.format_kubernetes_pod_dict()
+        kubernetes_deployment_dict = service_kubernetes_config.format_kubernetes_deployment_dict()
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
@@ -198,13 +200,17 @@ def setup_service(
         log.error(error_msg)
         return (1, error_msg)
 
-    full_id = kubernetes_pod_dict['metadata']['labels']['id']
+    kubernetes_service_dict = service_kubernetes_config.format_kubernetes_deployment_dict(
+        kubernetes_deployment_dict)
+
+    full_id = kubernetes_deployment_dict['metadata']['labels']['id']
 
     log.info("Desired Kubernetes instance id: %s", full_id)
     return deploy_service(
         service=service,
         instance=instance,
-        config=kubernetes_pod_dict,
+        deployment_config=kubernetes_deployment_dict,
+        service_config=kubernetes_service_dict,
         client=client,
     )
 
