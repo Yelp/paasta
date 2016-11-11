@@ -13,14 +13,20 @@
 # limitations under the License.
 import logging
 
+import pykube
 import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import SPACER
 
 
 log = logging.getLogger(__name__)
@@ -72,3 +78,108 @@ class KubernetesPodConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+    def format_kubernetes_deployment_dict(self):
+        service = self.get_service()
+        instance = self.get_instance()
+        git_sha = self.branch_dict['git_sha']
+
+        cmd = self.get_cmd()
+
+        complete_dict = {
+            'metadata': {
+                'namespace': 'default',
+                'labels': {
+                    'service': service,
+                    'instance': instance,
+                    'git_sha': git_sha,
+                },
+            },
+            'spec': {
+                'imagePullSecrets': {
+                    'name': 'dockersecret',
+                    'namespace': 'default',
+                },
+                'replicas': 1,
+                'template': {
+                    'metadata': {
+                        'namespace': 'default',
+                        'labels': {
+                            'service': service,
+                            'instance': instance,
+                            'git_sha': git_sha,
+                        },
+                    },
+                    'spec': {
+                        'containers': [
+                            {
+                                'name': 'container1',
+                                'image': self.branch_dict['docker_image'],
+                                'command': [cmd] if cmd else [],
+                                'args': [],
+                                'env': {},
+                                'imagePullPolicy': 'Always',
+                                'ports': [],
+                                'resources': {
+                                    'cpu': self.get_cpus(),
+                                    'memory': '%dM' % self.get_mem(),
+                                },
+                            },
+                        ],
+                        'restartPolicy': 'Always',
+                        'volumes': [],
+                    },
+                },
+            },
+        }
+
+        config_hash = get_config_hash(complete_dict)
+        complete_dict['metadata']['labels']['config_hash'] = config_hash
+        complete_dict['spec']['template']['metadata']['labels']['config_hash'] = config_hash
+        complete_dict['metadata']['name'] = replace_underscores(
+            compose_job_id(
+                service,
+                instance,
+                git_sha,
+                config_hash,
+            )
+        )
+
+        return complete_dict
+
+
+def replace_underscores(string):
+    return string.replace('_', '--')
+
+
+class KubeClient(object):
+    def __init__(self):
+        self.config = load_system_paasta_config().get_kubernetes_config()
+        try:
+            self.pykube_config = pykube.KubeConfig.from_url(
+                # url=self.config['url'],
+                url='https://paasta-mesosstage.yelp:6443',
+            )
+        except KeyError:
+            raise PaastaNotConfiguredError('KubeClient config not present in kubernetes_config')
+        # Disable SSL cert validation
+        self.pykube_config.cluster['insecure-skip-tls-verify'] = True
+        self.api = pykube.HTTPClient(self.pykube_config)
+
+    def get_deployments(self):
+        return pykube.Deployment.objects(self.api).filter(namespace='default')
+
+    def get_matching_deployments(self, service, instance):
+        return self.get_deployments().filter(
+            selector={
+                'service__eq': service,
+                'instance__eq': instance,
+            },
+        )
+
+    def create_deployment(self, config):
+        pykube.Deployment(self.api, config).create()
+
+
+def format_pod_name(service, instance):
+    return SPACER.join((service, instance))

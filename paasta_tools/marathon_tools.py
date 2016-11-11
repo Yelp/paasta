@@ -276,13 +276,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def get_max_launch_delay_seconds(self):
         return self.config_dict.get('max_launch_delay_seconds', 300)
 
-    def get_bounce_method(self):
-        """Get the bounce method specified in the service's marathon configuration.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: The bounce method specified in the config, or 'crossover' if not specified"""
-        return self.config_dict.get('bounce_method', 'crossover')
-
     def get_calculated_constraints(self, service_namespace_config):
         """Gets the calculated constraints for a marathon instance
 
@@ -504,15 +497,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             raise InvalidHealthcheckMode(
                 "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
         return healthchecks
-
-    def get_bounce_health_params(self, service_namespace_config):
-        default = {}
-        if service_namespace_config.is_in_smartstack():
-            default = {'check_haproxy': True}
-        return self.config_dict.get('bounce_health_params', default)
-
-    def get_bounce_margin_factor(self):
-        return self.config_dict.get('bounce_margin_factor', 1.0)
 
     def get_accepted_resource_roles(self):
         return self.config_dict.get('accepted_resource_roles', None)

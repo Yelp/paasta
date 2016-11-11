@@ -25,7 +25,7 @@ class LongRunningServiceConfig(InstanceConfig):
         )
 
     def get_drain_method(self, service_namespace_config):
-        """Get the drain method specified in the service's marathon configuration.
+        """Get the drain method specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain method specified in the config, or 'noop' if not specified"""
@@ -36,7 +36,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return self.config_dict.get('drain_method', default)
 
     def get_drain_method_params(self, service_namespace_config):
-        """Get the drain method parameters specified in the service's marathon configuration.
+        """Get the drain method parameters specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
@@ -99,6 +99,22 @@ class LongRunningServiceConfig(InstanceConfig):
         elif mode not in ['http', 'tcp', 'cmd', None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
+
+    def get_bounce_health_params(self, service_namespace_config):
+        default = {}
+        if service_namespace_config.is_in_smartstack():
+            default = {'check_haproxy': True}
+        return self.config_dict.get('bounce_health_params', default)
+
+    def get_bounce_margin_factor(self):
+        return self.config_dict.get('bounce_margin_factor', 1.0)
+
+    def get_bounce_method(self):
+        """Get the bounce method specified in the service's configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The bounce method specified in the config, or 'crossover' if not specified"""
+        return self.config_dict.get('bounce_method', 'crossover')
 
 
 class InvalidHealthcheckMode(Exception):

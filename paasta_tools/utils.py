@@ -956,6 +956,12 @@ class SystemPaastaConfig(dict):
         :returns: The marathon config dictionary"""
         return self.get('marathon_config', {})
 
+    def get_kubernetes_config(self):
+        """Get the kubernetes config
+
+        :returns: The kubernetes config dictionary"""
+        return self.get('kubernetes_config', {})
+
     def get_local_run_config(self):
         """Get the local-run config
 

@@ -64,7 +64,7 @@ setup(
         'pytimeparse >= 1.1.0',
         'pytz >= 2014.10',
         'python-dateutil >= 2.4.0',
-        'kube == 0.9.1',
+        'pykube == 0.13.0',
         'requests == 2.6.2',
         'requests-cache >= 0.4.10,<= 0.5.0',
         'sensu-plugin >= 0.1.0',
