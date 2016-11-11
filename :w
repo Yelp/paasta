@@ -112,14 +112,7 @@ class KubernetesPodConfig(LongRunningServiceConfig):
                 'requests': resource_requirements,
                 'limits': resource_requirements,
             },
-            'volumeMounts': [
-                {
-                    'name': 'container%d' % number,
-                    'mountPath': volume['containerPath'],
-                    'readOnly': volume['mode'] == 'RO',
-                }
-                for number, volume in enumerate(docker_volumes)
-            ],
+            'volume_mounts': {}
         }
 
         cmd = self.get_cmd()
@@ -154,16 +147,8 @@ class KubernetesPodConfig(LongRunningServiceConfig):
                         'containers': [
                             container_spec,
                         ],
-                        'volumes': [
-                            {
-                                'name': 'container%d' % number,
-                                'hostPath': {
-                                    'path': volume['hostPath'],
-                                },
-                            }
-                            for number, volume in enumerate(docker_volumes)
-                        ],
                         'restartPolicy': 'Always',
+                        'volumes': [],
                     },
                 },
             },
