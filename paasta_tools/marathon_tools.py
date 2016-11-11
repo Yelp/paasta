@@ -772,6 +772,36 @@ def get_classic_services_running_here_for_nerve(soa_dir):
     return classic_services
 
 
+def get_kubernetes_services_running_here_for_nerve():
+    pods = requests.get('http://127.0.0.1:10255/pods').json()
+    result = []
+    for item in pods['items']:
+        if item['status']['phase'] != 'Running':
+            continue
+
+        service_name = item['metadata']['labels'].get('instance', '').replace('_', '.')
+        if not service_name:
+            # Not a PaaSTA service
+            continue
+
+        service_info = {}
+
+        # Assume just one container per pod
+        a_container = item['spec']['containers'][0]
+        for port_info in a_container['ports']:
+            if 'hostPort' in port_info:
+                service_info['port'] = port_info['hostPort']
+                break
+        else:
+            # no host port found
+            continue
+
+        result.append((service_name, service_info))
+
+    return result
+
+
+
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get a list of ALL services running on this box, with returned information
     needed for nerve.
@@ -789,7 +819,8 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
               AND (service, service_config) for legacy SOA services"""
     # All Legacy yelpsoa services are also announced
     return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
-        get_classic_services_running_here_for_nerve(soa_dir)
+        get_classic_services_running_here_for_nerve(soa_dir) + \
+        get_kubernetes_services_running_here_for_nerve()
 
 
 def list_all_marathon_app_ids(client):
