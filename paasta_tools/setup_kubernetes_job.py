@@ -49,7 +49,6 @@ import requests_cache
 from paasta_tools import monitoring_tools
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import load_kubernetes_pod_config
-from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -92,7 +91,14 @@ def parse_args():
     return args
 
 
-def send_event(name, instance, cluster, soa_dir, status, output):
+def send_event(
+    name,
+    instance,
+    cluster,
+    soa_dir,
+    status,
+    output,
+):
     """
     Send an event to sensu via pysensu_yelp with the given information.
 
@@ -118,16 +124,8 @@ def send_event(name, instance, cluster, soa_dir, status, output):
 def deploy_service(
     service,
     instance,
-    kubernetes_jobid,
     config,
     client,
-    bounce_method,
-    drain_method_name,
-    drain_method_params,
-    nerve_ns,
-    bounce_health_params,
-    soa_dir,
-    bounce_margin_factor=1.0,
 ):
     """
     Deploy the service to kubernetes, either directly or via a bounce if needed.
@@ -135,14 +133,8 @@ def deploy_service(
 
     :param service: The name of the service to deploy
     :param instance: The instance of the service to deploy
-    :param kubernetes_jobid: Full id of the kubernetes job
     :param config: The complete configuration dict to send to kubernetes
     :param client: A KubeClient object
-    :param bounce_method: The bounce method to use, if needed
-    :param drain_method_name: The name of the traffic draining method to use.
-    :param nerve_ns: The nerve namespace to look in.
-    :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
-    :param bounce_margin_factor: the multiplication factor used to calculate the number of instances to be drained
     :returns: A tuple of (status, output) to be used with send_sensu_event
     """
 
@@ -174,7 +166,12 @@ def deploy_service(
     return (0, 'Service deployed.')
 
 
-def setup_service(service, instance, client, service_kubernetes_config, soa_dir):
+def setup_service(
+    service,
+    instance,
+    client,
+    service_kubernetes_config,
+):
     """
     Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Kubernetes and hasn't
@@ -202,22 +199,13 @@ def setup_service(service, instance, client, service_kubernetes_config, soa_dir)
         return (1, error_msg)
 
     full_id = kubernetes_pod_dict['metadata']['labels']['id']
-    service_namespace_config = load_service_namespace_config(service, instance)
 
     log.info("Desired Kubernetes instance id: %s", full_id)
     return deploy_service(
         service=service,
         instance=instance,
-        kubernetes_jobid=full_id,
         config=kubernetes_pod_dict,
         client=client,
-        bounce_method=service_kubernetes_config.get_bounce_method(),
-        drain_method_name=service_kubernetes_config.get_drain_method(service_namespace_config),
-        drain_method_params=service_kubernetes_config.get_drain_method_params(service_namespace_config),
-        nerve_ns=service_kubernetes_config.get_nerve_namespace(),
-        bounce_health_params=service_kubernetes_config.get_bounce_health_params(service_namespace_config),
-        soa_dir=soa_dir,
-        bounce_margin_factor=service_kubernetes_config.get_bounce_margin_factor(),
     )
 
 
@@ -294,7 +282,12 @@ def deploy_kubernetes_pod(service, instance, cluster, client, soa_dir):
         return 1
 
     try:
-        status, output = setup_service(service, instance, client, service_instance_config, soa_dir)
+        status, output = setup_service(
+            service,
+            instance,
+            client,
+            service_instance_config,
+        )
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, cluster, soa_dir, sensu_status, output)
         return 0
