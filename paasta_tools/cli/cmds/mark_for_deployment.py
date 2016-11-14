@@ -132,12 +132,12 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     try:
         remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
     except Exception as e:
-        loglines = ["Failed to mark %s in for deployment in deploy group %s!" % (commit, deploy_group)]
+        loglines = ["Failed to mark %s for deployment in deploy group %s!" % (commit, deploy_group)]
         for line in str(e).split('\n'):
             loglines.append(line)
         return_code = 1
     else:
-        loglines = ["Marked %s in for deployment in deploy group %s" % (commit, deploy_group)]
+        loglines = ["Marked %s for deployment in deploy group %s" % (commit, deploy_group)]
         return_code = 0
 
     for logline in loglines:
