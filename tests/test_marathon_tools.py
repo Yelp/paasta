@@ -1658,6 +1658,29 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_matching_apps(self):
+        apps = [
+            mock.Mock(id='/fake--service.fake--instance.bouncingold'),
+            mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
+            mock.Mock(id='/fake--service.other--instance.bla'),
+            mock.Mock(id='/other--service'),
+            mock.Mock(id='/fake--service.fake--instance--with--suffix.something'),
+            mock.Mock(id='/prefixed--fake--service.fake--instance.something'),
+        ]
+
+        actual = marathon_tools.get_matching_apps('fake_service', 'fake_instance', apps)
+        assert actual == apps[0:2]
+
+    def test_get_all_marathon_apps(self):
+        apps = [
+            mock.Mock(id='/fake--service.fake--instance.bouncingold'),
+            mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
+        ]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
+        actual = marathon_tools.get_all_marathon_apps(fake_client)
+        assert actual == apps
+
 
 class TestMarathonServiceConfig(object):
 
@@ -2421,3 +2444,26 @@ def test_is_task_healthy():
     mock_hcrs = []
     mock_task = mock.Mock(health_check_results=mock_hcrs)
     assert marathon_tools.is_task_healthy(mock_task, default_healthy=True)
+
+
+def test_kill_given_tasks():
+    mock_kill_given_tasks = mock.Mock()
+    mock_client = mock.Mock(kill_given_tasks=mock_kill_given_tasks)
+
+    ret = marathon_tools.kill_given_tasks(mock_client, [], 2)
+    assert not mock_kill_given_tasks.called
+    assert ret == []
+
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
+    mock_kill_given_tasks.assert_called_with(task_ids=['id1', 'id2'], scale=2, force=True)
+    assert ret == mock_kill_given_tasks.return_value
+
+    mock_error = mock.Mock(reason='thing is not valid', status_code=422, content=None)
+    mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
+    assert ret == []
+
+    mock_error = mock.Mock(reason='thing', status_code=500, content=None)
+    mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
+    with raises(MarathonHttpError):
+        marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)

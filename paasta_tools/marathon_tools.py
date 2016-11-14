@@ -911,16 +911,21 @@ def get_matching_appids(servicename, instance, client):
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    return [app.id for app in get_matching_apps(servicename, instance, client)]
+    marathon_apps = get_all_marathon_apps(client)
+    return [app.id for app in get_matching_apps(servicename, instance, marathon_apps)]
 
 
-def get_matching_apps(servicename, instance, client, embed_failures=False):
+def get_matching_apps(servicename, instance, marathon_apps):
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     jobid = format_job_id(servicename, instance)
     expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
-    return [app for app in client.list_apps(embed_failures=embed_failures) if app.id.startswith(expected_prefix)]
+    return [app for app in marathon_apps if app.id.startswith(expected_prefix)]
+
+
+def get_all_marathon_apps(client, embed_failures=False):
+    return client.list_apps(embed_failures=embed_failures)
 
 
 def kill_task(client, app_id, task_id, scale):
@@ -945,6 +950,9 @@ def kill_task(client, app_id, task_id, scale):
 
 def kill_given_tasks(client, task_ids, scale):
     """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
+    if not task_ids:
+        log.debug("No task_ids specified, not killing any tasks")
+        return []
     try:
         return client.kill_given_tasks(task_ids=task_ids, scale=scale, force=True)
     except MarathonHttpError as e:
