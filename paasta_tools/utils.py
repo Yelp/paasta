@@ -276,6 +276,13 @@ class InstanceConfig(dict):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
+    def get_deploy_constraints(self):
+        """Return the combination of deploy_blacklist and deploy_whitelist
+        as a list of constraints.
+        """
+        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
+                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
+
     def get_deploy_blacklist(self):
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
@@ -1512,8 +1519,10 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
 
 
 def deploy_blacklist_to_constraints(deploy_blacklist):
-    """Converts a blacklist of locations into marathon appropriate constraints
+    """Converts a blacklist of locations into marathon appropriate constraints.
+
     https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
+    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#unlike-constraint
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -1527,7 +1536,9 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
 
 def deploy_whitelist_to_constraints(deploy_whitelist):
     """Converts a whitelist of locations into marathon appropriate constraints
+
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
+    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#like-constraint
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints

@@ -28,7 +28,6 @@ import service_configuration_lib
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -228,9 +227,6 @@ class ChronosJobConfig(InstanceConfig):
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
         return [[str(val) for val in constraint] for constraint in constraints]
-
-    def get_deploy_constraints(self):
-        return deploy_whitelist_to_constraints(self.get_deploy_whitelist())
 
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()

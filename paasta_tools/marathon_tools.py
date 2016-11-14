@@ -42,8 +42,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import deploy_blacklist_to_constraints
-from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -343,10 +341,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         )
         routing_constraints = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
-
-    def get_deploy_constraints(self):
-        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
-                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
 
     def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
