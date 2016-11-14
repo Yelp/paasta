@@ -119,7 +119,7 @@
             },
             "cpu_burst_pct": {
                 "type": "integer",
-                "minimum": "0",
+                "minimum": 0,
                 "exclusiveMinimum": false
             }
         },
