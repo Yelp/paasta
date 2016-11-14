@@ -2444,3 +2444,26 @@ def test_is_task_healthy():
     mock_hcrs = []
     mock_task = mock.Mock(health_check_results=mock_hcrs)
     assert marathon_tools.is_task_healthy(mock_task, default_healthy=True)
+
+
+def test_kill_given_tasks():
+    mock_kill_given_tasks = mock.Mock()
+    mock_client = mock.Mock(kill_given_tasks=mock_kill_given_tasks)
+
+    ret = marathon_tools.kill_given_tasks(mock_client, [], 2)
+    assert not mock_kill_given_tasks.called
+    assert ret == []
+
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
+    mock_kill_given_tasks.assert_called_with(task_ids=['id1', 'id2'], scale=2, force=True)
+    assert ret == mock_kill_given_tasks.return_value
+
+    mock_error = mock.Mock(reason='thing is not valid', status_code=422, content=None)
+    mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
+    assert ret == []
+
+    mock_error = mock.Mock(reason='thing', status_code=500, content=None)
+    mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
+    with raises(MarathonHttpError):
+        marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)

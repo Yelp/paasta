@@ -956,6 +956,9 @@ def kill_task(client, app_id, task_id, scale):
 
 def kill_given_tasks(client, task_ids, scale):
     """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
+    if not task_ids:
+        log.debug("No task_ids specified, not killing any tasks")
+        return []
     try:
         return client.kill_given_tasks(task_ids=task_ids, scale=scale, force=True)
     except MarathonHttpError as e:
