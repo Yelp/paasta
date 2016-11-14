@@ -1,7 +1,16 @@
 # Change Log
 
-## [0.56.2](https://github.com/Yelp/paasta/tree/0.56.2) (2016-11-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.1...0.56.2)
+## [v0.56.3](https://github.com/Yelp/paasta/tree/v0.56.3) (2016-11-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.2...v0.56.3)
+
+**Merged pull requests:**
+
+- Added kubernetes to paasta local run and validate. [\#887](https://github.com/Yelp/paasta/pull/887) ([matthewmcarlson](https://github.com/matthewmcarlson))
+- Setup marathon speedup [\#884](https://github.com/Yelp/paasta/pull/884) ([mattmb](https://github.com/mattmb))
+- Added get\_currently\_deployed\_sha and better rollback hints [\#880](https://github.com/Yelp/paasta/pull/880) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.2](https://github.com/Yelp/paasta/tree/v0.56.2) (2016-11-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.1...v0.56.2)
 
 **Fixed bugs:**
 
@@ -18,6 +27,7 @@
 
 **Merged pull requests:**
 
+- support chronos deploy blacklist [\#882](https://github.com/Yelp/paasta/pull/882) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Revert "Revert "added support for adhoc jobs"" [\#873](https://github.com/Yelp/paasta/pull/873) ([mjksmith](https://github.com/mjksmith))
 
 ## [v0.56.0](https://github.com/Yelp/paasta/tree/v0.56.0) (2016-11-03)
