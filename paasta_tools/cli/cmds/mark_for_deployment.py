@@ -101,7 +101,11 @@ def add_subparser(subparsers):
         dest="timeout",
         type=int,
         default=DEFAULT_DEPLOYMENT_TIMEOUT,
-        help="Time in seconds to wait for paasta to deploy the service. If the timeout is exceeded we return 1",
+        help=(
+            "Time in seconds to wait for paasta to deploy the service. "
+            "If the timeout is exceeded we return 1. "
+            "Default is %(default)s seconds."
+        ),
     )
     list_parser.add_argument(
         '-d', '--soa-dir',
