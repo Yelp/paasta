@@ -68,7 +68,7 @@
             },
             "mem": {
                 "type": "number",
-                "minimum": 0,
+                "minimum": 32,
                 "exclusiveMinimum": true,
                 "default": 1024
             },
