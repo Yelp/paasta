@@ -62,6 +62,7 @@ def get_mesos_config():
 def get_mesos_master():
     return MesosMaster(get_mesos_config())
 
+
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'

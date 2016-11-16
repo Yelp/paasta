@@ -100,5 +100,6 @@ def main():
         sys.stdout.write("Could not find container with MESOS_TASK_ID '%s'.\n" % args.mesos_id)
         sys.exit(1)
 
+
 if __name__ == "__main__":
     main()

@@ -242,6 +242,7 @@ def paasta_maintenance():
     print ret
     return ret
 
+
 if __name__ == '__main__':
     if paasta_maintenance():
         sys.exit(0)

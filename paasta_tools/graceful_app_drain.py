@@ -105,5 +105,6 @@ def main():
 
     print("Sucessfully killed {0}".format(full_appid))
 
+
 if __name__ == '__main__':
     main()

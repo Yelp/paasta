@@ -209,5 +209,6 @@ def main():
         if len(job_failures) > 0 or len(task_failures) > 0:
             sys.exit(1)
 
+
 if __name__ == "__main__":
     main()

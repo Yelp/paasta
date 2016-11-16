@@ -872,7 +872,6 @@ class TestChronosTools:
             'constraints': [['pool', 'LIKE', 'default']],
             'retries': 2,
             'epsilon': fake_epsilon,
-            'name': 'test_job',
             'cpus': fake_cpus,
             'async': False,
             'owner': fake_owner,
