@@ -1688,7 +1688,7 @@ def prompt_pick_one(sequence, choosing):
     chooser.title = 'Please pick a {choosing} from the choices below:'.format(choosing=choosing)
     try:
         result = chooser.ask()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         sys.stdout.write('\n')
         sys.exit(1)
 

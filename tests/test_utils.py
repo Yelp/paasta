@@ -1585,6 +1585,20 @@ def test_prompt_pick_one_keyboard_interrupt():
             utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
 
 
+def test_prompt_pick_one_eoferror():
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
+        mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
+    ) as (
+        mock_stdin,
+        mock_menu,
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=EOFError))
+        with raises(SystemExit):
+            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
 def test_prompt_pick_one_returns_none_no_tty():
     with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
         mock_stdin.isatty.return_value = False
