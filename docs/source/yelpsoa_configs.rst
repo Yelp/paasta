@@ -301,6 +301,8 @@ Notes:
     is specified. If both are specified, an exception is thrown with an
     explanation of the problem, and the program terminates.
 
+.. _doc: deploy_groups.html
+
 ``chronos-[clustername].yaml``
 ------------------------------
 
@@ -440,7 +442,28 @@ Each job configuration MAY specify the following options:
           schedule: R/2014-10-10T18:32:00Z/PT60M
           schedule_time_zone: America/Los_Angeles
 
-.. _doc: deploy_groups.html
+
+``adhoc-[clustername].yaml``
+-------------------------------
+
+The yaml where adhoc instances are defined. Top-level keys are instance names.
+Each instance MAY have:
+
+  * ``mem``
+
+  * ``net``
+
+  * ``cmd``
+
+  * ``args``
+
+  * ``env``
+
+  * ``extra_volumes``
+
+  * ``deploy_group``
+
+See the `marathon-[clustername].yaml`_ section for details for each of these parameters.
 
 ``smartstack.yaml``
 -------------------
