@@ -637,7 +637,12 @@ def configure_and_run_docker_container(
         if instance is None:
             instance_type = 'adhoc'
             instance = 'interactive'
-            instance_config = get_default_interactive_config(service=service, cluster=cluster, soa_dir=soa_dir)
+            instance_config = get_default_interactive_config(
+                service=service,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                load_deployments=load_deployments,
+            )
             interactive = True
         else:
             instance_type = validate_service_instance(service, instance, cluster, soa_dir)
