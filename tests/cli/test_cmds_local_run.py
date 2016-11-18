@@ -763,17 +763,17 @@ def test_run_docker_container_non_interactive(
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            False,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=False,
+            healthcheck_only=False,
+            instance_config=mock_service_manifest,
         )
         mock_service_manifest.get_mem.assert_called_once_with()
         mock_pick_random_port.assert_called_once_with()
@@ -812,17 +812,17 @@ def test_run_docker_container_interactive(
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     run_docker_container(
-        mock_docker_client,
-        'fake_service',
-        'fake_instance',
-        'fake_hash',
-        [],
-        True,  # interactive
-        'fake_command',
-        'fake_hostname',
-        False,  # healthcheck
-        False,  # terminate after healthcheck
-        mock_service_manifest,
+        docker_client=mock_docker_client,
+        service='fake_service',
+        instance='fake_instance',
+        docker_hash='fake_hash',
+        volumes=[],
+        interactive=True,
+        command='fake_command',
+        hostname='fake_hostname',
+        healthcheck=False,
+        healthcheck_only=False,
+        instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with()
@@ -865,17 +865,17 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            False,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=False,
+            healthcheck_only=False,
+            instance_config=mock_service_manifest,
         )
         assert mock_docker_client.stop.call_count == 1
         assert mock_docker_client.remove_container.call_count == 1
@@ -910,17 +910,17 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            False,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=False,
+            healthcheck_only=False,
+            instance_config=mock_service_manifest,
         )
         # Cleanup wont' be necessary and the function should bail out early.
         assert mock_docker_client.stop.call_count == 0
@@ -928,7 +928,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
         assert excinfo.value.code == 99
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(True, ''))
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
@@ -949,23 +949,23 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.attach.return_value = ['line1', 'line2']
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            True,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=False,
+            healthcheck_only=True,
+            instance_config=mock_service_manifest,
             soa_dir='fake_soa_dir',
         )
     assert mock_docker_client.stop.call_count == 1
@@ -980,7 +980,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(True, ''))
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
@@ -988,7 +988,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
-            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+            return_value=('cmd', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_get_healthcheck_for_instance,
@@ -1001,30 +1001,31 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.attach.return_value = 'line1'
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 0}}
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            True,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=True,
+            healthcheck_only=True,
+            instance_config=mock_service_manifest,
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 0
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(False, ''))
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=False)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
@@ -1033,7 +1034,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 @mock.patch(
     'paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
     autospec=True,
-    return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+    return_value=('cmd', 'fake_healthcheck_uri'),
 )
 def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_get_healthcheck_for_instance,
@@ -1052,27 +1053,28 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
         spec_set=docker.Client.attach,
         return_value=ATTACH_OUTPUT,
     )
+    mock_docker_client.inspect_container = mock.MagicMock(spec_set=docker.Client.inspect_container)
+    mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 42}}
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     with raises(SystemExit) as excinfo:
         run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            'fake_hostname',
-            False,  # healthcheck
-            True,  # terminate after healthcheck
-            mock_service_manifest,
+            docker_client=mock_docker_client,
+            service='fake_service',
+            instance='fake_instance',
+            docker_hash='fake_hash',
+            volumes=[],
+            interactive=False,
+            command='fake_command',
+            hostname='fake_hostname',
+            healthcheck=True,
+            healthcheck_only=True,
+            instance_config=mock_service_manifest,
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
-
     assert ATTACH_OUTPUT in capsys.readouterr()[0]
 
 
@@ -1129,7 +1131,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
     mock_run_healthcheck_on_container.return_value = (False, "it failed")
     actual = simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
-    assert actual[0] is False
+    assert actual is False
 
 
 @mock.patch('time.sleep', autospec=True)
@@ -1160,7 +1162,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_health
 @mock.patch('time.sleep', autospec=True)
 @mock.patch('time.time', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container',
-            autospec=True, return_value=(True, "healcheck status"))
+            autospec=True, return_value=(True, "healthcheck status"))
 def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
@@ -1249,7 +1251,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys
             fake_service_manifest, mock_client, mock.sentinel.container_id,
             'http', 'http://fake_host/status', True,
         )
-        assert ret == (False, 'Aborted by the user')
+        assert ret is False
         out, _ = capsys.readouterr()
         assert out.count('Container exited with code 127') == 1
 

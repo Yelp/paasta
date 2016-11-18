@@ -149,6 +149,7 @@ def run_healthcheck_on_container(
     else:
         sys.stdout.write(PaastaColors.yellow(
             "Healthcheck mode '%s' is not currently supported!\n" % healthcheck_mode))
+        sys.exit(1)
     return healthcheck_result
 
 
@@ -167,7 +168,7 @@ def simulate_healthcheck_on_service(
     :param container_id: Docker container id
     :param healthcheck_data: tuple url to healthcheck
     :param healthcheck_enabled: boolean
-    :returns: a 2-tuple of (healthcheck_passed_bool, healthcheck_output_string)
+    :returns: healthcheck_passed: boolean
     """
     healthcheck_link = PaastaColors.cyan(healthcheck_data)
     if healthcheck_enabled:
@@ -191,18 +192,18 @@ def simulate_healthcheck_on_service(
                         container_state['State']['ExitCode'],
                     )) + '\n'
                 )
-                healthcheck_result = (False, "Aborted by the user")
+                healthcheck_passed = False
                 break
 
-            healthcheck_result = run_healthcheck_on_container(
+            healthcheck_passed, healthcheck_output = run_healthcheck_on_container(
                 docker_client, container_id, healthcheck_mode, healthcheck_data, timeout,
             )
 
             # Yay, we passed the healthcheck
-            if healthcheck_result[0]:
+            if healthcheck_passed:
                 sys.stdout.write("{}'{}' (via {})\n".format(
                     PaastaColors.green("Healthcheck succeeded!: "),
-                    healthcheck_result[1],
+                    healthcheck_output,
                     healthcheck_link,
                 ))
                 break
@@ -211,7 +212,7 @@ def simulate_healthcheck_on_service(
             if time.time() < graceperiod_end_time:
                 color = PaastaColors.grey
                 msg = '(disregarded due to grace period)'
-                extra_msg = ' (via: {}. Result: {})'.format(healthcheck_link, healthcheck_result[1])
+                extra_msg = ' (via: {}. Output: {})'.format(healthcheck_link, healthcheck_output)
             else:
                 # If we've exceeded the grace period, we start incrementing attempts
                 after_grace_period_attempts += 1
@@ -219,7 +220,7 @@ def simulate_healthcheck_on_service(
                 msg = '(Attempt {} of {})'.format(
                     after_grace_period_attempts, max_failures,
                 )
-                extra_msg = ' (via: {}. Result: {})'.format(healthcheck_link, healthcheck_result[1])
+                extra_msg = ' (via: {}. Output: {})'.format(healthcheck_link, healthcheck_output)
 
             sys.stdout.write('{}{}\n'.format(
                 color('Healthcheck failed! {}'.format(msg)),
@@ -231,9 +232,9 @@ def simulate_healthcheck_on_service(
 
             time.sleep(interval)
     else:
-        sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' % healthcheck_link)
-        healthcheck_result = (True, "No healthcheck enabled")
-    return healthcheck_result
+        sys.stdout.write('\nPaaSTA would have healthchecked your service via\n%s\n' % healthcheck_link)
+        healthcheck_passed = True
+    return healthcheck_passed
 
 
 def read_local_dockerfile_lines():
@@ -467,19 +468,6 @@ def run_docker_container(
     In non-interactive mode when the run is complete, stop the container and
     remove it (with docker-py).
     """
-    if interactive:
-        sys.stderr.write(PaastaColors.yellow(
-            "Warning! You're running a container in interactive mode.\n"
-            "This is *NOT* how Mesos runs containers.\n"
-            "To run the container exactly as Mesos does, omit the -I flag.\n\n"
-        ))
-    else:
-        sys.stderr.write(PaastaColors.yellow(
-            "You're running a container in non-interactive mode.\n"
-            "This is how Mesos runs containers.\n"
-            "Note that some programs behave differently when running with no\n"
-            "tty attached (as your program is about to run).\n\n"
-        ))
     environment = instance_config.get_env_dictionary()
     net = instance_config.get_net()
     memory = instance_config.get_mem()
@@ -543,23 +531,31 @@ def run_docker_container(
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
 
         # If the service has a healthcheck, simulate it
-        if healthcheck_mode:
-            status, _ = simulate_healthcheck_on_service(
-                instance_config, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
-        else:
-            status = True
+        if healthcheck_mode is not None:
+            healthcheck_result = simulate_healthcheck_on_service(
+                instance_config=instance_config,
+                docker_client=docker_client,
+                container_id=container_id,
+                healthcheck_mode=healthcheck_mode,
+                healthcheck_data=healthcheck_data,
+                healthcheck_enabled=healthcheck,
+            )
 
         def _output_on_failure():
-            sys.stdout.write('Your service failed to start, here is the stdout and stderr\n')
+            returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
+            sys.stdout.write('Container exited: %d)' % returncode)
+            sys.stdout.write('Here is the stdout and stderr:\n')
             sys.stdout.write(PaastaColors.grey(
                 docker_client.attach(container_id, stderr=True, stream=False, logs=True)
             ))
 
         if healthcheck_only:
-            sys.stdout.write('Detected --healthcheck-only flag, exiting now.\n')
             if container_started:
                 _cleanup_container(docker_client, container_id)
-            if status:
+            if healthcheck_mode is None:
+                sys.stdout.write('--healthcheck-only, but no healthcheck is defined for this instance!\n')
+                sys.exit(1)
+            elif healthcheck_result:
                 sys.exit(0)
             else:
                 _output_on_failure()
@@ -634,6 +630,9 @@ def configure_and_run_docker_container(
     interactive = args.interactive
 
     try:
+        if instance is None and args.healthcheck:
+            sys.stderr.write("With --healthcheck, --instance must be provided!\n")
+            sys.exit(1)
         if instance is None:
             instance_type = 'adhoc'
             instance = 'interactive'
