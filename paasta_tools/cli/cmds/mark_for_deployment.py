@@ -276,7 +276,7 @@ def instances_deployed(cluster, service, instances, git_sha):
                 results.append(False)
                 continue
             if status.marathon.deploy_status != 'Running':
-                log.info("{}.{} on {} in't running yet: {}".format(
+                log.info("{}.{} on {} isn't running yet: {}".format(
                     service, status.instance, cluster, status.marathon.deploy_status))
                 results.append(False)
                 continue
