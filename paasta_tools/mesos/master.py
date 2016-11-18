@@ -19,12 +19,14 @@ from __future__ import print_function
 import fnmatch
 import itertools
 import json
+import logging
 import os
 import re
 import urlparse
 
 import requests
 import requests.exceptions
+from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
 
 from . import exceptions
@@ -35,6 +37,7 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
+from paasta_tools.utils import retry
 
 ZOOKEEPER_TIMEOUT = 1
 
@@ -46,6 +49,9 @@ Try running `mesos config master zk://localhost:2181/mesos`. See the README for
 more examples."""
 
 MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 class MesosMaster(object):
@@ -76,6 +82,7 @@ class MesosMaster(object):
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
 
+    @retry(KazooTimeoutError, tries=5, delay=0.5, logger=logger)
     def _zookeeper_resolver(self, cfg):
         hosts, path = cfg[5:].split("/", 1)
         path = "/" + path
