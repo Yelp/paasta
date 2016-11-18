@@ -13,6 +13,7 @@
 # limitations under the License.
 from StringIO import StringIO
 
+from mock import ANY
 from mock import MagicMock
 from mock import patch
 from pytest import raises
@@ -121,7 +122,7 @@ def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.generate_pipeline', autospec=True)
-def test_paasta_generate_pipeline_success_no_opts(
+def test_paasta_generate_pipeline_success_guesses_service_name(
         mock_generate_pipeline,
         mock_guess_service_name,
         mock_validate_service_name):
@@ -130,23 +131,21 @@ def test_paasta_generate_pipeline_success_no_opts(
     mock_validate_service_name.return_value = None
     args = MagicMock()
     args.service = None
-    args.soa_dir = '/fake/soa/dir'
     assert paasta_generate_pipeline(args) is None
-    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir='/fake/soa/dir')
+    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir=ANY)
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.generate_pipeline', autospec=True)
-def test_generate_pipeline_success_with_opts(
+def test_generate_pipeline_success_with_no_opts(
         mock_generate_pipeline,
         mock_validate_service_name):
     # paasta generate succeeds when service name provided as arg
     mock_validate_service_name.return_value = None
     args = MagicMock()
     args.service = 'fake_service'
-    args.soa_dir = '/fake/soa/dir'
     assert paasta_generate_pipeline(args) is None
-    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir='/fake/soa/dir')
+    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir=ANY)
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_url', autospec=True)

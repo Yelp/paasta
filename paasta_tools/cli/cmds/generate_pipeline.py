@@ -43,13 +43,6 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='Name of service for which you wish to generate a Jenkins pipeline',
     ).completer = lazy_choices_completer(list_services)
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
     list_parser.set_defaults(command=paasta_generate_pipeline)
 
 
@@ -57,7 +50,7 @@ def paasta_generate_pipeline(args):
     """Generate a Jenkins build pipeline.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     service = args.service or guess_service_name()
-    soa_dir = args.soa_dir
+    soa_dir = DEFAULT_SOA_DIR
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
