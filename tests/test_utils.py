@@ -1611,29 +1611,3 @@ def test_prompt_pick_one_exits_no_choices():
         mock_stdin.isatty.return_value = True
         with raises(SystemExit):
             utils.prompt_pick_one([], 'test')
-
-
-def test_retry_throws_exception():
-    attempts = []
-
-    def retry_func():
-        attempts.append(True)
-        raise Exception
-    decorator = utils.retry(Exception, tries=2, delay=0, backoff=0.1)
-    with raises(Exception):
-        decorator(retry_func)()
-        assert len(attempts) is 2
-
-
-def test_retry_no_exception():
-    attempts = []
-
-    def retry_func():
-        if len(attempts) is 0:
-            attempts.append(True)
-            raise Exception
-        else:
-            attempts.append(True)
-    decorator = utils.retry(Exception, tries=2, delay=0, backoff=0.1)
-    decorator(retry_func)()
-    assert len(attempts) is 2

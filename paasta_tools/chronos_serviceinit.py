@@ -370,6 +370,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             instance=instance,
             client=client,
             include_disabled=True,
+            include_temporary=True,
         )
         stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":

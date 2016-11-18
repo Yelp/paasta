@@ -28,6 +28,7 @@ import requests
 import requests.exceptions
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
+from retry import retry
 
 from . import exceptions
 from . import framework
@@ -37,7 +38,6 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
-from paasta_tools.utils import retry
 
 ZOOKEEPER_TIMEOUT = 1
 
@@ -51,7 +51,6 @@ more examples."""
 MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 
 class MesosMaster(object):
