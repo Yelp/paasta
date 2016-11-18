@@ -1680,6 +1680,10 @@ def prompt_pick_one(sequence, choosing):
                          ' Please specify a {choosing} using the cli.\n'.format(choosing=choosing))
         sys.exit(1)
 
+    if not sequence:
+        sys.stderr.write('PaaSTA needs to pick a {choosing} but none were found.\n'.format(choosing=choosing))
+        sys.exit(1)
+
     QUIT_ACTION = 'Quit'
     global_actions = [QUIT_ACTION]
     choices = [(item, item) for item in sequence]

@@ -76,7 +76,7 @@ class AdhocJobConfig(LongRunningServiceConfig):
         )
 
 
-def get_default_interactive_config(service, cluster, soa_dir):
+def get_default_interactive_config(service, cluster, soa_dir, load_deployments=False):
     default_job_config = {
         'cpus': 4,
         'mem': 10240,
@@ -97,7 +97,7 @@ def get_default_interactive_config(service, cluster, soa_dir):
         job_config = load_adhoc_job_config(
             service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False)
 
-    if not job_config.branch_dict:
+    if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(deployments_json['deployments'].keys(), choosing='deploy group')
         job_config.config_dict['deploy_group'] = deploy_group

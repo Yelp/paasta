@@ -1599,8 +1599,15 @@ def test_prompt_pick_one_eoferror():
             utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
 
 
-def test_prompt_pick_one_returns_none_no_tty():
+def test_prompt_pick_one_exits_no_tty():
     with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
         mock_stdin.isatty.return_value = False
         with raises(SystemExit):
             utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_exits_no_choices():
+    with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
+        mock_stdin.isatty.return_value = True
+        with raises(SystemExit):
+            utils.prompt_pick_one([], 'test')

@@ -33,7 +33,12 @@ def test_get_default_interactive_config():
             config_dict={},
             branch_dict={'deploy_group': 'fake_deploy_group'},
         )
-        result = adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
+        result = adhoc_tools.get_default_interactive_config(
+            'fake_serivce',
+            'fake_cluster',
+            '/fake/soa/dir',
+            load_deployments=False,
+        )
         assert result.get_cpus() == 4
         assert result.get_mem() == 10240
         assert result.get_disk() == 1024
@@ -58,6 +63,11 @@ def test_get_default_interactive_config_reads_from_tty():
                 },
             },
         })
-        result = adhoc_tools.get_default_interactive_config('fake_serivce', 'fake_cluster', '/fake/soa/dir')
+        result = adhoc_tools.get_default_interactive_config(
+            'fake_serivce',
+            'fake_cluster',
+            '/fake/soa/dir',
+            load_deployments=True,
+        )
         assert result.get_deploy_group() == 'fake_deploygroup'
         assert result.get_docker_image() == mock.sentinel.docker_image
