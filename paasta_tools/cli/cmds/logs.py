@@ -30,7 +30,6 @@ from time import sleep
 import dateutil
 import isodate
 import pytz
-import ujson as json
 
 try:
     from scribereader import scribereader
@@ -57,6 +56,7 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
+from paasta_tools.utils import load_json
 
 
 DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring', 'stdout', 'stderr']
@@ -214,7 +214,7 @@ def paasta_log_line_passes_filter(
     otherwise.
     """
     try:
-        parsed_line = json.loads(line)
+        parsed_line = load_json(line)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
@@ -243,7 +243,7 @@ def paasta_app_output_passes_filter(
     end_time=None,
 ):
     try:
-        parsed_line = json.loads(line)
+        parsed_line = load_json(line)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
@@ -327,7 +327,7 @@ def marathon_log_line_passes_filter(
     return True if the line should be displayed given the provided service; return False
     otherwise."""
     try:
-        parsed_line = json.loads(line)
+        parsed_line = load_json(line)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
@@ -352,7 +352,7 @@ def chronos_log_line_passes_filter(
     return True if the line should be displayed given the provided service; return False
     otherwise."""
     try:
-        parsed_line = json.loads(line)
+        parsed_line = load_json(line)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
@@ -412,7 +412,7 @@ def prettify_log_line(line, requested_levels):
     things we expect, return a pretty formatted string containing relevant values.
     """
     try:
-        parsed_line = json.loads(line)
+        parsed_line = load_json(line)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return "Invalid JSON: %s" % line
@@ -778,7 +778,7 @@ class ScribeLogReader(LogReader):
                         if filter_fn(line, levels, service, components, clusters,
                                      instances, start_time=start_time, end_time=end_time):
                             try:
-                                parsed_line = json.loads(line)
+                                parsed_line = load_json(line)
                                 timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
                                 if not timestamp.tzinfo:
                                     timestamp = pytz.utc.localize(timestamp)

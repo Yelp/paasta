@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 
+import collections
 import contextlib
 import copy
 import datetime
@@ -1700,3 +1701,21 @@ def prompt_pick_one(sequence, choosing):
         sys.exit(1)
     else:
         return result
+
+
+def encode_object_to_utf8(obj):
+    """
+    http://stackoverflow.com/questions/1254454/fastest-way-to-convert-a-dicts-keys-values-from-unicode-to-str#answer-1254499
+    """
+    if isinstance(obj, basestring):
+        return str(obj)
+    elif isinstance(obj, collections.Mapping):
+        return type(obj)(map(encode_object_to_utf8, obj.iteritems()))
+    elif isinstance(obj, collections.Iterable):
+        return type(obj)(map(encode_object_to_utf8, obj))
+    else:
+        return obj
+
+
+def load_json(*args, **kwargs):
+    return encode_object_to_utf8(json.loads(*args, **kwargs))
