@@ -31,6 +31,8 @@ from paasta_tools.utils import validate_service_instance
 
 
 log = logging.getLogger(__name__)
+# kazoo can be really noisy - turn it down
+logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
 def parse_args():

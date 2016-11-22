@@ -15,6 +15,7 @@
 import argparse
 import copy
 import itertools
+import logging
 import sys
 from collections import Counter
 from collections import namedtuple
@@ -38,6 +39,11 @@ from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+
+
+logging.basicConfig()
+# kazoo can be really noisy - turn it down
+logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
