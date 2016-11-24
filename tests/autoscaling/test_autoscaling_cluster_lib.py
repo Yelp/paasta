@@ -21,7 +21,7 @@ from requests.exceptions import HTTPError
 
 from paasta_tools.autoscaling import autoscaling_cluster_lib
 from paasta_tools.mesos_tools import SlaveTaskCount
-from paasta_tools.paasta_metastatus import ResourceInfo
+from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.utils import TimeoutError
 
 

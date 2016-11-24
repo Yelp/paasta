@@ -29,8 +29,8 @@ from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
+from paasta_tools.metrics.metastatus_lib import get_resource_utilization_by_grouping
 from paasta_tools.paasta_maintenance import is_safe_to_kill
-from paasta_tools.paasta_metastatus import get_resource_utilization_by_grouping
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
