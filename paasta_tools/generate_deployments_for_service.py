@@ -37,7 +37,8 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import json
@@ -225,7 +226,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     except KeyError:
         deploy_group_mappings = {}
         for deploy_group, image in deployments_dict.items():
-            if isinstance(image, str):
+            if isinstance(image, basestring):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',

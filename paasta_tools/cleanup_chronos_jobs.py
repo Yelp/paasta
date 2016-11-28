@@ -25,7 +25,8 @@ Any tasks associated with that job are also deleted.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import datetime
@@ -37,6 +38,7 @@ import pysensu_yelp
 from paasta_tools import chronos_tools
 from paasta_tools.check_chronos_jobs import send_event
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -191,22 +193,22 @@ def main():
                 pass
 
     if len(to_delete) == 0:
-        print('No Chronos Jobs to remove')
+        paasta_print('No Chronos Jobs to remove')
     else:
         if len(task_successes) > 0:
-            print(format_list_output("Successfully Removed Tasks (if any were running) for:",
-                                     [job[0] for job in task_successes]))
+            paasta_print(format_list_output("Successfully Removed Tasks (if any were running) for:",
+                                            [job[0] for job in task_successes]))
 
         # if there are any failures, print and exit appropriately
         if len(task_failures) > 0:
-            print(format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures]))
+            paasta_print(format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures]))
 
         if len(job_successes) > 0:
-            print(format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes]))
+            paasta_print(format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes]))
 
         # if there are any failures, print and exit appropriately
         if len(job_failures) > 0:
-            print(format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures]))
+            paasta_print(format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures]))
 
         if len(job_failures) > 0 or len(task_failures) > 0:
             sys.exit(1)

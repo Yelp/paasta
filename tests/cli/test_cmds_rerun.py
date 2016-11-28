@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import contextlib
@@ -151,7 +152,7 @@ def test_rerun_validations(test_case):
         if args.execution_date is not None and mock_uses_time_variables.return_value:
             assert mock_execute_rerun_remote.call_args[1]['execution_date'] == _user_supplied_execution_date
 
-        output = mock_stdout.getvalue()
+        output = mock_stdout.getvalue().decode('utf-8')
         assert expected_output in output
 
 

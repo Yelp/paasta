@@ -21,7 +21,8 @@ run as soon as possible, and only once. If the job being rerun is a
 jobs, then it is cloned without any children attached, and run as a regular
 scheduled job.
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import copy
@@ -32,6 +33,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -175,13 +177,13 @@ def main():
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
             args.service_instance, cluster)
-        print(error_msg)
+        paasta_print(error_msg)
         raise e
     except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
-        print(error_msg)
+        paasta_print(error_msg)
         raise e
     except chronos_tools.InvalidParentError as e:
         raise e

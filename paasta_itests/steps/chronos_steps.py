@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import time
 
@@ -21,7 +22,7 @@ from behave import when
 from paasta_tools import chronos_tools
 
 
-@when(u'we create a trivial chronos job called "{job_name}"')
+@when('we create a trivial chronos job called "{job_name}"')
 def create_trivial_chronos_job(context, job_name):
     job_config = {
         'async': False,
@@ -37,7 +38,7 @@ def create_trivial_chronos_job(context, job_name):
     context.chronos_job_name = job_config['name']
 
 
-@when(u'we store the name of the job for the service {service} and instance {instance} as {job_name}')
+@when('we store the name of the job for the service {service} and instance {instance} as {job_name}')
 def create_chronos_job_config_object_from_configs(context, service, instance, job_name):
     job_config = chronos_tools.create_complete_config(
         service=service,
@@ -50,18 +51,18 @@ def create_chronos_job_config_object_from_configs(context, service, instance, jo
     context.jobs[job_name] = job_config
 
 
-@when(u'we send the job to chronos')
+@when('we send the job to chronos')
 def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
 
 
-@when(u'we wait for the chronos job stored as "{job_name}" to appear in the job list')
+@when('we wait for the chronos job stored as "{job_name}" to appear in the job list')
 def chronos_job_is_ready(context, job_name):
     """Wait for a job with a matching job id to be ready."""
     chronos_tools.wait_for_job(context.chronos_client, context.jobs[job_name]['name'])
 
 
-@then(u"we {should_or_not} be able to see it when we list jobs")
+@then("we {should_or_not} be able to see it when we list jobs")
 def list_chronos_jobs_has_job(context, should_or_not):
     jobs = context.chronos_client.list()
     job_names = [job['name'] for job in jobs]
@@ -71,7 +72,7 @@ def list_chronos_jobs_has_job(context, should_or_not):
         assert context.chronos_job_name in job_names
 
 
-@then(u'the job stored as "{job_name}" {has_or_not} running tasks')
+@then('the job stored as "{job_name}" {has_or_not} running tasks')
 def chronos_check_running_tasks(context, job_name, has_or_not):
     # This uses an undocumented endpoint that should be replaced once it's possible
     # to get more detailed per-job task information from Chronos
@@ -89,7 +90,7 @@ def chronos_check_running_tasks(context, job_name, has_or_not):
     assert False
 
 
-@then(u'the field "{field}" for the job stored as "{job_name}" is set to "{value}"')
+@then('the field "{field}" for the job stored as "{job_name}" is set to "{value}"')
 def chronos_check_job_state(context, field, job_name, value):
     job_id = context.jobs[job_name]['name']
     service, instance = chronos_tools.decompose_job_id(job_id)
@@ -105,7 +106,7 @@ def chronos_check_job_state(context, field, job_name, value):
     assert str(jobs[0][field]) == value
 
 
-@then(u'the job stored as "{job_name}" is {disabled} in chronos')
+@then('the job stored as "{job_name}" is {disabled} in chronos')
 def job_is_disabled(context, job_name, disabled):
     is_disabled = True if disabled == "disabled" else False
     full_job_name = context.jobs[job_name]["name"]

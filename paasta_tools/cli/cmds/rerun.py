@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import datetime
 
@@ -29,6 +30,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SPACER
 
@@ -122,28 +124,28 @@ def paasta_rerun(args):
         clusters = deployed_clusters
 
     for cluster in clusters:
-        print("cluster: %s" % cluster)
+        paasta_print("cluster: %s" % cluster)
 
         if cluster not in all_clusters:
-            print("  Warning: \"%s\" does not look like a valid cluster." % cluster)
+            paasta_print("  Warning: \"%s\" does not look like a valid cluster." % cluster)
             continue
         if cluster not in deployed_clusters:
-            print("  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster))
+            paasta_print("  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster))
             continue
         if not deployed_cluster_instance[cluster].get(args.instance, False):
-            print(("  Warning: instance \"%s\" is either invalid "
-                   "or has not been deployed to \"%s\" yet." % (args.instance, cluster)))
+            paasta_print(("  Warning: instance \"%s\" is either invalid "
+                          "or has not been deployed to \"%s\" yet." % (args.instance, cluster)))
             continue
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
                 service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir)
             if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
-                print(("  Warning: \"%s\" uses time variables interpolation, "
-                       "please supply a `--execution_date` argument." % args.instance))
+                paasta_print(("  Warning: \"%s\" uses time variables interpolation, "
+                              "please supply a `--execution_date` argument." % args.instance))
                 continue
         except NoConfigurationForServiceError as e:
-            print("  Warning: %s" % e.message)
+            paasta_print("  Warning: %s" % e.message)
             continue
         if execution_date is None:
             execution_date = _get_default_execution_date()
@@ -157,7 +159,7 @@ def paasta_rerun(args):
             system_paasta_config=system_paasta_config,
         )
         if rc == 0:
-            print(PaastaColors.green('  successfully created job'))
+            paasta_print(PaastaColors.green('  successfully created job'))
         else:
-            print(PaastaColors.red('  error'))
-            print(output)
+            paasta_print(PaastaColors.red('  error'))
+            paasta_print(output)

@@ -14,18 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import unicode_literals
 
 import functools
 import logging
 import sys
 import time
 
+from paasta_tools.utils import paasta_print
+
 debug = logging.debug
 
 
 def fatal(msg, code=1):
-    sys.stdout.write(msg + "\n")
+    paasta_print(msg + "\n")
     logging.error(msg)
     sys.exit(code)
 

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import BaseHTTPServer
 import threading
@@ -22,6 +23,7 @@ from behave import then
 from behave import when
 
 from paasta_tools import drain_lib
+from paasta_tools.utils import paasta_print
 
 
 @given('a fake HTTP server')
@@ -93,9 +95,9 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     status_code = 200
 
     def do_GET(self):
-        print("Got GET for %s" % self.path)
+        paasta_print("Got GET for %s" % self.path)
         try:
             FakeHTTPServer.paths.append(self.path)
             self.send_response(self.status_code)
         except Exception as e:
-            print(e)
+            paasta_print(e)

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import datetime
 
@@ -19,6 +20,7 @@ import dateutil
 import mock
 
 from paasta_tools import cleanup_chronos_jobs
+from paasta_tools.utils import paasta_print
 
 
 def test_cleanup_jobs():
@@ -34,7 +36,7 @@ def test_cleanup_jobs():
     result = cleanup_chronos_jobs.cleanup_jobs(chronos_client, ['foo', 'bar', 'baz'])
 
     # I'd like to just compare the lists, but you can't compare exception objects.
-    print(result)
+    paasta_print(result)
     assert result[0] == ('foo', None)
     assert result[1] == ('bar', None)
     assert result[2][0] == 'baz'

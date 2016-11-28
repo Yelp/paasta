@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import inspect
 
@@ -21,6 +22,7 @@ from mock import patch
 
 from paasta_tools.marathon_tools import MarathonConfig
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -543,7 +545,7 @@ def test_group_slaves_by_key_func():
     )
     assert len(actual.items()) == 2
     for k, v in actual.items():
-        print(k, v)
+        paasta_print(k, v)
         assert len(list(v)) == 1
 
 
@@ -580,7 +582,7 @@ def test_get_resource_utilization_by_grouping(
     )
     assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
     for k, v in actual.items():
-        print(v)
+        paasta_print(v)
         assert v['total'] == metastatus_lib.ResourceInfo(
             cpus=20,
             disk=20,

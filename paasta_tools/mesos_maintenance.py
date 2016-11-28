@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import datetime
@@ -373,14 +374,14 @@ def build_reservation_payload(resources):
     for resource in resources:
         payload.append(
             {
-                "name": resource.name,
-                "type": "SCALAR",
-                "scalar": {
-                    "value": resource.amount,
+                b'name': resource.name.encode('utf-8'),
+                b'type': b'SCALAR',
+                b'scalar': {
+                    b'value': resource.amount,
                 },
-                "role": "maintenance",
-                "reservation": {
-                    "principal": str(get_principal()),
+                b'role': b'maintenance',
+                b'reservation': {
+                    b'principal': get_principal().encode('utf-8'),
                 },
             }
         )
@@ -479,11 +480,12 @@ def reserve(slave_id, resources):
     """
     log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
     payload = {
-        'slaveId': slave_id,
+        'slaveId': slave_id.encode('utf-8'),
         'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
     }
     client_fn = reserve_api()
     try:
+        print(payload)
         reserve_output = client_fn(method="POST", endpoint="", data=payload).text
     except HTTPError:
         raise HTTPError("Error adding dynamic reservation.")

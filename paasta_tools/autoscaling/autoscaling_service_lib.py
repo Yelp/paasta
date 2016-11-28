@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import logging
 from contextlib import contextmanager
@@ -184,13 +185,13 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
             # This won't trigger in the event of DNS error or when a request is refused
             # a requests.exception.ConnectionError is raised in those cases
             utilization.append(1.0)
-            log.debug('Recieved a timeout when querying %s on %s:%s. Assuming the service is at full utilization.' % (
+            log.debug("Recieved a timeout when querying %s on %s:%s. Assuming the service is at full utilization." % (
                 marathon_service_config.get_service(), task.host, task.ports[0]))
         except Exception as e:
-            log.debug('Caught excpetion when querying %s on %s:%s : %s' % (
-                marathon_service_config.get_service(), task.host, task.ports[0], str(e)))
+            log.debug("Caught excpetion when querying %s on %s:%s : '%s'" % (
+                marathon_service_config.get_service(), task.host, task.ports[0], e.message))
     if not utilization:
-        raise MetricsProviderNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
+        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
     return mean(utilization)
 
@@ -438,7 +439,6 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                             write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
         log.warning("Skipping autoscaling run for services because the lock is held")
-        pass
 
 
 def write_to_log(config, line, level='event'):

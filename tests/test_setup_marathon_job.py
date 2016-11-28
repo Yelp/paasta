@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 
@@ -30,6 +31,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import paasta_print
 
 
 class TestSetupMarathonJob:
@@ -1596,9 +1598,9 @@ class TestDrainTasksAndFindTasksToKill(object):
             drain=mock.Mock(side_effect=Exception('Hello')),
         )
 
-        def _print(line, level=None):
-            print(line)
-        fake_log_bounce_action = mock.Mock(side_effect=_print)
+        def _paasta_print(line, level=None):
+            paasta_print(line)
+        fake_log_bounce_action = mock.Mock(side_effect=_paasta_print)
 
         setup_marathon_job.drain_tasks_and_find_tasks_to_kill(
             tasks_to_drain=tasks_to_drain,

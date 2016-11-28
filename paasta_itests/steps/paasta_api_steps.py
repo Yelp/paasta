@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from behave import then
 from pyramid import testing
@@ -22,7 +23,7 @@ from paasta_tools.api.views.instance import instance_status
 from paasta_tools.utils import decompose_job_id
 
 
-@then(u'instance GET should return app_count "{app_count}" and an expected number of running instances for "{job_id}"')
+@then('instance GET should return app_count "{app_count}" and an expected number of running instances for "{job_id}"')
 def service_instance_status(context, app_count, job_id):
     settings.cluster = context.cluster
     settings.marathon_client = context.marathon_client
@@ -37,7 +38,7 @@ def service_instance_status(context, app_count, job_id):
     assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
 
 
-@then(u'instance GET should return error code "{error_code}" for "{job_id}"')
+@then('instance GET should return error code "{error_code}" for "{job_id}"')
 def service_instance_status_error(context, error_code, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     request = testing.DummyRequest()

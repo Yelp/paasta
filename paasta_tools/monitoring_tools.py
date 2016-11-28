@@ -20,7 +20,8 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import json
 import logging

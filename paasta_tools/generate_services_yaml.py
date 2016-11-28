@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import sys
 
@@ -20,6 +21,7 @@ import yaml
 
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.utils import atomic_file_write
+from paasta_tools.utils import paasta_print
 
 YOCALHOST = '169.254.255.254'
 
@@ -42,7 +44,7 @@ def generate_configuration():
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: %s <output_path>", file=sys.stderr)
+        paasta_print("Usage: %s <output_path>", file=sys.stderr)
         sys.exit(1)
 
     output_path = sys.argv[1]

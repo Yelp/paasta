@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import logging
@@ -28,6 +29,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -105,8 +107,8 @@ def main():
         # In addition, mesos master does not have information of a chronos service's git hash.
         # The git sha in deployment.json is simply used here.
         version = get_deployment_version(actual_deployments, cluster, instance)
-        print('instance: %s' % PaastaColors.blue(instance))
-        print('Git sha:    %s (desired)' % version)
+        paasta_print('instance: %s' % PaastaColors.blue(instance))
+        paasta_print('Git sha:    %s (desired)' % version)
 
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 import time
@@ -21,9 +22,10 @@ from behave import then
 from behave import when
 
 from paasta_tools.cli.cmds import logs
+from paasta_tools.utils import paasta_print
 
 
-@when(u'we tail paasta logs and let threads run')
+@when('we tail paasta logs and let threads run')
 def tail_paasta_logs_let_threads_be_threads(context):
     """This test lets tail_paasta_logs() fire off processes to do work. We
     verify that the work was done, basically irrespective of how it was done.
@@ -62,7 +64,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             parse_fn=None
         ):
             # The print here is just for debugging
-            print('fake log line added for %s' % scribe_env)
+            paasta_print('fake log line added for %s' % scribe_env)
             queue.put('fake log line added for %s' % scribe_env)
             # This sleep() was the straw that broke the camel's back
             # and forced me to move this test into the integration
@@ -76,7 +78,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             service, context.levels, context.components, context.clusters, context.instances)
 
 
-@then(u'one message is displayed from each scribe env')
+@then('one message is displayed from each scribe env')
 def step_impl(context):
     for cluster in context.clusters:
         context.determine_scribereader_envs_patch.assert_any_call(context.scribe_log_reader, context.components,

@@ -14,7 +14,8 @@
 """
 Settings of the paasta-api server.
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 

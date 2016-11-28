@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 import datetime
@@ -23,6 +24,7 @@ import isodate
 import mock
 import pytest
 from pytest import raises
+
 
 try:
     from paasta_tools.cli.cmds import logs
@@ -36,7 +38,6 @@ try:
     scribereader_available = True
 except ImportError:
     scribereader_available = False
-    pass
 
 
 def test_cluster_to_scribe_env_good():
@@ -481,7 +482,6 @@ def test_scribe_tail_log_nothing():
 class FakeKeyboardInterrupt(KeyboardInterrupt):
 
     """Raising a real KeyboardInterrupt causes pytest to, y'know, stop."""
-    pass
 
 
 @pytest.mark.skipif(not scribereader_available, reason='scribereader not available')

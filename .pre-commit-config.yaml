@@ -33,7 +33,9 @@
         language_version: python2.7
         args:
         - --add-import
-        - from __future__ import print_function
+        - from __future__ import unicode_literals
+        - --add-import
+        - from __future__ import absolute_import
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec

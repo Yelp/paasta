@@ -14,7 +14,8 @@
 # limitations under the License.
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import logging
@@ -26,6 +27,7 @@ import pkg_resources
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
+from paasta_tools.utils import paasta_print
 
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -34,8 +36,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        print("Argument parse error: %s" % message)
-        print("\n")
+        paasta_print("Argument parse error: %s" % message)
         self.print_help()
         sys.exit(1)
 

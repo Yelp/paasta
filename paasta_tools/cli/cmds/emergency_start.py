@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
@@ -23,6 +24,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -66,7 +68,7 @@ def paasta_emergency_start(args):
     """
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
-    print("Performing an emergency start on %s..." % compose_job_id(service, args.instance))
+    paasta_print("Performing an emergency start on %s..." % compose_job_id(service, args.instance))
     return_code, output = execute_paasta_serviceinit_on_remote_master(
         subcommand='start',
         cluster=args.cluster,
@@ -74,9 +76,9 @@ def paasta_emergency_start(args):
         instances=args.instance,
         system_paasta_config=system_paasta_config
     )
-    print("%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:]))
-    print("Output: %s" % PaastaColors.grey(output))
-    print("Run this command to see the status:")
-    print("paasta status --service %s --clusters %s" % (service, args.cluster))
+    paasta_print("%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:]))
+    paasta_print("Output: %s" % PaastaColors.grey(output))
+    paasta_print("Run this command to see the status:")
+    paasta_print("paasta status --service %s --clusters %s" % (service, args.cluster))
 
     return return_code

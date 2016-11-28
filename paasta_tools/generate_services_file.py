@@ -16,7 +16,8 @@
 A simple script to enumerate all smartstack namespaces and output
 a /etc/services compatible file
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import os
 import sys
@@ -26,6 +27,7 @@ import service_configuration_lib
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import paasta_print
 
 
 def get_service_lines_for_service(service):
@@ -41,14 +43,14 @@ def get_service_lines_for_service(service):
         proxy_port = config.get('proxy_port', None)
         if proxy_port is not None:
             lines.append("%s\t%d/tcp\t# %s" % (compose_job_id(service, namespace), proxy_port, description))
-    return [line.encode('utf-8') for line in lines]
+    return lines
 
 
 def main():
     strings = []
     for service in sorted(os.listdir(DEFAULT_SOA_DIR)):
         strings.extend(get_service_lines_for_service(service))
-    print("\n".join(strings))
+    paasta_print("\n".join(strings))
     sys.exit(0)
 
 

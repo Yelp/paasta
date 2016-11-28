@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 import os
@@ -105,7 +106,7 @@ def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
     expected_output = \
         "%s\n" % PaastaCheckMessages.service_dir_found(service, soa_dir)
     service_dir_check(service, soa_dir)
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -119,7 +120,7 @@ def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
     expected_output = "%s\n" \
                       % PaastaCheckMessages.service_dir_missing(service, soa_dir)
     service_dir_check(service, soa_dir)
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -133,7 +134,7 @@ def test_check_deploy_check_pass(mock_stdout, mock_is_file_in_dir):
 
     deploy_check('service_path')
     expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_FOUND
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -147,7 +148,7 @@ def test_check_deploy_check_fail(mock_stdout, mock_is_file_in_dir):
 
     deploy_check('service_path')
     expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_MISSING
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -161,7 +162,7 @@ def test_check_docker_exists_and_is_valid(
     mock_is_file_in_dir.return_value = "/fake/path"
 
     docker_check()
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert PaastaCheckMessages.DOCKERFILE_FOUND in output
 
@@ -175,7 +176,7 @@ def test_check_docker_check_file_not_found(
     mock_is_file_in_dir.return_value = False
 
     docker_check()
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert PaastaCheckMessages.DOCKERFILE_MISSING in output
 
@@ -190,7 +191,7 @@ def test_check_yaml_check_pass(mock_stdout, mock_is_file_in_dir):
                                     PaastaCheckMessages.CHRONOS_YAML_FOUND)
 
     yaml_check('path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -204,7 +205,7 @@ def test_check_yaml_check_fail(mock_stdout, mock_is_file_in_dir):
     expected_output = "%s\n" % PaastaCheckMessages.YAML_MISSING
 
     yaml_check('path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -223,7 +224,7 @@ def test_check_sensu_check_pass(mock_stdout, mock_get_team,
                                     PaastaCheckMessages.sensu_team_found(team))
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
     mock_get_team.assert_called_once_with(service='fake_service', overrides={},
@@ -243,7 +244,7 @@ def test_check_sensu_team_missing(mock_stdout, mock_get_team,
                                     PaastaCheckMessages.SENSU_TEAM_MISSING)
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -257,7 +258,7 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
     expected_output = "%s\n" % PaastaCheckMessages.SENSU_MONITORING_MISSING
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -287,7 +288,7 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
                              instance, port))
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -313,7 +314,7 @@ def test_check_smartstack_check_missing_port(
                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -334,7 +335,7 @@ def test_check_smartstack_check_missing_instance(
                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -346,7 +347,7 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_fi
     mock_is_file_in_dir.return_value = False
     expected_output = ""
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert output == expected_output
 
@@ -547,7 +548,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
     ]
     actual = deployments_check(service='fake_service', soa_dir='/fake/service')
     assert actual is False
-    assert 'EXTRA' in mock_stdout.getvalue()
+    assert 'EXTRA' in mock_stdout.getvalue().decode('utf-8')
 
 
 @patch('sys.stdout', new_callable=StringIO, autospec=None)
@@ -572,7 +573,7 @@ def test_marathon_deployments_marathon_but_not_deploy(
     ]
     actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
-    assert 'BOGUS' in mock_stdout.getvalue()
+    assert 'BOGUS' in mock_stdout.getvalue().decode('utf-8')
 
 
 def test_makefile_check():

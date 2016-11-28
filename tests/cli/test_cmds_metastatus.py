@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 from StringIO import StringIO
@@ -54,7 +55,7 @@ def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
             groupings=[],
             verbose=0,
         )
-        actual = mock_stdout.getvalue()
+        actual = mock_stdout.getvalue().decode('utf-8')
         assert 'Cluster: %s' % cluster in actual
         assert 'mock_status' in actual
         assert return_code == mock.sentinel.return_value

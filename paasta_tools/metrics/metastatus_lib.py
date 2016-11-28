@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import copy
 import itertools
@@ -28,6 +29,7 @@ from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -558,7 +560,7 @@ def status_for_results(healthcheck_results):
 
 
 def print_results_for_healthchecks(summary, ok, results, verbose, indent=2):
-    print(summary)
+    paasta_print(summary)
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:

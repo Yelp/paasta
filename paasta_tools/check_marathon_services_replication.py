@@ -30,7 +30,8 @@ After retrieving that information, a fraction of available instances is calculat
 CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
 instance then it will be used instead.
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import logging

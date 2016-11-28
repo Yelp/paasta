@@ -26,12 +26,14 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import sys
 
 from paasta_tools import chronos_tools
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -51,7 +53,7 @@ def main():
     jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
     # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
     composed = ['%s%s%s' % (name, chronos_tools.INTERNAL_SPACER, job) for name, job in jobs]
-    print('\n'.join(composed))
+    paasta_print('\n'.join(composed))
     sys.exit(0)
 
 

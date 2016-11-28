@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 from time import sleep
@@ -57,17 +58,17 @@ def run_setup_marathon_job(context):
             pass
 
 
-@when(u'we set up an app to use zookeeper scaling with {number:d} max instances')
+@when('we set up an app to use zookeeper scaling with {number:d} max instances')
 def setup_zookeeper(context, number):
     context.max_instances = number
 
 
-@when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')
+@when('we create a marathon app called "{job_id}" with {number:d} instance(s)')
 def create_app_with_instances(context, job_id, number):
     create_app_with_instances_constraints(context, job_id, number, str(None))
 
 
-@when(u'we create a marathon app called "{job_id}" with {number:d} instance(s) and constraints {constraints}')
+@when('we create a marathon app called "{job_id}" with {number:d} instance(s) and constraints {constraints}')
 def create_app_with_instances_constraints(context, job_id, number, constraints):
     set_number_instances(context, number)
     context.job_id = job_id
@@ -81,12 +82,12 @@ def create_app_with_instances_constraints(context, job_id, number, constraints):
     run_setup_marathon_job(context)
 
 
-@when(u'we set the number of instances to {number:d}')
+@when('we set the number of instances to {number:d}')
 def set_number_instances(context, number):
     context.instances = number
 
 
-@when(u'we run setup_marathon_job until it has {number:d} task(s)')
+@when('we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
     for _ in xrange(20):
         with contextlib.nested(
@@ -104,7 +105,7 @@ def run_until_number_tasks(context, number):
     assert context.marathon_client.get_app(context.app_id).instances == number
 
 
-@when(u'we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
+@when('we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
 def zookeeper_scale_job(context, service, instance, number):
     with contextlib.nested(
         mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts)
@@ -114,22 +115,22 @@ def zookeeper_scale_job(context, service, instance, number):
         set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
-@then(u'we should see it in the list of apps')
+@then('we should see it in the list of apps')
 def see_it_in_list(context):
     assert context.app_id in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
 
 
-@then(u'we can run get_app')
+@then('we can run get_app')
 def can_run_get_app(context):
     assert context.marathon_client.get_app(context.app_id)
 
 
-@then(u'we should see the number of instances become {number:d}')
+@then('we should see the number of instances become {number:d}')
 def assert_instances_equals(context, number):
     assert context.marathon_client.get_app(context.app_id).instances == number
 
 
-@when(u'we mark a host it is running on as at-risk')
+@when('we mark a host it is running on as at-risk')
 def mark_host_running_on_at_risk(context):
     app = context.marathon_client.get_app(context.new_id)
     tasks = app.tasks
@@ -137,7 +138,7 @@ def mark_host_running_on_at_risk(context):
     mark_host_at_risk(context, host)
 
 
-@when(u'we mark the host "{host}" as at-risk')
+@when('we mark the host "{host}" as at-risk')
 def mark_host_at_risk(context, host):
     start = mesos_maintenance.datetime_to_nanoseconds(mesos_maintenance.now())
     duration = mesos_maintenance.parse_timedelta('1h')
@@ -155,12 +156,12 @@ def mark_host_at_risk(context, host):
         context.at_risk_host = host
 
 
-@then(u'there should be {number:d} tasks on that at-risk host')
+@then('there should be {number:d} tasks on that at-risk host')
 def tasks_on_that_at_risk_host_drained(context, number):
     tasks_on_host_drained(context, number, context.at_risk_host)
 
 
-@then(u'there should be {number:d} tasks on the host "{host}"')
+@then('there should be {number:d} tasks on the host "{host}"')
 def tasks_on_host_drained(context, number, host):
     app_id = context.new_id
     tasks = context.marathon_client.list_tasks(app_id)

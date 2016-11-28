@@ -6,7 +6,8 @@ a CRITICAL event to sensu.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import sys
@@ -20,6 +21,7 @@ from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -201,7 +203,7 @@ def main():
                     soa_dir=soa_dir,
                 )
             except utils.NoDeploymentsAvailable:
-                print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
+                paasta_print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
                 continue
             sensu_output, sensu_status = sensu_message_status_for_jobs(
                 chronos_job_config=chronos_job_config,
@@ -224,7 +226,7 @@ def main():
                     soa_dir=soa_dir,
                 )
     except (chronos.ChronosAPIError) as e:
-        print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
+        paasta_print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
         sys.exit(2)
 
 

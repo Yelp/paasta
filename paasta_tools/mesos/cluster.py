@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import unicode_literals
 
 import itertools
 
 from . import exceptions
 from . import parallel
+from paasta_tools.utils import paasta_print
 
 missing_slave = set([])
 
@@ -32,8 +33,8 @@ def get_files_for_tasks(task_list, file_list, max_workers):
             fobj = task.file(fname)
         except exceptions.SlaveDoesNotExist:
             if task["id"] not in missing_slave:
-                print("%s:%s" % (task["id"], fname))
-                print("Slave no longer exists.")
+                paasta_print("%s:%s" % (task["id"], fname))
+                paasta_print("Slave no longer exists.")
 
             missing_slave.add(task["id"])
             raise exceptions.SkipResult

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from StringIO import StringIO
 
@@ -32,7 +33,7 @@ def test_list_paasta_list(mock_list_services, mock_stdout):
     args.print_instances = False
     paasta_list(args)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert output == 'service_1\nservice_2\n'
 
 
@@ -48,5 +49,5 @@ def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
     args.print_instances = True
     paasta_list(args)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert output == 'service_1.main\nservice_2.canary\n'

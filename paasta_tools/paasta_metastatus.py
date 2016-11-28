@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import logging
@@ -29,6 +30,7 @@ from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
 from paasta_tools.utils import format_table
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -71,7 +73,7 @@ def main():
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
     mesos_state_status = metastatus_lib.get_mesos_state_status(
@@ -96,7 +98,7 @@ def main():
         try:
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
         except MarathonError as e:
-            print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Error: %s" % e))
+            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Error: %s" % e))
             sys.exit(2)
     else:
         marathon_results = [metastatus_lib.HealthCheckResult(message='Marathon is not configured to run here',
@@ -107,7 +109,7 @@ def main():
         try:
             chronos_results = metastatus_lib.get_chronos_status(chronos_client)
         except (chronos.ChronosAPIError) as e:
-            print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
+            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
             sys.exit(2)
     else:
         chronos_results = [metastatus_lib.HealthCheckResult(message='Chronos is not configured to run here',
@@ -123,7 +125,7 @@ def main():
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    print("Master paasta_tools version: {0}".format(__version__))
+    paasta_print("Master paasta_tools version: {0}".format(__version__))
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1:
         for grouping in args.groupings:

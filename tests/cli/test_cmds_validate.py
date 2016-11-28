@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import os
 from StringIO import StringIO
@@ -70,7 +71,7 @@ def test_get_service_path_unknown(
 
     assert get_service_path(service, soa_dir) is None
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert UNKNOWN_SERVICE in output
 
@@ -167,7 +168,7 @@ main_http:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert SCHEMA_VALID in output
 
 
@@ -189,7 +190,7 @@ main_worker:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert SCHEMA_VALID in output
     marathon_content = """
 ---
@@ -203,7 +204,7 @@ main_worker:
     mock_get_file_contents.return_value = marathon_content
     mock_stdout.truncate(0)
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert SCHEMA_VALID in output
 
 
@@ -225,7 +226,7 @@ main_worker:
 """
     mock_get_file_contents.return_value = marathon_content
     assert not validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert SCHEMA_INVALID in output
     marathon_content = """
 ---
@@ -241,7 +242,7 @@ main_worker:
     mock_get_file_contents.return_value = marathon_content
     mock_stdout.truncate(0)
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert SCHEMA_VALID in output
 
 
@@ -261,7 +262,7 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
 """
     assert not validate_schema('unused_service_path.json', 'marathon')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert SCHEMA_INVALID in output
 
@@ -281,7 +282,7 @@ def test_marathon_validate_invalid_key_bad(
 """
     assert not validate_schema('unused_service_path.json', 'marathon')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert SCHEMA_INVALID in output
 
@@ -304,7 +305,7 @@ def test_chronos_validate_schema_list_hashes_good(
 """
     assert validate_schema('unused_service_path.json', 'chronos')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert SCHEMA_VALID in output
 
@@ -325,7 +326,7 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
 """
     assert not validate_schema('unused_service_path.json', 'chronos')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert SCHEMA_INVALID in output
 
@@ -360,7 +361,7 @@ def test_failing_chronos_job_validate(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     expected_output = 'something is wrong with the config'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
@@ -397,7 +398,7 @@ def test_failing_chronos_job_self_dependent(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     expected_output = 'Job fake-service.fake-instance cannot depend on itself'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
@@ -434,7 +435,7 @@ def test_failing_chronos_job_missing_parent(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     expected_output = 'Parent job fake-service.parent-1 could not be found'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
@@ -470,7 +471,7 @@ def test_validate_chronos_valid_instance(
 
     assert validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
 
     assert valid_chronos_instance(fake_cluster, fake_instance) in output
 
@@ -486,7 +487,7 @@ def test_validate_chronos_tmp_job(
     assert validate_chronos('fake_path/tmp') is False
     assert ("Services using scheduled tasks cannot be named tmp, as it clashes"
             " with the identifier used for temporary jobs") in \
-        mock_stdout.getvalue()
+        mock_stdout.getvalue().decode('utf-8')
 
 
 @patch('sys.stdout', new_callable=StringIO, autospec=None)
@@ -496,7 +497,7 @@ def test_check_service_path_none(
     service_path = None
     assert not check_service_path(service_path)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert "%s is not a directory" % service_path in output
 
 
@@ -510,7 +511,7 @@ def test_check_service_path_empty(
     service_path = 'fake/path'
     assert not check_service_path(service_path)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert "%s does not contain any .yaml files" % service_path in output
 
 

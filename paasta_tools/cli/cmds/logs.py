@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PaaSTA log reader for humans"""
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import datetime
@@ -31,6 +32,8 @@ import dateutil
 import isodate
 import pytz
 import ujson as json
+
+from paasta_tools.utils import paasta_print
 
 try:
     from scribereader import scribereader
@@ -368,9 +371,9 @@ def print_log(line, requested_levels, raw_mode=False):
     something.
     """
     if raw_mode:
-        print(line, end=' ')  # suppress trailing newline since scribereader already attached one
+        paasta_print(line, end=' ')  # suppress trailing newline since scribereader already attached one
     else:
-        print(prettify_log_line(line, requested_levels))
+        paasta_print(prettify_log_line(line, requested_levels))
 
 
 def prettify_timestamp(timestamp):
@@ -697,9 +700,14 @@ class ScribeLogReader(LogReader):
         aggregated_logs = []
 
         if 'marathon' in components or 'chronos' in components:
-            sys.stderr.write(PaastaColors.red("Warning, you have chosen to get marathon or chronos logs based "
-                                              "on time. This command may take a dozen minutes or so to run "
-                                              "because marathon and chronos are on shared streams.\n"))
+            paasta_print(
+                PaastaColors.red(
+                    "Warning, you have chosen to get marathon or chronos logs based "
+                    "on time. This command may take a dozen minutes or so to run "
+                    "because marathon and chronos are on shared streams.\n"
+                ),
+                file=sys.stderr,
+            )
 
         def callback(component, stream_info, scribe_env, cluster):
             if stream_info.per_cluster:
@@ -900,7 +908,7 @@ class ScribeLogReader(LogReader):
         """
         env = self.cluster_map.get(cluster, None)
         if env is None:
-            print("I don't know where scribe logs for %s live?" % cluster)
+            paasta_print("I don't know where scribe logs for %s live?" % cluster)
             sys.exit(1)
         else:
             return env
@@ -949,27 +957,56 @@ def generate_start_end_time(from_string="30m", to_string=None):
 
 def validate_filtering_args(args, log_reader):
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
-        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support line based offsets"))
+        paasta_print(
+            PaastaColors.red(
+                log_reader.__class__.__name__ + " does not support line based offsets"
+            ),
+            file=sys.stderr,
+        )
         return False
     if not log_reader.SUPPORTS_LINE_COUNT and args.line_count is not None:
-        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ +
-                                          " does not support line count based log retrieval"))
+        paasta_print(
+            PaastaColors.red(
+                log_reader.__class__.__name__ + " does not support line count based log retrieval",
+            ),
+            file=sys.stderr,
+        )
         return False
     if not log_reader.SUPPORTS_TAILING and args.tail:
-        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support tailing"))
+        paasta_print(
+            PaastaColors.red(
+                log_reader.__class__.__name__ + " does not support tailing",
+            ),
+            file=sys.stderr,
+        )
         return False
     if not log_reader.SUPPORTS_TIME and (args.time_from is not None or args.time_to is not None):
-        sys.stderr.write(PaastaColors.red(log_reader.__class__.__name__ + " does not support time based offsets"))
+        paasta_print(
+            PaastaColors.red(
+                log_reader.__class__.__name__ + " does not support time based offsets",
+            ),
+            file=sys.stderr,
+        )
         return False
 
     if args.tail and (args.line_count is not None or args.time_from is not None or
                       args.time_to is not None or args.line_offset is not None):
-        sys.stderr.write(PaastaColors.red("You cannot specify line/time based filtering parameters when tailing"))
+        paasta_print(
+            PaastaColors.red(
+                "You cannot specify line/time based filtering parameters when tailing",
+            ),
+            file=sys.stderr,
+        )
         return False
 
     # Can't have both
     if args.line_count is not None and args.time_from is not None:
-        sys.stderr.write(PaastaColors.red("You cannot filter based on both line counts and time"))
+        paasta_print(
+            PaastaColors.red(
+                "You cannot filter based on both line counts and time",
+            ),
+            file=sys.stderr,
+        )
         return False
 
     return True
@@ -977,7 +1014,12 @@ def validate_filtering_args(args, log_reader):
 
 def pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances):
     if log_reader.SUPPORTS_LINE_COUNT:
-        sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 100 lines") + "\n")
+        paasta_print(
+            PaastaColors.cyan(
+                "No filtering specified, grabbing last 100 lines"
+            ),
+            file=sys.stdout,
+        )
         log_reader.print_last_n_logs(
             service=service,
             line_count=100,
@@ -992,7 +1034,7 @@ def pick_default_log_mode(args, log_reader, service, levels, components, cluster
     elif log_reader.SUPPORTS_TIME:
         start_time, end_time = generate_start_end_time()
 
-        sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 30 minutes of logs") + "\n")
+        paasta_print(PaastaColors.cyan("No filtering specified, grabbing last 30 minutes of logs"), file=sys.stderr)
         log_reader.print_logs_by_time(
             service=service,
             start_time=start_time,
@@ -1006,7 +1048,7 @@ def pick_default_log_mode(args, log_reader, service, levels, components, cluster
         return 0
 
     elif log_reader.SUPPORTS_TAILING:
-        sys.stderr.write(PaastaColors.cyan("No filtering specified, tailing logs") + "\n")
+        paasta_print(PaastaColors.cyan("No filtering specified, tailing logs"), file=sys.stderr)
         log_reader.tail_logs(
             service=service,
             levels=levels,
@@ -1064,7 +1106,7 @@ def paasta_logs(args):
         return pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances)
 
     if args.tail:
-        sys.stderr.write(PaastaColors.cyan("Tailing logs") + "\n")
+        paasta_print(PaastaColors.cyan("Tailing logs"), file=sys.stderr)
         log_reader.tail_logs(
             service=service,
             levels=levels,
@@ -1110,7 +1152,7 @@ def paasta_logs(args):
     try:
         start_time, end_time = generate_start_end_time(args.time_from, args.time_to)
     except ValueError as e:
-        sys.stderr.write(PaastaColors.red(e.message))
+        paasta_print(PaastaColors.red(e.message), file=sys.stderr)
         return 1
 
     log_reader.print_logs_by_time(

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import contextlib
 import json
@@ -27,6 +28,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.marathon_tools import app_has_tasks
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import timeout
 
 
@@ -78,7 +80,7 @@ def wait_for_marathon():
     """Waits for marathon to start. Maximum 30 seconds"""
     marathon_service = get_service_connection_string('marathon')
     while True:
-        print('Connecting marathon on %s' % marathon_service)
+        paasta_print('Connecting marathon on %s' % marathon_service)
         try:
             response = requests.get('http://%s/ping' % marathon_service, timeout=5)
         except (
@@ -88,7 +90,7 @@ def wait_for_marathon():
             time.sleep(5)
             continue
         if response.status_code == 200:
-            print("Marathon is up and running!")
+            paasta_print("Marathon is up and running!")
             break
 
 
@@ -113,7 +115,7 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
                 time.sleep(3)  # Give it a bit more time to actually launch
                 return
             else:
-                print("waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks))
+                paasta_print("waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks))
                 time.sleep(0.5)
 
 
@@ -129,7 +131,7 @@ def setup_mesos_cli_config(config_file, cluster):
             "response_timeout": 5,
         }
     }
-    print('Generating mesos.cli config file: %s' % config_file)
+    paasta_print('Generating mesos.cli config file: %s' % config_file)
     with open(config_file, 'w') as fp:
         json.dump(mesos_cli_config, fp)
     os.environ['MESOS_CLI_CONFIG'] = config_file
@@ -137,13 +139,13 @@ def setup_mesos_cli_config(config_file, cluster):
 
 def cleanup_file(path_to_file):
     """Removes the given file"""
-    print("Removing generated file: %s" % path_to_file)
+    paasta_print("Removing generated file: %s" % path_to_file)
     os.remove(path_to_file)
 
 
 def clear_mesos_tools_cache():
     try:
         del mesos_tools.master.CURRENT._cache
-        print("cleared mesos_tools.master.CURRENT._cache")
+        paasta_print("cleared mesos_tools.master.CURRENT._cache")
     except AttributeError:
         pass

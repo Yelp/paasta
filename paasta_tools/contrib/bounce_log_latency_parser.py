@@ -1,11 +1,14 @@
 #!/usr/bin/env python2.7
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import itertools
 import json
 import sys
 from collections import defaultdict
 from datetime import datetime
+
+from paasta_tools.utils import paasta_print
 
 
 def get_datetime_from_ts(ts):
@@ -45,23 +48,23 @@ def display_bounce_info(timedeltas):
     timedeltas: iterable of timedelta objects
     """
     std = list(sorted(timedeltas))
-    print("Median time to bounce: {} seconds".format(std[len(std) / 2]))
-    print("10% time to bounce: {}".format(std[len(std) / 10]))
-    print("90% time to bounce: {}".format(std[len(std) * 9 / 10]))
+    paasta_print("Median time to bounce: {} seconds".format(std[len(std) / 2]))
+    paasta_print("10% time to bounce: {}".format(std[len(std) / 10]))
+    paasta_print("90% time to bounce: {}".format(std[len(std) * 9 / 10]))
 
 
 def main(filenames):
     for filename in filenames:
-        print(filename)
-        print("=========================")
+        paasta_print(filename)
+        paasta_print("=========================")
         timedeltas = get_deploy_durations_from_file(filename)
         for instance, tdlist in timedeltas.items():
             if timedeltas:
-                print("Instance: %s" % instance)
+                paasta_print("Instance: %s" % instance)
                 display_bounce_info(tdlist)
-        print("Overall:")
+        paasta_print("Overall:")
         display_bounce_info(itertools.chain.from_iterable(timedeltas.values()))
-        print("=========================")
+        paasta_print("=========================")
 
 
 if __name__ == '__main__':

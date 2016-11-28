@@ -12,13 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -87,10 +89,10 @@ def print_cluster_status(cluster, system_paasta_config, humanize, groupings, ver
         verbose=verbose
     )
 
-    print("Cluster: %s" % cluster)
-    print(get_cluster_dashboards(cluster))
-    print(output)
-    print("")
+    paasta_print("Cluster: %s" % cluster)
+    paasta_print(get_cluster_dashboards(cluster))
+    paasta_print(output)
+    paasta_print()
 
     return return_code
 
@@ -140,6 +142,6 @@ def paasta_metastatus(args):
                 )
             )
         else:
-            print("Cluster %s doesn't look like a valid cluster?" % args.clusters)
-            print("Try using tab completion to help complete the cluster name")
+            paasta_print("Cluster %s doesn't look like a valid cluster?" % args.clusters)
+            paasta_print("Try using tab completion to help complete the cluster name")
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1

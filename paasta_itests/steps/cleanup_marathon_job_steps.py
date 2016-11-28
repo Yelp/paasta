@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import os
 
@@ -24,9 +25,10 @@ from itest_utils import update_context_marathon_config
 from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import paasta_print
 
 
-@when(u'we delete a marathon app called "{job_id}" from "{cluster_name}" soa configs')
+@when('we delete a marathon app called "{job_id}" from "{cluster_name}" soa configs')
 def delete_apps(context, job_id, cluster_name):
     context.job_id = job_id
     (service, instance, _, __) = decompose_job_id(job_id)
@@ -42,17 +44,17 @@ def delete_apps(context, job_id, cluster_name):
     os.rmdir("{0}/{1}".format(context.soa_dir, service))
 
 
-@then(u'we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"')
+@then('we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"')
 def run_cleanup_marathon_job(context, flags, expected_return_code):
     cmd = '../paasta_tools/cleanup_marathon_jobs.py --soa-dir %s %s' % (context.soa_dir, flags)
-    print('Running cmd %s' % (cmd))
+    paasta_print('Running cmd %s' % (cmd))
     exit_code, output = _run(cmd)
-    print(output)
+    paasta_print(output)
 
     assert exit_code == int(expected_return_code)
 
 
-@then(u'we should not see it in the list of apps')
+@then('we should not see it in the list of apps')
 def not_see_it_in_list(context):
     with requests_cache.disabled():
         assert context.app_id not in marathon_tools.list_all_marathon_app_ids(context.marathon_client)

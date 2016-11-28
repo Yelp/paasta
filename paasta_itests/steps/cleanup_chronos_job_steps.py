@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import json
 
@@ -20,6 +21,7 @@ from behave import when
 
 from paasta_tools.chronos_tools import compose_job_id
 from paasta_tools.utils import _run
+from paasta_tools.utils import paasta_print
 
 
 @when(('I launch {num_jobs} {state} jobs for the service "{service}"'
@@ -37,10 +39,10 @@ def launch_jobs(context, num_jobs, state, service, job):
     } for x in range(0, int(num_jobs))]
     for job in jobs:
         try:
-            print('attempting to create job %s' % job['name'])
+            paasta_print('attempting to create job %s' % job['name'])
             client.add(job)
         except Exception:
-            print('Error creating test job: %s' % json.dumps(job))
+            paasta_print('Error creating test job: %s' % json.dumps(job))
             raise
 
     # a 'configured' job is one which has had the appropriate
@@ -70,19 +72,19 @@ def launch_non_paasta_jobs(context, num_jobs):
     context.non_paasta_jobs = [job['name'] for job in jobs]
     for job in jobs:
         try:
-            print('attempting to create job %s' % job['name'])
+            paasta_print('attempting to create job %s' % job['name'])
             client.add(job)
         except Exception:
-            print('Error creating test job: %s' % json.dumps(job))
+            paasta_print('Error creating test job: %s' % json.dumps(job))
             raise
 
 
-@then(u'cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
+@then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
     exit_code, output = _run(cmd)
-    print(context.unconfigured_job_names)
-    print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    paasta_print(context.unconfigured_job_names)
+    paasta_print('Got exitcode %s with output:\n%s' % (exit_code, output))
 
     assert exit_code == int(expected_return_code)
     assert "Successfully Removed Tasks (if any were running) for:" in output
@@ -91,11 +93,11 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
         assert '  %s' % job in output
 
 
-@when(u'we run cleanup_chronos_jobs')
+@when('we run cleanup_chronos_jobs')
 def run_cleanup_chronos_jobs(context):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
     context.exit_code, context.output = _run(cmd)
-    print(context.output)
+    paasta_print(context.output)
 
 
 @then('the non-paasta jobs are not in the job list')

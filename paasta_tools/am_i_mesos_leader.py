@@ -19,19 +19,21 @@ Check if this host is the curret mesos-master leader.
 This is done by simply calling mesos_tools.is_mesos_leader.
 Exits 0 if this is the leader, and 1 if it isn't.
 """
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from sys import exit
 
 from paasta_tools.mesos_tools import is_mesos_leader
+from paasta_tools.utils import paasta_print
 
 
 def main():
     if is_mesos_leader():
-        print(True)
+        paasta_print(True)
         exit(0)
     else:
-        print(False)
+        paasta_print(False)
         exit(1)
 
 

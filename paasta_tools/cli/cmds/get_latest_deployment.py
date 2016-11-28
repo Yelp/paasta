@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -21,6 +22,7 @@ from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -55,8 +57,8 @@ def paasta_get_latest_deployment(args):
 
     git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group, soa_dir=soa_dir)
     if not git_sha:
-        print(PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service)))
+        paasta_print(PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service)))
         return 1
     else:
-        print(git_sha)
+        paasta_print(git_sha)
         return 0
