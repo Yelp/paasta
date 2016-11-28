@@ -15,6 +15,8 @@
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
+from __future__ import print_function
+
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_service_name

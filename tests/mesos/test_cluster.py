@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from mock import MagicMock
 from mock import Mock
 from pytest import raises

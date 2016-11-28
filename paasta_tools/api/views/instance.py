@@ -15,6 +15,8 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+from __future__ import print_function
+
 import traceback
 
 from pyramid.view import view_config

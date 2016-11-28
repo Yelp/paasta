@@ -25,6 +25,8 @@ Command line options:
 - -c <command>, --cmd <command>: Shell command to execute in container
 - -t <timeout>, --timeout <timeout>: Timeout for command
 """
+from __future__ import print_function
+
 import argparse
 import signal
 import sys

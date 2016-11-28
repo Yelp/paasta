@@ -6,6 +6,8 @@ a CRITICAL event to sensu.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
+from __future__ import print_function
+
 import argparse
 import sys
 

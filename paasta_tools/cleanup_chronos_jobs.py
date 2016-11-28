@@ -25,6 +25,8 @@ Any tasks associated with that job are also deleted.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
+from __future__ import print_function
+
 import argparse
 import datetime
 import sys

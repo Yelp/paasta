@@ -21,6 +21,8 @@ run as soon as possible, and only once. If the job being rerun is a
 jobs, then it is cloned without any children attached, and run as a regular
 scheduled job.
 """
+from __future__ import print_function
+
 import argparse
 import copy
 import datetime

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import pysensu_yelp
 from mock import Mock
 from mock import patch

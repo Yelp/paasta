@@ -16,6 +16,8 @@ that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
+from __future__ import print_function
+
 import logging
 import os
 import re

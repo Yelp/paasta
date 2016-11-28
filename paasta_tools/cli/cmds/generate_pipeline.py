@@ -14,6 +14,8 @@
 # limitations under the License.
 """Contains methods used by the paasta client to generate a Jenkins build
 pipeline."""
+from __future__ import print_function
+
 import re
 
 from paasta_tools.cli.utils import guess_service_name

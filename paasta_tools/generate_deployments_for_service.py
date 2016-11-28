@@ -37,6 +37,8 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+from __future__ import print_function
+
 import argparse
 import json
 import logging

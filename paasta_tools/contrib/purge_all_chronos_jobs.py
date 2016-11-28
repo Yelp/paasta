@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 from paasta_tools import chronos_tools
 
 if __name__ == '__main__':

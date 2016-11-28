@@ -14,6 +14,8 @@
 """
 Settings of the paasta-api server.
 """
+from __future__ import print_function
+
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 soa_dir = DEFAULT_SOA_DIR

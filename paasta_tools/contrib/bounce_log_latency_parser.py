@@ -1,4 +1,6 @@
 #!/usr/bin/env python2.7
+from __future__ import print_function
+
 import itertools
 import json
 import sys

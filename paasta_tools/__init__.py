@@ -17,4 +17,5 @@
 # setup phase, the dependencies may not exist on disk yet.
 #
 # Don't bump version manually. See `make release` docs in ./Makefile
+from __future__ import print_function
 __version__ = '0.56.6'

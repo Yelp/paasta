@@ -17,6 +17,8 @@ This is abstracted so that the new marathon system can use the same
 interface with a different provider.
 
 """
+from __future__ import print_function
+
 import copy
 
 

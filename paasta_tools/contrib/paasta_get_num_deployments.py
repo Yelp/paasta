@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import argparse
 
 from paasta_tools.marathon_tools import load_marathon_config

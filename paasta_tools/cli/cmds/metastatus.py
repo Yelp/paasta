@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import print_function
+
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR

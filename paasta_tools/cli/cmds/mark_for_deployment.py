@@ -15,6 +15,8 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+from __future__ import print_function
+
 import logging
 import time
 

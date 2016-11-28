@@ -15,6 +15,8 @@
 """
 PaaSTA service list (instances) etc.
 """
+from __future__ import print_function
+
 from pyramid.response import Response
 from pyramid.view import view_config
 
