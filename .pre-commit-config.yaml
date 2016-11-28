@@ -31,6 +31,9 @@
     hooks:
     -   id: reorder-python-imports
         language_version: python2.7
+        args:
+        - --add-import
+        - from __future__ import print_function
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec
