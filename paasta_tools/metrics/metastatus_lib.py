@@ -558,7 +558,7 @@ def status_for_results(healthcheck_results):
 
 
 def print_results_for_healthchecks(summary, ok, results, verbose, indent=2):
-    print summary
+    print(summary)
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:
