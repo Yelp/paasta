@@ -1028,7 +1028,8 @@ def paasta_logs(args):
 
     # Handle line based filtering
     if args.line_count is not None and args.line_offset is None:
-        log_reader.print_last_n_logs(service, args.line_count, levels, components, clusters, raw_mode=args.raw_mode)
+        log_reader.print_last_n_logs(
+            service, args.line_count, levels, components, clusters, instances, raw_mode=args.raw_mode)
         return 0
     elif args.line_count is not None and args.line_offset is not None:
         log_reader.print_logs_by_offset(service, args.line_count, args.line_offset,
