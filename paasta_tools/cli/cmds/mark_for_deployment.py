@@ -108,6 +108,15 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
+        '--auto-rollback',
+        help='Automatically roll back to the previously deployed sha if the deployment '
+             'times out or is canceled (ctrl-c). Only applicable with --wait-for-deployment. '
+             'Defaults to false.',
+        dest='auto_rollback',
+        action='store_true',
+        default=False
+    )
+    list_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
         metavar="SOA_DIR",
@@ -213,11 +222,26 @@ def paasta_mark_for_deployment(args):
                 level='event'
             )
         except (KeyboardInterrupt, TimeoutError):
-            print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
-            print "If you wish to see the status, run:"
-            print ""
-            print "    paasta status -s %s -v" % service
-            print ""
+            if args.auto_rollback is True:
+                if old_git_sha == args.commit:
+                    print "Error: --auto-rollback was requested, but the previous sha"
+                    print "is the same that was requested with --commit. Can't rollback"
+                    print "automatically."
+                else:
+                    print "Auto-Rollback requested. Marking the previous sha"
+                    print "(%s) for %s as desired." % (args.deploy_group, old_git_sha)
+                    mark_for_deployment(
+                        git_url=args.git_url,
+                        deploy_group=args.deploy_group,
+                        service=service,
+                        commit=old_git_sha,
+                    )
+            else:
+                print "Waiting for deployment aborted. PaaSTA will continue to try to deploy this code."
+                print "If you wish to see the status, run:"
+                print ""
+                print "    paasta status -s %s -v" % service
+                print ""
             ret = 1
     if old_git_sha is not None and old_git_sha != args.commit:
         print ""
