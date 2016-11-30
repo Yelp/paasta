@@ -468,7 +468,7 @@ class LogReader(object):
     SUPPORTS_TIME = False
     # Supporting at least one of these log retrieval modes is required
 
-    def tail_logs(self, service, levels, components, clusters, instances, raw_mode=False):
+    def tail_logs(self, service, levels, components, clusters, instances, raw_mode):
         raise NotImplementedError("tail_logs is not implemented")
 
     def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, instances, raw_mode):
@@ -477,7 +477,7 @@ class LogReader(object):
     def print_last_n_logs(self, service, line_count, levels, components, clusters, instances, raw_mode):
         raise NotImplementedError("print_last_n_logs is not implemented")
 
-    def print_logs_by_offset(self, service, line_count, offset, levels, components, clusters, raw_mode):
+    def print_logs_by_offset(self, service, line_count, offset, levels, components, clusters, instances, raw_mode):
         raise NotImplementedError("print_logs_by_offset is not implemented")
 
 
@@ -706,13 +706,27 @@ class ScribeLogReader(LogReader):
                 stream_name = stream_info.stream_name_fn(service)
 
             ctx = self.scribe_get_from_time(scribe_env, stream_name, start_time, end_time)
-            self.filter_and_aggregate_scribe_logs(ctx, scribe_env, stream_name, levels, service,
-                                                  components, clusters, instances, aggregated_logs,
-                                                  filter_fn=stream_info.filter_fn,
-                                                  parser_fn=stream_info.parse_fn,
-                                                  start_time=start_time, end_time=end_time)
+            self.filter_and_aggregate_scribe_logs(
+                scribe_reader_ctx=ctx,
+                scribe_env=scribe_env,
+                stream_name=stream_name,
+                levels=levels,
+                service=service,
+                components=components,
+                clusters=clusters,
+                instances=instances,
+                aggregated_logs=aggregated_logs,
+                filter_fn=stream_info.filter_fn,
+                parser_fn=stream_info.parse_fn,
+                start_time=start_time,
+                end_time=end_time,
+            )
 
-        self.run_code_over_scribe_envs(clusters=clusters, components=components, callback=callback)
+        self.run_code_over_scribe_envs(
+            clusters=clusters,
+            components=components,
+            callback=callback,
+        )
 
         aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
         for line in aggregated_logs:
@@ -730,10 +744,19 @@ class ScribeLogReader(LogReader):
                 stream_name = stream_info.stream_name_fn(service)
 
             ctx = self.scribe_get_last_n_lines(scribe_env, stream_name, line_count)
-            self.filter_and_aggregate_scribe_logs(ctx, scribe_env, stream_name, levels, service,
-                                                  components, clusters, instances, aggregated_logs,
-                                                  filter_fn=stream_info.filter_fn,
-                                                  parser_fn=stream_info.parse_fn)
+            self.filter_and_aggregate_scribe_logs(
+                scribe_reader_ctx=ctx,
+                scribe_env=scribe_env,
+                stream_name=stream_name,
+                levels=levels,
+                service=service,
+                components=components,
+                clusters=clusters,
+                instances=instances,
+                aggregated_logs=aggregated_logs,
+                filter_fn=stream_info.filter_fn,
+                parser_fn=stream_info.parse_fn,
+            )
 
         self.run_code_over_scribe_envs(clusters=clusters, components=components, callback=callback)
         aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
@@ -953,20 +976,43 @@ def validate_filtering_args(args, log_reader):
 def pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances):
     if log_reader.SUPPORTS_LINE_COUNT:
         sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 100 lines") + "\n")
-        log_reader.print_last_n_logs(service, 100, levels, components, clusters, instances, raw_mode=args.raw_mode)
+        log_reader.print_last_n_logs(
+            service=service,
+            line_count=100,
+            levels=levels,
+            components=components,
+            clusters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
 
     elif log_reader.SUPPORTS_TIME:
         start_time, end_time = generate_start_end_time()
 
         sys.stderr.write(PaastaColors.cyan("No filtering specified, grabbing last 30 minutes of logs") + "\n")
-        log_reader.print_logs_by_time(service, start_time, end_time, levels, components, clusters, instances,
-                                      raw_mode=args.raw_mode)
+        log_reader.print_logs_by_time(
+            service=service,
+            start_time=start_time,
+            end_time=end_time,
+            levels=levels,
+            components=components,
+            clusters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
 
     elif log_reader.SUPPORTS_TAILING:
         sys.stderr.write(PaastaColors.cyan("No filtering specified, tailing logs") + "\n")
-        log_reader.tail_logs(service, levels, components, clusters, instances, raw_mode=args.raw_mode)
+        log_reader.tail_logs(
+            service=service,
+            levels=levels,
+            components=components,
+            clusters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
 
 
@@ -1017,7 +1063,14 @@ def paasta_logs(args):
 
     if args.tail:
         sys.stderr.write(PaastaColors.cyan("Tailing logs") + "\n")
-        log_reader.tail_logs(service, levels, components, clusters, instances, raw_mode=args.raw_mode)
+        log_reader.tail_logs(
+            service=service,
+            levels=levels,
+            components=components,
+            clusters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
 
     # If the logger doesn't support offsetting the number of lines by a particular line number
@@ -1028,11 +1081,27 @@ def paasta_logs(args):
 
     # Handle line based filtering
     if args.line_count is not None and args.line_offset is None:
-        log_reader.print_last_n_logs(service, args.line_count, levels, components, clusters, raw_mode=args.raw_mode)
+        log_reader.print_last_n_logs(
+            service=service,
+            line_count=args.line_count,
+            levels=levels,
+            components=components,
+            clusters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
     elif args.line_count is not None and args.line_offset is not None:
-        log_reader.print_logs_by_offset(service, args.line_count, args.line_offset,
-                                        levels, components, clusters, raw_mode=args.raw_mode)
+        log_reader.print_logs_by_offset(
+            service=service,
+            line_count=args.line_count,
+            line_offset=args.line_offset,
+            levels=levels,
+            components=components,
+            cluters=clusters,
+            instances=instances,
+            raw_mode=args.raw_mode,
+        )
         return 0
 
     # Handle time based filtering
@@ -1042,5 +1111,13 @@ def paasta_logs(args):
         sys.stderr.write(PaastaColors.red(e.message))
         return 1
 
-    log_reader.print_logs_by_time(service, start_time, end_time, levels, components, clusters, instances,
-                                  raw_mode=args.raw_mode)
+    log_reader.print_logs_by_time(
+        service=service,
+        start_time=start_time,
+        end_time=end_time,
+        levels=levels,
+        components=components,
+        clusters=clusters,
+        instances=instances,
+        raw_mode=args.raw_mode,
+    )
