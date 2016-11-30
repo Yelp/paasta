@@ -38,6 +38,7 @@ pyramid==1.7
 pyramid-swagger==2.2.3
 pysensu-yelp==0.2.2
 PyStaticConfiguration==0.9.0
+python-crontab==2.1.1
 python-daemon==1.5.2
 python-dateutil==2.4.2
 pytimeparse==1.1.5

@@ -24,6 +24,7 @@ import dateutil
 import isodate
 import monitoring_tools
 import service_configuration_lib
+from crontab import CronSlices
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.tron import tron_command_context
@@ -61,6 +62,7 @@ TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
 log = logging.getLogger(__name__)
 
 
@@ -301,41 +303,43 @@ class ChronosJobConfig(InstanceConfig):
         schedule = self.get_schedule()
 
         if schedule is not None:
-            try:
-                repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
-            except ValueError:
-                return False, 'The specified schedule "%s" is invalid' % schedule
-
-            # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-            if start_time == '':
-                msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
-            else:
-                # Check if start time contains time zone information
+            if not CronSlices.is_valid(schedule):
                 try:
-                    dt = isodate.parse_datetime(start_time)
-                    if not hasattr(dt, 'tzinfo'):
-                        msgs.append('The specified start time "%s" must contain a time zone' % start_time)
-                except isodate.ISO8601Error as exc:
-                    msgs.append('The specified start time "%s" in schedule "%s" '
-                                'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
+                    repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
+                except ValueError:
+                    return (False, ('The specified schedule "%s" is neither a valid cron schedule nor a valid'
+                                    ' ISO8601 schedule' % schedule))
 
-            parsed_interval = None
-            try:
-                # 'interval' and 'duration' are interchangeable terms
-                parsed_interval = isodate.parse_duration(interval)
-            except isodate.ISO8601Error:
-                msgs.append('The specified interval "%s" in schedule "%s" '
-                            'does not conform to the ISO 8601 format.' % (interval, schedule))
+                # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
+                if start_time == '':
+                    msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
+                else:
+                    # Check if start time contains time zone information
+                    try:
+                        dt = isodate.parse_datetime(start_time)
+                        if not hasattr(dt, 'tzinfo'):
+                            msgs.append('The specified start time "%s" must contain a time zone' % start_time)
+                    except isodate.ISO8601Error as exc:
+                        msgs.append('The specified start time "%s" in schedule "%s" '
+                                    'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
 
-            # until we make this configurable, throw an
-            # error if we have a schedule < 60 seconds (the default schedule_horizone for chronos)
-            # https://github.com/mesos/chronos/issues/508
-            if parsed_interval and parsed_interval < datetime.timedelta(seconds=60):
-                msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60 seconds' % interval)
+                parsed_interval = None
+                try:
+                    # 'interval' and 'duration' are interchangeable terms
+                    parsed_interval = isodate.parse_duration(interval)
+                except isodate.ISO8601Error:
+                    msgs.append('The specified interval "%s" in schedule "%s" '
+                                'does not conform to the ISO 8601 format.' % (interval, schedule))
 
-            if not self._check_schedule_repeat_helper(repeat):
-                msgs.append('The specified repeat "%s" in schedule "%s" '
-                            'does not conform to the ISO 8601 format.' % (repeat, schedule))
+                # until we make this configurable, throw an
+                # error if we have a schedule < 60 seconds (the default schedule_horizone for chronos)
+                # https://github.com/mesos/chronos/issues/508
+                if parsed_interval and parsed_interval < datetime.timedelta(seconds=60):
+                    msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60 seconds' % interval)
+
+                if not self._check_schedule_repeat_helper(repeat):
+                    msgs.append('The specified repeat "%s" in schedule "%s" '
+                                'does not conform to the ISO 8601 format.' % (repeat, schedule))
 
         return len(msgs) == 0, '\n'.join(msgs)
 

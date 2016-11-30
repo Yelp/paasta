@@ -63,6 +63,7 @@ setup(
         'pysensu-yelp >= 0.2.2',
         'pytimeparse >= 1.1.0',
         'pytz >= 2014.10',
+        'python-crontab>=2.1.1',
         'python-dateutil >= 2.4.0',
         'retry',
         'requests == 2.6.2',

@@ -635,6 +635,47 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
+    def test_check_schedule_valid_cron(self):
+        fake_schedule = '* * * * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_schedule_invalid_cron_sixth_field(self):
+        fake_schedule = '* * * * * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is False
+        assert msg == ('The specified schedule "* * * * * *" '
+                       'is neither a valid cron schedule nor a valid ISO8601 schedule')
+
+    def test_check_schedule_invalid_cron_L_field(self):
+        fake_schedule = '0 16 L * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is False
+        assert msg == ('The specified schedule "0 16 L * *" '
+                       'is neither a valid cron schedule nor a valid ISO8601 schedule')
+
     def test_check_schedule_invalid_empty_start_time(self):
         fake_schedule = 'R10//PT70S'
         chronos_config = chronos_tools.ChronosJobConfig(
@@ -947,7 +988,8 @@ class TestChronosTools:
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockercfg_location={})
-        assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
+        assert ('The specified schedule "%s" is neither a valid '
+                'cron schedule nor a valid ISO8601 schedule' % fake_schedule) in exc.value
 
     def test_list_job_names(self):
         fake_name = 'vegetables'
