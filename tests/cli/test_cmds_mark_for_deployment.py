@@ -85,6 +85,65 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
     )
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+def test_paasta_mark_for_deployment_with_good_rollback(
+    mock_get_currently_deployed_sha,
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_validate_service_name,
+):
+    class fake_args_rollback(fake_args):
+        auto_rollback = True
+        block = True
+        timeout = 600
+
+    mock_wait_for_deployment.side_effect = TimeoutError
+    mock_get_currently_deployed_sha.return_value = "old-sha"
+    assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
+    mock_mark_for_deployment.assert_any_call(
+        service='test_service',
+        deploy_group='test_deploy_group',
+        commit='fake-hash',
+        git_url='git://false.repo/services/test_services',
+    )
+    mock_mark_for_deployment.assert_any_call(
+        service='test_service',
+        deploy_group='test_deploy_group',
+        commit='old-sha',
+        git_url='git://false.repo/services/test_services',
+    )
+    mock_mark_for_deployment.call_count = 2
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
+    mock_get_currently_deployed_sha,
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_validate_service_name,
+):
+    class fake_args_rollback(fake_args):
+        auto_rollback = True
+        block = True
+        timeout = 600
+
+    mock_wait_for_deployment.side_effect = TimeoutError
+    mock_get_currently_deployed_sha.return_value = "fake-hash"
+    assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
+    mock_mark_for_deployment.assert_called_once_with(
+        service='test_service',
+        deploy_group='test_deploy_group',
+        commit='fake-hash',
+        git_url='git://false.repo/services/test_services',
+    )
+
+
 def mock_status_instance_side_effect(service, instance):
     if instance in ['instance1', 'instance6', 'notaninstance', 'api_error']:
         # valid completed instance
