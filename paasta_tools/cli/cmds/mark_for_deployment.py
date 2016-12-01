@@ -24,6 +24,7 @@ from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -33,7 +34,6 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
@@ -116,13 +116,7 @@ def add_subparser(subparsers):
         action='store_true',
         default=False
     )
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
+    argparse_helper.add_argument_soa_dir(list_parser)
     list_parser.add_argument(
         '-v', '--verbose',
         action='count',

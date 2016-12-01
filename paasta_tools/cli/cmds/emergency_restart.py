@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 
@@ -51,13 +51,7 @@ def add_subparser(subparsers):
         help="The PaaSTA cluster that has the service you want to restart. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
-    status_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
+    argparse_helper.add_argument_soa_dir(status_parser)
     status_parser.set_defaults(command=paasta_emergency_restart)
 
 

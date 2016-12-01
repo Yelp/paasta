@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.cli import argparse_helper
 from paasta_tools.utils import list_clusters
 
 
@@ -26,13 +26,7 @@ def add_subparser(subparsers):
             "The command can only report those clusters that are actually used by some services."
         ),
     )
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
+    argparse_helper.add_argument_soa_dir(list_parser)
     list_parser.set_defaults(command=paasta_list_clusters)
 
 

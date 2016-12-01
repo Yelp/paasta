@@ -14,6 +14,7 @@
 # limitations under the License.
 from service_configuration_lib import read_service_configuration
 
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -22,7 +23,6 @@ from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
@@ -50,13 +50,7 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='The name of the service you wish to inspect'
     ).completer = lazy_choices_completer(list_services)
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
+    argparse_helper.add_argument_soa_dir(list_parser)
     list_parser.set_defaults(command=paasta_info)
 
 
