@@ -347,7 +347,7 @@ class InstanceConfig(dict):
         if param in check_methods:
             return check_methods[param]()
         else:
-            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
+            return False, 'Your config specifies "%s", an unsupported parameter.' % param
 
     def validate(self):
         error_msgs = []
@@ -357,12 +357,32 @@ class InstanceConfig(dict):
                 error_msgs.append(check_msg)
         return error_msgs
 
-    def get_extra_volumes(self):
+    def get_extra_volumes(self, apply_whitelist=True):
         """Extra volumes are a specially formatted list of dictionaries that should
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
-        return self.config_dict.get('extra_volumes', [])
+
+        system_config = load_system_paasta_config()
+        whitelisted_volumes = system_config.get_volumes_whitelist()
+
+        if apply_whitelist:
+            if self.get_service() in whitelisted_volumes:
+                volumes_to_attach = []
+                whitelisted_volumes_for_service = whitelisted_volumes[self.get_service()]
+
+                for volume in self.config_dict.get('extra_volumes', []):
+                    for entry in whitelisted_volumes_for_service:
+                        if (os.path.normpath(volume['hostPath']) == entry['hostPath'] and
+                                volume['mode'] == entry['mode']):
+                            volumes_to_attach.append(volume)
+
+                return volumes_to_attach
+            else:
+                # By default, don't allow access to extra volumes
+                return []
+        else:
+            return self.config_dict.get('extra_volumes', [])
 
     def get_pool(self):
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
@@ -391,6 +411,19 @@ class InstanceConfig(dict):
         :returns: the docker networking mode the container should be started with.
         """
         return self.config_dict.get('net', 'bridge')
+
+
+def validate_whitelisted_volumes(instance_config):
+    all_extra_volumes = instance_config.get_extra_volumes(apply_whitelist=False)
+    extra_whitelisted_volumes = instance_config.get_extra_volumes(apply_whitelist=True)
+
+    non_whitelisted_volumes = []
+    for volume in all_extra_volumes:
+        v = {'hostPath': volume['hostPath'], 'mode': volume['mode']}
+        if v not in extra_whitelisted_volumes:
+            non_whitelisted_volumes.append(v)
+
+    return non_whitelisted_volumes
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
@@ -856,6 +889,17 @@ class SystemPaastaConfig(dict):
             return self['volumes']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
+
+    def get_volumes_whitelist(self):
+        """Get the list of accessible volumes per service
+
+        :returns: A dictionary that maps services to a list of volumes it may mount
+        """
+        try:
+            return self['volumes_whitelist']
+        except KeyError:
+            raise PaastaNotConfiguredError('Could not find volumes_whitelist in configuration directory: %s'
+                                           % self.directory)
 
     def get_cluster(self):
         """Get the cluster defined in this host's cluster config file.

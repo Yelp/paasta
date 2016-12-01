@@ -57,6 +57,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+from paasta_tools.utils import validate_whitelisted_volumes
 
 
 pick_random_port = functools.partial(ephemeral_port_reserve.reserve, '0.0.0.0')
@@ -678,10 +679,15 @@ def configure_and_run_docker_container(
     if pull_image:
         docker_pull_image(docker_url)
 
-    # if only one volume specified, extra_volumes should be converted to a list
+    # Warn if the service is attempting to mount non-whitelisted volumes
     extra_volumes = instance_config.get_extra_volumes()
-    if type(extra_volumes) == dict:
-        extra_volumes = [extra_volumes]
+
+    non_whitelisted_volumes = validate_whitelisted_volumes(instance_config)
+    if len(non_whitelisted_volumes) > 0:
+        sys.stdout.write(PaastaColors.yellow(
+            "Warning: Your service is attempting to mount the following extra volumes "
+            "that are not whitelisted:\n\n\t%s\n\n"
+            "These mounts will fail when PaaSTA deploys your service.\n\n" % non_whitelisted_volumes))
 
     for volume in system_paasta_config.get_volumes() + extra_volumes:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))

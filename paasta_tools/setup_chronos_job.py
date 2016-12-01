@@ -55,6 +55,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
+from paasta_tools.utils import validate_whitelisted_volumes
 
 
 log = logging.getLogger(__name__)
@@ -209,6 +210,23 @@ def main():
     except chronos_tools.InvalidParentError:
         log.warn("Skipping %s.%s: Parent job could not be found" % (service, instance))
         sys.exit(0)
+
+    # Check if the service is attempting to access un-whitelisted volumes
+    chronos_job_config = chronos_tools.load_chronos_job_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
+    non_whitelisted_volumes = validate_whitelisted_volumes(chronos_job_config)
+    if len(non_whitelisted_volumes) > 0:
+        send_event(
+            service=service,
+            instance=instance,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output="Attempting to mount unpermitted volumes: %s" % non_whitelisted_volumes,
+        )
 
     status, output = setup_job(
         service=service,

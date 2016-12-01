@@ -56,6 +56,7 @@ class TestChronosTools:
         config_dict=fake_config_dict,
         branch_dict=fake_branch_dict,
     )
+    fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=[])
 
     fake_invalid_config_dict = {
         'bounce_method': 'crossover',
@@ -1228,6 +1229,7 @@ class TestChronosTools:
                     'docker_image': 'paasta-%s-%s' % (self.fake_service, self.fake_cluster),
                 }
             )
+            stopped_job_config.get_extra_volumes = mock.Mock(return_value=[])
             load_chronos_job_config_patch.return_value = stopped_job_config
             second_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
@@ -1245,6 +1247,7 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=[])
         fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
@@ -1308,6 +1311,7 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=[])
         fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
@@ -1376,7 +1380,6 @@ class TestChronosTools:
             }
         ]
         fake_instance_config = self.fake_config_dict
-        fake_instance_config['extra_volumes'] = fake_extra_volumes
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             service=self.fake_service,
             cluster='',
@@ -1387,6 +1390,7 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=fake_extra_volumes)
         fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),

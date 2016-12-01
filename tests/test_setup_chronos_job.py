@@ -60,6 +60,7 @@ class TestSetupChronosJob:
         config_dict=fake_config_dict,
         branch_dict=fake_branch_dict,
     )
+    fake_chronos_job_config.get_extra_volumes = mock.Mock(return_value=[])
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(
@@ -77,6 +78,7 @@ class TestSetupChronosJob:
                        return_value=self.fake_args,
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.get_chronos_client',
                        return_value=self.fake_client,
                        autospec=True),
@@ -92,6 +94,7 @@ class TestSetupChronosJob:
         ) as (
             parse_args_patch,
             load_chronos_config_patch,
+            load_chronos_job_config_patch,
             get_client_patch,
             create_complete_config_patch,
             setup_job_patch,
@@ -187,6 +190,56 @@ class TestSetupChronosJob:
                 % (compose_job_id(self.fake_service, self.fake_instance), self.fake_cluster)
             )
             send_event_patch.assert_called_once_with(
+                service=self.fake_service,
+                instance=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir,
+                status=Status.CRITICAL,
+                output=expected_error_msg
+            )
+
+    def test_main_alerts_whitelisted_volume(self):
+        expected_status = 0
+        expected_output = 'it_is_finished'
+        fake_non_whitelisted_volumes = ['fake_non_whitelisted_volume']
+        expected_error_msg = "Attempting to mount unpermitted volumes: %s" % fake_non_whitelisted_volumes
+        fake_complete_job_config = {'foo': 'bar'}
+        with contextlib.nested(
+            mock.patch('paasta_tools.setup_chronos_job.parse_args',
+                       return_value=self.fake_args,
+                       autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.get_chronos_client',
+                       return_value=self.fake_client,
+                       autospec=True),
+            mock.patch('paasta_tools.chronos_tools.create_complete_config',
+                       return_value=fake_complete_job_config,
+                       autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.setup_job',
+                       return_value=(expected_status, expected_output),
+                       autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.validate_whitelisted_volumes',
+                       autospec=True, return_value=fake_non_whitelisted_volumes),
+            mock.patch('paasta_tools.setup_chronos_job.send_event', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.load_system_paasta_config', autospec=True),
+            mock.patch('sys.exit', autospec=True),
+        ) as (
+            parse_args_patch,
+            load_chronos_config_patch,
+            load_chronos_job_config_patch,
+            get_client_patch,
+            create_complete_config_patch,
+            setup_job_patch,
+            validate_whitelisted_volumes_patch,
+            send_event_patch,
+            load_system_paasta_config_patch,
+            sys_exit_patch,
+        ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.MagicMock(return_value=self.fake_cluster)
+            setup_chronos_job.main()
+
+            validate_whitelisted_volumes_patch.assert_called_once_with(load_chronos_job_config_patch.return_value)
+            send_event_patch.assert_any_call(
                 service=self.fake_service,
                 instance=self.fake_instance,
                 soa_dir=self.fake_args.soa_dir,

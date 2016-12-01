@@ -67,6 +67,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
+from paasta_tools.utils import validate_whitelisted_volumes
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -544,7 +545,6 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
     :param client: A MarathonClient object
     :param service_marathon_config: The service instance's configuration dict
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-
     log.info("Setting up instance %s for service %s", instance, service)
     try:
         marathon_app_dict = service_marathon_config.format_marathon_app_dict()
@@ -560,6 +560,12 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
 
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance)
+
+    # Check if the service is attempting to access non-whitelisted volumes
+    non_whitelisted_volumes = validate_whitelisted_volumes(service_marathon_config)
+    if len(non_whitelisted_volumes) > 0:
+        output = "Attempting to mount unpermitted volumes: %s" % non_whitelisted_volumes
+        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, output)
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(

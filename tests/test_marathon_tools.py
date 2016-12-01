@@ -991,6 +991,7 @@ class TestMarathonTools:
             },
             branch_dict={'desired_state': 'start'}
         )
+        config.get_extra_volumes = mock.Mock(return_value=[])
 
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
@@ -1482,6 +1483,7 @@ class TestMarathonTools:
                 'force_bounce': '88888',
             },
         )
+        fake_service_config_1.get_extra_volumes = mock.Mock(return_value=[])
 
         fake_service_config_2 = marathon_tools.MarathonServiceConfig(
             service=fake_name,
@@ -1493,6 +1495,7 @@ class TestMarathonTools:
                 'force_bounce': '99999',
             },
         )
+        fake_service_config_2.get_extra_volumes = mock.Mock(return_value=[])
 
         fake_service_config_3 = marathon_tools.MarathonServiceConfig(
             service=fake_name,
@@ -1504,6 +1507,7 @@ class TestMarathonTools:
                 'force_bounce': '99999',
             },
         )
+        fake_service_config_3.get_extra_volumes = mock.Mock(return_value=[])
 
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
@@ -1996,6 +2000,7 @@ def test_format_marathon_app_dict_no_smartstack():
         config_dict={},
         branch_dict={'docker_image': 'abcdef'},
     )
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=[])
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
@@ -2074,6 +2079,7 @@ def test_format_marathon_app_dict_with_smartstack():
         config_dict={},
         branch_dict={'docker_image': 'abcdef'},
     )
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=[])
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
@@ -2166,6 +2172,7 @@ def test_format_marathon_app_dict_utilizes_net():
         config_dict={'net': 'host'},
         branch_dict={'docker_image': 'abcdef'},
     )
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=[])
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': fake_system_volumes,
         'docker_registry': 'fake_docker_registry:443'
@@ -2218,9 +2225,10 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         service=service_name,
         cluster='clustername',
         instance=instance_name,
-        config_dict={'extra_volumes': fake_extra_volumes},
+        config_dict={},
         branch_dict={'docker_image': 'abcdef'},
     )
+    fake_marathon_service_config.get_extra_volumes = mock.Mock(return_value=fake_extra_volumes)
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': fake_system_volumes,
         'docker_registry': 'fake_docker_registry:443'

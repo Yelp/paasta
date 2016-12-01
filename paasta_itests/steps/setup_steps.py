@@ -149,7 +149,8 @@ def working_paasta_cluster_with_registry(context, docker_registry):
             {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
             {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
             {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
-        ]
+        ],
+        'volumes_whitelist': {}
     }, 'volumes.json')
     write_etc_paasta(context, {
         'paasta_native': {
