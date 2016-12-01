@@ -16,14 +16,9 @@
 deployment to a cluster.instance.
 """
 import logging
-import time
-
-import progressbar
-from bravado.exception import HTTPError
-from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
-from paasta_tools.api import client
+from paasta_tools.cli.cmds.wait_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -31,14 +26,12 @@ from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
-from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
 
@@ -208,7 +201,6 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            print "Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group)
             wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
@@ -243,6 +235,8 @@ def paasta_mark_for_deployment(args):
                 print "    paasta status -s %s -v" % service
                 print ""
             ret = 1
+        except NoInstancesFound:
+            return 1
     if old_git_sha is not None and old_git_sha != args.commit:
         print ""
         print "If you wish to roll back, you can run:"
@@ -250,132 +244,3 @@ def paasta_mark_for_deployment(args):
         print PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
             service, args.deploy_group, old_git_sha))
     return ret
-
-
-def instances_deployed(cluster, service, instances, git_sha):
-    api = client.get_paasta_api_client(cluster=cluster)
-    if not api:
-        log.warning("Couldn't reach the PaaSTA api for {}! Assuming it is not deployed there yet.".format(cluster))
-        return False
-    statuses = []
-    for instance in instances:
-        log.info("Inspecting the deployment status of {}.{} on {}".format(service, instance, cluster))
-        try:
-            status = api.service.status_instance(service=service, instance=instance).result()
-            statuses.append(status)
-        except HTTPError as e:
-            if e.response.status_code == 404:
-                log.warning("Can't get status for instance {0}, service {1} in cluster {2}. "
-                            "This is normally because it is a new service that hasn't been "
-                            "deployed by PaaSTA yet".format(instance, service, cluster))
-            else:
-                log.warning("Error getting service status from PaaSTA API: {0}: {1}".format(e.response.status_code,
-                                                                                            e.response.text))
-            statuses.append(None)
-        except ConnectionError as e:
-            log.warning("Error getting service status from PaaSTA API for {0}: {1}".format(cluster, e))
-            statuses.append(None)
-    results = []
-    for status in statuses:
-        if not status:
-            log.info("No status for an unknown instance in {}. Not deployed yet.".format(cluster))
-            results.append(False)
-        elif not status.marathon:
-            log.info("{}.{} in {} is not a Marathon job. Marked as deployed.".format(
-                service, status.instance, cluster))
-            results.append(True)
-        elif status.marathon.expected_instance_count == 0 or status.marathon.desired_state == 'stop':
-            log.info("{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                service, status.instance, cluster))
-            results.append(True)
-        else:
-            if status.marathon.app_count != 1:
-                log.info("{}.{} on {} is still bouncing, {} versions running".format(
-                    service, status.instance, cluster, status.marathon.app_count))
-                results.append(False)
-                continue
-            if not git_sha.startswith(status.git_sha):
-                log.info("{}.{} on {} doesn't have the right sha yet: {}".format(
-                    service, status.instance, cluster, status.git_sha))
-                results.append(False)
-                continue
-            if status.marathon.deploy_status != 'Running':
-                log.info("{}.{} on {} isn't running yet: {}".format(
-                    service, status.instance, cluster, status.marathon.deploy_status))
-                results.append(False)
-                continue
-            if status.marathon.expected_instance_count != status.marathon.running_instance_count:
-                log.info("{}.{} on {} isn't scaled up yet, has {} out of {}".format(
-                    service, status.instance, cluster, status.marathon.running_instance_count,
-                    status.marathon.expected_instance_count))
-                results.append(False)
-                continue
-            log.info("{}.{} on {} looks 100% deployed at {} instances on {}".format(
-                service, status.instance, cluster, status.marathon.running_instance_count, status.git_sha))
-            results.append(True)
-
-    return sum(results)
-
-
-def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
-    cluster_map = get_cluster_instance_map_for_service(soa_dir, service, deploy_group)
-    if not cluster_map:
-        line = "Couldn't find any instances for service {0} in deploy group {1}".format(service, deploy_group)
-        _log(
-            service=service,
-            component='deploy',
-            line=line,
-            level='event'
-        )
-        raise NoInstancesFound
-    for cluster in cluster_map.values():
-        cluster['deployed'] = 0
-    try:
-        with Timeout(seconds=timeout):
-            total_instances = sum([len(v["instances"]) for v in cluster_map.values()])
-            with progressbar.ProgressBar(maxval=total_instances) as bar:
-                while True:
-                    for cluster, instances in cluster_map.items():
-                        if cluster_map[cluster]['deployed'] != len(cluster_map[cluster]['instances']):
-                            cluster_map[cluster]['deployed'] = instances_deployed(
-                                cluster=cluster,
-                                service=service,
-                                instances=instances['instances'],
-                                git_sha=git_sha)
-                            if cluster_map[cluster]['deployed'] == len(cluster_map[cluster]['instances']):
-                                instance_csv = ", ".join(cluster_map[cluster]['instances'])
-                                print "Deploy to %s complete! (instances: %s)" % (cluster, instance_csv)
-                        bar.update(sum([v["deployed"] for v in cluster_map.values()]))
-                    if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
-                        break
-                    else:
-                        time.sleep(10)
-    except TimeoutError:
-        human_status = ["{0}: {1}".format(cluster, data['deployed']) for cluster, data in cluster_map.items()]
-        line = "\nCurrent deployment status of {0} per cluster:\n".format(deploy_group) + "\n".join(human_status)
-        _log(
-            service=service,
-            component='deploy',
-            line=line,
-            level='event'
-        )
-        line = "\n\nTimed out after {0} seconds, waiting for {1} in {2} to be deployed by PaaSTA. \n\n"\
-               "This probably means the deploy hasn't suceeded. The new service might not be healthy or one "\
-               "or more clusters could be having issues.\n\n"\
-               "To debug: try running 'paasta status -s {2} -vv' or 'paasta logs -s {2}' to determine the cause.\n\n"\
-               "{3} is still *marked* for deployment. To rollback, you can run: 'paasta rollback --service "\
-               "{2} --deploy-group {1}'\n\n"\
-               "If the service is known to be slow to start you may wish to increase "\
-               "the timeout on this step.".format(timeout, deploy_group, service, git_sha)
-        _log(
-            service=service,
-            component='deploy',
-            line=line,
-            level='event'
-        )
-        raise
-    return True
-
-
-class NoInstancesFound(Exception):
-    pass
