@@ -15,12 +15,11 @@ the files locally but run them in the containers.
 
 To get started run: ``docker-compose run playground``. This should give
 you a shell with the paasta\_tools package installed in development
-mode. The first time this runs it will take a while because we fetch and
-compile various python packages, however we store a cache on the docker
-host so that it is quicker next time. If you need to update a python
-package you probably want to
-``pip wheel /work --wheel-dir=/var/tmp/pip_cache`` and then restart the
-container.
+mode.
+
+If you have added a new python dependency you may need to run
+``docker-compose build`` to re-build the containers. Then you can restart
+everything with ``docker-compose down && docker-compose run playground``.
 
 Try it out
 ----------
