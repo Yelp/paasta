@@ -5,7 +5,9 @@ services:
   mesosbase:
     build: ../yelp_package/dockerfiles/itest/mesos/
   mesosmaster:
-    build: ../yelp_package/dockerfiles/mesos-paasta/
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/mesos-paasta/Dockerfile
     ports:
       - '5050:5050'
       - '5054:5054'
@@ -14,7 +16,6 @@ services:
       - mesosbase
       - zookeeper
     volumes:
-      - /var/tmp/pip_cache1:/var/tmp/pip_cache
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
       - ./example-services:/nail/etc/services:rw
@@ -25,7 +26,9 @@ services:
     ports:
       - 5051
       - 22
-    build: ../yelp_package/dockerfiles/mesos-paasta/
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/mesos-paasta/Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ssh-data:/root/.ssh
@@ -41,9 +44,10 @@ services:
   itest_trusty:
     build: ../yelp_package/dockerfiles/trusty/
   playground:
-    build: ../yelp_package/dockerfiles/playground/
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/playground/Dockerfile
     volumes:
-      - /var/tmp/pip_cache2:/var/tmp/pip_cache
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
       - ./example-services:/nail/etc/services:rw
