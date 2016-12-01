@@ -18,6 +18,7 @@ import socket
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -26,7 +27,6 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 
 
@@ -63,13 +63,7 @@ def add_subparser(subparsers):
             required=True
         ).completer = lazy_choices_completer(list_clusters)
 
-        status_parser.add_argument(
-            '-d', '--soa-dir',
-            dest="soa_dir",
-            metavar="SOA_DIR",
-            default=DEFAULT_SOA_DIR,
-            help="define a different soa config directory",
-        )
+        argparse_helper.add_argument_soa_dir(status_parser)
         status_parser.set_defaults(command=cmd_func)
 
 

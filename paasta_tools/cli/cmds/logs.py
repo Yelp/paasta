@@ -40,6 +40,7 @@ from pytimeparse.timeparse import timeparse
 
 from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import format_job_id
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -48,7 +49,6 @@ from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
@@ -104,14 +104,7 @@ def add_subparser(subparsers):
         dest='raw_mode', default=False,
         help="Don't pretty-print logs; emit them exactly as they are in scribe.",
     )
-    status_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
-
+    argparse_helper.add_argument_soa_dir(status_parser)
     status_parser.add_argument(
         '-a', '--from', '--after', dest='time_from',
         help='The time to start gettings logs from. This can be an ISO-8601 timestamp or a human readable duration '

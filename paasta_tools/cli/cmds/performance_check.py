@@ -17,8 +17,8 @@ import argparse
 import requests
 from service_configuration_lib import read_extra_service_information
 
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import timeout
 
 
@@ -37,13 +37,7 @@ def add_subparser(subparsers):
         '-k', '--commit',
         help=argparse.SUPPRESS,
     )
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest='soa_dir',
-        metavar='SOA_DIR',
-        default=DEFAULT_SOA_DIR,
-        help='Define a different soa config directory',
-    )
+    argparse_helper.add_argument_soa_dir(list_parser)
     list_parser.set_defaults(command=perform_performance_check)
 
 

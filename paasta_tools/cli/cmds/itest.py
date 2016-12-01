@@ -14,6 +14,7 @@
 # limitations under the License.
 import os
 
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
@@ -22,7 +23,6 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import check_docker_image
-from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):
@@ -47,12 +47,8 @@ def add_subparser(subparsers):
         help='Git sha used to construct tag for built image',
         required=True,
     )
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest='soa_dir',
-        help='A directory from which soa-configs should be read from',
-        default=DEFAULT_SOA_DIR,
-    ).completer = lazy_choices_completer(list_services)
+    argparse_helper.add_argument_soa_dir(list_parser).completer = \
+        lazy_choices_completer(list_services)
     list_parser.set_defaults(command=paasta_itest)
 
 

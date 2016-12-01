@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paasta_tools.cli import argparse_helper
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
-from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):
@@ -36,11 +36,7 @@ def add_subparser(subparsers):
         help='Name of the deploy group which you want to get the latest deployment for.',
         required=True,
     ).completer = lazy_choices_completer(list_deploy_groups)
-    list_parser.add_argument(
-        '-d', '--soa-dir',
-        help='A directory from which soa-configs should be read from',
-        default=DEFAULT_SOA_DIR,
-    )
+    argparse_helper.add_argument_soa_dir(list_parser)
 
     list_parser.set_defaults(command=paasta_get_latest_deployment)
 
