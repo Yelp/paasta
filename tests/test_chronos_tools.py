@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 import copy
 import datetime
@@ -658,7 +661,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string \'now\''
+        fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string u\'now\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
@@ -674,7 +677,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'Unrecognised ISO 8601 date format: \'today\''
+        fake_isodate_exception = 'Unrecognised ISO 8601 date format: u\'today\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
@@ -690,7 +693,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'Unrecognised ISO 8601 time format: \'morning\''
+        fake_isodate_exception = 'Unrecognised ISO 8601 time format: u\'morning\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'

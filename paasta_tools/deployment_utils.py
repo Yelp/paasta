@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable

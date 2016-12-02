@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
 
 import mock
@@ -24,7 +27,7 @@ from paasta_tools.mesos_tools import get_local_slave_state
 APP_ID = 'test--marathon--app.instance.git01234567.configabcdef01'
 
 
-@when(u'we create a trivial marathon app')
+@when('we create a trivial marathon app')
 def create_trivial_marathon_app(context):
     app_config = {
         'id': APP_ID,
@@ -43,22 +46,22 @@ def create_trivial_marathon_app(context):
         paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
 
 
-@then(u'we should see it running in marathon')
+@then('we should see it running in marathon')
 def list_marathon_apps_has_trivial_app(context):
     actual = paasta_tools.marathon_tools.list_all_marathon_app_ids(context.marathon_client)
     assert APP_ID in actual
     assert context.marathon_client.get_app('/%s' % APP_ID)
 
 
-@then(u'it should show up in marathon_services_running_here')
+@then('it should show up in marathon_services_running_here')
 def marathon_services_running_here_works(context):
     with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
         discovered = paasta_tools.marathon_tools.marathon_services_running_here()
         assert len(discovered) == 1, (repr(discovered), get_local_slave_state())
-        assert discovered == [(u'test_marathon_app', u'instance', mock.ANY)], repr(discovered)
+        assert discovered == [('test_marathon_app', 'instance', mock.ANY)], repr(discovered)
 
 
-@when(u'the task has started')
+@when('the task has started')
 def when_the_task_has_started(context):
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):

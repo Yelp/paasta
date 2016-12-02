@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import sys
 
 from paasta_tools import mesos_tools
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_running_mesos_docker_containers
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -36,16 +40,16 @@ def main():
             orphaned_containers.append((container["Names"][0].strip("/"), mesos_task_id))
 
     if orphaned_containers:
-        print "CRIT: Docker containers are orphaned: %s%s" % (", ".join(
+        paasta_print("CRIT: Docker containers are orphaned: %s%s" % (", ".join(
             "%s (%s)" % (container_name, mesos_task_id)
             for container_name, mesos_task_id in orphaned_containers
-        ), " and will be killed" if args.force else "")
+        ), " and will be killed" if args.force else ""))
         if args.force:
             for container_name, mesos_task_id in orphaned_containers:
                 docker_client.kill(container_name)
         sys.exit(1)
     else:
-        print "OK: All mesos task IDs accounted for"
+        paasta_print("OK: All mesos task IDs accounted for")
         sys.exit(0)
 
 

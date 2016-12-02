@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from StringIO import StringIO
 
 from mock import ANY
@@ -40,7 +43,7 @@ def test_paasta_generate_pipeline_service_not_found(
     expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
     assert paasta_generate_pipeline(args) == 1
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert output == expected_output
 
 

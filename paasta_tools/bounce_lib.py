@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import datetime
 import fcntl
 import logging
@@ -22,12 +25,12 @@ import time
 from contextlib import contextmanager
 from contextlib import nested
 
-import marathon_tools
-import mesos_tools
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
 
+from paasta_tools import marathon_tools
+from paasta_tools import mesos_tools
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
@@ -46,7 +49,6 @@ WAIT_DELETE_S = 5
 class TimeoutException(Exception):
 
     """An exception type used by time_limit."""
-    pass
 
 
 _bounce_method_funcs = {}

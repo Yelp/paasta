@@ -12,17 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
-import chronos_tools
 import humanize
 import isodate
 
+from paasta_tools import chronos_tools
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import _log
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -41,7 +45,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs or has
     # been previously stopped.
     if complete_job_config['disabled']:
-        print PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first.")
+        paasta_print(PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first."))
     else:
         log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
         _log(
@@ -112,7 +116,7 @@ def _prettify_time(time):
     try:
         dt = isodate.parse_datetime(time)
     except isodate.isoerror.ISO8601Error:
-        print "unable to parse datetime %s" % time
+        paasta_print("unable to parse datetime %s" % time)
         raise
     dt_localtime = datetime_from_utc_to_local(dt)
     pretty_dt = "%s, %s" % (
@@ -405,7 +409,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        print status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose)
+        paasta_print(status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose))
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

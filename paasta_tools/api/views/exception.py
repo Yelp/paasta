@@ -15,6 +15,9 @@
 """
 PaaSTA API error handling.
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from pyramid.response import Response

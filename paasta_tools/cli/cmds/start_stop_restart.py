@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import datetime
 import socket
 
@@ -28,6 +31,7 @@ from paasta_tools.generate_deployments_for_service import get_latest_deployment_
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -127,12 +131,12 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 
 def print_marathon_message(desired_state):
     if desired_state == "start":
-        print(
+        paasta_print(
             "A 'start' command will signal to Marathon that the service should have the normal "
             "instance count. A restart will cause new tasks to replace the old ones gracefully."
         )
     elif desired_state == "stop":
-        print(
+        paasta_print(
             "A 'stop' command will signal to Marathon that the service should be in Marathon, "
             "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
             "make the service start back up."
@@ -141,12 +145,12 @@ def print_marathon_message(desired_state):
 
 def print_chronos_message(desired_state):
     if desired_state == "start":
-        print(
+        paasta_print(
             "'Start' will tell Chronos to start scheduling the job. "
             "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
         )
     elif desired_state == "stop":
-        print(
+        paasta_print(
             "'Stop' for a Chronos job will cause the job to be disabled until the "
             "next deploy or a 'start' command is issued."
         )
@@ -175,10 +179,10 @@ def paasta_start_or_stop(args, desired_state):
         clusters = args.clusters.split(",")
         invalid_clusters = [cluster for cluster in clusters if cluster not in valid_clusters]
         if invalid_clusters:
-            print(
-                "Invalid cluster name(s) specified: %s."
-                "Valid options: %s"
-            ) % (" ".join(invalid_clusters), " ".join(valid_clusters))
+            paasta_print(
+                "Invalid cluster name(s) specified: %s." % " ".join(invalid_clusters),
+                "Valid options: %s" % " ".join(valid_clusters),
+            )
             return 1
     else:
         clusters = valid_clusters
@@ -193,7 +197,7 @@ def paasta_start_or_stop(args, desired_state):
             "Try again from somewhere where the git server can be reached, "
             "like your developer environment."
         ) % str(e)
-        print msg
+        paasta_print(msg)
         return 1
 
     invalid_deploy_groups = []
@@ -204,7 +208,7 @@ def paasta_start_or_stop(args, desired_state):
         # actually within this cluster.
         if instances is None:
             cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
-            print("no instances specified; restarting all instances for service")
+            paasta_print("no instances specified; restarting all instances for service")
         else:
             all_cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
             cluster_instances = all_cluster_instances.intersection(set(instances))
@@ -239,9 +243,9 @@ def paasta_start_or_stop(args, desired_state):
 
     return_val = 0
     if invalid_deploy_groups:
-        print "No branches found for %s in %s." % \
-            (", ".join(invalid_deploy_groups), remote_refs)
-        print "Has %s been deployed there yet?" % service
+        paasta_print("No branches found for %s in %s." %
+                     (", ".join(invalid_deploy_groups), remote_refs))
+        paasta_print("Has %s been deployed there yet?" % service)
         return_val = 1
 
     return return_val

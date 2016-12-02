@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.paasta_metastatus import get_marathon_client
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -23,7 +27,7 @@ def get_deployments():
 
 def main():
     parse_args()
-    print len(get_deployments())
+    paasta_print(len(get_deployments()))
 
 
 if __name__ == "__main__":

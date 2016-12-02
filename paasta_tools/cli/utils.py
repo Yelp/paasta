@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import fnmatch
 import logging
@@ -36,6 +39,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -94,14 +98,14 @@ def check_mark():
     """
     :return: string that can print a checkmark
     """
-    return PaastaColors.green(u'\u2713'.encode('utf-8'))
+    return PaastaColors.green('\u2713')
 
 
 def x_mark():
     """
     :return: string that can print an x-mark
     """
-    return PaastaColors.red(u'\u2717'.encode('utf-8'))
+    return PaastaColors.red('\u2717')
 
 
 def success(msg):
@@ -575,7 +579,7 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
-        print service_not_found
+        paasta_print(service_not_found)
         exit(1)
     return service
 
