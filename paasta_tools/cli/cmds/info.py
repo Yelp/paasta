@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -25,6 +28,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 NO_DESCRIPTION_MESSAGE = (
@@ -137,4 +141,4 @@ def paasta_info(args):
     """Prints general information about a service"""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir=soa_dir)
-    print get_service_info(service, soa_dir)
+    paasta_print(get_service_info(service, soa_dir))

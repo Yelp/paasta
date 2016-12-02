@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains methods used by the paasta client to build a docker image."""
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import os
 import sys
 
@@ -21,6 +24,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_username
+from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -63,8 +67,8 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     run_env['DOCKER_TAG'] = tag
 
     if not makefile_responds_to('cook-image'):
-        sys.stderr.write('ERROR: local-run now requires a cook-image target to be present in the Makefile. See '
-                         'http://paasta.readthedocs.io/en/latest/about/contract.html\n')
+        paasta_print('ERROR: local-run now requires a cook-image target to be present in the Makefile. See'
+                     'http://paasta.readthedocs.io/en/latest/about/contract.html', file=sys.stderr)
         return 1
 
     try:
@@ -87,5 +91,5 @@ def paasta_cook_image(args, service=None, soa_dir=None):
         return returncode
 
     except KeyboardInterrupt:
-        sys.stderr.write('\nProcess interrupted by the user. Cancelling.\n')
+        paasta_print('\nProcess interrupted by the user. Cancelling.', file=sys.stderr)
         return 2

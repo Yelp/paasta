@@ -16,6 +16,9 @@ that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 import os
 import re
@@ -51,6 +54,7 @@ from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import ZookeeperPool
 
@@ -702,7 +706,7 @@ def marathon_services_running_here():
     slave_state = get_local_slave_state()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
+                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
         app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
@@ -847,9 +851,9 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     try:
         tasks = client.list_tasks(app_id=app_id)
     except NotFoundError:
-        print "no app with id %s found" % app_id
+        paasta_print("no app with id %s found" % app_id)
         raise
-    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
+    paasta_print("app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks))
     if exact_matches_only:
         return len(tasks) == expected_tasks
     else:

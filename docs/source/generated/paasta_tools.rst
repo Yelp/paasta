@@ -10,6 +10,7 @@ Subpackages
     paasta_tools.autoscaling
     paasta_tools.cli
     paasta_tools.mesos
+    paasta_tools.metrics
     paasta_tools.monitoring
     paasta_tools.tron
 

@@ -25,6 +25,9 @@ Command line options:
 - -c <command>, --cmd <command>: Shell command to execute in container
 - -t <timeout>, --timeout <timeout>: Timeout for command
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import signal
 import sys
@@ -32,6 +35,7 @@ from contextlib import contextmanager
 
 from paasta_tools.mesos_tools import get_container_id_for_mesos_id
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -78,8 +82,8 @@ def main():
     args = parse_args()
 
     if not args.mesos_id:
-        sys.stdout.write(
-            "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.\n")
+        paasta_print(
+            "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.")
         sys.exit(2)
 
     docker_client = get_docker_client()
@@ -90,14 +94,14 @@ def main():
         try:
             with time_limit(args.timeout):
                 output, return_code = execute_in_container(docker_client, container_id, args.cmd, args.timeout)
-            sys.stdout.write(output)
+            paasta_print(output)
         except TimeoutException:
-            sys.stdout.write("Command timed out!\n")
+            paasta_print("Command timed out!")
             return_code = 1
         finally:
             sys.exit(return_code)
     else:
-        sys.stdout.write("Could not find container with MESOS_TASK_ID '%s'.\n" % args.mesos_id)
+        paasta_print("Could not find container with MESOS_TASK_ID '%s'." % args.mesos_id)
         sys.exit(1)
 
 

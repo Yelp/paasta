@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 
 import marathon
@@ -1686,7 +1689,7 @@ class TestMarathonServiceConfig(object):
 
     def test_repr(self):
         actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}))
-        expected = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'})"""
+        expected = """MarathonServiceConfig(u'foo', u'bar', u'', {u'baz': u'baz'}, {u'bubble': u'gum'})"""
         assert actual == expected
 
     def test_get_healthcheck_mode_default(self):

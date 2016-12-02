@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 import os
 import shutil
@@ -26,7 +29,7 @@ from paasta_tools.cli.cmds.fsm import paasta_fsm
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@given(u'a fake yelpsoa-config-root with an existing service')
+@given('a fake yelpsoa-config-root with an existing service')
 def step_impl_given(context):
     # Cleaned up in after_scenario()
     context.tmpdir = tempfile.mkdtemp('paasta_tools_fsm_itest')
@@ -49,7 +52,7 @@ def _load_yelpsoa_configs(context, service):
     context.my_config = all_services[service]
 
 
-@when(u'we fsm a new service')
+@when('we fsm a new service')
 def step_impl_when_fsm_auto(context):
     service = "my-cool-service"
 
@@ -70,7 +73,7 @@ def step_impl_when_fsm_auto(context):
     _load_yelpsoa_configs(context, service)
 
 
-@then(u'the new yelpsoa-configs directory has a valid smartstack proxy_port')
+@then('the new yelpsoa-configs directory has a valid smartstack proxy_port')
 def step_impl_then_proxy_port(context):
     port = context.my_config['smartstack']['main']['proxy_port']
     assert port >= 20000

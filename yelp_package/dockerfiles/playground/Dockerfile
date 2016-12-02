@@ -5,4 +5,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 RUN mkdir /var/run/sshd
 RUN mkdir -p /nail/etc
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
-ADD ./start.sh /start.sh
+ADD ./requirements-dev.txt /paasta/requirements-dev.txt
+ADD ./requirements.txt /paasta/requirements.txt
+RUN pip install -r /paasta/requirements-dev.txt
+ADD ./yelp_package/dockerfiles/playground/start.sh /start.sh

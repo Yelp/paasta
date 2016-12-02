@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import csv
 import datetime
@@ -22,10 +25,10 @@ from time import sleep
 import chronos
 import dateutil
 import isodate
-import monitoring_tools
 import service_configuration_lib
 from crontab import CronSlices
 
+from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -39,6 +42,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
@@ -305,7 +309,7 @@ class ChronosJobConfig(InstanceConfig):
         if schedule is not None:
             if not CronSlices.is_valid(schedule):
                 try:
-                    repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
+                    repeat, start_time, interval = schedule.split('/')  # the parts have separate validators
                 except ValueError:
                     return (False, ('The specified schedule "%s" is neither a valid cron schedule nor a valid'
                                     ' ISO8601 schedule' % schedule))
@@ -321,7 +325,7 @@ class ChronosJobConfig(InstanceConfig):
                             msgs.append('The specified start time "%s" must contain a time zone' % start_time)
                     except isodate.ISO8601Error as exc:
                         msgs.append('The specified start time "%s" in schedule "%s" '
-                                    'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
+                                    'does not conform to the ISO8601 format:\n%s' % (start_time, schedule, exc.message))
 
                 parsed_interval = None
                 try:
@@ -390,7 +394,7 @@ class ChronosJobConfig(InstanceConfig):
         net = get_mesos_network_for_net(self.get_net())
 
         complete_config = {
-            'name': self.get_job_name().encode('utf_8'),
+            'name': self.get_job_name(),
             'container': {
                 'image': docker_url,
                 'network': net,
@@ -745,7 +749,7 @@ def wait_for_job(client, job_name):
         if found:
             return True
         else:
-            print "waiting for job %s to launch. retrying" % (job_name)
+            paasta_print("waiting for job %s to launch. retrying" % (job_name))
             sleep(0.5)
 
 

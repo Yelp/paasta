@@ -27,6 +27,9 @@ Command line options:
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 - -m, --minimal: Only show service instances that need bouncing
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import sys
 
@@ -40,6 +43,7 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import long_job_id_to_short_job_id
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import use_requests_cache
 
 
@@ -122,7 +126,7 @@ def main():
         service_instances = []
         for name, instance in instances:
             service_instances.append(compose_job_id(name, instance))
-    print '\n'.join(service_instances)
+    paasta_print('\n'.join(service_instances))
     sys.exit(0)
 
 

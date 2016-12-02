@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 import time
 
@@ -35,15 +38,15 @@ def which_id(context, which):
         return context.old_app_config['id']
 
 
-@given(u'a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
+@given('a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
 def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
     given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints=str([]))
 
 
-@given(u'a new {state} app to be deployed, ' +
-       u'with bounce strategy "{bounce_method}" ' +
-       u'and drain method "{drain_method}" ' +
-       u'and constraints {constraints}')
+@given('a new {state} app to be deployed, ' +
+       'with bounce strategy "{bounce_method}" ' +
+       'and drain method "{drain_method}" ' +
+       'and constraints {constraints}')
 def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints):
     constraints = eval(constraints)
     if state == "healthy":
@@ -80,12 +83,12 @@ def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, dr
     )
 
 
-@given(u'an old app to be destroyed')
+@given('an old app to be destroyed')
 def given_an_old_app_to_be_destroyed(context):
     given_an_old_app_to_be_destroyed_constraints(context, str([]))
 
 
-@given(u'an old app to be destroyed with constraints {constraints}')
+@given('an old app to be destroyed with constraints {constraints}')
 def given_an_old_app_to_be_destroyed_constraints(context, constraints):
     constraints = eval(constraints)
     old_app_name = "bounce.test1.oldapp.confighash"
@@ -113,12 +116,12 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
-@when(u'there are exactly {num:d} {which} {state} tasks')
+@when('there are exactly {num:d} {which} {state} tasks')
 def when_there_are_exactly_num_which_tasks(context, num, which, state):
     there_are_num_which_tasks(context, num, which, state, True)
 
 
-@when(u'there are {num:d} {which} {state} tasks')
+@when('there are {num:d} {which} {state} tasks')
 def when_there_are_num_which_tasks(context, num, which, state):
     there_are_num_which_tasks(context, num, which, state, False)
 
@@ -151,7 +154,7 @@ def there_are_num_which_tasks(context, num, which, state, exact):
                     (context.max_tasks, state, app_id, len(app.tasks)))
 
 
-@when(u'setup_service is initiated')
+@when('setup_service is initiated')
 def when_setup_service_initiated(context):
     with contextlib.nested(
         mock.patch(
@@ -208,7 +211,7 @@ def when_setup_service_initiated(context):
         raise Exception("Unable to acquire app lock for setup_marathon_job.setup_service")
 
 
-@when(u'the {which} app is down to {num} instances')
+@when('the {which} app is down to {num} instances')
 def when_the_which_app_is_down_to_num_instances(context, which, num):
     app_id = which_id(context, which)
     while True:
@@ -218,12 +221,12 @@ def when_the_which_app_is_down_to_num_instances(context, which, num):
         time.sleep(0.5)
 
 
-@then(u'the {which} app should be running')
+@then('the {which} app should be running')
 def then_the_which_app_should_be_running(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is True
 
 
-@then(u'the {which} app should be configured to have {num} instances')
+@then('the {which} app should be configured to have {num} instances')
 def then_the_which_app_should_be_configured_to_have_num_instances(context, which, num, retries=10):
     app_id = which_id(context, which)
 
@@ -236,12 +239,12 @@ def then_the_which_app_should_be_configured_to_have_num_instances(context, which
     raise ValueError("Expected there to be %d instances, but there were %d" % (int(num), app.instances))
 
 
-@then(u'the {which} app should be gone')
+@then('the {which} app should be gone')
 def then_the_which_app_should_be_gone(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is False
 
 
-@when(u'we wait a bit for the {which} app to disappear')
+@when('we wait a bit for the {which} app to disappear')
 def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
     """ Marathon will not make the app disappear until after all the tasks have died
     https://github.com/mesosphere/marathon/issues/1431 """
@@ -254,7 +257,7 @@ def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is False
 
 
-@when(u'a task has drained')
+@when('a task has drained')
 def when_a_task_has_drained(context):
     """Tell the TestDrainMethod to mark a task as safe to kill.
 

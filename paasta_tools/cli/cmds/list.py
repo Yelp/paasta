@@ -12,9 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from paasta_tools.cli.utils import list_paasta_services
 from paasta_tools.cli.utils import list_service_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SPACER
 
 
@@ -49,4 +53,4 @@ def paasta_list(args):
         services = list_paasta_services()
 
     for service in services:
-        print service
+        paasta_print(service)
