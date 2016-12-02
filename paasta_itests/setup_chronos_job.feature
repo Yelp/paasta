@@ -71,6 +71,7 @@ Feature: setup_chronos_job can create and bounce jobs
   Scenario: Jobs using cron-style schedules can be launched
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we set the "schedule" field of the chronos config for service "testservice" and instance "testinstance" to "* * * * *"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
      Then there should be 1 enabled jobs for the service "testservice" and instance "testinstance"
