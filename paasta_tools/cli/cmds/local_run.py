@@ -632,18 +632,25 @@ def configure_and_run_docker_container(
     Function prints the output of run command in stdout.
     """
 
+    if instance is None and args.healthcheck:
+        paasta_print(
+            "With --healthcheck, --instance must be provided!",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if instance is None and not sys.stdin.isatty():
+        paasta_print(
+            "--instance and --cluster must be specified when using paasta local-run without a tty!",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     soa_dir = args.yelpsoa_config_root
-
     volumes = list()
-
     load_deployments = docker_hash is None or pull_image
-
     interactive = args.interactive
 
     try:
-        if instance is None and args.healthcheck:
-            paasta_print("With --healthcheck, --instance must be provided!", file=sys.stderr)
-            sys.exit(1)
         if instance is None:
             instance_type = 'adhoc'
             instance = 'interactive'

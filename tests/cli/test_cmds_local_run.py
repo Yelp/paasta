@@ -479,11 +479,13 @@ def test_configure_and_run_pulls_image_when_asked(
 
 def test_configure_and_run_docker_container_defaults_to_interactive_instance():
     with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.local_run.sys.stdin.isatty', autospec=True, return_value=True),
         mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
     ) as (
+        _,
         mock_validate_service_instance,
         mock_socket_get_fqdn,
         mock_run_docker_container,
