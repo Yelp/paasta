@@ -312,7 +312,7 @@ class ChronosJobConfig(InstanceConfig):
                     repeat, start_time, interval = schedule.split('/')  # the parts have separate validators
                 except ValueError:
                     return (False, ('The specified schedule "%s" is neither a valid cron schedule nor a valid'
-                                    ' ISO8601 schedule' % schedule))
+                                    ' ISO 8601 schedule' % schedule))
 
                 # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
                 if start_time == '':
@@ -324,8 +324,8 @@ class ChronosJobConfig(InstanceConfig):
                         if not hasattr(dt, 'tzinfo'):
                             msgs.append('The specified start time "%s" must contain a time zone' % start_time)
                     except isodate.ISO8601Error as exc:
-                        msgs.append('The specified start time "%s" in schedule "%s" '
-                                    'does not conform to the ISO8601 format:\n%s' % (start_time, schedule, exc.message))
+                        msgs.append('The specified start time "%s" in schedule "%s" does '
+                                    'not conform to the ISO 8601 format:\n%s' % (start_time, schedule, exc.message))
 
                 parsed_interval = None
                 try:
