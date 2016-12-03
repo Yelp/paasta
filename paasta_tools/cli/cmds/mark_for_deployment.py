@@ -18,7 +18,8 @@ deployment to a cluster.instance.
 import logging
 
 from paasta_tools import remote_git
-from paasta_tools.cli.cmds.wait_for_deployment import wait_for_deployment, NoInstancesFound
+from paasta_tools.cli.cmds.wait_for_deployment import NoInstancesFound
+from paasta_tools.cli.cmds.wait_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services

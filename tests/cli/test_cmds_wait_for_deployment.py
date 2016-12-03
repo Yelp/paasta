@@ -31,6 +31,7 @@ class MockSleep:
         self.call_count += 1
         return
 
+
 class fake_args:
     deploy_group = 'test_deploy_group'
     service = 'test_service'

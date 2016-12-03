@@ -30,7 +30,6 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.generate_deployments_for_service \
     import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
@@ -135,14 +134,6 @@ def paasta_wait_for_deployment(args):
                                (",").join(in_use_deploy_groups)))
         return 1
 
-    old_git_sha = get_currently_deployed_sha(service=service,
-                                             deploy_group=args.deploy_group)
-    if old_git_sha == args.commit:
-        print("Warning: The sha asked to be deployed already matches what is "
-              "set to be deployed:")
-        print(old_git_sha)
-        print("Continuing anyway.")
-
     try:
         wait_for_deployment(service=service,
                             deploy_group=args.deploy_group,
@@ -156,18 +147,11 @@ def paasta_wait_for_deployment(args):
              level='event')
 
     except (KeyboardInterrupt, TimeoutError):
-        print("Waiting for deployment aborted. PaaSTA will continue to try to "
-              "deploy this code.\nIf you wish to see the status, run:\n"
-              "    paasta status -s %s -v\n" % service)
+        print("Waiting for deployment aborted.")
         return 1
     except NoInstancesFound:
         return 1
 
-    if old_git_sha is not None and old_git_sha != args.commit:
-        print("\nIf you wish to roll back, you can run:\n")
-        print(PaastaColors.bold("    paasta rollback --service %s"
-                                " --deploy-group %s --commit %s " %
-                                (service, args.deploy_group, old_git_sha)))
     return 0
 
 
@@ -303,17 +287,13 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                    .format(deploy_group) + "\n".join(human_status)),
              level='event')
 
-        line = ("\n\nTimed out after {0} seconds, waiting for {1} in {2} to be "
-                "deployed by PaaSTA. \n\n"
-                "This probably means the deploy hasn't suceeded. The new "
-                "service might not be healthy or one or more clusters could be "
-                "having issues.\n\n"
+        line = ("\n\nTimed out after {0} seconds, waiting for {2} in {1} to be "
+                "deployed by PaaSTA.\n\n"
+                "If you are sure your git sha is correct, this probably means "
+                "the deploy hasn't suceeded. The new service might not be "
+                "healthy or one or more clusters could be having issues.\n\n"
                 "To debug: try running 'paasta status -s {2} -vv' or 'paasta "
                 "logs -s {2}' to determine the cause.\n\n"
-                "{3} is still *marked* for deployment. To rollback, you can "
-                "run: 'paasta rollback --service {2} --deploy-group {1}'\n\n"
-                "If the service is known to be slow to start you may wish to "
-                "increase the timeout on this step."
                 .format(timeout, deploy_group, service, git_sha))
         _log(service=service, component='deploy', line=line, level='event')
         raise
