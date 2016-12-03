@@ -1380,15 +1380,6 @@ def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v1'])
-    else:
-        raise NoDeploymentsAvailable
-
-
-def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
             return DeploymentsJson(json.load(f)['v2'])
     else:
         raise NoDeploymentsAvailable
@@ -1396,11 +1387,7 @@ def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
 
 class DeploymentsJson(dict):
 
-    def get_branch_dict(self, service, branch):
-        full_branch = '%s:paasta-%s' % (service, branch)
-        return self.get(full_branch, {})
-
-    def get_branch_dict_v2(self, service, branch, deploy_group):
+    def get_branch_dict(self, service, branch, deploy_group):
         full_branch = '%s:%s' % (service, branch)
         branch_dict = {
             'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
@@ -1437,6 +1424,12 @@ class DeploymentsJson(dict):
 
 def get_paasta_branch(cluster, instance):
     return SPACER.join((cluster, instance))
+
+
+def decompose_paasta_control_branch(control_branch):
+    service, branch = control_branch.split(':')
+    cluster, instance = branch.split('.')
+    return service, cluster, instance
 
 
 def parse_timestamp(tstamp):
