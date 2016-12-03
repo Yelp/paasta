@@ -479,16 +479,19 @@ def test_configure_and_run_pulls_image_when_asked(
 
 def test_configure_and_run_docker_container_defaults_to_interactive_instance():
     with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
     ) as (
+        mock_stdin,
         mock_validate_service_instance,
         mock_socket_get_fqdn,
         mock_run_docker_container,
         mock_get_default_interactive_config,
     ):
+        mock_stdin.isatty.return_value = True
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
         mock_socket_get_fqdn.return_value = 'fake_hostname'
