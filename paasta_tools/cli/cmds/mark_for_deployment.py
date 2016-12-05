@@ -19,9 +19,9 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-import progressbar
 import time
 
+import progressbar
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 
@@ -34,8 +34,7 @@ from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
-from paasta_tools.generate_deployments_for_service \
-    import get_cluster_instance_map_for_service
+from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
@@ -213,7 +212,6 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            paasta_print("Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group))
             wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
@@ -336,6 +334,8 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             level='event'
         )
         raise NoInstancesFound
+    paasta_print("Waiting for deployment of {0} for '{1}' complete..."
+                 .format(git_sha, deploy_group))
     for cluster in cluster_map.values():
         cluster['deployed'] = 0
     try:

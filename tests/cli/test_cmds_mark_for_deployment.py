@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from bravado.exception import HTTPError
 from mock import ANY
 from mock import patch
 

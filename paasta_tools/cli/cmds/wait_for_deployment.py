@@ -15,10 +15,13 @@
 """Contains methods used by the paasta client to wait for deployment
 of a docker image to a cluster.instance.
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
-from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoInstancesFound
+from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -28,6 +31,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
 
@@ -110,7 +114,7 @@ def paasta_wait_for_deployment(args):
     try:
         validate_service_name(service, soa_dir=args.soa_dir)
     except NoSuchService as e:
-        print(PaastaColors.red('%s' % e))
+        paasta_print(PaastaColors.red('%s' % e))
         return 1
 
     in_use_deploy_groups = list_deploy_groups(service=service,
@@ -119,12 +123,12 @@ def paasta_wait_for_deployment(args):
         validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
 
     if len(invalid_deploy_groups) == 1:
-        print(PaastaColors.red("ERROR: These deploy groups are not currently "
-                               "used anywhere: %s.\n" %
-                               (",").join(invalid_deploy_groups)))
-        print(PaastaColors.red("You probably need one of these in-use deploy "
-                               "groups?:\n   %s" %
-                               (",").join(in_use_deploy_groups)))
+        paasta_print(PaastaColors.red("ERROR: These deploy groups are not "
+                                      "currently used anywhere: %s.\n" %
+                                      (",").join(invalid_deploy_groups)))
+        paasta_print(PaastaColors.red("You probably need one of these in-use "
+                                      "deploy groups?:\n   %s" %
+                                      (",").join(in_use_deploy_groups)))
         return 1
 
     try:
@@ -140,7 +144,7 @@ def paasta_wait_for_deployment(args):
              level='event')
 
     except (KeyboardInterrupt, TimeoutError):
-        print("Waiting for deployment aborted.")
+        paasta_print("Waiting for deployment aborted.")
         return 1
     except NoInstancesFound:
         return 1
