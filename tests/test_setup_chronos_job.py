@@ -364,6 +364,7 @@ class TestSetupChronosJob:
                 instance=self.fake_instance,
                 cluster=mock_load_system_paasta_config.return_value.get_cluster.return_value,
                 soa_dir=fake_soa_dir,
+                load_deployments=False,
             )
 
     def test_bounce_chronos_job_takes_actions(self):
