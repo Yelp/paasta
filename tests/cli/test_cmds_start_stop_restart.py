@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 from StringIO import StringIO
 
@@ -280,7 +283,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_remote_refs.side_effect = remote_git.LSRemoteException
 
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
-    assert "may be down" in mock_stdout.getvalue()
+    assert "may be down" in mock_stdout.getvalue().decode('utf-8')
 
 
 @mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
@@ -315,7 +318,7 @@ def test_start_or_stop_bad_refs(mock_list_clusters,
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"}
     mock_list_all_instances.return_value = {args.instances}
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
-    assert "No branches found for" in mock_stdout.getvalue()
+    assert "No branches found for" in mock_stdout.getvalue().decode('utf-8')
 
 
 def test_cluster_list_defaults_to_all():
@@ -338,8 +341,8 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
     mock_figure_out_service_name.return_value = 'fake_service'
 
     assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
-    assert "Invalid cluster name(s) specified: fake_cluster_1" in mock_stdout.getvalue()
-    assert "Valid options: fake_cluster_2" in mock_stdout.getvalue()
+    assert "Invalid cluster name(s) specified: fake_cluster_1" in mock_stdout.getvalue().decode('utf-8')
+    assert "Valid options: fake_cluster_2" in mock_stdout.getvalue().decode('utf-8')
 
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
@@ -360,5 +363,5 @@ def test_cluster_throws_exception_no_matching_instance_clusters(
     mock_figure_out_service_name.return_value = 'fake_service'
 
     assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
-    assert "Invalid cluster name(s) specified: fake_cluster_3" in mock_stdout.getvalue()
-    assert "Valid options: fake_cluster_1 fake_cluster_2" in mock_stdout.getvalue()
+    assert "Invalid cluster name(s) specified: fake_cluster_3" in mock_stdout.getvalue().decode('utf-8')
+    assert "Valid options: fake_cluster_1 fake_cluster_2" in mock_stdout.getvalue().decode('utf-8')

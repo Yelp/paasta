@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import json
 import os
 from tempfile import mkdtemp
@@ -26,6 +29,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import paasta_print
 
 
 def _get_marathon_connection_string():
@@ -47,7 +51,7 @@ def setup_system_paasta_config():
     system_paasta_config = utils.SystemPaastaConfig({
         'cluster': 'testcluster',
         'docker_volumes': [],
-        'docker_registry': u'docker-dev.yelpcorp.com',
+        'docker_registry': 'docker-dev.yelpcorp.com',
         'zookeeper': zk_connection_string,
         'synapse_port': 3212,
         'marathon_config': {
@@ -111,26 +115,26 @@ def write_etc_paasta(context, config, filename):
         f.write(json.dumps(config))
 
 
-@given(u'a working paasta cluster')
+@given('a working paasta cluster')
 def working_paasta_cluster(context):
     return working_paasta_cluster_with_registry(context, 'fake.com')
 
 
-@given(u'a working paasta cluster, with docker registry {docker_registry}')
+@given('a working paasta cluster, with docker registry {docker_registry}')
 def working_paasta_cluster_with_registry(context, docker_registry):
     """Adds a working marathon client and chronos client for the purposes of
     interacting with them in the test."""
     if not hasattr(context, 'marathon_client'):
         context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
     else:
-        print 'Marathon connection already established'
+        paasta_print('Marathon connection already established')
 
     if not hasattr(context, 'chronos_client'):
         context.chronos_config = setup_chronos_config()
         context.chronos_client = setup_chronos_client()
         context.jobs = {}
     else:
-        print 'Chronos connection already established'
+        paasta_print('Chronos connection already established')
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
@@ -146,9 +150,9 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     write_etc_paasta(context, {"sensu_host": None}, 'sensu.json')
     write_etc_paasta(context, {
         'volumes': [
-            {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
         ]
     }, 'volumes.json')
     write_etc_paasta(context, {
@@ -164,7 +168,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     }, 'mesos.json')
 
 
-@given(u'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
+@given('we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
 def write_soa_dir_chronos_instance(context, service, disabled, instance):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
@@ -182,7 +186,7 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
     context.soa_dir = soa_dir
 
 
-@given((u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
+@given(('we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
         ' "{instance}" and parent "{parent}"'))
 def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
     soa_dir = mkdtemp()
@@ -201,7 +205,7 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
     context.soa_dir = soa_dir
 
 
-@given(u'I have yelpsoa-configs for the marathon job "{job_id}"')
+@given('I have yelpsoa-configs for the marathon job "{job_id}"')
 def write_soa_dir_marathon_job(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     try:
@@ -220,7 +224,7 @@ def write_soa_dir_marathon_job(context, job_id):
     context.soa_dir = soa_dir
 
 
-@given(u'we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
+@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
 def write_soa_dir_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
         desired_state = 'stop'
@@ -229,18 +233,27 @@ def write_soa_dir_deployments(context, service, disabled, instance):
 
     if not os.path.exists(os.path.join(context.soa_dir, service)):
         os.makedirs(os.path.join(context.soa_dir, service))
+    branch = utils.get_paasta_branch(context.cluster, instance)
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
-            'v1': {
-                '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
-                    'docker_image': 'test-image-foobar%d' % context.tag_version,
-                    'desired_state': desired_state,
-                }
-            }
+            'v2': {
+                'deployments': {
+                    branch: {
+                        'docker_image': 'test-image-foobar%d' % context.tag_version,
+                        'git_sha': 'test_git_sha',
+                    },
+                },
+                'controls': {
+                    '%s:%s' % (service, branch): {
+                        'desired_state': desired_state,
+                        'force_bounce': None,
+                    },
+                },
+            },
         }))
 
 
-@when((u'we set the "{field}" field of the {framework} config for service "{service}"'
+@when(('we set the "{field}" field of the {framework} config for service "{service}"'
        ' and instance "{instance}" to "{value}"'))
 def modify_configs(context, field, framework, service, instance, value):
     soa_dir = context.soa_dir
@@ -252,7 +265,7 @@ def modify_configs(context, field, framework, service, instance, value):
         f.truncate()
 
 
-@when((u'we set the "{field}" field of the {framework} config for service "{service}"'
+@when(('we set the "{field}" field of the {framework} config for service "{service}"'
        ' and instance "{instance}" to the integer {value:d}'))
 def modify_configs_for_int(context, field, framework, service, instance, value):
     modify_configs(context, field, framework, service, instance, value)

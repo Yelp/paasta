@@ -14,6 +14,9 @@
 # limitations under the License.
 """Contains methods used by the paasta client to generate a Jenkins build
 pipeline."""
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import re
 
 from paasta_tools.cli.utils import guess_service_name
@@ -26,6 +29,7 @@ from paasta_tools.monitoring_tools import get_team_email_address
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -54,7 +58,7 @@ def paasta_generate_pipeline(args):
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
-        print service_not_found
+        paasta_print(service_not_found)
         return 1
 
     generate_pipeline(service=service, soa_dir=soa_dir)
@@ -82,16 +86,16 @@ def get_git_repo_for_fab_repo(service, soa_dir):
 
 
 def print_warning():
-    print "Warning: paasta generate-pipeline is a Yelp-specific tool and will"
-    print "not work outside Yelp."
-    print ""
-    print "paasta generate-pipeline is designed only to give a starting Jenkins"
-    print "configuration that can be customized later"
-    print ""
-    print "Warning: running this tool on an existing pipeline will remove any"
-    print "hand-made customizations and will leave behind orphaned Jenkins jobs"
-    print "that need to be manually cleaned up."
-    print ""
+    paasta_print("Warning: paasta generate-pipeline is a Yelp-specific tool and will")
+    paasta_print("not work outside Yelp.")
+    paasta_print()
+    paasta_print("paasta generate-pipeline is designed only to give a starting Jenkins")
+    paasta_print("configuration that can be customized later")
+    paasta_print()
+    paasta_print("Warning: running this tool on an existing pipeline will remove any")
+    paasta_print("hand-made customizations and will leave behind orphaned Jenkins jobs")
+    paasta_print("that need to be manually cleaned up.")
+    paasta_print()
     raw_input("Press any key to continue or ctrl-c to cancel")
 
 
@@ -112,9 +116,9 @@ def generate_pipeline(service, soa_dir):
     ]
     print_warning()
     for cmd in cmds:
-        print "INFO: Executing %s" % cmd
+        paasta_print("INFO: Executing %s" % cmd)
         returncode, output = _run(cmd, timeout=90)
         if returncode != 0:
-            print "ERROR: Failed to generate Jenkins pipeline"
-            print output
+            paasta_print("ERROR: Failed to generate Jenkins pipeline")
+            paasta_print(output)
             return returncode

@@ -16,7 +16,8 @@ from mock import Mock
 from mock import patch
 from pytest import raises
 
-from paasta_tools.cli.cmds import wait_for_deployment
+from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.utils import TimeoutError
 
@@ -96,8 +97,8 @@ def mock_status_instance_side_effect(service, instance):
     return mock_status_instance
 
 
-@patch('paasta_tools.cli.cmds.wait_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.wait_for_deployment.client.get_paasta_api_client',
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client',
        autospec=True)
 def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client = Mock()
@@ -105,37 +106,37 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client.service.status_instance.side_effect = \
         mock_status_instance_side_effect
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance1'], 'somesha') == 1
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance2', 'instance1'],
                                                   'somesha') == 1
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance3'], 'somesha') == 0
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance4'], 'somesha') == 0
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance5', 'instance1'],
                                                   'somesha') == 2
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance6'], 'somesha') == 0
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['notaninstance'],
                                                   'somesha') == 0
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['api_error'], 'somesha') == 0
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance7'], 'somesha') == 1
 
-    assert wait_for_deployment.instances_deployed('cluster', 'service1',
+    assert mark_for_deployment.instances_deployed('cluster', 'service1',
                                                   ['instance8'], 'somesha') == 1
 
 
@@ -145,9 +146,9 @@ def instances_deployed_side_effect(cluster, service, instances, git_sha):
     return 0
 
 
-@patch('paasta_tools.cli.cmds.wait_for_deployment.get_cluster_instance_map_for_service', autospec=True)
-@patch('paasta_tools.cli.cmds.wait_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.wait_for_deployment.instances_deployed', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 @patch('time.sleep', autospec=True)
 def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
                              mock_get_cluster_instance_map_for_service):
@@ -158,7 +159,7 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_sleep.side_effect = mock_sleeper.mock_sleep_side_effect
 
     with raises(TimeoutError):
-        wait_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
 
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
     mock_instances_deployed.assert_called_with(cluster='cluster1',
@@ -169,43 +170,43 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance2']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
-    assert wait_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1) is None
+    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     mock_sleeper.call_count = 0
     with raises(TimeoutError):
-        wait_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
 
 
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
-@patch('paasta_tools.cli.cmds.wait_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 def test_paasta_wait_for_deployment_return_1_when_no_such_service(
     mock_wait_for_deployment,
     mock_validate_service_name,
 ):
     mock_validate_service_name.side_effect = NoSuchService('Some text')
-    assert wait_for_deployment.paasta_wait_for_deployment(fake_args) == 1
+    assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_wait_for_deployment.call_args_list == []
     assert mock_validate_service_name.called
 
 
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
-@patch('paasta_tools.cli.cmds.wait_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
     mock_wait_for_deployment,
     mock_list_deploy_groups,
     mock_validate_service_name,
 ):
     mock_list_deploy_groups.return_value = set(['another_test_deploy_group'])
-    assert wait_for_deployment.paasta_wait_for_deployment(fake_args) == 1
+    assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_wait_for_deployment.call_args_list == []
     assert mock_validate_service_name.called
 
 
-@patch('paasta_tools.cli.cmds.wait_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
@@ -215,5 +216,5 @@ def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
 ):
     mock_list_deploy_groups.return_value = set(['test_deploy_group'])
     mock_get_cluster_instance_map_for_service.return_value = {}
-    assert wait_for_deployment.paasta_wait_for_deployment(fake_args) == 1
+    assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_validate_service_name.called

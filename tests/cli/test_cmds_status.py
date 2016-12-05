@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from StringIO import StringIO
 
 from mock import MagicMock
@@ -46,7 +49,7 @@ def test_figure_out_service_name_not_found(mock_stdout,
     with raises(SystemExit) as sys_exit:
         status.figure_out_service_name(parsed_args)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert sys_exit.value.code == 1
     assert output == expected_output
 
@@ -69,7 +72,7 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     with raises(SystemExit) as sys_exit:
         paasta_status(args)
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert sys_exit.value.code == 1
     assert output == expected_output
 
@@ -110,7 +113,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance',
@@ -152,7 +155,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
 
 
@@ -196,7 +199,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a,fake_instance_b',
@@ -247,7 +250,7 @@ def test_print_cluster_status_missing_deploys_in_red(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
 
 
@@ -293,7 +296,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         stream=True, verbose=verbosity_level, ignore_ssh_output=True
     )
 
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
 
 
@@ -385,20 +388,33 @@ def test_status_pending_pipeline_build_message(
     args.service = service
 
     paasta_status(args)
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert expected_output in output
 
 
+@patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.load_deployments_json', autospec=True)
-def test_get_actual_deployments(mock_get_deployments,):
+def test_get_actual_deployments(mock_get_deployments, mock_get_instance_configs_for_serivce,):
     mock_get_deployments.return_value = utils.DeploymentsJson({
-        'fake_service:paasta-b_cluster.b_instance': {
-            'docker_image': 'this_is_a_sha',
+        'deployments': {
+            'b_cluster.b_instance': {
+                'git_sha': 'this_is_a_sha',
+            },
+            'a_cluster.a_instance': {
+                'git_sha': 'this_is_a_sha',
+            },
         },
-        'fake_service:paasta-a_cluster.a_instance': {
-            'docker_image': 'this_is_a_sha',
-        }
     })
+    mock_get_instance_configs_for_serivce.return_value = [
+        Mock(
+            get_deploy_group=Mock(return_value='a_cluster.a_instance'),
+            get_branch=Mock(return_value='a_cluster.a_instance'),
+        ),
+        Mock(
+            get_deploy_group=Mock(return_value='b_cluster.b_instance'),
+            get_branch=Mock(return_value='b_cluster.b_instance'),
+        ),
+    ]
     expected = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',
@@ -423,7 +439,7 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy):
     expected_output = '%s\n' % PaastaCheckMessages.DEPLOY_YAML_MISSING
     with raises(SystemExit) as sys_exit:
         status.get_deploy_info('fake_service')
-    output = mock_stdout.getvalue()
+    output = mock_stdout.getvalue().decode('utf-8')
     assert sys_exit.value.code == 1
     assert output == expected_output
 

@@ -27,7 +27,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7B2C3B0889BF5709A105D03A
 RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
-RUN apt-get -y --allow-unauthenticated install chronos=2.5.0-yelp18-1.ubuntu1404
+RUN apt-get -y --allow-unauthenticated install chronos=2.5.0-yelp19-1.ubuntu1404
 
 # Chronos will look in here for zk config, so we blow away the bogus defaults
 RUN rm -rf /etc/mesos/

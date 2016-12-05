@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 
 import marathon
@@ -187,7 +190,12 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
-        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
+        fake_branch_dict = {
+            'desired_state': 'stop',
+            'force_bounce': '12345',
+            'docker_image': fake_docker,
+            'git_sha': mock.sentinel.get_sha,
+        },
         deployments_json_mock = mock.Mock(
             spec=DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
@@ -236,7 +244,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1
@@ -1686,7 +1694,7 @@ class TestMarathonServiceConfig(object):
 
     def test_repr(self):
         actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}))
-        expected = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'})"""
+        expected = """MarathonServiceConfig(u'foo', u'bar', u'', {u'baz': u'baz'}, {u'bubble': u'gum'})"""
         assert actual == expected
 
     def test_get_healthcheck_mode_default(self):

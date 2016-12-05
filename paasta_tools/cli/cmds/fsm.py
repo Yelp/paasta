@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import os
 import sys
 from shutil import copyfile
@@ -21,6 +24,7 @@ from cookiecutter.main import cookiecutter
 
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -78,7 +82,7 @@ def get_paasta_config(yelpsoa_config_root):
 
 
 def write_paasta_config(variables, template, destination):
-    print "Using cookiecutter template from %s" % template
+    paasta_print("Using cookiecutter template from %s" % template)
     cookiecutter(
         template=template,
         extra_context=variables,
@@ -101,12 +105,12 @@ def paasta_fsm(args):
         destination=destination,
     )
 
-    print PaastaColors.yellow("               _  _(o)_(o)_  _")
-    print PaastaColors.red("             ._\`:_ F S M _:' \_,")
-    print PaastaColors.green("                 / (`---'\ `-.")
-    print PaastaColors.cyan("              ,-`  _)    (_,")
-    print "With My Noodly Appendage I Have Written Configs!"
-    print
-    print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
-    print "Remember To Add, Commit, And Push When You're Done:"
-    print
+    paasta_print(PaastaColors.yellow("               _  _(o)_(o)_  _"))
+    paasta_print(PaastaColors.red("             ._\`:_ F S M _:' \_,"))
+    paasta_print(PaastaColors.green("                 / (`---'\ `-."))
+    paasta_print(PaastaColors.cyan("              ,-`  _)    (_,"))
+    paasta_print("With My Noodly Appendage I Have Written Configs!")
+    paasta_print()
+    paasta_print("Customize Them If It Makes You Happy -- http://y/paasta For Details")
+    paasta_print("Remember To Add, Commit, And Push When You're Done:")
+    paasta_print()

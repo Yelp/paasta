@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import os
 
 from behave import given
@@ -19,16 +22,17 @@ from behave import when
 from path import Path
 
 from paasta_tools.utils import _run
+from paasta_tools.utils import paasta_print
 
 
-@given(u'a simple service to test')
+@given('a simple service to test')
 def given_simple_service(context):
     context.fake_service_name = "fake_simple_service"
     assert os.path.isfile(os.path.join(context.fake_service_name, "Dockerfile"))
     assert os.path.isfile(os.path.join(context.fake_service_name, "Makefile"))
 
 
-@when(u'we run paasta local-run on a Marathon service in non-interactive mode '
+@when('we run paasta local-run on a Marathon service in non-interactive mode '
       'with environment variable "{var}" set to "{val}"')
 def non_interactive_local_run(context, var, val):
     with Path("fake_simple_service"):
@@ -48,19 +52,19 @@ def non_interactive_local_run(context, var, val):
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=60)
 
 
-@then(u'we should see the expected return code')
+@then('we should see the expected return code')
 def see_expected_return_code(context):
-    print context.local_run_output
-    print context.local_run_return_code
+    paasta_print(context.local_run_output)
+    paasta_print(context.local_run_return_code)
     assert context.local_run_return_code == 42
 
 
-@then(u'we should see the environment variable "{var}" with the value "{val}" in the ouput')
+@then('we should see the environment variable "{var}" with the value "{val}" in the ouput')
 def env_var_in_output(context, var, val):
     assert "%s=%s" % (var, val) in context.local_run_output
 
 
-@when(u'we run paasta local-run in non-interactive mode on a chronos job')
+@when('we run paasta local-run in non-interactive mode on a chronos job')
 def local_run_on_chronos_job(context):
     with Path("fake_simple_service"):
         # The local-run invocation here is designed to run and return a sentinel
@@ -79,7 +83,7 @@ def local_run_on_chronos_job(context):
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
 
 
-@when(u'we run paasta local-run on an interactive job')
+@when('we run paasta local-run on an interactive job')
 def local_run_on_adhoc_job(context):
     with Path("fake_simple_service"):
         local_run_cmd = ("paasta local-run "
@@ -91,7 +95,7 @@ def local_run_on_adhoc_job(context):
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
 
 
-@when(u'we run paasta local-run in non-interactive mode on a chronos job with cmd set to \'echo hello && sleep 5\'')
+@when('we run paasta local-run in non-interactive mode on a chronos job with cmd set to \'echo hello && sleep 5\'')
 def local_run_on_chronos_job_with_cmd(context):
     with Path("fake_simple_service"):
         local_run_cmd = ("paasta local-run "

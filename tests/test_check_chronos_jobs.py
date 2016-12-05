@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import pysensu_yelp
 from mock import Mock
 from mock import patch

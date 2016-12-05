@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 import copy
 import datetime
@@ -635,6 +638,47 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
+    def test_check_schedule_valid_cron(self):
+        fake_schedule = '* * * * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_schedule_invalid_cron_sixth_field(self):
+        fake_schedule = '* * * * * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is False
+        assert msg == ('The specified schedule "* * * * * *" '
+                       'is neither a valid cron schedule nor a valid ISO 8601 schedule')
+
+    def test_check_schedule_invalid_cron_L_field(self):
+        fake_schedule = '0 16 L * *'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is False
+        assert msg == ('The specified schedule "0 16 L * *" '
+                       'is neither a valid cron schedule nor a valid ISO 8601 schedule')
+
     def test_check_schedule_invalid_empty_start_time(self):
         fake_schedule = 'R10//PT70S'
         chronos_config = chronos_tools.ChronosJobConfig(
@@ -658,7 +702,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string \'now\''
+        fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string u\'now\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
@@ -674,7 +718,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'Unrecognised ISO 8601 date format: \'today\''
+        fake_isodate_exception = 'Unrecognised ISO 8601 date format: u\'today\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
@@ -690,7 +734,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        fake_isodate_exception = 'Unrecognised ISO 8601 time format: \'morning\''
+        fake_isodate_exception = 'Unrecognised ISO 8601 time format: u\'morning\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
@@ -947,7 +991,8 @@ class TestChronosTools:
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockercfg_location={})
-        assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
+        assert ('The specified schedule "%s" is neither a valid '
+                'cron schedule nor a valid ISO 8601 schedule' % fake_schedule) in exc.value
 
     def test_list_job_names(self):
         fake_name = 'vegetables'
@@ -1392,7 +1437,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
+            mock.patch('paasta_tools.chronos_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
             mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True),
         ) as (
             load_system_paasta_config_patch,

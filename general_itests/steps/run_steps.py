@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import signal
 
 from behave import then
@@ -19,12 +22,12 @@ from behave import when
 from paasta_tools.utils import _run
 
 
-@when(u'we run a trivial command with timeout {timeout} seconds')
+@when('we run a trivial command with timeout {timeout} seconds')
 def run_command(context, timeout):
     fake_cmd = 'sleep 1'
     context.rc, context.output = _run(fake_cmd, timeout=float(timeout))
 
 
-@then(u'the command is killed with signal {killsignal}')
+@then('the command is killed with signal {killsignal}')
 def check_exit_code(context, killsignal):
     assert context.rc == -1 * getattr(signal, killsignal)

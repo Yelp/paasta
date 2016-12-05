@@ -12,11 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import sys
 
 from paasta_tools import utils
 from paasta_tools.smartstack_tools import get_replication_for_services
+from paasta_tools.utils import paasta_print
 
 
 def check_replication(service, service_replication,
@@ -116,7 +120,7 @@ def parse_synapse_check_options(system_paasta_config):
 
 
 def fail(message, code):
-    print message
+    paasta_print(message)
     sys.exit(code)
 
 
@@ -136,7 +140,7 @@ def run_synapse_check():
             code, message = check_replication(name, replication,
                                               options.warn, options.crit)
             all_codes.append(code)
-            print message
+            paasta_print(message)
         sys.exit(max(all_codes))
     except Exception, e:
         fail('UNKNOWN: {0}'.format(e), 3)

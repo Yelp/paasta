@@ -15,6 +15,9 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import traceback
 
 from pyramid.view import view_config
@@ -22,12 +25,13 @@ from pyramid.view import view_config
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.paasta_serviceinit import get_deployment_version
+from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
 
@@ -88,22 +92,31 @@ def instance_status(request):
     instance_status['service'] = service
     instance_status['instance'] = instance
 
+    soa_dir = settings.soa_dir
+    cluster = settings.cluster
+
     try:
-        actual_deployments = get_actual_deployments(service, settings.soa_dir)
+        deployments_json = load_deployments_json(service=service, soa_dir=soa_dir)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    version = get_deployment_version(actual_deployments, settings.cluster, instance)
+    try:
+        instance_config = get_instance_config(service=service, instance=instance, cluster=cluster, soa_dir=soa_dir)
+    except NoConfigurationForServiceError:
+        error_message = 'Config not found for service %s instance %s in cluster %s' % (service, instance, cluster)
+        raise ApiFailure(error_message, 404)
+
+    version = deployments_json.get_git_sha_for_deploy_group(instance_config.get_deploy_group())
     # exit if the deployment key is not found
     if not version:
-        error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+        error_message = 'deployment key %s not found' % '.'.join([cluster, instance])
         raise ApiFailure(error_message, 404)
 
     instance_status['git_sha'] = version
 
     try:
-        instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
+        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
         if instance_type == 'marathon':
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':

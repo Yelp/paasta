@@ -1,5 +1,56 @@
 # Change Log
 
+## [0.56.6](https://github.com/Yelp/paasta/tree/0.56.6) (2016-12-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.5...0.56.6)
+
+**Fixed bugs:**
+
+- paasta generate-pipeline takes soa\_dir but doesn't use it to find deploy.yaml [\#895](https://github.com/Yelp/paasta/issues/895)
+
+**Closed issues:**
+
+- paasta logs -l is broken [\#909](https://github.com/Yelp/paasta/issues/909)
+
+**Merged pull requests:**
+
+- Move requirements to build for example cluster [\#913](https://github.com/Yelp/paasta/pull/913) ([mattmb](https://github.com/mattmb))
+- bump chronos version in itests [\#911](https://github.com/Yelp/paasta/pull/911) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- fixed paasta logs -l [\#910](https://github.com/Yelp/paasta/pull/910) ([mjksmith](https://github.com/mjksmith))
+- Added option to automatically roll back on failures. [\#908](https://github.com/Yelp/paasta/pull/908) ([solarkennedy](https://github.com/solarkennedy))
+- remove include\_temporary from chronos\_serviceinit [\#907](https://github.com/Yelp/paasta/pull/907) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Split metastatus into a lib and cli script [\#905](https://github.com/Yelp/paasta/pull/905) ([mattmb](https://github.com/mattmb))
+- In't in't how you spell isn't [\#901](https://github.com/Yelp/paasta/pull/901) ([asottile](https://github.com/asottile))
+- add a decorator for retrying zookeeper connections [\#900](https://github.com/Yelp/paasta/pull/900) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Removed the soa\_dir option from generate-pipeline [\#896](https://github.com/Yelp/paasta/pull/896) ([solarkennedy](https://github.com/solarkennedy))
+- Better healtcheck handling with paasta local-run [\#886](https://github.com/Yelp/paasta/pull/886) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.5](https://github.com/Yelp/paasta/tree/v0.56.5) (2016-11-18)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.4...v0.56.5)
+
+**Implemented enhancements:**
+
+- Uncaught EOFError when ^D at local-run prompt [\#897](https://github.com/Yelp/paasta/issues/897)
+
+**Fixed bugs:**
+
+- curl stderr during paasta mark-for-deployment --wait [\#892](https://github.com/Yelp/paasta/issues/892)
+
+**Merged pull requests:**
+
+- Local run build fix [\#899](https://github.com/Yelp/paasta/pull/899) ([mjksmith](https://github.com/mjksmith))
+- made the picker catch EOFError [\#898](https://github.com/Yelp/paasta/pull/898) ([mjksmith](https://github.com/mjksmith))
+- Show default timeout for mark-for-deployment [\#893](https://github.com/Yelp/paasta/pull/893) ([asottile](https://github.com/asottile))
+- Clean up word soup in mark-for-deployment [\#891](https://github.com/Yelp/paasta/pull/891) ([asottile](https://github.com/asottile))
+- oops, u'0' is greater than all integers apparently. [\#890](https://github.com/Yelp/paasta/pull/890) ([EvanKrall](https://github.com/EvanKrall))
+- added adhoc instance docs [\#864](https://github.com/Yelp/paasta/pull/864) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.56.4](https://github.com/Yelp/paasta/tree/v0.56.4) (2016-11-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.3...v0.56.4)
+
+**Merged pull requests:**
+
+- add minimum 32MB memory requirement PAASTA-7052 [\#888](https://github.com/Yelp/paasta/pull/888) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
 ## [v0.56.3](https://github.com/Yelp/paasta/tree/v0.56.3) (2016-11-14)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.2...v0.56.3)
 

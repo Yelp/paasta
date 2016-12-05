@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # Without this, the import of mesos.interface breaks because paasta_tools.mesos exists
 from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import argparse
 import binascii
@@ -13,6 +14,8 @@ from time import sleep
 import mesos.interface
 import service_configuration_lib
 from mesos.interface import mesos_pb2
+
+from paasta_tools.utils import paasta_print
 try:
     from mesos.native import MesosSchedulerDriver
 except ImportError:
@@ -95,14 +98,14 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
-        print "Registered with framework ID %s" % frameworkId.value
+        paasta_print("Registered with framework ID %s" % frameworkId.value)
 
         self.reconcile_start_time = time.time()
         driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
         if self.within_reconcile_backoff():
-            print "Declining all offers since we started reconciliation too recently"
+            paasta_print("Declining all offers since we started reconciliation too recently")
             for offer in offers:
                 driver.declineOffer(offer.id)
             return
@@ -205,8 +208,8 @@ class PaastaScheduler(mesos.interface.Scheduler):
         # update tasks
         task_id = update.task_id.value
         state = update.state
-        print "Task %s is in state %s" % \
-            (task_id, mesos_pb2.TaskState.Name(state))
+        paasta_print("Task %s is in state %s" %
+                     (task_id, mesos_pb2.TaskState.Name(state)))
         if state == TASK_LOST or \
                 state == TASK_KILLED or \
                 state == TASK_FAILED or \
@@ -396,16 +399,18 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
             'No job named "%s" in config file %s: \n%s' % (instance, filename, open(filename).read())
         )
     branch_dict = {}
+    general_config = service_paasta_native_jobs[instance]
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
-        branch_dict = deployments_json.get_branch_dict(service, branch)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     service_config = PaastaNativeServiceConfig(
         service=service,
         cluster=cluster,
         instance=instance,
-        config_dict=service_paasta_native_jobs[instance],
+        config_dict=general_config,
         branch_dict=branch_dict,
     )
 

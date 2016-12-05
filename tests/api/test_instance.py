@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import marathon
 import mock
 from pyramid import testing
@@ -20,26 +23,48 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.utils import DeploymentsJson
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_job_status', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.get_matching_appids', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.load_marathon_service_config', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
-@mock.patch('paasta_tools.api.views.instance.get_actual_deployments', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_instance_config', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.load_deployments_json', autospec=True)
 def test_instances_status(
-    mock_get_actual_deployments,
+    mock_load_deployments_json,
+    mock_get_instance_config,
     mock_validate_service_instance,
     mock_load_marathon_service_config,
     mock_get_matching_appids,
     mock_marathon_job_status,
 ):
     settings.cluster = 'fake_cluster'
-    mock_get_actual_deployments.return_value = {'fake_cluster.fake_instance': 'GIT_SHA',
-                                                'fake_cluster.fake_instance2': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance2': 'GIT_SHA'}
+    mock_load_deployments_json.return_value = DeploymentsJson({
+        'deployments': {
+            'fake_cluster.fake_instance': {
+                'git_sha': 'GIT_SHA',
+            },
+            'fake_cluster.fake_instance2': {
+                'git_sha': 'GIT_SHA',
+            },
+            'fake_cluster2.fake_instance': {
+                'git_sha': 'GIT_SHA',
+            },
+            'fake_cluster2.fake_instance2': {
+                'git_sha': 'GIT_SHA',
+            },
+        },
+    })
     mock_validate_service_instance.return_value = 'marathon'
+    mock_get_instance_config.return_value = marathon_tools.MarathonServiceConfig(
+        service='fake_service',
+        instance='fake_instance',
+        cluster='fake_cluster',
+        config_dict={},
+        branch_dict={},
+    )
 
     mock_marathon_config = marathon_tools.MarathonConfig(
         {'url': 'fake_url', 'user': 'fake_user', 'password': 'fake_password'}

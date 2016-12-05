@@ -13,6 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import glob
 
 from setuptools import find_packages
@@ -63,6 +66,7 @@ setup(
         'pysensu-yelp >= 0.2.2',
         'pytimeparse >= 1.1.0',
         'pytz >= 2014.10',
+        'python-crontab>=2.1.1',
         'python-dateutil >= 2.4.0',
         'retry',
         'requests == 2.6.2',
@@ -94,7 +98,7 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json', 'api/api_docs/*.json']},
+    package_data={b'': [b'cli/fsm/template/*/*', b'cli/schemas/*.json', b'api/api_docs/*.json']},
     entry_points={'console_scripts': [
         'paasta=paasta_tools.cli.cli:main',
         'paasta-api=paasta_tools.api.api:main',

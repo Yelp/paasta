@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
 from StringIO import StringIO
 
@@ -37,7 +40,7 @@ def test_get_latest_deployment():
         _,
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
-        assert "FAKE_SHA" in mock_stdout.getvalue()
+        assert "FAKE_SHA" in mock_stdout.getvalue().decode('utf-8')
 
 
 def test_get_latest_deployment_no_deployment_tag():
@@ -58,4 +61,4 @@ def test_get_latest_deployment_no_deployment_tag():
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 1
         assert "A deployment could not be found for fake_deploy_group in fake_service" in \
-            mock_stdout.getvalue()
+            mock_stdout.getvalue().decode('utf-8')

@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import contextlib
 import copy
@@ -689,9 +691,9 @@ class ScribeLogWriter(LogWriter):
         configured the log object. We'll just write things to it.
         """
         if level == 'event':
-            print(line, file=sys.stdout)
+            paasta_print(line, file=sys.stdout)
         elif level == 'debug':
-            print(line, file=sys.stderr)
+            paasta_print(line, file=sys.stderr)
         else:
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
@@ -1008,16 +1010,17 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
-        for line in iter(process.stdout.readline, ''):
+        for line in iter(process.stdout.readline, b''):
+            line = line.decode('utf-8')
             # additional indentation is for the paasta status command only
             if stream:
                 if ('paasta_serviceinit status' in command):
                     if 'instance: ' in line:
-                        print('  ' + line.rstrip('\n'))
+                        paasta_print('  ' + line.rstrip('\n'))
                     else:
-                        print('    ' + line.rstrip('\n'))
+                        paasta_print('    ' + line.rstrip('\n'))
                 else:
-                    print(line.rstrip('\n'))
+                    paasta_print(line.rstrip('\n'))
             else:
                 output.append(line.rstrip('\n'))
 
@@ -1366,7 +1369,7 @@ class Timeout:
 
 def print_with_indent(line, indent=2):
     """Print a line with a given indent level"""
-    print(" " * indent + line)
+    paasta_print(" " * indent + line)
 
 
 class NoDeploymentsAvailable(Exception):
@@ -1377,15 +1380,6 @@ def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v1'])
-    else:
-        raise NoDeploymentsAvailable
-
-
-def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
             return DeploymentsJson(json.load(f)['v2'])
     else:
         raise NoDeploymentsAvailable
@@ -1393,11 +1387,7 @@ def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
 
 class DeploymentsJson(dict):
 
-    def get_branch_dict(self, service, branch):
-        full_branch = '%s:paasta-%s' % (service, branch)
-        return self.get(full_branch, {})
-
-    def get_branch_dict_v2(self, service, branch, deploy_group):
+    def get_branch_dict(self, service, branch, deploy_group):
         full_branch = '%s:%s' % (service, branch)
         branch_dict = {
             'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
@@ -1434,6 +1424,12 @@ class DeploymentsJson(dict):
 
 def get_paasta_branch(cluster, instance):
     return SPACER.join((cluster, instance))
+
+
+def decompose_paasta_control_branch(control_branch):
+    service, branch = control_branch.split(':')
+    cluster, instance = branch.split('.')
+    return service, cluster, instance
 
 
 def parse_timestamp(tstamp):
@@ -1676,12 +1672,18 @@ def mean(iterable):
 
 def prompt_pick_one(sequence, choosing):
     if not sys.stdin.isatty():
-        sys.stderr.write('No {choosing} specified and no TTY present to ask.'
-                         ' Please specify a {choosing} using the cli.\n'.format(choosing=choosing))
+        paasta_print(
+            'No {choosing} specified and no TTY present to ask.'
+            'Please specify a {choosing} using the cli.'.format(choosing=choosing),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if not sequence:
-        sys.stderr.write('PaaSTA needs to pick a {choosing} but none were found.\n'.format(choosing=choosing))
+        paasta_print(
+            'PaaSTA needs to pick a {choosing} but none were found.'.format(choosing=choosing),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     QUIT_ACTION = 'Quit'
@@ -1693,10 +1695,19 @@ def prompt_pick_one(sequence, choosing):
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
-        sys.stdout.write('\n')
+        paasta_print('\n')
         sys.exit(1)
 
     if isinstance(result, tuple) and result[1] == QUIT_ACTION:
         sys.exit(1)
     else:
         return result
+
+
+def paasta_print(*args, **kwargs):
+    string = (
+        s.encode('utf-8') if isinstance(s, unicode) else s
+        for s in args
+    )
+
+    print(*string, **kwargs)

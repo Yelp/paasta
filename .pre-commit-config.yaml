@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: 18d7035de5388cc7775be57f529c154bf541aab9
+    sha: 7539d8bd1a00a3c1bfd34cdb606d3a6372e83469
     hooks:
     -   id: trailing-whitespace
         language_version: python2.7
@@ -31,6 +31,11 @@
     hooks:
     -   id: reorder-python-imports
         language_version: python2.7
+        args:
+        - --add-import
+        - from __future__ import unicode_literals
+        - --add-import
+        - from __future__ import absolute_import
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec
@@ -41,6 +46,6 @@
         files: ^tests/.*\.py$
     -   id: no-catchall-except
         name: Prevent catchall except
-        entry: 'except:$'
+        entry: except:$
         language: pcre
-        files: '\.py$'
+        files: \.py$
