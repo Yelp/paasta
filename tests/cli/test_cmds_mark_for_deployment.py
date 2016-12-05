@@ -32,6 +32,7 @@ class fake_args:
     soa_dir = 'fake_soa_dir'
     block = False
     verbose = False
+    auto_rollback = False
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
