@@ -69,6 +69,10 @@ EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 log = logging.getLogger(__name__)
 
+# we never want to hear from this - this means
+# that callers don't have to worry about setting this
+logging.getLogger("crontab").setLevel(logging.CRITICAL)
+
 
 class LastRunState:
     """Cheap enum to represent the state of the last run"""
