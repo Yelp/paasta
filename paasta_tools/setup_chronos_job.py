@@ -93,6 +93,7 @@ def send_event(service, instance, soa_dir, status, output):
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
+            load_deployments=False,
         ).get_monitoring()
     except NoConfigurationForServiceError:
         monitoring_overrides = {}

@@ -194,8 +194,12 @@ def test_backend_is_up():
     assert False is backend_is_up({"status": "MAINT"})
 
 
-def test_ip_port_hostname_from_svname():
-    assert ("1.2.3.4", 5, "six") == ip_port_hostname_from_svname("1.2.3.4:5_six")
+def test_ip_port_hostname_from_svname_new_format():
+    assert ("10.40.10.155", 31219, "myhost") == ip_port_hostname_from_svname("myhost_10.40.10.155:31219")
+
+
+def test_ip_port_hostname_from_svname_old_format():
+    assert ("10.85.5.101", 3744, "myhost") == ip_port_hostname_from_svname("10.85.5.101:3744_myhost")
 
 
 def test_match_backends_and_tasks():
