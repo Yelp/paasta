@@ -1,7 +1,41 @@
 # Change Log
 
-## [0.56.6](https://github.com/Yelp/paasta/tree/0.56.6) (2016-12-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.5...0.56.6)
+## [v0.56.11](https://github.com/Yelp/paasta/tree/v0.56.11) (2016-12-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.10...v0.56.11)
+
+**Merged pull requests:**
+
+- fix parsing of backend names in haproxy [\#920](https://github.com/Yelp/paasta/pull/920) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.56.10](https://github.com/Yelp/paasta/tree/v0.56.10) (2016-12-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.9...v0.56.10)
+
+**Merged pull requests:**
+
+- made send\_event not load deployments [\#919](https://github.com/Yelp/paasta/pull/919) ([mjksmith](https://github.com/mjksmith))
+- Cosmetic cleanups for wait\_for\_deployment [\#917](https://github.com/Yelp/paasta/pull/917) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.9](https://github.com/Yelp/paasta/tree/v0.56.9) (2016-12-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.8...v0.56.9)
+
+## [v0.56.8](https://github.com/Yelp/paasta/tree/v0.56.8) (2016-12-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.7...v0.56.8)
+
+**Merged pull requests:**
+
+- Use v2 deployments [\#861](https://github.com/Yelp/paasta/pull/861) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.56.7](https://github.com/Yelp/paasta/tree/v0.56.7) (2016-12-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.6...v0.56.7)
+
+**Merged pull requests:**
+
+- fixed local run 'no tty message' not appearing with --build [\#916](https://github.com/Yelp/paasta/pull/916) ([mjksmith](https://github.com/mjksmith))
+- Add cron support [\#912](https://github.com/Yelp/paasta/pull/912) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Fix logs trying to output unicode [\#902](https://github.com/Yelp/paasta/pull/902) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.56.6](https://github.com/Yelp/paasta/tree/v0.56.6) (2016-12-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.5...v0.56.6)
 
 **Fixed bugs:**
 
