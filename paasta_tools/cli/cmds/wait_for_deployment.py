@@ -25,12 +25,13 @@ from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
-from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_git_url
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
@@ -56,10 +57,16 @@ def add_subparser(subparsers):
         )
     )
     list_parser.add_argument(
+        '-u', '--git-url',
+        help=('Git url for service. Defaults to the normal git URL for '
+              'the service.'),
+        default=None
+    )
+    list_parser.add_argument(
         '-c', '-k', '--commit',
         help='Git sha to wait for deployment',
         required=True,
-        type=validate_full_git_sha,
+        type=validate_full_git_sha
     )
     list_parser.add_argument(
         '-l', '--deploy-group',
@@ -101,6 +108,52 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_wait_for_deployment)
 
 
+def get_latest_marked_sha(git_url, deploy_group):
+    """Return the latest marked for deployment git sha or ''"""
+    refs = list_remote_refs(git_url)
+    last_ref = ''
+    for ref in refs:
+        if (ref.startswith('refs/tags/paasta-{}-'.format(deploy_group)) and
+                ref.endswith('-deploy')) and ref > last_ref:
+            last_ref = ref
+    return refs[last_ref] if last_ref else ''
+
+
+def validate_git_sha(git_sha, git_url, deploy_group, service):
+    """Verify if git_sha is the latest sha marked for deployment.
+
+    Raise exception when the provided git_sha is not the latest
+    marked for deployment in 'deploy_group' for 'service'.
+    """
+    marked_sha = get_latest_marked_sha(git_url, deploy_group)
+    if marked_sha == '':
+        raise Exception("ERROR: Nothing is marked to deployment "
+                        "in {} for {}"
+                        .format(deploy_group, service))
+    if git_sha != marked_sha:
+        raise Exception("ERROR: The latest git SHA marked for "
+                        "deployment in {} is {}"
+                        .format(deploy_group, marked_sha))
+
+
+def validate_deploy_group(deploy_group, service, soa_dir):
+    """Validate deploy_group.
+
+    Raise exception if the specified deploy group is not used anywhere.
+    """
+    in_use_deploy_groups = list_deploy_groups(service=service,
+                                              soa_dir=soa_dir)
+    _, invalid_deploy_groups = \
+        validate_given_deploy_groups(in_use_deploy_groups, [deploy_group])
+
+    if len(invalid_deploy_groups) == 1:
+        raise Exception("ERROR: These deploy groups are not currently used "
+                        "anywhere: {0}.\n"
+                        "You probably need one of these in-use deploy groups?:"
+                        "\n   {1}".format(",".join(invalid_deploy_groups),
+                                          ",".join(in_use_deploy_groups)))
+
+
 def paasta_wait_for_deployment(args):
     """Wrapping wait_for_deployment"""
     if args.verbose:
@@ -111,24 +164,17 @@ def paasta_wait_for_deployment(args):
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
+
+    if args.git_url is None:
+        args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
+
     try:
         validate_service_name(service, soa_dir=args.soa_dir)
-    except NoSuchService as e:
-        paasta_print(PaastaColors.red('%s' % e))
-        return 1
-
-    in_use_deploy_groups = list_deploy_groups(service=service,
-                                              soa_dir=args.soa_dir)
-    _, invalid_deploy_groups = \
-        validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
-
-    if len(invalid_deploy_groups) == 1:
-        paasta_print(PaastaColors.red("ERROR: These deploy groups are not "
-                                      "currently used anywhere: %s.\n" %
-                                      (",").join(invalid_deploy_groups)))
-        paasta_print(PaastaColors.red("You probably need one of these in-use "
-                                      "deploy groups?:\n   %s" %
-                                      (",").join(in_use_deploy_groups)))
+        validate_deploy_group(args.deploy_group, service, args.soa_dir)
+        validate_git_sha(args.commit, args.git_url,
+                         args.deploy_group, service)
+    except Exception as e:
+        paasta_print(PaastaColors.red('{}'.format(e)))
         return 1
 
     try:

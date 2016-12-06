@@ -20,6 +20,7 @@ from mock import patch
 from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.utils import TimeoutError
@@ -39,6 +40,7 @@ class MockSleep:
 class fake_args:
     deploy_group = 'test_deploy_group'
     service = 'test_service'
+    git_url = ''
     commit = 'fake-hash'
     soa_dir = 'fake_soa_dir'
     timeout = 0
@@ -221,3 +223,28 @@ def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
     mock_get_cluster_instance_map_for_service.return_value = {}
     assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_validate_service_name.called
+
+
+@patch('paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs', autospec=True)
+def test_get_latest_marked_sha_good(mock_list_remote_refs):
+    mock_list_remote_refs.return_value = {
+        'refs/tags/paasta-fake_group1-20161129T203750-deploy':
+            '968b948b3fca457326718dc7b2e278f89ccc5c87',
+        'refs/tags/paasta-fake_group1-20161117T122449-deploy':
+            'eac9a6d7909d09ffec00538bbc43b64502aa2dc0',
+        'refs/tags/paasta-fake_group2-20161125T095651-deploy':
+            'a4911648beb2e53886658ba7ea7eb93d582d754c',
+        'refs/tags/paasta-fake_group1.everywhere-20161109T223959-deploy':
+            '71e97ec397a3f0e7c4ee46e8ea1e2982cbcb0b79'
+    }
+    assert get_latest_marked_sha('', 'fake_group1') \
+        == '968b948b3fca457326718dc7b2e278f89ccc5c87'
+
+
+@patch('paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs', autospec=True)
+def test_get_latest_marked_sha_bad(mock_list_remote_refs):
+    mock_list_remote_refs.return_value = {
+        'refs/tags/paasta-fake_group2-20161129T203750-deploy':
+            '968b948b3fca457326718dc7b2e278f89ccc5c87',
+    }
+    assert get_latest_marked_sha('', 'fake_group1') == ''
