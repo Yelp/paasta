@@ -632,9 +632,9 @@ def configure_and_run_docker_container(
     Function prints the output of run command in stdout.
     """
 
-    if instance is None and args.healthcheck:
+    if instance is None and args.healthcheck_only:
         paasta_print(
-            "With --healthcheck, --instance must be provided!",
+            "With --healthcheck-only, --instance MUST be provided!",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -671,7 +671,7 @@ def configure_and_run_docker_container(
                 soa_dir=soa_dir,
             )
     except NoConfigurationForServiceError as e:
-        paasta_print(str(e), fine=sys.stderr)
+        paasta_print(str(e), file=sys.stderr)
         return
     except NoDeploymentsAvailable:
         paasta_print(
