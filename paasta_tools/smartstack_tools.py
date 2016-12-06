@@ -215,13 +215,25 @@ def backend_is_up(backend):
 
 
 def ip_port_hostname_from_svname(svname):
-    """This parses the haproxy svname that smartstack creates, which is in the form ip:port_hostname.
+    """This parses the haproxy svname that smartstack creates.
+    In old versions of synapse, this is in the format ip:port_hostname.
+    In versions newer than dd5843c987740a5d5ce1c83b12b258b7253784a8 it is
+    hostname_ip:port
 
-    :param svname: A string in the format ip:port_hostname
+    :param svname: A svname, in either of the formats described above
     :returns ip_port_hostname: A tuple of ip, port, hostname.
     """
-    ip, port_hostname = svname.split(':', 1)
-    port, hostname = port_hostname.split('_', 1)
+    # split into parts
+    parts = set(svname.split("_"))
+
+    # find those that can be split by : - this is the ip:port
+    # there will only be 1 of these
+    ip_ports = {part for part in parts if len(part.split(":")) == 2}
+
+    # the one *not* in the list is the hostname
+    hostname = parts.difference(ip_ports).pop()
+
+    ip, port = ip_ports.pop().split(":")
     return ip, int(port), hostname
 
 
