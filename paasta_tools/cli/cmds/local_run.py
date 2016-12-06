@@ -671,7 +671,7 @@ def configure_and_run_docker_container(
                 soa_dir=soa_dir,
             )
     except NoConfigurationForServiceError as e:
-        paasta_print(str(e), fine=sys.stderr)
+        paasta_print(str(e), file=sys.stderr)
         return
     except NoDeploymentsAvailable:
         paasta_print(
