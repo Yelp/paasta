@@ -25,6 +25,7 @@ from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
@@ -41,6 +42,14 @@ DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 
 
 log = logging.getLogger(__name__)
+
+
+class GitShaError(Exception):
+    pass
+
+
+class DeployGroupError(Exception):
+    pass
 
 
 def add_subparser(subparsers):
@@ -127,13 +136,13 @@ def validate_git_sha(git_sha, git_url, deploy_group, service):
     """
     marked_sha = get_latest_marked_sha(git_url, deploy_group)
     if marked_sha == '':
-        raise Exception("ERROR: Nothing is marked to deployment "
-                        "in {} for {}"
-                        .format(deploy_group, service))
+        raise GitShaError("ERROR: Nothing is marked to deployment "
+                          "in {} for {}"
+                          .format(deploy_group, service))
     if git_sha != marked_sha:
-        raise Exception("ERROR: The latest git SHA marked for "
-                        "deployment in {} is {}"
-                        .format(deploy_group, marked_sha))
+        raise GitShaError("ERROR: The latest git SHA marked for "
+                          "deployment in {} is {}"
+                          .format(deploy_group, marked_sha))
 
 
 def validate_deploy_group(deploy_group, service, soa_dir):
@@ -147,11 +156,12 @@ def validate_deploy_group(deploy_group, service, soa_dir):
         validate_given_deploy_groups(in_use_deploy_groups, [deploy_group])
 
     if len(invalid_deploy_groups) == 1:
-        raise Exception("ERROR: These deploy groups are not currently used "
-                        "anywhere: {0}.\n"
-                        "You probably need one of these in-use deploy groups?:"
-                        "\n   {1}".format(",".join(invalid_deploy_groups),
-                                          ",".join(in_use_deploy_groups)))
+        raise DeployGroupError("ERROR: These deploy groups are not currently "
+                               "used anywhere: {0}.\n"
+                               "You probably need one of these in-use deploy "
+                               "groups?:\n   {1}"
+                               .format(",".join(invalid_deploy_groups),
+                                       ",".join(in_use_deploy_groups)))
 
 
 def paasta_wait_for_deployment(args):
@@ -173,7 +183,7 @@ def paasta_wait_for_deployment(args):
         validate_deploy_group(args.deploy_group, service, args.soa_dir)
         validate_git_sha(args.commit, args.git_url,
                          args.deploy_group, service)
-    except Exception as e:
+    except (GitShaError, DeployGroupError, NoSuchService) as e:
         paasta_print(PaastaColors.red('{}'.format(e)))
         return 1
 
