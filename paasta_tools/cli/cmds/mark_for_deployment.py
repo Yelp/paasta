@@ -212,7 +212,6 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            paasta_print("Waiting for deployment of {0} for '{1}' complete...".format(args.commit, args.deploy_group))
             wait_for_deployment(service=service,
                                 deploy_group=args.deploy_group,
                                 git_sha=args.commit,
@@ -247,6 +246,8 @@ def paasta_mark_for_deployment(args):
                 paasta_print("    paasta status -s %s -v" % service)
                 paasta_print()
             ret = 1
+        except NoInstancesFound:
+            return 1
     if old_git_sha is not None and old_git_sha != args.commit and not args.auto_rollback:
         paasta_print()
         paasta_print("If you wish to roll back, you can run:")
@@ -333,6 +334,8 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             level='event'
         )
         raise NoInstancesFound
+    paasta_print("Waiting for deployment of {0} for '{1}' complete..."
+                 .format(git_sha, deploy_group))
     for cluster in cluster_map.values():
         cluster['deployed'] = 0
     try:
