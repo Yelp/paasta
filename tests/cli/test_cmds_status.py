@@ -392,29 +392,16 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.load_deployments_json', autospec=True)
-def test_get_actual_deployments(mock_get_deployments, mock_get_instance_configs_for_serivce,):
+def test_get_actual_deployments(mock_get_deployments,):
     mock_get_deployments.return_value = utils.DeploymentsJson({
-        'deployments': {
-            'b_cluster.b_instance': {
-                'git_sha': 'this_is_a_sha',
-            },
-            'a_cluster.a_instance': {
-                'git_sha': 'this_is_a_sha',
-            },
+        'fake_service:paasta-b_cluster.b_instance': {
+            'docker_image': 'this_is_a_sha',
         },
+        'fake_service:paasta-a_cluster.a_instance': {
+            'docker_image': 'this_is_a_sha',
+        }
     })
-    mock_get_instance_configs_for_serivce.return_value = [
-        Mock(
-            get_deploy_group=Mock(return_value='a_cluster.a_instance'),
-            get_branch=Mock(return_value='a_cluster.a_instance'),
-        ),
-        Mock(
-            get_deploy_group=Mock(return_value='b_cluster.b_instance'),
-            get_branch=Mock(return_value='b_cluster.b_instance'),
-        ),
-    ]
     expected = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',

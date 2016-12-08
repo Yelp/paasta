@@ -399,18 +399,16 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
             'No job named "%s" in config file %s: \n%s' % (instance, filename, open(filename).read())
         )
     branch_dict = {}
-    general_config = service_paasta_native_jobs[instance]
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = general_config.get('deploy_group', branch)
-        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
+        branch_dict = deployments_json.get_branch_dict(service, branch)
 
     service_config = PaastaNativeServiceConfig(
         service=service,
         cluster=cluster,
         instance=instance,
-        config_dict=general_config,
+        config_dict=service_paasta_native_jobs[instance],
         branch_dict=branch_dict,
     )
 

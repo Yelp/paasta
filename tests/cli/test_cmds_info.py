@@ -21,7 +21,6 @@ import mock
 from paasta_tools.cli.cmds import info
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -31,14 +30,14 @@ def test_get_service_info():
         mock.patch('paasta_tools.cli.cmds.info.get_runbook', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.read_service_configuration', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.get_smartstack_endpoints', autospec=True),
     ) as (
         mock_get_team,
         mock_get_runbook,
         mock_read_service_configuration,
         mock_scl_read_service_configuration,
-        mock_load_deployments_json,
+        mock_get_actual_deployments,
         mock_get_smartstack_endpoints,
     ):
         mock_get_team.return_value = 'fake_team'
@@ -61,12 +60,7 @@ def test_get_service_info():
                 }
             }
         }
-        mock_load_deployments_json.return_value = DeploymentsJson({
-            'controls': {
-                'fake_service:clusterA.main': {},
-                'fake_service:clusterB.main': {},
-            },
-        })
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_get_smartstack_endpoints.return_value = ['http://foo:1234', 'tcp://bar:1234']
         actual = info.get_service_info('fake_service', '/fake/soa/dir')
         assert 'Service Name: fake_service' in actual
@@ -86,6 +80,13 @@ def test_get_service_info():
         assert '%s (Sensu Alerts)' % PaastaColors.cyan('https://uchiwa.yelpcorp.com/#/events?q=fake_service') in actual
         mock_get_team.assert_called_with(service='fake_service', overrides={})
         mock_get_runbook.assert_called_with(service='fake_service', overrides={})
+
+
+def test_deployments_to_clusters():
+    deployments = ['A.main', 'A.canary', 'B.main', 'C.othermain']
+    expected = set(['A', 'B', 'C'])
+    actual = info.deployments_to_clusters(deployments)
+    assert actual == expected
 
 
 def test_get_smartstack_endpoints_http():
@@ -123,18 +124,13 @@ def test_get_smartstack_endpoints_tcp():
 
 def test_get_deployments_strings_default_case_with_smartstack():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
     ) as (
-        mock_load_deployments_json,
+        mock_get_actual_deployments,
         mock_read_service_configuration,
     ):
-        mock_load_deployments_json.return_value = DeploymentsJson({
-            'controls': {
-                'fake_service:clusterA.main': {},
-                'fake_service:clusterB.main': {},
-            },
-        })
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_read_service_configuration.return_value = {
             'smartstack': {
                 'main': {
@@ -149,15 +145,10 @@ def test_get_deployments_strings_default_case_with_smartstack():
 
 def test_get_deployments_strings_protocol_tcp_case():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
-    ) as (mock_load_deployments_json, mock_load_service_namespace_config):
-        mock_load_deployments_json.return_value = DeploymentsJson({
-            'controls': {
-                'fake_service:clusterA.main': {},
-                'fake_service:clusterB.main': {},
-            },
-        })
+    ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'tcp', 'proxy_port': 8080})
         actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert ' - clusterA (%s)' % PaastaColors.cyan('tcp://paasta-clusterA.yelp:8080/') in actual
@@ -166,15 +157,10 @@ def test_get_deployments_strings_protocol_tcp_case():
 
 def test_get_deployments_strings_non_listening_service():
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.info.load_deployments_json', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
-    ) as (mock_load_deployments_json, mock_load_service_namespace_config):
-        mock_load_deployments_json.return_value = DeploymentsJson({
-            'controls': {
-                'fake_service:clusterA.main': {},
-                'fake_service:clusterB.main': {},
-            },
-        })
+    ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig()
         actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert ' - clusterA (N/A)' in actual
@@ -183,8 +169,8 @@ def test_get_deployments_strings_non_listening_service():
 
 def test_get_deployments_strings_no_deployments():
     with mock.patch(
-        'paasta_tools.cli.cmds.info.load_deployments_json', autospec=True
-    ) as mock_load_deployments_json:
-        mock_load_deployments_json.side_effect = NoDeploymentsAvailable
+        'paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True
+    ) as mock_get_actual_deployments:
+        mock_get_actual_deployments.side_effect = NoDeploymentsAvailable
         actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert 'N/A: Not deployed' in actual[0]

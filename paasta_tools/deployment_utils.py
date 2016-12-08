@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -24,7 +24,7 @@ def get_currently_deployed_sha(service, deploy_group, soa_dir=DEFAULT_SOA_DIR):
     """Tries to determine the currently deployed sha for a service and deploy_group,
     returns None if there isn't one ready yet"""
     try:
-        deployments = load_deployments_json(service=service, soa_dir=soa_dir)
+        deployments = load_v2_deployments_json(service=service, soa_dir=soa_dir)
         return deployments.get_git_sha_for_deploy_group(deploy_group=deploy_group)
     except NoDeploymentsAvailable:
         return None

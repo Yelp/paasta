@@ -190,12 +190,7 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
-        fake_branch_dict = {
-            'desired_state': 'stop',
-            'force_bounce': '12345',
-            'docker_image': fake_docker,
-            'git_sha': mock.sentinel.get_sha,
-        },
+        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
             spec=DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
@@ -244,7 +239,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1

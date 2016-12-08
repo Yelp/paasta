@@ -143,21 +143,15 @@ def step_impl_when(context):
 def step_impl_then(context):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
-        'deployments': {
-            'test_cluster.test_instance': {
-                'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
-                'git_sha': context.expected_commit,
-            },
+        'fake_deployments_json_service:paasta-test_cluster.test_instance': {
+            'force_bounce': context.force_bounce_timestamp,
+            'desired_state': 'stop',
+            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
         },
-        'controls': {
-            'fake_deployments_json_service:test_cluster.test_instance': {
-                'force_bounce': context.force_bounce_timestamp,
-                'desired_state': 'stop',
-            },
-            'fake_deployments_json_service:test_cluster.test_instance_2': {
-                'force_bounce': None,
-                'desired_state': 'start',
-            },
+        'fake_deployments_json_service:paasta-test_cluster.test_instance_2': {
+            'force_bounce': None,
+            'desired_state': 'start',
+            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
         },
     }
     assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
@@ -166,8 +160,7 @@ def step_impl_then(context):
 @then('that deployments.json has a desired_state of "{expected_state}"')
 def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    latest = sorted(
-        deployments['controls'].iteritems(), key=lambda(key, value): value['force_bounce'], reverse=True)[0][1]
+    latest = sorted(deployments.iteritems(), key=lambda(key, value): value['force_bounce'], reverse=True)[0][1]
     desired_state = latest['desired_state']
     assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
 
