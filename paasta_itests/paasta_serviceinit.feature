@@ -52,6 +52,22 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is disabled in chronos
       And the job stored as "myjob" has no running tasks
 
+  Scenario: paasta_serviceinit emergency-stop kills rerun jobs
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+     When we run setup_chronos_job for service_instance "testservice.testinstance"
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
+      And we wait for the chronos job stored as "myjob" to appear in the job list
+     When we run chronos_rerun for service_instance testservice testinstance
+     Then we should get exit code 0
+      And there is a temporary job for the service testservice and instance testinstance
+     When we store the name of the rerun job for the service serice and instance testinstance as rerunjob
+      And we paasta_serviceinit emergency-stop the service_instance "testservice.testinstance"
+     Then the job stored as "rerunjob" is disabled in chronos
+      And the job stored as "rerunjob" has no running tasks
+
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
