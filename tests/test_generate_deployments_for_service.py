@@ -51,7 +51,20 @@ def test_get_deploy_group_mappings():
         'refs/tags/paasta-nah-20160308T053933-deploy': 'j8yiomwer',
     }
 
+    fake_old_mappings = ['']
     expected = {
+        'fake_service:paasta-clusterA.main': {
+            'docker_image': 'services-fake_service:paasta-789009',
+            'desired_state': 'start',
+            'force_bounce': None,
+        },
+        'fake_service:paasta-clusterB.main': {
+            'docker_image': 'services-fake_service:paasta-123456',
+            'desired_state': 'stop',
+            'force_bounce': '123',
+        },
+    }
+    expected_v2 = {
         'deployments': {
             'try_me': {
                 'docker_image': 'services-fake_service:paasta-123456',
@@ -82,11 +95,12 @@ def test_get_deploy_group_mappings():
         get_instance_configs_for_service_patch,
         list_remote_refs_patch,
     ):
-        actual = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
-                                                                            fake_service)
+        actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
+                                                                                       fake_service, fake_old_mappings)
         get_instance_configs_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
         assert expected == actual
+        assert expected_v2 == actual_v2
 
 
 def test_get_cluster_instance_map_for_service():
@@ -138,6 +152,7 @@ def test_get_service_from_docker_image():
 
 def test_main():
     fake_soa_dir = '/etc/true/null'
+    file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.parse_args',
                    return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir, service='fake_service'),
@@ -145,18 +160,23 @@ def test_main():
         mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
         mock.patch(
             'paasta_tools.generate_deployments_for_service.get_deploy_group_mappings',
-            return_value=(mock.sentinel.mappings),
+            return_value=({'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}, mock.sentinel.v2_mappings),
             autospec=True,
         ),
         mock.patch('os.path.join', return_value='JOIN', autospec=True),
+        mock.patch('paasta_tools.generate_deployments_for_service.open',
+                   create=True, return_value=file_mock, autospec=None),
         mock.patch('json.dump', autospec=True),
+        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}, autospec=True),
         mock.patch('paasta_tools.generate_deployments_for_service.atomic_file_write', autospec=True),
     ) as (
         parse_patch,
         abspath_patch,
         mappings_patch,
         join_patch,
+        open_patch,
         json_dump_patch,
+        json_load_patch,
         atomic_file_write_patch,
     ):
         generate_deployments_for_service.main()
@@ -165,25 +185,46 @@ def test_main():
         mappings_patch.assert_called_once_with(
             soa_dir='ABSOLUTE',
             service='fake_service',
+            old_mappings={'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
         ),
 
         join_patch.assert_any_call('ABSOLUTE', 'fake_service', generate_deployments_for_service.TARGET_FILE),
-        assert join_patch.call_count == 1
+        assert join_patch.call_count == 2
 
         atomic_file_write_patch.assert_called_once_with('JOIN')
+        open_patch.assert_called_once_with('JOIN', 'r')
         json_dump_patch.assert_called_once_with(
             {
-                'v2': mock.sentinel.mappings,
+                'v1': {
+                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                },
+                'v2': mock.sentinel.v2_mappings,
             },
             atomic_file_write_patch().__enter__(),
         )
+        json_load_patch.assert_called_once_with(file_mock.__enter__())
 
 
 def test_get_deployments_dict():
-    mappings = mock.sentinel.mappings
+    branch_mappings = {
+        'app1': {
+            'docker_image': 'image1',
+            'desired_state': 'start',
+            'force_bounce': '1418951213',
+        },
+        'app2': {
+            'docker_image': 'image2',
+            'desired_state': 'stop',
+            'force_bounce': '1412345678',
+        },
+    }
 
-    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(mappings) == {
-        'v2': mock.sentinel.mappings,
+    v2_mappings = mock.sentinel.v2_mappings
+
+    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(
+        branch_mappings, v2_mappings) == {
+        'v1': branch_mappings,
+        'v2': mock.sentinel.v2_mappings,
     }
 
 

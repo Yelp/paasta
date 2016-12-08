@@ -705,26 +705,16 @@ def test_DeploymentsJson_read():
     fake_dir = '/var/dir_of_fake'
     fake_path = '/var/dir_of_fake/fake_service/deployments.json'
     fake_json = {
-        'v2': {
-            'deployments': {
-                'blaster': {
-                    'docker_image': 'test_rocker:9.9',
-                    'git_sha': 'asdf',
-                },
-                'about': {
-                    'docker_image': 'this:guy',
-                    'git_sha': 'hjkl',
-                },
+        'v1': {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
             },
-            'controls': {
-                'no_srv:blaster': {
-                    'desired_state': 'start',
-                    'force_bounce': None,
-                },
-                'dont_care:about': {
-                    'desired_state': 'stop',
-                    'force_bounce': '12345',
-                },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
             },
         },
     }
@@ -738,11 +728,9 @@ def test_DeploymentsJson_read():
         isfile_patch,
     ):
         actual = utils.load_deployments_json('fake_service', fake_dir)
-        open_patch.assert_called_with(fake_path)
-        assert open_patch.call_count == 1
-        json_patch.assert_called_with(file_mock.__enter__())
-        assert json_patch.call_count == 1
-        assert actual == fake_json['v2']
+        open_patch.assert_called_once_with(fake_path)
+        json_patch.assert_called_once_with(file_mock.__enter__())
+        assert actual == fake_json['v1']
 
 
 def test_get_docker_url_no_error():
@@ -1626,7 +1614,3 @@ def test_prompt_pick_one_exits_no_choices():
         mock_stdin.isatty.return_value = True
         with raises(SystemExit):
             utils.prompt_pick_one([], 'test')
-
-
-def test_decompose_paasta_control_branch():
-    assert utils.decompose_paasta_control_branch('service:cluster.instance') == ('service', 'cluster', 'instance')
