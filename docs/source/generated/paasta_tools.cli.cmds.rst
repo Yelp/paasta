@@ -34,6 +34,7 @@ Submodules
    paasta_tools.cli.cmds.status
    paasta_tools.cli.cmds.sysdig
    paasta_tools.cli.cmds.validate
+   paasta_tools.cli.cmds.wait_for_deployment
 
 Module contents
 ---------------
