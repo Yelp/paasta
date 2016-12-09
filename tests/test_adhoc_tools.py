@@ -51,7 +51,7 @@ def test_get_default_interactive_config_reads_from_tty():
     with contextlib.nested(
         mock.patch('paasta_tools.adhoc_tools.prompt_pick_one', autospec=True),
         mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
-        mock.patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True),
+        mock.patch('paasta_tools.adhoc_tools.load_deployments_json', autospec=True),
     ) as (
         mock_prompt_pick_one,
         mock_load_adhoc_job_config,

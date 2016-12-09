@@ -154,7 +154,8 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        branch_dict = deployments_json.get_branch_dict(service, branch)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return MarathonServiceConfig(
         service=service,
