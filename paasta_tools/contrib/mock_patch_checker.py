@@ -1,11 +1,10 @@
 #!/usr/bin/env python2.7
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import ast
 import sys
-
-from paasta_tools.utils import paasta_print
 
 
 class MockChecker(ast.NodeVisitor):
@@ -28,10 +27,10 @@ class MockChecker(ast.NodeVisitor):
                 try:
                     file_ast = ast.parse(fd.read())
                 except SyntaxError as error:
-                    paasta_print("SyntaxError on file %s:%d" % (filename, error.lineno))
+                    print("SyntaxError on file %s:%d" % (filename, error.lineno))
                     return
         except IOError:
-            paasta_print("Error opening filename: %s" % filename)
+            print("Error opening filename: %s" % filename)
             return
         self.init_module_imports()
         self.visit(file_ast)
@@ -61,7 +60,7 @@ class MockChecker(ast.NodeVisitor):
             if (self.imported_patch and self._call_uses_patch(node)) or \
                     (self.imported_mock and self._call_uses_mock_patch(node)):
                 if not any([keyword for keyword in node.keywords if keyword.arg == 'autospec']):
-                    paasta_print("%s:%d: Found a mock without an autospec!" % (self.current_filename, node.lineno))
+                    print("%s:%d: Found a mock without an autospec!" % (self.current_filename, node.lineno))
                     self.errors += 1
         except AttributeError:
             pass
@@ -74,8 +73,8 @@ def main(filenames):
     if checker.errors == 0:
         sys.exit(0)
     else:
-        paasta_print("You probably meant to specify 'autospec=True' in these tests.")
-        paasta_print("If you really don't want to, specify 'autospec=None'")
+        print("You probably meant to specify 'autospec=True' in these tests.")
+        print("If you really don't want to, specify 'autospec=None'")
         sys.exit(1)
 
 
