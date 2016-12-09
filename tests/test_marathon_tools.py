@@ -109,6 +109,40 @@ class TestMarathonTools:
             assert mock_read_extra_service_information.call_count == 1
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
+    def test_load_marathon_service_config_interpolation_works(self):
+        fake_name = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_dir = '/fake/soa/dir'
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_load_deployments_json,
+            mock_read_service_configuration,
+            mock_read_extra_service_information,
+        ):
+            mock_load_deployments_json.return_value = DeploymentsJson({
+                'controls': {},
+                'deployments': {
+                    'norcal-prod.all': {
+                        'docker_image': 'fake_docker_image',
+                        'git_sha': 'fake_git_sha',
+                    },
+                },
+            })
+            mock_read_service_configuration.return_value = {}
+            mock_read_extra_service_information.return_value = {fake_instance: {'deploy_group': '{cluster}.all'}}
+            service_config = marathon_tools.load_marathon_service_config(
+                fake_name,
+                fake_instance,
+                fake_cluster,
+                soa_dir=fake_dir,
+                load_deployments=True,
+            )
+            assert service_config.get_deploy_group() == 'fake_cluster.all'
+
     def test_load_marathon_service_config_bails_with_no_config(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
