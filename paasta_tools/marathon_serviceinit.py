@@ -269,7 +269,8 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
         service, instance, cluster
     )
 
-    service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
+    service_namespace_config = marathon_tools.load_service_namespace_config(
+        service=service, namespace=instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
 
