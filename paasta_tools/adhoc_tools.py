@@ -22,6 +22,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
+from paasta_tools.utils import interpolate_config_string
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -55,7 +56,10 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = general_config.get('deploy_group', branch)
+        deploy_group = interpolate_config_string(
+            general_config.get('deploy_group', branch),
+            cluster=cluster,
+        )
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return AdhocJobConfig(
@@ -102,7 +106,16 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
 
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        deploy_group = prompt_pick_one(deployments_json['deployments'].keys(), choosing='deploy group')
+        deploy_group = prompt_pick_one(
+            (
+                interpolate_config_string(
+                    config_string,
+                    cluster=cluster,
+                )
+                for config_string in deployments_json['deployments'].keys()
+            ),
+            choosing='deploy group',
+        )
         job_config.config_dict['deploy_group'] = deploy_group
         job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
 

@@ -38,6 +38,7 @@ from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import interpolate_config_string
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
@@ -180,7 +181,10 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = general_config.get('deploy_group', branch)
+        deploy_group = interpolate_config_string(
+            general_config.get('deploy_group', branch),
+            cluster=cluster,
+        )
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
     return ChronosJobConfig(
         service=service,
