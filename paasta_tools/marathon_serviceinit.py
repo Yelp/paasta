@@ -108,9 +108,9 @@ def status_marathon_job_human(service, instance, deploy_status, app_id,
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
         return "Marathon:   %s - up with %s instances. Status: %s" % (status, instance_count, deploy_status)
     else:
-        red_not = PaastaColors.red("NOT")
-        status = PaastaColors.red("Critical")
-        return "Marathon:   %s - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
+        status = PaastaColors.yellow("Warning")
+        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)" % (
+            status, name, app_id)
 
 
 def marathon_app_deploy_status_human(status, backoff_seconds=None):
