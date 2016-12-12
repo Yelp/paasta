@@ -302,11 +302,14 @@ class ChronosJobConfig(InstanceConfig):
 
     def check_cmd(self):
         command = self.get_cmd()
-        try:
-            parse_time_variables(command)
+        if command:
+            try:
+                parse_time_variables(command)
+                return True, ""
+            except (ValueError, KeyError, TypeError):
+                return False, "Unparseable command. Hint: do you need to escape % chars?"
+        else:
             return True, ""
-        except (ValueError, KeyError, TypeError):
-            return False, "Unparseable command. Hint: do you need to escape % chars?"
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
     # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals

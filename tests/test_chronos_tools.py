@@ -326,7 +326,7 @@ class TestChronosTools:
             )
             fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
                                                             dummy_config.get_dockercfg_location())
-            mock_parse_time_variables.assert_called_once_with(fake_cmd)
+            mock_parse_time_variables.assert_called_with(fake_cmd)
 
     def test_get_owner(self):
         fake_owner = 'fake_team'
