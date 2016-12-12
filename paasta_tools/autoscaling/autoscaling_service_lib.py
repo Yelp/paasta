@@ -30,14 +30,14 @@ from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
-from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
+from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
+from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
-from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id

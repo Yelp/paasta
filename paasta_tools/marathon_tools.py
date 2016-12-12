@@ -26,7 +26,6 @@ from math import ceil
 
 import requests
 import service_configuration_lib
-from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
@@ -56,7 +55,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
@@ -198,47 +196,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             branch_dict=dict(self.branch_dict),
         )
 
-    def get_min_instances(self):
-        return self.config_dict.get('min_instances', 1)
-
-    def get_max_instances(self):
-        return self.config_dict.get('max_instances', None)
-
-    def get_instances(self):
-        """Get the number of instances specified in zookeeper or the service's marathon configuration.
-        If the number of instances in zookeeper is less than min_instances, returns min_instances.
-        If the number of instances in zookeeper is greater than max_instances, returns max_instances.
-
-        Defaults to 0 if not specified in the config.
-
-        :returns: The number of instances specified in the config, 0 if not
-                  specified or if desired_state is not 'start'.
-                  """
-        if self.get_desired_state() == 'start':
-            if self.get_max_instances() is not None:
-                try:
-                    zk_instances = get_instances_from_zookeeper(
-                        service=self.service,
-                        instance=self.instance,
-                    )
-                    log.debug("Got %d instances out of zookeeper" % zk_instances)
-                except NoNodeError:
-                    log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
-                    return self.get_max_instances()
-                else:
-                    limited_instances = self.limit_instance_count(zk_instances)
-                    if limited_instances != zk_instances:
-                        log.warning("Returning limited instance count %d. (zk had %d)" % (
-                                    limited_instances, zk_instances))
-                    return limited_instances
-            else:
-                instances = self.config_dict.get('instances', 1)
-                log.debug("Autoscaling not enabled, returning %d instances" % instances)
-                return instances
-        else:
-            log.debug("Instance is set to stop. Returning '0' instances")
-            return 0
-
     def get_autoscaling_params(self):
         default_params = {
             'metrics_provider': 'mesos_cpu',
@@ -246,17 +203,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'setpoint': 0.8,
         }
         return deep_merge_dictionaries(overrides=self.config_dict.get('autoscaling', {}), defaults=default_params)
-
-    def limit_instance_count(self, instances):
-        """
-        Returns param instances if it is between min_instances and max_instances.
-        Returns max_instances if instances > max_instances
-        Returns min_instances if instances < min_instances
-        """
-        return max(
-            self.get_min_instances(),
-            min(self.get_max_instances(), instances),
-        )
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
@@ -403,7 +349,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
             'constraints': self.get_calculated_constraints(service_namespace_config),
-            'instances': self.get_instances(),
+            'instances': self.get_desired_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
@@ -969,23 +915,6 @@ def kill_given_tasks(client, task_ids, scale):
             return []
         else:
             raise
-
-
-def compose_autoscaling_zookeeper_root(service, instance):
-    return '/autoscaling/%s/%s' % (service, instance)
-
-
-def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
-    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count))
-
-
-def get_instances_from_zookeeper(service, instance):
-    with ZookeeperPool() as zookeeper_client:
-        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
-        return int(instances)
 
 
 def is_task_healthy(task, require_all=True, default_healthy=False):
