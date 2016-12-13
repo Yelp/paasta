@@ -124,11 +124,9 @@ class TestMarathonTools:
             mock_read_extra_service_information,
         ):
             mock_load_deployments_json.return_value = DeploymentsJson({
-                'controls': {
-                    'fake_service:fake_cluster.fake_instance': {},
-                },
+                'controls': {},
                 'deployments': {
-                    'fake_cluster.all': {
+                    'norcal-prod.all': {
                         'docker_image': 'fake_docker_image',
                         'git_sha': 'fake_git_sha',
                     },

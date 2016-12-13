@@ -30,7 +30,6 @@ from paasta_tools import drain_lib
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import interpolate_config_string
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
@@ -404,10 +403,7 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = interpolate_config_string(
-            general_config.get('deploy_group', branch),
-            cluster=cluster,
-        )
+        deploy_group = general_config.get('deploy_group', branch)
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     service_config = PaastaNativeServiceConfig(

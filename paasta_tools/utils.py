@@ -89,15 +89,6 @@ class InvalidInstanceConfig(Exception):
     pass
 
 
-DEFAULT_INTERPOLATION_FACTS = {
-    'cluster': '',
-}
-
-
-def interpolate_config_string(string_to_format, **kwargs):
-    return string_to_format.format(**kwargs)
-
-
 class InstanceConfig(dict):
 
     def __init__(self, cluster, instance, service, config_dict, branch_dict):
@@ -110,14 +101,13 @@ class InstanceConfig(dict):
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
             if key in self.config_dict:
-                self.config_dict[key] = interpolate_config_string(
-                    self.config_dict[key],
-                    **interpolation_facts
-                )
+                self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)
 
     def __get_interpolation_facts(self):
         return {
             'cluster': self.cluster,
+            'instance': self.instance,
+            'service': self.service,
         }
 
     def get_cluster(self):
