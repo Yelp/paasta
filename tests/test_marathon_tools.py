@@ -830,16 +830,24 @@ class TestMarathonTools:
                 autospec=True,
                 side_effect=lambda x: x in (
                     '/etc/nerve/puppet_services.d',
-                    '/etc/nerve/puppet_services.d/a'
+                    '/etc/nerve/puppet_services.d/a',
                 )
             ),
+            mock.patch(
+                'paasta_tools.marathon_tools.open',
+                create=True,
+                autospec=None,
+                side_effect=mock.mock_open(read_data='{"namespaces": ["main"]}'),
+            )
         ) as (
             services_that_run_here_patch,
             listdir_patch,
             exists_patch,
+            open_patch,
         ):
-            services = marathon_tools.get_classic_services_that_run_here()
+            services, puppet_namespaces = marathon_tools.get_classic_services_that_run_here()
             assert services == ['a', 'c', 'd']
+            assert puppet_namespaces['a'] == ['main']
             services_that_run_here_patch.assert_called_once_with()
             listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
 
@@ -848,7 +856,8 @@ class TestMarathonTools:
             mock.patch(
                 'paasta_tools.marathon_tools.get_classic_services_that_run_here',
                 autospec=True,
-                side_effect=lambda: ['a', 'b', 'c']
+                side_effect=lambda: (['a', 'b', 'c'], {'b': ['main'],
+                                                       'c': ['main', 'canary']})
             ),
             mock.patch(
                 'paasta_tools.marathon_tools.get_all_namespaces_for_service',
@@ -862,7 +871,7 @@ class TestMarathonTools:
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                ('a.foo', {}), ('b.foo', {}), ('c.foo', {}),
+                ('a.foo', {}), ('b.main', {}), ('c.main', {}), ('c.canary', {}),
             ]
 
     def test_get_services_running_here_for_nerve(self):

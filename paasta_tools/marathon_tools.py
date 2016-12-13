@@ -19,6 +19,7 @@ make the PaaSTA stack work.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
 import logging
 import os
 import re
@@ -759,10 +760,16 @@ def get_classic_services_that_run_here():
             os.path.exists(os.path.join(PUPPET_SERVICE_DIR, i))
         }
 
+    puppet_service_dir_namespaces = {}
+    for service in puppet_service_dir_services:
+        with open(os.path.join(PUPPET_SERVICE_DIR, service)) as f:
+            puppet_service_dir_data = json.load(f)
+            puppet_service_dir_namespaces[service] = puppet_service_dir_data['namespaces']
+
     return sorted(
         service_configuration_lib.services_that_run_here() |
         puppet_service_dir_services
-    )
+    ), puppet_service_dir_namespaces
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
@@ -779,10 +786,16 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
 
 def get_classic_services_running_here_for_nerve(soa_dir):
     classic_services = []
-    for name in get_classic_services_that_run_here():
-        for namespace in get_all_namespaces_for_service(name, soa_dir, full_name=False):
-            classic_services.append(_namespaced_get_classic_service_information_for_nerve(
-                name, namespace[0], soa_dir))
+    classic_services_that_run_here, puppet_service_dir_namespaces = get_classic_services_that_run_here()
+    for service in classic_services_that_run_here:
+        if service in puppet_service_dir_namespaces:
+            for namespace in puppet_service_dir_namespaces[service]:
+                classic_services.append(
+                    _namespaced_get_classic_service_information_for_nerve(service, namespace, soa_dir))
+        else:
+            for namespace in get_all_namespaces_for_service(service, soa_dir, full_name=False):
+                classic_services.append(
+                    _namespaced_get_classic_service_information_for_nerve(service, namespace[0], soa_dir))
     return classic_services
 
 
