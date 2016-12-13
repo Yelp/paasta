@@ -48,7 +48,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_deployments_json
@@ -151,19 +150,22 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
     branch_dict = {}
-    if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = general_config.get('deploy_group', branch)
-        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
-    return MarathonServiceConfig(
+    service_config = MarathonServiceConfig(
         service=service,
         cluster=cluster,
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
     )
+
+    if load_deployments:
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        branch = service_config.get_branch()
+        deploy_group = service_config.get_deploy_group()
+        service_config.branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
+
+    return service_config
 
 
 class InvalidMarathonConfig(Exception):

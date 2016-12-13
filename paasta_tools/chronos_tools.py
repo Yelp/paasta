@@ -34,7 +34,6 @@ from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
@@ -177,18 +176,22 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
     general_config = service_chronos_jobs[instance]
     branch_dict = {}
-    if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = general_config.get('deploy_group', branch)
-        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
-    return ChronosJobConfig(
+
+    service_config = ChronosJobConfig(
         service=service,
         cluster=cluster,
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
     )
+
+    if load_deployments:
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        branch = service_config.get_branch()
+        deploy_group = service_config.get_deploy_group()
+        service_config.branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
+
+    return service_config
 
 
 class ChronosJobConfig(InstanceConfig):
