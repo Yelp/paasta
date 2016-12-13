@@ -43,6 +43,8 @@ setup(
         'chronos-python == 0.37.0',
         'cookiecutter == 1.4.0',
         'cryptography == 1.4',
+        # https://github.com/pyca/cryptography/issues/3187
+        'pycparser == 2.14',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
