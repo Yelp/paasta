@@ -51,6 +51,18 @@ def create_chronos_job_config_object_from_configs(context, service, instance, jo
     context.jobs[job_name] = job_config
 
 
+@when('we store the name of the rerun job for the service {service} and instance {instance} as {job_name}')
+def get_rerun_jobs_for_service_instance_from_chronos(context, service, instance, job_name):
+    jobs_for_service = chronos_tools.get_jobs_for_service_instance(
+        service,
+        instance,
+        include_disabled=True,
+        include_temporary=True
+    )
+    all_tmp_jobs = [job for job in jobs_for_service if job['name'].startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
+    context.jobs[job_name] = all_tmp_jobs[0]
+
+
 @when('we send the job to chronos')
 def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
