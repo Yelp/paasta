@@ -102,7 +102,13 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
 
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        deploy_group = prompt_pick_one(deployments_json['deployments'].keys(), choosing='deploy group')
+        deploy_group = prompt_pick_one(
+            (
+                deployment.encode('utf-8')
+                for deployment in deployments_json['deployments'].keys()
+            ),
+            choosing='deploy group',
+        )
         job_config.config_dict['deploy_group'] = deploy_group
         job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
 

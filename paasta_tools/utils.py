@@ -1702,7 +1702,7 @@ def prompt_pick_one(sequence, choosing):
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
-        paasta_print('\n')
+        paasta_print('')
         sys.exit(1)
 
     if isinstance(result, tuple) and result[1] == QUIT_ACTION:
