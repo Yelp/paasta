@@ -44,6 +44,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import json
 import logging
 import sys
 import traceback
@@ -203,19 +204,26 @@ def do_bounce(
         (not new_app_running),
         old_app_live_happy_tasks.keys()
     ]):
+        log_dict = {'new_app': marathon_jobid,
+                    'old_apps': len(old_app_live_happy_tasks.keys()),
+                    'new_app_running': 'yes' if new_app_running else 'no',
+                    'tasks_to_launch': config['instances'] - len(happy_new_tasks),
+                    'old_receiving': len(bounce_lib.flatten_tasks(old_app_live_happy_tasks)),
+                    'old_draining': len(bounce_lib.flatten_tasks(old_app_draining_tasks)),
+                    'old_at_risk': len(bounce_lib.flatten_tasks(old_app_at_risk_tasks))}
         log_bounce_action(
             line=' '.join([
-                '%s bounce in progress on %s.' % (bounce_method, serviceinstance),
-                'New marathon app %s %s.' % (marathon_jobid, ('exists' if new_app_running else 'not created yet')),
-                '%d new tasks to bring up.' % (config['instances'] - len(happy_new_tasks)),
-                '%d old tasks receiving traffic and happy.' % len(bounce_lib.flatten_tasks(old_app_live_happy_tasks)),
-                '%d old tasks unhappy.' % len(bounce_lib.flatten_tasks(old_app_live_unhappy_tasks)),
-                '%d old tasks draining.' % len(bounce_lib.flatten_tasks(old_app_draining_tasks)),
-                '%d old tasks at risk.' % len(bounce_lib.flatten_tasks(old_app_at_risk_tasks)),
-                '%d old apps.' % len(old_app_live_happy_tasks.keys()),
+                '%s bounce: ' % bounce_method,
+                json.dumps(log_dict)
             ]),
             level='event',
         )
+        num_old_unhappy = len(bounce_lib.flatten_tasks(old_app_live_unhappy_tasks))
+        if num_old_unhappy > 0:
+            log_bounce_action(
+                line='%d old tasks unhappy.' % num_old_unhappy,
+                level='event'
+            )
     else:
         log.debug("Nothing to do, bounce is in a steady state")
 

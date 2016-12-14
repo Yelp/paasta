@@ -358,7 +358,7 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert 'tasks_to_launch": %s' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert 'creating new app with app_id %s' % fake_marathon_jobid in second_logged_line
             third_logged_line = mock_log.mock_calls[2][2]["line"]
@@ -424,7 +424,7 @@ class TestSetupMarathonJob:
                 soa_dir='fake_soa_dir',
             )
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert 'tasks_to_launch": %s' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert 'draining %s old tasks' % expected_drain_task_count in second_logged_line
             assert mock_log.call_count == 2
@@ -490,7 +490,7 @@ class TestSetupMarathonJob:
             )
             # assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert 'tasks_to_launch": %s' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert 'draining %s old tasks with app_id %s' % (expected_drain_task_count, 'fake_app_to_kill_1') \
                 in second_logged_line
@@ -554,7 +554,7 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert 'tasks_to_launch": %s' % expected_new_task_count in first_logged_line
 
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert 'removing old unused apps with app_ids: %s' % 'fake_app_to_kill_1' in second_logged_line
