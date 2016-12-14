@@ -229,7 +229,7 @@ class InstanceConfig(dict):
     def get_cmd(self):
         """Get the docker cmd specified in the service's configuration.
 
-        Defaults to null if not specified in the config.
+        Defaults to None if not specified in the config.
 
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
