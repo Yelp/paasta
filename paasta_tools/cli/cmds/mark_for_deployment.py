@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import sys
 import time
 
 import progressbar
@@ -355,9 +356,11 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                                 paasta_print("Deploy to %s complete! (instances: %s)" % (cluster, instance_csv))
                         bar.update(sum([v["deployed"] for v in cluster_map.values()]))
                     if all([cluster['deployed'] == len(cluster["instances"]) for cluster in cluster_map.values()]):
+                        sys.stdout.flush()
                         break
                     else:
                         time.sleep(10)
+                    sys.stdout.flush()
     except TimeoutError:
         line = "\n\nTimed out after {0} seconds, waiting for {2} in {1} to be deployed by PaaSTA. \n\n"\
                "This probably means the deploy hasn't suceeded. The new service might not be healthy or one "\
