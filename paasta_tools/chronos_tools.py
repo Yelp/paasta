@@ -307,7 +307,7 @@ class ChronosJobConfig(InstanceConfig):
                 parse_time_variables(command)
                 return True, ""
             except (ValueError, KeyError, TypeError):
-                return False, "Unparseable command. Hint: do you need to escape % chars?"
+                return False, ("Unparseable command '%s'. Hint: do you need to escape %% chars?") % command
         else:
             return True, ""
 

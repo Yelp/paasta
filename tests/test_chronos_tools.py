@@ -1533,6 +1533,7 @@ class TestChronosTools:
         )
         okay, msg = fake_conf.check_cmd()
         assert okay is False
+        assert './mycommand --date %(shortdate-1)s --format foo/logs/%L/%Y/%m/%d/' in msg
 
     def test_cmp_datetimes(self):
         before = '2015-09-22T16:46:25.111Z'
