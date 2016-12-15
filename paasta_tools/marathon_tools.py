@@ -605,7 +605,8 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     :returns: The proxy_port for the service instance, or None if not defined"""
     registration = read_registration_for_service_instance(name, instance, cluster, soa_dir)
     service, namespace, _, __ = decompose_job_id(registration)
-    nerve_dict = load_service_namespace_config(service, namespace, soa_dir)
+    nerve_dict = load_service_namespace_config(
+        service=service, namespace=namespace, soa_dir=soa_dir)
     return nerve_dict.get('proxy_port')
 
 
@@ -686,7 +687,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             for registration in registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
                 nerve_dict = load_service_namespace_config(
-                    reg_service, reg_namespace, soa_dir
+                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
                 )
                 if not nerve_dict.is_in_smartstack():
                     continue

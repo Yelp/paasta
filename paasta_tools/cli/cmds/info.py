@@ -83,7 +83,8 @@ def get_deployments_strings(service, soa_dir):
     except NoDeploymentsAvailable:
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
-        service_config = load_service_namespace_config(service, 'main', soa_dir)
+        service_config = load_service_namespace_config(
+            service=service, namespace='main', soa_dir=soa_dir)
         service_mode = service_config.get_mode()
         clusters = {decompose_paasta_control_branch(
             control_branch)[1] for control_branch in deployments['controls'].keys()}

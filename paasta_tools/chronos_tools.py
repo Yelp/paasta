@@ -474,6 +474,11 @@ class ChronosJobConfig(InstanceConfig):
         else:
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
+    def get_nerve_namespace(self):
+        """Currently not implemented yet, as we don't have the code
+        to announce chronos tasks in nerve"""
+        return None
+
 
 def paasta_to_chronos_job_name(job_name):
     """Converts a paasta-style job name service.main to what chronos
