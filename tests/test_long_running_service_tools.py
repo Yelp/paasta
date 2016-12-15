@@ -121,6 +121,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance=fake_namespace,
             config_dict={
+                'instances': 1,
                 'healthcheck_mode': 'cmd',
                 'healthcheck_cmd': fake_cmd
             },
@@ -200,6 +201,36 @@ class TestLongRunningServiceConfig(object):
                 fake_service, fake_namespace, fake_service_config, fake_random_port, soa_dir=fake_soadir)
             assert expected == actual
             load_service_namespace_config_patch.assert_called_once_with(fake_service, fake_namespace, fake_soadir)
+
+    def test_get_instances_in_config(self):
+        fake_conf = long_running_service_tools.LongRunningServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'instances': -10},
+            branch_dict={'desired_state': 'start'},
+        )
+        assert fake_conf.get_instances() == -10
+
+    def test_get_instances_default(self):
+        fake_conf = long_running_service_tools.LongRunningServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_instances() == 1
+
+    def test_get_instances_respects_false(self):
+        fake_conf = long_running_service_tools.LongRunningServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'instances': False},
+            branch_dict={'desired_state': 'start'},
+        )
+        assert fake_conf.get_instances() == 0
 
 
 class TestServiceNamespaceConfig(object):

@@ -305,6 +305,17 @@ class ChronosJobConfig(InstanceConfig):
                                % ", ".join(badly_formatted))
         return True, ''
 
+    def check_cmd(self):
+        command = self.get_cmd()
+        if command:
+            try:
+                parse_time_variables(command)
+                return True, ""
+            except (ValueError, KeyError, TypeError):
+                return False, ("Unparseable command '%s'. Hint: do you need to escape %% chars?") % command
+        else:
+            return True, ""
+
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
     # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals
     def _check_schedule_repeat_helper(self, repeat_string):
@@ -386,8 +397,9 @@ class ChronosJobConfig(InstanceConfig):
             'schedule': self.check_schedule,
             'scheduleTimeZone': self.check_schedule_time_zone,
             'parents': self.check_parents,
+            'cmd': self.check_cmd,
         }
-        supported_params_without_checks = ['description', 'command', 'owner', 'disabled']
+        supported_params_without_checks = ['description', 'owner', 'disabled']
         if param in check_methods:
             return check_methods[param]()
         elif param in supported_params_without_checks:
@@ -441,7 +453,8 @@ class ChronosJobConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
-        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk', 'schedule', 'scheduleTimeZone', 'parents']:
+        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk',
+                      'schedule', 'scheduleTimeZone', 'parents', 'cmd']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)

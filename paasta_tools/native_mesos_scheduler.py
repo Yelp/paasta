@@ -141,7 +141,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task, parameters in self.tasks_with_flags.iteritems():
             if self.is_task_new(name, task) and (parameters.mesos_task_state in LIVE_TASK_STATES):
                 num_have += 1
-        return num_have < self.service_config.get_instances()
+        return num_have < self.service_config.get_desired_instances()
 
     def get_new_tasks(self, name, tasks):
         return set([tid for tid in tasks if self.is_task_new(name, tid)])
@@ -252,7 +252,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         new_tasks = self.get_new_tasks(base_task.name, self.tasks_with_flags.keys())
         happy_new_tasks = self.get_happy_tasks(new_tasks)
 
-        desired_instances = self.service_config.get_instances()
+        desired_instances = self.service_config.get_desired_instances()
         # this puts the most-desired tasks first. I would have left them in order of bad->good and used
         # new_tasks_by_desirability[:-desired_instances] instead, but list[:-0] is an empty list, rather than the full
         # list.
@@ -437,12 +437,6 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             self.service_namespace_config = service_namespace_config
         else:
             self.service_namespace_config = ServiceNamespaceConfig()
-
-    def get_instances(self):
-        if self.get_desired_state() == 'start':
-            return self.config_dict.get('instances')
-        else:
-            return 0
 
     def task_name(self, base_task):
         code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)

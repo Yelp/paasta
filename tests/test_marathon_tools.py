@@ -1063,7 +1063,7 @@ class TestMarathonTools:
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
 
-    def test_instances_is_zero_when_desired_state_is_stop(self):
+    def test_get_desired_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='',
@@ -1071,7 +1071,7 @@ class TestMarathonTools:
             config_dict={'instances': 10},
             branch_dict={'desired_state': 'stop'},
         )
-        assert fake_conf.get_instances() == 0
+        assert fake_conf.get_desired_instances() == 0
 
     def test_get_bounce_method_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(

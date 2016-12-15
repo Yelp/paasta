@@ -1,4 +1,5 @@
 -r requirements.txt
+docutils==0.12
 flake8==2.5.0
 git+git://github.com/solarkennedy/sphinxcontrib-programoutput#egg=package-two
 mock==2.0.0

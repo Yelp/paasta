@@ -326,7 +326,7 @@ class TestChronosTools:
             )
             fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
                                                             dummy_config.get_dockercfg_location())
-            mock_parse_time_variables.assert_called_once_with(fake_cmd)
+            mock_parse_time_variables.assert_called_with(fake_cmd)
 
     def test_get_owner(self):
         fake_owner = 'fake_team'
@@ -1501,6 +1501,39 @@ class TestChronosTools:
         expected = 'ls 2012-03-13 foo'
         actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
         assert actual == expected
+
+    def test_parse_time_variables_parses_percent(self):
+        input_time = datetime.datetime(2012, 3, 14)
+        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
+        expected = './mycommand --date 2012-03-13 --format foo/logs/%L/%Y/%m/%d/'
+        actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
+        assert actual == expected
+
+    def test_check_cmd_escaped_percent(self):
+        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'cmd': test_input},
+            branch_dict={},
+        )
+        okay, msg = fake_conf.check_cmd()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_cmd_unescaped_percent(self):
+        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%L/%Y/%m/%d/'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'cmd': test_input},
+            branch_dict={},
+        )
+        okay, msg = fake_conf.check_cmd()
+        assert okay is False
+        assert './mycommand --date %(shortdate-1)s --format foo/logs/%L/%Y/%m/%d/' in msg
 
     def test_cmp_datetimes(self):
         before = '2015-09-22T16:46:25.111Z'

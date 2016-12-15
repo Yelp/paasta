@@ -5,6 +5,7 @@ import logging
 import socket
 
 import service_configuration_lib
+from kazoo.exceptions import NoNodeError
 
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -12,6 +13,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import ZookeeperPool
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
@@ -102,6 +104,63 @@ class LongRunningServiceConfig(InstanceConfig):
         elif mode not in ['http', 'tcp', 'cmd', None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
+
+    def get_instances(self):
+        """Gets the number of instances for a service, ignoring whether the user has requested
+        the service to be started or stopped"""
+        if self.get_max_instances() is not None:
+            try:
+                zk_instances = get_instances_from_zookeeper(
+                    service=self.service,
+                    instance=self.instance,
+                )
+                log.debug("Got %d instances out of zookeeper" % zk_instances)
+            except NoNodeError:
+                log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
+                return self.get_max_instances()
+            else:
+                limited_instances = self.limit_instance_count(zk_instances)
+                if limited_instances != zk_instances:
+                    log.warning("Returning limited instance count %d. (zk had %d)" % (
+                                limited_instances, zk_instances))
+                return limited_instances
+        else:
+            instances = self.config_dict.get('instances', 1)
+            log.debug("Autoscaling not enabled, returning %d instances" % instances)
+            return instances
+
+    def get_min_instances(self):
+        return self.config_dict.get('min_instances', 1)
+
+    def get_max_instances(self):
+        return self.config_dict.get('max_instances', None)
+
+    def get_desired_instances(self):
+        """Get the number of instances specified in zookeeper or the service's marathon configuration.
+        If the number of instances in zookeeper is less than min_instances, returns min_instances.
+        If the number of instances in zookeeper is greater than max_instances, returns max_instances.
+
+        Defaults to 0 if not specified in the config.
+
+        :returns: The number of instances specified in the config, 0 if not
+                  specified or if desired_state is not 'start'.
+                  """
+        if self.get_desired_state() == 'start':
+            return self.get_instances()
+        else:
+            log.debug("Instance is set to stop. Returning '0' instances")
+            return 0
+
+    def limit_instance_count(self, instances):
+        """
+        Returns param instances if it is between min_instances and max_instances.
+        Returns max_instances if instances > max_instances
+        Returns min_instances if instances < min_instances
+        """
+        return max(
+            self.get_min_instances(),
+            min(self.get_max_instances(), instances),
+        )
 
 
 class InvalidHealthcheckMode(Exception):
@@ -246,3 +305,20 @@ class ServiceNamespaceConfig(dict):
 
 class InvalidSmartstackMode(Exception):
     pass
+
+
+def get_instances_from_zookeeper(service, instance):
+    with ZookeeperPool() as zookeeper_client:
+        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
+        return int(instances)
+
+
+def compose_autoscaling_zookeeper_root(service, instance):
+    return '/autoscaling/%s/%s' % (service, instance)
+
+
+def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
+    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
+    with ZookeeperPool() as zookeeper_client:
+        zookeeper_client.ensure_path(zookeeper_path)
+        zookeeper_client.set(zookeeper_path, str(instance_count))
