@@ -82,7 +82,7 @@ else
   exit 1
 fi
 
-if ! /usr/share/python/paasta-tools/bin/python -c 'import yaml; assert yaml.__with_libyaml__' >/dev/null; then
+if ! /opt/venvs/paasta-tools/bin/python -c 'import yaml; assert yaml.__with_libyaml__' >/dev/null; then
   echo "Python doesn't have the C-based yaml loader and will be really slow!"
 fi
 
