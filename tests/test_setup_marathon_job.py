@@ -987,6 +987,11 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
+                'paasta_tools.marathon_tools.load_service_namespace_config',
+                return_value=mock.MagicMock(),
+                autospec=True,
+            ),
+            mock.patch(
                 'paasta_tools.setup_marathon_job.deploy_service',
                 autospec=True,
             ),
@@ -997,6 +1002,7 @@ class TestSetupMarathonJob:
         ) as (
             format_marathon_app_dict_patch,
             get_config_patch,
+            mock_load_service_namespace_config,
             deploy_service_patch,
             _,
         ):

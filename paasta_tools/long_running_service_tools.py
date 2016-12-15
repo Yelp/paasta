@@ -172,7 +172,12 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
     """
-    smartstack_config = load_service_namespace_config(service, instance, soa_dir)
+    namespace = service_manifest.get_nerve_namespace()
+    smartstack_config = load_service_namespace_config(
+        service=service,
+        namespace=namespace,
+        soa_dir=soa_dir,
+    )
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
@@ -219,7 +224,8 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(service, soa_dir)
+    service_config = service_configuration_lib.read_service_configuration(
+        service_name=service, soa_dir=soa_dir)
     smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 

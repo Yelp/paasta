@@ -412,8 +412,8 @@ def load_paasta_native_job_config(service, instance, cluster, load_deployments=T
         branch_dict=branch_dict,
     )
 
-    service_namespace_config = load_service_namespace_config(service, service_config.get_nerve_namespace(),
-                                                             soa_dir=soa_dir)
+    service_namespace_config = load_service_namespace_config(
+        service=service, namespace=service_config.get_nerve_namespace(), soa_dir=soa_dir)
     service_config.service_namespace_config = service_namespace_config
 
     return service_config

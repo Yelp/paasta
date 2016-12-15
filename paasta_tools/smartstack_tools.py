@@ -123,8 +123,8 @@ def load_smartstack_info_for_service(service, namespace, blacklist, system_paast
         }
 
     """
-    service_namespace_config = marathon_tools.load_service_namespace_config(service, namespace,
-                                                                            soa_dir=soa_dir)
+    service_namespace_config = marathon_tools.load_service_namespace_config(
+        service=service, namespace=namespace, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
     return get_smartstack_replication_for_attribute(
         attribute=discover_location_type,

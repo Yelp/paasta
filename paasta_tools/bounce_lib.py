@@ -237,7 +237,8 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
         tasks_in_smartstack = []
         service_namespace = compose_job_id(service, nerve_ns)
 
-        service_namespace_config = marathon_tools.load_service_namespace_config(service, nerve_ns)
+        service_namespace_config = marathon_tools.load_service_namespace_config(
+            service=service, namespace=nerve_ns)
         discover_location_type = service_namespace_config.get_discover()
         unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(
             slaves=mesos_tools.get_slaves(),
