@@ -503,7 +503,7 @@ def assert_chronos_queued_jobs(client):
     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
 
     try:
-        perc_used = percent_used(all_jobs_queued, num_jobs)
+        perc_used = percent_used(num_jobs, all_jobs_queued)
     except ZeroDivisionError:
         perc_used = 0
     return HealthCheckResult(

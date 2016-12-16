@@ -431,7 +431,7 @@ def test_assert_chronos_scheduled_jobs():
     assert results == ('Enabled chronos jobs: 1', True)
 
 
-def test_assert_chronos_queued_jobs():
+def test_assert_chronos_queued_jobs_no_queued():
     mock_client = Mock()
     mock_client.metrics.return_value = {
         'gauges': {
@@ -444,7 +444,25 @@ def test_assert_chronos_queued_jobs():
         {'name': 'myjob', 'disabled': True},
     ]
     assert metastatus_lib.assert_chronos_queued_jobs(mock_client) == metastatus_lib.HealthCheckResult(
-        message="Jobs Queued: 0 (0%)",
+        message="Jobs Queued: 0 (0.0%)",
+        healthy=True
+    )
+
+
+def test_assert_chronos_queued_jobs_queued():
+    mock_client = Mock()
+    mock_client.metrics.return_value = {
+        'gauges': {
+            metastatus_lib.HIGH_QUEUE_GAUGE: {'value': 1},
+            metastatus_lib.QUEUE_GAUGE: {'value': 0}
+        }
+    }
+    mock_client.list.return_value = [
+        {'name': 'myjob', 'disabled': False},
+        {'name': 'myjob', 'disabled': False},
+    ]
+    assert metastatus_lib.assert_chronos_queued_jobs(mock_client) == metastatus_lib.HealthCheckResult(
+        message="Jobs Queued: 1 (50.0%)",
         healthy=True
     )
 
