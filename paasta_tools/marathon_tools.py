@@ -19,6 +19,7 @@ make the PaaSTA stack work.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
 import logging
 import os
 import re
@@ -695,21 +696,31 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     return nerve_list
 
 
-def get_classic_services_that_run_here():
+def get_puppet_services_that_run_here():
     # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
     # this allows us to (de)register services on a machine by
     # breaking/healing a symlink placed by Puppet.
-    puppet_service_dir_services = set()
+    puppet_service_dir_services = {}
     if os.path.exists(PUPPET_SERVICE_DIR):
-        puppet_service_dir_services = {
-            i for i in os.listdir(PUPPET_SERVICE_DIR) if
-            os.path.exists(os.path.join(PUPPET_SERVICE_DIR, i))
-        }
+        for service_name in os.listdir(PUPPET_SERVICE_DIR):
+            if not os.path.exists(os.path.join(PUPPET_SERVICE_DIR, service_name)):
+                continue
+            with open(os.path.join(PUPPET_SERVICE_DIR, service_name)) as f:
+                puppet_service_data = json.load(f)
+                puppet_service_dir_services[service_name] = puppet_service_data['namespaces']
 
-    return sorted(
-        service_configuration_lib.services_that_run_here() |
-        puppet_service_dir_services
-    )
+    return puppet_service_dir_services
+
+
+def get_puppet_services_running_here_for_nerve(soa_dir):
+    puppet_services = []
+    for service, namespaces in sorted(get_puppet_services_that_run_here().iteritems()):
+        for namespace in namespaces:
+            puppet_services.append(
+                _namespaced_get_classic_service_information_for_nerve(
+                    service, namespace, soa_dir)
+            )
+    return puppet_services
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
@@ -726,10 +737,15 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
 
 def get_classic_services_running_here_for_nerve(soa_dir):
     classic_services = []
-    for name in get_classic_services_that_run_here():
-        for namespace in get_all_namespaces_for_service(name, soa_dir, full_name=False):
-            classic_services.append(_namespaced_get_classic_service_information_for_nerve(
-                name, namespace[0], soa_dir))
+    classic_services_here = service_configuration_lib.services_that_run_here()
+    for service in sorted(classic_services_here):
+        namespaces = [x[0] for x in get_all_namespaces_for_service(
+            service, soa_dir, full_name=False)]
+        for namespace in namespaces:
+            classic_services.append(
+                _namespaced_get_classic_service_information_for_nerve(
+                    service, namespace, soa_dir)
+            )
     return classic_services
 
 
@@ -750,7 +766,8 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
               AND (service, service_config) for legacy SOA services"""
     # All Legacy yelpsoa services are also announced
     return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
-        get_classic_services_running_here_for_nerve(soa_dir)
+        get_classic_services_running_here_for_nerve(soa_dir) + \
+        get_puppet_services_running_here_for_nerve(soa_dir)
 
 
 def list_all_marathon_app_ids(client):

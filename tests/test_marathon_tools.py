@@ -813,13 +813,8 @@ class TestMarathonTools:
             info = marathon_tools.get_classic_service_information_for_nerve('no_water', 'we_are_the_one')
             assert info == ('no_water.main', {'ten': 10, 'port': 101})
 
-    def test_get_classic_services_that_run_here(self):
+    def test_get_puppet_services_that_run_here(self):
         with contextlib.nested(
-            mock.patch(
-                'service_configuration_lib.services_that_run_here',
-                autospec=True,
-                return_value={'d', 'c'},
-            ),
             mock.patch(
                 'os.listdir',
                 autospec=True,
@@ -830,25 +825,47 @@ class TestMarathonTools:
                 autospec=True,
                 side_effect=lambda x: x in (
                     '/etc/nerve/puppet_services.d',
-                    '/etc/nerve/puppet_services.d/a'
+                    '/etc/nerve/puppet_services.d/a',
                 )
             ),
+            mock.patch(
+                'paasta_tools.marathon_tools.open',
+                create=True,
+                autospec=None,
+                side_effect=mock.mock_open(read_data='{"namespaces": ["main"]}'),
+            )
         ) as (
-            services_that_run_here_patch,
             listdir_patch,
             exists_patch,
+            open_patch,
         ):
-            services = marathon_tools.get_classic_services_that_run_here()
-            assert services == ['a', 'c', 'd']
-            services_that_run_here_patch.assert_called_once_with()
+            puppet_services = marathon_tools.get_puppet_services_that_run_here()
+            assert puppet_services == {'a': ['main']}
             listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
+
+    def test_get_puppet_services_running_here_for_nerve(self):
+        with contextlib.nested(
+            mock.patch(
+                'paasta_tools.marathon_tools.get_puppet_services_that_run_here',
+                autospec=True,
+                side_effect=lambda: {'d': ['main'], 'c': ['main', 'canary']},
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve',
+                autospec=True,
+                side_effect=lambda x, y, _: (compose_job_id(x, y), {})
+            ),
+        ):
+            assert marathon_tools.get_puppet_services_running_here_for_nerve('foo') == [
+                ('c.main', {}), ('c.canary', {}), ('d.main', {})
+            ]
 
     def test_get_classic_services_running_here_for_nerve(self):
         with contextlib.nested(
             mock.patch(
-                'paasta_tools.marathon_tools.get_classic_services_that_run_here',
+                'service_configuration_lib.services_that_run_here',
                 autospec=True,
-                side_effect=lambda: ['a', 'b', 'c']
+                side_effect=lambda: {'a', 'b'}
             ),
             mock.patch(
                 'paasta_tools.marathon_tools.get_all_namespaces_for_service',
@@ -862,7 +879,7 @@ class TestMarathonTools:
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                ('a.foo', {}), ('b.foo', {}), ('c.foo', {}),
+                ('a.foo', {}), ('b.foo', {})
             ]
 
     def test_get_services_running_here_for_nerve(self):
@@ -870,7 +887,8 @@ class TestMarathonTools:
         soa_dir = 'boba'
         fake_marathon_services = [('never', 'again'), ('will', 'he')]
         fake_classic_services = [('walk', 'on'), ('his', 'feet')]
-        expected = fake_marathon_services + fake_classic_services
+        fake_puppet_services = [('a', 'b'), ('c', 'd')]
+        expected = fake_marathon_services + fake_classic_services + fake_puppet_services
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_marathon_services_running_here_for_nerve',
                        autospec=True,
@@ -878,14 +896,19 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.get_classic_services_running_here_for_nerve',
                        autospec=True,
                        return_value=fake_classic_services),
+            mock.patch('paasta_tools.marathon_tools.get_puppet_services_running_here_for_nerve',
+                       autospec=True,
+                       return_value=fake_puppet_services),
         ) as (
             marathon_patch,
-            classic_patch
+            classic_patch,
+            puppet_patch,
         ):
             actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             marathon_patch.assert_called_once_with(cluster, soa_dir)
             classic_patch.assert_called_once_with(soa_dir)
+            puppet_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
         fake_url = 'dockervania_from_konami'
