@@ -29,8 +29,12 @@ RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
 
-RUN apt-get update && apt-get -y --allow-unauthenticated install marathon=1.4.0-0.1.20161021221011.snap19.ubuntu1404
+RUN apt-get -y install unzip
+RUN wget https://s3.amazonaws.com/repos.mesosphere.com/ubuntu/pool/main/m/marathon/marathon_1.4.0-1.0.562.ubuntu1404_amd64.deb \
+    && dpkg -i marathon_1.4.0-1.0.562.ubuntu1404_amd64.deb && rm marathon_1.4.0-1.0.562.ubuntu1404_amd64.deb
 
 RUN echo -n "secret2" > /etc/marathon_framework_secret
+
+RUN locale-gen "en_US.UTF-8" && dpkg-reconfigure locales
 
 EXPOSE 8080
