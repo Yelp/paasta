@@ -1,5 +1,55 @@
 # Change Log
 
+## [0.56.15](https://github.com/Yelp/paasta/tree/0.56.15) (2016-12-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.14...0.56.15)
+
+**Fixed bugs:**
+
+- wait-for-deployment output is buffered, not useful to watch progress [\#936](https://github.com/Yelp/paasta/issues/936)
+
+**Merged pull requests:**
+
+- Upgrade mesos to 1.1.0 [\#942](https://github.com/Yelp/paasta/pull/942) ([nhandler](https://github.com/nhandler))
+- fix the percentage for queued Chronos jobs [\#940](https://github.com/Yelp/paasta/pull/940) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- support nerve namespaces in puppet service dir [\#938](https://github.com/Yelp/paasta/pull/938) ([somic](https://github.com/somic))
+- do a stdout flush when the progress bar may be updating [\#937](https://github.com/Yelp/paasta/pull/937) ([solarkennedy](https://github.com/solarkennedy))
+- Fix get\_healthcheck when nerve\_ns is different [\#931](https://github.com/Yelp/paasta/pull/931) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.14](https://github.com/Yelp/paasta/tree/v0.56.14) (2016-12-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.13...v0.56.14)
+
+**Closed issues:**
+
+- 'make docs' is broken on master [\#932](https://github.com/Yelp/paasta/issues/932)
+- tests/test\_autoscaling\_lib.py::test\_set\_spot\_fleet\_request\_capacity takes 1 second [\#711](https://github.com/Yelp/paasta/issues/711)
+- Advanced cluster autoscaling [\#660](https://github.com/Yelp/paasta/issues/660)
+- Docker quickstart fails deploying service. [\#647](https://github.com/Yelp/paasta/issues/647)
+
+**Merged pull requests:**
+
+- Check AWS instances register in mesos [\#934](https://github.com/Yelp/paasta/pull/934) ([mattmb](https://github.com/mattmb))
+- pin docutils dependency to old version [\#933](https://github.com/Yelp/paasta/pull/933) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Relax the message when a marathon app doesn't exist yet [\#930](https://github.com/Yelp/paasta/pull/930) ([solarkennedy](https://github.com/solarkennedy))
+- PAASTA-7203 validate chronos cmds [\#929](https://github.com/Yelp/paasta/pull/929) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- PAASTA-7038 include rerun jobs in emergency-stop [\#926](https://github.com/Yelp/paasta/pull/926) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Alert service authors when a service is stopped even when asked to stop [\#879](https://github.com/Yelp/paasta/pull/879) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.13](https://github.com/Yelp/paasta/tree/v0.56.13) (2016-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.12...v0.56.13)
+
+**Merged pull requests:**
+
+- Add some useful comments at the top of the services.yaml [\#925](https://github.com/Yelp/paasta/pull/925) ([chriskuehl](https://github.com/chriskuehl))
+- convert services.yaml to bytes before dumping to yaml [\#924](https://github.com/Yelp/paasta/pull/924) ([mjksmith](https://github.com/mjksmith))
+- Give names to wait-for-deployment exceptions [\#923](https://github.com/Yelp/paasta/pull/923) ([oktopuz](https://github.com/oktopuz))
+- made interactive jobs not require --no-healthcheck [\#922](https://github.com/Yelp/paasta/pull/922) ([mjksmith](https://github.com/mjksmith))
+- \[WIP\] Removed duplication from tox.ini [\#921](https://github.com/Yelp/paasta/pull/921) ([mjksmith](https://github.com/mjksmith))
+- make python-crontab less noisy [\#918](https://github.com/Yelp/paasta/pull/918) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- paasta wait-for-deployment [\#915](https://github.com/Yelp/paasta/pull/915) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.56.12](https://github.com/Yelp/paasta/tree/v0.56.12) (2016-12-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.11...v0.56.12)
+
 ## [v0.56.11](https://github.com/Yelp/paasta/tree/v0.56.11) (2016-12-06)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.10...v0.56.11)
 
