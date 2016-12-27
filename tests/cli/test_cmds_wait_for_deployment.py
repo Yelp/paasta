@@ -111,44 +111,34 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client.service.status_instance.side_effect = \
         mock_status_instance_side_effect
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance1'], 'somesha') == 1
+    f = mark_for_deployment.instances_deployed
+    assert f('cluster', 'service1', ['instance1'], 'somesha') == ['instance1']
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance2', 'instance1'],
-                                                  'somesha') == 1
+    assert f('cluster', 'service1', ['instance2', 'instance1'],
+             'somesha') == ['instance1']
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance3'], 'somesha') == 0
+    assert f('cluster', 'service1', ['instance3'], 'somesha') == []
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance4'], 'somesha') == 0
+    assert f('cluster', 'service1', ['instance4'], 'somesha') == []
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance5', 'instance1'],
-                                                  'somesha') == 2
+    assert f('cluster', 'service1', ['instance5', 'instance1'],
+             'somesha') == ['instance5', 'instance1']
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance6'], 'somesha') == 0
+    assert f('cluster', 'service1', ['instance6'], 'somesha') == []
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['notaninstance'],
-                                                  'somesha') == 0
+    assert f('cluster', 'service1', ['notaninstance'], 'somesha') == []
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['api_error'], 'somesha') == 0
+    assert f('cluster', 'service1', ['api_error'], 'somesha') == []
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance7'], 'somesha') == 1
+    assert f('cluster', 'service1', ['instance7'], 'somesha') == ['instance7']
 
-    assert mark_for_deployment.instances_deployed('cluster', 'service1',
-                                                  ['instance8'], 'somesha') == 1
+    assert f('cluster', 'service1', ['instance8'], 'somesha') == ['instance8']
 
 
 def instances_deployed_side_effect(cluster, service, instances, git_sha):
     if instances == ['instance1', 'instance2']:
-        return 2
-    return 0
+        return instances
+    return []
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
@@ -175,7 +165,7 @@ def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance2']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
-    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1) == 0
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance3']}}
