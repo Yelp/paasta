@@ -335,8 +335,7 @@ def instances_deployed(cluster, service, instances, git_sha):
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
-    cluster_map = get_cluster_instance_map_for_service(soa_dir, service,
-                                                       deploy_group)
+    cluster_map = get_cluster_instance_map_for_service(soa_dir=soa_dir, service=service, deploy_group=deploy_group)
     if not cluster_map:
         _log(
             service=service,
