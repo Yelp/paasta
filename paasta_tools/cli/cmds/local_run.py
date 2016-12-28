@@ -367,13 +367,10 @@ def get_container_name():
 
 
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
-                       docker_hash, command, hostname, net, docker_params):
+                       docker_hash, command, net, docker_params):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
-    cmd.append('--env=MARATHON_PORT=%s' % random_port)
-    cmd.append('--env=HOST=%s' % hostname)
-    cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
@@ -455,6 +452,48 @@ def _cleanup_container(docker_client, container_id):
             "Could not clean up container! You should stop and remove container '%s' manually." % container_id))
 
 
+def get_local_run_environment_vars(instance_config, port0, framework):
+    """Returns a dictionary of environment variables to simulate what would be available to
+    a paasta service running in a container"""
+    hostname = socket.getfqdn()
+    docker_image = instance_config.get_docker_image()
+    if docker_image == '':
+        # In a local_run environment, the docker_image may not be available
+        # so we can fall-back to the injected DOCKER_TAG per the paasta contract
+        docker_image = os.environ['DOCKER_TAG']
+    env = {
+        'HOST': hostname,
+        'MESOS_SANDBOX': '/mnt/mesos/sandbox',
+        'MESOS_CONTAINER_NAME': 'mesos-simulated-container-name',
+        'MESOS_TASK_ID': 'simulated_mesos_task_id',
+        'PAASTA_DOCKER_IMAGE': docker_image,
+    }
+    if framework == "marathon":
+        env['MARATHON_PORT'] = str(port0)
+        env['MARATHON_PORT0'] = str(port0)
+        env['MARATHON_PORTS'] = str(port0)
+        env['MARATHON_PORT_8888'] = str(port0)
+        env['MARATHON_APP_VERSION'] = 'simulated_marathon_app_version'
+        env['MARATHON_APP_RESOURCE_CPUS'] = str(instance_config.get_cpus())
+        env['MARATHON_APP_DOCKER_IMAGE'] = docker_image
+        env['MARATHON_APP_RESOURCE_MEM'] = str(instance_config.get_mem())
+        env['MARATHON_APP_RESOURCE_DISK'] = str(instance_config.get_disk())
+        env['MARATHON_APP_LABELS'] = ""
+        env['MARATHON_APP_ID'] = '/simulated_marathon_app_id'
+        env['MARATHON_HOST'] = hostname
+    elif framework == 'chronos':
+        env['CHRONOS_RESOURCE_DISK'] = str(instance_config.get_disk())
+        env['CHRONOS_RESOURCE_CPU'] = str(instance_config.get_cpus())
+        env['CHRONOS_RESOURCE_MEM'] = str(instance_config.get_mem())
+        env['CHRONOS_JOB_OWNER'] = 'simulated-owner'
+        env['CHRONOS_JOB_RUN_TIME'] = str(time.gmtime())
+        env['CHRONOS_JOB_NAME'] = "%s %s" % (instance_config.get_service(), instance_config.get_instance())
+        env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0),
+        env['mesos_task_id'] = 'ct:simulated-task-id'
+
+    return env
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -463,13 +502,13 @@ def run_docker_container(
     volumes,
     interactive,
     command,
-    hostname,
     healthcheck,
     healthcheck_only,
     instance_config,
     soa_dir=DEFAULT_SOA_DIR,
     dry_run=False,
-    json_dict=False
+    json_dict=False,
+    framework=None,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -478,10 +517,16 @@ def run_docker_container(
     In non-interactive mode when the run is complete, stop the container and
     remove it (with docker-py).
     """
+    random_port = pick_random_port()
     environment = instance_config.get_env_dictionary()
+    local_run_environment = get_local_run_environment_vars(
+        instance_config=instance_config,
+        port0=random_port,
+        framework=framework,
+    )
+    environment.update(local_run_environment)
     net = instance_config.get_net()
     memory = instance_config.get_mem()
-    random_port = pick_random_port()
     container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
     docker_run_args = dict(
@@ -493,7 +538,6 @@ def run_docker_container(
         interactive=interactive,
         docker_hash=docker_hash,
         command=command,
-        hostname=hostname,
         net=net,
         docker_params=docker_params,
     )
@@ -726,8 +770,6 @@ def configure_and_run_docker_container(
         else:
             command = instance_config.get_args()
 
-    hostname = socket.getfqdn()
-
     return run_docker_container(
         docker_client=docker_client,
         service=service,
@@ -736,13 +778,13 @@ def configure_and_run_docker_container(
         volumes=volumes,
         interactive=interactive,
         command=command,
-        hostname=hostname,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
         soa_dir=args.yelpsoa_config_root,
         dry_run=dry_run,
         json_dict=args.dry_run_json_dict,
+        framework=instance_type,
     )
 
 

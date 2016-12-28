@@ -24,6 +24,7 @@ import mock
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cli import main
 from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
@@ -31,6 +32,7 @@ from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
+from paasta_tools.cli.cmds.local_run import get_local_run_environment_vars
 from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import paasta_local_run
 from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
@@ -46,7 +48,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
@@ -58,10 +59,8 @@ def test_dry_run(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    mock_socket_getfqdn,
     capsys
 ):
-    mock_socket_getfqdn.return_value = 'fake_hostname'
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
@@ -81,7 +80,6 @@ def test_dry_run(
     assert isinstance(expected_out, list)
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
@@ -93,15 +91,16 @@ def test_dry_run_json_dict(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    mock_socket_getfqdn,
     capsys
 ):
-    mock_socket_getfqdn.return_value = 'fake_hostname'
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
     mock_get_instance_config.return_value.get_env_dictionary.return_value = {}
     mock_get_instance_config.return_value.get_mem.return_value = 123
+    mock_get_instance_config.return_value.get_disk.return_value = 123
+    mock_get_instance_config.return_value.get_cpu.return_value = 123
     mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
+    mock_get_instance_config.return_value.get_docker_image.return_value = 'fake_docker_image'
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
@@ -321,7 +320,6 @@ def test_get_container_name(mock_get_username, mock_randint):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
@@ -329,12 +327,10 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
-    mock_socket_getfqdn,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
-    mock_socket_getfqdn.return_value = 'fake_hostname'
     mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
@@ -364,11 +360,11 @@ def test_configure_and_run_command_uses_cmd_from_config(
         docker_client=mock_docker_client,
         service=fake_service,
         instance=args.instance,
+        framework='marathon',
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
         command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
-        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -378,7 +374,6 @@ def test_configure_and_run_command_uses_cmd_from_config(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
@@ -386,11 +381,9 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
-    mock_socket_getfqdn,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_socket_getfqdn.return_value = 'fake_hostname'
     mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
@@ -420,11 +413,11 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         docker_client=mock_docker_client,
         service=fake_service,
         instance=args.instance,
+        framework='marathon',
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
         command=['bash'],
-        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -434,7 +427,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.docker_pull_image', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
@@ -444,11 +436,9 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_get_instance_config,
     mock_run_docker_container,
     mock_docker_pull_image,
-    mock_socket_getfqdn,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_socket_getfqdn.return_value = 'fake_hostname'
     mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
@@ -482,11 +472,11 @@ def test_configure_and_run_pulls_image_when_asked(
         docker_client=mock_docker_client,
         service=fake_service,
         instance=args.instance,
+        framework='marathon',
         docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
         command=['bash'],
-        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -500,20 +490,17 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
     with contextlib.nested(
         mock.patch('paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0),
         mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
     ) as (
         mock_stdin,
         mock_validate_service_instance,
-        mock_socket_get_fqdn,
         mock_run_docker_container,
         mock_get_default_interactive_config,
     ):
         mock_stdin.isatty.return_value = True
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-        mock_socket_get_fqdn.return_value = 'fake_hostname'
 
         mock_system_paasta_config = SystemPaastaConfig(
             {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
@@ -541,11 +528,11 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             docker_client=mock_docker_client,
             service='fake_service',
             instance='interactive',
+            framework='adhoc',
             docker_hash='fake_hash',
             volumes=[],
             interactive=True,
             command=['bash'],
-            hostname='fake_hostname',
             healthcheck=args.healthcheck,
             healthcheck_only=args.healthcheck_only,
             instance_config=mock_config,
@@ -617,11 +604,10 @@ def test_get_docker_run_cmd_without_additional_args():
     interactive = False
     docker_hash = '8' * 40
     command = None
-    hostname = 'fake_hostname'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
@@ -637,11 +623,10 @@ def test_get_docker_run_cmd_with_env_vars():
     interactive = False
     docker_hash = '8' * 40
     command = None
-    hostname = 'fake_hostname'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
     assert '--env="foo=bar"' in actual
     assert '--env="baz=qux"' in actual
     assert '--env="x= with spaces"' in actual
@@ -656,13 +641,11 @@ def test_get_docker_run_cmd_interactive_false():
     interactive = False
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    hostname = 'fake_hostname'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
 
-    assert any(['--env=MARATHON_PORT=%s' % random_port in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % random_port in arg for arg in actual])
     assert '--name=%s' % container_name in actual
@@ -683,11 +666,10 @@ def test_get_docker_run_cmd_interactive_true():
     interactive = True
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    hostname = 'fake_hostname'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
 
     assert '--interactive=true' in actual
     assert '--tty=true' in actual
@@ -702,13 +684,12 @@ def test_get_docker_run_docker_params():
     interactive = False
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    hostname = 'fake_hostname'
     net = 'bridge'
     docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
                      {'key': 'cpu-period', 'value': '200000'},
                      {'key': 'cpu-quota', 'value': '150000'}]
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
     assert '--memory-swap=555m' in actual
     assert '--cpu-period=200000' in actual
     assert '--cpu-quota=150000' in actual
@@ -723,11 +704,10 @@ def test_get_docker_run_cmd_host_networking():
     interactive = True
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    hostname = 'fake_hostname'
     net = 'host'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
-                                interactive, docker_hash, command, hostname, net, docker_params)
+                                interactive, docker_hash, command, net, docker_params)
 
     assert '--net=host' in actual
 
@@ -795,7 +775,6 @@ def test_run_docker_container_non_interactive(
         volumes=[],
         interactive=False,
         command='fake_command',
-        hostname='fake_hostname',
         healthcheck=False,
         healthcheck_only=False,
         instance_config=mock_service_manifest,
@@ -844,7 +823,6 @@ def test_run_docker_container_interactive(
         volumes=[],
         interactive=True,
         command='fake_command',
-        hostname='fake_hostname',
         healthcheck=False,
         healthcheck_only=False,
         instance_config=mock_service_manifest,
@@ -897,7 +875,6 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
         volumes=[],
         interactive=False,
         command='fake_command',
-        hostname='fake_hostname',
         healthcheck=False,
         healthcheck_only=False,
         instance_config=mock_service_manifest,
@@ -942,7 +919,6 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             volumes=[],
             interactive=False,
             command='fake_command',
-            hostname='fake_hostname',
             healthcheck=False,
             healthcheck_only=False,
             instance_config=mock_service_manifest,
@@ -987,7 +963,6 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             volumes=[],
             interactive=False,
             command='fake_command',
-            hostname='fake_hostname',
             healthcheck=False,
             healthcheck_only=True,
             instance_config=mock_service_manifest,
@@ -1040,7 +1015,6 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             volumes=[],
             interactive=False,
             command='fake_command',
-            hostname='fake_hostname',
             healthcheck=True,
             healthcheck_only=True,
             instance_config=mock_service_manifest,
@@ -1092,7 +1066,6 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
             volumes=[],
             interactive=False,
             command='fake_command',
-            hostname='fake_hostname',
             healthcheck=True,
             healthcheck_only=True,
             instance_config=mock_service_manifest,
@@ -1314,3 +1287,66 @@ def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_ti
 def test_command_function_for_framework_throws_error():
     with raises(ValueError):
         assert command_function_for_framework('bogus_string')
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True, return_value='fake_host')
+def test_get_local_run_environment_vars_marathon(
+    mock_getfqdn,
+):
+    mock_instance_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_instance_config.get_mem.return_value = 123
+    mock_instance_config.get_disk.return_value = 123
+    mock_instance_config.get_cpus.return_value = 123
+    mock_instance_config.get_docker_image.return_value = 'fake_docker_image'
+
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config,
+        port0=1234,
+        framework='marathon',
+    )
+    assert actual['MARATHON_PORT'] == '1234'
+    assert actual['MARATHON_PORT0'] == '1234'
+    assert actual['MARATHON_HOST'] == 'fake_host'
+    assert actual['MARATHON_APP_RESOURCE_CPUS'] == '123'
+    assert actual['MARATHON_APP_RESOURCE_MEM'] == '123'
+    assert actual['MARATHON_APP_RESOURCE_DISK'] == '123'
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True, return_value='fake_host')
+def test_get_local_run_environment_vars_chronos(
+    mock_getfqdn,
+):
+    mock_instance_config = mock.MagicMock(spec_set=ChronosJobConfig)
+    mock_instance_config.get_mem.return_value = 123
+    mock_instance_config.get_disk.return_value = 123
+    mock_instance_config.get_cpus.return_value = 123
+    mock_instance_config.get_docker_image.return_value = 'fake_docker_image'
+
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config,
+        port0=None,
+        framework='chronos',
+    )
+    assert 'MARATHON_PORT' not in actual
+    assert actual['CHRONOS_RESOURCE_CPU'] == '123'
+    assert actual['CHRONOS_RESOURCE_MEM'] == '123'
+    assert actual['CHRONOS_RESOURCE_DISK'] == '123'
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True, return_value='fake_host')
+def test_get_local_run_environment_vars_other(
+    mock_getfqdn,
+):
+    mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
+    mock_instance_config.get_mem.return_value = 123
+    mock_instance_config.get_disk.return_value = 123
+    mock_instance_config.get_cpus.return_value = 123
+    mock_instance_config.get_docker_image.return_value = 'fake_docker_image'
+
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config,
+        port0=1234,
+        framework='adhoc',
+    )
+    assert actual['PAASTA_DOCKER_IMAGE'] == 'fake_docker_image'
+    assert 'MARATHON_PORT' not in actual
