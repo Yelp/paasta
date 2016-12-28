@@ -555,10 +555,10 @@ def run_docker_container(
         def _output_on_failure():
             returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
             paasta_print('Container exited: %d)' % returncode)
-            paasta_print('Here is the stdout and stderr:\n')
-            paasta_print(PaastaColors.grey(
+            paasta_print('Here is the stdout and stderr:\n\n')
+            paasta_print(
                 docker_client.attach(container_id, stderr=True, stream=False, logs=True)
-            ))
+            )
 
         if healthcheck_only:
             if container_started:
@@ -576,7 +576,7 @@ def run_docker_container(
         if running:
             paasta_print('Your service is now running! Tailing stdout and stderr:')
             for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
-                paasta_print(PaastaColors.grey(line))
+                paasta_print(line)
         else:
             _output_on_failure()
             returncode = 3
