@@ -402,7 +402,7 @@ def validate_service_instance(service, instance, cluster, soa_dir):
             return instance_type
     else:
         raise NoConfigurationForServiceError(
-            "Error: %s doesn't look like it has been deployed to this cluster! (%s)" % (
+            "Error: %s doesn't look like it has been configured to run on the %s cluster." % (
                 compose_job_id(service, instance), cluster))
 
 
