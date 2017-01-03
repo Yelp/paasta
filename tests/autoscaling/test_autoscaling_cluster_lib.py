@@ -42,6 +42,16 @@ def is_resource_cancelled_sideeffect(self):
     return False
 
 
+def test_get_instances_from_ip():
+    mock_instances = []
+    ret = autoscaling_cluster_lib.get_instances_from_ip('10.1.1.1', mock_instances)
+    assert ret == []
+
+    mock_instances = [{'InstanceId': 'i-blah', 'PrivateIpAddress': '10.1.1.1'}]
+    ret = autoscaling_cluster_lib.get_instances_from_ip('10.1.1.1', mock_instances)
+    assert ret == mock_instances
+
+
 def test_autoscale_local_cluster():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True),
@@ -170,7 +180,7 @@ class TestAsgAutoscaler(unittest.TestCase):
 
     def test_get_instance_type_weights_asg(self):
         ret = self.autoscaler.get_instance_type_weights()
-        assert ret['c4.thing'] == 1
+        assert ret is None
 
     def test_get_asg_delta(self):
         self.autoscaler.resource = {
@@ -676,8 +686,8 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_set_capacity.assert_called_with(self.autoscaler, 4)
 
             # test scale down
-            mock_slave_1 = {'instance_weight': 1}
-            mock_slave_2 = {'instance_weight': 2}
+            mock_slave_1 = mock.Mock(instance_weight=1)
+            mock_slave_2 = mock.Mock(instance_weight=2)
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
             mock_filter_aws_slaves.return_value = mock_sfr_sorted_slaves_1
             self.autoscaler.scale_resource(5, 2)
@@ -708,10 +718,12 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
             mock_get_mesos_master.return_value = mock_master
-            mock_slave_1 = {'hostname': 'host1', 'instance_id': 'i-blah123',
-                            'instance_weight': 1}
-            mock_slave_2 = {'hostname': 'host2', 'instance_id': 'i-blah456',
-                            'instance_weight': 2}
+            mock_slave_1 = mock.Mock(hostname='host1',
+                                     instance_id='i-blah123',
+                                     instance_weight=1)
+            mock_slave_2 = mock.Mock(hostname='host2',
+                                     instance_id='i-blah456',
+                                     instance_weight=2)
             self.autoscaler.resource = {'type': 'aws_spot_fleet_request', 'sfr': {'SpotFleetRequestState': 'active'}}
             mock_filtered_slaves = mock.Mock()
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
@@ -790,8 +802,9 @@ class TestClusterAutoscaler(unittest.TestCase):
             # test non integer scale down
             # this should result in killing 3 instances,
             # leaving us on 7.1 provisioned of target 7
-            mock_slave_1 = {'hostname': 'host1', 'instance_id': 'i-blah123',
-                            'instance_weight': 0.3}
+            mock_slave_1 = mock.Mock(hostname='host1',
+                                     instance_id='i-blah123',
+                                     instance_weight=0.3)
             mock_gracefully_terminate_slave.side_effect = None
             mock_gracefully_terminate_slave.reset_mock()
             mock_get_mesos_task_count_by_slave.reset_mock()
@@ -824,9 +837,11 @@ class TestClusterAutoscaler(unittest.TestCase):
             self.autoscaler.resource = {'id': 'sfr-blah', 'region': 'westeros-1', 'type': 'sfr'}
             mock_time.return_value = int(1)
             mock_start = (1 + 123) * 1000000000
-            mock_slave = {'hostname': 'host1', 'instance_id': 'i-blah123',
-                          'pid': 'slave(1)@10.1.1.1:5051', 'instance_weight': 1,
-                          'ip': '10.1.1.1'}
+            mock_slave = mock.Mock(hostname='host1',
+                                   instance_id='i-blah123',
+                                   pid='slave(1)@10.1.1.1:5051',
+                                   instance_weight=1,
+                                   ip='10.1.1.1')
             self.autoscaler.gracefully_terminate_slave(
                 slave_to_kill=mock_slave,
                 current_capacity=5,
@@ -878,15 +893,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert not mock_set_capacity.called
             assert not mock_wait_and_terminate.called
 
-    def test_get_instances_from_ip(self):
-        mock_instances = []
-        ret = self.autoscaler.get_instances_from_ip('10.1.1.1', mock_instances)
-        assert ret == []
-
-        mock_instances = [{'InstanceId': 'i-blah', 'PrivateIpAddress': '10.1.1.1'}]
-        ret = self.autoscaler.get_instances_from_ip('10.1.1.1', mock_instances)
-        assert ret == mock_instances
-
     def test_wait_and_terminate(self):
         with contextlib.nested(
             mock.patch('boto3.client', autospec=True),
@@ -901,8 +907,10 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
 
             mock_is_safe_to_kill.return_value = True
-            mock_slave_to_kill = {'ip': '10.1.1.1', 'instance_id': 'i-blah123', 'pid': 'slave(1)@10.1.1.1:5051',
-                                  'hostname': 'hostblah'}
+            mock_slave_to_kill = mock.Mock(hostname='hostblah',
+                                           instance_id='i-blah123',
+                                           pid='slave(1)@10.1.1.1:5051',
+                                           ip='10.1.1.1')
             self.autoscaler.wait_and_terminate(mock_slave_to_kill, 600, False, region='westeros-1')
             mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
             mock_is_safe_to_kill.assert_called_with('hostblah')
@@ -940,28 +948,33 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_describe_instances.assert_called_with(self.autoscaler, ['i-blah1', 'i-blah2'], region='westeros-1')
             assert ret == ['10.1.1.1', '10.2.2.2']
 
+    def mock_pid_to_ip_side(self, pid):
+        if pid == 'slave(1)@10.1.1.1:5051':
+            return '10.1.1.1'
+        elif pid == 'slave(2)@10.2.2.2:5051':
+            return '10.2.2.2'
+        elif pid == 'slave(3)@10.3.3.3:5051':
+            return '10.3.3.3'
+
     def test_filter_aws_slaves(self):
         with contextlib.nested(
             mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_ips',
                        autospec=True),
             mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instances_from_ip',
-                       autospec=True),
             mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
                        autospec=True),
             mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_type_weights',
                        autospec=True),
+            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.PaastaAwsSlave', autospec=True)
         ) as (
             mock_get_instance_ips,
             mock_pid_to_ip,
-            mock_get_instances_from_ip,
             mock_describe_instances,
-            mock_get_instance_type_weights
+            mock_get_instance_type_weights,
+            mock_paasta_aws_slave
         ):
             mock_get_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
-            mock_pid_to_ip.side_effect = ['10.1.1.1', '10.2.2.2', '10.3.3.3',
-                                          '10.1.1.1', '10.3.3.3', '10.1.1.1', '10.3.3.3']
-            mock_get_instances_from_ip.side_effect = [[{'InstanceId': 'i-1'}], [{'InstanceId': 'i-3'}]]
+            mock_pid_to_ip.side_effect = self.mock_pid_to_ip_side
             mock_instances = [{'InstanceId': 'i-1',
                                'InstanceType': 'c4.blah'},
                               {'InstanceId': 'i-2',
@@ -981,38 +994,22 @@ class TestClusterAutoscaler(unittest.TestCase):
                                                           count=0, chronos_count=0)}
 
             mock_sfr_sorted_slaves = [mock_slave_1, mock_slave_2, mock_slave_3]
-            mock_get_instance_call_1 = mock.call(self.autoscaler, '10.1.1.1', mock_instances)
-            mock_get_instance_call_3 = mock.call(self.autoscaler, '10.3.3.3', mock_instances)
             mock_get_ip_call_1 = mock.call('slave(1)@10.1.1.1:5051')
             mock_get_ip_call_2 = mock.call('slave(2)@10.2.2.2:5051')
             mock_get_ip_call_3 = mock.call('slave(3)@10.3.3.3:5051')
-            mock_get_instance_type_weights.return_value = {'c4.blah': 2, 'm4.whatever': 5}
+
             ret = self.autoscaler.filter_aws_slaves(mock_sfr_sorted_slaves)
+
             mock_get_instance_ips.assert_called_with(self.autoscaler, mock_instances, region='westeros-1')
-            mock_pid_to_ip.assert_has_calls([mock_get_ip_call_1, mock_get_ip_call_2, mock_get_ip_call_3,
-                                             mock_get_ip_call_1, mock_get_ip_call_3])
-            mock_get_instances_from_ip.assert_has_calls([mock_get_instance_call_1, mock_get_instance_call_3])
+            mock_pid_to_ip.assert_has_calls([mock_get_ip_call_1, mock_get_ip_call_2, mock_get_ip_call_3])
             mock_describe_instances.assert_called_with(self.autoscaler, [], region='westeros-1',
                                                        instance_filters=[{'Values': ['10.1.1.1', '10.3.3.3'],
                                                                           'Name': 'private-ip-address'}])
             mock_get_instance_type_weights.assert_called_with(self.autoscaler)
-            expected = [{'pid': 'slave(1)@10.1.1.1:5051',
-                         'instance_id': 'i-1',
-                         'id': '123',
-                         'instance_type': 'c4.blah',
-                         'task_counts': mock_slave_1['task_counts'],
-                         'hostname': 'host123',
-                         'ip': '10.1.1.1',
-                         'instance_weight': 2},
-                        {'pid': 'slave(3)@10.3.3.3:5051',
-                         'instance_id': 'i-3',
-                         'id': '789',
-                         'instance_type': 'm4.whatever',
-                         'task_counts': mock_slave_3['task_counts'],
-                         'hostname': 'host789',
-                         'ip': '10.3.3.3',
-                         'instance_weight': 5}]
-            assert ret == expected
+            mock_aws_slave_call_1 = mock.call(mock_slave_1, mock_instances, mock_get_instance_type_weights.return_value)
+            mock_aws_slave_call_2 = mock.call(mock_slave_3, mock_instances, mock_get_instance_type_weights.return_value)
+            mock_paasta_aws_slave.assert_has_calls([mock_aws_slave_call_1, mock_aws_slave_call_2])
+            assert len(ret) == 2
 
     def test_get_aws_slaves(self):
         with contextlib.nested(
@@ -1095,3 +1092,60 @@ class TestClusterAutoscaler(unittest.TestCase):
                                         'pid': 'pid3'}]}
         ret = self.autoscaler.get_pool_slaves(mock_mesos_state)
         assert ret == {'id1': mock_mesos_state['slaves'][0]}
+
+
+class TestPaastaAwsSlave(unittest.TestCase):
+
+    def setUp(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip', autospec=True),
+        ) as (
+            mock_get_instances_from_ip,
+        ):
+            mock_get_instances_from_ip.return_value = [{'InstanceId': 'i-1'}]
+            self.mock_instances = [{'InstanceId': 'i-1',
+                                    'InstanceType': 'c4.blah'},
+                                   {'InstanceId': 'i-2',
+                                    'InstanceType': 'm4.whatever'},
+                                   {'InstanceId': 'i-3',
+                                    'InstanceType': 'm4.whatever'}]
+            self.mock_slave_1 = {'task_counts': SlaveTaskCount(slave={'pid': 'slave(1)@10.1.1.1:5051', 'id': '123',
+                                                                      'hostname': 'host123'},
+                                                               count=0, chronos_count=0)}
+            mock_instance_type_weights = {'c4.blah': 2, 'm4.whatever': 5}
+            self.mock_slave = autoscaling_cluster_lib.PaastaAwsSlave(self.mock_slave_1,
+                                                                     self.mock_instances,
+                                                                     mock_instance_type_weights)
+            self.mock_asg_slave = autoscaling_cluster_lib.PaastaAwsSlave(self.mock_slave_1,
+                                                                         self.mock_instances,
+                                                                         None)
+            mock_get_instances_from_ip.return_value = []
+            self.mock_slave_no_instance = autoscaling_cluster_lib.PaastaAwsSlave(self.mock_slave_1,
+                                                                                 self.mock_instances,
+                                                                                 None)
+            mock_get_instances_from_ip.return_value = [{'InstanceId': 'i-1'}, {'InstanceId': 'i-2'}]
+            self.mock_slave_extra_instance = autoscaling_cluster_lib.PaastaAwsSlave(self.mock_slave_1,
+                                                                                    self.mock_instances,
+                                                                                    None)
+
+    def test_instance(self):
+        assert self.mock_slave.instance == {'InstanceId': 'i-1'}
+        assert self.mock_slave_no_instance.instance is None
+        with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
+            self.mock_slave_extra_instance.instance
+
+    def test_instance_id(self):
+        assert self.mock_slave.instance_id == 'i-1'
+
+    def test_hostname(self):
+        assert self.mock_slave.hostname == 'host123'
+
+    def test_pid(self):
+        assert self.mock_slave.pid == 'slave(1)@10.1.1.1:5051'
+
+    def test_instance_type(self):
+        assert self.mock_slave.instance_type == 'c4.blah'
+
+    def test_instance_weight(self):
+        assert self.mock_slave.instance_weight == 2
+        assert self.mock_asg_slave.instance_weight == 1

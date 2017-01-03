@@ -100,15 +100,6 @@ class ClusterAutoscaler(object):
                             " terminated".format(instance['InstanceId']))
         return instance_ips
 
-    def get_instances_from_ip(self, ip, instance_descriptions):
-        """Filter AWS instance_descriptions based on PrivateIpAddress
-
-        :param ip: private IP of AWS instance.
-        :param instance_descriptions: list of AWS instance description dicts.
-        :returns: list of instance description dicts"""
-        instances = [instance for instance in instance_descriptions if instance['PrivateIpAddress'] == ip]
-        return instances
-
     def cleanup_cancelled_config(self, resource_id, config_folder, dry_run=False):
         file_name = "{0}.json".format(resource_id)
         configs_to_delete = [os.path.join(walk[0], file_name)
@@ -186,16 +177,16 @@ class ClusterAutoscaler(object):
             # being true. Just in case though we set a timeout and terminate anyway
             with Timeout(seconds=drain_timeout + 300):
                 while True:
-                    instance_id = slave['instance_id']
+                    instance_id = slave.instance_id
                     if not instance_id:
-                        log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave['pid']))
+                        log.warning("Didn't find instance ID for slave: {0}. Skipping terminating".format(slave.pid))
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
-                    if is_safe_to_kill(slave['hostname']) or dry_run:
+                    if is_safe_to_kill(slave.hostname) or dry_run:
                         log.info("TERMINATING: {0} (Hostname = {1}, IP = {2})".format(
                             instance_id,
-                            slave['hostname'],
-                            slave['ip'],
+                            slave.hostname,
+                            slave.ip,
                         ))
                         try:
                             ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
@@ -211,7 +202,7 @@ class ClusterAutoscaler(object):
                     time.sleep(5)
         except TimeoutError:
             log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(drain_timeout,
-                                                                                                slave['pid']))
+                                                                                                slave.pid))
             try:
                 ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
             except ClientError as e:
@@ -252,7 +243,7 @@ class ClusterAutoscaler(object):
             mesos_state = get_mesos_master().state_summary()
             slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
-            killable_capacity = sum([slave['instance_weight'] for slave in filtered_slaves])
+            killable_capacity = sum([slave.instance_weight for slave in filtered_slaves])
             amount_to_decrease = delta * -1
             if amount_to_decrease > killable_capacity:
                 log.error("Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!")
@@ -270,14 +261,14 @@ class ClusterAutoscaler(object):
         # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
         # do anything at the end of the maintenance window.
         duration = 600 * 1000000000  # nanoseconds
-        log.info("Draining {0}".format(slave_to_kill['pid']))
+        log.info("Draining {0}".format(slave_to_kill.pid))
         if not self.dry_run:
             try:
-                drain_host_string = "{0}|{1}".format(slave_to_kill['hostname'], slave_to_kill['ip'])
+                drain_host_string = "{0}|{1}".format(slave_to_kill.hostname, slave_to_kill.ip)
                 drain([drain_host_string], start, duration)
             except HTTPError as e:
                 log.error("Failed to start drain "
-                          "on {0}: {1}\n Trying next host".format(slave_to_kill['hostname'], e))
+                          "on {0}: {1}\n Trying next host".format(slave_to_kill.hostname, e))
                 raise
         log.info("Decreasing resource from {0} to: {1}".format(current_capacity, new_capacity))
         # Instance weights can be floats but the target has to be an integer
@@ -287,7 +278,7 @@ class ClusterAutoscaler(object):
             self.set_capacity(new_capacity)
         except FailSetResourceCapacity:
             log.error("Couldn't update resource capacity, stopping autoscaler")
-            log.info("Undraining {0}".format(slave_to_kill['pid']))
+            log.info("Undraining {0}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
             raise
@@ -295,11 +286,11 @@ class ClusterAutoscaler(object):
         try:
             self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
         except ClientError as e:
-            log.error("Failure when terminating: {0}: {1}".format(slave_to_kill['pid'], e))
+            log.error("Failure when terminating: {0}: {1}".format(slave_to_kill.pid, e))
             log.error("Setting resource capacity back to {0}".format(current_capacity))
             self.set_capacity(current_capacity)
         finally:
-            log.info("Undraining {0}".format(slave_to_kill['pid']))
+            log.info("Undraining {0}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
 
@@ -311,32 +302,9 @@ class ClusterAutoscaler(object):
         instance_descriptions = self.describe_instances([], region=self.resource['region'],
                                                         instance_filters=[{'Name': 'private-ip-address',
                                                                            'Values': slave_ips}])
-        slave_instances = []
-        for slave in slaves:
-            ip = slave_pid_to_ip(slave['task_counts'].slave['pid'])
-            instances = self.get_instances_from_ip(ip, instance_descriptions)
-            if not instances:
-                log.warning("Couldn't find instance for ip {0}".format(ip))
-                continue
-            if len(instances) > 1:
-                log.error("Found more than one instance with the same private IP {0}. "
-                          "This should never happen")
-                continue
-            slave_instances.append({'ip': ip,
-                                    'task_counts': slave['task_counts'],
-                                    'hostname': slave['task_counts'].slave['hostname'],
-                                    'id': slave['task_counts'].slave['id'],
-                                    'pid': slave['task_counts'].slave['pid'],
-                                    'instance_id': instances[0]['InstanceId']})
-        ret = []
         instance_type_weights = self.get_instance_type_weights()
-        for slave in slave_instances:
-            instance_description = [instance_description for instance_description in instance_descriptions
-                                    if instance_description['InstanceId'] == slave['instance_id']][0]
-            slave['instance_type'] = instance_description['InstanceType']
-            slave['instance_weight'] = instance_type_weights[slave['instance_type']]
-            ret.append(slave)
-        return ret
+        slave_instances = [PaastaAwsSlave(slave, instance_descriptions, instance_type_weights) for slave in slaves]
+        return slave_instances
 
     def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
@@ -345,16 +313,16 @@ class ClusterAutoscaler(object):
             if len(filtered_sorted_slaves) == 0:
                 log.info("ALL slaves killed so moving on to next resource!")
                 break
-            log.info("Resource slave kill preference: {0}".format([slave['hostname']
+            log.info("Resource slave kill preference: {0}".format([slave.hostname
                                                                    for slave in filtered_sorted_slaves]))
             filtered_sorted_slaves.reverse()
             slave_to_kill = filtered_sorted_slaves.pop()
-            instance_capacity = slave_to_kill['instance_weight']
+            instance_capacity = slave_to_kill.instance_weight
             new_capacity = current_capacity - instance_capacity
             if new_capacity < target_capacity:
                 log.info("Terminating instance {0} with weight {1} would take us below our target of {2}, so this is as"
-                         " close to our target as we can get".format(slave_to_kill['instance_id'],
-                                                                     slave_to_kill['instance_weight'],
+                         " close to our target as we can get".format(slave_to_kill.instance_id,
+                                                                     slave_to_kill.instance_weight,
                                                                      target_capacity))
                 if self.resource['type'] == 'aws_spot_fleet_request' and killed_slaves == 0:
                     log.info("This is a SFR so we must kill at least one slave to prevent the autoscaler "
@@ -619,12 +587,9 @@ class AsgAutoscaler(ClusterAutoscaler):
         return not self.asg
 
     def get_instance_type_weights(self):
-        return StaticWeight()
-
-
-class StaticWeight:
-    def __getattr__(self, attr):
-        return lambda x: 1
+        # None means that all instances will be
+        # assumed to have a weight of 1
+        return None
 
 
 class ClusterAutoscalingError(Exception):
@@ -633,6 +598,58 @@ class ClusterAutoscalingError(Exception):
 
 class FailSetResourceCapacity(Exception):
     pass
+
+
+class PaastaAwsSlave(object):
+    """
+    Defines a slave object for use by the autoscaler, containing the mesos slave
+    object from mesos state and some properties from AWS
+    """
+
+    def __init__(self, slave, instance_descriptions, instance_type_weights=None):
+        self.wrapped_slave = slave
+        self.instance_descriptions = instance_descriptions
+        self.instance_type_weights = instance_type_weights
+        self.task_counts = slave['task_counts']
+        self.slave = self.task_counts.slave
+        self.ip = slave_pid_to_ip(self.slave['pid'])
+        self.instances = get_instances_from_ip(self.ip, self.instance_descriptions)
+
+    @property
+    def instance(self):
+        if not self.instances:
+            log.warning("Couldn't find instance for ip {0}".format(self.ip))
+            return None
+        if len(self.instances) > 1:
+            log.error("Found more than one instance with the same private IP {0}. "
+                      "This should never happen")
+            raise ClusterAutoscalingError
+        return self.instances[0]
+
+    @property
+    def instance_id(self):
+        return self.instance['InstanceId']
+
+    @property
+    def hostname(self):
+        return self.slave['hostname']
+
+    @property
+    def pid(self):
+        return self.slave['pid']
+
+    @property
+    def instance_type(self):
+        instance_description = [instance_description for instance_description in self.instance_descriptions
+                                if instance_description['InstanceId'] == self.instance_id][0]
+        return instance_description['InstanceType']
+
+    @property
+    def instance_weight(self):
+        if self.instance_type_weights:
+            return self.instance_type_weights[self.instance_type]
+        else:
+            return 1
 
 
 def autoscale_local_cluster(config_folder, dry_run=False):
@@ -677,3 +694,13 @@ def autoscale_cluster_resource(scaler):
         scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (scaler.resource['id'], e))
+
+
+def get_instances_from_ip(ip, instance_descriptions):
+    """Filter AWS instance_descriptions based on PrivateIpAddress
+
+    :param ip: private IP of AWS instance.
+    :param instance_descriptions: list of AWS instance description dicts.
+    :returns: list of instance description dicts"""
+    instances = [instance for instance in instance_descriptions if instance['PrivateIpAddress'] == ip]
+    return instances
