@@ -66,12 +66,12 @@ class ClusterAutoscaler(object):
     def describe_instances(self, instance_ids, region=None, instance_filters=None):
         """This wraps ec2.describe_instances and catches instance not
         found errors. It returns a list of instance description
-        dictionaries. It assumes one instance per reservation (which
-        seems to be the case for SFRs) Optionally, a filter can be
-        passed through to the ec2 call
+        dictionaries.  Optionally, a filter can be passed through to
+        the ec2 call
 
         :param instance_ids: a list of instance ids, [] means all
         :param instance_filters: a list of ec2 filters
+        :param region to connect to ec2
         :returns: a list of instance description dictionaries"""
         if not instance_filters:
             instance_filters = []
@@ -176,6 +176,9 @@ class ClusterAutoscaler(object):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
+        :param drain_timeout: how long to wait before terminating
+            even if not drained
+        :param region to connect to ec2
         :param dry_run: Don't drain or make changes to spot fleet if True"""
         ec2_client = boto3.client('ec2', region_name=region)
         try:
@@ -227,17 +230,15 @@ class ClusterAutoscaler(object):
         return sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))
 
     def scale_resource(self, current_capacity, target_capacity):
-        """Scales a spot fleet request by delta to reach target capacity
+        """Scales an AWS resource based on current and target capacity
         If scaling up we just set target capacity and let AWS take care of the rest
         If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
         mode and drain them (via paasta_maintenance and setup_marathon_jobs). We then kill
         them once they are running 0 tasks or once a timeout is reached
 
-        :param resource: resource to scale
-        :param current_capacity: integer current SFR capacity
-        :param target_capacity: target SFR capacity
-        :param pool_settings: pool settings dict with timeout settings
-        :param dry_run: Don't drain or make changes to spot fleet if True"""
+        :param current_capacity: integer current resource capacity
+        :param target_capacity: target resource capacity
+        """
         target_capacity = int(target_capacity)
         delta = target_capacity - current_capacity
         if delta == 0:
