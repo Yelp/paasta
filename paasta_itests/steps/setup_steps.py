@@ -249,7 +249,7 @@ def write_soa_dir_deployments(context, service, disabled, instance):
 def modify_configs(context, field, framework, service, instance, value):
     soa_dir = context.soa_dir
     with open(os.path.join(soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
-        data = yaml.load(f.read())
+        data = yaml.safe_load(f.read())
         data[instance][field] = value
         f.seek(0)
         f.write(yaml.safe_dump(data))

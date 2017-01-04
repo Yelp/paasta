@@ -1305,7 +1305,7 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
 
 
 def parse_yaml_file(yaml_file):
-    return yaml.load(open(yaml_file))
+    return yaml.safe_load(open(yaml_file))
 
 
 def get_docker_host():
