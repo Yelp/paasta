@@ -1693,19 +1693,19 @@ def prompt_pick_one(sequence, choosing):
         )
         sys.exit(1)
 
-    QUIT_ACTION = 'Quit'
-    global_actions = [QUIT_ACTION]
-    choices = [(item, item) for item in sequence]
+    global_actions = [str('quit')]
+    choices = [(str(item), str(item)) for item in sequence]
 
-    chooser = choice.Menu(choices, global_actions=global_actions)
-    chooser.title = 'Please pick a {choosing} from the choices below:'.format(choosing=choosing)
+    chooser = choice.Menu(choices=choices, global_actions=global_actions)
+    chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
+        choosing=str(choosing))
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
         paasta_print('')
         sys.exit(1)
 
-    if isinstance(result, tuple) and result[1] == QUIT_ACTION:
+    if isinstance(result, tuple) and result[1] == str('quit'):
         sys.exit(1)
     else:
         return result

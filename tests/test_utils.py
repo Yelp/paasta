@@ -1547,7 +1547,7 @@ def test_mean():
     assert utils.mean(iterable) == 2.0
 
 
-def test_prompt_pick_one():
+def test_prompt_pick_one_happy():
     with contextlib.nested(
         mock.patch('paasta_tools.utils.sys.stdin', autospec=True),
         mock.patch('paasta_tools.utils.choice.Menu', autospec=True),
@@ -1569,7 +1569,7 @@ def test_prompt_pick_one_quit():
         mock_menu,
     ):
         mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'Quit')))
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'quit')))
         with raises(SystemExit):
             utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
 
