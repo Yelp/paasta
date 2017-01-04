@@ -28,7 +28,7 @@ def _get_smartstack_proxy_port_from_file(root, file):
     """
     port = 0
     with open(os.path.join(root, file)) as f:
-        data = yaml.load(f)
+        data = yaml.safe_load(f)
 
     if file.endswith('service.yaml') and 'smartstack' in data:
         # Specifying this in service.yaml is old and deprecated and doesn't

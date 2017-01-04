@@ -92,7 +92,7 @@ def get_proxy_port(service_name, instance_name):
     proxy_port = None
     if os.path.exists(smartstack_yaml):
         with open(smartstack_yaml, 'r') as stream:
-            data = yaml.load(stream)
+            data = yaml.safe_load(stream)
             if instance_name in data:
                 proxy_port = data[instance_name].get('proxy_port', None)
     return proxy_port

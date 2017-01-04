@@ -105,7 +105,7 @@ def validate_schema(file_path, file_type):
         paasta_print('%s: %s' % (FAILED_READING_FILE, file_path))
         return False
     if extension == '.yaml':
-        config_file_object = yaml.load(config_file)
+        config_file_object = yaml.safe_load(config_file)
     elif extension == '.json':
         config_file_object = json.loads(config_file)
     else:
