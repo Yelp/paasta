@@ -322,6 +322,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_socket_getfqdn.return_value = 'fake_hostname'
+    mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
@@ -336,7 +337,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.interactive = False
     args.dry_run_json_dict = False
 
-    assert configure_and_run_docker_container(
+    return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=docker_hash,
         service=fake_service,
@@ -344,7 +345,8 @@ def test_configure_and_run_command_uses_cmd_from_config(
         cluster='fake_cluster',
         system_paasta_config=mock_system_paasta_config,
         args=args,
-    ) is None
+    )
+    assert return_code == 0
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -376,6 +378,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_socket_getfqdn.return_value = 'fake_hostname'
+    mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
@@ -390,7 +393,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.interactive = True
     args.dry_run_json_dict = False
 
-    assert configure_and_run_docker_container(
+    return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=docker_hash,
         service=fake_service,
@@ -398,7 +401,8 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         cluster='fake_cluster',
         system_paasta_config=mock_system_paasta_config,
         args=args,
-    ) is None
+    )
+    assert return_code == 0
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -432,6 +436,7 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_socket_getfqdn.return_value = 'fake_hostname'
+    mock_run_docker_container.return_value = 0
 
     mock_system_paasta_config = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
@@ -448,7 +453,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.interactive = True
     args.dry_run_json_dict = False
 
-    assert configure_and_run_docker_container(
+    return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=None,
         service=fake_service,
@@ -457,7 +462,8 @@ def test_configure_and_run_pulls_image_when_asked(
         args=args,
         system_paasta_config=mock_system_paasta_config,
         pull_image=True,
-    ) is None
+    )
+    assert return_code == 0
     mock_docker_pull_image.assert_called_once_with('fake_registry/fake_image')
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
@@ -482,7 +488,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
         mock.patch('paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0),
         mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
     ) as (
         mock_stdin,
@@ -508,7 +514,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
-        assert configure_and_run_docker_container(
+        return_code = configure_and_run_docker_container(
             docker_client=mock_docker_client,
             docker_hash='fake_hash',
             service='fake_service',
@@ -516,7 +522,8 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             cluster='fake_cluster',
             args=args,
             system_paasta_config=mock_system_paasta_config,
-        ) is None
+        )
+        assert return_code == 0
         mock_run_docker_container.assert_called_once_with(
             docker_client=mock_docker_client,
             service='fake_service',
@@ -767,31 +774,30 @@ def test_run_docker_container_non_interactive(
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 666, 'Running': True}}
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    with raises(SystemExit) as excinfo:
-        run_docker_container(
-            docker_client=mock_docker_client,
-            service='fake_service',
-            instance='fake_instance',
-            docker_hash='fake_hash',
-            volumes=[],
-            interactive=False,
-            command='fake_command',
-            hostname='fake_hostname',
-            healthcheck=False,
-            healthcheck_only=False,
-            instance_config=mock_service_manifest,
-        )
-        mock_service_manifest.get_mem.assert_called_once_with()
-        mock_pick_random_port.assert_called_once_with()
-        assert mock_get_docker_run_cmd.call_count == 1
-        assert mock_get_healthcheck_for_instance.call_count == 1
-        assert mock_execlp.call_count == 0
-        assert mock_run.call_count == 1
-        assert mock_get_container_id.call_count == 1
-        assert mock_docker_client.attach.call_count == 1
-        assert mock_docker_client.stop.call_count == 1
-        assert mock_docker_client.remove_container.call_count == 1
-        assert excinfo.value.code == 666
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service='fake_service',
+        instance='fake_instance',
+        docker_hash='fake_hash',
+        volumes=[],
+        interactive=False,
+        command='fake_command',
+        hostname='fake_hostname',
+        healthcheck=False,
+        healthcheck_only=False,
+        instance_config=mock_service_manifest,
+    )
+    mock_service_manifest.get_mem.assert_called_once_with()
+    mock_pick_random_port.assert_called_once_with()
+    assert mock_get_docker_run_cmd.call_count == 1
+    assert mock_get_healthcheck_for_instance.call_count == 1
+    assert mock_execlp.call_count == 0
+    assert mock_run.call_count == 1
+    assert mock_get_container_id.call_count == 1
+    assert mock_docker_client.attach.call_count == 1
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+    assert return_code == 666
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
@@ -817,7 +823,7 @@ def test_run_docker_container_interactive(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    run_docker_container(
+    return_code = run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
@@ -840,6 +846,7 @@ def test_run_docker_container_interactive(
     assert mock_docker_client.attach.call_count == 0
     assert mock_docker_client.stop.call_count == 0
     assert mock_docker_client.remove_container.call_count == 0
+    assert return_code == 0
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
@@ -869,23 +876,22 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
-    with raises(SystemExit) as excinfo:
-        run_docker_container(
-            docker_client=mock_docker_client,
-            service='fake_service',
-            instance='fake_instance',
-            docker_hash='fake_hash',
-            volumes=[],
-            interactive=False,
-            command='fake_command',
-            hostname='fake_hostname',
-            healthcheck=False,
-            healthcheck_only=False,
-            instance_config=mock_service_manifest,
-        )
-        assert mock_docker_client.stop.call_count == 1
-        assert mock_docker_client.remove_container.call_count == 1
-        assert excinfo.value.code == 99
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service='fake_service',
+        instance='fake_instance',
+        docker_hash='fake_hash',
+        volumes=[],
+        interactive=False,
+        command='fake_command',
+        hostname='fake_hostname',
+        healthcheck=False,
+        healthcheck_only=False,
+        instance_config=mock_service_manifest,
+    )
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+    assert return_code == 99
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)

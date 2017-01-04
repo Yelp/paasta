@@ -507,7 +507,7 @@ def run_docker_container(
             paasta_print(json.dumps(docker_run_args))
         else:
             paasta_print(json.dumps(docker_run_cmd))
-        sys.exit(0)
+        return 0
     else:
         paasta_print('Running docker command:\n%s' % PaastaColors.grey(joined_docker_run_cmd))
 
@@ -517,7 +517,7 @@ def run_docker_container(
         execlp('docker', *docker_run_cmd)
         # For testing, when execlp is patched out and doesn't replace us, we
         # still want to bail out.
-        return
+        return 0
 
     container_started = False
     container_id = None
@@ -588,7 +588,7 @@ def run_docker_container(
     if container_started:
         returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
         _cleanup_container(docker_client, container_id)
-    sys.exit(returncode)
+    return returncode
 
 
 def command_function_for_framework(framework):
@@ -637,13 +637,13 @@ def configure_and_run_docker_container(
             "With --healthcheck-only, --instance MUST be provided!",
             file=sys.stderr,
         )
-        sys.exit(1)
+        return 1
     if instance is None and not sys.stdin.isatty():
         paasta_print(
             "--instance and --cluster must be specified when using paasta local-run without a tty!",
             file=sys.stderr,
         )
-        sys.exit(1)
+        return 1
 
     soa_dir = args.yelpsoa_config_root
     volumes = list()
@@ -672,7 +672,7 @@ def configure_and_run_docker_container(
             )
     except NoConfigurationForServiceError as e:
         paasta_print(str(e), file=sys.stderr)
-        return
+        return 1
     except NoDeploymentsAvailable:
         paasta_print(
             PaastaColors.red(
@@ -686,7 +686,7 @@ def configure_and_run_docker_container(
             sep='\n',
             file=sys.stderr,
         )
-        return
+        return 1
 
     if docker_hash is None:
         try:
@@ -700,7 +700,7 @@ def configure_and_run_docker_container(
                 sep='',
                 file=sys.stderr,
             )
-            return
+            return 1
         docker_hash = docker_url
 
     if pull_image:
@@ -728,7 +728,7 @@ def configure_and_run_docker_container(
 
     hostname = socket.getfqdn()
 
-    run_docker_container(
+    return run_docker_container(
         docker_client=docker_client,
         service=service,
         instance=instance,
@@ -801,7 +801,7 @@ def paasta_local_run(args):
         tag = None
 
     try:
-        configure_and_run_docker_container(
+        return configure_and_run_docker_container(
             docker_client=docker_client,
             docker_hash=tag,
             service=service,
