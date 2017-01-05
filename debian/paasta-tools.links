@@ -5,6 +5,7 @@ opt/venvs/paasta-tools/bin/check_classic_service_replication.py usr/bin/check_cl
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
 opt/venvs/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
+opt/venvs/paasta-tools/bin/kill_orphaned_docker_containers.py usr/bin/kill_orphaned_docker_containers
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_check_chronos_jobs usr/bin/check_chronos_jobs
