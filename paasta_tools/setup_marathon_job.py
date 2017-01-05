@@ -563,7 +563,7 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
 
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=instance, soa_dir=soa_dir)
+        service=service, namespace=service_marathon_config.get_nerve_namespace(), soa_dir=soa_dir)
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(

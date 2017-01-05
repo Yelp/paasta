@@ -1147,6 +1147,55 @@ class TestSetupMarathonJob:
             expected = 'Docker image for test_service.test_instance not in'
             assert expected in output
 
+    def test_setup_service_nerve_ns(self):
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_nerve_ns = 'fake_nerve_ns'
+
+        fake_msc = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster=fake_cluster,
+            instance=fake_instance,
+            config_dict={
+                'instances': 3,
+                'cpus': 1,
+                'mem': 100,
+                'docker_image': self.fake_docker_image,
+                'nerve_ns': 'fake_nerve_ns',
+                'bounce_method': 'brutal'
+            },
+            branch_dict={},
+        )
+
+        with contextlib.nested(
+            mock.patch('paasta_tools.setup_marathon_job.deploy_service', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
+            mock.patch.object(fake_msc, 'format_marathon_app_dict', return_value={'id': 'blurpadurp'}),
+        ) as (
+            mock_deploy_service,
+            mock_load_service_namespace_config,
+            mock_load_system_paasta_config,
+            mock_format_marathon_app_dict,
+        ):
+            retval = setup_marathon_job.setup_service(
+                service=fake_service,
+                instance=fake_instance,
+                client=None,
+                service_marathon_config=fake_msc,
+                marathon_apps=None,
+                soa_dir=None,
+            )
+
+            print repr(retval)
+
+            mock_load_service_namespace_config.assert_called_once_with(
+                service=fake_service,
+                namespace=fake_nerve_ns,
+                soa_dir=mock.ANY,
+            )
+
     def test_deploy_service_unknown_drain_method(self):
         fake_bounce = 'exists'
         fake_drain_method = 'doesntexist'
