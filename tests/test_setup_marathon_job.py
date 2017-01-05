@@ -1169,9 +1169,9 @@ class TestSetupMarathonJob:
         )
 
         with contextlib.nested(
-            mock.patch('paasta_tools.setup_marathon_job.deploy_service'),
-            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config'),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config'),
+            mock.patch('paasta_tools.setup_marathon_job.deploy_service', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
             mock.patch.object(fake_msc, 'format_marathon_app_dict', return_value={'id': 'blurpadurp'}),
         ) as (
             mock_deploy_service,
