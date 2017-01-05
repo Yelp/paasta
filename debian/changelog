@@ -1,3 +1,10 @@
+paasta-tools (0.56.16) lucid; urgency=low
+
+  * 0.56.16 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 04 Jan 2017 14:43:58 -0800
+
 paasta-tools (0.56.15) UNRELEASED; urgency=medium
 
   * 0.56.15 tagged with 'make release'
