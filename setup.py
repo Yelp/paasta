@@ -90,6 +90,7 @@ setup(
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
+        'paasta_tools/monitoring/kill_orphaned_docker_containers.py',
         'paasta_tools/cli/paasta_tabcomplete.sh',
         'paasta_tools/paasta_execute_docker_command.py',
         'paasta_tools/paasta_maintenance.py',
