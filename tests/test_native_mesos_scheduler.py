@@ -5,6 +5,7 @@ import contextlib
 
 import mock
 import pytest
+from mesos.interface import mesos_pb2
 
 from paasta_tools import native_mesos_scheduler
 from paasta_tools import utils
@@ -159,3 +160,44 @@ class TestPaastaScheduler(object):
         killed_tasks.clear()
         scheduler.kill_tasks_if_necessary(fake_driver)
         assert len(killed_tasks) == 1
+
+
+class TestPaastaNativeServiceConfig(object):
+    def test_base_task(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_config = native_mesos_scheduler.PaastaNativeServiceConfig(
+            service=service_name,
+            instance=instance_name,
+            cluster=cluster,
+            config_dict={
+                "cpus": 0.1,
+                "mem": 50,
+                "instances": 3,
+                "cmd": 'sleep 50',
+                "drain_method": "test"
+            },
+            branch_dict={
+                'docker_image': 'busybox',
+                'desired_state': 'start',
+                'force_bounce': '0',
+            },
+        )
+
+        task = service_config.base_task(system_paasta_config)
+
+        assert task.container.type == mesos_pb2.ContainerInfo.DOCKER
+        assert task.container.docker.image == "fake/busybox"
+        assert task.command.value == "sleep 50"
+
+        assert len(task.resources) == 2
+
+        for resource in task.resources:
+            if task.name == "cpus":
+                assert task.scalar.value == 0.1
+            elif task.name == "mem":
+                assert task.scalar.value == 50
+
+        assert task.name.startswith("service_name.instance_name.gitfake/bus.config")
