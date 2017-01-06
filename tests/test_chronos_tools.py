@@ -795,6 +795,30 @@ class TestChronosTools:
         assert msg == ('The specified repeat "" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
+    def test_check_schedule_monthly_period(self):
+        fake_schedule = 'R1/2015-03-25T19:36:35Z/P1M'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is True
+
+    def test_check_schedule_yearly_period(self):
+        fake_schedule = 'R1/2015-03-25T19:36:35Z/P1Y'
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        okay, msg = chronos_config.check_schedule()
+        assert okay is True
+
     def test_check_schedule_invalid_repeat(self):
         fake_schedule = 'forever/2015-03-25T19:36:35Z/PT70S'
         chronos_config = chronos_tools.ChronosJobConfig(

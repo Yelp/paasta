@@ -350,10 +350,18 @@ class ChronosJobConfig(InstanceConfig):
                     msgs.append('The specified interval "%s" in schedule "%s" '
                                 'does not conform to the ISO 8601 format.' % (interval, schedule))
 
-                # until we make this configurable, throw an
-                # error if we have a schedule < 60 seconds (the default schedule_horizone for chronos)
-                # https://github.com/mesos/chronos/issues/508
-                if parsed_interval and parsed_interval < datetime.timedelta(seconds=60):
+                # don't allow schedules more frequent than every minute we have
+                # to be careful here, since the isodate library returns
+                # different datatypes according to whether there is a
+                # yearly/monthly period (and if that year or month period is
+                # 0).  unfortunately, the isodate library *is* okay with you
+                # specifying fractional and negative periods. Chronos's parser
+                # will barf at a fractional period, but be okay with a negative
+                # one, so if someone does try to do something like "R1//P0.01M"
+                # then the API request to upload the job will fail.  TODO:
+                # detect when someone is trying to add a fractional period?
+                if(parsed_interval and isinstance(parsed_interval, datetime.timedelta)
+                        and parsed_interval < datetime.timedelta(seconds=60)):
                     msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60 seconds' % interval)
 
                 if not self._check_schedule_repeat_helper(repeat):
