@@ -1,3 +1,10 @@
+paasta-tools (0.56.17) UNRELEASED; urgency=medium
+
+  * 0.56.17 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Thu, 05 Jan 2017 15:50:36 -0800
+
 paasta-tools (0.56.16) lucid; urgency=low
 
   * 0.56.16 tagged with 'make release'
