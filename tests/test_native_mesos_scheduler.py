@@ -34,17 +34,19 @@ def system_paasta_config():
     }, "/fake/system/configs")
 
 
-def fake_offer():
+def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000):
     offer = mock.Mock(
         resources=[
-            mock.Mock(scalar=mock.Mock(value=50000)),
-            mock.Mock(scalar=mock.Mock(value=50000)),
+            mock.Mock(scalar=mock.Mock(value=cpu)),
+            mock.Mock(scalar=mock.Mock(value=mem)),
+            mock.Mock(ranges=mock.Mock(range=[mock.Mock(begin=port_begin, end=port_end)])),
         ],
         slave_id=mock.Mock(value="super big slave"),
     )
 
     offer.resources[0].name = "cpus"
     offer.resources[1].name = "mem"
+    offer.resources[2].name = "ports"
 
     return offer
 
@@ -85,7 +87,7 @@ class TestPaastaScheduler(object):
         fake_driver = mock.Mock()
 
         # First, start up 3 old tasks
-        old_tasks = scheduler.start_task(fake_driver, fake_offer())
+        old_tasks = scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 3
         # and mark the old tasks as up
         for task in old_tasks:
@@ -96,7 +98,7 @@ class TestPaastaScheduler(object):
         scheduler.service_config = service_configs[1]
 
         # and start 3 more tasks
-        new_tasks = scheduler.start_task(fake_driver, fake_offer())
+        new_tasks = scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 6
         # It should not drain anything yet, since the new tasks aren't up.
         scheduler.kill_tasks_if_necessary(fake_driver)
@@ -162,6 +164,51 @@ class TestPaastaScheduler(object):
         scheduler.kill_tasks_if_necessary(fake_driver)
         assert len(killed_tasks) == 1
 
+    def test_start_task_chooses_port(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_configs = []
+        service_configs.append(native_mesos_scheduler.PaastaNativeServiceConfig(
+            service=service_name,
+            instance=instance_name,
+            cluster=cluster,
+            config_dict={
+                "cpus": 0.1,
+                "mem": 50,
+                "instances": 1,
+                "cmd": 'sleep 50',
+                "drain_method": "test"
+            },
+            branch_dict={
+                'docker_image': 'busybox',
+                'desired_state': 'start',
+                'force_bounce': '0',
+            },
+        ))
+
+        scheduler = native_mesos_scheduler.PaastaScheduler(
+            service_name=service_name,
+            instance_name=instance_name,
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            service_config=service_configs[0],
+        )
+        fake_driver = mock.Mock()
+
+        fake_offer = make_fake_offer(port_begin=12345, port_end=12345)
+        tasks = scheduler.start_task(fake_driver, fake_offer)
+
+        assert len(tasks) == 1
+        for resource in tasks[0].resources:
+            if resource.name == "ports":
+                assert resource.ranges.range[0].begin == 12345
+                assert resource.ranges.range[0].end == 12345
+                break
+        else:
+            raise Exception("never saw a ports resource")
+
 
 class TestPaastaNativeServiceConfig(object):
     def test_base_task(self, system_paasta_config):
@@ -206,14 +253,21 @@ class TestPaastaNativeServiceConfig(object):
         assert task.container.volumes[0].container_path == "/foo"
         assert task.container.volumes[0].host_path == "/bar"
 
+        assert len(task.container.docker.port_mappings) == 1
+        assert task.container.docker.port_mappings[0].container_port == 8888
+        assert task.container.docker.port_mappings[0].host_port == 0
+        assert task.container.docker.port_mappings[0].protocol == "tcp"
+
         assert task.command.value == "sleep 50"
 
-        assert len(task.resources) == 2
+        assert len(task.resources) == 3
 
         for resource in task.resources:
-            if task.name == "cpus":
-                assert task.scalar.value == 0.1
-            elif task.name == "mem":
-                assert task.scalar.value == 50
+            if resource.name == "cpus":
+                assert resource.scalar.value == 0.1
+            elif resource.name == "mem":
+                assert resource.scalar.value == 50
+            elif resource.name == "port":
+                pass
 
         assert task.name.startswith("service_name.instance_name.gitfake/bus.config")

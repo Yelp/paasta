@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import argparse
 import binascii
 import logging
+import random
 import sys
 import time
 import uuid
@@ -158,13 +159,19 @@ class PaastaScheduler(mesos.interface.Scheduler):
         tasks = []
         offerCpus = 0
         offerMem = 0
+        offerPorts = []
         for resource in offer.resources:
             if resource.name == "cpus":
                 offerCpus += resource.scalar.value
             elif resource.name == "mem":
                 offerMem += resource.scalar.value
+            elif resource.name == "ports":
+                for rg in resource.ranges.range:
+                    # I believe mesos protobuf ranges are inclusive, but range() is exclusive
+                    offerPorts += range(rg.begin, rg.end + 1)
         remainingCpus = offerCpus
         remainingMem = offerMem
+        remainingPorts = set(offerPorts)
 
         base_task = self.service_config.base_task(self.system_paasta_config)
         base_task.slave_id.value = offer.slave_id.value
@@ -174,11 +181,22 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
         while self.need_more_tasks(base_task.name) and \
                 remainingCpus >= task_cpus and \
-                remainingMem >= task_mem:
+                remainingMem >= task_mem and \
+                len(remainingPorts) >= 1:
+
+            task_port = random.choice(list(remainingPorts))
+
             t = mesos_pb2.TaskInfo()
             t.MergeFrom(base_task)
             tid = "%s.%s" % (t.name, uuid.uuid4().hex)
             t.task_id.value = tid
+
+            t.container.docker.port_mappings[0].host_port = task_port
+            for resource in t.resources:
+                if resource.name == "ports":
+                    resource.ranges.range[0].begin = task_port
+                    resource.ranges.range[0].end = task_port
+
             tasks.append(t)
             self.tasks_with_flags.setdefault(
                 tid,
@@ -190,6 +208,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
+            remainingPorts -= set([task_port])
 
         return tasks
 
@@ -480,6 +499,11 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             v.container_path = volume['containerPath']
             v.host_path = volume['hostPath']
 
+        pm = task.container.docker.port_mappings.add()
+        pm.container_port = 8888
+        pm.host_port = 0  # will be filled in by start_task()
+        pm.protocol = "tcp"
+
         task.command.value = self.get_cmd()
         cpus = task.resources.add()
         cpus.name = "cpus"
@@ -489,6 +513,12 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
         mem.name = "mem"
         mem.type = mesos_pb2.Value.SCALAR
         mem.scalar.value = self.get_mem()
+        port = task.resources.add()
+        port.name = "ports"
+        port.type = mesos_pb2.Value.RANGES
+        port.ranges.range.add()
+        port.ranges.range[0].begin = 0  # will be filled in by start_task().
+        port.ranges.range[0].end = 0  # will be filled in by start_task().
 
         task.name = self.task_name(task)
 
