@@ -465,6 +465,21 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
         task.container.type = mesos_pb2.ContainerInfo.DOCKER
         task.container.docker.image = get_docker_url(system_paasta_config.get_docker_registry(),
                                                      self.get_docker_image())
+
+        for param in self.format_docker_parameters():
+            p = task.container.docker.parameters.add()
+            p.key = param['key']
+            p.value = param['value']
+
+        task.container.docker.network = self.get_mesos_network_mode()
+
+        docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
+        for volume in docker_volumes:
+            v = task.container.volumes.add()
+            v.mode = getattr(mesos_pb2.Volume, volume['mode'].upper())
+            v.container_path = volume['containerPath']
+            v.host_path = volume['hostPath']
+
         task.command.value = self.get_cmd()
         cpus = task.resources.add()
         cpus.name = "cpus"
@@ -478,6 +493,9 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
         task.name = self.task_name(task)
 
         return task
+
+    def get_mesos_network_mode(self):
+        return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
 
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):

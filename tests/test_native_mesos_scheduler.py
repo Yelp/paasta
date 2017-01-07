@@ -30,6 +30,7 @@ def test_main():
 def system_paasta_config():
     return utils.SystemPaastaConfig({
         "docker_registry": "fake",
+        "volumes": [],
     }, "/fake/system/configs")
 
 
@@ -177,7 +178,8 @@ class TestPaastaNativeServiceConfig(object):
                 "mem": 50,
                 "instances": 3,
                 "cmd": 'sleep 50',
-                "drain_method": "test"
+                "drain_method": "test",
+                "extra_volumes": [{"containerPath": "/foo", "hostPath": "/bar", "mode": "RW"}]
             },
             branch_dict={
                 'docker_image': 'busybox',
@@ -190,6 +192,20 @@ class TestPaastaNativeServiceConfig(object):
 
         assert task.container.type == mesos_pb2.ContainerInfo.DOCKER
         assert task.container.docker.image == "fake/busybox"
+        parameters = [(p.key, p.value) for p in task.container.docker.parameters]
+        assert parameters == [
+            ("memory-swap", mock.ANY),
+            ("cpu-period", mock.ANY),
+            ("cpu-quota", mock.ANY),
+        ]
+
+        assert task.container.docker.network == mesos_pb2.ContainerInfo.DockerInfo.BRIDGE
+
+        assert len(task.container.volumes) == 1
+        assert task.container.volumes[0].mode == mesos_pb2.Volume.RW
+        assert task.container.volumes[0].container_path == "/foo"
+        assert task.container.volumes[0].host_path == "/bar"
+
         assert task.command.value == "sleep 50"
 
         assert len(task.resources) == 2
