@@ -19,7 +19,7 @@ RUN apt-get update && apt-get -y install apt-transport-https
 RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN apt-get update && apt-get -y install libsasl2-modules mesos=1.1.0-2.0.107.ubuntu1404
+RUN apt-get update && apt-get -y install libsasl2-modules mesos=1.0.1-2.0.93.ubuntu1404
 
 # Install Java 8 PPA
 RUN apt-get install -y software-properties-common
