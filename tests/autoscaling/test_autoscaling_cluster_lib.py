@@ -606,6 +606,7 @@ def test_describe_instance():
     ):
         mock_instance_1 = mock.Mock()
         mock_instance_2 = mock.Mock()
+        mock_instance_3 = mock.Mock()
         mock_instances = {'Reservations': [{'Instances': [mock_instance_1]}, {'Instances': [mock_instance_2]}]}
         mock_describe_instances = mock.Mock(return_value=mock_instances)
         mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
@@ -622,6 +623,13 @@ def test_describe_instance():
         mock_describe_instances.side_effect = ClientError(mock_error, 'blah')
         ret = autoscaling_cluster_lib.describe_instances(['i-1', 'i-2'], region='westeros-1')
         assert ret is None
+
+        mock_instances = {'Reservations': [{'Instances': [mock_instance_1, mock_instance_2]},
+                                           {'Instances': [mock_instance_3]}]}
+        mock_describe_instances = mock.Mock(return_value=mock_instances)
+        mock_ec2_client.return_value = mock.Mock(describe_instances=mock_describe_instances)
+        ret = autoscaling_cluster_lib.describe_instances(['i-1', 'i-2', 'i-3'], region='westeros-1')
+        assert ret == [mock_instance_1, mock_instance_2, mock_instance_3]
 
 
 def test_get_spot_fleet_delta():
