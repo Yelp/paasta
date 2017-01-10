@@ -49,7 +49,7 @@ def non_interactive_local_run(context, var, val):
                         "--instance main "
                         "--build "
                         '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, val))
-        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=60)
+        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=90)
 
 
 @then('we should see the expected return code')
@@ -80,7 +80,7 @@ def local_run_on_chronos_job(context):
                          "--instance chronos_job "
                          "--build "
                          "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'")
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
+        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
 
 
 @when('we run paasta local-run on an interactive job')
@@ -92,7 +92,7 @@ def local_run_on_adhoc_job(context):
                          "--cluster test-cluster "
                          "--instance sample_adhoc_job "
                          "--build ")
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
+        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
 
 
 @when('we run paasta local-run in non-interactive mode on a chronos job with cmd set to \'echo hello && sleep 5\'')
@@ -104,4 +104,4 @@ def local_run_on_chronos_job_with_cmd(context):
                          "--cluster test-cluster "
                          "--instance chronos_job_with_cmd "
                          "--build ")
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=60)
+        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
