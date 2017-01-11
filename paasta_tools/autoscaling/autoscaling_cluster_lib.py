@@ -576,10 +576,6 @@ class AsgAutoscaler(ClusterAutoscaler):
                                                        DesiredCapacity=capacity)
         except ClientError as e:
             log.error("Error modifying ASG: {0}".format(e))
-            if e.response['Error']['Code'] == 'ValidationError':
-                log.warning("A validation error on an ASG update is usually caused by trying to update capacity "
-                            "outside min/max, which is ok if we're scaling down!")
-                return
             raise FailSetResourceCapacity
         return ret
 

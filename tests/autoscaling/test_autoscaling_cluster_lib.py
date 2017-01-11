@@ -175,9 +175,6 @@ class TestAsgAutoscaler(unittest.TestCase):
                 mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 1}}, 'blah')
                 self.autoscaler.set_capacity(2)
 
-            mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 'ValidationError'}}, 'blah')
-            self.autoscaler.set_capacity(2)
-
     def test_get_instance_type_weights_asg(self):
         ret = self.autoscaler.get_instance_type_weights()
         assert ret is None
