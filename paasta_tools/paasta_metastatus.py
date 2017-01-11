@@ -20,6 +20,7 @@ import logging
 import sys
 
 import chronos
+from marathon.exceptions import InternalServerError
 from marathon.exceptions import MarathonError
 
 from paasta_tools import __version__
@@ -97,8 +98,8 @@ def main():
         marathon_client = metastatus_lib.get_marathon_client(marathon_config)
         try:
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
-        except MarathonError as e:
-            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Error: %s" % e))
+        except (MarathonError, InternalServerError) as e:
+            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Is the cluster healthy?"))
             sys.exit(2)
     else:
         marathon_results = [metastatus_lib.HealthCheckResult(message='Marathon is not configured to run here',
