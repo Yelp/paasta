@@ -169,7 +169,7 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
     :param marathon_service_config: the MarathonServiceConfig to get data from
     :param marathon_tasks: Marathon tasks to get data from
-    :param endpoint: The http endpoint to get the uwsgi stats from
+    :param endpoint: The http endpoint to get the stats from
     :param json_mapper: A function that takes a dictionary for a task and returns that task's utilization
 
     :returns: the service's mean utilization, from 0 to 1
@@ -197,7 +197,7 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
 
 @register_autoscaling_component('uwsgi', SERVICE_METRICS_PROVIDER_KEY)
-def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status/uwsgi', *args, **kwargs):
+def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status/uwsgi', **kwargs):
     """
     Gets the mean utilization of a service across all of its tasks, where
     the utilization of a task is the percentage of non-idle workers as read
@@ -219,7 +219,7 @@ def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='st
 
 
 @register_autoscaling_component('http', SERVICE_METRICS_PROVIDER_KEY)
-def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status', *args, **kwargs):
+def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status', **kwargs):
     """
     Gets the mean utilization of a service across all of its tasks, where
     the utilization of a task is read from a HTTP endpoint on the host. The
@@ -328,8 +328,12 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY))
     autoscaling_decision_policy = get_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
 
-    utilization = autoscaling_metrics_provider(marathon_service_config, marathon_tasks,
-                                               mesos_tasks, **autoscaling_params)
+    utilization = autoscaling_metrics_provider(
+        marathon_service_config=marathon_service_config,
+        marathon_tasks=marathon_tasks,
+        mesos_tasks=mesos_tasks,
+        **autoscaling_params
+    )
     error = get_error_from_utilization(
         utilization=utilization,
         setpoint=autoscaling_params.pop('setpoint'),
