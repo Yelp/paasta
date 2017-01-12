@@ -715,12 +715,16 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
             mock_get_mesos_master.return_value = mock_master
+            mock_task_counts = mock.Mock()
             mock_slave_1 = mock.Mock(hostname='host1',
                                      instance_id='i-blah123',
+                                     task_counts=mock_task_counts,
                                      instance_weight=1)
             mock_slave_2 = mock.Mock(hostname='host2',
                                      instance_id='i-blah456',
+                                     task_counts=mock_task_counts,
                                      instance_weight=2)
+            mock_get_mesos_task_count_by_slave.return_value = [{'task_counts': mock_slave_2}]
             self.autoscaler.resource = {'type': 'aws_spot_fleet_request', 'sfr': {'SpotFleetRequestState': 'active'}}
             mock_filtered_slaves = mock.Mock()
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
@@ -788,12 +792,11 @@ class TestClusterAutoscaler(unittest.TestCase):
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=2)
-            mock_sort_slaves_to_kill.assert_has_calls([mock.call(self.autoscaler, mock_filtered_slaves),
-                                                       mock.call(self.autoscaler,
-                                                                 mock_get_mesos_task_count_by_slave.return_value)])
+            mock_sort_slaves_to_kill.assert_has_calls([mock.call(self.autoscaler, mock_filtered_slaves)])
             assert mock_get_mesos_master.called
             mock_gracefully_terminate_slave.assert_has_calls([mock_terminate_call_1, mock_terminate_call_2])
-            mock_get_task_count_calls = [mock.call(mock_mesos_state, slaves_list=[mock_slave_2])]
+            mock_get_task_count_calls = [mock.call(mock_mesos_state, slaves_list=[{'task_counts':
+                                                                                   mock_task_counts}])]
             mock_get_mesos_task_count_by_slave.assert_has_calls(mock_get_task_count_calls)
 
             # test non integer scale down
@@ -809,6 +812,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_sfr_sorted_slaves = [mock_slave_1] * 10
             mock_sort_slaves_to_kill.side_effect = [mock_sfr_sorted_slaves] + \
                 [mock_sfr_sorted_slaves[x:-1] for x in range(0, 10)]
+            mock_get_mesos_task_count_by_slave.return_value = [{'task_counts': mock_slave_1} for x in range(0, 9)]
             self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=8,
@@ -924,9 +928,9 @@ class TestClusterAutoscaler(unittest.TestCase):
         mock_slave_1 = mock.Mock()
         mock_slave_2 = mock.Mock()
         mock_slave_3 = mock.Mock()
-        mock_slave_1 = {'task_counts': SlaveTaskCount(count=3, slave=mock_slave_1, chronos_count=0)}
-        mock_slave_2 = {'task_counts': SlaveTaskCount(count=2, slave=mock_slave_2, chronos_count=1)}
-        mock_slave_3 = {'task_counts': SlaveTaskCount(count=5, slave=mock_slave_3, chronos_count=0)}
+        mock_slave_1 = mock.Mock(task_counts=SlaveTaskCount(count=3, slave=mock_slave_1, chronos_count=0))
+        mock_slave_2 = mock.Mock(task_counts=SlaveTaskCount(count=2, slave=mock_slave_2, chronos_count=1))
+        mock_slave_3 = mock.Mock(task_counts=SlaveTaskCount(count=5, slave=mock_slave_3, chronos_count=0))
         mock_task_count = [mock_slave_1, mock_slave_2, mock_slave_3]
         ret = self.autoscaler.sort_slaves_to_kill(mock_task_count)
         assert ret == [mock_slave_1, mock_slave_3, mock_slave_2]
