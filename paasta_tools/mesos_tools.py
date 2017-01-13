@@ -611,7 +611,7 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
                 slaves[task.slave['id']]['chronos_count'] += 1
     if slaves_list:
         for slave in slaves_list:
-            slave['task_counts'] = SlaveTaskCount(**slaves[slave['id']])
+            slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
         slaves = slaves_list
     elif pool:
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()

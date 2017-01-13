@@ -218,7 +218,7 @@ class ClusterAutoscaler(object):
 
         :param slaves: list of slaves dict
         :returns: list of slaves dicts"""
-        return sorted(slaves, key=lambda x: (x['task_counts'].chronos_count, x['task_counts'].count))
+        return sorted(slaves, key=lambda x: (x.task_counts.chronos_count, x.task_counts.count))
 
     def scale_resource(self, current_capacity, target_capacity):
         """Scales an AWS resource based on current and target capacity
@@ -343,9 +343,12 @@ class ClusterAutoscaler(object):
             current_capacity = new_capacity
             mesos_state = get_mesos_master().state_summary()
             if filtered_sorted_slaves:
-                filtered_slaves = get_mesos_task_count_by_slave(mesos_state, slaves_list=filtered_sorted_slaves)
-            else:
-                filtered_slaves = filtered_sorted_slaves
+                task_counts = get_mesos_task_count_by_slave(mesos_state,
+                                                            slaves_list=[{'task_counts': slave.task_counts}
+                                                                         for slave in filtered_sorted_slaves])
+                for i, slave in enumerate(filtered_sorted_slaves):
+                    slave.task_counts = task_counts[i]['task_counts']
+            filtered_slaves = filtered_sorted_slaves
 
 
 class SpotAutoscaler(ClusterAutoscaler):
