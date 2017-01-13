@@ -425,12 +425,15 @@ def get_mesos_quorum():
     return int(get_master_flags()['flags']['quorum'])
 
 
-def get_all_tasks_from_state(mesos_state):
+def get_all_tasks_from_state(mesos_state, include_orphans=False):
     """Given a mesos state, find the tasks from all frameworks.
     :param mesos_state: the mesos_state
     :returns: a list of tasks
     """
-    return [task for framework in mesos_state.get('frameworks', []) for task in framework.get('tasks', [])]
+    tasks = [task for framework in mesos_state.get('frameworks', []) for task in framework.get('tasks', [])]
+    if include_orphans:
+        tasks += mesos_state.get('orphan_tasks', [])
+    return tasks
 
 
 def get_master_flags():
