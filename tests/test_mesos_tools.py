@@ -622,12 +622,12 @@ def test_get_mesos_task_count_by_slave():
         mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3'}
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
-        mock_get_running_tasks_from_active_frameworks.assert_called_with('')
+        mock_get_running_tasks_from_active_frameworks.assert_called_with('', include_orphans=True)
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
         assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
-        mock_get_running_tasks_from_active_frameworks.assert_called_with('')
+        mock_get_running_tasks_from_active_frameworks.assert_called_with('', include_orphans=True)
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
@@ -732,3 +732,48 @@ def test_filter_task_by_task_id():
     mock_task = {'id': '123'}
     assert mesos_tools.filter_task_by_task_id(mock_task, '123')
     assert not mesos_tools.filter_task_by_task_id(mock_task, '456')
+
+
+def test_get_all_tasks_from_state():
+    mock_task_1 = mock.Mock()
+    mock_task_2 = mock.Mock()
+    mock_task_3 = mock.Mock()
+    mock_task_4 = mock.Mock()
+    mock_state = {'frameworks': [{'tasks': [mock_task_1, mock_task_2]},
+                                 {'tasks': [mock_task_3]}],
+                  'orphan_tasks': [mock_task_4]}
+    ret = mesos_tools.get_all_tasks_from_state(mock_state)
+    expected = [mock_task_1, mock_task_2, mock_task_3]
+    assert len(ret) == len(expected) and ret == expected
+
+    ret = mesos_tools.get_all_tasks_from_state(mock_state, include_orphans=True)
+    expected = [mock_task_1, mock_task_2, mock_task_3, mock_task_4]
+    assert len(ret) == len(expected) and ret == expected
+
+
+def test_get_running_tasks_from_active_frameworks():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.filter_running_tasks', autospec=True),
+    ) as (
+        mock_get_current_tasks,
+        mock_filter_running_tasks
+    ):
+        ret = mesos_tools.get_running_tasks_from_active_frameworks(job_id='')
+        mock_get_current_tasks.assert_called_with('', include_orphans=True)
+        mock_filter_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
+        assert ret == mock_filter_running_tasks.return_value
+
+
+def test_get_non_running_tasks_from_active_frameworks():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.filter_not_running_tasks', autospec=True),
+    ) as (
+        mock_get_current_tasks,
+        mock_filter_not_running_tasks
+    ):
+        ret = mesos_tools.get_non_running_tasks_from_active_frameworks(job_id='')
+        mock_get_current_tasks.assert_called_with('')
+        mock_filter_not_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
+        assert ret == mock_filter_not_running_tasks.return_value

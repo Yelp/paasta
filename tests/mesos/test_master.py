@@ -1,11 +1,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from mock import call
 from mock import Mock
 from mock import patch
 
 from paasta_tools.mesos import framework
 from paasta_tools.mesos import master
+from paasta_tools.mesos import task
 
 
 @patch.object(master.MesosMaster, '_framework_list', autospec=True)
@@ -63,4 +65,44 @@ def test__framework_list(mock__frameworks):
 
     ret = mesos_master._framework_list(active_only=True)
     expected = [mock_frameworks]
+    assert list(ret) == expected
+
+
+@patch.object(master.MesosMaster, '_framework_list', autospec=True)
+def test__task_list(mock__frameworks_list):
+    mock_task_1 = Mock()
+    mock_task_2 = Mock()
+    mock_task_3 = Mock()
+    mock_framework = {'tasks': [mock_task_1],
+                      'completed_tasks': [mock_task_2]}
+    mock__frameworks_list.return_value = [mock_framework]
+    mesos_master = master.MesosMaster({})
+    mesos_master.state = {'orphan_tasks': [mock_task_3]}
+    ret = mesos_master._task_list()
+    mock__frameworks_list.assert_called_with(mesos_master, False)
+    expected = [mock_task_1, mock_task_2]
+    assert list(ret) == expected
+
+    ret = mesos_master._task_list(active_only=True)
+    expected = [mock_task_1]
+    assert list(ret) == expected
+
+    ret = mesos_master._task_list(include_orphans=True)
+    expected = [mock_task_1, mock_task_2, mock_task_3]
+    assert list(ret) == expected
+
+
+@patch.object(task, 'Task', autospec=True)
+@patch.object(master.MesosMaster, '_task_list', autospec=True)
+def test_tasks(mock__task_list, mock_task):
+    mock_task_1 = {'id': 'aaa'}
+    mock_task_2 = {'id': 'bbb'}
+    mock__task_list.return_value = [mock_task_1, mock_task_2]
+    mock_task.return_value = Mock()
+    mesos_master = master.MesosMaster({})
+    ret = mesos_master.tasks()
+    mock_task.assert_has_calls([call(mesos_master, mock_task_1),
+                                call(mesos_master, mock_task_2)])
+    mock__task_list.assert_called_with(mesos_master, False, False)
+    expected = [mock_task.return_value, mock_task.return_value]
     assert list(ret) == expected

@@ -166,12 +166,17 @@ class MesosMaster(object):
             itertools.ifilter(
                 lambda x: fltr == x['id'], self.state['slaves'])))
 
-    def _task_list(self, active_only=False):
+    def _task_list(self, active_only=False, include_orphans=False):
         keys = ["tasks"]
         if not active_only:
             keys.append("completed_tasks")
+        frameworks = self._framework_list(active_only)
+        if include_orphans:
+            orphan_tasks = self.state["orphan_tasks"]
+        else:
+            orphan_tasks = []
         return itertools.chain(
-            *[util.merge(x, *keys) for x in self._framework_list(active_only)])
+            *[util.merge(x, *keys) for x in frameworks] + [orphan_tasks])
 
     def task(self, fltr):
         lst = self.tasks(fltr)
@@ -189,12 +194,12 @@ class MesosMaster(object):
         return lst[0]
 
     # XXX - need to filter on task state as well as id
-    def tasks(self, fltr="", active_only=False):
+    def tasks(self, fltr="", active_only=False, include_orphans=False):
         return list(map(
             lambda x: task.Task(self, x),
             itertools.ifilter(
                 lambda x: fltr in x["id"] or fnmatch.fnmatch(x["id"], fltr),
-                self._task_list(active_only))))
+                self._task_list(active_only, include_orphans))))
 
     def framework(self, fwid):
         return list(filter(
