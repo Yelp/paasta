@@ -319,10 +319,11 @@ Each job configuration MUST specify the following options:
 
 Each job configuration MAY specify the following options:
 
-  * ``schedule``: When the job should run. The value must be specified in the
-    cryptic ISO 8601 format. For more details about the schedule format, see:
-    https://en.wikipedia.org/wiki/ISO_8601 and
-    https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+  * ``schedule``: When the job should run. This can be in either ISO8601 notation,
+    or in cron notation.  For more details about ISO8601 formats, see the
+    `wikipedia page <https://en.wikipedia.org/wiki/ISO_8601>`_; for more details on the Cron format,
+    see `crontab(5) <http://man7.org/linux/man-pages/man5/crontab.5.html>`_. Note that
+    the extensions mentioned in that page are *not* supported at this time.
 
     * **Note:** Although Chronos supports an empty start time to indicate that
       the job should start immediately, we do not allow this. In a situation
