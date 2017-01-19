@@ -110,29 +110,29 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     instances_in.put('instance1')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
-    assert instances_out.empty() == True
+    assert instances_in.empty()
+    assert instances_out.empty()
 
     instances_in = Queue()
     instances_in.put('instance1')
     instances_in.put('instance2')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get() == 'instance2'
 
     instances_in = Queue()
     instances_in.put('instance3')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get() == 'instance3'
 
     instances_in = Queue()
     instances_in.put('instance4')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get() == 'instance4'
 
     instances_in = Queue()
@@ -140,43 +140,43 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     instances_in.put('instance1')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
-    assert instances_out.empty() == True
+    assert instances_in.empty()
+    assert instances_out.empty()
 
     instances_in = Queue()
     instances_in.put('instance6')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get(block=False) == 'instance6'
 
     instances_in = Queue()
     instances_in.put('notaninstance')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get(block=False) == 'notaninstance'
 
     instances_in = Queue()
     instances_in.put('api_error')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
+    assert instances_in.empty()
     assert instances_out.get(block=False) == 'api_error'
 
     instances_in = Queue()
     instances_in.put('instance7')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
-    assert instances_out.empty() == True
+    assert instances_in.empty()
+    assert instances_out.empty()
 
     instances_in = Queue()
     instances_in.put('instance8')
     instances_out = Queue()
     f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty() == True
-    assert instances_out.empty() == True
+    assert instances_in.empty()
+    assert instances_out.empty()
 
 
 def instances_deployed_side_effect(cluster, service, instances_in,
