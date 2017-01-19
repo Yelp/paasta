@@ -410,7 +410,7 @@ def _query_clusters(cluster_map, service, git_sha, green_light):
                         periodically and exit when it is cleared.
     """
     for cluster, cluster_data in cluster_map.items():
-        if cluster_data['deployed'] != cluster_data['num_instances']:
+        if cluster_data['deployed'] != len(cluster_data['instances']):
             worker = Thread(target=_run_cluster_worker,
                             args=(cluster, cluster_data, service, git_sha,
                                   green_light))
@@ -445,10 +445,10 @@ def _run_cluster_worker(cluster, cluster_data, service, git_sha, green_light):
                        instances_out=instances_out, git_sha=git_sha,
                        green_light=green_light)
     if cluster_data['queue'].empty():
-        cluster_data['deployed'] = (cluster_data['num_instances'] -
+        cluster_data['deployed'] = (len(cluster_data['instances']) -
                                     instances_out.qsize())
     cluster_data['queue'] = instances_out
-    if cluster_data['deployed'] == cluster_data['num_instances']:
+    if cluster_data['deployed'] == len(cluster_data['instances']):
         instance_csv = ", ".join(cluster_data['instances'])
         paasta_print("Deploy to {} complete! (instances: {})"
                      .format(cluster, instance_csv))
@@ -472,8 +472,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     for cluster in cluster_map:
         cluster_map[cluster]['deployed'] = 0
         cluster_map[cluster]['queue'] = Queue()
-        cluster_map[cluster]['num_instances'] = len(cluster_map[cluster]['instances'])
-        total_instances += cluster_map[cluster]['num_instances']
+        total_instances += len(cluster_map[cluster]['instances'])
         for i in cluster_map[cluster]['instances']:
             cluster_map[cluster]['queue'].put(i)
     deadline = time.time() + timeout
@@ -488,7 +487,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
 
             bar.update(sum([v["deployed"] for v in cluster_map.values()]))
 
-            if all([cluster['deployed'] == cluster['num_instances']
+            if all([cluster['deployed'] == len(cluster['instances'])
                     for cluster in cluster_map.values()]):
                 sys.stdout.flush()
                 return 0
