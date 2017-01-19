@@ -264,13 +264,19 @@ def paasta_mark_for_deployment(args):
 def instances_deployed(cluster, service, instances_in, instances_out, git_sha, green_light):
     """Create a thread pool to run _run_instance_worker()
 
-    Args:
-        green_light: an instance of threading.Event(). It is used to terminate
-            all running threads after KeyboardInterrupt.
-        instances_in (Queue): a thread-safe queue that contains all cluster
-            instances that need to be checked.
-        instances_out (Queue): a empty thread-safe queue. I will contain
-            instances that are not deployed yet.
+    :param cluster: the name of the cluster.
+    :param service: the name of the service.
+    :param instances_in: a thread-safe queue. Should contain all cluster
+                         instances that need to be checked.
+    :type instances_in: Queue
+    :param instances_out: a empty thread-safe queue. I will contain
+                          instances that are not deployed yet.
+    :type instances_out: Queue
+    :param git_sha: git sha marked for deployment.
+    :param green_light: an instance of threading.Event().
+                        It is supposed to be cleared when KeyboardInterrupt is
+                        received. All running threads should check it
+                        periodically and exit when it is cleared.
     """
     num_threads = min(5, instances_in.qsize())
 
@@ -292,6 +298,20 @@ def _run_instance_worker(cluster, service, instances_in,
 
     If an instance doesn't have the expected git_sha, add it to
     the instances_out queue to re-check it later.
+
+    :param cluster: the name of the cluster.
+    :param service: the name of the service.
+    :param instances_in: a thread-safe queue. Should contain all cluster
+                         instances that need to be checked.
+    :type instances_in: Queue
+    :param instances_out: a empty thread-safe queue. I will contain
+                          instances that are not deployed yet.
+    :type instances_out: Queue
+    :param git_sha: git sha marked for deployment.
+    :param green_light: an instance of threading.Event().
+                        It is supposed to be cleared when KeyboardInterrupt is
+                        received. All running threads should check it
+                        periodically and exit when it is cleared.
     """
 
     api = client.get_paasta_api_client(cluster=cluster)
@@ -380,9 +400,14 @@ def _run_instance_worker(cluster, service, instances_in,
 def _query_clusters(cluster_map, service, git_sha, green_light):
     """Run _run_cluster_worker() in a separate thread for each paasta cluster
 
-    Args:
-        green_light: an instance of threading.Event(). It is used to terminate
-            all running threads after KeyboardInterrupt.
+    :param cluster_map: see paasta_tools.generate_deployments_for_service.get_cluster_instance_map_for_service
+    :param cluster: the name of the cluster.
+    :param service: the name of the service.
+    :param git_sha: git sha marked for deployment.
+    :param green_light: an instance of threading.Event().
+                        It is supposed to be cleared when KeyboardInterrupt is
+                        received. All running threads should check it
+                        periodically and exit when it is cleared.
     """
     for cluster, cluster_data in cluster_map.items():
         if cluster_data['deployed'] != cluster_data['num_instances']:
@@ -398,12 +423,22 @@ def _query_clusters(cluster_map, service, git_sha, green_light):
                 time.sleep(.2)
         except (KeyboardInterrupt, SystemExit):
             green_light.clear()
-            paasta_print('KeyboardInterrut received. Terminating..')
+            paasta_print('KeyboardInterrupt received. Terminating..')
         cluster_data['worker'].join()
 
 
 def _run_cluster_worker(cluster, cluster_data, service, git_sha, green_light):
-    """Run instances_deployed() for a cluster"""
+    """Run instances_deployed() for a cluster
+
+    :param cluster: the name of the cluster.
+    :param cluster_data: a reference to cluster_map[cluster]
+    :param service: the name of the service.
+    :param git_sha: git sha marked for deployment.
+    :param green_light: an instance of threading.Event().
+                        It is supposed to be cleared when KeyboardInterrupt is
+                        received. All running threads should check it
+                        periodically and exit when it is cleared.
+    """
     instances_out = Queue()
     instances_deployed(cluster=cluster, service=service,
                        instances_in=cluster_data['queue'],
