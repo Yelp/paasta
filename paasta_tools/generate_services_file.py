@@ -108,6 +108,7 @@ def write_json_file(filename):
             fp=fp,
             indent=2,
             sort_keys=True,
+            separators=(',', ': '),
         )
 
 
