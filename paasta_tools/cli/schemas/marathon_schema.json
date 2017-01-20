@@ -2,268 +2,271 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
     "type": "object",
+    "additionalProperties": false,
     "minProperties": 1,
-    "additionalProperties": {
-        "type": "object",
-        "additionalProperties": false,
-        "minProperties": 1,
-        "allOf":[
-            {
-                "oneOf": [
-                    {
-                        "properties": {
-                            "healthcheck_mode": {"enum": ["tcp", "http"]}
-                        }
-                    },
-                    {
-                        "properties": {
-                            "healthcheck_mode": {"enum": ["cmd"]},
-                            "healthcheck_cmd": {"type": "string"}
-                        },
-                        "required": ["healthcheck_cmd"]
-                    }
-                ]
-            }, {
-                "oneOf": [
-                    {
-                        "properties": {
-                            "drain_method": {
-                                "enum": [ "noop", "hacheck", "test" ]
-                            }
-                        }
-                    },
-                    {
-                        "properties": {
-                            "drain_method": {"enum": ["http"]},
-                            "drain_method_params": {
-                                "type": "object",
-                                "properties": {
-                                    "drain": {
-                                        "type": "object"
-                                    },
-                                    "stop_draining": {
-                                        "type": "object"
-                                    },
-                                    "is_draining": {
-                                        "type": "object"
-                                    },
-                                    "is_safe_to_kill": {
-                                        "type": "object"
-                                    }
-                                },
-                                "required": ["drain", "stop_draining", "is_draining", "is_safe_to_kill"]
+    "patternProperties": {
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "allOf":[
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "healthcheck_mode": {"enum": ["tcp", "http"]}
                             }
                         },
-                        "required": ["drain_method_params"]
-                    }
-                ]
-            }
-        ],
-        "properties": {
-            "cpus": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 0.25
-            },
-            "mem": {
-                "type": "number",
-                "minimum": 32,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "disk": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "instances": {
-                "type": "integer",
-                "minimum": 0,
-                "exclusiveMinimum": false
-            },
-            "min_instances": {
-                "type": "integer",
-                "minimum": 0,
-                "exclusiveMinimum": false
-            },
-            "max_instances": {
-                "type": "integer",
-                "minimum": 0,
-                "exclusiveMinimum": false
-            },
-            "nerve_ns": {
-                "type": "string"
-            },
-            "backoff_factor": {
-                "type": "integer",
-                "default": 2
-            },
-            "max_launch_delay_seconds": {
-                "type": "integer",
-                "default": 300
-            },
-            "registrations": {
-                "type": "array",
-                "items": {
+                        {
+                            "properties": {
+                                "healthcheck_mode": {"enum": ["cmd"]},
+                                "healthcheck_cmd": {"type": "string"}
+                            },
+                            "required": ["healthcheck_cmd"]
+                        }
+                    ]
+                }, {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [ "noop", "hacheck", "test" ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "drain_method": {"enum": ["http"]},
+                                "drain_method_params": {
+                                    "type": "object",
+                                    "properties": {
+                                        "drain": {
+                                            "type": "object"
+                                        },
+                                        "stop_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_safe_to_kill": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "required": ["drain", "stop_draining", "is_draining", "is_safe_to_kill"]
+                                }
+                            },
+                            "required": ["drain_method_params"]
+                        }
+                    ]
+                }
+            ],
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 0.25
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "min_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "max_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "nerve_ns": {
                     "type": "string"
                 },
-                "uniqueItems": true
-            },
-            "bounce_method": {
-                "type": "string"
-            },
-            "bounce_method_params": {
-                "type": "object",
-                "properties": {
-                    "check_haproxy": {
-                        "type": "boolean",
-                        "default": true
+                "backoff_factor": {
+                    "type": "integer",
+                    "default": 2
+                },
+                "max_launch_delay_seconds": {
+                    "type": "integer",
+                    "default": 300
+                },
+                "registrations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     },
-                    "min_task_uptime": {
-                        "type": "number"
-                    }
-                }
-            },
-            "bounce_health_params": {
-                "type": "object",
-                "properties": {
-                    "check_haproxy": {
-                        "type": "boolean",
-                        "default": true
-                    }
-                }
-            },
-            "bounce_margin_factor": {
-                "type": "number",
-                "default": 1
-            },
-            "deploy_group": {
-                "type": "string"
-            },
-            "autoscaling": {
-                "type": "object"
-            },
-            "drain_method": {
-                "enum": [ "noop", "hacheck", "http", "test" ],
-                "default": "noop"
-            },
-            "drain_method_params": {
-                "type": "object"
-            },
-            "constraints": {
-                "type": "array",
-                "items": {
-                    "type": "array"
+                    "uniqueItems": true
                 },
-                "uniqueItems": true
-            },
-            "extra_constraints": {
-                "type": "array",
-                "items": {
-                    "type": "array"
-                },
-                "uniqueItems": true
-            },
-            "pool": {
-                "type": "string"
-            },
-            "cmd": {
-                "type": "string"
-            },
-            "args": {
-                "type": "array",
-                "items": {
+                "bounce_method": {
                     "type": "string"
-                }
-            },
-            "env": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-            },
-            "extra_volumes": {
-                "type": "array",
-                "items": {
-                    "type": "object"
                 },
-                "uniqueItems": true
-            },
-            "monitoring": {
-                "type": "object"
-            },
-            "net": {
-                "type": "string"
-            },
-            "deploy_blacklist": {
-                "type": "array"
-            },
-            "deploy_whitelist": {
-                "type": "array"
-            },
-            "monitoring_blacklist": {
-                "type": "array"
-            },
-            "healthcheck_mode": {
-                "enum": [ "cmd", "tcp", "http" ]
-            },
-            "healthcheck_cmd": {
-                "type": "string",
-                "default": "/bin/true"
-            },
-            "healthcheck_grace_period_seconds": {
-                "type": "number",
-                "default": 60
-            },
-            "healthcheck_interval_seconds": {
-                "type": "number",
-                "default": 10
-            },
-            "healthcheck_timeout_seconds": {
-                "type": "number",
-                "default": 10
-            },
-            "healthcheck_max_consecutive_failures": {
-                "type": "integer",
-                "default": 6
-            },
-            "replication_threshold": {
-                "type": "integer",
-                "minimum": 0
-            },
-            "ulimit": {
-                "type": "object",
-                "additionalProperties": {
+                "bounce_method_params": {
                     "type": "object",
                     "properties": {
-                        "soft": {
-                            "type": "number"
+                        "check_haproxy": {
+                            "type": "boolean",
+                            "default": true
                         },
-                        "hard": {
+                        "min_task_uptime": {
                             "type": "number"
                         }
-                    },
-                    "required": ["soft"],
-                    "additionalProperties": false
-                }
-            },
-            "cap_add": {
-                "type": "array",
-                "items": {
+                    }
+                },
+                "bounce_health_params": {
+                    "type": "object",
+                    "properties": {
+                        "check_haproxy": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                },
+                "bounce_margin_factor": {
+                    "type": "number",
+                    "default": 1
+                },
+                "deploy_group": {
                     "type": "string"
+                },
+                "autoscaling": {
+                    "type": "object"
+                },
+                "drain_method": {
+                    "enum": [ "noop", "hacheck", "http", "test" ],
+                    "default": "noop"
+                },
+                "drain_method_params": {
+                    "type": "object"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "extra_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "pool": {
+                    "type": "string"
+                },
+                "cmd": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "monitoring": {
+                    "type": "object"
+                },
+                "net": {
+                    "type": "string"
+                },
+                "deploy_blacklist": {
+                    "type": "array"
+                },
+                "deploy_whitelist": {
+                    "type": "array"
+                },
+                "monitoring_blacklist": {
+                    "type": "array"
+                },
+                "healthcheck_mode": {
+                    "enum": [ "cmd", "tcp", "http" ]
+                },
+                "healthcheck_cmd": {
+                    "type": "string",
+                    "default": "/bin/true"
+                },
+                "healthcheck_grace_period_seconds": {
+                    "type": "number",
+                    "default": 60
+                },
+                "healthcheck_interval_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_timeout_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_max_consecutive_failures": {
+                    "type": "integer",
+                    "default": 6
+                },
+                "replication_threshold": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "ulimit": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "soft": {
+                                "type": "number"
+                            },
+                            "hard": {
+                                "type": "number"
+                            }
+                        },
+                        "required": ["soft"],
+                        "additionalProperties": false
+                    }
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cfs_period_us": {
+                    "type": "integer",
+                    "minimum": "1000",
+                    "maximum": "1000000",
+                    "exclusiveMinimum": false
+                },
+                "cpu_burst_pct": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
                 }
-            },
-            "cfs_period_us": {
-                "type": "integer",
-                "minimum": "1000",
-                "maximum": "1000000",
-                "exclusiveMinimum": false
-            },
-            "cpu_burst_pct": {
-                "type": "integer",
-                "minimum": 0,
-                "exclusiveMinimum": false
             }
-        }
+	}
     }
 }
