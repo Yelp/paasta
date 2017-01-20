@@ -139,13 +139,27 @@ def filter_not_running_tasks(tasks):
     return [task for task in tasks if not is_task_running(task)]
 
 
-def get_running_tasks_from_all_frameworks(job_id='', include_orphans=True):
-    active_framework_tasks = get_current_tasks(job_id, include_orphans=include_orphans)
+def get_running_tasks_from_frameworks(job_id=''):
+    """ Will include active and completed frameworks but NOT orphaned
+    frameworks
+    """
+    active_framework_tasks = get_current_tasks(job_id, include_orphans=False)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
 
-def get_non_running_tasks_from_all_frameworks(job_id=''):
+def get_running_tasks_from_all_frameworks(job_id=''):
+    """ Will include all running tasks, including orphans
+    """
+    active_framework_tasks = get_current_tasks(job_id, include_orphans=True)
+    running_tasks = filter_running_tasks(active_framework_tasks)
+    return running_tasks
+
+
+def get_non_running_tasks_from_frameworks(job_id=''):
+    """ Will include active and completed frameworks but NOT orphaned
+    frameworks
+    """
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
@@ -355,7 +369,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
                        report.
     """
     output = []
-    running_and_active_tasks = get_running_tasks_from_all_frameworks(job_id)
+    running_and_active_tasks = get_running_tasks_from_frameworks(job_id)
     list_title = "Running Tasks:"
     table_header = [
         "Mesos Task ID",
@@ -374,7 +388,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
         tail_lines=tail_lines,
     ))
 
-    non_running_tasks = get_non_running_tasks_from_all_frameworks(job_id)
+    non_running_tasks = get_non_running_tasks_from_frameworks(job_id)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
@@ -599,7 +613,7 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :param pool: pool of slaves to return (None means all)
     :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
-    all_mesos_tasks = get_running_tasks_from_all_frameworks('', include_orphans=True)  # empty string = all app ids
+    all_mesos_tasks = get_running_tasks_from_all_frameworks('')  # empty string = all app ids
     slaves = {
         slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
     }
@@ -667,14 +681,14 @@ def terminate_framework(framework_id):
 
 
 def get_tasks_from_app_id(app_id, slave_hostname=None):
-    tasks = get_running_tasks_from_all_frameworks(app_id)
+    tasks = get_running_tasks_from_frameworks(app_id)
     if slave_hostname:
         tasks = [task for task in tasks if filter_task_by_hostname(task, slave_hostname)]
     return tasks
 
 
 def get_task(task_id, app_id=''):
-    tasks = get_running_tasks_from_all_frameworks(app_id)
+    tasks = get_running_tasks_from_frameworks(app_id)
     tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
     if len(tasks) < 1:
         raise TaskNotFound("Couldn't find task for given id: {0}".format(task_id))

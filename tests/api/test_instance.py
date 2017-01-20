@@ -72,16 +72,16 @@ def test_instances_status(
     assert response['marathon']['desired_state'] == 'start'
 
 
-@mock.patch('paasta_tools.api.views.instance.get_running_tasks_from_all_frameworks', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_running_tasks_from_frameworks', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.is_app_id_running', autospec=True)
 def test_marathon_job_status(
     mock_is_app_id_running,
-    mock_get_running_tasks_from_all_frameworks,
+    mock_get_running_tasks_from_frameworks,
 ):
     mock_tasks = [mock.Mock(slave={'hostname': 'host1'}),
                   mock.Mock(slave={'hostname': 'host1'}),
                   mock.Mock(slave={'hostname': 'host2'})]
-    mock_get_running_tasks_from_all_frameworks.return_value = mock_tasks
+    mock_get_running_tasks_from_frameworks.return_value = mock_tasks
     mock_is_app_id_running.return_value = True
 
     app = mock.create_autospec(marathon.models.app.MarathonApp)

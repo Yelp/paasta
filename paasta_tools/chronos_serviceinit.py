@@ -21,7 +21,7 @@ import humanize
 import isodate
 
 from paasta_tools import chronos_tools
-from paasta_tools.mesos_tools import get_running_tasks_from_all_frameworks
+from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import _log
 from paasta_tools.utils import calculate_tail_lines
@@ -268,7 +268,7 @@ def format_chronos_job_status(client, job, running_tasks, verbose=0):
 
     :param job: dictionary of the job status
     :param running_tasks: a list of Mesos tasks associated with ``job``, e.g. the
-                          result of ``mesos_tools.get_running_tasks_from_all_frameworks()``.
+                          result of ``mesos_tools.get_running_tasks_from_frameworks()``.
     :param verbose: int verbosity level
     """
     job_name = _format_job_name(job)
@@ -332,7 +332,7 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         desired_state = job_config.get_desired_state_human()
         output.append("Desired:    %s" % desired_state)
         for job in jobs:
-            running_tasks = get_running_tasks_from_all_frameworks(job["name"])
+            running_tasks = get_running_tasks_from_frameworks(job["name"])
             output.append(format_chronos_job_status(client, job, running_tasks, verbose))
         return "\n".join(output)
 

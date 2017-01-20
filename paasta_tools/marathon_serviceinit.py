@@ -24,7 +24,7 @@ import isodate
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import get_running_tasks_from_all_frameworks
+from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
@@ -354,7 +354,7 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
-    running_and_active_tasks = get_running_tasks_from_all_frameworks(filter_string)
+    running_and_active_tasks = get_running_tasks_from_frameworks(filter_string)
     count = len(running_and_active_tasks)
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")

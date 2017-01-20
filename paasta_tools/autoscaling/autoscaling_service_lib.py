@@ -38,7 +38,7 @@ from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
-from paasta_tools.mesos_tools import get_running_tasks_from_all_frameworks
+from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -422,7 +422,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                     user=marathon_config.get_username(),
                     passwd=marathon_config.get_password())
                 all_marathon_tasks = marathon_client.list_tasks()
-                all_mesos_tasks = get_running_tasks_from_all_frameworks('')  # empty string matches all app ids
+                all_mesos_tasks = get_running_tasks_from_frameworks('')  # empty string matches all app ids
                 with ZookeeperPool():
                     for config in configs:
                         try:
