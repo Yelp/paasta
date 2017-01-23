@@ -409,22 +409,24 @@ def _query_clusters(cluster_map, service, git_sha, green_light):
                         received. All running threads should check it
                         periodically and exit when it is cleared.
     """
+    workers_launched = []
+
     for cluster, cluster_data in cluster_map.items():
         if cluster_data['deployed'] != len(cluster_data['instances']):
             worker = Thread(target=_run_cluster_worker,
                             args=(cluster, cluster_data, service, git_sha,
                                   green_light))
             worker.start()
-            cluster_data['worker'] = worker
+            workers_launched.append(worker)
 
-    for cluster, cluster_data in cluster_map.items():
+    for worker in workers_launched:
         try:
-            while green_light.is_set() and cluster_data['worker'].isAlive():
+            while green_light.is_set() and worker.isAlive():
                 time.sleep(.2)
         except (KeyboardInterrupt, SystemExit):
             green_light.clear()
             paasta_print('KeyboardInterrupt received. Terminating..')
-        cluster_data['worker'].join()
+        worker.join()
 
 
 def _run_cluster_worker(cluster, cluster_data, service, git_sha, green_light):
