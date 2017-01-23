@@ -261,30 +261,39 @@ def paasta_mark_for_deployment(args):
     return ret
 
 
-def instances_deployed(cluster, service, instances_in, instances_out, git_sha, green_light):
-    """Create a thread pool to run _run_instance_worker()
+class ClusterData:
+    """An auxiliary data transfer class.
+
+    Used by _query_clusters(), instances_deployed(),
+    _run_cluster_worker(), _run_instance_worker().
 
     :param cluster: the name of the cluster.
     :param service: the name of the service.
-    :param instances_in: a thread-safe queue. Should contain all cluster
-                         instances that need to be checked.
-    :type instances_in: Queue
+    :param git_sha: git sha marked for deployment.
+    :param instances_queue: a thread-safe queue. Should contain all cluster
+                            instances that need to be checked.
+    :type instances_queue: Queue
+    """
+
+    def __init__(self, **kwargs):
+        self.__dict__ = kwargs
+
+
+def instances_deployed(cluster_data, instances_out, green_light):
+    """Create a thread pool to run _run_instance_worker()
+
+    :param cluster_data: an instance of ClusterData.
     :param instances_out: a empty thread-safe queue. I will contain
                           instances that are not deployed yet.
     :type instances_out: Queue
-    :param git_sha: git sha marked for deployment.
-    :param green_light: an instance of threading.Event().
-                        It is supposed to be cleared when KeyboardInterrupt is
-                        received. All running threads should check it
-                        periodically and exit when it is cleared.
+    :param green_light: See the docstring for _query_clusters().
     """
-    num_threads = min(5, instances_in.qsize())
+    num_threads = min(5, cluster_data.instances_queue.qsize())
 
     workers_launched = []
     for _ in xrange(num_threads):
         worker = Thread(target=_run_instance_worker,
-                        args=(cluster, service, instances_in,
-                              instances_out, git_sha, green_light))
+                        args=(cluster_data, instances_out, green_light))
         worker.start()
         workers_launched.append(worker)
 
@@ -292,118 +301,112 @@ def instances_deployed(cluster, service, instances_in, instances_out, git_sha, g
         worker.join()
 
 
-def _run_instance_worker(cluster, service, instances_in,
-                         instances_out, git_sha, green_light):
+def _run_instance_worker(cluster_data, instances_out, green_light):
     """Get instances from the instances_in queue and check them one by one.
 
-    If an instance doesn't have the expected git_sha, add it to
-    the instances_out queue to re-check it later.
+    If an instance isn't deployed, add it to the instances_out queue
+    to re-check it later.
 
-    :param cluster: the name of the cluster.
-    :param service: the name of the service.
-    :param instances_in: a thread-safe queue. Should contain all cluster
-                         instances that need to be checked.
-    :type instances_in: Queue
-    :param instances_out: a empty thread-safe queue. I will contain
-                          instances that are not deployed yet.
-    :type instances_out: Queue
-    :param git_sha: git sha marked for deployment.
-    :param green_light: an instance of threading.Event().
-                        It is supposed to be cleared when KeyboardInterrupt is
-                        received. All running threads should check it
-                        periodically and exit when it is cleared.
+    :param cluster_data: an instance of ClusterData.
+    :param instances_out: See the docstring for instances_deployed().
+    :param green_light: See the docstring for _query_clusters().
     """
 
-    api = client.get_paasta_api_client(cluster=cluster)
+    api = client.get_paasta_api_client(cluster=cluster_data.cluster)
     if not api:
         log.warning("Couldn't reach the PaaSTA api for {}! Assuming it is not "
-                    "deployed there yet.".format(cluster))
-        while not instances_in.empty():
-            instance = instances_in.get()
-            instances_out.put(instance)
-            instances_in.task_done()
+                    "deployed there yet.".format(cluster_data.cluster))
+        while not cluster_data.instances_queue.empty():
+            instances_out.put(cluster_data.instances_queue.get())
+            cluster_data.instances_queue.task_done()
 
-    while not instances_in.empty() and green_light.is_set():
-        instance = instances_in.get()
+    while not cluster_data.instances_queue.empty() and green_light.is_set():
+        instance = cluster_data.instances_queue.get()
         log.debug("Inspecting the deployment status of {}.{} on {}"
-                  .format(service, instance, cluster))
+                  .format(cluster_data.service, instance, cluster_data.cluster))
         try:
             status = None
-            status = api.service.status_instance(service=service, instance=instance).result()
+            status = api.service.status_instance(service=cluster_data.service,
+                                                 instance=instance).result()
         except HTTPError as e:
             if e.response.status_code == 404:
                 log.warning("Can't get status for instance {0}, service {1} in "
                             "cluster {2}. This is normally because it is a new "
                             "service that hasn't been deployed by PaaSTA yet"
-                            .format(instance, service, cluster))
+                            .format(instance, cluster_data.service,
+                                    cluster_data.cluster))
             else:
                 log.warning("Error getting service status from PaaSTA API: {0}:"
                             "{1}".format(e.response.status_code,
                                          e.response.text))
         except ConnectionError as e:
             log.warning("Error getting service status from PaaSTA API for {0}:"
-                        "{1}".format(cluster, e))
+                        "{1}".format(cluster_data.cluster, e))
 
         if not status:
             log.debug("No status for {}.{}, in {}. Not deployed yet."
-                      .format(service, instance, cluster))
-            instances_in.task_done()
+                      .format(cluster_data.service, instance,
+                              cluster_data.cluster))
+            cluster_data.instances_queue.task_done()
             instances_out.put(instance)
         elif not status.marathon:
             log.debug("{}.{} in {} is not a Marathon job. Marked as deployed."
-                      .format(service, instance, cluster))
+                      .format(cluster_data.service, instance,
+                              cluster_data.cluster))
         elif (status.marathon.expected_instance_count == 0 or
                 status.marathon.desired_state == 'stop'):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
-                      .format(service, status.instance, cluster))
+                      .format(cluster_data.service, status.instance,
+                              cluster_data.cluster))
         else:
             if status.marathon.app_count != 1:
                 paasta_print("  {}.{} on {} is still bouncing, {} versions "
                              "running"
-                             .format(service, status.instance, cluster,
+                             .format(cluster_data.service, status.instance,
+                                     cluster_data.cluster,
                                      status.marathon.app_count))
-                instances_in.task_done()
+                cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
-            if not git_sha.startswith(status.git_sha):
+            if not cluster_data.git_sha.startswith(status.git_sha):
                 paasta_print("  {}.{} on {} doesn't have the right sha yet: {}"
-                             .format(service, instance, cluster,
-                                     status.git_sha))
-                instances_in.task_done()
+                             .format(cluster_data.service, instance,
+                                     cluster_data.cluster, status.git_sha))
+                cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             if status.marathon.deploy_status != 'Running':
                 paasta_print("  {}.{} on {} isn't running yet: {}"
-                             .format(service, instance, cluster,
+                             .format(cluster_data.service, instance,
+                                     cluster_data.cluster,
                                      status.marathon.deploy_status))
-                instances_in.task_done()
+                cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             if (status.marathon.expected_instance_count !=
                     status.marathon.running_instance_count):
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
                              "has {} out of {}"
-                             .format(service, instance, cluster,
+                             .format(cluster_data.service, instance,
+                                     cluster_data.cluster,
                                      status.marathon.running_instance_count,
                                      status.marathon.expected_instance_count))
-                instances_in.task_done()
+                cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             paasta_print("Complete: {}.{} on {} looks 100% deployed at {} "
                          "instances on {}"
-                         .format(service, instance, cluster,
+                         .format(cluster_data.service, instance,
+                                 cluster_data.cluster,
                                  status.marathon.running_instance_count,
                                  status.git_sha))
-            instances_in.task_done()
+            cluster_data.instances_queue.task_done()
 
 
-def _query_clusters(cluster_map, service, git_sha, green_light):
+def _query_clusters(clusters_data, green_light):
     """Run _run_cluster_worker() in a separate thread for each paasta cluster
 
-    :param cluster_map: see paasta_tools.generate_deployments_for_service.get_cluster_instance_map_for_service
-    :param cluster: the name of the cluster.
-    :param service: the name of the service.
-    :param git_sha: git sha marked for deployment.
+    :param clusters_data: a list of ClusterData instances.
     :param green_light: an instance of threading.Event().
                         It is supposed to be cleared when KeyboardInterrupt is
                         received. All running threads should check it
@@ -411,11 +414,10 @@ def _query_clusters(cluster_map, service, git_sha, green_light):
     """
     workers_launched = []
 
-    for cluster, cluster_data in cluster_map.items():
-        if cluster_data['deployed'] != len(cluster_data['instances']):
+    for cluster_data in clusters_data:
+        if not cluster_data.instances_queue.empty():
             worker = Thread(target=_run_cluster_worker,
-                            args=(cluster, cluster_data, service, git_sha,
-                                  green_light))
+                            args=(cluster_data, green_light))
             worker.start()
             workers_launched.append(worker)
 
@@ -429,31 +431,19 @@ def _query_clusters(cluster_map, service, git_sha, green_light):
         worker.join()
 
 
-def _run_cluster_worker(cluster, cluster_data, service, git_sha, green_light):
+def _run_cluster_worker(cluster_data, green_light):
     """Run instances_deployed() for a cluster
 
-    :param cluster: the name of the cluster.
-    :param cluster_data: a reference to cluster_map[cluster]
-    :param service: the name of the service.
-    :param git_sha: git sha marked for deployment.
-    :param green_light: an instance of threading.Event().
-                        It is supposed to be cleared when KeyboardInterrupt is
-                        received. All running threads should check it
-                        periodically and exit when it is cleared.
+    :param cluster_data: an instance of ClusterData.
+    :param green_light: See the docstring for _query_clusters().
     """
     instances_out = Queue()
-    instances_deployed(cluster=cluster, service=service,
-                       instances_in=cluster_data['queue'],
-                       instances_out=instances_out, git_sha=git_sha,
+    instances_deployed(cluster_data=cluster_data,
+                       instances_out=instances_out,
                        green_light=green_light)
-    if cluster_data['queue'].empty():
-        cluster_data['deployed'] = (len(cluster_data['instances']) -
-                                    instances_out.qsize())
-    cluster_data['queue'] = instances_out
-    if cluster_data['deployed'] == len(cluster_data['instances']):
-        instance_csv = ", ".join(cluster_data['instances'])
-        paasta_print("Deploy to {} complete! (instances: {})"
-                     .format(cluster, instance_csv))
+    cluster_data.instances_queue = instances_out
+    if cluster_data.instances_queue.empty():
+        paasta_print("Deploy to {} complete!".format(cluster_data.cluster))
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
@@ -471,26 +461,29 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                  .format(git_sha, deploy_group))
 
     total_instances = 0
+    clusters_data = []
     for cluster in cluster_map:
-        cluster_map[cluster]['deployed'] = 0
-        cluster_map[cluster]['queue'] = Queue()
-        total_instances += len(cluster_map[cluster]['instances'])
+        clusters_data.append(ClusterData(cluster=cluster, service=service,
+                                         git_sha=git_sha,
+                                         instances_queue=Queue()))
         for i in cluster_map[cluster]['instances']:
-            cluster_map[cluster]['queue'].put(i)
+            clusters_data[-1].instances_queue.put(i)
+        total_instances += len(cluster_map[cluster]['instances'])
     deadline = time.time() + timeout
     green_light = Event()
     green_light.set()
 
     with progressbar.ProgressBar(maxval=total_instances) as bar:
         while time.time() < deadline:
-            _query_clusters(cluster_map, service, git_sha, green_light)
+            _query_clusters(clusters_data, green_light)
             if not green_light.is_set():
                 raise KeyboardInterrupt
 
-            bar.update(sum([v["deployed"] for v in cluster_map.values()]))
+            bar.update(total_instances - sum((c.instances_queue.qsize()
+                                              for c in clusters_data)))
 
-            if all([cluster['deployed'] == len(cluster['instances'])
-                    for cluster in cluster_map.values()]):
+            if all((cluster.instances_queue.empty()
+                    for cluster in clusters_data)):
                 sys.stdout.flush()
                 return 0
             else:

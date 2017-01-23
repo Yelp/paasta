@@ -106,86 +106,88 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     f = mark_for_deployment.instances_deployed
     e = Event()
     e.set()
-    instances_in = Queue()
-    instances_in.put('instance1')
+    cluster_data = mark_for_deployment.ClusterData(cluster='cluster',
+                                                   service='service1',
+                                                   git_sha='somesha',
+                                                   instances_queue=Queue())
+    cluster_data.instances_queue.put('instance1')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
-    instances_in = Queue()
-    instances_in.put('instance1')
-    instances_in.put('instance2')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance1')
+    cluster_data.instances_queue.put('instance2')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get() == 'instance2'
 
-    instances_in = Queue()
-    instances_in.put('instance3')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance3')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get() == 'instance3'
 
-    instances_in = Queue()
-    instances_in.put('instance4')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance4')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get() == 'instance4'
 
-    instances_in = Queue()
-    instances_in.put('instance5')
-    instances_in.put('instance1')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance5')
+    cluster_data.instances_queue.put('instance1')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
-    instances_in = Queue()
-    instances_in.put('instance6')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance6')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False) == 'instance6'
 
-    instances_in = Queue()
-    instances_in.put('notaninstance')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('notaninstance')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False) == 'notaninstance'
 
-    instances_in = Queue()
-    instances_in.put('api_error')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('api_error')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False) == 'api_error'
 
-    instances_in = Queue()
-    instances_in.put('instance7')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance7')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
-    instances_in = Queue()
-    instances_in.put('instance8')
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance8')
     instances_out = Queue()
-    f('cluster', 'service1', instances_in, instances_out, 'somesha', e)
-    assert instances_in.empty()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
 
-def instances_deployed_side_effect(cluster, service, instances_in,
-                                   instances_out, git_sha, green_light):
-    while not instances_in.empty():
-        instance = instances_in.get()
+def instances_deployed_side_effect(cluster_data, instances_out, green_light):
+    while not cluster_data.instances_queue.empty():
+        instance = cluster_data.instances_queue.get()
         if instance not in ['instance1', 'instance2']:
             instances_out.put(instance)
-        instances_in.task_done()
+        cluster_data.instances_queue.task_done()
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
