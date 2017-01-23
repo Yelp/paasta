@@ -210,6 +210,83 @@ main_worker:
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
 @patch('sys.stdout', new_callable=StringIO, autospec=None)
+def test_marathon_validate_id(
+    mock_stdout,
+    mock_get_file_contents
+):
+    marathon_content = """
+---
+valid:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue().decode('utf-8')
+    assert SCHEMA_VALID in output
+
+    marathon_content = """
+---
+this_is_okay_too_1:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue().decode('utf-8')
+    assert SCHEMA_VALID in output
+
+    marathon_content = """
+---
+dashes-are-okay-too:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue().decode('utf-8')
+    assert SCHEMA_VALID in output
+
+    marathon_content = """
+---
+main_worker_CAPITALS_INVALID:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert not validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue().decode('utf-8')
+    assert SCHEMA_INVALID in output
+
+    marathon_content = """
+---
+$^&*()(&*^%&definitely_not_okay:
+  cpus: 0.1
+  instances: 2
+  mem: 250
+  disk: 512
+  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert not validate_schema('unused_service_path.yaml', 'marathon')
+    output = mock_stdout.getvalue().decode('utf-8')
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_healthcheck_cmd_has_cmd(
     mock_stdout,
     mock_get_file_contents
