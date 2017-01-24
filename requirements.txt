@@ -51,6 +51,7 @@ sensu-plugin==0.1.0
 service-configuration-lib==0.10.1
 simplejson==3.6.5
 six==1.9.0
+sphinx==1.4.1
 thriftpy==0.1.15
 ujson==1.35
 websocket-client==0.32.0
