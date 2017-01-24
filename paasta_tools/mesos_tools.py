@@ -116,7 +116,11 @@ def get_current_tasks(job_id, include_orphans=False):
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
-    return get_mesos_master().tasks(fltr=job_id, active_only=False, include_orphans=include_orphans)
+    mesos_master = get_mesos_master()
+    framework_tasks = mesos_master.tasks(fltr=job_id, active_only=False)
+    if include_orphans:
+        framework_tasks += mesos_master.orphan_tasks()
+    return framework_tasks
 
 
 def is_task_running(task):
@@ -148,11 +152,11 @@ def get_running_tasks_from_frameworks(job_id=''):
     return running_tasks
 
 
-def get_running_tasks_from_all_frameworks(job_id=''):
+def get_all_running_tasks():
     """ Will include all running tasks, including orphans
     """
-    active_framework_tasks = get_current_tasks(job_id, include_orphans=True)
-    running_tasks = filter_running_tasks(active_framework_tasks)
+    framework_tasks = get_current_tasks('', include_orphans=True)
+    running_tasks = filter_running_tasks(framework_tasks)
     return running_tasks
 
 
@@ -613,7 +617,7 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :param pool: pool of slaves to return (None means all)
     :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
-    all_mesos_tasks = get_running_tasks_from_all_frameworks('')  # empty string = all app ids
+    all_mesos_tasks = get_all_running_tasks()  # empty string = all app ids
     slaves = {
         slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
     }

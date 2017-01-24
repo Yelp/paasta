@@ -595,9 +595,9 @@ def test_slave_pid_to_ip():
 
 def test_get_mesos_task_count_by_slave():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_all_frameworks', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.get_all_running_tasks', autospec=True),
     ) as (
-        mock_get_running_tasks_from_all_frameworks,
+        mock_get_all_running_tasks,
     ):
         mock_chronos = mock.Mock()
         mock_chronos.name = 'chronos'
@@ -616,18 +616,18 @@ def test_get_mesos_task_count_by_slave():
         mock_task4.slave = {'id': 'slave2'}
         mock_task4.framework = mock_marathon
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
-        mock_get_running_tasks_from_all_frameworks.return_value = mock_tasks
+        mock_get_all_running_tasks.return_value = mock_tasks
         mock_slave_1 = {'id': 'slave1', 'attributes': {'pool': 'default'}, 'hostname': 'host1'}
         mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2'}
         mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3'}
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
-        mock_get_running_tasks_from_all_frameworks.assert_called_with('')
+        assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
         assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
-        mock_get_running_tasks_from_all_frameworks.assert_called_with('')
+        assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
@@ -638,7 +638,7 @@ def test_get_mesos_task_count_by_slave():
         mock_task2.slave = {'id': 'slave2'}
         mock_task2.framework = mock_marathon
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
-        mock_get_running_tasks_from_all_frameworks.return_value = mock_tasks
+        mock_get_all_running_tasks.return_value = mock_tasks
         mock_slaves_list = [{'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
                             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
                             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
@@ -765,7 +765,7 @@ def test_get_running_tasks_from_frameworks():
         assert ret == mock_filter_running_tasks.return_value
 
 
-def test_get_running_tasks_from_all_frameworks():
+def test_get_all_running_tasks():
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
         mock.patch('paasta_tools.mesos_tools.filter_running_tasks', autospec=True),
@@ -773,7 +773,7 @@ def test_get_running_tasks_from_all_frameworks():
         mock_get_current_tasks,
         mock_filter_running_tasks
     ):
-        ret = mesos_tools.get_running_tasks_from_all_frameworks(job_id='')
+        ret = mesos_tools.get_all_running_tasks()
         mock_get_current_tasks.assert_called_with('', include_orphans=True)
         mock_filter_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
         assert ret == mock_filter_running_tasks.return_value
@@ -791,3 +791,26 @@ def test_get_non_running_tasks_from_frameworks():
         mock_get_current_tasks.assert_called_with('')
         mock_filter_not_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
         assert ret == mock_filter_not_running_tasks.return_value
+
+
+def test_get_current_tasks():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
+    ) as (
+        mock_get_mesos_master,
+    ):
+        mock_task_1 = mock.Mock()
+        mock_task_2 = mock.Mock()
+        mock_task_3 = mock.Mock()
+        mock_tasks = mock.Mock(return_value=[mock_task_1, mock_task_2])
+        mock_orphan_tasks = mock.Mock(return_value=[mock_task_3])
+        mock_mesos_master = mock.Mock(tasks=mock_tasks, orphan_tasks=mock_orphan_tasks)
+        mock_get_mesos_master.return_value = mock_mesos_master
+
+        expected = [mock_task_1, mock_task_2]
+        ret = mesos_tools.get_current_tasks('')
+        assert ret == expected and len(ret) == len(expected)
+
+        expected = [mock_task_1, mock_task_2, mock_task_3]
+        ret = mesos_tools.get_current_tasks('', include_orphans=True)
+        assert ret == expected and len(ret) == len(expected)

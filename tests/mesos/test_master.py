@@ -72,12 +72,10 @@ def test__framework_list(mock__frameworks):
 def test__task_list(mock__frameworks_list):
     mock_task_1 = Mock()
     mock_task_2 = Mock()
-    mock_task_3 = Mock()
     mock_framework = {'tasks': [mock_task_1],
                       'completed_tasks': [mock_task_2]}
     mock__frameworks_list.return_value = [mock_framework]
     mesos_master = master.MesosMaster({})
-    mesos_master.state = {'orphan_tasks': [mock_task_3]}
     ret = mesos_master._task_list()
     mock__frameworks_list.assert_called_with(mesos_master, False)
     expected = [mock_task_1, mock_task_2]
@@ -87,8 +85,8 @@ def test__task_list(mock__frameworks_list):
     expected = [mock_task_1]
     assert list(ret) == expected
 
-    ret = mesos_master._task_list(include_orphans=True)
-    expected = [mock_task_1, mock_task_2, mock_task_3]
+    ret = mesos_master._task_list(active_only=False)
+    expected = [mock_task_1, mock_task_2]
     assert list(ret) == expected
 
 
@@ -103,6 +101,13 @@ def test_tasks(mock__task_list, mock_task):
     ret = mesos_master.tasks()
     mock_task.assert_has_calls([call(mesos_master, mock_task_1),
                                 call(mesos_master, mock_task_2)])
-    mock__task_list.assert_called_with(mesos_master, False, False)
+    mock__task_list.assert_called_with(mesos_master, False)
     expected = [mock_task.return_value, mock_task.return_value]
     assert list(ret) == expected
+
+
+def test_orphan_tasks():
+    mesos_master = master.MesosMaster({})
+    mock_task_1 = Mock()
+    mesos_master.state = {'orphan_tasks': [mock_task_1]}
+    assert mesos_master.orphan_tasks() == [mock_task_1]
