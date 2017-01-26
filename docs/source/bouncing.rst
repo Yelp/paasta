@@ -10,9 +10,13 @@ A "Bounce" can happen for one of these reasons:
 
 * A new version of the code is deployed (a git sha change)
 * A change of `soa-configs <yelpsoa_configs.html>`_ for a service. (Change in ram, cpu, environment variables, etc)
-* * With the exception of these keys:
 
-.. program-output:: python -c "from paasta_tools.marathon_tools import CONFIG_HASH_BLACKLIST; print ', '.join(CONFIG_HASH_BLACKLIST)"
+  * With the exception of these keys:
+
+    * ``min_instances``
+    * ``instances``
+    * ``max_instances``
+    * ``backoff_seconds``
 
 * An issue of a ``paasta restart`` (or partially from a start/stop)
 * A change in system-wide PaaSTA configuration (defaults for volumes, ram, cpu, etc)
