@@ -275,8 +275,11 @@ class ClusterData:
     :type instances_queue: Queue
     """
 
-    def __init__(self, **kwargs):
-        self.__dict__ = kwargs
+    def __init__(self, cluster, service, git_sha, instances_queue):
+        self.cluster = cluster
+        self.service = service
+        self.git_sha = git_sha
+        self.instances_queue = instances_queue
 
 
 def instances_deployed(cluster_data, instances_out, green_light):
