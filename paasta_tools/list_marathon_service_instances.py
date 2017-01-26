@@ -42,6 +42,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import long_job_id_to_short_job_id
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import use_requests_cache
@@ -80,8 +81,7 @@ def get_desired_marathon_configs(soa_dir):
                 soa_dir=soa_dir,
             ).format_marathon_app_dict()
             marathon_configs[marathon_config['id'].lstrip('/')] = marathon_config
-        except NoDockerImageError:
-            # This service hasn't been deployed yet
+        except (NoDeploymentsAvailable, NoDockerImageError):
             pass
     return marathon_configs
 
