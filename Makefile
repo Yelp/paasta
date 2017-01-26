@@ -26,8 +26,7 @@ docs:
 	tox -e docs
 
 test:
-	rm -rf .tox
-	tox
+	./test.sh
 
 itest: test
 	tox -e general_itests

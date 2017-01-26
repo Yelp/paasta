@@ -1,6 +1,7 @@
 build/
 dist/
 .tox
+.paasta
 .pip/
 *.py?
 .*.sw?
