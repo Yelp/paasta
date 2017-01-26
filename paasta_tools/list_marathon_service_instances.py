@@ -58,6 +58,9 @@ def parse_args():
                         help="define a different soa config directory")
     parser.add_argument('-m', '--minimal', dest='minimal', action='store_true',
                         help="show only service instances that need bouncing")
+    parser.add_argument('-o', '--oracle', dest='oracle', action='store_true',
+                        help="list all service instances but list those that need "
+                             "bouncing first")
     args = parser.parse_args()
     return args
 
@@ -110,23 +113,33 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     cluster = args.cluster
-    if args.minimal:
+
+    instances = get_services_for_cluster(cluster=cluster,
+                                         instance_type='marathon',
+                                         soa_dir=soa_dir)
+    all_service_instances = []
+    for name, instance in instances:
+        all_service_instances.append(compose_job_id(name, instance))
+    if args.minimal or args.oracle:
         marathon_config = load_marathon_config()
         marathon_client = get_marathon_client(
             url=marathon_config.get_url(),
             user=marathon_config.get_username(),
             passwd=marathon_config.get_password(),
         )
-        service_instances = get_service_instances_that_need_bouncing(
-            marathon_client=marathon_client, soa_dir=soa_dir)
+        service_instances_need_bounce = list(get_service_instances_that_need_bouncing(marathon_client=marathon_client,
+                                                                                      soa_dir=soa_dir))
+        service_instances_dont_need_bounce = [service_instance for service_instance in all_service_instances if
+                                              service_instance not in service_instances_need_bounce]
+    if args.minimal:
+        paasta_print('\n'.join(service_instances_need_bounce))
+    elif args.oracle:
+        if service_instances_need_bounce:
+            paasta_print('\n'.join(service_instances_need_bounce))
+        if service_instances_dont_need_bounce:
+            paasta_print('\n'.join(service_instances_dont_need_bounce))
     else:
-        instances = get_services_for_cluster(cluster=cluster,
-                                             instance_type='marathon',
-                                             soa_dir=soa_dir)
-        service_instances = []
-        for name, instance in instances:
-            service_instances.append(compose_job_id(name, instance))
-    paasta_print('\n'.join(service_instances))
+        paasta_print('\n'.join(all_service_instances))
     sys.exit(0)
 
 
