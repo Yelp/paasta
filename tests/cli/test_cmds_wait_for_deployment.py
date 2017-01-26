@@ -14,6 +14,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from Queue import Queue
+from threading import Event
+
 from bravado.exception import HTTPError
 from mock import Mock
 from mock import patch
@@ -24,17 +27,6 @@ from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.utils import TimeoutError
-
-
-class MockSleep:
-    def __init__(self):
-        self.call_count = 0
-
-    def mock_sleep_side_effect(self, time):
-        if self.call_count == 5:
-            raise TimeoutError()
-        self.call_count += 1
-        return
 
 
 class fake_args:
@@ -112,67 +104,115 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
         mock_status_instance_side_effect
 
     f = mark_for_deployment.instances_deployed
-    assert f('cluster', 'service1', ['instance1'], 'somesha') == ['instance1']
+    e = Event()
+    e.set()
+    cluster_data = mark_for_deployment.ClusterData(cluster='cluster',
+                                                   service='service1',
+                                                   git_sha='somesha',
+                                                   instances_queue=Queue())
+    cluster_data.instances_queue.put('instance1')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.empty()
 
-    assert f('cluster', 'service1', ['instance2', 'instance1'],
-             'somesha') == ['instance1']
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance1')
+    cluster_data.instances_queue.put('instance2')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get() == 'instance2'
 
-    assert f('cluster', 'service1', ['instance3'], 'somesha') == []
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance3')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get() == 'instance3'
 
-    assert f('cluster', 'service1', ['instance4'], 'somesha') == []
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance4')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get() == 'instance4'
 
-    assert f('cluster', 'service1', ['instance5', 'instance1'],
-             'somesha') == ['instance5', 'instance1']
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance5')
+    cluster_data.instances_queue.put('instance1')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.empty()
 
-    assert f('cluster', 'service1', ['instance6'], 'somesha') == []
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance6')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get(block=False) == 'instance6'
 
-    assert f('cluster', 'service1', ['notaninstance'], 'somesha') == []
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('notaninstance')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get(block=False) == 'notaninstance'
 
-    assert f('cluster', 'service1', ['api_error'], 'somesha') == []
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('api_error')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.get(block=False) == 'api_error'
 
-    assert f('cluster', 'service1', ['instance7'], 'somesha') == ['instance7']
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance7')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.empty()
 
-    assert f('cluster', 'service1', ['instance8'], 'somesha') == ['instance8']
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance8')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.empty()
 
 
-def instances_deployed_side_effect(cluster, service, instances, git_sha):
-    if instances == ['instance1', 'instance2']:
-        return instances
-    return []
+def instances_deployed_side_effect(cluster_data, instances_out, green_light):
+    while not cluster_data.instances_queue.empty():
+        instance = cluster_data.instances_queue.get()
+        if instance not in ['instance1', 'instance2']:
+            instances_out.put(instance)
+        cluster_data.instances_queue.task_done()
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
-@patch('time.sleep', autospec=True)
-def test_wait_for_deployment(mock_sleep, mock_instances_deployed, mock__log,
+def test_wait_for_deployment(mock_instances_deployed, mock__log,
                              mock_get_cluster_instance_map_for_service):
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     mock_instances_deployed.side_effect = instances_deployed_side_effect
-    mock_sleeper = MockSleep()
-    mock_sleep.side_effect = mock_sleeper.mock_sleep_side_effect
 
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
-
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
-    mock_instances_deployed.assert_called_with(cluster='cluster1',
-                                               service='service',
-                                               instances=mock_cluster_map['cluster1']['instances'],
-                                               git_sha='somesha')
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance2']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
-    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1) == 0
+    assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_2', 'somesha', '/nail/soa', 5) == 0
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
                         'cluster2': {'instances': ['instance1', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
-    mock_sleeper.call_count = 0
     with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 1)
 
 
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
