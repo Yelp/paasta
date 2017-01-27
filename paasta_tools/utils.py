@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
+
 
 import contextlib
 import copy
@@ -181,7 +179,7 @@ class InstanceConfig(dict):
         Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
 
         :returns: A generator of ulimit options to be passed as --ulimit flags"""
-        for key, val in sorted(self.config_dict.get('ulimit', {}).iteritems()):
+        for key, val in sorted(self.config_dict.get('ulimit', {}).items()):
             soft = val.get('soft')
             hard = val.get('hard')
             if soft is None:
@@ -575,7 +573,7 @@ class NoSuchLogComponent(Exception):
 
 
 def validate_log_component(component):
-    if component in LOG_COMPONENTS.keys():
+    if component in list(LOG_COMPONENTS.keys()):
         return True
     else:
         raise NoSuchLogComponent
@@ -621,7 +619,7 @@ def get_log_writer_class(name):
 
 
 def list_log_writers():
-    return _log_writer_classes.keys()
+    return list(_log_writer_classes.keys())
 
 
 def configure_log():
@@ -1063,7 +1061,7 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
 
 def get_umask():
     """Get the current umask for this process. NOT THREAD SAFE."""
-    old_umask = os.umask(0022)
+    old_umask = os.umask(0o022)
     os.umask(old_umask)
     return old_umask
 
@@ -1089,7 +1087,7 @@ def atomic_file_write(target_path):
         temp_target_path = f.name
         yield f
 
-    mode = 0666 & (~get_umask())
+    mode = 0o666 & (~get_umask())
     os.chmod(temp_target_path, mode)
     os.rename(temp_target_path, target_path)
 
@@ -1568,14 +1566,14 @@ def format_table(rows, min_spacing=2):
     :returns: A string containing rows formatted as a table.
     """
 
-    list_rows = [r for r in rows if not isinstance(r, basestring)]
+    list_rows = [r for r in rows if not isinstance(r, str)]
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
         return rows
 
     widths = []
-    for i in xrange(len(list_rows[0])):
+    for i in range(len(list_rows[0])):
         widths.append(max(terminal_len(r[i]) for r in list_rows))
 
     expanded_rows = []
@@ -1603,7 +1601,7 @@ def deep_merge_dictionaries(overrides, defaults):
     stack = [(overrides, result)]
     while stack:
         source_dict, result_dict = stack.pop()
-        for key, value in source_dict.items():
+        for key, value in list(source_dict.items()):
             child = result_dict.setdefault(key, {})
             if isinstance(value, dict) and isinstance(child, dict):
                 stack.append((value, child))
@@ -1713,7 +1711,7 @@ def prompt_pick_one(sequence, choosing):
 
 def paasta_print(*args, **kwargs):
     string = (
-        s.encode('utf-8') if isinstance(s, unicode) else s
+        s.encode('utf-8') if isinstance(s, str) else s
         for s in args
     )
 

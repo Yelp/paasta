@@ -97,7 +97,7 @@ def get_service_instances_that_need_bouncing(marathon_client, soa_dir):
     apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
     apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id in apps_that_need_bouncing}
 
-    for app_id, app in current_apps.items():
+    for app_id, app in list(current_apps.items()):
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
             if app.instances != desired_marathon_configs[app_id]['instances'] or get_num_at_risk_tasks(app) != 0:

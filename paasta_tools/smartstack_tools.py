@@ -162,7 +162,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
     full_name = compose_job_id(service, namespace)
 
-    for value, hosts in attribute_slave_dict.iteritems():
+    for value, hosts in attribute_slave_dict.items():
         # arbitrarily choose the first host with a given attribute to query for replication stats
         synapse_host = hosts[0]['hostname']
         repl_info = get_replication_for_services(
@@ -284,7 +284,7 @@ def match_backends_and_tasks(backends, tasks):
                 backend_task_pairs.append((backend, task))
 
     # we've been popping in the above loop, so anything left didn't match a marathon task.
-    for backends in backends_by_ip_port.values():
+    for backends in list(backends_by_ip_port.values()):
         for backend in backends:
             backend_task_pairs.append((backend, None))
 

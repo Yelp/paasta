@@ -250,7 +250,7 @@ class HTTPDrainMethod(DrainMethod):
         for series_str in str(success_codes_str).split(','):
             if '-' in series_str:
                 start, end = series_str.split('-')
-                acceptable_response_codes.update(range(int(start), int(end) + 1))
+                acceptable_response_codes.update(list(range(int(start), int(end) + 1)))
             else:
                 acceptable_response_codes.add(int(series_str))
         return acceptable_response_codes

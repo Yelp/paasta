@@ -193,7 +193,7 @@ def main():
     try:
         service_job_mapping = build_service_job_mapping(client, configured_jobs)
 
-        for service_instance, job_state_pairs in service_job_mapping.items():
+        for service_instance, job_state_pairs in list(service_job_mapping.items()):
             service, instance = service_instance[0], service_instance[1]
             try:
                 chronos_job_config = load_chronos_job_config(

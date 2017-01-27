@@ -35,7 +35,7 @@ def _get_smartstack_proxy_port_from_file(root, file):
         # support multiple namespaces.
         port = data['smartstack'].get('proxy_port', 0)
     elif file.endswith('smartstack.yaml'):
-        for namespace in data.keys():
+        for namespace in list(data.keys()):
             port = max(port, data[namespace].get('proxy_port', 0))
 
     return int(port)

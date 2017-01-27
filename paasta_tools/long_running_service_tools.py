@@ -252,7 +252,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'extra_healthcheck_headers'
     ])
 
-    for key, value in namespace_config_from_file.items():
+    for key, value in list(namespace_config_from_file.items()):
         if key in key_whitelist:
             service_namespace_config[key] = value
 

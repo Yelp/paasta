@@ -98,7 +98,7 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
     )
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
     previously_deployed_shas = {}
-    for ref, sha in list_remote_refs(git_url).items():
+    for ref, sha in list(list_remote_refs(git_url).items()):
         regex_match = extract_tags(ref)
         try:
             deploy_group = regex_match['deploy_group']
@@ -109,7 +109,7 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
             # note that all strings are greater than ''
             if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
                 previously_deployed_shas[sha] = (tstamp, deploy_group)
-    return previously_deployed_shas.items()
+    return list(previously_deployed_shas.items())
 
 
 def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_dir):

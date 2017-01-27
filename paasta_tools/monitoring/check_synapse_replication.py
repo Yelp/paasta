@@ -77,7 +77,7 @@ def parse_range(str_range):
     if int_range[0] == '':
         int_range[0] = 0
     if int_range[1] == '':
-        int_range[1] = sys.maxint
+        int_range[1] = sys.maxsize
     try:
         return tuple(map(int, int_range))
     except Exception:
@@ -136,13 +136,13 @@ def run_synapse_check():
         )
 
         all_codes = []
-        for name, replication in service_replications.iteritems():
+        for name, replication in service_replications.items():
             code, message = check_replication(name, replication,
                                               options.warn, options.crit)
             all_codes.append(code)
             paasta_print(message)
         sys.exit(max(all_codes))
-    except Exception, e:
+    except Exception as e:
         fail('UNKNOWN: {0}'.format(e), 3)
 
 

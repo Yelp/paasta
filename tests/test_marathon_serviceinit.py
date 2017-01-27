@@ -12,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import contextlib
 import datetime
@@ -400,7 +399,7 @@ def test_status_smartstack_backends_normal():
         }]
 
         mock_read_reg.return_value = service_instance
-        mock_get_backends.return_value = haproxy_backends_by_task.values()
+        mock_get_backends.return_value = list(haproxy_backends_by_task.values())
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
             (haproxy_backends_by_task[bad_task], None),
@@ -470,7 +469,7 @@ def test_status_smartstack_backends_different_nerve_ns():
         }]
 
         mock_read_reg.return_value = service_instance
-        mock_get_backends.return_value = haproxy_backends_by_task.values()
+        mock_get_backends.return_value = list(haproxy_backends_by_task.values())
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
             (haproxy_backends_by_task[bad_task], None),
@@ -715,7 +714,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_reg.return_value = service_instance
-        mock_get_backends.return_value = haproxy_backends_by_task.values()
+        mock_get_backends.return_value = list(haproxy_backends_by_task.values())
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
             (haproxy_backends_by_task[bad_task], None),

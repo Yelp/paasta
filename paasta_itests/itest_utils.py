@@ -42,11 +42,11 @@ def update_context_marathon_config(context):
         mock_get_max_instances,
     ):
         mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
-        context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
+        context.marathon_complete_config = {key: value for key, value in list(marathon_tools.create_complete_config(
             context.service,
             context.instance,
             soa_dir=context.soa_dir,
-        ).items() if key in whitelist_keys}
+        ).items()) if key in whitelist_keys}
     context.marathon_complete_config.update({
         'cmd': '/bin/sleep 1m',
         'constraints': None,

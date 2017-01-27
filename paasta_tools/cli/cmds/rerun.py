@@ -116,7 +116,7 @@ def paasta_rerun(args):
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(service, soa_dir))  # cluster.instance
         deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
-        deployed_cluster_instance = _get_cluster_instance(actual_deployments.keys())
+        deployed_cluster_instance = _get_cluster_instance(list(actual_deployments.keys()))
 
     if args.clusters is not None:
         clusters = args.clusters.split(",")

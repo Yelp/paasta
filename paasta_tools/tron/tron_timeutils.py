@@ -2,7 +2,6 @@
 This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/utils/timeutils.py.
 """
 from __future__ import absolute_import
-from __future__ import division
 from __future__ import unicode_literals
 
 import datetime

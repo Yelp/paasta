@@ -1188,7 +1188,7 @@ class TestSetupMarathonJob:
                 soa_dir=None,
             )
 
-            print repr(retval)
+            print(repr(retval))
 
             mock_load_service_namespace_config.assert_called_once_with(
                 service=fake_service,
@@ -1694,7 +1694,7 @@ class TestDrainTasksAndFindTasksToKill(object):
 
 
 def test_undrain_tasks():
-    all_tasks = [mock.Mock(id="task%d" % x) for x in xrange(5)]
+    all_tasks = [mock.Mock(id="task%d" % x) for x in range(5)]
     to_undrain = all_tasks[:4]
     leave_draining = all_tasks[2:]
     fake_drain_method = mock.Mock(

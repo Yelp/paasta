@@ -16,7 +16,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import urlparse
+import urllib.parse
 
 import requests
 import requests.exceptions
@@ -52,7 +52,7 @@ class MesosSlave(object):
     @log.duration
     def fetch(self, url, **kwargs):
         try:
-            return requests.get(urlparse.urljoin(
+            return requests.get(urllib.parse.urljoin(
                 self.host, url), timeout=self.config["response_timeout"], **kwargs)
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(
@@ -69,10 +69,8 @@ class MesosSlave(object):
     def task_executor(self, task_id):
         for fw in self.frameworks:
             for exc in util.merge(fw, "executors", "completed_executors"):
-                if task_id in list(map(
-                        lambda x: x["id"],
-                        util.merge(
-                            exc, "completed_tasks", "tasks", "queued_tasks"))):
+                if task_id in list([x["id"] for x in util.merge(
+                        exc, "completed_tasks", "tasks", "queued_tasks")]):
                     return exc
         raise exceptions.MissingExecutor("No executor has a task by that id")
 
@@ -98,10 +96,7 @@ class MesosSlave(object):
 
     def task_stats(self, _id):
         eid = self.task_executor(_id)["id"]
-        stats = list(filter(
-            lambda x: x["executor_id"] == eid,
-            self.stats
-        ))
+        stats = list([x for x in self.stats if x["executor_id"] == eid])
 
         # Tasks that are not yet in a RUNNING state have no stats.
         if len(stats) == 0:

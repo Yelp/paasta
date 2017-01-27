@@ -660,7 +660,7 @@ def autoscale_local_cluster(config_folder, dry_run=False):
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
-    for identifier, resource in autoscaling_resources.items():
+    for identifier, resource in list(autoscaling_resources.items()):
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
             autoscaling_scalers.append(get_scaler(resource['type'])(resource=resource,

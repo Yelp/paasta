@@ -58,12 +58,12 @@ def main(filenames):
         paasta_print(filename)
         paasta_print("=========================")
         timedeltas = get_deploy_durations_from_file(filename)
-        for instance, tdlist in timedeltas.items():
+        for instance, tdlist in list(timedeltas.items()):
             if timedeltas:
                 paasta_print("Instance: %s" % instance)
                 display_bounce_info(tdlist)
         paasta_print("Overall:")
-        display_bounce_info(itertools.chain.from_iterable(timedeltas.values()))
+        display_bounce_info(itertools.chain.from_iterable(list(timedeltas.values())))
         paasta_print("=========================")
 
 

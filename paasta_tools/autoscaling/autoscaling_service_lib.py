@@ -273,12 +273,12 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
     time_delta = current_time - last_time
 
     mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
-        'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in mesos_tasks.items()}
+        'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in list(mesos_tasks.items())}
 
     if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu data from Mesos")
 
-    cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
+    cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in list(mesos_cpu_data.items()))
 
     with ZookeeperPool() as zk:
         zk.ensure_path(zk_last_cpu_data)
@@ -296,7 +296,7 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         raise MetricsProviderNoDataError("""The mesos_cpu metrics provider doesn't have Zookeeper data for this service.
                                          This is expected for its first run.""")
 
-    task_utilization = utilization.values()
+    task_utilization = list(utilization.values())
     mean_utilization = mean(task_utilization)
 
     return mean_utilization

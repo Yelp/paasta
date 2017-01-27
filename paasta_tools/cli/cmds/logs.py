@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PaaSTA log reader for humans"""
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import argparse
 import datetime
@@ -25,7 +24,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
-from Queue import Empty
+from queue import Empty
 from time import sleep
 
 import dateutil
@@ -170,7 +169,7 @@ def build_component_descriptions(components):
     """Returns a colored description string for every log component
     based on its help attribute"""
     output = []
-    for k, v in components.iteritems():
+    for k, v in components.items():
         output.append("     %s: %s" % (v['color'](k), v['help']))
     return '\n'.join(output)
 
@@ -453,7 +452,7 @@ def get_log_reader_class(name):
 
 
 def list_log_readers():
-    return _log_reader_classes.keys()
+    return list(_log_reader_classes.keys())
 
 
 def get_log_reader():

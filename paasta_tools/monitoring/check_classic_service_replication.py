@@ -85,7 +85,7 @@ def do_replication_check(service, monitoring_config, service_replication):
         # appear in the replication_map, either way use the default
         goal_replication = replication_default
 
-    warn_range = (goal_replication, sys.maxint)
+    warn_range = (goal_replication, sys.maxsize)
     crit_range = warn_range
 
     status_code, message = check_replication(service,
@@ -184,14 +184,14 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         all_service_config = read_services_configuration()
         system_config = load_system_paasta_config()
         service_replication = self.get_service_replication(
-            all_services=all_service_config.keys(),
+            all_services=list(all_service_config.keys()),
             synapse_host=system_config.get_default_synapse_host(),
             synapse_port=system_config.get_synapse_port(),
             synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
         )
 
         checked_services = []
-        for service, service_config in all_service_config.iteritems():
+        for service, service_config in all_service_config.items():
             do_monitoring, monitoring_config = extract_replication_info(
                 service_config
             )

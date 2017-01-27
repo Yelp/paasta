@@ -2,12 +2,12 @@
 have variables that need to be rendered.
 This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/command_context.py.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import operator
 
 from paasta_tools.tron import tron_timeutils
+from functools import reduce
 
 
 def build_context(object, parent):
@@ -61,7 +61,7 @@ class CommandContext(object):
 
     def __getitem__(self, name):
         getters = [operator.itemgetter(name), operator.attrgetter(name)]
-        for target in [self.base, self.next]:
+        for target in [self.base, self.__next__]:
             for getter in getters:
                 try:
                     return getter(target)
@@ -71,7 +71,7 @@ class CommandContext(object):
         raise KeyError(name)
 
     def __eq__(self, other):
-        return self.base == other.base and self.next == other.next
+        return self.base == other.base and self.__next__ == other.__next__
 
     def __ne__(self, other):
         return not self == other
@@ -195,5 +195,5 @@ class Filler(object):
     def __mod__(self, _):
         return self
 
-    def __nonzero__(self):
+    def __bool__(self):
         return False

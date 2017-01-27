@@ -140,7 +140,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
         num_have = 0
-        for task, parameters in self.tasks_with_flags.iteritems():
+        for task, parameters in self.tasks_with_flags.items():
             if self.is_task_new(name, task) and (parameters.mesos_task_state in LIVE_TASK_STATES):
                 num_have += 1
         return num_have < self.service_config.get_desired_instances()
@@ -168,7 +168,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
             elif resource.name == "ports":
                 for rg in resource.ranges.range:
                     # I believe mesos protobuf ranges are inclusive, but range() is exclusive
-                    offerPorts += range(rg.begin, rg.end + 1)
+                    offerPorts += list(range(rg.begin, rg.end + 1))
         remainingCpus = offerCpus
         remainingMem = offerMem
         remainingPorts = set(offerPorts)
@@ -269,7 +269,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
-        new_tasks = self.get_new_tasks(base_task.name, self.tasks_with_flags.keys())
+        new_tasks = self.get_new_tasks(base_task.name, list(self.tasks_with_flags.keys()))
         happy_new_tasks = self.get_happy_tasks(new_tasks)
 
         desired_instances = self.service_config.get_desired_instances()
@@ -280,7 +280,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
                                            reverse=True)
         new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
 
-        old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
+        old_tasks = self.get_old_tasks(base_task.name, list(self.tasks_with_flags.keys()))
         old_happy_tasks = self.get_happy_tasks(old_tasks)
         old_draining_tasks = self.get_draining_tasks(old_tasks)
         old_unhappy_tasks = set(old_tasks) - set(old_happy_tasks) - set(old_draining_tasks)
@@ -298,7 +298,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task in [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_draining]:
+        for task in [task for task, parameters in self.tasks_with_flags.items() if parameters.is_draining]:
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
                 self.kill_task(driver, task)
 
@@ -313,7 +313,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def get_draining_tasks(self, tasks):
         """Filter a list of tasks to those that are draining."""
-        return [t for t, p in self.tasks_with_flags.iteritems() if p.is_draining]
+        return [t for t, p in self.tasks_with_flags.items() if p.is_draining]
 
     def undrain_task(self, task):
         self.drain_method.stop_draining(DrainTask(id=task))

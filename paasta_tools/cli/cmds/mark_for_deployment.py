@@ -21,12 +21,12 @@ from __future__ import unicode_literals
 import logging
 import sys
 import time
-from Queue import Queue
 from threading import Event
 from threading import Thread
 
 import progressbar
 from bravado.exception import HTTPError
+from queue import Queue
 from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
@@ -294,7 +294,7 @@ def instances_deployed(cluster_data, instances_out, green_light):
     num_threads = min(5, cluster_data.instances_queue.qsize())
 
     workers_launched = []
-    for _ in xrange(num_threads):
+    for _ in range(num_threads):
         worker = Thread(target=_run_instance_worker,
                         args=(cluster_data, instances_out, green_light))
         worker.start()

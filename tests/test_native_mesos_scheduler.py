@@ -58,7 +58,7 @@ class TestPaastaScheduler(object):
         cluster = "cluster"
 
         service_configs = []
-        for force_bounce in xrange(2):
+        for force_bounce in range(2):
             service_configs.append(native_mesos_scheduler.PaastaNativeServiceConfig(
                 service=service_name,
                 instance=instance_name,

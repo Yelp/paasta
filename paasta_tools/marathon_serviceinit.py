@@ -288,7 +288,7 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     # with just their hostname
     grouped_slave_hostname = {
         attribute_value: [slave['hostname'] for slave in slaves]
-        for attribute_value, slaves in grouped_slaves.items()
+        for attribute_value, slaves in list(grouped_slaves.items())
     }
 
     if len(grouped_slave_hostname) == 0:

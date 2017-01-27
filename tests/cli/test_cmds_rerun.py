@@ -17,7 +17,7 @@ from __future__ import unicode_literals
 import argparse
 import contextlib
 import datetime
-from StringIO import StringIO
+from io import StringIO
 
 from mock import MagicMock
 from mock import patch
