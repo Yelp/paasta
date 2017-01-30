@@ -134,7 +134,7 @@ def main():
             grouping_function = metastatus_lib.key_func_for_attribute(grouping)
             resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(grouping_function,
                                                                                      mesos_state)
-            all_rows = [[grouping.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+            all_rows = [[grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)']]
             table_rows = []
             for attribute_value, resource_info_dict in resource_info_dict.items():
                 resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
@@ -161,7 +161,7 @@ def main():
             print_with_indent('Per Slave Utilization', 2)
             slave_resource_dict = metastatus_lib.get_resource_utilization_by_grouping(lambda slave: slave['hostname'],
                                                                                       mesos_state)
-            all_rows = [['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+            all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)']]
 
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave
