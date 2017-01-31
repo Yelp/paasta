@@ -22,6 +22,8 @@ RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools p
 
 RUN easy_install pip
 RUN pip install -U virtualenv
+RUN pip install -U tox
+
 
 ENV HOME /work
 ENV PWD /work
