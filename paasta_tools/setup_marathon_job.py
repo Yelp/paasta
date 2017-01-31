@@ -399,8 +399,6 @@ def deploy_service(
             instance=instance
         )
 
-    short_id = marathon_tools.format_job_id(service, instance)
-
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
     existing_apps = marathon_tools.get_matching_apps(service, instance, marathon_apps)
@@ -503,32 +501,26 @@ def deploy_service(
             log_deploy_error(errormsg)
             return (1, errormsg)
 
-        try:
-            with bounce_lib.bounce_lock_zookeeper(short_id):
-                do_bounce(
-                    bounce_func=bounce_func,
-                    drain_method=drain_method,
-                    config=config,
-                    new_app_running=new_app_running,
-                    happy_new_tasks=happy_new_tasks,
-                    old_app_live_happy_tasks=old_app_live_happy_tasks,
-                    old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
-                    old_app_draining_tasks=old_app_draining_tasks,
-                    old_app_at_risk_tasks=old_app_at_risk_tasks,
-                    service=service,
-                    bounce_method=bounce_method,
-                    serviceinstance=serviceinstance,
-                    cluster=cluster,
-                    instance=instance,
-                    marathon_jobid=marathon_jobid,
-                    client=client,
-                    soa_dir=soa_dir,
-                    bounce_margin_factor=bounce_margin_factor,
-                )
-
-        except bounce_lib.LockHeldException:
-            log.error("Instance %s already being bounced. Exiting", short_id)
-            return (1, "Instance %s is already being bounced." % short_id)
+        do_bounce(
+            bounce_func=bounce_func,
+            drain_method=drain_method,
+            config=config,
+            new_app_running=new_app_running,
+            happy_new_tasks=happy_new_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_app_draining_tasks=old_app_draining_tasks,
+            old_app_at_risk_tasks=old_app_at_risk_tasks,
+            service=service,
+            bounce_method=bounce_method,
+            serviceinstance=serviceinstance,
+            cluster=cluster,
+            instance=instance,
+            marathon_jobid=marathon_jobid,
+            client=client,
+            soa_dir=soa_dir,
+            bounce_margin_factor=bounce_margin_factor,
+        )
     except Exception:
         logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
         log_deploy_error(logline, level='debug')
@@ -631,33 +623,44 @@ def main():
 
 
 def deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
+    short_id = marathon_tools.format_job_id(service, instance)
     try:
-        service_instance_config = marathon_tools.load_marathon_service_config(
-            service,
-            instance,
-            load_system_paasta_config().get_cluster(),
-            soa_dir=soa_dir,
-        )
-    except NoDeploymentsAvailable:
-        log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
-                  (service, instance, load_system_paasta_config().get_cluster()))
-        return 0
-    except NoConfigurationForServiceError:
-        error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
-                    (service, instance, load_system_paasta_config().get_cluster())
-        log.error(error_msg)
-        return 1
+        with bounce_lib.bounce_lock_zookeeper(short_id):
+            try:
+                service_instance_config = marathon_tools.load_marathon_service_config(
+                    service,
+                    instance,
+                    load_system_paasta_config().get_cluster(),
+                    soa_dir=soa_dir,
+                )
+            except NoDeploymentsAvailable:
+                log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
+                          (service, instance, load_system_paasta_config().get_cluster()))
+                return 0
+            except NoConfigurationForServiceError:
+                error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
+                            (service, instance, load_system_paasta_config().get_cluster())
+                log.error(error_msg)
+                return 1
 
-    try:
-        status, output = setup_service(service, instance, client, service_instance_config, marathon_apps, soa_dir)
-        sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-        send_event(service, instance, soa_dir, sensu_status, output)
+            try:
+                status, output = setup_service(service,
+                                               instance,
+                                               client,
+                                               service_instance_config,
+                                               marathon_apps,
+                                               soa_dir)
+                sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
+                send_event(service, instance, soa_dir, sensu_status, output)
+                return 0
+            except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
+                error_str = traceback.format_exc()
+                log.error(error_str)
+                send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
+                return 1
+    except bounce_lib.LockHeldException:
+        log.error("Instance %s already being bounced. Exiting", short_id)
         return 0
-    except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
-        error_str = traceback.format_exc()
-        log.error(error_str)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-        return 1
 
 
 if __name__ == "__main__":

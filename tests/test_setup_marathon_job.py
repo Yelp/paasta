@@ -100,6 +100,7 @@ class TestSetupMarathonJob:
             mock.patch('sys.exit', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -111,6 +112,7 @@ class TestSetupMarathonJob:
             sys_exit_patch,
             _,
             get_all_marathon_apps_patch,
+            _,
         ):
             mock_apps = mock.Mock()
             get_all_marathon_apps_patch.return_value = mock_apps
@@ -171,6 +173,7 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -181,6 +184,7 @@ class TestSetupMarathonJob:
             sensu_patch,
             sys_exit_patch,
             get_all_marathon_apps_patch,
+            _,
         ):
             mock_apps = mock.Mock()
             get_all_marathon_apps_patch.return_value = mock_apps
@@ -236,6 +240,7 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -243,6 +248,7 @@ class TestSetupMarathonJob:
             read_service_conf_patch,
             setup_service_patch,
             load_system_paasta_config_patch,
+            _,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             with raises(SystemExit) as exc_info:
@@ -841,7 +847,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_happy_tasks', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.drain_lib.get_drain_method', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.do_bounce', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
@@ -852,7 +857,6 @@ class TestSetupMarathonJob:
             mock_get_happy_tasks,
             mock_get_drain_method,
             mock_get_bounce_method_func,
-            mock_bounce_lock_zookeeper,
             mock_do_bounce,
             _,
             _,
@@ -909,7 +913,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_happy_tasks', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.drain_lib.get_drain_method', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.do_bounce', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_draining_hosts', autospec=True),
@@ -920,7 +923,6 @@ class TestSetupMarathonJob:
             mock_get_happy_tasks,
             mock_get_drain_method,
             mock_get_bounce_method_func,
-            mock_bounce_lock_zookeeper,
             mock_do_bounce,
             _,
             _,
@@ -1322,10 +1324,6 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.bounce_lib.bounce_lock_zookeeper',
-                autospec=True
-            ),
-            mock.patch(
                 'paasta_tools.bounce_lib.get_happy_tasks',
                 autospec=True,
                 side_effect=lambda x, _, __, ___, **kwargs: x.tasks,
@@ -1337,7 +1335,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.drain_lib.get_drain_method', return_value=fake_drain_method, autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
         ) as (
-            _,
             _,
             _,
             kill_old_ids_patch,
@@ -1394,77 +1391,6 @@ class TestSetupMarathonJob:
 
             assert mock_log.call_count == 5
 
-    def test_deploy_service_already_bouncing(self):
-        fake_bounce = 'areallygoodbouncestrategy'
-        fake_drain_method = 'noop'
-        fake_name = 'how_many_strings'
-        fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, 'gityourmom', 'configyourdad')
-        fake_config = {'id': fake_id, 'instances': 2}
-
-        old_app_id = ('%s2' % fake_id)
-        old_task = mock.Mock(id="old_task_id", app_id=old_app_id)
-        old_app = mock.Mock(id=old_app_id, tasks=[old_task])
-
-        fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=[old_app]),
-            kill_task=mock.Mock(spec=lambda app_id, id, scale=False: None),
-        )
-
-        fake_bounce_func = mock.create_autospec(
-            bounce_lib.brutal_bounce,
-            return_value={
-                "create_app": True,
-                "tasks_to_drain": [old_task],
-            }
-        )
-
-        fake_short_id = marathon_tools.format_job_id(fake_name, fake_instance)
-
-        with contextlib.nested(
-            mock.patch(
-                'paasta_tools.bounce_lib.get_bounce_method_func',
-                return_value=fake_bounce_func,
-                autospec=True,
-            ),
-            mock.patch(
-                'paasta_tools.bounce_lib.bounce_lock_zookeeper',
-                side_effect=bounce_lib.LockHeldException,
-                autospec=True
-            ),
-            mock.patch(
-                'paasta_tools.bounce_lib.get_happy_tasks',
-                autospec=True,
-                side_effect=lambda x, _, __, **kwargs: x.tasks,
-            ),
-            mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
-        ) as (
-            _,
-            _,
-            _,
-            _,
-            mock_load_system_paasta_config,
-            _,
-        ):
-            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            result = setup_marathon_job.deploy_service(
-                service=fake_name,
-                instance=fake_instance,
-                marathon_jobid=fake_id,
-                config=fake_config,
-                client=fake_client,
-                marathon_apps=[old_app],
-                bounce_method=fake_bounce,
-                drain_method_name=fake_drain_method,
-                drain_method_params={},
-                nerve_ns=fake_instance,
-                bounce_health_params={},
-                soa_dir='fake_soa_dir',
-            )
-            assert result == (1, "Instance %s is already being bounced." % fake_short_id)
-
     def test_deploy_service_logs_exceptions(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_drain_method = 'noop'
@@ -1518,6 +1444,27 @@ class TestSetupMarathonJob:
         ) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()
+
+    def test_deploy_marathon_service(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.setup_marathon_job.setup_service', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True,
+                       side_effect=bounce_lib.LockHeldException),
+        ) as (
+            mock_setup_service,
+            mock_bounce_lock_zookeeper,
+        ):
+            mock_client = mock.Mock()
+            mock_marathon_config = {}
+            mock_marathon_apps = []
+            ret = setup_marathon_job.deploy_marathon_service('something',
+                                                             'main',
+                                                             mock_client,
+                                                             'fake_soa',
+                                                             mock_marathon_config,
+                                                             mock_marathon_apps)
+            assert not mock_setup_service.called
+            assert ret == 0
 
 
 class TestGetOldHappyUnhappyDrainingTasks(object):
