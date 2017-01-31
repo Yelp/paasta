@@ -20,6 +20,9 @@ MAINTAINER Kyle Anderson <kwa@yelp.com>
 # Which at this time is in this package
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git
 
+RUN pip install -U pip
+RUN pip install -U virtualenv
+
 ENV HOME /work
 ENV PWD /work
 WORKDIR /work
