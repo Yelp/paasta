@@ -23,14 +23,13 @@ endif
 .PHONY: all docs test itest
 
 docs:
-	tox -e docs
+	./docs.sh
 
 test:
 	./test.sh
 
 itest: test
-	tox -e general_itests
-	tox -e paasta_itests
+	./itest.sh
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
