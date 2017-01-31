@@ -760,7 +760,7 @@ def test_get_running_tasks_from_frameworks():
         mock_filter_running_tasks
     ):
         ret = mesos_tools.get_running_tasks_from_frameworks(job_id='')
-        mock_get_current_tasks.assert_called_with('', include_orphans=False)
+        mock_get_current_tasks.assert_called_with('')
         mock_filter_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
         assert ret == mock_filter_running_tasks.return_value
 
@@ -769,13 +769,24 @@ def test_get_all_running_tasks():
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
         mock.patch('paasta_tools.mesos_tools.filter_running_tasks', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
     ) as (
         mock_get_current_tasks,
-        mock_filter_running_tasks
+        mock_filter_running_tasks,
+        mock_get_mesos_master,
     ):
+        mock_task_1 = mock.Mock()
+        mock_task_2 = mock.Mock()
+        mock_task_3 = mock.Mock()
+
+        mock_get_current_tasks.return_value = [mock_task_1, mock_task_2]
+        mock_orphan_tasks = mock.Mock(return_value=[mock_task_3])
+        mock_mesos_master = mock.Mock(orphan_tasks=mock_orphan_tasks)
+        mock_get_mesos_master.return_value = mock_mesos_master
+
         ret = mesos_tools.get_all_running_tasks()
-        mock_get_current_tasks.assert_called_with('', include_orphans=True)
-        mock_filter_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
+        mock_get_current_tasks.assert_called_with('')
+        mock_filter_running_tasks.assert_called_with([mock_task_1, mock_task_2, mock_task_3])
         assert ret == mock_filter_running_tasks.return_value
 
 
@@ -801,16 +812,10 @@ def test_get_current_tasks():
     ):
         mock_task_1 = mock.Mock()
         mock_task_2 = mock.Mock()
-        mock_task_3 = mock.Mock()
         mock_tasks = mock.Mock(return_value=[mock_task_1, mock_task_2])
-        mock_orphan_tasks = mock.Mock(return_value=[mock_task_3])
-        mock_mesos_master = mock.Mock(tasks=mock_tasks, orphan_tasks=mock_orphan_tasks)
+        mock_mesos_master = mock.Mock(tasks=mock_tasks)
         mock_get_mesos_master.return_value = mock_mesos_master
 
         expected = [mock_task_1, mock_task_2]
         ret = mesos_tools.get_current_tasks('')
-        assert ret == expected and len(ret) == len(expected)
-
-        expected = [mock_task_1, mock_task_2, mock_task_3]
-        ret = mesos_tools.get_current_tasks('', include_orphans=True)
         assert ret == expected and len(ret) == len(expected)

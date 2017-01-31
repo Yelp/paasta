@@ -111,15 +111,13 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
     return get_mesos_leader() == hostname
 
 
-def get_current_tasks(job_id, include_orphans=False):
+def get_current_tasks(job_id):
     """ Returns a list of all the tasks with a given job id.
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
     mesos_master = get_mesos_master()
     framework_tasks = mesos_master.tasks(fltr=job_id, active_only=False)
-    if include_orphans:
-        framework_tasks += mesos_master.orphan_tasks()
     return framework_tasks
 
 
@@ -144,10 +142,10 @@ def filter_not_running_tasks(tasks):
 
 
 def get_running_tasks_from_frameworks(job_id=''):
-    """ Will include active and completed frameworks but NOT orphaned
-    frameworks
+    """ Will include tasks from active and completed frameworks
+    but NOT orphaned tasks
     """
-    active_framework_tasks = get_current_tasks(job_id, include_orphans=False)
+    active_framework_tasks = get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
@@ -155,14 +153,16 @@ def get_running_tasks_from_frameworks(job_id=''):
 def get_all_running_tasks():
     """ Will include all running tasks, including orphans
     """
-    framework_tasks = get_current_tasks('', include_orphans=True)
+    framework_tasks = get_current_tasks('')
+    mesos_master = get_mesos_master()
+    framework_tasks += mesos_master.orphan_tasks()
     running_tasks = filter_running_tasks(framework_tasks)
     return running_tasks
 
 
 def get_non_running_tasks_from_frameworks(job_id=''):
-    """ Will include active and completed frameworks but NOT orphaned
-    frameworks
+    """ Will include tasks from active and completed frameworks
+    but NOT orphaned tasks
     """
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
