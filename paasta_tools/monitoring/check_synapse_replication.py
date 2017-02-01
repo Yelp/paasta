@@ -142,7 +142,7 @@ def run_synapse_check():
             all_codes.append(code)
             paasta_print(message)
         sys.exit(max(all_codes))
-    except Exception, e:
+    except Exception as e:
         fail('UNKNOWN: {0}'.format(e), 3)
 
 

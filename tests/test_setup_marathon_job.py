@@ -1179,7 +1179,7 @@ class TestSetupMarathonJob:
             mock_load_system_paasta_config,
             mock_format_marathon_app_dict,
         ):
-            retval = setup_marathon_job.setup_service(
+            setup_marathon_job.setup_service(
                 service=fake_service,
                 instance=fake_instance,
                 client=None,
@@ -1187,8 +1187,6 @@ class TestSetupMarathonJob:
                 marathon_apps=None,
                 soa_dir=None,
             )
-
-            print repr(retval)
 
             mock_load_service_namespace_config.assert_called_once_with(
                 service=fake_service,

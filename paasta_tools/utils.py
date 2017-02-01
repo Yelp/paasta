@@ -1063,7 +1063,7 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
 
 def get_umask():
     """Get the current umask for this process. NOT THREAD SAFE."""
-    old_umask = os.umask(0022)
+    old_umask = os.umask(0o0022)
     os.umask(old_umask)
     return old_umask
 
@@ -1089,7 +1089,7 @@ def atomic_file_write(target_path):
         temp_target_path = f.name
         yield f
 
-    mode = 0666 & (~get_umask())
+    mode = 0o0666 & (~get_umask())
     os.chmod(temp_target_path, mode)
     os.rename(temp_target_path, target_path)
 
