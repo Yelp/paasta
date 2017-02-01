@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import contextlib
-from StringIO import StringIO
 
 from mock import MagicMock
 from mock import patch
@@ -23,42 +22,32 @@ from mock import patch
 from paasta_tools.cli.cmds import get_latest_deployment
 
 
-def test_get_latest_deployment():
+def test_get_latest_deployment(capsys):
     mock_args = MagicMock(
         service='',
         deploy_group='',
         soa_dir='',
     )
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO, autospec=None),
         patch('paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha',
               return_value="FAKE_SHA", autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True),
-    ) as (
-        mock_stdout,
-        _,
-        _,
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
-        assert "FAKE_SHA" in mock_stdout.getvalue().decode('utf-8')
+        assert "FAKE_SHA" in capsys.readouterr()[0]
 
 
-def test_get_latest_deployment_no_deployment_tag():
+def test_get_latest_deployment_no_deployment_tag(capsys):
     mock_args = MagicMock(
         service='fake_service',
         deploy_group='fake_deploy_group',
         soa_dir='',
     )
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO, autospec=None),
         patch('paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha',
               return_value=None, autospec=True),
         patch('paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True),
-    ) as (
-        mock_stdout,
-        _,
-        _,
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 1
         assert "A deployment could not be found for fake_deploy_group in fake_service" in \
-            mock_stdout.getvalue().decode('utf-8')
+            capsys.readouterr()[0]

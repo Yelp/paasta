@@ -22,13 +22,13 @@ import json
 import logging
 import os
 import re
-import urlparse
 
 import requests
 import requests.exceptions
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
 from retry import retry
+from six.moves.urllib_parse import urljoin
 
 from . import exceptions
 from . import framework
@@ -72,7 +72,7 @@ class MesosMaster(object):
     def fetch(self, url, **kwargs):
         try:
             return requests.get(
-                urlparse.urljoin(self.host, url),
+                urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
                 **kwargs)
         except requests.exceptions.ConnectionError:

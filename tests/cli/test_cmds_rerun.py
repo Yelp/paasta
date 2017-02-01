@@ -17,7 +17,6 @@ from __future__ import unicode_literals
 import argparse
 import contextlib
 import datetime
-from StringIO import StringIO
 
 from mock import MagicMock
 from mock import patch
@@ -91,9 +90,8 @@ _planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.in
         ' or has not been deployed to "cluster1" yet',
     ]
 ])
-def test_rerun_validations(test_case):
+def test_rerun_validations(test_case, capsys):
     with contextlib.nested(
-        patch('sys.stdout', new_callable=StringIO, autospec=None),
         patch('paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.list_clusters', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.get_actual_deployments', autospec=True),
@@ -104,7 +102,6 @@ def test_rerun_validations(test_case):
         patch('paasta_tools.cli.cmds.rerun._get_default_execution_date', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True),
     ) as (
-        mock_stdout,
         mock_figure_out_service_name,
         mock_list_clusters,
         mock_get_actual_deployments,
@@ -152,7 +149,7 @@ def test_rerun_validations(test_case):
         if args.execution_date is not None and mock_uses_time_variables.return_value:
             assert mock_execute_rerun_remote.call_args[1]['execution_date'] == _user_supplied_execution_date
 
-        output = mock_stdout.getvalue().decode('utf-8')
+        output, _ = capsys.readouterr()
         assert expected_output in output
 
 

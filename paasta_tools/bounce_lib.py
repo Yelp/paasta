@@ -23,7 +23,6 @@ import os
 import signal
 import time
 from contextlib import contextmanager
-from contextlib import nested
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
@@ -171,7 +170,7 @@ def create_marathon_app(app_id, config, client):
 
     :param config: The marathon configuration to be deployed
     :param client: A MarathonClient object"""
-    with nested(create_app_lock(), time_limit(1)):
+    with create_app_lock(), time_limit(1):
         client.create_app(app_id, MarathonApp(**config))
         wait_for_create(app_id, client)
 
@@ -193,7 +192,7 @@ def delete_marathon_app(app_id, client):
 
     :param app_id: The marathon app id to be deleted
     :param client: A MarathonClient object"""
-    with nested(create_app_lock(), time_limit(1)):
+    with create_app_lock(), time_limit(1):
         # Scale app to 0 first to work around
         # https://github.com/mesosphere/marathon/issues/725
         client.scale_app(app_id, instances=0, force=True)

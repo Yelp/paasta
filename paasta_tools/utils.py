@@ -22,7 +22,6 @@ import errno
 import fcntl
 import glob
 import hashlib
-import importlib
 import io
 import json
 import logging
@@ -46,6 +45,7 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
+import six
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -683,7 +683,7 @@ def get_log_name_for_service(service, prefix=None):
 @register_log_writer('scribe')
 class ScribeLogWriter(LogWriter):
     def __init__(self, scribe_host='169.254.255.254', scribe_port=1463, scribe_disable=False, **kwargs):
-        self.clog = importlib.import_module('clog')
+        self.clog = __import__('clog')
         self.clog.config.configure(scribe_host=scribe_host, scribe_port=scribe_port, scribe_disable=scribe_disable)
 
     def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
@@ -1712,9 +1712,8 @@ def prompt_pick_one(sequence, choosing):
 
 
 def paasta_print(*args, **kwargs):
-    string = (
-        s.encode('utf-8') if isinstance(s, unicode) else s
+    args = (
+        s.encode('utf-8') if isinstance(s, six.text_type) else s
         for s in args
     )
-
-    print(*string, **kwargs)
+    print(*args, **kwargs)

@@ -14,16 +14,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from StringIO import StringIO
-
 import mock
 
 from paasta_tools.cli.cmds.list import paasta_list
 
 
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.list.list_services', autospec=True)
-def test_list_paasta_list(mock_list_services, mock_stdout):
+def test_list_paasta_list(mock_list_services, capsys):
     """ paasta_list print each service returned by get_services """
 
     mock_services = ['service_1', 'service_2']
@@ -33,13 +30,12 @@ def test_list_paasta_list(mock_list_services, mock_stdout):
     args.print_instances = False
     paasta_list(args)
 
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert output == 'service_1\nservice_2\n'
 
 
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.list.list_service_instances', autospec=True)
-def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
+def test_list_paasta_list_instances(mock_list_service_instances, capsys):
     """ paasta_list print each service.instance """
 
     mock_services = ['service_1.main', 'service_2.canary']
@@ -49,5 +45,5 @@ def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
     args.print_instances = True
     paasta_list(args)
 
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert output == 'service_1.main\nservice_2.canary\n'

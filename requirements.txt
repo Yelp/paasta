@@ -18,7 +18,6 @@ git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 git+git://github.com/Yelp/yelp_clog@v2.6.0
 httplib2==0.9
 humanize==0.5.1
-importlib==1.0.3
 isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.2
@@ -37,10 +36,9 @@ pycrypto==2.6.1
 Pygments==2.0.2
 pyramid==1.7
 pyramid-swagger==2.2.3
-pysensu-yelp==0.2.2
+pysensu-yelp==0.3.3
 PyStaticConfiguration==0.9.0
 python-crontab==2.1.1
-python-daemon==1.5.2
 python-dateutil==2.4.2
 pytimeparse==1.1.5
 pytz==2014.10
@@ -54,5 +52,4 @@ six>=1.9.0
 thriftpy==0.1.15
 ujson==1.35
 websocket-client==0.32.0
-wsgiref==0.1.2
 zope.interface==4.1.2

@@ -19,7 +19,6 @@ import csv
 import datetime
 import logging
 import re
-import urlparse
 from time import sleep
 
 import chronos
@@ -27,6 +26,7 @@ import dateutil
 import isodate
 import service_configuration_lib
 from crontab import CronSlices
+from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
@@ -129,7 +129,7 @@ def load_chronos_config():
 def get_chronos_client(config):
     """Returns a chronos client object for interacting with the API"""
     chronos_hosts = config.get_url()
-    chronos_hostnames = [urlparse.urlsplit(hostname).netloc for hostname in chronos_hosts]
+    chronos_hostnames = [urlsplit(hostname).netloc for hostname in chronos_hosts]
     log.info("Attempting to connect to Chronos servers: %s" % chronos_hosts)
     return chronos.connect(servers=chronos_hostnames,
                            username=config.get_username(),

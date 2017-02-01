@@ -16,10 +16,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import urlparse
-
 import requests
 import requests.exceptions
+from six.moves.urllib_parse import urljoin
 
 from . import exceptions
 from . import log
@@ -52,7 +51,7 @@ class MesosSlave(object):
     @log.duration
     def fetch(self, url, **kwargs):
         try:
-            return requests.get(urlparse.urljoin(
+            return requests.get(urljoin(
                 self.host, url), timeout=self.config["response_timeout"], **kwargs)
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(
