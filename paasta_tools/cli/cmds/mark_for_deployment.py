@@ -21,6 +21,7 @@ from __future__ import unicode_literals
 import logging
 import sys
 import time
+from Queue import Empty
 from Queue import Queue
 from threading import Event
 from threading import Thread
@@ -320,12 +321,18 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
         log.warning("Couldn't reach the PaaSTA api for {}! Assuming it is not "
                     "deployed there yet.".format(cluster_data.cluster))
         while not cluster_data.instances_queue.empty():
-            instance = cluster_data.instances_queue.get(block=False)
+            try:
+                instance = cluster_data.instances_queue.get(block=False)
+            except Empty:
+                return
             cluster_data.instances_queue.task_done()
             instances_out.put(instance)
 
     while not cluster_data.instances_queue.empty() and green_light.is_set():
-        instance = cluster_data.instances_queue.get(block=False)
+        try:
+            instance = cluster_data.instances_queue.get(block=False)
+        except Empty:
+            return
         log.debug("Inspecting the deployment status of {}.{} on {}"
                   .format(cluster_data.service, instance, cluster_data.cluster))
         try:
