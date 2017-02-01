@@ -14,9 +14,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import BaseHTTPServer
 import threading
 
+import http.server
 import mock
 from behave import given
 from behave import then
@@ -77,7 +77,7 @@ class FakeHTTPServer(object):
     paths = []
 
     def start(self):
-        self.server = BaseHTTPServer.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)
+        self.server = http.server.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)
         self.server_thread = threading.Thread(target=self.serve)
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -91,7 +91,7 @@ class FakeHTTPServer(object):
         self.server_thread.join()
 
 
-class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     status_code = 200
 
     def do_GET(self):

@@ -512,7 +512,7 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0):
         timeout = 20
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
+    cmd_args = " ".join([_f for _f in [verbose_flag, humanize_flag, groupings_flag] if _f])
     command = ('ssh -A -n %s sudo paasta_metastatus %s' % (
         master,
         cmd_args,

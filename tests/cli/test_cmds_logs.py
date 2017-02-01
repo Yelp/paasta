@@ -18,12 +18,12 @@ import contextlib
 import datetime
 import json
 from multiprocessing import Queue
-from Queue import Empty
 
 import isodate
 import mock
 import pytest
 from pytest import raises
+from queue import Empty
 
 
 try:

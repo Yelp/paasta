@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import sys
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
 

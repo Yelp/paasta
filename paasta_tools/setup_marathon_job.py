@@ -137,7 +137,7 @@ def drain_tasks_and_find_tasks_to_kill(tasks_to_drain, already_draining_tasks, d
         tasks_to_drain_by_app_id = defaultdict(set)
         for task in tasks_to_drain:
             tasks_to_drain_by_app_id[task.app_id].add(task)
-        for app_id, tasks in tasks_to_drain_by_app_id.items():
+        for app_id, tasks in list(tasks_to_drain_by_app_id.items()):
             log_bounce_action(
                 line='%s bounce draining %d old tasks with app_id %s' %
                 (bounce_method, len(tasks), app_id),
@@ -201,7 +201,7 @@ def do_bounce(
     # log if we're not in a steady state.
     if any([
         (not new_app_running),
-        old_app_live_happy_tasks.keys()
+        list(old_app_live_happy_tasks.keys())
     ]):
         log_bounce_action(
             line=' '.join([
@@ -212,7 +212,7 @@ def do_bounce(
                 '%d old tasks unhappy.' % len(bounce_lib.flatten_tasks(old_app_live_unhappy_tasks)),
                 '%d old tasks draining.' % len(bounce_lib.flatten_tasks(old_app_draining_tasks)),
                 '%d old tasks at risk.' % len(bounce_lib.flatten_tasks(old_app_at_risk_tasks)),
-                '%d old apps.' % len(old_app_live_happy_tasks.keys()),
+                '%d old apps.' % len(list(old_app_live_happy_tasks.keys())),
             ]),
             level='event',
         )
@@ -252,7 +252,7 @@ def do_bounce(
             reserve_all_resources([hostname])
 
     apps_to_kill = []
-    for app in old_app_live_happy_tasks.keys():
+    for app in list(old_app_live_happy_tasks.keys()):
         if app != '/%s' % marathon_jobid:
             live_happy_tasks = old_app_live_happy_tasks[app]
             live_unhappy_tasks = old_app_live_unhappy_tasks[app]
@@ -273,15 +273,15 @@ def do_bounce(
         with requests_cache.disabled():
             bounce_lib.kill_old_ids(apps_to_kill, client)
 
-    all_old_tasks = set.union(set(), *old_app_live_happy_tasks.values())
-    all_old_tasks = set.union(all_old_tasks, *old_app_live_unhappy_tasks.values())
-    all_old_tasks = set.union(all_old_tasks, *old_app_draining_tasks.values())
-    all_old_tasks = set.union(all_old_tasks, *old_app_at_risk_tasks.values())
+    all_old_tasks = set.union(set(), *list(old_app_live_happy_tasks.values()))
+    all_old_tasks = set.union(all_old_tasks, *list(old_app_live_unhappy_tasks.values()))
+    all_old_tasks = set.union(all_old_tasks, *list(old_app_draining_tasks.values()))
+    all_old_tasks = set.union(all_old_tasks, *list(old_app_at_risk_tasks.values()))
 
     # log if we appear to be finished
     if all([
         (apps_to_kill or tasks_to_kill),
-        apps_to_kill == old_app_live_happy_tasks.keys(),
+        apps_to_kill == list(old_app_live_happy_tasks.keys()),
         tasks_to_kill == all_old_tasks,
     ]):
         log_bounce_action(

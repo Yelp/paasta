@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import re
-import urlparse
+import urllib.parse
 
 import requests
 import requests.exceptions
@@ -72,7 +72,7 @@ class MesosMaster(object):
     def fetch(self, url, **kwargs):
         try:
             return requests.get(
-                urlparse.urljoin(self.host, url),
+                urllib.parse.urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
                 **kwargs)
         except requests.exceptions.ConnectionError:
@@ -161,10 +161,7 @@ class MesosMaster(object):
         return lst[0]
 
     def slaves(self, fltr=""):
-        return list(map(
-            lambda x: slave.MesosSlave(self.config, x),
-            itertools.ifilter(
-                lambda x: fltr == x['id'], self.state['slaves'])))
+        return list([slave.MesosSlave(self.config, x) for x in [x for x in self.state['slaves'] if fltr == x['id']]])
 
     def _task_list(self, active_only=False):
         keys = ["tasks"]
@@ -190,16 +187,10 @@ class MesosMaster(object):
 
     # XXX - need to filter on task state as well as id
     def tasks(self, fltr="", active_only=False):
-        return list(map(
-            lambda x: task.Task(self, x),
-            itertools.ifilter(
-                lambda x: fltr in x["id"] or fnmatch.fnmatch(x["id"], fltr),
-                self._task_list(active_only))))
+        return list([task.Task(self, x) for x in [x for x in self._task_list(active_only) if fltr in x["id"] or fnmatch.fnmatch(x["id"], fltr)]])
 
     def framework(self, fwid):
-        return list(filter(
-            lambda x: x.id == fwid,
-            self.frameworks()))[0]
+        return list([x for x in self.frameworks() if x.id == fwid])[0]
 
     def _framework_list(self, active_only=False):
         keys = ["frameworks"]

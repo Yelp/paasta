@@ -14,8 +14,7 @@
 # limitations under the License.
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import argparse
 import logging

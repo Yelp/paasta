@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import argparse
 import csv
 import datetime
 import logging
 import re
-import urlparse
+import urllib.parse
 from time import sleep
 
 import chronos
@@ -76,12 +75,12 @@ logging.getLogger("crontab").setLevel(logging.CRITICAL)
 
 class LastRunState:
     """Cheap enum to represent the state of the last run"""
-    Success, Fail, NotRun = range(0, 3)
+    Success, Fail, NotRun = list(range(0, 3))
 
 
 class JobType:
     """ An enum to represent job types """
-    Dependent, Scheduled = range(0, 2)
+    Dependent, Scheduled = list(range(0, 2))
 
 
 class ChronosNotConfigured(Exception):
@@ -129,7 +128,7 @@ def load_chronos_config():
 def get_chronos_client(config):
     """Returns a chronos client object for interacting with the API"""
     chronos_hosts = config.get_url()
-    chronos_hostnames = [urlparse.urlsplit(hostname).netloc for hostname in chronos_hosts]
+    chronos_hostnames = [urllib.parse.urlsplit(hostname).netloc for hostname in chronos_hosts]
     log.info("Attempting to connect to Chronos servers: %s" % chronos_hosts)
     return chronos.connect(servers=chronos_hostnames,
                            username=config.get_username(),
@@ -225,7 +224,7 @@ class ChronosJobConfig(InstanceConfig):
         Chronos requires an array of dictionaries in a very specific format:
         https://mesos.github.io/chronos/docs/api.html#sample-job"""
         original_env = super(ChronosJobConfig, self).get_env()
-        return [{"name": key, "value": value} for key, value in original_env.iteritems()]
+        return [{"name": key, "value": value} for key, value in original_env.items()]
 
     def get_calculated_constraints(self):
         constraints = self.get_constraints()

@@ -21,7 +21,7 @@ import logging
 import re
 import socket
 from collections import namedtuple
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 import humanize
 import requests
@@ -274,7 +274,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             # mesos.cli is smart and can efficiently read a file backwards
             reversed_file = reversed(fobj)
             tail = []
-            for _ in xrange(nlines):
+            for _ in range(nlines):
                 line = next(reversed_file, None)
                 if line is None:
                     break
@@ -301,7 +301,7 @@ def zip_tasks_verbose_output(table, stdstreams):
     if len(table) != len(stdstreams):
         raise ValueError('Can only zip same-length lists')
     output = []
-    for i in xrange(len(table)):
+    for i in range(len(table)):
         output.append(table[i])
         output.extend([line for line in stdstreams[i]])
     return output
@@ -614,10 +614,10 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
         slaves = slaves_list
     elif pool:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in list(slaves.values())
                   if slave_counts['slave']['attributes'].get('pool', 'default') == pool]
     else:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
+        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in list(slaves.values())]
     for slave in slaves:
         log.debug("Slave: {0}, running {1} tasks, "
                   "including {2} chronos tasks".format(slave['task_counts'].slave['hostname'],

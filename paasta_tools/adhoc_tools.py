@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import logging
 
@@ -105,14 +104,14 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
         deploy_group = prompt_pick_one(
             (
                 deployment.encode('utf-8')
-                for deployment in deployments_json['deployments'].keys()
+                for deployment in list(deployments_json['deployments'].keys())
             ),
             choosing='deploy group',
         )
         job_config.config_dict['deploy_group'] = deploy_group
         job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
 
-    for key, value in default_job_config.items():
+    for key, value in list(default_job_config.items()):
         job_config.config_dict.setdefault(key, value)
 
     return job_config

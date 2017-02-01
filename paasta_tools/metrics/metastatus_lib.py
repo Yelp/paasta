@@ -82,7 +82,7 @@ def get_mesos_disk_status(metrics):
 
 def filter_mesos_state_metrics(dictionary):
     valid_keys = ['cpus', 'mem', 'disk']
-    return {key: value for (key, value) in dictionary.items() if key in valid_keys}
+    return {key: value for (key, value) in list(dictionary.items()) if key in valid_keys}
 
 
 def healthcheck_result_for_resource_utilization(resource_utilization, threshold):
@@ -228,7 +228,7 @@ def assert_no_duplicate_frameworks(state):
     output = ["Frameworks:"]
     ok = True
 
-    for framework, count in framework_counts.iteritems():
+    for framework, count in framework_counts.items():
         if count > 1:
             ok = False
             output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."
@@ -397,7 +397,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state):
 
     return {
         attribute_value: calculate_resource_utilization_for_slaves(slaves, filter_tasks_for_slaves(slaves, tasks))
-        for attribute_value, slaves in slave_groupings.items()
+        for attribute_value, slaves in list(slave_groupings.items())
     }
 
 

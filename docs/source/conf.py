@@ -10,8 +10,7 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import os
 import sys
@@ -41,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'paasta_tools'
-copyright = u'2015, Yelp Inc'
+project = 'paasta_tools'
+copyright = '2015, Yelp Inc'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -176,8 +175,8 @@ htmlhelp_basename = 'paasta_toolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ('index', 'paasta_tools.tex', u'service\\_deployment\\_tools Documentation',
-     u'Yelp Inc', 'manual'),
+    ('index', 'paasta_tools.tex', 'service\\_deployment\\_tools Documentation',
+     'Yelp Inc', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

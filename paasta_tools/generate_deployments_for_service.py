@@ -99,7 +99,7 @@ def get_latest_deployment_tag(refs, deploy_group):
     most_recent_sha = None
     pattern = re.compile("^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$" % deploy_group)
 
-    for ref_name, sha in refs.iteritems():
+    for ref_name, sha in refs.items():
         match = pattern.match(ref_name)
         if match:
             dtime = match.groups()[0]
@@ -148,7 +148,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
     )
     remote_refs = remote_git.list_remote_refs(git_url)
 
-    for control_branch, deploy_group in deploy_group_branch_mappings.items():
+    for control_branch, deploy_group in list(deploy_group_branch_mappings.items()):
         (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
@@ -200,7 +200,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     states = []
     (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
 
-    for ref_name, sha in remote_refs.iteritems():
+    for ref_name, sha in remote_refs.items():
         if sha == head_sha:
             match = re.match(tag_pattern, ref_name)
             if match:
@@ -225,8 +225,8 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
         return deployments_dict['v1']
     except KeyError:
         deploy_group_mappings = {}
-        for deploy_group, image in deployments_dict.items():
-            if isinstance(image, basestring):
+        for deploy_group, image in list(deployments_dict.items()):
+            if isinstance(image, str):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',

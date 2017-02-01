@@ -78,7 +78,7 @@ def start_paasta_native_framework(context, reconcile_backoff):
     if not hasattr(context, 'framework_ids'):
         context.framework_ids = []
 
-    for _ in xrange(10):
+    for _ in range(10):
         if context.scheduler.framework_id:
             context.framework_ids.append(context.scheduler.framework_id)
             break
@@ -91,8 +91,8 @@ def start_paasta_native_framework(context, reconcile_backoff):
 def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
-    for _ in xrange(20):
-        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+    for _ in range(20):
+        actual_num = len([p for p in list(context.scheduler.tasks_with_flags.values()) if p.mesos_task_state == TASK_RUNNING])
         if actual_num >= num:
             return
         time.sleep(1)
@@ -199,7 +199,7 @@ def we_change_force_bounce_back(context):
 @then('it should eventually drain {num} tasks')
 def it_should_drain_num_tasks(context, num):
     num = int(num)
-    for _ in xrange(10):
+    for _ in range(10):
         if len(drain_lib.TestDrainMethod.downed_task_ids) >= num:
             # set() to make a copy.
             context.drained_tasks = set(drain_lib.TestDrainMethod.downed_task_ids)
@@ -217,7 +217,7 @@ def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expecte
     num_undrain_expected = int(num_undrain_expected)
     num_drain_expected = int(num_drain_expected)
 
-    for _ in xrange(10):
+    for _ in range(10):
         paasta_print("currently drained: %r" % drain_lib.TestDrainMethod.downed_task_ids)
         paasta_print("drained previously: %r" % context.drained_tasks)
         num_drained = len(drain_lib.TestDrainMethod.downed_task_ids - context.drained_tasks)
@@ -238,8 +238,8 @@ def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expecte
 def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
-    for _ in xrange(30):
-        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+    for _ in range(30):
+        actual_num = len([p for p in list(context.scheduler.tasks_with_flags.values()) if p.mesos_task_state == TASK_RUNNING])
         if actual_num <= num:
             return
         time.sleep(1)
@@ -263,12 +263,12 @@ def we_change_instances_to_num(context, num):
 def should_not_start_tasks_for_num_seconds(context, num):
     time.sleep(int(num))
 
-    assert [] == [p for p in context.scheduler.tasks_with_flags.values() if (p.mesos_task_state in LIVE_TASK_STATES)]
+    assert [] == [p for p in list(context.scheduler.tasks_with_flags.values()) if (p.mesos_task_state in LIVE_TASK_STATES)]
 
 
 @then('periodic() should eventually be called')
 def periodic_should_eventually_be_called(context):
-    for _ in xrange(30):
+    for _ in range(30):
         for scheduler in context.main_schedulers:
             if hasattr(scheduler, 'periodic_was_called'):
                 return

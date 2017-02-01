@@ -89,7 +89,7 @@ def set_number_instances(context, number):
 
 @when('we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
-    for _ in xrange(20):
+    for _ in range(20):
         with contextlib.nested(
             mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
         ) as (

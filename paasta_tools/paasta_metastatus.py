@@ -136,7 +136,7 @@ def main():
                                                                                      mesos_state)
             all_rows = [[grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)']]
             table_rows = []
-            for attribute_value, resource_info_dict in resource_info_dict.items():
+            for attribute_value, resource_info_dict in list(resource_info_dict.items()):
                 resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
                     total=resource_info_dict['total'],
                     free=resource_info_dict['free'],
@@ -166,7 +166,7 @@ def main():
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave
             # having high usage.
-            for attribute_value, resource_info_dict in slave_resource_dict.items():
+            for attribute_value, resource_info_dict in list(slave_resource_dict.items()):
                 table_rows = []
                 resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
                     total=resource_info_dict['total'],

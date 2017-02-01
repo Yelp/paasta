@@ -290,7 +290,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             filtered_slaves,
             discover_level
         )
-        routing_constraints = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
+        routing_constraints = [[discover_level, "GROUP_BY", str(len(list(value_dict.keys())))]]
         return routing_constraints
 
     def format_marathon_app_dict(self):
@@ -371,7 +371,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         code_sha = get_code_sha_from_dockerurl(docker_url)
 
         config_hash = get_config_hash(
-            {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
+            {key: value for key, value in list(complete_config.items()) if key not in CONFIG_HASH_BLACKLIST},
             force_bounce=self.get_force_bounce(),
         )
         complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
@@ -470,11 +470,11 @@ class MarathonDeployStatus:
     """ An enum to represent marathon app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
-    Running, Deploying, Stopped, Delayed, Waiting, NotRunning = range(0, 6)
+    Running, Deploying, Stopped, Delayed, Waiting, NotRunning = list(range(0, 6))
 
     @classmethod
     def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
+        for k, v in vars(cls).items():
             if v == val:
                 return k
 
@@ -714,7 +714,7 @@ def get_puppet_services_that_run_here():
 
 def get_puppet_services_running_here_for_nerve(soa_dir):
     puppet_services = []
-    for service, namespaces in sorted(get_puppet_services_that_run_here().iteritems()):
+    for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
         for namespace in namespaces:
             puppet_services.append(
                 _namespaced_get_classic_service_information_for_nerve(

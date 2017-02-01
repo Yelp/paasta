@@ -68,7 +68,7 @@ def get_bounce_method_func(name):
 
 
 def list_bounce_methods():
-    return _bounce_method_funcs.keys()
+    return list(_bounce_method_funcs.keys())
 
 
 class LockHeldException(Exception):
@@ -245,7 +245,7 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
             attribute=discover_location_type
         )
 
-        for value, hosts in unique_values.iteritems():
+        for value, hosts in unique_values.items():
             synapse_hostname = hosts[0]['hostname']
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
                 synapse_hostname,
@@ -284,7 +284,7 @@ def flatten_tasks(tasks_by_app_id):
                             old_app_live_unhappy_tasks parameters passed to bounce methods.
     :return: A set of Tasks which is the union of all the values of the dictionary.
     """
-    return set.union(set(), *(tasks_by_app_id.values()))
+    return set.union(set(), *(list(tasks_by_app_id.values())))
 
 
 @register_bounce_method('brutal')
@@ -365,11 +365,11 @@ def crossover_bounce(
                        len(happy_new_tasks), 0)
 
     old_tasks = []
-    for app, tasks in old_app_live_happy_tasks.items():
+    for app, tasks in list(old_app_live_happy_tasks.items()):
         for task in tasks:
             old_tasks.append(task)
 
-    for app, tasks in old_app_live_unhappy_tasks.items():
+    for app, tasks in list(old_app_live_unhappy_tasks.items()):
         for task in tasks:
             old_tasks.append(task)
 

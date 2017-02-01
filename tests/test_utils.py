@@ -406,7 +406,7 @@ def test_atomic_file_write_itest():
     target_file_name = os.path.join(tempdir, 'test_atomic_file_write_itest.txt')
 
     try:
-        old_umask = os.umask(0022)
+        old_umask = os.umask(0o022)
         with open(target_file_name, 'w') as f_before:
             f_before.write('old content')
 
@@ -425,7 +425,7 @@ def test_atomic_file_write_itest():
 
         file_stat = os.stat(target_file_name)
         assert stat.S_ISREG(file_stat.st_mode)
-        assert stat.S_IMODE(file_stat.st_mode) == 0644
+        assert stat.S_IMODE(file_stat.st_mode) == 0o644
 
     finally:
         os.umask(old_umask)
@@ -750,13 +750,13 @@ def test_get_running_mesos_docker_containers():
     fake_container_data = [
         {
             "Status": "Up 2 hours",
-            "Names": [u'/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
+            "Names": ['/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
             "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3"
         },
         {
             "Status": "Up 3 days",
-            "Names": [u'/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
-            "Id": u"ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
+            "Names": ['/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
+            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
         }
     ]
 
@@ -1387,7 +1387,7 @@ def test_format_table_with_interjected_lines():
             ['looooong', 'y', 'z'],
             'interjection',
             ['a', 'looooong', 'c'],
-            u'unicode interjection',
+            'unicode interjection',
             ['j', 'k', 'looooong']
         ]
     )
@@ -1395,7 +1395,7 @@ def test_format_table_with_interjected_lines():
         'looooong  y         z',
         'interjection',
         'a         looooong  c',
-        u'unicode interjection',
+        'unicode interjection',
         'j         k         looooong',
     ]
     assert actual == expected

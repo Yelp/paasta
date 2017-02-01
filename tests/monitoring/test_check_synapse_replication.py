@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
 
 import sys
 from contextlib import nested
@@ -51,10 +50,10 @@ def test_check_replication():
 def test_parse_range():
     range_data = ["0:1", "1:", "100:", "20:30", ":2", ":200"]
     expected_ranges = [
-        (0, 1), (1, sys.maxint), (100, sys.maxint), (20, 30), (0, 2), (0, 200)
+        (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200)
     ]
 
-    computed_ranges = map(parse_range, range_data)
+    computed_ranges = list(map(parse_range, range_data))
     assert computed_ranges == expected_ranges
 
 

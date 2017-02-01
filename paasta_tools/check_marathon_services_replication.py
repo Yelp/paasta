@@ -158,7 +158,7 @@ def check_smartstack_replication_for_instance(
         output = ''
         under_replication_per_location = []
 
-        for location, available_backends in sorted(smartstack_replication_info.iteritems()):
+        for location, available_backends in sorted(smartstack_replication_info.items()):
             num_available_in_location = available_backends.get(full_name, 0)
             under_replicated, ratio = is_under_replicated(
                 num_available_in_location, expected_count_per_location, crit_threshold)

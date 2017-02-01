@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
-from StringIO import StringIO
+from io import StringIO
 
 import mock
 from mock import patch

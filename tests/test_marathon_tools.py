@@ -144,8 +144,8 @@ class TestMarathonTools:
             cluster='',
             instance=fake_instance,
             config_dict=dict(
-                self.fake_srv_config.items() +
-                self.fake_marathon_app_config.config_dict.items()
+                list(self.fake_srv_config.items()) +
+                list(self.fake_marathon_app_config.config_dict.items())
             ),
             branch_dict={},
         )
@@ -222,8 +222,8 @@ class TestMarathonTools:
                 cluster='',
                 instance=fake_instance,
                 config_dict=dict(
-                    self.fake_srv_config.items() +
-                    self.fake_marathon_app_config.config_dict.items()
+                    list(self.fake_srv_config.items()) +
+                    list(self.fake_marathon_app_config.config_dict.items())
                 ),
                 branch_dict=fake_branch_dict,
             )
@@ -581,27 +581,27 @@ class TestMarathonTools:
                 {
                     'executors': [
                         {'id': id_1, 'resources': {'ports': ports_1},
-                            'tasks': [{u'state': u'TASK_RUNNING'}]},
-                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}
+                            'tasks': [{'state': 'TASK_RUNNING'}]},
+                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{'state': 'TASK_RUNNING'}]}
                     ],
                     'name': 'marathon-1111111'
                 },
                 {
                     'executors': [
-                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{'state': 'TASK_RUNNING'}]},
+                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
                     'name': 'marathon-3145jgreoifd'
                 },
                 {
                     'executors': [
-                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]},
+                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{'state': 'TASK_STAGED'}]},
                     ],
                     'name': 'marathon-754rchoeurcho'
                 },
                 {
                     'executors': [
-                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
                     'name': 'super_bunk'
                 }

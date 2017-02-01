@@ -78,7 +78,7 @@ def test_status_mesos_tasks_verbose(test_case):
             'state': 'NOT_RUNNING',
         }
         non_running_mesos_tasks = []
-        for _ in xrange(15):  # excercise the code that sorts/truncates the list of non running tasks
+        for _ in range(15):  # excercise the code that sorts/truncates the list of non running tasks
             task_return = template_task_return.copy()
             task_return['statuses'][0]['timestamp'] = str(1457109986 + random.randrange(-60 * 60 * 24, 60 * 60 * 24))
             non_running_mesos_tasks.append(task_return)

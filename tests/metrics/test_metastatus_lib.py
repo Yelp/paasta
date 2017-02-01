@@ -232,7 +232,7 @@ def test_assert_no_duplicate_frameworks():
     output, ok = metastatus_lib.assert_no_duplicate_frameworks(state)
 
     expected_output = "\n".join(["Frameworks:"] +
-                                map(lambda x: '    Framework: %s count: 1' % x['name'], state['frameworks']))
+                                ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']])
     assert output == expected_output
     assert ok
 
@@ -561,8 +561,8 @@ def test_group_slaves_by_key_func():
         lambda x: x['attributes']['habitat'],
         slaves
     )
-    assert len(actual.items()) == 2
-    for k, v in actual.items():
+    assert len(list(actual.items())) == 2
+    for k, v in list(actual.items()):
         paasta_print(k, v)
         assert len(list(v)) == 1
 
@@ -599,7 +599,7 @@ def test_get_resource_utilization_by_grouping(
         mesos_state=state,
     )
     assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
-    for k, v in actual.items():
+    for k, v in list(actual.items()):
         paasta_print(v)
         assert v['total'] == metastatus_lib.ResourceInfo(
             cpus=20,

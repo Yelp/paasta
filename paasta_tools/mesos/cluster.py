@@ -28,7 +28,8 @@ missing_slave = set([])
 def get_files_for_tasks(task_list, file_list, max_workers):
     no_files_found = True
 
-    def process((task, fname)):
+    def process(xxx_todo_changeme):
+        (task, fname) = xxx_todo_changeme
         try:
             fobj = task.file(fname)
         except exceptions.SlaveDoesNotExist:
