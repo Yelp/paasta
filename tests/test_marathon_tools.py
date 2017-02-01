@@ -109,6 +109,42 @@ class TestMarathonTools:
             assert mock_read_extra_service_information.call_count == 1
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
+    def test_load_marathon_service_config_interpolation_works(self):
+        fake_name = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_dir = '/fake/soa/dir'
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_load_deployments_json,
+            mock_read_service_configuration,
+            mock_read_extra_service_information,
+        ):
+            mock_load_deployments_json.return_value = DeploymentsJson({
+                'controls': {
+                    'fake_service:fake_cluster.fake_instance': {},
+                },
+                'deployments': {
+                    'fake_cluster.all': {
+                        'docker_image': 'fake_docker_image',
+                        'git_sha': 'fake_git_sha',
+                    },
+                },
+            })
+            mock_read_service_configuration.return_value = {}
+            mock_read_extra_service_information.return_value = {fake_instance: {'deploy_group': '{cluster}.all'}}
+            service_config = marathon_tools.load_marathon_service_config(
+                fake_name,
+                fake_instance,
+                fake_cluster,
+                soa_dir=fake_dir,
+                load_deployments=True,
+            )
+            assert service_config.get_deploy_group() == 'fake_cluster.all'
+
     def test_load_marathon_service_config_bails_with_no_config(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
@@ -190,7 +226,12 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
-        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
+        fake_branch_dict = {
+            'desired_state': 'stop',
+            'force_bounce': '12345',
+            'docker_image': fake_docker,
+            'git_sha': mock.sentinel.get_sha,
+        },
         deployments_json_mock = mock.Mock(
             spec=DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
@@ -239,7 +280,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1

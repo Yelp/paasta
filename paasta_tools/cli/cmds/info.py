@@ -17,7 +17,6 @@ from __future__ import unicode_literals
 
 from service_configuration_lib import read_service_configuration
 
-from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
@@ -25,8 +24,10 @@ from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.utils import decompose_paasta_control_branch
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -64,14 +65,6 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_info)
 
 
-def deployments_to_clusters(deployments):
-    clusters = []
-    for deployment in deployments:
-        cluster, _ = deployment.split('.')
-        clusters.append(cluster)
-    return set(clusters)
-
-
 def get_smartstack_endpoints(service, soa_dir):
     endpoints = []
     for name, config in get_all_namespaces_for_service(service, full_name=False, soa_dir=soa_dir):
@@ -86,16 +79,16 @@ def get_smartstack_endpoints(service, soa_dir):
 def get_deployments_strings(service, soa_dir):
     output = []
     try:
-        deployments = get_actual_deployments(service, soa_dir)
+        deployments = load_deployments_json(service=service, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        deployments = {}
-    if deployments == {}:
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
         service_config = load_service_namespace_config(
             service=service, namespace='main', soa_dir=soa_dir)
         service_mode = service_config.get_mode()
-        for cluster in deployments_to_clusters(deployments):
+        clusters = {decompose_paasta_control_branch(
+            control_branch)[1] for control_branch in deployments['controls'].keys()}
+        for cluster in clusters:
             if service_mode == "tcp":
                 service_port = service_config.get('proxy_port')
                 link = PaastaColors.cyan('%s://paasta-%s.yelp:%d/' % (service_mode, cluster, service_port))

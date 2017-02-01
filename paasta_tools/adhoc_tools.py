@@ -21,8 +21,7 @@ import service_configuration_lib
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import prompt_pick_one
@@ -52,19 +51,22 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
     branch_dict = {}
-    if load_deployments:
-        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = general_config.get('deploy_group', branch)
-        branch_dict = deployments_json.get_branch_dict_v2(service, branch, deploy_group)
 
-    return AdhocJobConfig(
+    service_config = AdhocJobConfig(
         service=service,
         cluster=cluster,
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
     )
+
+    if load_deployments:
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        branch = service_config.get_branch()
+        deploy_group = service_config.get_deploy_group()
+        service_config.branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
+
+    return service_config
 
 
 class AdhocJobConfig(LongRunningServiceConfig):
@@ -101,7 +103,7 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
             service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False)
 
     if not job_config.branch_dict and load_deployments:
-        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(
             (
                 deployment.encode('utf-8')

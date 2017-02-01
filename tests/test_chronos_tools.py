@@ -1461,7 +1461,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
+            mock.patch('paasta_tools.chronos_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
             mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True),
         ) as (
             load_system_paasta_config_patch,
