@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: 7539d8bd1a00a3c1bfd34cdb606d3a6372e83469
+    sha: v0.7.0
     hooks:
     -   id: trailing-whitespace
         language_version: python2.7
@@ -26,8 +26,10 @@
     -   id: flake8
         exclude: ^docs/source/conf.py$
         language_version: python2.7
+    -   id: check-ast
+        language_version: python3
 -   repo: https://github.com/asottile/reorder_python_imports.git
-    sha: b022734351abe44d0b05a71a4fa1175287c59b49
+    sha: v0.3.1
     hooks:
     -   id: reorder-python-imports
         language_version: python2.7

@@ -406,7 +406,7 @@ def test_atomic_file_write_itest():
     target_file_name = os.path.join(tempdir, 'test_atomic_file_write_itest.txt')
 
     try:
-        old_umask = os.umask(0022)
+        old_umask = os.umask(0o0022)
         with open(target_file_name, 'w') as f_before:
             f_before.write('old content')
 
@@ -425,7 +425,7 @@ def test_atomic_file_write_itest():
 
         file_stat = os.stat(target_file_name)
         assert stat.S_ISREG(file_stat.st_mode)
-        assert stat.S_IMODE(file_stat.st_mode) == 0644
+        assert stat.S_IMODE(file_stat.st_mode) == 0o0644
 
     finally:
         os.umask(old_umask)
