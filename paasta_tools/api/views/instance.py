@@ -26,7 +26,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
-from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import TaskNotFound
@@ -49,7 +49,7 @@ def marathon_job_status(mstatus, client, job_config):
         return
 
     mstatus['app_id'] = app_id
-    mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_active_frameworks(app_id)})
+    mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_frameworks(app_id)})
     mstatus['expected_instance_count'] = job_config.get_instances()
 
     deploy_status = marathon_tools.get_marathon_app_deploy_status(client, app_id)

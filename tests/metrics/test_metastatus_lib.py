@@ -598,6 +598,7 @@ def test_get_resource_utilization_by_grouping(
         grouping_func=lambda slave: slave['attributes']['habitat'],
         mesos_state=state,
     )
+    mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)
     assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
     for k, v in actual.items():
         paasta_print(v)

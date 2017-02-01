@@ -445,7 +445,7 @@ def test_status_chronos_jobs_is_deployed():
             return_value='job_status_output',
         ),
         mock.patch(
-            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -471,7 +471,7 @@ def test_status_chronos_jobs_is_not_deployed():
             return_value='job_status_output',
         ),
         mock.patch(
-            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -497,7 +497,7 @@ def test_status_chronos_jobs_get_desired_state_human():
             return_value='job_status_output',
         ),
         mock.patch(
-            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -527,7 +527,7 @@ def test_status_chronos_jobs_multiple_jobs():
             return_value='job_status_output',
         ),
         mock.patch(
-            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -553,7 +553,7 @@ def test_status_chronos_jobs_get_running_tasks():
             return_value='job_status_output',
         ),
         mock.patch(
-            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
             autospec=True,
             return_value=[],
         ),

@@ -391,7 +391,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state):
     if not has_registered_slaves(mesos_state):
         raise ValueError("There are no slaves registered in the mesos state.")
 
-    tasks = get_all_tasks_from_state(mesos_state)
+    tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
 
     slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
 
