@@ -19,6 +19,7 @@ make the PaaSTA stack work.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 import json
 import logging
 import os
@@ -951,6 +952,21 @@ def is_task_healthy(task, require_all=True, default_healthy=False):
         else:
             return any(results)
     return default_healthy
+
+
+def is_old_task_missing_healthchecks(task, marathon_client):
+    """We check this because versions of Marathon (at least up to 1.1)
+    sometimes stop healthchecking tasks, leaving no results. We can normally
+    assume that an "old" task which has no healthcheck results is still up
+    and healthy but marathon has simply decided to stop healthchecking it.
+    """
+    health_checks = marathon_client.get_app(task.app_id).health_checks
+    if not task.health_check_results and health_checks:
+        healthcheck_startup_time = datetime.timedelta(seconds=health_checks[0].grace_period_seconds) + \
+            datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)
+        is_task_old = task.started_at + healthcheck_startup_time < datetime.datetime.now()
+        return is_task_old
+    return False
 
 
 def get_num_at_risk_tasks(app):

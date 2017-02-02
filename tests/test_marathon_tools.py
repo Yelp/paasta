@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import contextlib
+import datetime
 
 import marathon
 import mock
@@ -2470,6 +2471,35 @@ def test_is_task_healthy():
     mock_hcrs = []
     mock_task = mock.Mock(health_check_results=mock_hcrs)
     assert marathon_tools.is_task_healthy(mock_task, default_healthy=True)
+
+
+def test_is_old_task_missing_healthchecks():
+    mock_health_check = mock.Mock(grace_period_seconds=10,
+                                  interval_seconds=10)
+    mock_marathon_app = mock.Mock(health_checks=[mock_health_check])
+    mock_get_app = mock.Mock(return_value=mock_marathon_app)
+    mock_marathon_client = mock.Mock(get_app=mock_get_app)
+    mock_task = mock.Mock(health_check_results=[],
+                          started_at=datetime.datetime(year=1990, month=1, day=1))
+
+    # test old task missing hcrs
+    assert marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+
+    # test new task missing hcrs
+    mock_task = mock.Mock(health_check_results=[],
+                          started_at=datetime.datetime.now())
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+
+    # test new task with hcrs
+    mock_task = mock.Mock(health_check_results=["SOMERESULTS"],
+                          started_at=datetime.datetime.now())
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+
+    # test no health checks
+    mock_marathon_app = mock.Mock(health_checks=[])
+    mock_get_app = mock.Mock(return_value=mock_marathon_app)
+    mock_marathon_client = mock.Mock(get_app=mock_get_app)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
 
 
 def test_kill_given_tasks():
