@@ -85,7 +85,7 @@ def do_replication_check(service, monitoring_config, service_replication):
         # appear in the replication_map, either way use the default
         goal_replication = replication_default
 
-    warn_range = (goal_replication, sys.maxint)
+    warn_range = (goal_replication, sys.maxsize)
     crit_range = warn_range
 
     status_code, message = check_replication(service,

@@ -24,7 +24,7 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import autoscale_local_clu
 log = logging.getLogger(__name__)
 
 
-def parse_args():
+def parse_args(argv):
     parser = argparse.ArgumentParser(description='Autoscales the local PaaSTA cluster')
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output.")
@@ -33,12 +33,11 @@ def parse_args():
     parser.add_argument('-a', '--autoscaler-configs',
                         help="Path to autoscaler config files",
                         default='/etc/paasta/cluster_autoscaling')
-    args = parser.parse_args()
-    return args
+    return parser.parse_args(argv)
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     log_format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
     if args.verbose >= 2:
         logging.basicConfig(level=logging.DEBUG, format=log_format)

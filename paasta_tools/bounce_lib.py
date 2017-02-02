@@ -83,18 +83,17 @@ def bounce_lock(name):
 
     :param name: The lock name to acquire"""
     lockfile = '/var/lock/%s.lock' % name
-    fd = open(lockfile, 'w')
-    remove = False
-    try:
-        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        remove = True
-        yield
-    except IOError:
-        raise LockHeldException("Service %s is already being bounced!" % name)
-    finally:
-        fd.close()
-        if remove:
-            os.remove(lockfile)
+    with open(lockfile, 'w') as fd:
+        remove = False
+        try:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            remove = True
+            yield
+        except IOError:
+            raise LockHeldException("Service %s is already being bounced!" % name)
+        finally:
+            if remove:
+                os.remove(lockfile)
 
 
 @contextmanager
@@ -244,7 +243,7 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
             attribute=discover_location_type
         )
 
-        for value, hosts in unique_values.iteritems():
+        for value, hosts in unique_values.items():
             synapse_hostname = hosts[0]['hostname']
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
                 synapse_hostname,

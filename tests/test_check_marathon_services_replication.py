@@ -39,17 +39,15 @@ def test_send_event_users_monitoring_tools_send_event_properly():
     fake_soa_dir = '/hi/hello/hey'
     fake_cluster = 'fake_cluster'
     expected_check_name = 'check_marathon_services_replication.%s' % compose_job_id(fake_service_name, fake_namespace)
-    with contextlib.nested(
-        mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
-        mock.patch('paasta_tools.check_marathon_services_replication.load_system_paasta_config', autospec=True),
-        mock.patch("paasta_tools.check_marathon_services_replication._log", autospec=True),
-        mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
-    ) as (
-        send_event_patch,
-        load_system_paasta_config_patch,
-        log_patch,
-        load_marathon_service_config_patch,
-    ):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.send_event", autospec=True,
+    ) as send_event_patch, mock.patch(
+        'paasta_tools.check_marathon_services_replication.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        "paasta_tools.check_marathon_services_replication._log", autospec=True,
+    ), mock.patch(
+        "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True,
+    ) as load_marathon_service_config_patch:
         load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
         check_marathon_services_replication.send_event(fake_service_name,
                                                        fake_namespace,
@@ -83,17 +81,15 @@ def test_send_event_users_monitoring_tools_send_event_respects_alert_after():
     fake_soa_dir = '/hi/hello/hey'
     fake_cluster = 'fake_cluster'
     expected_check_name = 'check_marathon_services_replication.%s' % compose_job_id(fake_service_name, fake_namespace)
-    with contextlib.nested(
-        mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
-        mock.patch('paasta_tools.check_marathon_services_replication.load_system_paasta_config', autospec=True),
-        mock.patch("paasta_tools.check_marathon_services_replication._log", autospec=True),
-        mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
-    ) as (
-        send_event_patch,
-        load_system_paasta_config_patch,
-        log_patch,
-        load_marathon_service_config_patch,
-    ):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.send_event", autospec=True,
+    ) as send_event_patch, mock.patch(
+        'paasta_tools.check_marathon_services_replication.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        "paasta_tools.check_marathon_services_replication._log", autospec=True,
+    ), mock.patch(
+        "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True,
+    ) as load_marathon_service_config_patch:
         load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
         check_marathon_services_replication.send_event(fake_service_name,
                                                        fake_namespace,
@@ -128,18 +124,16 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
 
-    with contextlib.nested(
-        mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
-                   autospec=True, return_value=compose_job_id(service, instance)),
-        mock.patch('paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    ) as (
-        mock_send_event,
-        mock_read_registration_for_service_instance,
-        mock_load_smartstack_info_for_service,
-        mock_load_marathon_service_config,
-    ):
+    with mock.patch(
+        'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
+    ) as mock_send_event, mock.patch(
+        'paasta_tools.marathon_tools.read_registration_for_service_instance',
+        autospec=True, return_value=compose_job_id(service, instance),
+    ), mock.patch(
+        'paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True,
+    ) as mock_load_smartstack_info_for_service, mock.patch(
+        'paasta_tools.marathon_tools.load_marathon_service_config', autospec=True,
+    ) as mock_load_marathon_service_config:
         mock_load_smartstack_info_for_service.return_value = available
 
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
@@ -168,18 +162,16 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    with contextlib.nested(
-        mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
-                   autospec=True, return_value=compose_job_id(service, instance)),
-        mock.patch('paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    ) as (
-        mock_send_event,
-        mock_read_registration_for_service_instance,
-        mock_load_smartstack_info_for_service,
-        mock_load_marathon_service_config,
-    ):
+    with mock.patch(
+        'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
+    ) as mock_send_event, mock.patch(
+        'paasta_tools.marathon_tools.read_registration_for_service_instance',
+        autospec=True, return_value=compose_job_id(service, instance),
+    ), mock.patch(
+        'paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True,
+    ) as mock_load_smartstack_info_for_service, mock.patch(
+        'paasta_tools.marathon_tools.load_marathon_service_config', autospec=True,
+    ) as mock_load_marathon_service_config:
         mock_load_smartstack_info_for_service.return_value = available
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
@@ -205,18 +197,16 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    with contextlib.nested(
-        mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
-                   autospec=True, return_value=compose_job_id(service, instance)),
-        mock.patch('paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    ) as (
-        mock_send_event,
-        mock_read_registration_for_service_instance,
-        mock_load_smartstack_info_for_service,
-        mock_load_marathon_service_config,
-    ):
+    with mock.patch(
+        'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
+    ) as mock_send_event, mock.patch(
+        'paasta_tools.marathon_tools.read_registration_for_service_instance',
+        autospec=True, return_value=compose_job_id(service, instance),
+    ), mock.patch(
+        'paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True,
+    ) as mock_load_smartstack_info_for_service, mock.patch(
+        'paasta_tools.marathon_tools.load_marathon_service_config', autospec=True,
+    ) as mock_load_marathon_service_config:
         mock_load_smartstack_info_for_service.return_value = available
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
