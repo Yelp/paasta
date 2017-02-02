@@ -1,12 +1,6 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-export DH_VIRTUALENV_INSTALL_ROOT=/opt/venvs
-
-# This has to be exported to make some magic below work.
-export DH_OPTIONS
-
-
 %:
 	dh $@ --with python-virtualenv
 
@@ -25,4 +19,4 @@ override_dh_auto_test:
 	true
 
 override_dh_virtualenv:
-	dh_virtualenv --extra-index-url 'https://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7 --extra-pip-arg '--no-use-wheel'
+	dh_virtualenv --extra-index-url 'https://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7 --preinstall no-manylinux1 --preinstall pip-custom-platform --pip-tool pip-custom-platform

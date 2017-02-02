@@ -14,14 +14,34 @@
 
 FROM ubuntu:xenial
 
-RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
+RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
-  python-dev libssl-dev libffi-dev debhelper python-yaml libyaml-dev python-pytest pyflakes \
-  git help2man zsh wget zip
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        debhelper \
+        dpkg-dev \
+        gcc \
+        gdebi-core \
+        git \
+        help2man \
+        libffi-dev \
+        libssl-dev \
+        libyaml-dev \
+        pyflakes \
+        python-dev \
+        python-pytest \
+        python-setuptools \
+        python-tox \
+        python-yaml \
+        wget \
+        zip \
+        zsh \
+    && apt-get clean
 
-RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_0.11-1_all.deb && dpkg -i dh-virtualenv_0.11-1_all.deb && apt-get -f install
+RUN cd /tmp && \
+    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
+    gdebi -n dh-virtualenv*.deb && \
+    rm dh-virtualenv_*.deb
 
 # mesos.native is not available on pypi, so we can either build mesos from
 # source or do this, and building from source takes a long time.
@@ -37,6 +57,4 @@ RUN apt-get install -yq mesos=1.0.1-2.0.93.ubuntu1604 && \
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
-ENV HOME /work
-ENV PWD /work
 WORKDIR /work
