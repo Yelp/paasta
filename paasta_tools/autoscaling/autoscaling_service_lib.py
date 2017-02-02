@@ -325,8 +325,10 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
                      line='Delaying scaling as marathon is either waiting for resources or is delayed')
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY))
-    autoscaling_decision_policy = get_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
+    autoscaling_metrics_provider_name = autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY)
+    autoscaling_decision_policy_name = autoscaling_params.pop(DECISION_POLICY_KEY)
+    autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_metrics_provider_name)
+    autoscaling_decision_policy = get_decision_policy(autoscaling_decision_policy_name)
 
     utilization = autoscaling_metrics_provider(
         marathon_service_config=marathon_service_config,
@@ -353,8 +355,24 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         **autoscaling_params
     )
 
-    new_instance_count = marathon_service_config.limit_instance_count(current_instances + autoscaling_amount)
+    # Limit downscaling by 30% of current_instances until we find out what is
+    # going on in such situations
+    new_instance_count = max(current_instances + autoscaling_amount, int(current_instances * 0.7))
+
+    new_instance_count = marathon_service_config.limit_instance_count(new_instance_count)
     if new_instance_count != current_instances:
+        write_to_log(
+            config=marathon_service_config,
+            line=('decision_policy %s, metrics_provider %s, utilization %.2f,'
+                  ' error %.2f, autoscaling_amount %d, limited_downscaling %r'
+                  % (autoscaling_decision_policy_name,
+                     autoscaling_metrics_provider_name,
+                     utilization,
+                     error,
+                     autoscaling_amount,
+                     new_instance_count == int(current_instances * 0.7))),
+            level='debug',
+        )
         write_to_log(
             config=marathon_service_config,
             line='Scaling from %d to %d instances (%s)' % (
