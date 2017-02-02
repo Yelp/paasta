@@ -394,6 +394,11 @@ class InstanceConfig(dict):
         """
         return self.config_dict.get('net', 'bridge')
 
+    def get_volumes(self, system_volumes):
+        volumes = system_volumes + self.get_extra_volumes()
+        deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
+        return sorted(deduped)
+
 
 def validate_service_instance(service, instance, cluster, soa_dir):
     for instance_type in INSTANCE_TYPES:

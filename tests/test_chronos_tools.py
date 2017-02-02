@@ -1490,7 +1490,7 @@ class TestChronosTools:
                 'epsilon': 'PT30M',
                 'container': {
                     'network': 'BRIDGE',
-                    'volumes': fake_system_volumes + fake_extra_volumes,
+                    'volumes': sorted(fake_system_volumes + fake_extra_volumes),
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
                     'parameters': [

@@ -1247,6 +1247,69 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_pool() == 'default'
 
+    def test_get_volumes_dedupes_correctly_when_mode_differs_last_wins(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes = []
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+        ]
+
+    def test_get_volumes_dedupes_respects_hostpath(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+                    {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes = [{"containerPath": "/a", "hostPath": "/a", "mode": "RO"}]
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
+        ]
+
+    def test_get_volumes_handles_dupes_everywhere(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+                    {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+                    {"containerPath": "/c", "hostPath": "/c", "mode": "RO"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes = [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+            {"containerPath": "/d", "hostPath": "/d", "mode": "RO"},
+        ]
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+            {"containerPath": "/c", "hostPath": "/c", "mode": "RO"},
+            {"containerPath": "/d", "hostPath": "/d", "mode": "RO"},
+        ]
+
 
 def test_is_under_replicated_ok():
     num_available = 1

@@ -37,7 +37,6 @@ from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_services_for_cluster
-
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -492,7 +491,7 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
 
         task.container.docker.network = self.get_mesos_network_mode()
 
-        docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
+        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
         for volume in docker_volumes:
             v = task.container.volumes.add()
             v.mode = getattr(mesos_pb2.Volume, volume['mode'].upper())
