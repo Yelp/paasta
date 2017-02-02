@@ -35,9 +35,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'argcomplete >= 0.8.1',
-        # argparse is pinned to 1.2.1 since it comes in the core python2.7
-        # libs and pip can't seem to override it
-        'argparse == 1.2.1',
         'bravado == 8.4.0',
         'choice == 0.1',
         'chronos-python == 0.37.0',
@@ -48,7 +45,6 @@ setup(
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
         'ephemeral-port-reserve >= 1.0.1',
-        'functools32',
         'futures',
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
@@ -71,7 +67,8 @@ setup(
         'retry',
         'requests == 2.6.2',
         'requests-cache >= 0.4.10,<= 0.5.0',
-        'sensu-plugin >= 0.1.0',
+        # We install this from git
+        # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.10.1',
         'ujson == 1.35',
         'yelp_clog >= 2.2.0',
@@ -99,19 +96,21 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={b'': [b'cli/fsm/template/*/*', b'cli/schemas/*.json', b'api/api_docs/*.json']},
-    entry_points={'console_scripts': [
-        'paasta=paasta_tools.cli.cli:main',
-        'paasta-api=paasta_tools.api.api:main',
-        'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
-        'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
-        'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',
-        'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
-        'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
-        'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
-        'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
-    ],
+    package_data={str(''): [str('cli/fsm/template/*/*'), str('cli/schemas/*.json'), str('api/api_docs/*.json')]},
+    entry_points={
+        'console_scripts': [
+            'paasta=paasta_tools.cli.cli:main',
+            'paasta-api=paasta_tools.api.api:main',
+            'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
+            'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
+            'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',
+            'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
+            'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
+            'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
+            'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
+        ],
         'paste.app_factory': [
-        'paasta-api-config=paasta_tools.api.api:make_app'
-    ]},
+            'paasta-api-config=paasta_tools.api.api:make_app'
+        ],
+    },
 )

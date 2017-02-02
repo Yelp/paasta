@@ -21,6 +21,9 @@ import json
 import os
 
 
+_cfg_name = ".mesos.json"
+
+
 class Config(object):
 
     _default_profile = "default"
@@ -35,17 +38,16 @@ class Config(object):
         "response_timeout": 5
     }
 
-    cfg_name = ".mesos.json"
+    cfg_name = _cfg_name
+    _default_config_location = os.path.join(os.path.expanduser("~"), _cfg_name)
 
-    _default_config_location = os.path.join(os.path.expanduser("~"), cfg_name)
-
-    search_path = [os.path.join(x, cfg_name) for x in [
+    search_path = [os.path.join(x, _cfg_name) for x in (
         ".",
         os.path.expanduser("~"),
         "/etc",
         "/usr/etc",
         "/usr/local/etc"
-    ]]
+    )]
 
     def __init__(self, config_path):
         self.config_path = config_path

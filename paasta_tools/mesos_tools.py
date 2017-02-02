@@ -21,11 +21,11 @@ import logging
 import re
 import socket
 from collections import namedtuple
-from urlparse import urlparse
 
 import humanize
 import requests
 from kazoo.client import KazooClient
+from six.moves.urllib_parse import urlparse
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions

@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
-from StringIO import StringIO
 
 import mock
 from mock import patch
@@ -62,17 +61,13 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_chronos.called
 
 
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
-def test_get_service_path_unknown(
-    mock_stdout
-):
+def test_get_service_path_unknown(capsys):
     service = None
     soa_dir = 'unused'
 
     assert get_service_path(service, soa_dir) is None
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert UNKNOWN_SERVICE in output
 
 
@@ -144,10 +139,8 @@ def test_get_schema_missing():
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_list_hashes_good(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     marathon_content = """
 ---
@@ -168,15 +161,13 @@ main_http:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_healthcheck_non_cmd(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     marathon_content = """
 ---
@@ -190,7 +181,7 @@ main_worker:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
     marathon_content = """
 ---
@@ -202,17 +193,14 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    mock_stdout.truncate(0)
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_id(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     marathon_content = """
 ---
@@ -225,7 +213,7 @@ valid:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
     marathon_content = """
@@ -239,7 +227,7 @@ this_is_okay_too_1:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
     marathon_content = """
@@ -253,7 +241,7 @@ dashes-are-okay-too:
 """
     mock_get_file_contents.return_value = marathon_content
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
     marathon_content = """
@@ -267,7 +255,7 @@ main_worker_CAPITALS_INVALID:
 """
     mock_get_file_contents.return_value = marathon_content
     assert not validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
     marathon_content = """
@@ -281,15 +269,13 @@ $^&*()(&*^%&definitely_not_okay:
 """
     mock_get_file_contents.return_value = marathon_content
     assert not validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_healthcheck_cmd_has_cmd(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     marathon_content = """
 ---
@@ -303,7 +289,7 @@ main_worker:
 """
     mock_get_file_contents.return_value = marathon_content
     assert not validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
     marathon_content = """
 ---
@@ -317,17 +303,14 @@ main_worker:
   healthcheck_cmd: '/bin/true'
 """
     mock_get_file_contents.return_value = marathon_content
-    mock_stdout.truncate(0)
     assert validate_schema('unused_service_path.yaml', 'marathon')
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     mock_get_file_contents.return_value = """
 {
@@ -339,16 +322,13 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
 """
     assert not validate_schema('unused_service_path.json', 'marathon')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_marathon_validate_invalid_key_bad(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     mock_get_file_contents.return_value = """
 {
@@ -359,16 +339,13 @@ def test_marathon_validate_invalid_key_bad(
 """
     assert not validate_schema('unused_service_path.json', 'marathon')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_chronos_validate_schema_list_hashes_good(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     mock_get_file_contents.return_value = """
 {
@@ -382,16 +359,13 @@ def test_chronos_validate_schema_list_hashes_good(
 """
     assert validate_schema('unused_service_path.json', 'chronos')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
-    mock_stdout,
-    mock_get_file_contents
+    mock_get_file_contents, capsys,
 ):
     mock_get_file_contents.return_value = """
 {
@@ -403,8 +377,7 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
 """
     assert not validate_schema('unused_service_path.json', 'chronos')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
 
@@ -413,14 +386,13 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_validate(
-    mock_stdout,
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_services_for_cluster
+    mock_get_services_for_cluster,
+    capsys,
 ):
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
@@ -438,8 +410,7 @@ def test_failing_chronos_job_validate(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     expected_output = 'something is wrong with the config'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
@@ -449,14 +420,13 @@ def test_failing_chronos_job_validate(
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_self_dependent(
-    mock_stdout,
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_services_for_cluster
+    mock_get_services_for_cluster,
+    capsys,
 ):
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
@@ -475,8 +445,7 @@ def test_failing_chronos_job_self_dependent(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     expected_output = 'Job fake-service.fake-instance cannot depend on itself'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
@@ -486,14 +455,13 @@ def test_failing_chronos_job_self_dependent(
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_failing_chronos_job_missing_parent(
-    mock_stdout,
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_services_for_cluster
+    mock_get_services_for_cluster,
+    capsys,
 ):
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
@@ -512,8 +480,7 @@ def test_failing_chronos_job_missing_parent(
 
     assert not validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     expected_output = 'Parent job fake-service.parent-1 could not be found'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
@@ -523,14 +490,13 @@ def test_failing_chronos_job_missing_parent(
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_validate_chronos_valid_instance(
-    mock_stdout,
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_services_for_cluster
+    mock_get_services_for_cluster,
+    capsys,
 ):
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
@@ -548,47 +514,35 @@ def test_validate_chronos_valid_instance(
 
     assert validate_chronos('fake_service_path')
 
-    output = mock_stdout.getvalue().decode('utf-8')
-
+    output, _ = capsys.readouterr()
     assert valid_chronos_instance(fake_cluster, fake_instance) in output
 
 
 @patch("paasta_tools.chronos_tools.TMP_JOB_IDENTIFIER", 'tmp', autospec=None)
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
-def test_validate_chronos_tmp_job(
-    mock_stdout,
-    mock_path_to_soa_dir_service,
-):
+def test_validate_chronos_tmp_job(mock_path_to_soa_dir_service, capsys):
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'tmp')
     assert validate_chronos('fake_path/tmp') is False
     assert ("Services using scheduled tasks cannot be named tmp, as it clashes"
             " with the identifier used for temporary jobs") in \
-        mock_stdout.getvalue().decode('utf-8')
+        capsys.readouterr()[0]
 
 
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
-def test_check_service_path_none(
-    mock_stdout
-):
+def test_check_service_path_none(capsys):
     service_path = None
     assert not check_service_path(service_path)
 
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert "%s is not a directory" % service_path in output
 
 
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 @patch('paasta_tools.cli.cmds.validate.os.path.isdir', autospec=True)
-def test_check_service_path_empty(
-    mock_isdir,
-    mock_stdout
-):
+def test_check_service_path_empty(mock_isdir, capsys):
     mock_isdir.return_value = True
     service_path = 'fake/path'
     assert not check_service_path(service_path)
 
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert "%s does not contain any .yaml files" % service_path in output
 
 

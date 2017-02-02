@@ -14,13 +14,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from Queue import Queue
 from threading import Event
 
 from bravado.exception import HTTPError
 from mock import Mock
 from mock import patch
 from pytest import raises
+from six.moves.queue import Queue
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha

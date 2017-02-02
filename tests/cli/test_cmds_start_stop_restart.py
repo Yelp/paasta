@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import contextlib
-from StringIO import StringIO
 
 import mock
 
@@ -258,7 +257,6 @@ def test_stop_or_start_figures_out_correct_instances(
     assert(ret == 0)
 
 
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
@@ -270,7 +268,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_instance_config,
     mock_figure_out_service_name,
     mock_list_remote_refs,
-    mock_stdout,
+    capsys,
 ):
     args = mock.Mock()
     args.clusters = 'cluster1'
@@ -283,21 +281,22 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_remote_refs.side_effect = remote_git.LSRemoteException
 
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
-    assert "may be down" in mock_stdout.getvalue().decode('utf-8')
+    assert "may be down" in capsys.readouterr()[0]
 
 
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
-def test_start_or_stop_bad_refs(mock_list_clusters,
-                                mock_list_all_instances,
-                                mock_list_remote_refs,
-                                mock_get_instance_config,
-                                mock_figure_out_service_name, mock_stdout):
-
+def test_start_or_stop_bad_refs(
+    mock_list_clusters,
+    mock_list_all_instances,
+    mock_list_remote_refs,
+    mock_get_instance_config,
+    mock_figure_out_service_name,
+    capsys,
+):
     args = mock.Mock()
     # To suppress any messages due to Mock making everything truthy
     args.clusters = 'fake_cluster1,fake_cluster2'
@@ -318,7 +317,7 @@ def test_start_or_stop_bad_refs(mock_list_clusters,
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"}
     mock_list_all_instances.return_value = {args.instances}
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
-    assert "No branches found for" in mock_stdout.getvalue().decode('utf-8')
+    assert "No branches found for" in capsys.readouterr()[0]
 
 
 def test_cluster_list_defaults_to_all():
@@ -326,12 +325,12 @@ def test_cluster_list_defaults_to_all():
 
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_for_invalid_cluster_no_instances(
         mock_list_clusters,
-        mock_stdout,
-        mock_figure_out_service_name):
+        mock_figure_out_service_name,
+        capsys,
+):
     mock_args = mock.Mock()
     mock_args.soa_dir = '/foo'
     mock_args.instances = None
@@ -341,17 +340,18 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
     mock_figure_out_service_name.return_value = 'fake_service'
 
     assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
-    assert "Invalid cluster name(s) specified: fake_cluster_1" in mock_stdout.getvalue().decode('utf-8')
-    assert "Valid options: fake_cluster_2" in mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
+    assert "Invalid cluster name(s) specified: fake_cluster_1" in output
+    assert "Valid options: fake_cluster_2" in output
 
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
-@mock.patch('sys.stdout', new_callable=StringIO, autospec=None)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_no_matching_instance_clusters(
         mock_list_clusters,
-        mock_stdout,
-        mock_figure_out_service_name):
+        mock_figure_out_service_name,
+        capsys,
+):
     mock_args = mock.Mock()
     mock_args.soa_dir = '/foo'
     mock_args.clusters = "fake_cluster_1,fake_cluster_2,fake_cluster_3"
@@ -363,5 +363,6 @@ def test_cluster_throws_exception_no_matching_instance_clusters(
     mock_figure_out_service_name.return_value = 'fake_service'
 
     assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
-    assert "Invalid cluster name(s) specified: fake_cluster_3" in mock_stdout.getvalue().decode('utf-8')
-    assert "Valid options: fake_cluster_1 fake_cluster_2" in mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
+    assert "Invalid cluster name(s) specified: fake_cluster_3" in output
+    assert "Valid options: fake_cluster_1 fake_cluster_2" in output

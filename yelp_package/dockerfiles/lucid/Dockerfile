@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/lucid_yelp
+FROM docker-dev.yelpcorp.com/lucid_pkgbuild
 MAINTAINER Kyle Anderson <kwa@yelp.com>
 
 # Make sure we get a package suitable for building this package correctly.
 # Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
 # Which at this time is in this package
-RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git
+RUN apt-get update && apt-get -y install dpkg-dev python-pip python-tox python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git
 
-RUN easy_install pip
-RUN pip install -U virtualenv
-RUN pip install -U tox
+RUN pip install -U virtualenv tox
 
-
-ENV HOME /work
-ENV PWD /work
 WORKDIR /work

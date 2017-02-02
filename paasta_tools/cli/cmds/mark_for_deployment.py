@@ -21,14 +21,14 @@ from __future__ import unicode_literals
 import logging
 import sys
 import time
-from Queue import Empty
-from Queue import Queue
 from threading import Event
 from threading import Thread
 
 import progressbar
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
+from six.moves.queue import Empty
+from six.moves.queue import Queue
 
 from paasta_tools import remote_git
 from paasta_tools.api import client

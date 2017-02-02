@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys
-from contextlib import nested
 
 import mock
 import pytest
@@ -71,12 +70,15 @@ def test_run_synapse_check():
     mock_replication = {'wat': 2, 'service': 1, 'is': 0}
 
     for return_value in range(0, 4):
-        with nested(
-            mock.patch(parse_method, return_value=mock_parse_options, autospec=True),
-            mock.patch(replication_method, return_value=mock_replication, autospec=True),
-            mock.patch(check_replication_method, return_value=(return_value, 'CHECK'), autospec=True),
-            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                       return_value=SystemPaastaConfig({}, '/fake/config')),
+        with mock.patch(
+            parse_method, return_value=mock_parse_options, autospec=True,
+        ), mock.patch(
+            replication_method, return_value=mock_replication, autospec=True,
+        ), mock.patch(
+            check_replication_method, return_value=(return_value, 'CHECK'), autospec=True,
+        ), mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=SystemPaastaConfig({}, '/fake/config'),
         ):
             with pytest.raises(SystemExit) as error:
                 run_synapse_check()
@@ -88,12 +90,15 @@ def test_run_synapse_check():
     def mock_check(name, replication, warn, crit):
         return mock_service_status[name], 'CHECK'
 
-    with nested(
-        mock.patch(parse_method, return_value=mock_parse_options, autospec=True),
-        mock.patch(replication_method, return_value=mock_replication, autospec=True),
-        mock.patch(check_replication_method, new=mock_check, autospec=None),
-        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                   return_value=SystemPaastaConfig({}, '/fake/config')),
+    with mock.patch(
+        parse_method, return_value=mock_parse_options, autospec=True,
+    ), mock.patch(
+        replication_method, return_value=mock_replication, autospec=True,
+    ), mock.patch(
+        check_replication_method, new=mock_check, autospec=None,
+    ), mock.patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        return_value=SystemPaastaConfig({}, '/fake/config'),
     ):
         with pytest.raises(SystemExit) as error:
             run_synapse_check()

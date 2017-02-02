@@ -22,9 +22,9 @@ import json
 import logging
 import os
 import sys
-from urlparse import urlparse
 
 from bravado.client import SwaggerClient
+from six.moves.urllib_parse import urlparse
 
 from paasta_tools.utils import load_system_paasta_config
 

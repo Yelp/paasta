@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from StringIO import StringIO
-
 from mock import ANY
 from mock import MagicMock
 from mock import patch
@@ -30,9 +28,8 @@ from paasta_tools.cli.utils import NoSuchService
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
-@patch('sys.stdout', new_callable=StringIO, autospec=None)
 def test_paasta_generate_pipeline_service_not_found(
-        mock_stdout, mock_guess_service_name, mock_validate_service_name):
+        mock_guess_service_name, mock_validate_service_name, capsys):
     # paasta generate cannot guess service name and none is provided
 
     mock_guess_service_name.return_value = 'not_a_service'
@@ -43,7 +40,7 @@ def test_paasta_generate_pipeline_service_not_found(
     expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
     assert paasta_generate_pipeline(args) == 1
-    output = mock_stdout.getvalue().decode('utf-8')
+    output, _ = capsys.readouterr()
     assert output == expected_output
 
 

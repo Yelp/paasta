@@ -25,13 +25,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
-from Queue import Empty
 from time import sleep
 
 import dateutil
 import isodate
 import pytz
 import ujson as json
+from six.moves.queue import Empty
 
 from paasta_tools.utils import paasta_print
 
@@ -170,7 +170,7 @@ def build_component_descriptions(components):
     """Returns a colored description string for every log component
     based on its help attribute"""
     output = []
-    for k, v in components.iteritems():
+    for k, v in components.items():
         output.append("     %s: %s" % (v['color'](k), v['help']))
     return '\n'.join(output)
 

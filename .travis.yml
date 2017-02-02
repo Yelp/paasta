@@ -5,6 +5,7 @@ branches:
 language: python
 env:
   - TOXENV=py27
+  - TOXENV=py3
   - TOXENV=coverage
   - TOXENV=docs
   - TOXENV=general_itests
