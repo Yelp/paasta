@@ -71,7 +71,8 @@ setup(
         'retry',
         'requests == 2.6.2',
         'requests-cache >= 0.4.10,<= 0.5.0',
-        'sensu-plugin >= 0.1.0',
+        # We install this from git
+        # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.10.1',
         'ujson == 1.35',
         'yelp_clog >= 2.2.0',
