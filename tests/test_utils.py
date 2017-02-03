@@ -1310,6 +1310,25 @@ class TestInstanceConfig:
             {"containerPath": "/d", "hostPath": "/d", "mode": "RO"},
         ]
 
+    def test_get_volumes_prefers_extra_volumes_over_system(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes = [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+        ]
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
+        ]
+
 
 def test_is_under_replicated_ok():
     num_available = 1

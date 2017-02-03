@@ -67,7 +67,7 @@ class TestMarathonTools:
         'user': 'admin',
         'pass': 'admin_pass',
         'docker_registry': fake_docker_registry,
-        'docker_volumes': sorted([
+        'docker_volumes': [
             {
                 'hostPath': '/var/data/a',
                 'containerPath': '/etc/a',
@@ -78,7 +78,7 @@ class TestMarathonTools:
                 'containerPath': '/etc/b',
                 'mode': 'RW',
             },
-        ]),
+        ],
     })
     fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
@@ -912,7 +912,7 @@ class TestMarathonTools:
 
     def test_format_marathon_app_dict(self):
         fake_url = 'dockervania_from_konami'
-        fake_volumes = sorted([
+        fake_volumes = [
             {
                 'hostPath': '/var/data/a',
                 'containerPath': '/etc/a',
@@ -923,7 +923,7 @@ class TestMarathonTools:
                 'containerPath': '/etc/b',
                 'mode': 'RW',
             },
-        ])
+        ]
         fake_mem = 1000000000000000000000
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         expected_env = {
@@ -2288,7 +2288,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     ]
                 },
                 'type': 'DOCKER',
-                'volumes': sorted(fake_system_volumes + fake_extra_volumes),
+                'volumes': fake_extra_volumes + fake_system_volumes,
             },
             'instances': 1,
             'mem': 1024.0,
