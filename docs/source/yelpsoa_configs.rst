@@ -191,6 +191,9 @@ instance MAY have:
     <https://mesosphere.github.io/marathon/docs/native-docker.html>`_, no
     error-checking is performed.
 
+    Note: In the case of a conflict between the ``extra_volumes`` and the
+    system-configured volumes, ``extra_volumes`` will take precedence.
+
     **WARNING**: This option should be used sparingly. Any specified bind-mount
     must exist on the filesystem beforehand, or the container will not run.
     Additionally it is possible for a service to be defined with a read-write

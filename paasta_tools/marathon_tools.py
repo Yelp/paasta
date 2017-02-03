@@ -326,7 +326,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             service=self.service,
             namespace=self.get_nerve_namespace(),
         )
-        docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
+        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
         net = get_mesos_network_for_net(self.get_net())
 

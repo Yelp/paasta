@@ -2288,7 +2288,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     ]
                 },
                 'type': 'DOCKER',
-                'volumes': fake_system_volumes + fake_extra_volumes,
+                'volumes': fake_extra_volumes + fake_system_volumes,
             },
             'instances': 1,
             'mem': 1024.0,
