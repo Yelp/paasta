@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 
 from paasta_tools import adhoc_tools
@@ -24,11 +22,9 @@ from paasta_tools.utils import NoConfigurationForServiceError
 
 
 def test_get_default_interactive_config():
-    with contextlib.nested(
-        mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
-    ) as (
-        mock_load_adhoc_job_config,
-    ):
+    with mock.patch(
+        'paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True,
+    ) as mock_load_adhoc_job_config:
         mock_load_adhoc_job_config.return_value = adhoc_tools.AdhocJobConfig(
             service='fake_service',
             instance='interactive',
@@ -48,15 +44,13 @@ def test_get_default_interactive_config():
 
 
 def test_get_default_interactive_config_reads_from_tty():
-    with contextlib.nested(
-        mock.patch('paasta_tools.adhoc_tools.prompt_pick_one', autospec=True),
-        mock.patch('paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True),
-        mock.patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True),
-    ) as (
-        mock_prompt_pick_one,
-        mock_load_adhoc_job_config,
-        mock_load_deployments_json,
-    ):
+    with mock.patch(
+        'paasta_tools.adhoc_tools.prompt_pick_one', autospec=True,
+    ) as mock_prompt_pick_one, mock.patch(
+        'paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True,
+    ) as mock_load_adhoc_job_config, mock.patch(
+        'paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True,
+    ) as mock_load_deployments_json:
         mock_prompt_pick_one.return_value = 'fake_deploygroup'
         mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
         mock_load_deployments_json.return_value = DeploymentsJson({

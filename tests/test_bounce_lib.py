@@ -33,41 +33,29 @@ class TestBounceLib:
         import fcntl
         lock_name = 'the_internet'
         lock_file = '/var/lock/%s.lock' % lock_name
-        fake_fd = mock.MagicMock(spec=file, autospec=None)
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.open', create=True, return_value=fake_fd, autospec=None),
-            mock.patch('fcntl.lockf', autospec=None),
-            mock.patch('os.remove', autospec=None)
-        ) as (
-            open_patch,
-            lockf_patch,
-            remove_patch
-        ):
-            with bounce_lib.bounce_lock(lock_name):
-                pass
-            open_patch.assert_called_once_with(lock_file, 'w')
-            lockf_patch.assert_called_once_with(fake_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            fake_fd.close.assert_called_once_with()
-            remove_patch.assert_called_once_with(lock_file)
+        fake_fd = mock.mock_open()
+        with mock.patch('six.moves.builtins.open', fake_fd, autospec=None) as open_patch:
+            with mock.patch('fcntl.lockf', autospec=None) as lockf_patch:
+                with mock.patch('os.remove', autospec=None) as remove_patch:
+                    with bounce_lib.bounce_lock(lock_name):
+                        pass
+        open_patch.assert_called_once_with(lock_file, 'w')
+        lockf_patch.assert_called_once_with(fake_fd.return_value, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fake_fd.return_value.__exit__.assert_called_once_with(None, None, None)
+        remove_patch.assert_called_once_with(lock_file)
 
     def test_bounce_lock_zookeeper(self):
         lock_name = 'watermelon'
         fake_lock = mock.Mock()
         fake_zk = mock.MagicMock(Lock=mock.Mock(return_value=fake_lock))
         fake_zk_hosts = 'awjti42ior'
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
-            mock.patch(
-                'paasta_tools.bounce_lib.load_system_paasta_config',
-                return_value=mock.Mock(
-                    get_zk_hosts=lambda: fake_zk_hosts
-                ),
-                autospec=True,
-            ),
-        ) as (
-            client_patch,
-            hosts_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.bounce_lib.KazooClient', return_value=fake_zk, autospec=True,
+        ) as client_patch, mock.patch(
+            'paasta_tools.bounce_lib.load_system_paasta_config',
+            return_value=mock.Mock(get_zk_hosts=lambda: fake_zk_hosts),
+            autospec=True,
+        ) as hosts_patch:
             with bounce_lib.bounce_lock_zookeeper(lock_name):
                 pass
             hosts_patch.assert_called_once_with()
@@ -83,13 +71,11 @@ class TestBounceLib:
         marathon_client_mock = mock.create_autospec(marathon.MarathonClient)
         fake_client = marathon_client_mock
         fake_config = {'id': 'fake_creation'}
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None),
-            mock.patch('paasta_tools.bounce_lib.wait_for_create', autospec=True),
-        ) as (
-            lock_patch,
-            wait_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None,
+        ) as lock_patch, mock.patch(
+            'paasta_tools.bounce_lib.wait_for_create', autospec=True,
+        ) as wait_patch:
             bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
             assert lock_patch.called
             assert fake_client.create_app.call_count == 1
@@ -101,15 +87,13 @@ class TestBounceLib:
     def test_delete_marathon_app(self):
         fake_client = mock.Mock(delete_app=mock.Mock())
         fake_id = 'fake_deletion'
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None),
-            mock.patch('paasta_tools.bounce_lib.wait_for_delete', autospec=True),
-            mock.patch('time.sleep', autospec=True)
-        ) as (
-            lock_patch,
-            wait_patch,
-            sleep_patch
-        ):
+        with mock.patch(
+            'paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None,
+        ) as lock_patch, mock.patch(
+            'paasta_tools.bounce_lib.wait_for_delete', autospec=True,
+        ) as wait_patch, mock.patch(
+            'time.sleep', autospec=True,
+        ) as sleep_patch:
             bounce_lib.delete_marathon_app(fake_id, fake_client)
             fake_client.scale_app.assert_called_once_with(fake_id, instances=0, force=True)
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
@@ -130,13 +114,11 @@ class TestBounceLib:
         fake_id = 'my_created'
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = iter([False, False, True])
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.is_app_id_running', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-        ) as (
-            is_app_id_running_patch,
-            sleep_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.marathon_tools.is_app_id_running', autospec=True,
+        ) as is_app_id_running_patch, mock.patch(
+            'time.sleep', autospec=True,
+        ) as sleep_patch:
             is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_create(fake_id, fake_client)
         assert sleep_patch.call_count == 2
@@ -146,13 +128,11 @@ class TestBounceLib:
         fake_id = 'my_created'
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = iter([True])
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.is_app_id_running', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-        ) as (
-            is_app_id_running_patch,
-            sleep_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.marathon_tools.is_app_id_running', autospec=True,
+        ) as is_app_id_running_patch, mock.patch(
+            'time.sleep', autospec=True,
+        ) as sleep_patch:
             is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_create(fake_id, fake_client)
         assert sleep_patch.call_count == 0
@@ -162,13 +142,11 @@ class TestBounceLib:
         fake_id = 'my_deleted'
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = iter([True, True, False])
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.is_app_id_running', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-        ) as (
-            is_app_id_running_patch,
-            sleep_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.marathon_tools.is_app_id_running', autospec=True,
+        ) as is_app_id_running_patch, mock.patch(
+            'time.sleep', autospec=True,
+        ) as sleep_patch:
             is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_delete(fake_id, fake_client)
         assert sleep_patch.call_count == 2
@@ -178,13 +156,11 @@ class TestBounceLib:
         fake_id = 'my_deleted'
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = iter([False])
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.is_app_id_running', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-        ) as (
-            is_app_id_running_patch,
-            sleep_patch,
-        ):
+        with mock.patch(
+            'paasta_tools.marathon_tools.is_app_id_running', autospec=True,
+        ) as is_app_id_running_patch, mock.patch(
+            'time.sleep', autospec=True,
+        ) as sleep_patch:
             is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_delete(fake_id, fake_client)
         assert sleep_patch.call_count == 0
@@ -197,19 +173,19 @@ class TestBounceLib:
 
     def test_get_happy_tasks_when_running_without_healthchecks_defined(self):
         """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
-        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[]) for _ in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == tasks
 
     def test_get_happy_tasks_when_running_with_healthchecks_defined(self):
         """All running tasks with no health check results are unhealthy if the app defines healthchecks"""
-        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[]) for _ in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=["fake_healthcheck_definition"])
         assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == []
 
     def test_get_happy_tasks_when_all_healthy(self):
         """All tasks with only passing healthchecks should be happy"""
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == tasks
 
@@ -243,7 +219,7 @@ class TestBounceLib:
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
         tasks = [mock.Mock(health_check_results=[], started_at=(now - datetime.timedelta(minutes=i)))
-                 for i in xrange(5)]
+                 for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
 
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
@@ -259,7 +235,7 @@ class TestBounceLib:
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)],
                            started_at=(now - datetime.timedelta(minutes=i)))
-                 for i in xrange(5)]
+                 for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
 
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
@@ -271,18 +247,16 @@ class TestBounceLib:
     def test_get_happy_tasks_check_haproxy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
-            mock.patch('paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-                       return_value={'fake_region': [{'hostname': 'fakehost'}]}, autospec=True),
-            mock.patch('paasta_tools.mesos_tools.get_slaves',
-                       return_value=[], autospec=True),
-        ) as (
-            _,
-            get_mesos_slaves_grouped_by_attribute_patch,
-            __
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
+        ), mock.patch(
+            'paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
+            return_value={'fake_region': [{'hostname': 'fakehost'}]}, autospec=True,
+        ), mock.patch(
+            'paasta_tools.mesos_tools.get_slaves',
+            return_value=[], autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
@@ -292,17 +266,15 @@ class TestBounceLib:
     def test_get_happy_tasks_check_haproxy_when_unhealthy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        with contextlib.nested(
-            mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
-            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-                       return_value={'fake_region': [{'hostname': 'fake_host'}]}, autospec=True),
-            mock.patch('paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True),
-        ) as (
-            _,
-            get_mesos_slaves_grouped_by_attribute_patch,
-            _,
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
+        ), mock.patch(
+            'paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
+            return_value={'fake_region': [{'hostname': 'fake_host'}]}, autospec=True,
+        ), mock.patch(
+            'paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
@@ -312,19 +284,15 @@ class TestBounceLib:
     def test_get_happy_tasks_check_haproxy_multiple_locations(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        with contextlib.nested(
-            mock.patch(
-                'paasta_tools.bounce_lib.get_registered_marathon_tasks',
-                side_effect=[tasks[2:3], tasks[3:]], autospec=True,
-            ),
-            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True),
-            mock.patch('paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True),
-        ) as (
-            get_registered_marathon_tasks_patch,
-            get_mesos_slaves_grouped_by_attribute_patch,
-            _
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks',
+            side_effect=[tasks[2:3], tasks[3:]], autospec=True,
+        ) as get_registered_marathon_tasks_patch, mock.patch(
+            'paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
+        ) as get_mesos_slaves_grouped_by_attribute_patch, mock.patch(
+            'paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True,
         ):
             get_mesos_slaves_grouped_by_attribute_patch.return_value = {
                 'fake_region': [{'hostname': 'fake_host1'}],
@@ -388,7 +356,7 @@ class TestBrutalBounce:
         anything."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
 
         assert bounce_lib.brutal_bounce(
             new_config=new_config,
@@ -406,14 +374,14 @@ class TestBrutalBounce:
         the service running, brutal bounce should stop the old ones."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.brutal_bounce(
@@ -439,12 +407,12 @@ class TestBrutalBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.brutal_bounce(
@@ -490,12 +458,12 @@ class TestUpthendownBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -515,14 +483,14 @@ class TestUpthendownBounce:
         should not stop the old ones."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -542,14 +510,14 @@ class TestUpthendownBounce:
         should stop the old ones."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -574,7 +542,7 @@ class TestUpthendownBounce:
         anything."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {}
 
@@ -618,8 +586,8 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
@@ -644,8 +612,8 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 100}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(60)),
-            'app2': set(mock.Mock() for _ in xrange(40)),
+            'app1': set(mock.Mock() for _ in range(60)),
+            'app2': set(mock.Mock() for _ in range(40)),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
@@ -671,12 +639,12 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.crossover_bounce(
@@ -699,8 +667,8 @@ class TestCrossoverBounce:
         happy_tasks = []
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(2)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         assert bounce_lib.crossover_bounce(
@@ -726,8 +694,8 @@ class TestCrossoverBounce:
         happy_tasks = []
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(5)),
-            'app2': set(mock.Mock() for _ in xrange(5)),
+            'app1': set(mock.Mock() for _ in range(5)),
+            'app2': set(mock.Mock() for _ in range(5)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -748,10 +716,10 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(5)),
+            'app1': set(mock.Mock() for _ in range(5)),
         }
         old_app_live_unhappy_tasks = {
-            'app2': set(mock.Mock() for _ in xrange(5)),
+            'app2': set(mock.Mock() for _ in range(5)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -771,10 +739,10 @@ class TestCrossoverBounce:
         fully up, crossover bounce should only stop a few of the old instances."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {}
 
@@ -794,13 +762,13 @@ class TestCrossoverBounce:
         older tasks are unhappy, we should prefer killing the unhappy tasks."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(1)),
+            'app1': set(mock.Mock() for _ in range(1)),
             'app2': set(),
         }
 
@@ -824,14 +792,14 @@ class TestCrossoverBounce:
         """
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(2)),
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in xrange(5)),
+            'app2': set(mock.Mock() for _ in range(5)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -851,14 +819,14 @@ class TestCrossoverBounce:
         """When marathon has the desired app, and there are other copies of the service running, but none of the old
         tasks are happy, and there are excess tasks, we should kill some (but not all) unhappy old tasks."""
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
             'app1': set(),
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(3)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -873,14 +841,14 @@ class TestCrossoverBounce:
 
     def test_crossover_bounce_using_margin_factor_big_numbers(self):
         new_config = {'id': 'foo.bar.12345', 'instances': 500}
-        happy_tasks = [mock.Mock() for _ in xrange(100)]
+        happy_tasks = [mock.Mock() for _ in range(100)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(300)),
+            'app1': set(mock.Mock() for _ in range(300)),
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in xrange(100)),
+            'app2': set(mock.Mock() for _ in range(100)),
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -898,7 +866,7 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 3}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app1': set(mock.Mock() for _ in range(3)),
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
@@ -923,7 +891,7 @@ class TestCrossoverBounce:
         be killed."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {
             'app1': set(),
             'app2': set(),
@@ -950,7 +918,7 @@ class TestCrossoverBounce:
         anything."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {}
 
@@ -993,12 +961,12 @@ class TestDownThenUpBounce(object):
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in xrange(3)),
-            'app2': set(mock.Mock() for _ in xrange(2)),
+            'app1': set(mock.Mock() for _ in range(3)),
+            'app2': set(mock.Mock() for _ in range(2)),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in xrange(1)),
+            'app2': set(mock.Mock() for _ in range(1)),
         }
 
         assert bounce_lib.downthenup_bounce(
@@ -1021,7 +989,7 @@ class TestDownThenUpBounce(object):
         should neither start nor stop anything."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        happy_tasks = [mock.Mock() for _ in range(5)]
 
         assert bounce_lib.downthenup_bounce(
             new_config=new_config,

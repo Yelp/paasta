@@ -181,7 +181,7 @@ class InstanceConfig(dict):
         Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
 
         :returns: A generator of ulimit options to be passed as --ulimit flags"""
-        for key, val in sorted(self.config_dict.get('ulimit', {}).iteritems()):
+        for key, val in sorted(self.config_dict.get('ulimit', {}).items()):
             soft = val.get('soft')
             hard = val.get('hard')
             if soft is None:
@@ -759,7 +759,7 @@ class FileLogWriter(LogWriter):
 
         with io.FileIO(path, mode=self.mode, closefd=True) as f:
             with self.maybe_flock(f):
-                f.write(to_write)
+                f.write(to_write.encode('UTF-8'))
 
 
 def _timeout(process):
@@ -1089,7 +1089,8 @@ def atomic_file_write(target_path):
     with tempfile.NamedTemporaryFile(
         dir=dirname,
         prefix=('.%s-' % basename),
-        delete=False
+        delete=False,
+        mode='w',
     ) as f:
         temp_target_path = f.name
         yield f
@@ -1573,14 +1574,14 @@ def format_table(rows, min_spacing=2):
     :returns: A string containing rows formatted as a table.
     """
 
-    list_rows = [r for r in rows if not isinstance(r, basestring)]
+    list_rows = [r for r in rows if not isinstance(r, six.string_types)]
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
         return rows
 
     widths = []
-    for i in xrange(len(list_rows[0])):
+    for i in range(len(list_rows[0])):
         widths.append(max(terminal_len(r[i]) for r in list_rows))
 
     expanded_rows = []

@@ -77,7 +77,7 @@ def parse_range(str_range):
     if int_range[0] == '':
         int_range[0] = 0
     if int_range[1] == '':
-        int_range[1] = sys.maxint
+        int_range[1] = sys.maxsize
     try:
         return tuple(map(int, int_range))
     except Exception:

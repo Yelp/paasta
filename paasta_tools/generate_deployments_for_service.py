@@ -46,6 +46,8 @@ import logging
 import os
 import re
 
+import six
+
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.utils import atomic_file_write
@@ -99,11 +101,11 @@ def get_latest_deployment_tag(refs, deploy_group):
     most_recent_sha = None
     pattern = re.compile("^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$" % deploy_group)
 
-    for ref_name, sha in refs.iteritems():
+    for ref_name, sha in refs.items():
         match = pattern.match(ref_name)
         if match:
             dtime = match.groups()[0]
-            if dtime > most_recent_dtime:
+            if most_recent_dtime is None or dtime > most_recent_dtime:
                 most_recent_dtime = dtime
                 most_recent_ref = ref_name
                 most_recent_sha = sha
@@ -200,7 +202,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     states = []
     (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
 
-    for ref_name, sha in remote_refs.iteritems():
+    for ref_name, sha in remote_refs.items():
         if sha == head_sha:
             match = re.match(tag_pattern, ref_name)
             if match:
@@ -226,7 +228,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     except KeyError:
         deploy_group_mappings = {}
         for deploy_group, image in deployments_dict.items():
-            if isinstance(image, basestring):
+            if isinstance(image, six.string_types):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',
