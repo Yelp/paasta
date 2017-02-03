@@ -240,13 +240,14 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='sta
 
 
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
-def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
+def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, log_utilization_data={}, **kwargs):
     """
     Gets the mean cpu utilization of a service across all of its tasks.
 
     :param marathon_service_config: the MarathonServiceConfig to get data from
     :param marathon_tasks: Marathon tasks to get data from
     :param mesos_tasks: Mesos tasks to get data from
+    :param log_utilization_data: A dict used to transfer utilization data to autoscale_marathon_instance()
 
     :returns: the service's mean utilization, from 0 to 1
     """
@@ -262,6 +263,7 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         try:
             last_time, _ = zk.get(zk_last_time_path)
             last_cpu_data, _ = zk.get(zk_last_cpu_data)
+            log_utilization_data[last_time] = last_cpu_data
             last_time = float(last_time)
             last_cpu_data = (datum for datum in last_cpu_data.split(',') if datum)
         except NoNodeError:
@@ -279,6 +281,7 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         raise MetricsProviderNoDataError("Couldn't get any cpu data from Mesos")
 
     cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
+    log_utilization_data[str(current_time)] = cpu_data_csv
 
     with ZookeeperPool() as zk:
         zk.ensure_path(zk_last_cpu_data)
@@ -325,15 +328,16 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
                      line='Delaying scaling as marathon is either waiting for resources or is delayed')
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_metrics_provider_name = autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY)
-    autoscaling_decision_policy_name = autoscaling_params.pop(DECISION_POLICY_KEY)
-    autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_metrics_provider_name)
-    autoscaling_decision_policy = get_decision_policy(autoscaling_decision_policy_name)
+    autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY))
+    autoscaling_decision_policy = get_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
+
+    log_utilization_data = {}
 
     utilization = autoscaling_metrics_provider(
         marathon_service_config=marathon_service_config,
         marathon_tasks=marathon_tasks,
         mesos_tasks=mesos_tasks,
+        log_utilization_data=log_utilization_data,
         **autoscaling_params
     )
     error = get_error_from_utilization(
@@ -357,22 +361,18 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
 
     # Limit downscaling by 30% of current_instances until we find out what is
     # going on in such situations
-    new_instance_count = max(current_instances + autoscaling_amount, int(current_instances * 0.7))
+    safe_downscaling_threshold = int(current_instances * 0.7)
+    new_instance_count = max(current_instances + autoscaling_amount, safe_downscaling_threshold)
 
     new_instance_count = marathon_service_config.limit_instance_count(new_instance_count)
     if new_instance_count != current_instances:
-        write_to_log(
-            config=marathon_service_config,
-            line=('decision_policy %s, metrics_provider %s, utilization %.2f,'
-                  ' error %.2f, autoscaling_amount %d, limited_downscaling %r'
-                  % (autoscaling_decision_policy_name,
-                     autoscaling_metrics_provider_name,
-                     utilization,
-                     error,
-                     autoscaling_amount,
-                     new_instance_count == int(current_instances * 0.7))),
-            level='debug',
-        )
+        if new_instance_count == safe_downscaling_threshold:
+            write_to_log(
+                config=marathon_service_config,
+                line='Autoscaler clamped: %s' % str(log_utilization_data),
+                level='debug',
+            )
+
         write_to_log(
             config=marathon_service_config,
             line='Scaling from %d to %d instances (%s)' % (

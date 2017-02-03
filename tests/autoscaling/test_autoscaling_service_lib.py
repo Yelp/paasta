@@ -210,7 +210,7 @@ def test_threshold_decision_policy():
         assert autoscaling_service_lib.threshold_decision_policy(error=-0.5, **decision_policy_args) == -1
 
 
-def test_mesos_cpu_metrics_provider():
+def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -247,7 +247,7 @@ def test_mesos_cpu_metrics_provider():
         ], any_order=True)
 
 
-def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
+def test_mesos_cpu_metrics_provider():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -267,9 +267,10 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
 
     current_time = datetime.now()
+    last_time = (current_time - timedelta(seconds=600)).strftime('%s')
 
     zookeeper_get_payload = {
-        'cpu_last_time': (current_time - timedelta(seconds=600)).strftime('%s'),
+        'cpu_last_time': last_time,
         'cpu_data': '0:fake-service.fake-instance',
     }
 
@@ -286,12 +287,18 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         _,
     ):
         mock_datetime.now.return_value = current_time
+        log_utilization_data = {}
         assert autoscaling_service_lib.mesos_cpu_metrics_provider(
-            fake_marathon_service_config, fake_marathon_tasks, (fake_mesos_task,)) == 0.8
+            fake_marathon_service_config,
+            fake_marathon_tasks,
+            (fake_mesos_task,),
+            log_utilization_data=log_utilization_data) == 0.8
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/cpu_last_time', current_time.strftime('%s')),
             mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
         ], any_order=True)
+        assert log_utilization_data == {last_time: '0:fake-service.fake-instance',
+                                        current_time.strftime('%s'): '480.0:fake-service.fake-instance'}
 
 
 def test_get_json_body_from_service():
