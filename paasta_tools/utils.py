@@ -85,6 +85,12 @@ log.addHandler(logging.NullHandler())
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
 
+def sort_dicts(dcts):
+    def key(dct):
+        return tuple(sorted(dct.items()))
+    return sorted(dcts, key=key)
+
+
 class InvalidInstanceConfig(Exception):
     pass
 
@@ -397,7 +403,7 @@ class InstanceConfig(dict):
     def get_volumes(self, system_volumes):
         volumes = system_volumes + self.get_extra_volumes()
         deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
-        return sorted(deduped)
+        return sort_dicts(deduped)
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
