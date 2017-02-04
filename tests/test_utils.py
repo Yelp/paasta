@@ -724,6 +724,27 @@ def test_run_returns_when_popen_fails():
     assert 'fake error' in output
 
 
+@pytest.mark.parametrize(
+    ('dcts', 'expected'),
+    (
+        (
+            [{'a': 'b'}, {'c': 'd'}],
+            [{'a': 'b'}, {'c': 'd'}],
+        ),
+        (
+            [{'c': 'd'}, {'a': 'b'}],
+            [{'a': 'b'}, {'c': 'd'}],
+        ),
+        (
+            [{'a': 'b', 'c': 'd'}, {'a': 'b'}],
+            [{'a': 'b'}, {'a': 'b', 'c': 'd'}],
+        ),
+    ),
+)
+def test_sort_dcts(dcts, expected):
+    assert utils.sort_dicts(dcts) == expected
+
+
 class TestInstanceConfig:
 
     def test_get_monitoring(self):
