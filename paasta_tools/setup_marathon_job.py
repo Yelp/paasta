@@ -51,6 +51,7 @@ from collections import defaultdict
 
 import pysensu_yelp
 import requests_cache
+from requests.exceptions import HTTPError
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -249,7 +250,10 @@ def do_bounce(
     for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
         if task in tasks_to_kill:
             hostname = task.host
-            reserve_all_resources([hostname])
+            try:
+                reserve_all_resources([hostname])
+            except HTTPError:
+                log.warning("Failed to reserve resources on %s" % hostname)
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
