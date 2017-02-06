@@ -1,3 +1,17 @@
+paasta-tools (0.57.4) lucid; urgency=low
+
+  * 0.57.4 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 06 Feb 2017 08:10:45 -0800
+
+paasta-tools (0.57.4) lucid; urgency=low
+
+  * 0.57.4 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 06 Feb 2017 08:10:36 -0800
+
 paasta-tools (0.57.3) lucid; urgency=low
 
   * 0.57.3 tagged with 'make release'
