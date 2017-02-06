@@ -225,7 +225,7 @@ class ChronosJobConfig(InstanceConfig):
         Chronos requires an array of dictionaries in a very specific format:
         https://mesos.github.io/chronos/docs/api.html#sample-job"""
         original_env = super(ChronosJobConfig, self).get_env()
-        return [{"name": key, "value": value} for key, value in original_env.iteritems()]
+        return [{"name": key, "value": value} for key, value in original_env.items()]
 
     def get_calculated_constraints(self):
         constraints = self.get_constraints()
@@ -340,7 +340,7 @@ class ChronosJobConfig(InstanceConfig):
                             msgs.append('The specified start time "%s" must contain a time zone' % start_time)
                     except isodate.ISO8601Error as exc:
                         msgs.append('The specified start time "%s" in schedule "%s" does '
-                                    'not conform to the ISO 8601 format:\n%s' % (start_time, schedule, exc.message))
+                                    'not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
 
                 parsed_interval = None
                 try:
