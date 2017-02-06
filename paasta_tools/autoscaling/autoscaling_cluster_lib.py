@@ -302,7 +302,6 @@ class ClusterAutoscaler(ResourceLogMixin):
             self.log.error("Failure when terminating: {0}: {1}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {0}".format(current_capacity))
             self.set_capacity(current_capacity)
-        finally:
             self.log.info("Undraining {0}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
