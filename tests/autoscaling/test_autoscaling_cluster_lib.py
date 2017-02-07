@@ -852,7 +852,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             set_call_1 = mock.call(self.autoscaler, 4)
             mock_set_capacity.assert_has_calls([set_call_1])
             mock_wait_and_terminate.assert_called_with(self.autoscaler, mock_slave, 123, False, region='westeros-1')
-            mock_undrain.assert_called_with(['host1|10.1.1.1'])
 
             # test we cleanup if a termination fails
             set_call_2 = mock.call(self.autoscaler, 5)
