@@ -210,7 +210,7 @@ def test_threshold_decision_policy():
         assert autoscaling_service_lib.threshold_decision_policy(error=-0.5, **decision_policy_args) == -1
 
 
-def test_mesos_cpu_metrics_provider():
+def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -247,7 +247,7 @@ def test_mesos_cpu_metrics_provider():
         ], any_order=True)
 
 
-def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
+def test_mesos_cpu_metrics_provider():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -267,9 +267,10 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
 
     current_time = datetime.now()
+    last_time = (current_time - timedelta(seconds=600)).strftime('%s')
 
     zookeeper_get_payload = {
-        'cpu_last_time': (current_time - timedelta(seconds=600)).strftime('%s'),
+        'cpu_last_time': last_time,
         'cpu_data': '0:fake-service.fake-instance',
     }
 
@@ -286,12 +287,18 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         _,
     ):
         mock_datetime.now.return_value = current_time
+        log_utilization_data = {}
         assert autoscaling_service_lib.mesos_cpu_metrics_provider(
-            fake_marathon_service_config, fake_marathon_tasks, (fake_mesos_task,)) == 0.8
+            fake_marathon_service_config,
+            fake_marathon_tasks,
+            (fake_mesos_task,),
+            log_utilization_data=log_utilization_data) == 0.8
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/cpu_last_time', current_time.strftime('%s')),
             mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
         ], any_order=True)
+        assert log_utilization_data == {last_time: '0:fake-service.fake-instance',
+                                        current_time.strftime('%s'): '480.0:fake-service.fake-instance'}
 
 
 def test_get_json_body_from_service():
@@ -449,6 +456,108 @@ def test_autoscale_marathon_instance():
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config, [mock.Mock()], [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service', instance='fake-instance', instance_count=2)
+
+
+def test_autoscale_marathon_instance_below_min_instances():
+    current_instances = 7
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 5, 'max_instances': 10},
+        branch_dict={},
+    )
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
+                   autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
+                   return_value=mock.Mock(return_value=-3)),
+        mock.patch.object(marathon_tools.MarathonServiceConfig,
+                          'get_instances',
+                          autospec=True,
+                          return_value=current_instances),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True),
+    ) as (
+        mock_set_instances_for_marathon_service,
+        _,
+        _,
+        _,
+        _,
+    ):
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock()])
+        mock_set_instances_for_marathon_service.assert_called_once_with(
+            service='fake-service', instance='fake-instance', instance_count=5)
+
+
+def test_autoscale_marathon_instance_above_max_instances():
+    current_instances = 7
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 5, 'max_instances': 10},
+        branch_dict={},
+    )
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
+                   autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
+                   return_value=mock.Mock(return_value=5)),
+        mock.patch.object(marathon_tools.MarathonServiceConfig,
+                          'get_instances',
+                          autospec=True,
+                          return_value=current_instances),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True),
+    ) as (
+        mock_set_instances_for_marathon_service,
+        _,
+        _,
+        _,
+        _,
+    ):
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock()])
+        mock_set_instances_for_marathon_service.assert_called_once_with(
+            service='fake-service', instance='fake-instance', instance_count=10)
+
+
+def test_autoscale_marathon_instance_drastic_downscaling():
+    current_instances = 100
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 5, 'max_instances': 100},
+        branch_dict={},
+    )
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
+                   autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
+                   return_value=mock.Mock(return_value=-50)),
+        mock.patch.object(marathon_tools.MarathonServiceConfig,
+                          'get_instances',
+                          autospec=True,
+                          return_value=current_instances),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True),
+    ) as (
+        mock_set_instances_for_marathon_service,
+        _,
+        _,
+        _,
+        _,
+    ):
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock()])
+        mock_set_instances_for_marathon_service.assert_called_once_with(
+            service='fake-service', instance='fake-instance', instance_count=int(current_instances * 0.7))
 
 
 def test_autoscale_marathon_with_http_stuff():
