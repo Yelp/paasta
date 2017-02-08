@@ -27,6 +27,7 @@ from contextlib import contextmanager
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
+from requests.exceptions import ConnectionError
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
@@ -215,6 +216,40 @@ def kill_old_ids(old_ids, client):
             continue
 
 
+def get_smartstack_tasks(tasks, service, nerve_ns, system_paasta_config):
+    tasks_in_smartstack = []
+    service_namespace = compose_job_id(service, nerve_ns)
+
+    service_namespace_config = marathon_tools.load_service_namespace_config(
+        service=service, namespace=nerve_ns)
+    discover_location_type = service_namespace_config.get_discover()
+    mesos_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+        slaves=mesos_tools.get_slaves(),
+        attribute=discover_location_type
+    )
+
+    for slaves in mesos_slaves.values():
+        hosts = iter(slaves)
+        while True:
+            try:
+                synapse_hostname = next(hosts)['hostname']
+            except StopIteration:
+                log.error("Failed to connect to any smartstack hosts for %s, %s" % (service, nerve_ns))
+                raise
+            try:
+                tasks_in_smartstack.extend(get_registered_marathon_tasks(
+                    synapse_hostname,
+                    system_paasta_config.get_synapse_port(),
+                    system_paasta_config.get_synapse_haproxy_url_format(),
+                    service_namespace,
+                    tasks,
+                ))
+                break
+            except ConnectionError:
+                log.warning("Failed to connect to %s smartstack, host probably terminated" % synapse_hostname)
+    return tasks_in_smartstack
+
+
 def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
@@ -232,27 +267,7 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
     now = datetime.datetime.utcnow()
 
     if check_haproxy:
-        tasks_in_smartstack = []
-        service_namespace = compose_job_id(service, nerve_ns)
-
-        service_namespace_config = marathon_tools.load_service_namespace_config(
-            service=service, namespace=nerve_ns)
-        discover_location_type = service_namespace_config.get_discover()
-        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-            slaves=mesos_tools.get_slaves(),
-            attribute=discover_location_type
-        )
-
-        for value, hosts in unique_values.items():
-            synapse_hostname = hosts[0]['hostname']
-            tasks_in_smartstack.extend(get_registered_marathon_tasks(
-                synapse_hostname,
-                system_paasta_config.get_synapse_port(),
-                system_paasta_config.get_synapse_haproxy_url_format(),
-                service_namespace,
-                tasks,
-            ))
-        tasks = tasks_in_smartstack
+        tasks = get_smartstack_tasks(tasks, service, nerve_ns, system_paasta_config)
 
     for task in tasks:
         if task.started_at is None:

@@ -19,6 +19,8 @@ import datetime
 
 import marathon
 import mock
+from pytest import raises
+from requests.exceptions import ConnectionError
 
 from paasta_tools import bounce_lib
 from paasta_tools import utils
@@ -170,6 +172,45 @@ class TestBounceLib:
         actual = bounce_lib.get_bounce_method_func('brutal')
         expected = bounce_lib.brutal_bounce
         assert actual == expected
+
+    def test_get_smartstack_tasks(self):
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
+            return_value=['task1', 'task2']
+        ) as mock_get_registered_marathon_tasks, mock.patch(
+            'paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
+            return_value={'fake_region': [{'hostname': 'fakehost'},
+                                          {'hostname': 'anotherhost'}]}, autospec=True
+        ), mock.patch(
+            'paasta_tools.mesos_tools.get_slaves', autospec=True
+        ):
+            mock_tasks = mock.Mock()
+            # test happy flow
+            ret = bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
+                                                  self.fake_system_paasta_config())
+            assert ret == ['task1', 'task2']
+            mock_get_registered_marathon_tasks.assert_called_with('fakehost',
+                                                                  123456,
+                                                                  'http://{host:s}:{port:d}/;csv;norefresh',
+                                                                  'fake-service.fake-nerve-ns',
+                                                                  mock_tasks)
+
+            # test we try another host if haproxy times out
+            mock_get_registered_marathon_tasks.side_effect = [ConnectionError, ['task1', 'task2']]
+            ret = bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
+                                                  self.fake_system_paasta_config())
+            assert ret == ['task1', 'task2']
+            mock_get_registered_marathon_tasks.assert_called_with('anotherhost',
+                                                                  123456,
+                                                                  'http://{host:s}:{port:d}/;csv;norefresh',
+                                                                  'fake-service.fake-nerve-ns',
+                                                                  mock_tasks)
+
+            # test we throw an error if all the haproxy hosts timeout
+            mock_get_registered_marathon_tasks.side_effect = [ConnectionError] * 2
+            with raises(StopIteration):
+                bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
+                                                self.fake_system_paasta_config())
 
     def test_get_happy_tasks_when_running_without_healthchecks_defined(self):
         """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
