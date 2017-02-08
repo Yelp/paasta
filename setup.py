@@ -53,7 +53,7 @@ setup(
         'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
-        'mesos.interface == 1.0.1',
+        'mesos.interface == 1.1.0',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
