@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument(
         'action',
         choices=[
+            'cluster_status',
             'down',
             'drain',
             'is_host_down',
@@ -221,6 +222,8 @@ def paasta_maintenance():
     elif action == 'up':
         mesos_maintenance.up(hostnames)
     elif action == 'status':
+        ret = "%s" % mesos_maintenance.friendly_status()
+    elif action == 'cluster_status':
         ret = "%s" % mesos_maintenance.status()
     elif action == 'schedule':
         ret = "%s" % mesos_maintenance.schedule()
