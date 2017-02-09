@@ -599,6 +599,7 @@ def test_raw_status(
     raw_status()
     assert mock_get_maintenance_status.call_count == 1
 
+
 @mock.patch('paasta_tools.mesos_maintenance.raw_status', autospec=True)
 def test_status(
     mock_raw_status,
