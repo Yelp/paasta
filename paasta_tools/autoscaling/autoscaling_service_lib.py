@@ -54,6 +54,7 @@ SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
 
 AUTOSCALING_DELAY = 300
+MAX_TASK_DELTA = 0.3
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -323,7 +324,9 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     current_instances = marathon_service_config.get_instances()
-    if len(marathon_tasks) != current_instances:
+    too_many_instances_running = len(marathon_tasks) > int((1 + MAX_TASK_DELTA) * current_instances)
+    too_few_instances_running = len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
+    if too_many_instances_running or too_few_instances_running:
         write_to_log(config=marathon_service_config,
                      line='Delaying scaling as marathon is either waiting for resources or is delayed')
         return

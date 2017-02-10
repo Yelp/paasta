@@ -25,6 +25,7 @@ from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
+from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -596,12 +597,12 @@ def test_autoscale_marathon_with_http_stuff():
         assert mock_get_http_utilization_for_all_tasks.called
 
 
-def test_autoscale_marathon_instance_aborts_when_task_deploying():
+def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
         cluster='fake-cluster',
-        config_dict={'min_instances': 1, 'max_instances': 10},
+        config_dict={'min_instances': 1, 'max_instances': 100},
         branch_dict={},
     )
     with contextlib.nested(
@@ -610,17 +611,61 @@ def test_autoscale_marathon_instance_aborts_when_task_deploying():
         mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
                    return_value=mock.Mock(return_value=1)),
-        mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=500),
+        mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True),
         mock.patch('paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True),
     ) as (
         mock_set_instances_for_marathon_service,
         _,
         _,
-        _,
+        mock_get_instances,
         _,
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config, [mock.Mock()], [mock.Mock()])
+        # Test all running
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * 10,
+                                                            [mock.Mock()] * 10)
+        assert mock_set_instances_for_marathon_service.called
+
+        # Test none running
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [], [])
         assert not mock_set_instances_for_marathon_service.called
+
+        # Test more instances above threshold
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1),
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1))
+        assert not mock_set_instances_for_marathon_service.called
+
+        # Test more instances below threshold
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1),
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1))
+        assert mock_set_instances_for_marathon_service.called
+
+        # Test fewer below threshold
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1),
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1))
+        assert not mock_set_instances_for_marathon_service.called
+
+        # Test fewer above threshold
+        mock_set_instances_for_marathon_service.reset_mock()
+        mock_get_instances.return_value = 10
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1),
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1))
+        assert mock_set_instances_for_marathon_service.called
 
 
 def test_autoscale_services_happy_path():
