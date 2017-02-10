@@ -327,8 +327,23 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     too_many_instances_running = len(marathon_tasks) > int((1 + MAX_TASK_DELTA) * current_instances)
     too_few_instances_running = len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
     if too_many_instances_running or too_few_instances_running:
-        write_to_log(config=marathon_service_config,
-                     line='Delaying scaling as marathon is either waiting for resources or is delayed')
+        if current_instances < marathon_service_config.get_min_instances():
+            write_to_log(
+                config=marathon_service_config,
+                line='Scaling from %d to %d instances because we are below min_instances' % (
+                    current_instances, marathon_service_config.get_min_instances())
+            )
+            set_instances_for_marathon_service(
+                service=marathon_service_config.service,
+                instance=marathon_service_config.instance,
+                instance_count=marathon_service_config.get_min_instances()
+            )
+
+        else:
+            write_to_log(config=marathon_service_config,
+                         line='Delaying scaling as we found too many or too few tasks running in marathon. '
+                              'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                              'waiting for tasks to be killed.')
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params.pop(SERVICE_METRICS_PROVIDER_KEY))

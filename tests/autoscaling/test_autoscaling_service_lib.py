@@ -459,6 +459,48 @@ def test_autoscale_marathon_instance():
             service='fake-service', instance='fake-instance', instance_count=2)
 
 
+def test_autoscale_marathon_instance_up_to_min_instances():
+    current_instances = 5
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 10, 'max_instances': 100},
+        branch_dict={},
+    )
+    with contextlib.nested(
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
+                   autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
+                   return_value=mock.Mock(return_value=-3)),
+        mock.patch.object(marathon_tools.MarathonServiceConfig,
+                          'get_instances',
+                          autospec=True,
+                          return_value=current_instances),
+        mock.patch('paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True),
+    ) as (
+        mock_set_instances_for_marathon_service,
+        _,
+        _,
+        _,
+        _,
+    ):
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * 5,
+                                                            [mock.Mock()] * 5)
+        mock_set_instances_for_marathon_service.assert_called_once_with(
+            service='fake-service', instance='fake-instance', instance_count=10)
+
+        # even if we don't find the tasks healthy in marathon we shouldn't be below min_instances
+        mock_set_instances_for_marathon_service.reset_mock()
+        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(5 * (1 - MAX_TASK_DELTA)) - 1),
+                                                            [mock.Mock()] * (int(5 * (1 - MAX_TASK_DELTA)) - 1))
+        mock_set_instances_for_marathon_service.assert_called_once_with(
+            service='fake-service', instance='fake-instance', instance_count=10)
+
+
 def test_autoscale_marathon_instance_below_min_instances():
     current_instances = 7
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
