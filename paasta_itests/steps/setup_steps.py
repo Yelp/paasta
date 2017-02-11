@@ -27,6 +27,7 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
+from paasta_tools import native_mesos_scheduler
 from paasta_tools import utils
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
@@ -117,7 +118,7 @@ def write_etc_paasta(context, config, filename):
 
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
-    return working_paasta_cluster_with_registry(context, 'fake.com')
+    return working_paasta_cluster_with_registry(context, 'docker.io')
 
 
 @given('a working paasta cluster, with docker registry {docker_registry}')
@@ -138,7 +139,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
-    context.tag_version = 0
+
     write_etc_paasta(context, {'marathon_config': context.marathon_config}, 'marathon.json')
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
@@ -224,6 +225,38 @@ def write_soa_dir_marathon_job(context, job_id):
     context.soa_dir = soa_dir
 
 
+@given('we have yelpsoa-configs for native service "{job_id}"')
+def write_soa_dir_native_service(context, job_id):
+    (service, instance, _, __) = decompose_job_id(job_id)
+    try:
+        soa_dir = context.soa_dir
+    except AttributeError:
+        soa_dir = mkdtemp()
+    if not os.path.exists(os.path.join(soa_dir, service)):
+        os.makedirs(os.path.join(soa_dir, service))
+    with open(os.path.join(soa_dir, service, 'paasta_native-%s.yaml' % context.cluster), 'w') as f:
+        f.write(yaml.dump({
+            "%s" % instance: {
+                'cpus': 0.1,
+                'mem': 100,
+                'cmd': '/bin/sleep 300',
+            }
+        }))
+    context.soa_dir = soa_dir
+    context.service = service
+    context.instance = instance
+
+
+@given('we load_paasta_native_job_config')
+def call_load_paasta_native_job_config(context):
+    context.new_config = native_mesos_scheduler.load_paasta_native_job_config(
+        service=context.service,
+        instance=context.instance,
+        cluster=context.cluster,
+        soa_dir=context.soa_dir,
+    )
+
+
 @given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
 def write_soa_dir_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
@@ -237,7 +270,7 @@ def write_soa_dir_deployments(context, service, disabled, instance):
         dp.write(json.dumps({
             'v1': {
                 '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
-                    'docker_image': 'test-image-foobar%d' % context.tag_version,
+                    'docker_image': 'busybox',
                     'desired_state': desired_state,
                 }
             }

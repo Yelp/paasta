@@ -38,6 +38,16 @@ Feature: paasta_serviceinit
       And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
 
+  Scenario: paasta_serviceinit can run status on native jobs
+    Given a working paasta cluster
+      And we have yelpsoa-configs for native service "testservice.testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+      And we load_paasta_native_job_config
+     When we start a paasta_native scheduler with reconcile_backoff 0
+      And we wait for our native scheduler to launch exactly 1 tasks
+     Then paasta_serviceinit status for the native service "testservice.testinstance" exits with return code 0
+      And the output matches regex "    testservice.testinstance.git"
+
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
