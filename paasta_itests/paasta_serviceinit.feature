@@ -38,10 +38,11 @@ Feature: paasta_serviceinit
       And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
       And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
 
+  @wip
   Scenario: paasta_serviceinit can run status on native jobs
     Given a working paasta cluster
       And we have yelpsoa-configs for native service "testservice.testinstance"
-      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance" image "busybox"
       And we load_paasta_native_job_config
      When we start a paasta_native scheduler with reconcile_backoff 0
       And we wait for our native scheduler to launch exactly 1 tasks

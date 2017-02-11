@@ -139,6 +139,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
+    context.tag_version = 0
 
     write_etc_paasta(context, {'marathon_config': context.marathon_config}, 'marathon.json')
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
@@ -257,8 +258,8 @@ def call_load_paasta_native_job_config(context):
     )
 
 
-@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
-def write_soa_dir_deployments(context, service, disabled, instance):
+@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}" image "{image}"')
+def write_soa_dir_deployments(context, service, disabled, instance, image):
     if disabled == 'disabled':
         desired_state = 'stop'
     else:
@@ -270,11 +271,16 @@ def write_soa_dir_deployments(context, service, disabled, instance):
         dp.write(json.dumps({
             'v1': {
                 '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
-                    'docker_image': 'busybox',
+                    'docker_image': image,
                     'desired_state': desired_state,
                 }
             }
         }))
+
+
+@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
+def write_soa_dir_deployments_default_image(context, service, disabled, instance):
+    write_soa_dir_deployments(context, service, disabled, instance, 'test-image-foobar%d' % context.tag_version)
 
 
 @when(('we set the "{field}" field of the {framework} config for service "{service}"'
