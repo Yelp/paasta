@@ -107,20 +107,6 @@ def test_send_event_to_sensu(mock_send_event):
     )
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
-def test_last_run_state_for_jobs(mock_status_last_run):
-    mock_status_last_run.side_effect = lambda x: {
-        'a': [('faketimestamp', chronos_tools.LastRunState.Success)],
-        'b': [('faketimestamp', chronos_tools.LastRunState.Fail)],
-        'c': [('faketimestamp', chronos_tools.LastRunState.NotRun)],
-    }[x]
-    assert check_chronos_jobs.last_run_state_for_jobs(['a', 'b', 'c']) == [
-        ('a', ('faketimestamp', chronos_tools.LastRunState.Success)),
-        ('b', ('faketimestamp', chronos_tools.LastRunState.Fail)),
-        ('c', ('faketimestamp', chronos_tools.LastRunState.NotRun)),
-    ]
-
-
 def test_sensu_event_for_last_run_state_success():
     result = check_chronos_jobs.sensu_event_for_last_run_state(chronos_tools.LastRunState.Success)
     assert result == pysensu_yelp.Status.OK

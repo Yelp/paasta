@@ -65,15 +65,6 @@ def compose_check_name_for_job(service, instance):
     return 'check-chronos-jobs.%s%s%s' % (service, utils.SPACER, instance)
 
 
-def last_run_state_for_jobs(jobs):
-    """
-    Map over a list of jobs to create a pair of (job, LasRunState).
-    ``chronos_tools.get_status_last_run`` returns a pair of (time, state), of which
-    we only need the latter([-1]).
-    """
-    return [(chronos_job, chronos_tools.get_status_last_run(chronos_job)[-1]) for chronos_job in jobs]
-
-
 def sensu_event_for_last_run_state(state):
     """
     Given a LastRunState, return a corresponding sensu event type.
@@ -110,11 +101,11 @@ def build_service_job_mapping(client, configured_jobs):
             include_disabled=True,
         )
         matching_jobs = chronos_tools.sort_jobs(matching_jobs)
-        # Only consider the most recent one
+
         if len(matching_jobs) > 0:
-            matching_jobs = [matching_jobs[0]]
-        with_states = last_run_state_for_jobs(matching_jobs)
-        service_job_mapping[job] = with_states
+            # Only consider the most recent one
+            status = chronos_tools.get_status_last_run(matching_jobs[0])
+            service_job_mapping[job] = [(matching_jobs[0], status[1])]
     return service_job_mapping
 
 
