@@ -98,8 +98,10 @@ def main():
         marathon_client = metastatus_lib.get_marathon_client(marathon_config)
         try:
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
-        except (MarathonError, InternalServerError) as e:
-            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Is the cluster healthy?"))
+        except (MarathonError, InternalServerError, ValueError) as e:
+            # catch ValueError until marathon-python/pull/167 is merged and this is handled upstream
+            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at %s!"
+                                           "Is the cluster healthy?".format(marathon_config["url"]))))
             sys.exit(2)
     else:
         marathon_results = [metastatus_lib.HealthCheckResult(message='Marathon is not configured to run here',
