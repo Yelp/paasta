@@ -87,9 +87,9 @@ def build_service_job_mapping(client, configured_jobs):
     :param client: A Chronos client used for getting the list of running jobs
     :param configured_jobs: A list of jobs configured in Paasta, i.e. jobs we
         expect to be able to find
-    :returns: A dict of {(service, instance): [(chronos job, lastrunstate)]}
-        where the chronos job is any with a matching (service, instance) in its
-        name and disabled == False
+    :returns: A dict of {(service, instance): last_chronos_job}
+        where last_chronos_job is the latest job matching (service, instance)
+        or None if there is no such job
     """
     service_job_mapping = {}
     for job in configured_jobs:
@@ -101,11 +101,8 @@ def build_service_job_mapping(client, configured_jobs):
             include_disabled=True,
         )
         matching_jobs = chronos_tools.sort_jobs(matching_jobs)
-
-        if len(matching_jobs) > 0:
-            # Only consider the most recent one
-            status = chronos_tools.get_status_last_run(matching_jobs[0])
-            service_job_mapping[job] = [(matching_jobs[0], status[1])]
+        # Only consider the most recent one
+        service_job_mapping[job] = matching_jobs[0] if len(matching_jobs) > 0 else None
     return service_job_mapping
 
 
@@ -143,29 +140,24 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, job_state_pairs):
-    if len(job_state_pairs) > 1:
-        sensu_status = pysensu_yelp.Status.UNKNOWN
-        output = (
-            "Unknown: somehow there was more than one enabled job for %s%s%s.\n"
-            "Talk to the PaaSTA team as this indicates a bug." % (service, utils.SPACER, instance)
-        )
-    elif len(job_state_pairs) == 0:
+def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job):
+    if not chronos_job:
         if chronos_job_config.get_disabled():
             sensu_status = pysensu_yelp.Status.OK
-            output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
+            output = ("Job %s%s%s is disabled - ignoring status."
+                      % (service, utils.SPACER, instance))
         else:
             sensu_status = pysensu_yelp.Status.WARNING
-            output = (
-                "Warning: %s%s%s isn't in chronos at all, "
-                "which means it may not be deployed yet" % (service, utils.SPACER, instance)
-            )
+            output = ("Warning: %s%s%s isn't in chronos at all, "
+                      "which means it may not be deployed yet"
+                      % (service, utils.SPACER, instance))
     else:
-        if job_state_pairs[0][0].get('disabled') is True:
+        if chronos_job.get('disabled'):
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
-            state = job_state_pairs[0][1]
+            last_run_status = chronos_tools.get_status_last_run(chronos_job)
+            state = last_run_status[1]
             sensu_status = sensu_event_for_last_run_state(state)
             output = message_for_status(sensu_status, service, instance, cluster)
     return output, sensu_status
@@ -184,7 +176,7 @@ def main():
     try:
         service_job_mapping = build_service_job_mapping(client, configured_jobs)
 
-        for service_instance, job_state_pairs in service_job_mapping.items():
+        for service_instance, chronos_job in service_job_mapping.items():
             service, instance = service_instance[0], service_instance[1]
             try:
                 chronos_job_config = load_chronos_job_config(
@@ -201,7 +193,7 @@ def main():
                 service=service,
                 instance=instance,
                 cluster=cluster,
-                job_state_pairs=job_state_pairs
+                chronos_job=chronos_job
             )
             if sensu_status is not None:
                 monitoring_overrides = compose_monitoring_overrides_for_service(
