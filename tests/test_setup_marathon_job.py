@@ -27,6 +27,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 from paasta_tools import utils
 from paasta_tools.bounce_lib import list_bounce_methods
+from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -1388,6 +1389,50 @@ class TestSetupMarathonJob:
             # 5. bounce finishes
 
             assert mock_log.call_count == 5
+
+    def test_deploy_service_lock_exceptions(self):
+        fake_bounce = 'WHEEEEEEEEEEEEEEEE'
+        fake_drain_method = 'noop'
+        fake_name = 'whoa'
+        fake_instance = 'the_earth_is_tiny'
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
+        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
+        fake_config = {'id': fake_id, 'instances': 2}
+
+        with contextlib.nested(
+            mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func',
+                       side_effect=LockHeldException, autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
+        ) as (
+            mock_log,
+            mock_bounce,
+            mock_load_system_paasta_config,
+            _,
+        ):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
+            ret = setup_marathon_job.deploy_service(
+                service=fake_name,
+                instance=fake_instance,
+                marathon_jobid=fake_id,
+                config=fake_config,
+                client=fake_client,
+                marathon_apps=fake_apps,
+                bounce_method=fake_bounce,
+                drain_method_name=fake_drain_method,
+                drain_method_params={},
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+                soa_dir='fake_soa_dir',
+            )
+            assert ret[0] == 0
+
+            logged_line = mock_log.mock_calls[0][2]["line"]
+            assert logged_line.startswith("Failed to get lock to create marathon app for %s.%s" % (fake_name,
+                                                                                                   fake_instance))
 
     def test_deploy_service_logs_exceptions(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
