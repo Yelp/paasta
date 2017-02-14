@@ -68,7 +68,11 @@ class PaastaAdhocScheduler(Scheduler):
             self.status = 0
             driver.stop()
         else:
-            driver.launchTasks(offer.id, tasks)
+            # driver.launchTasks(offer.id, tasks)
+            paasta_print("THIS IS NOT A DRILL!"
+                         "Would have launched: {task}".format(task=task))
+            self.status = 0
+            driver.stop()
 
 
     def statusUpdate(self, driver, update):
