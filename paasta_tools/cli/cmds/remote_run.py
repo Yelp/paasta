@@ -23,11 +23,16 @@ from mesos.interface import Scheduler
 from mesos.interface import mesos_pb2
 
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_instances
+from paasta_tools.cli.utils import list_clusters
+from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 from paasta_tools.native_mesos_scheduler import create_driver_with
 
@@ -153,7 +158,7 @@ def add_subparser(subparsers):
         required=False,
         default=True,
     )
-    list_parser.set_defaults(command=paasta_local_run)
+    list_parser.set_defaults(command=paasta_remote_run)
 
 
 def paasta_remote_run(args):
@@ -173,7 +178,7 @@ def paasta_remote_run(args):
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = args.cluster or system_paasta_config.get_local_run_config().get('default_cluster', None)
 
-    if !cluster
+    if not cluster:
         paasta_print(
             PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster."
