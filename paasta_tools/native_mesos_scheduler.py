@@ -369,10 +369,15 @@ def find_existing_id_if_exists_or_gen_new(name):
         return uuid.uuid4().hex
 
 
-def create_driver(service, instance, scheduler, system_paasta_config):
+def create_driver_with(
+    framework_name,
+    scheduler,
+    system_paasta_config,
+    implicit_acks=False
+):
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
-    framework.name = "paasta %s" % compose_job_id(service, instance)
+    framework.name = framework_name
     framework.failover_timeout = 604800
     framework.id.value = find_existing_id_if_exists_or_gen_new(framework.name)
     framework.checkpoint = True
@@ -382,16 +387,24 @@ def create_driver(service, instance, scheduler, system_paasta_config):
     credential.secret = system_paasta_config.get_paasta_native_config()['secret']
 
     framework.principal = system_paasta_config.get_paasta_native_config()['principal']
-    implicitAcknowledgements = False
 
     driver = MesosSchedulerDriver(
         scheduler,
         framework,
         '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT),
-        implicitAcknowledgements,
+        implicit_acks,
         credential
     )
     return driver
+
+
+def create_driver(service, instance, scheduler, system_paasta_config):
+    return create_driver_with(
+        framework_name="paasta %s" % compose_job_id(service, instance),
+        scheduler=scheduler,
+        system_paasta_config=system_paasta_config,
+        implicit_acks=False)
+
 
 
 class UnknownPaastaNativeServiceError(Exception):
