@@ -32,6 +32,7 @@ from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
 from paasta_tools.mesos_maintenance import down
 from paasta_tools.mesos_maintenance import drain
+from paasta_tools.mesos_maintenance import friendly_status
 from paasta_tools.mesos_maintenance import get_down_hosts
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_maintenance import get_hosts_forgotten_down
@@ -52,6 +53,7 @@ from paasta_tools.mesos_maintenance import is_host_past_maintenance_start
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import parse_datetime
 from paasta_tools.mesos_maintenance import parse_timedelta
+from paasta_tools.mesos_maintenance import raw_status
 from paasta_tools.mesos_maintenance import reserve
 from paasta_tools.mesos_maintenance import Resource
 from paasta_tools.mesos_maintenance import schedule
@@ -591,11 +593,27 @@ def test_up(
 
 
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_status', autospec=True)
-def test_status(
+def test_raw_status(
     mock_get_maintenance_status,
 ):
-    status()
+    raw_status()
     assert mock_get_maintenance_status.call_count == 1
+
+
+@mock.patch('paasta_tools.mesos_maintenance.raw_status', autospec=True)
+def test_status(
+    mock_raw_status,
+):
+    status()
+    assert mock_raw_status.call_count == 1
+
+
+@mock.patch('paasta_tools.mesos_maintenance.raw_status', autospec=True)
+def test_friendly_status(
+    mock_raw_status,
+):
+    friendly_status()
+    assert mock_raw_status.call_count == 1
 
 
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)

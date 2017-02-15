@@ -634,16 +634,37 @@ def up(hostnames):
     return up_output
 
 
-def status():
+def raw_status():
     """Get the Mesos maintenance status. This contains hostname/ip mappings for hosts that are either marked as being
     down for maintenance or draining.
-    :returns: None
+    :returns: Response Object containing status
     """
     try:
         status = get_maintenance_status()
     except HTTPError:
         raise HTTPError("Error performing maintenance status.")
-    return status.text
+    return status
+
+
+def status():
+    """Get the Mesos maintenance status. This contains hostname/ip mappings for hosts that are either marked as being
+    down for maintenance or draining.
+    :returns: Text representation of the status
+    """
+    return raw_status().text
+
+
+def friendly_status():
+    """Display the Mesos maintenance status in a human-friendly way.
+    :returns: Text representation of the human-friendly status
+    """
+    status = raw_status().json()
+    ret = ""
+    for machine in status.get('draining_machines', []):
+        ret += "%s (%s): Draining\n" % (machine['id']['hostname'], machine['id']['ip'])
+    for machine in status.get('down_machines', []):
+        ret += "%s (%s): Down\n" % (machine['hostname'], machine['ip'])
+    return ret
 
 
 def is_host_drained(hostname):
