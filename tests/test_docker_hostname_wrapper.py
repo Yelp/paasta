@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-import mock
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import sys
 
+import mock
 import pytest
 
 from paasta_tools import docker_hostname_wrapper
+
 
 class TestParseEnvArgs(object):
     def test_empty(self):
@@ -32,7 +36,7 @@ class TestParseEnvArgs(object):
     @pytest.mark.parametrize('args', [
         ['docker', '--eep', 'key=value'],  # ignore -e in double dashes unless its --env
         ['docker', '-a', 'key=value'],  # only -e should matter
-        ['docker', '-'], # just don't crash
+        ['docker', '-'],  # just don't crash
     ])
     def test_short_invalid(self, args):
         env = docker_hostname_wrapper.parse_env_args(args)
@@ -85,22 +89,33 @@ class TestAlreadyHasHostname(object):
 
 class TestGenerateHostname(object):
     def test_simple(self):
-        hostname = docker_hostname_wrapper.generate_hostname('first.part.matters', 'what.only.matters.is.lastpart')
+        hostname = docker_hostname_wrapper.generate_hostname(
+            'first.part.matters',
+            'what.only.matters.is.lastpart')
         assert hostname == 'first-lastpart'
 
     def test_truncate(self):
-        hostname = docker_hostname_wrapper.generate_hostname('reallllllllllllllylooooooooooooooong', 'reallyreallylongidsssssssssssssssssssssssss')
+        hostname = docker_hostname_wrapper.generate_hostname(
+            'reallllllllllllllylooooooooooooooong',
+            'reallyreallylongidsssssssssssssssssssssssss')
         assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidsssssssss'
         assert len(hostname) == 64
 
 
 @pytest.mark.parametrize('input_args,expected_args', [
-    (['docker', 'ps'], ['docker', 'ps']),  # do not add it for non-run commands
-    (['docker', 'run', 'run'], ['docker', 'run', '--hostname=myhostname', 'run']),  # add it after the first run arg
-    (['docker', '--host', '/fake.sock', 'run', '-t'], ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t'])  # ignore args before run
+    (  # do not add it for non-run commands
+        ['docker', 'ps'],
+        ['docker', 'ps']),
+    (  # add it after the first run arg
+        ['docker', 'run', 'run'],
+        ['docker', 'run', '--hostname=myhostname', 'run']),
+    (  # ignore args before run
+        ['docker', '--host', '/fake.sock', 'run', '-t'],
+        ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t']
+    )
 ])
 def test_add_hostname(input_args, expected_args):
-    args = list(input_args) # add_hostname modifies the parameter directly
+    args = list(input_args)  # add_hostname modifies the parameter directly
     docker_hostname_wrapper.add_hostname(args, 'myhostname')
     assert args == expected_args
 

@@ -9,6 +9,9 @@ If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
 """
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import os
 import re
 import sys
@@ -43,7 +46,7 @@ def parse_env_args(args):
 
 def already_has_hostname(args):
     for arg in args:
-        if arg=='-h':
+        if arg == '-h':
             return True
         if arg.startswith('--hostname'):
             return True
@@ -69,7 +72,7 @@ def add_hostname(args, hostname):
     except ValueError:
         return
 
-    args.insert(run_index + 1, '--hostname='+hostname)
+    args.insert(run_index + 1, '--hostname=' + hostname)
 
 
 def main():
