@@ -7,6 +7,7 @@ import argparse
 import binascii
 import logging
 import random
+import re
 import sys
 import time
 import uuid
@@ -32,6 +33,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
@@ -40,6 +42,7 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 log = logging.getLogger(__name__)
@@ -372,7 +375,7 @@ def find_existing_id_if_exists_or_gen_new(name):
 def create_driver(service, instance, scheduler, system_paasta_config):
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
-    framework.name = "paasta %s" % compose_job_id(service, instance)
+    framework.name = "paasta_native %s" % compose_job_id(service, instance)
     framework.failover_timeout = 604800
     framework.id.value = find_existing_id_if_exists_or_gen_new(framework.name)
     framework.checkpoint = True
@@ -525,6 +528,78 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
 
     def get_mesos_network_mode(self):
         return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
+
+
+def get_app_id_and_task_uuid_from_executor_id(executor_id):
+    """Parse the paasta_native executor ID and return the (app id, task uuid)"""
+    return executor_id.rsplit('.', 1)
+
+
+def paasta_native_services_running_here(hostname=None):
+    """See what paasta_native services are being run by a mesos-slave on this host.
+    :returns: A list of triples of (service, instance, port)"""
+    slave_state = mesos_tools.get_local_slave_state(hostname=hostname)
+    frameworks = [fw for fw in slave_state.get('frameworks', []) if 'paasta_native' in fw['name']]
+    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
+                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
+    srv_list = []
+    for executor in executors:
+        app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
+        (srv_name, srv_instance, _, __) = decompose_job_id(app_id)
+        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        srv_list.append((srv_name, srv_instance, srv_port))
+    return srv_list
+
+
+def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname=None):
+    if not cluster:
+        try:
+            cluster = load_system_paasta_config().get_cluster()
+        # In the cases where there is *no* cluster or in the case
+        # where there isn't a Paasta configuration file at *all*, then
+        # there must be no paasta_native services running here, so we catch
+        # these custom exceptions and return [].
+        except (PaastaNotConfiguredError):
+            return []
+    # When a cluster is defined in mesos, let's iterate through paasta_native services
+    paasta_native_services = paasta_native_services_running_here(hostname=hostname)
+    nerve_list = []
+    for name, instance, port in paasta_native_services:
+        try:
+            registrations = read_all_registrations_for_service_instance(
+                name, instance, cluster, soa_dir
+            )
+            for registration in registrations:
+                reg_service, reg_namespace, _, __ = decompose_job_id(registration)
+                nerve_dict = load_service_namespace_config(
+                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
+                )
+                if not nerve_dict.is_in_smartstack():
+                    continue
+                nerve_dict['port'] = port
+                nerve_list.append((registration, nerve_dict))
+        except KeyError:
+            continue  # SOA configs got deleted for this app, it'll get cleaned up
+    return nerve_list
+
+
+def read_all_registrations_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive all registrations as fully specified name.instance pairs
+    for a particular service instance.
+
+    For example, the 'main' paasta instance of the 'test' service may register
+    in the 'test.main' namespace as well as the 'other_svc.main' namespace.
+
+    If one is not defined in the config file, returns a list containing
+    name.instance instead.
+    """
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+
+    job_config = load_paasta_native_job_config(
+        service, instance, cluster, load_deployments=False, soa_dir=soa_dir
+    )
+    return job_config.get_registrations()
 
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):

@@ -1447,12 +1447,6 @@ class TestMarathonTools:
         marathon_tools.app_has_tasks(fake_client, 'fake_app', 4)
         assert fake_client.list_tasks.called_with('/fake_app')
 
-    def test_get_code_sha_from_dockerurl(self):
-        fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
-        actual = marathon_tools.get_code_sha_from_dockerurl(fake_docker_url)
-        assert actual == 'git93340779'
-        assert len(actual) == 11
-
     def test_get_config_hash(self):
         test_input = {'foo': 'bar'}
         actual = marathon_tools.get_config_hash(test_input)

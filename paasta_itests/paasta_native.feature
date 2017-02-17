@@ -96,3 +96,10 @@ Feature: Paasta native mesos framework
      When we start a paasta_native scheduler with reconcile_backoff 10
      Then it should not start tasks for 9 seconds
       And it should eventually start 3 tasks
+
+  Scenario: get_paasta_native_services_running_here_for_nerve works
+    Given a working paasta cluster, with docker registry docker.io
+      And a new paasta_native config to be deployed, with 3 instances
+     When we start a paasta_native scheduler with reconcile_backoff 0
+     Then it should eventually start 3 tasks
+      And our service should show up in paasta_native_services_running_here 3 times on any of our slaves

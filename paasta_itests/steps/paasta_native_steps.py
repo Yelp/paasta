@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import json
 import os
+import socket
 import time
 from tempfile import mkdtemp
 
@@ -18,6 +19,7 @@ from paasta_tools import mesos_tools
 from paasta_tools.native_mesos_scheduler import create_driver
 from paasta_tools.native_mesos_scheduler import LIVE_TASK_STATES
 from paasta_tools.native_mesos_scheduler import main
+from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
 from paasta_tools.native_mesos_scheduler import PaastaNativeServiceConfig
 from paasta_tools.native_mesos_scheduler import PaastaScheduler
 from paasta_tools.native_mesos_scheduler import TASK_RUNNING
@@ -274,3 +276,15 @@ def periodic_should_eventually_be_called(context):
                 return
     else:
         raise Exception("periodic() not called on all schedulers")
+
+
+@then(u'our service should show up in paasta_native_services_running_here {expected_num:d} times on any of our slaves')
+def pnsrhfn_on_at_least_one_slave(context, expected_num):
+    mesosslave_ips = set(x[4][0] for x in socket.getaddrinfo('mesosslave', 5051))
+
+    results = []
+    for mesosslave_ip in mesosslave_ips:
+        results.extend(paasta_native_services_running_here(hostname=mesosslave_ip))
+
+    matching_results = [res for res in results if res == (context.service, context.instance, mock.ANY)]
+    assert len(matching_results) == 3

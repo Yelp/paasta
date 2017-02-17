@@ -1513,7 +1513,8 @@ def get_code_sha_from_dockerurl(docker_url):
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha
     """
-    parts = docker_url.split('-')
+    parts = docker_url.split('/')
+    parts = parts[-1].split('-')
     return "git%s" % parts[-1][:8]
 
 

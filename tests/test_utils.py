@@ -1638,3 +1638,12 @@ def test_prompt_pick_one_exits_no_choices():
         mock_stdin.isatty.return_value = True
         with raises(SystemExit):
             utils.prompt_pick_one([], 'test')
+
+
+def test_get_code_sha_from_dockerurl():
+    fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
+    actual = utils.get_code_sha_from_dockerurl(fake_docker_url)
+    assert actual == 'git93340779'
+
+    # Useful mostly for integration tests, where we run busybox a lot.
+    assert utils.get_code_sha_from_dockerurl('docker.io/busybox') == 'gitbusybox'
