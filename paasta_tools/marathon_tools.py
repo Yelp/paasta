@@ -750,27 +750,6 @@ def get_classic_services_running_here_for_nerve(soa_dir):
     return classic_services
 
 
-def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get a list of ALL services running on this box, with returned information
-    needed for nerve.
-
-    ALL services means services that have a service.yaml with an entry for this host in
-    runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
-
-    conf_dict is a dictionary possibly containing the same keys returned by
-    load_service_namespace_config (in fact, that's what this calls).
-    Some or none of those keys may not be present on a per-service basis.
-
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of the form (service.namespace, service_config)
-              AND (service, service_config) for legacy SOA services"""
-    # All Legacy yelpsoa services are also announced
-    return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
-        get_classic_services_running_here_for_nerve(soa_dir) + \
-        get_puppet_services_running_here_for_nerve(soa_dir)
-
-
 def list_all_marathon_app_ids(client):
     """List all marathon app_ids, regardless of state
 

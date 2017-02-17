@@ -883,34 +883,6 @@ class TestMarathonTools:
                 ('a.foo', {}), ('b.foo', {})
             ]
 
-    def test_get_services_running_here_for_nerve(self):
-        cluster = 'plentea'
-        soa_dir = 'boba'
-        fake_marathon_services = [('never', 'again'), ('will', 'he')]
-        fake_classic_services = [('walk', 'on'), ('his', 'feet')]
-        fake_puppet_services = [('a', 'b'), ('c', 'd')]
-        expected = fake_marathon_services + fake_classic_services + fake_puppet_services
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.get_marathon_services_running_here_for_nerve',
-                       autospec=True,
-                       return_value=fake_marathon_services),
-            mock.patch('paasta_tools.marathon_tools.get_classic_services_running_here_for_nerve',
-                       autospec=True,
-                       return_value=fake_classic_services),
-            mock.patch('paasta_tools.marathon_tools.get_puppet_services_running_here_for_nerve',
-                       autospec=True,
-                       return_value=fake_puppet_services),
-        ) as (
-            marathon_patch,
-            classic_patch,
-            puppet_patch,
-        ):
-            actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
-            assert expected == actual
-            marathon_patch.assert_called_once_with(cluster, soa_dir)
-            classic_patch.assert_called_once_with(soa_dir)
-            puppet_patch.assert_called_once_with(soa_dir)
-
     def test_format_marathon_app_dict(self):
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
