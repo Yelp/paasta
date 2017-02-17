@@ -535,20 +535,21 @@ def get_app_id_and_task_uuid_from_executor_id(executor_id):
     return executor_id.rsplit('.', 1)
 
 
+def parse_service_instance_from_executor_id(task_id):
+    app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(task_id)
+    (srv_name, srv_instance, _, __) = decompose_job_id(app_id)
+    return srv_name, srv_instance
+
+
 def paasta_native_services_running_here(hostname=None):
     """See what paasta_native services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service, instance, port)"""
-    slave_state = mesos_tools.get_local_slave_state(hostname=hostname)
-    frameworks = [fw for fw in slave_state.get('frameworks', []) if 'paasta_native' in fw['name']]
-    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
-    srv_list = []
-    for executor in executors:
-        app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
-        (srv_name, srv_instance, _, __) = decompose_job_id(app_id)
-        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
-        srv_list.append((srv_name, srv_instance, srv_port))
-    return srv_list
+
+    return mesos_tools.mesos_services_running_here(
+        framework_name_regex='^paasta_native ',
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+        hostname=hostname
+    )
 
 
 def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname=None):

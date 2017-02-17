@@ -716,3 +716,18 @@ class TaskNotFound(Exception):
 
 class TooManyTasks(Exception):
     pass
+
+
+def mesos_services_running_here(framework_name_regex, parse_service_instance_from_executor_id, hostname=None):
+    """See what paasta_native services are being run by a mesos-slave on this host.
+    :returns: A list of triples of (service, instance, port)"""
+    slave_state = get_local_slave_state(hostname=hostname)
+    frameworks = [fw for fw in slave_state.get('frameworks', []) if re.match(framework_name_regex, fw['name'])]
+    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
+                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
+    srv_list = []
+    for executor in executors:
+        srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        srv_list.append((srv_name, srv_instance, srv_port))
+    return srv_list

@@ -23,7 +23,6 @@ import datetime
 import json
 import logging
 import os
-import re
 from math import ceil
 
 import requests
@@ -38,10 +37,10 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
-from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -649,20 +648,20 @@ def get_app_id_and_task_uuid_from_executor_id(executor_id):
     return executor_id.rsplit('.', 1)
 
 
+def parse_service_instance_from_executor_id(task_id):
+    app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(task_id)
+    (srv_name, srv_instance, _, __) = decompose_job_id(app_id)
+    return srv_name, srv_instance
+
+
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service, instance, port)"""
-    slave_state = get_local_slave_state()
-    frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
-    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
-    srv_list = []
-    for executor in executors:
-        app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
-        (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
-        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
-        srv_list.append((srv_name, srv_instance, srv_port))
-    return srv_list
+
+    return mesos_services_running_here(
+        framework_name_regex='^marathon-',
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+    )
 
 
 def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
