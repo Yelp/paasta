@@ -231,8 +231,10 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = metastatus_lib.assert_no_duplicate_frameworks(state)
 
-    expected_output = "\n".join(["Frameworks:"] +
-                                map(lambda x: '    Framework: %s count: 1' % x['name'], state['frameworks']))
+    expected_output = "\n".join(
+        ["Frameworks:"] +
+        ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']]
+    )
     assert output == expected_output
     assert ok
 

@@ -136,7 +136,7 @@ def run_synapse_check():
         )
 
         all_codes = []
-        for name, replication in service_replications.iteritems():
+        for name, replication in service_replications.items():
             code, message = check_replication(name, replication,
                                               options.warn, options.crit)
             all_codes.append(code)
