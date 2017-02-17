@@ -459,6 +459,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
             self.resource['max_capacity'],
         ))
+        new_capacity = max(new_capacity, self.resource['min_capacity'])
         self.log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
         self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
         if ideal_capacity > self.resource['max_capacity']:
@@ -584,6 +585,7 @@ class AsgAutoscaler(ClusterAutoscaler):
                 # if max and min set to 0 we still drain gradually
                 max(self.resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)))
             ))
+        new_capacity = max(new_capacity, self.resource['min_capacity'])
         self.log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
         self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
         if ideal_capacity > self.resource['max_capacity']:

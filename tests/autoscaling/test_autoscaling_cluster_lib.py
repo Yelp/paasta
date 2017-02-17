@@ -244,6 +244,15 @@ class TestAsgAutoscaler(unittest.TestCase):
         ret = self.autoscaler.get_asg_delta(-0.5)
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
+        current_instances = int((10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1)
+        self.autoscaler.resource = {
+            'min_capacity': 10,
+            'max_capacity': 40
+        }
+        self.autoscaler.asg = {'Instances': [mock.Mock()] * current_instances}
+        ret = self.autoscaler.get_asg_delta(-1)
+        assert ret == (current_instances, 10)
+
     def test_asg_metrics_provider(self):
         with contextlib.nested(
             mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg_delta', autospec=True),
@@ -488,6 +497,15 @@ class TestSpotAutoscaler(unittest.TestCase):
         self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 20}}
         ret = self.autoscaler.get_spot_fleet_delta(-0.5)
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
+
+        current_instances = (10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1
+        self.autoscaler.resource = {
+            'min_capacity': 10,
+            'max_capacity': 40
+        }
+        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': current_instances}}
+        ret = self.autoscaler.get_spot_fleet_delta(-1)
+        assert ret == (current_instances, 10)
 
     def test_spotfleet_metrics_provider(self):
         with contextlib.nested(
