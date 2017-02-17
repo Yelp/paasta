@@ -129,7 +129,7 @@ def _clean_up_paasta_native_frameworks(context):
     # to connect to clean up paasta native frameworks.
     if hasattr(context, 'etc_paasta'):
         for framework in mesos_tools.get_mesos_master().frameworks(active_only=True):
-            if framework.name.startswith('paasta '):
+            if framework.name.startswith('paasta_native '):
                 paasta_print("cleaning up framework %s" % framework.name)
                 try:
                     mesos_tools.terminate_framework(framework.id)

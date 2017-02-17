@@ -7,7 +7,6 @@ import argparse
 import binascii
 import logging
 import random
-import re
 import sys
 import time
 import uuid
@@ -541,12 +540,19 @@ def parse_service_instance_from_executor_id(task_id):
     return srv_name, srv_instance
 
 
-def paasta_native_services_running_here(hostname=None):
+def paasta_native_services_running_here(hostname=None, framework_id=None):
     """See what paasta_native services are being run by a mesos-slave on this host.
-    :returns: A list of triples of (service, instance, port)"""
+    :returns: A list of triples of (service, instance, port)
+
+    :param hostname: query the mesos slave on this hostname.
+    :param framework_id: If specified, return info only for tasks belonging to this framework id.
+    """
+
+    def framework_filter(fw):
+        return fw['name'].startswith('paasta_native ') and (framework_id is None or fw['id'] == framework_id)
 
     return mesos_tools.mesos_services_running_here(
-        framework_name_regex='^paasta_native ',
+        framework_filter=framework_filter,
         parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
         hostname=hostname
     )

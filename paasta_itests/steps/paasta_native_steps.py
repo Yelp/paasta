@@ -279,12 +279,17 @@ def periodic_should_eventually_be_called(context):
 
 
 @then(u'our service should show up in paasta_native_services_running_here {expected_num:d} times on any of our slaves')
-def pnsrhfn_on_at_least_one_slave(context, expected_num):
+def pnsrhfn_n_times(context, expected_num):
     mesosslave_ips = set(x[4][0] for x in socket.getaddrinfo('mesosslave', 5051))
 
     results = []
     for mesosslave_ip in mesosslave_ips:
-        results.extend(paasta_native_services_running_here(hostname=mesosslave_ip))
+        results.extend(
+            paasta_native_services_running_here(
+                hostname=mesosslave_ip,
+                framework_id=context.scheduler.framework_id,  # Ignore anything from other itests.
+            ),
+        )
 
     matching_results = [res for res in results if res == (context.service, context.instance, mock.ANY)]
-    assert len(matching_results) == 3
+    assert len(matching_results) == expected_num
