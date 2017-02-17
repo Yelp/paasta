@@ -569,7 +569,7 @@ class TestMarathonTools:
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr.someuuid'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94.someuuid'
-        id_3 = 'dota.axe.cleave.482u9jyoi4wed.someuuid'
+        id_3 = 'something--with--double--hyphens.axe.cleave.482u9jyoi4wed.someuuid'
         id_4 = 'mesos.deployment.is.hard.someuuid'
         id_5 = 'how.to.fake.data.someuuid'
         ports_1 = '[111-111]'
@@ -610,7 +610,7 @@ class TestMarathonTools:
         }
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
-                    ('dota', 'axe', 333),
+                    ('something_with_double_hyphens', 'axe', 333),
                     ('mesos', 'deployment', 444)]
         actual = marathon_tools.marathon_services_running_here()
         mock_get_local_slave_state.assert_called_once_with(hostname=None)

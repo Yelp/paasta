@@ -650,7 +650,7 @@ def get_app_id_and_task_uuid_from_executor_id(executor_id):
 
 def parse_service_instance_from_executor_id(task_id):
     app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(task_id)
-    (srv_name, srv_instance, _, __) = decompose_job_id(app_id)
+    (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
     return srv_name, srv_instance
 
 
