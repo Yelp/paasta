@@ -51,6 +51,7 @@ from collections import defaultdict
 
 import pysensu_yelp
 import requests_cache
+from marathon.exceptions import MarathonHttpError
 from requests.exceptions import HTTPError
 
 from paasta_tools import bounce_lib
@@ -234,7 +235,14 @@ def do_bounce(
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
         )
         with requests_cache.disabled():
-            bounce_lib.create_marathon_app(marathon_jobid, config, client)
+            try:
+                bounce_lib.create_marathon_app(marathon_jobid, config, client)
+            except MarathonHttpError as e:
+                if e.status_code == 409:
+                    log.warning("Failed to create, app %s already exists. This means another bounce beat us to it."
+                                " Skipping the rest of the bounce for this run" % marathon_jobid)
+                    return
+                raise
 
     tasks_to_kill = drain_tasks_and_find_tasks_to_kill(
         tasks_to_drain=actions['tasks_to_drain'],

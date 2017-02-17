@@ -270,6 +270,74 @@ class TestSetupMarathonJob:
                 soa_dir=fake_soa_dir,
             )
 
+    def test_do_bounce_when_create_app_and_new_app_not_running_but_already_created(self):
+        """ Note that this is possible if two bounces are running at the same time
+        because we get the list of marathon apps outside of any locking"""
+        fake_bounce_func_return = {
+            'create_app': True,
+            'tasks_to_drain': [mock.Mock(app_id='fake_task_to_kill_1')],
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+        fake_config = {'instances': 5}
+        fake_new_app_running = False
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_live_happy_tasks = {}
+        fake_old_app_live_unhappy_tasks = {}
+        fake_old_app_draining_tasks = {}
+        fake_old_app_at_risk_tasks = {}
+        fake_service = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        self.fake_cluster = 'fake_cluster'
+        fake_instance = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+        fake_drain_method = mock.Mock()
+        fake_marathon_jobid = 'fake.marathon.jobid'
+        fake_client = mock.create_autospec(
+            marathon.MarathonClient
+        )
+        expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
+
+        with mock.patch(
+            'paasta_tools.setup_marathon_job._log', autospec=True
+        ) as mock_log, mock.patch(
+            'paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True
+        ) as mock_create_marathon_app, mock.patch(
+            'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True
+        ) as mock_kill_old_ids:
+            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock.Mock(status_code=409))
+            setup_marathon_job.do_bounce(
+                bounce_func=fake_bounce_func,
+                drain_method=fake_drain_method,
+                config=fake_config,
+                new_app_running=fake_new_app_running,
+                happy_new_tasks=fake_happy_new_tasks,
+                old_app_live_happy_tasks=fake_old_app_live_happy_tasks,
+                old_app_live_unhappy_tasks=fake_old_app_live_unhappy_tasks,
+                old_app_draining_tasks=fake_old_app_draining_tasks,
+                old_app_at_risk_tasks=fake_old_app_at_risk_tasks,
+                service=fake_service,
+                bounce_method=fake_bounce_method,
+                serviceinstance=fake_serviceinstance,
+                cluster=self.fake_cluster,
+                instance=fake_instance,
+                marathon_jobid=fake_marathon_jobid,
+                client=fake_client,
+                soa_dir='fake_soa_dir',
+            )
+            assert mock_log.call_count == 2
+            first_logged_line = mock_log.mock_calls[0][2]["line"]
+            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            second_logged_line = mock_log.mock_calls[1][2]["line"]
+            assert 'creating new app with app_id %s' % fake_marathon_jobid in second_logged_line
+
+            assert mock_create_marathon_app.call_count == 1
+            assert fake_client.kill_task.call_count == 0
+            assert fake_drain_method.drain.call_count == 0
+            assert mock_kill_old_ids.call_count == 0
+
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
             'create_app': True,
@@ -335,6 +403,29 @@ class TestSetupMarathonJob:
             assert fake_client.kill_task.call_count == 0
             assert fake_drain_method.drain.call_count == len(fake_bounce_func_return["tasks_to_drain"])
             assert mock_kill_old_ids.call_count == 0
+
+            # test failure from marathon raised
+            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock.Mock(status_code=500))
+            with raises(marathon.exceptions.MarathonHttpError):
+                setup_marathon_job.do_bounce(
+                    bounce_func=fake_bounce_func,
+                    drain_method=fake_drain_method,
+                    config=fake_config,
+                    new_app_running=fake_new_app_running,
+                    happy_new_tasks=fake_happy_new_tasks,
+                    old_app_live_happy_tasks=fake_old_app_live_happy_tasks,
+                    old_app_live_unhappy_tasks=fake_old_app_live_unhappy_tasks,
+                    old_app_draining_tasks=fake_old_app_draining_tasks,
+                    old_app_at_risk_tasks=fake_old_app_at_risk_tasks,
+                    service=fake_service,
+                    bounce_method=fake_bounce_method,
+                    serviceinstance=fake_serviceinstance,
+                    cluster=self.fake_cluster,
+                    instance=fake_instance,
+                    marathon_jobid=fake_marathon_jobid,
+                    client=fake_client,
+                    soa_dir='fake_soa_dir',
+                )
 
     def test_do_bounce_when_create_app_and_new_app_running(self):
         fake_task_to_drain = mock.Mock(app_id='fake_app_to_kill_1')

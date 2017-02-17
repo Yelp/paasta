@@ -32,6 +32,29 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SystemPaastaConfig
 
 
+def run_setup_marathon_job_no_apps_found(context):
+    update_context_marathon_config(context)
+    with mock.patch.object(
+        SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.parse_args', autospec=True
+    ) as mock_parse_args, mock.patch.object(
+        MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
+        return_value=context.marathon_complete_config
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.marathon_tools.get_all_marathon_apps', autospec=True,
+        return_value=[]
+    ):
+        mock_parse_args.return_value = mock.Mock(
+            verbose=True,
+            soa_dir=context.soa_dir,
+            service_instance_list=[context.job_id],
+        )
+        setup_marathon_job.main()
+
+
 def run_setup_marathon_job(context):
     update_context_marathon_config(context)
     with mock.patch.object(
@@ -65,8 +88,13 @@ def create_app_with_instances(context, job_id, number):
     create_app_with_instances_constraints(context, job_id, number, str(None))
 
 
+@when('we create a marathon app called "{job_id}" with {number:d} instance(s) with no apps found running')
+def create_app_with_instances_with_race(context, job_id, number):
+    create_app_with_instances_constraints(context, job_id, number, str(None), no_apps_running=True)
+
+
 @when('we create a marathon app called "{job_id}" with {number:d} instance(s) and constraints {constraints}')
-def create_app_with_instances_constraints(context, job_id, number, constraints):
+def create_app_with_instances_constraints(context, job_id, number, constraints, no_apps_running=False):
     set_number_instances(context, number)
     context.job_id = job_id
     (service, instance, _, __) = decompose_job_id(job_id)
@@ -76,7 +104,10 @@ def create_app_with_instances_constraints(context, job_id, number, constraints):
     context.constraints = constraints
     update_context_marathon_config(context)
     context.app_id = context.marathon_complete_config['id']
-    run_setup_marathon_job(context)
+    if no_apps_running:
+        run_setup_marathon_job_no_apps_found(context)
+    else:
+        run_setup_marathon_job(context)
 
 
 @when('we set the number of instances to {number:d}')
