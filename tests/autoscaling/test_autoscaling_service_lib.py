@@ -170,9 +170,9 @@ def test_pid_decision_policy():
         assert autoscaling_service_lib.pid_decision_policy('/autoscaling/fake-service/fake-instance',
                                                            10, 1, 100, 0.0) == 0
         assert autoscaling_service_lib.pid_decision_policy('/autoscaling/fake-service/fake-instance',
-                                                           10, 1, 100, 0.2) == 1
+                                                           10, 1, 100, 0.2) == 3
         assert autoscaling_service_lib.pid_decision_policy('/autoscaling/fake-service/fake-instance',
-                                                           10, 1, 100, -0.2) == -1
+                                                           10, 1, 100, -0.2) == -3
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'),
             mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'),
@@ -424,6 +424,7 @@ def test_autoscale_marathon_instance():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=1),
@@ -451,6 +452,7 @@ def test_autoscale_marathon_instance_up_to_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-3),
@@ -491,6 +493,7 @@ def test_autoscale_marathon_instance_below_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-3),
@@ -523,6 +526,7 @@ def test_autoscale_marathon_instance_above_max_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=5),
@@ -555,6 +559,7 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-50),
@@ -597,6 +602,7 @@ def test_autoscale_marathon_with_http_stuff():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_http_utilization_for_all_tasks',
         autospec=True,
+        return_value=0,
     ) as mock_get_http_utilization_for_all_tasks, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=1),
@@ -620,6 +626,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
+        **{'return_value.return_value': 0.0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=1),

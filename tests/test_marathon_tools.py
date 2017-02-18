@@ -140,8 +140,8 @@ class TestMarathonTools:
             cluster='',
             instance=fake_instance,
             config_dict=dict(
-                self.fake_srv_config.items() +
-                self.fake_marathon_app_config.config_dict.items()
+                self.fake_srv_config,
+                **self.fake_marathon_app_config.config_dict
             ),
             branch_dict={},
         )
@@ -204,8 +204,8 @@ class TestMarathonTools:
                 cluster='',
                 instance=fake_instance,
                 config_dict=dict(
-                    self.fake_srv_config.items() +
-                    self.fake_marathon_app_config.config_dict.items()
+                    self.fake_srv_config,
+                    **self.fake_marathon_app_config.config_dict
                 ),
                 branch_dict=fake_branch_dict,
             )
@@ -553,27 +553,27 @@ class TestMarathonTools:
                 {
                     'executors': [
                         {'id': id_1, 'resources': {'ports': ports_1},
-                            'tasks': [{u'state': u'TASK_RUNNING'}]},
-                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}
+                            'tasks': [{'state': 'TASK_RUNNING'}]},
+                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{'state': 'TASK_RUNNING'}]}
                     ],
                     'name': 'marathon-1111111'
                 },
                 {
                     'executors': [
-                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{'state': 'TASK_RUNNING'}]},
+                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
                     'name': 'marathon-3145jgreoifd'
                 },
                 {
                     'executors': [
-                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]},
+                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{'state': 'TASK_STAGED'}]},
                     ],
                     'name': 'marathon-754rchoeurcho'
                 },
                 {
                     'executors': [
-                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
                     'name': 'super_bunk'
                 }
@@ -1615,8 +1615,11 @@ class TestMarathonTools:
 class TestMarathonServiceConfig(object):
 
     def test_repr(self):
-        actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}))
-        expected = """MarathonServiceConfig(u'foo', u'bar', u'', {u'baz': u'baz'}, {u'bubble': u'gum'})"""
+        actual = repr(marathon_tools.MarathonServiceConfig(
+            str('foo'), str('bar'), str(''),
+            {str('baz'): str('baz')}, {str('bubble'): str('gum')}
+        ))
+        expected = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'})"""
         assert actual == expected
 
     def test_get_healthcheck_mode_default(self):
@@ -1948,9 +1951,6 @@ def test_format_marathon_app_dict_no_smartstack():
     ), mock.patch(
         'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
         autospec=True, return_value={'fake_region': [{}]},
-    ), mock.patch(
-        'paasta_tools.marathon_tools.load_system_paasta_config',
-        return_value=fake_system_paasta_config, autospec=True,
     ):
         actual = fake_marathon_service_config.format_marathon_app_dict()
         expected = {

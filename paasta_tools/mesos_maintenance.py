@@ -33,6 +33,8 @@ from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+from paasta_tools.utils import to_bytes
+
 
 log = logging.getLogger(__name__)
 Hostname = namedtuple('Hostname', ['host', 'ip'])
@@ -374,14 +376,14 @@ def build_reservation_payload(resources):
     for resource in resources:
         payload.append(
             {
-                b'name': resource.name.encode('utf-8'),
-                b'type': b'SCALAR',
-                b'scalar': {
-                    b'value': resource.amount,
+                'name': resource.name,
+                'type': 'SCALAR',
+                'scalar': {
+                    'value': resource.amount,
                 },
-                b'role': b'maintenance',
-                b'reservation': {
-                    b'principal': get_principal().encode('utf-8'),
+                'role': 'maintenance',
+                'reservation': {
+                    'principal': get_principal(),
                 },
             }
         )
@@ -472,6 +474,15 @@ def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
     return load_credentials(mesos_secrets).secret
 
 
+def _make_request_payload(slave_id, reservation_payload):
+    return {
+        'slaveId': slave_id.encode('UTF-8'),
+        # We used to_bytes here since py2 json doesn't have a well defined
+        # return type.  When moving to python 3, replace with .encode()
+        'resources': to_bytes(json.dumps(reservation_payload)).replace(b'+', b'%20'),
+    }
+
+
 def reserve(slave_id, resources):
     """Dynamically reserve resources in marathon to prevent tasks from using them.
     :param slave_id: the id of the mesos slave
@@ -479,10 +490,7 @@ def reserve(slave_id, resources):
     :returns: boolean where 0 represents success and 1 is a failure
     """
     log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
-    payload = {
-        'slaveId': slave_id.encode('utf-8'),
-        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
-    }
+    payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = reserve_api()
     try:
         print(payload)
@@ -499,10 +507,7 @@ def unreserve(slave_id, resources):
     :returns: boolean where 0 represents success and 1 is a failure
     """
     log.info("Dynamically unreserving resoures on %s: %s" % (slave_id, resources))
-    payload = {
-        'slaveId': slave_id,
-        'resources': str(build_reservation_payload(resources)).replace("'", '"').replace('+', '%20')
-    }
+    payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = unreserve_api()
     try:
         unreserve_output = client_fn(method="POST", endpoint="", data=payload).text

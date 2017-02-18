@@ -1347,14 +1347,14 @@ class TestSetupMarathonJob:
             'paasta_tools.setup_marathon_job._log', autospec=True,
         ) as mock_log, mock.patch(
             'paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func',
-            side_effect=IOError('foo'), autospec=True,
+            side_effect=OSError('foo'), autospec=True,
         ), mock.patch(
             'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
         ) as mock_load_system_paasta_config, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            with raises(IOError):
+            with raises(OSError):
                 setup_marathon_job.deploy_service(
                     service=fake_name,
                     instance=fake_instance,
@@ -1372,7 +1372,7 @@ class TestSetupMarathonJob:
 
             logged_line = mock_log.mock_calls[0][2]["line"]
             assert logged_line.startswith("Exception raised during deploy of service whoa:\nTraceback")
-            assert "IOError: foo" in logged_line
+            assert "OSError: foo" in logged_line
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

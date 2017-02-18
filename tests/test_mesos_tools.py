@@ -605,13 +605,13 @@ def test_get_mesos_task_count_by_slave():
         assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
         # test slaves_list override
         mock_task2 = mock.Mock()
@@ -627,7 +627,7 @@ def test_get_mesos_task_count_by_slave():
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
 
 def test_get_count_running_tasks_on_slave():
@@ -652,6 +652,10 @@ def test_get_count_running_tasks_on_slave():
         mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
 
 
+def _ids(list_of_mocks):
+    return {id(mck) for mck in list_of_mocks}
+
+
 def test_get_tasks_from_app_id():
     with mock.patch(
         'paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True,
@@ -664,12 +668,12 @@ def test_get_tasks_from_app_id():
         ret = mesos_tools.get_tasks_from_app_id('app_id')
         mock_get_running_tasks_from_frameworks.assert_called_with('app_id')
         expected = [mock_task_1, mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
+        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
 
         ret = mesos_tools.get_tasks_from_app_id('app_id', slave_hostname='host2')
         mock_get_running_tasks_from_frameworks.assert_called_with('app_id')
         expected = [mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
+        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
 
 
 def test_get_task():
