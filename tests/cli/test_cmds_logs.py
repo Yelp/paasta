@@ -402,11 +402,7 @@ def test_scribe_tail_log_everything():
             'level: second. component: deploy.',
         ),
     ])
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        mock_scribereader,
-    ):
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True) as mock_scribereader:
         mock_scribereader.get_env_scribe_host.return_value = {
             'host': 'fake_host',
             'port': 'fake_port',
@@ -467,11 +463,7 @@ def test_scribe_tail_log_nothing():
             'level: second. component: deploy.',
         ),
     ])
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        mock_scribereader,
-    ):
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True) as mock_scribereader:
         mock_scribereader.get_env_scribe_host.return_value = {
             'host': 'fake_host',
             'port': 'fake_port',
@@ -501,11 +493,7 @@ def test_scribe_tail_ctrl_c():
     queue = Queue()
     filter_fn = mock.Mock(return_value=True)
 
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        mock_scribereader,
-    ):
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True) as mock_scribereader:
         # There's no reason this method is the one that raises the
         # KeyboardInterrupt. This just happens to be the first convenient place
         # to simulate the user pressing Ctrl-C.
@@ -536,13 +524,11 @@ def test_scribe_tail_handles_StreamTailerSetupError():
     queue = Queue()
     filter_fn = mock.Mock(return_value=True)
 
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-    ) as (
-        mock_scribereader,
-        mock_log,
-    ):
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
+    ) as mock_scribereader, mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ) as mock_log:
         mock_scribereader.get_stream_tailer.side_effect = StreamTailerSetupError('bla', 'unused1', 'unused2')
         with raises(StreamTailerSetupError):
             logs.scribe_tail(
@@ -744,22 +730,20 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
     components = ['deploy', 'monitoring', 'chronos', 'stdout', 'stderr']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instances = ['fake_instance1', 'fake_instance2']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = FakeKeyboardInterrupt
@@ -776,22 +760,20 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instances = ['fake_instance1', 'fake_instance2']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ) as process_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -813,22 +795,20 @@ def test_tail_paasta_logs_aliveness_check():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instances = ['fake_instance1', 'fake_instance2']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ) as process_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -863,22 +843,20 @@ def test_tail_paasta_logs_empty_clusters():
     components = ['deploy', 'monitoring']
     clusters = []
     instances = ['fake_instance']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ) as print_log_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ) as process_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         determine_scribereader_envs_patch.return_value = []
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -895,22 +873,20 @@ def test_tail_paasta_logs_empty_instances():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster']
     instances = []
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ) as print_log_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ) as process_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         determine_scribereader_envs_patch.return_value = []
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -927,26 +903,24 @@ def test_tail_paasta_logs_marathon():
     instances = ['fake_instance']
     levels = ['fake_level1', 'fake_level2']
     components = ['marathon']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.parse_marathon_log_line', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.marathon_log_line_passes_filter', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        determine_scribereader_envs_patch,
-        scribe_tail_patch,
-        log_patch,
-        print_log_patch,
-        queue_patch,
-        process_patch,
-        parse_marathon_log_line_patch,
-        marathon_log_line_passes_filter_patch,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.print_log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.Queue', autospec=True,
+    ) as queue_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.Process', autospec=True,
+    ) as process_patch, mock.patch(
+        'paasta_tools.cli.cmds.logs.parse_marathon_log_line', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.marathon_log_line_passes_filter', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         determine_scribereader_envs_patch.return_value = ['env1']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -961,11 +935,7 @@ def test_tail_paasta_logs_marathon():
 def test_determine_scribereader_envs():
     cluster = 'fake_cluster'
     components = ['build', 'monitoring']
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        mock_scribereader,
-    ):
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
         cluster_map = {
             cluster: 'fake_scribe_env',
         }
@@ -1001,12 +971,10 @@ def test_prefix():
 def test_get_log_reader():
     mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
     mock_system_paasta_config.get_log_reader.return_value = {'driver': 'scribereader', 'options': {'cluster_map': {}}}
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
-    ) as (
-        mock_load_system_paasta_config,
-        mock_scribereader,
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
 

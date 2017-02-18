@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import json
 import os
 import time
@@ -34,13 +33,11 @@ from paasta_tools.utils import timeout
 
 def update_context_marathon_config(context):
     whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
-    with contextlib.nested(
-        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
-        mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
-    ) as (
-        _,
-        mock_get_max_instances,
-    ):
+    with mock.patch.object(
+        MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1,
+    ), mock.patch.object(
+        MarathonServiceConfig, 'get_max_instances', autospec=True,
+    ) as mock_get_max_instances:
         mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
         context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
             context.service,

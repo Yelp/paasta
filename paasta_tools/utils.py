@@ -1629,7 +1629,7 @@ def deep_merge_dictionaries(overrides, defaults):
 
 class ZookeeperPool(object):
     """
-    A context manager that shares the same KazooClient with its children. The first nested contest manager
+    A context manager that shares the same KazooClient with its children. The first nested context manager
     creates and deletes the client and shares it with any of its children. This allows to place a context
     manager over a large number of zookeeper calls without opening and closing a connection each time.
     GIL makes this 'safe'.

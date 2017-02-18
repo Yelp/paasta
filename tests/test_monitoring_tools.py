@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 
 from paasta_tools import chronos_tools
@@ -182,17 +180,15 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = 'monitor_test_team'
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
-                       return_value=self.fake_general_service_config),
-            mock.patch('paasta_tools.monitoring_tools.read_monitoring_config',
-                       autospec=True, return_value=self.fake_monitor_config),
-            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            service_configuration_lib_patch,
-            read_monitoring_patch,
-            load_system_paasta_config_patch,
-        ):
+        with mock.patch(
+            'service_configuration_lib.read_service_configuration', autospec=True,
+            return_value=self.fake_general_service_config,
+        ) as service_configuration_lib_patch, mock.patch(
+            'paasta_tools.monitoring_tools.read_monitoring_config',
+            autospec=True, return_value=self.fake_monitor_config,
+        ) as read_monitoring_patch, mock.patch(
+            'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
@@ -201,17 +197,15 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_service_config(self):
         expected = 'general_test_team'
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
-                       return_value=self.fake_general_service_config),
-            mock.patch('paasta_tools.monitoring_tools.read_monitoring_config',
-                       autospec=True, return_value=self.empty_monitor_config),
-            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            service_configuration_lib_patch,
-            read_monitoring_patch,
-            load_system_paasta_config_patch,
-        ):
+        with mock.patch(
+            'service_configuration_lib.read_service_configuration', autospec=True,
+            return_value=self.fake_general_service_config,
+        ) as service_configuration_lib_patch, mock.patch(
+            'paasta_tools.monitoring_tools.read_monitoring_config',
+            autospec=True, return_value=self.empty_monitor_config,
+        ) as read_monitoring_patch, mock.patch(
+            'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
@@ -220,17 +214,15 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_defaults(self):
         expected = None
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
-                       return_value=self.empty_job_config),
-            mock.patch('paasta_tools.monitoring_tools.read_monitoring_config',
-                       autospec=True, return_value=self.empty_monitor_config),
-            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            service_configuration_lib_patch,
-            read_monitoring_patch,
-            load_system_paasta_config_patch,
-        ):
+        with mock.patch(
+            'service_configuration_lib.read_service_configuration', autospec=True,
+            return_value=self.empty_job_config,
+        ) as service_configuration_lib_patch, mock.patch(
+            'paasta_tools.monitoring_tools.read_monitoring_config',
+            autospec=True, return_value=self.empty_monitor_config,
+        ) as read_monitoring_patch, mock.patch(
+            'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
@@ -239,37 +231,31 @@ class TestMonitoring_Tools:
 
     def test_get_team_email_address_uses_override_if_specified(self):
         fake_email = 'fake_email'
-        with contextlib.nested(
-            mock.patch('paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True),
-        ) as (
-            mock_get_monitoring_config_value,
-        ):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
+        ) as mock_get_monitoring_config_value:
             mock_get_monitoring_config_value.return_value = 'fake_email'
             actual = monitoring_tools.get_team_email_address('fake_service', {'notification_email': fake_email})
             assert actual == fake_email
 
     def test_get_team_email_address_uses_instance_config_if_specified(self):
         expected = 'fake_email'
-        with contextlib.nested(
-            mock.patch('paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True),
-        ) as (
-            mock_get_monitoring_config_value,
-        ):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
+        ) as mock_get_monitoring_config_value:
             mock_get_monitoring_config_value.return_value = 'fake_email'
             actual = monitoring_tools.get_team_email_address('fake_service')
             assert actual == expected
 
     def test_get_team_email_address_uses_team_data_as_last_resort(self):
         expected = 'team_data_email'
-        with contextlib.nested(
-            mock.patch('paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.get_sensu_team_data', autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.get_team', autospec=True),
-        ) as (
-            mock_get_monitoring_config_value,
-            mock_get_sensu_team_data,
-            mock_get_team,
-        ):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
+        ) as mock_get_monitoring_config_value, mock.patch(
+            'paasta_tools.monitoring_tools.get_sensu_team_data', autospec=True,
+        ) as mock_get_sensu_team_data, mock.patch(
+            'paasta_tools.monitoring_tools.get_team', autospec=True,
+        ) as mock_get_team:
             mock_get_team.return_value = 'test_team'
             mock_get_monitoring_config_value.return_value = False
             mock_get_sensu_team_data.return_value = {
@@ -279,15 +265,13 @@ class TestMonitoring_Tools:
             assert actual == expected
 
     def test_get_team_email_address_returns_none_if_not_available(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.get_sensu_team_data', autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.get_team', autospec=True),
-        ) as (
-            mock_get_monitoring_config_value,
-            mock_get_sensu_team_data,
-            mock_get_team,
-        ):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
+        ) as mock_get_monitoring_config_value, mock.patch(
+            'paasta_tools.monitoring_tools.get_sensu_team_data', autospec=True,
+        ) as mock_get_sensu_team_data, mock.patch(
+            'paasta_tools.monitoring_tools.get_team', autospec=True,
+        ) as mock_get_team:
             mock_get_team.return_value = 'test_team'
             mock_get_monitoring_config_value.return_value = False
             mock_get_sensu_team_data.return_value = {}
@@ -323,55 +307,39 @@ class TestMonitoring_Tools:
             'source': 'paasta-fake_cluster',
             'ttl': None,
         }
-        with contextlib.nested(
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_team",
-                return_value=fake_team,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_tip",
-                return_value=fake_tip,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_notification_email",
-                return_value=fake_notification_email,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_irc_channels",
-                return_value=fake_irc,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_ticket",
-                return_value=False,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_project",
-                return_value=None,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_page",
-                return_value=True,
-                autospec=True,
-            ),
-            mock.patch("pysensu_yelp.send_event", autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            get_team_patch,
-            get_tip_patch,
-            get_notification_email_patch,
-            get_irc_patch,
-            get_ticket_patch,
-            get_project_patch,
-            get_page_patch,
-            pysensu_yelp_send_event_patch,
-            load_system_paasta_config_patch,
-        ):
+        with mock.patch(
+            "paasta_tools.monitoring_tools.get_team",
+            return_value=fake_team,
+            autospec=True,
+        ) as get_team_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_tip",
+            return_value=fake_tip,
+            autospec=True,
+        ) as get_tip_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_notification_email",
+            return_value=fake_notification_email,
+            autospec=True,
+        ) as get_notification_email_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_irc_channels",
+            return_value=fake_irc,
+            autospec=True,
+        ) as get_irc_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_ticket",
+            return_value=False,
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_project",
+            return_value=None,
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_page",
+            return_value=True,
+            autospec=True,
+        ) as get_page_patch, mock.patch(
+            "pysensu_yelp.send_event", autospec=True,
+        ) as pysensu_yelp_send_event_patch, mock.patch(
+            'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(return_value=fake_sensu_host)
             load_system_paasta_config_patch.return_value.get_sensu_port = mock.Mock(return_value=fake_sensu_port)
@@ -432,27 +400,25 @@ class TestMonitoring_Tools:
         self.fake_cluster = 'fake_cluster'
         fake_sensu_port = 12345
 
-        with contextlib.nested(
-            mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_tip", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_notification_email", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_irc_channels", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_ticket", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_project", autospec=True),
-            mock.patch("paasta_tools.monitoring_tools.get_page", autospec=True),
-            mock.patch("pysensu_yelp.send_event", autospec=True),
-            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            get_team_patch,
-            get_tip_patch,
-            get_notification_email_patch,
-            get_irc_patch,
-            get_ticket_patch,
-            get_project_patch,
-            get_page_patch,
-            pysensu_yelp_send_event_patch,
-            load_system_paasta_config_patch,
-        ):
+        with mock.patch(
+            "paasta_tools.monitoring_tools.get_team", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_tip", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_notification_email", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_irc_channels", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_ticket", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_project", autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_page", autospec=True,
+        ), mock.patch(
+            "pysensu_yelp.send_event", autospec=True,
+        ) as pysensu_yelp_send_event_patch, mock.patch(
+            'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch:
             load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(return_value=None)
             load_system_paasta_config_patch.return_value.get_sensu_port = mock.Mock(return_value=fake_sensu_port)
 
@@ -473,15 +439,13 @@ class TestMonitoring_Tools:
         fake_path = 'ever_patched'
         fake_soa_dir = '/nail/cte/oas'
         fake_dict = {'e': 'quail', 'v': 'snail'}
-        with contextlib.nested(
-            mock.patch('os.path.abspath', autospec=True, return_value=fake_path),
-            mock.patch('os.path.join', autospec=True, return_value=fake_fname),
-            mock.patch('service_configuration_lib.read_monitoring', autospec=True, return_value=fake_dict)
-        ) as (
-            abspath_patch,
-            join_patch,
-            read_monitoring_patch
-        ):
+        with mock.patch(
+            'os.path.abspath', autospec=True, return_value=fake_path,
+        ) as abspath_patch, mock.patch(
+            'os.path.join', autospec=True, return_value=fake_fname,
+        ) as join_patch, mock.patch(
+            'service_configuration_lib.read_monitoring', autospec=True, return_value=fake_dict,
+        ) as read_monitoring_patch:
             actual = monitoring_tools.read_monitoring_config(fake_name, fake_soa_dir)
             assert fake_dict == actual
             abspath_patch.assert_called_once_with(fake_soa_dir)
