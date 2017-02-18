@@ -90,7 +90,7 @@ def chronos_check_running_tasks(context, job_name, has_or_not):
     # to get more detailed per-job task information from Chronos
     job_id = context.jobs[job_name]['name']
     service, instance = chronos_tools.decompose_job_id(job_id)
-    for _ in xrange(10):
+    for _ in range(10):
         status = chronos_tools.get_chronos_status_for_job(context.chronos_client, service, instance)
         if has_or_not == "has no":
             if status == "idle":

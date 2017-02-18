@@ -20,7 +20,7 @@ from paasta_tools.cli.cmds.list import paasta_list
 
 
 @mock.patch('paasta_tools.cli.cmds.list.list_services', autospec=True)
-def test_list_paasta_list(mock_list_services, capsys):
+def test_list_paasta_list(mock_list_services, capfd):
     """ paasta_list print each service returned by get_services """
 
     mock_services = ['service_1', 'service_2']
@@ -30,12 +30,12 @@ def test_list_paasta_list(mock_list_services, capsys):
     args.print_instances = False
     paasta_list(args)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == 'service_1\nservice_2\n'
 
 
 @mock.patch('paasta_tools.cli.cmds.list.list_service_instances', autospec=True)
-def test_list_paasta_list_instances(mock_list_service_instances, capsys):
+def test_list_paasta_list_instances(mock_list_service_instances, capfd):
     """ paasta_list print each service.instance """
 
     mock_services = ['service_1.main', 'service_2.canary']
@@ -45,5 +45,5 @@ def test_list_paasta_list_instances(mock_list_service_instances, capsys):
     args.print_instances = True
     paasta_list(args)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == 'service_1.main\nservice_2.canary\n'

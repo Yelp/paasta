@@ -101,7 +101,7 @@ class Config(object):
                 except ValueError as e:
                     raise ValueError(
                         'Invalid %s JSON: %s [%s]' %
-                        (type(self).__name__, e.message, self._get_path())
+                        (type(self).__name__, str(e), self._get_path())
                     )
                 self.__items.update(data)
         except IOError as e:

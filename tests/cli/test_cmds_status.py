@@ -34,7 +34,7 @@ from paasta_tools.cli.utils import PaastaColors
 
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 def test_figure_out_service_name_not_found(
-        mock_validate_service_name, capsys,
+        mock_validate_service_name, capfd,
 ):
     # paasta_status with invalid -s service_name arg results in error
     mock_validate_service_name.side_effect = NoSuchService(None)
@@ -47,7 +47,7 @@ def test_figure_out_service_name_not_found(
     with raises(SystemExit) as sys_exit:
         status.figure_out_service_name(parsed_args)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert sys_exit.value.code == 1
     assert output == expected_output
 
@@ -55,7 +55,7 @@ def test_figure_out_service_name_not_found(
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
 def test_status_arg_service_not_found(
-    mock_guess_service_name, mock_validate_service_name, capsys,
+    mock_guess_service_name, mock_validate_service_name, capfd,
 ):
     # paasta_status with no args and non-service directory results in error
     mock_guess_service_name.return_value = 'not_a_service'
@@ -70,7 +70,7 @@ def test_status_arg_service_not_found(
     with raises(SystemExit) as sys_exit:
         paasta_status(args)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert sys_exit.value.code == 1
     assert output == expected_output
 
@@ -80,7 +80,7 @@ def test_status_arg_service_not_found(
 def test_report_status_for_cluster_displays_deployed_service(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     # paasta_status with no args displays deploy info - vanilla case
     service = 'fake_service'
@@ -110,7 +110,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance',
@@ -122,7 +122,7 @@ def test_report_status_for_cluster_displays_deployed_service(
 def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     # paasta_status with no args displays deploy info - vanilla case
     service = 'fake_service'
@@ -151,7 +151,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
 
 
@@ -160,7 +160,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
 def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     # paasta_status with no args displays deploy info
     service = 'fake_service'
@@ -194,7 +194,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a,fake_instance_b',
@@ -206,7 +206,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
 def test_print_cluster_status_missing_deploys_in_red(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     # paasta_status displays missing deploys in red
     service = 'fake_service'
@@ -244,7 +244,7 @@ def test_print_cluster_status_missing_deploys_in_red(
         instance_whitelist=instance_whitelist,
         system_paasta_config=fake_system_paasta_config,
     )
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
 
 
@@ -255,7 +255,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
     verbosity_level,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     planned_deployments = [
@@ -289,7 +289,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         stream=True, verbose=verbosity_level, ignore_ssh_output=True
     )
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
 
 
@@ -298,7 +298,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     planned_deployments = ['fake_cluster.fake_instance_a', 'fake_cluster.fake_instance_b']
@@ -332,7 +332,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
 def test_report_status_calls_report_invalid_whitelist_values(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
@@ -361,7 +361,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
 @patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
 def test_status_pending_pipeline_build_message(
         mock_get_actual_deployments, mock_get_deploy_info,
-        mock_figure_out_service_name, mock_load_system_paasta_config, capsys,
+        mock_figure_out_service_name, mock_load_system_paasta_config, capfd,
 ):
     # If deployments.json is missing SERVICE, output the appropriate message
     service = 'fake_service'
@@ -379,7 +379,7 @@ def test_status_pending_pipeline_build_message(
     args.service = service
 
     paasta_status(args)
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert expected_output in output
 
 
@@ -411,12 +411,12 @@ def test_get_deploy_info_exists(mock_read_deploy):
 
 
 @patch('paasta_tools.cli.cmds.status.read_deploy', autospec=True)
-def test_get_deploy_info_does_not_exist(mock_read_deploy, capsys):
+def test_get_deploy_info_does_not_exist(mock_read_deploy, capfd):
     mock_read_deploy.return_value = False
     expected_output = '%s\n' % PaastaCheckMessages.DEPLOY_YAML_MISSING
     with raises(SystemExit) as sys_exit:
         status.get_deploy_info('fake_service')
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert sys_exit.value.code == 1
     assert output == expected_output
 
@@ -432,7 +432,7 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments,
     mock_figure_out_service_name,
     mock_load_system_paasta_config,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     mock_figure_out_service_name.return_value = service
@@ -496,7 +496,7 @@ def test_report_invalid_whitelist_values_with_whitelists():
 def test_report_status_returns_zero_when_clusters_pass(
     mock_report_invalid_whitelist_values,
     mock_report_status_for_cluster,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     cluster_whitelist = []
@@ -525,7 +525,7 @@ def test_report_status_returns_zero_when_clusters_pass(
 def test_report_status_returns_one_when_clusters_pass(
     mock_report_invalid_whitelist_values,
     mock_report_status_for_cluster,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     cluster_whitelist = []
@@ -554,7 +554,7 @@ def test_report_status_returns_one_when_clusters_pass(
 def test_report_status_obeys_cluster_whitelist(
     mock_report_invalid_whitelist_values,
     mock_report_status_for_cluster,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     cluster_whitelist = ['cluster1']
@@ -589,7 +589,7 @@ def test_report_status_obeys_cluster_whitelist(
 def test_report_status_handle_none_whitelist(
     mock_report_invalid_whitelist_values,
     mock_report_status_for_cluster,
-    capsys,
+    capfd,
 ):
     service = 'fake_service'
     cluster_whitelist = []

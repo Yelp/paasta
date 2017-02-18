@@ -349,7 +349,8 @@ def test_get_http_utilization_for_all_tasks_no_data():
         branch_dict={},
     )
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
-    mock_json_mapper = mock.Mock(side_effect=KeyError('Detailed message'))  # KeyError simulates an invalid response
+    # KeyError simulates an invalid response
+    mock_json_mapper = mock.Mock(side_effect=KeyError(str('Detailed message')))
 
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.log.debug', autospec=True),
@@ -366,7 +367,7 @@ def test_get_http_utilization_for_all_tasks_no_data():
                 json_mapper=mock_json_mapper,
             )
         mock_log_debug.assert_called_once_with(
-            "Caught excpetion when querying fake-service on fake_host:30101 : 'Detailed message'")
+            "Caught exception when querying fake-service on fake_host:30101 : 'Detailed message'")
 
 
 def test_http_metrics_provider():
@@ -529,7 +530,7 @@ def test_autoscale_marathon_instance_below_min_instances():
         _,
     ):
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock() for i in range(current_instances)],
                                                             [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service', instance='fake-instance', instance_count=5)
@@ -563,7 +564,7 @@ def test_autoscale_marathon_instance_above_max_instances():
         _,
     ):
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock() for i in range(current_instances)],
                                                             [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service', instance='fake-instance', instance_count=10)
@@ -597,7 +598,7 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         _,
     ):
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock() for i in xrange(current_instances)],
+                                                            [mock.Mock() for i in range(current_instances)],
                                                             [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service', instance='fake-instance', instance_count=int(current_instances * 0.7))

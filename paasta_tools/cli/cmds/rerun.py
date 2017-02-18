@@ -145,7 +145,7 @@ def paasta_rerun(args):
                               "please supply a `--execution_date` argument." % args.instance))
                 continue
         except NoConfigurationForServiceError as e:
-            paasta_print("  Warning: %s" % e.message)
+            paasta_print("  Warning: %s" % e)
             continue
         if execution_date is None:
             execution_date = _get_default_execution_date()

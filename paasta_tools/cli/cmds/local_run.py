@@ -369,7 +369,7 @@ def get_container_name():
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
     cmd = ['docker', 'run']
-    for k, v in env.iteritems():
+    for k, v in env.items():
         cmd.append('--env=\"%s=%s\"' % (k, v))
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:

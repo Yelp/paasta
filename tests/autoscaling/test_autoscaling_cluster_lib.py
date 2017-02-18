@@ -967,12 +967,11 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert ret == ['10.1.1.1', '10.2.2.2']
 
     def mock_pid_to_ip_side(self, pid):
-        if pid == 'slave(1)@10.1.1.1:5051':
-            return '10.1.1.1'
-        elif pid == 'slave(2)@10.2.2.2:5051':
-            return '10.2.2.2'
-        elif pid == 'slave(3)@10.3.3.3:5051':
-            return '10.3.3.3'
+        return {
+            'slave(1)@10.1.1.1:5051': '10.1.1.1',
+            'slave(2)@10.2.2.2:5051': '10.2.2.2',
+            'slave(3)@10.3.3.3:5051': '10.3.3.3',
+        }[pid]
 
     def test_filter_aws_slaves(self):
         with contextlib.nested(

@@ -22,7 +22,7 @@ from paasta_tools.cli.fsm import autosuggest
 
 class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self):
-        with mock.patch("__builtin__.open", autospec=True):
+        with mock.patch('six.moves.builtins.open', autospec=True):
             with mock.patch("paasta_tools.cli.fsm.autosuggest.yaml", autospec=True) as mock_yaml:
                 mock_yaml.safe_load.return_value = {
                     "main": {

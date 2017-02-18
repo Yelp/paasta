@@ -333,9 +333,7 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
 
@@ -400,9 +398,7 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
 
@@ -465,9 +461,7 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
 
@@ -530,9 +524,7 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
 
         with contextlib.nested(
@@ -598,9 +590,7 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
 
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
@@ -661,9 +651,7 @@ class TestSetupMarathonJob:
         fake_drain_method = mock.Mock()
         fake_drain_method.is_safe_to_kill.return_value = False
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.create_autospec(marathon.MarathonClient)
 
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
@@ -1301,9 +1289,11 @@ class TestSetupMarathonJob:
 
         old_app = mock.Mock(id="/%s" % old_app_id, tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain])
 
-        fake_client = mock.MagicMock(
+        fake_client = mock.MagicMock(  # pragma: no branch (only used for interface)
             list_apps=mock.Mock(return_value=[old_app]),
-            kill_given_tasks=mock.Mock(spec=lambda task_ids, scale=False: None),
+            kill_given_tasks=mock.Mock(
+                spec=lambda task_ids, scale=False: None,
+            ),
         )
 
         fake_bounce_func = mock.create_autospec(
@@ -1684,7 +1674,7 @@ class TestDrainTasksAndFindTasksToKill(object):
 
 
 def test_undrain_tasks():
-    all_tasks = [mock.Mock(id="task%d" % x) for x in xrange(5)]
+    all_tasks = [mock.Mock(id="task%d" % x) for x in range(5)]
     to_undrain = all_tasks[:4]
     leave_draining = all_tasks[2:]
     fake_drain_method = mock.Mock(

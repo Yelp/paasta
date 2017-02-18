@@ -210,9 +210,8 @@ def test_classic_replication_check():
         return_value=SystemPaastaConfig({}, '/fake/config'), autospec=True,
     ):
         with pytest.raises(SystemExit) as error:
-            check = ClassicServiceReplicationCheck()
-            check.run()
-            assert mcheck.assert_called_with('pow', {'wat': 1}, -1)
+            ClassicServiceReplicationCheck()
+        mcheck.assert_called_with('pow', {'pow': 'bar'}, 0)
         assert error.value.code == 0
 
 

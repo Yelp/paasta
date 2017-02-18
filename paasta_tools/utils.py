@@ -1726,9 +1726,20 @@ def prompt_pick_one(sequence, choosing):
         return result
 
 
+def _to_bytes(obj):
+    if isinstance(obj, bytes):
+        return obj
+    elif isinstance(obj, six.text_type):
+        return obj.encode('UTF-8')
+    else:
+        return six.text_type(obj).encode('UTF-8')
+
+
 def paasta_print(*args, **kwargs):
-    args = (
-        s.encode('utf-8') if isinstance(s, six.text_type) else s
-        for s in args
-    )
-    print(*args, **kwargs)
+    f = kwargs.pop('file', sys.stdout)
+    f = getattr(f, 'buffer', f)
+    end = _to_bytes(kwargs.pop('end', '\n'))
+    sep = _to_bytes(kwargs.pop('sep', ' '))
+    assert not kwargs, kwargs
+    to_print = sep.join(_to_bytes(x) for x in args) + end
+    f.write(to_print)

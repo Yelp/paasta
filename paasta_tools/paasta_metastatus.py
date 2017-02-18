@@ -41,7 +41,7 @@ logging.basicConfig()
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
-def parse_args():
+def parse_args(argv):
     parser = argparse.ArgumentParser(
         description='',
     )
@@ -60,13 +60,13 @@ def parse_args():
                         help="Print out more output regarding the state of the cluster")
     parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
                         help="Print human-readable sizes")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main():
+def main(argv=None):
     marathon_config = None
     chronos_config = None
-    args = parse_args()
+    args = parse_args(argv)
 
     master = get_mesos_master()
     try:
@@ -74,7 +74,7 @@ def main():
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % str(e)))
         sys.exit(2)
 
     mesos_state_status = metastatus_lib.get_mesos_state_status(

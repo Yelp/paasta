@@ -23,9 +23,7 @@ def test_get_files_for_tasks_no_files():
 
 
 def test_get_files_for_tasks_all():
-    attrs = {'id': 'foo'}
     mock_task = MagicMock()
-    mock_task.__getitem__.side_effect = lambda x: attrs[x]
     mock_file = Mock()
     mock_file.exists.return_value = True
     mock_task.file.return_value = mock_file
@@ -35,9 +33,7 @@ def test_get_files_for_tasks_all():
 
 
 def test_get_files_for_tasks_some():
-    attrs = {'id': 'foo'}
     mock_task = MagicMock()
-    mock_task.__getitem__.side_effect = lambda x: attrs[x]
     mock_file = Mock()
     mock_file_2 = Mock()
     mock_file.exists.side_effect = [False, True]

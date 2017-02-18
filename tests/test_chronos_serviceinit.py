@@ -397,12 +397,11 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
         'schedule': 'foo',
     }
     running_tasks = ['slay the nemean lion']
-    if verbosity_level == 1:
-        expected_tail_lines = 0
-    elif verbosity_level == 2:
-        expected_tail_lines = 10
-    elif verbosity_level == 3:
-        expected_tail_lines = 100
+    expected_tail_lines = {
+        1: 0,
+        2: 10,
+        3: 100
+    }[verbosity_level]
     mock_client = mock.Mock()
     with mock.patch(
         'paasta_tools.chronos_serviceinit.status_mesos_tasks_verbose', autospec=True,

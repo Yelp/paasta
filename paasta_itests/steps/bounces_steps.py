@@ -131,7 +131,7 @@ def there_are_num_which_tasks(context, num, which, state, exact):
     app_id = which_id(context, which)
 
     # 120 * 0.5 = 60 seconds
-    for _ in xrange(120):
+    for _ in range(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)
@@ -193,7 +193,7 @@ def when_setup_service_initiated(context):
         mock_get_secret.return_value = credentials.secret
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
-        for _ in xrange(120):
+        for _ in range(120):
             try:
                 marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
                 (code, message) = setup_marathon_job.setup_service(
@@ -230,7 +230,7 @@ def then_the_which_app_should_be_running(context, which):
 def then_the_which_app_should_be_configured_to_have_num_instances(context, which, num, retries=10):
     app_id = which_id(context, which)
 
-    for _ in xrange(retries):
+    for _ in range(retries):
         app = context.marathon_client.get_app(app_id)
         if app.instances == int(num):
             return
@@ -248,7 +248,7 @@ def then_the_which_app_should_be_gone(context, which):
 def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
     """ Marathon will not make the app disappear until after all the tasks have died
     https://github.com/mesosphere/marathon/issues/1431 """
-    for _ in xrange(10):
+    for _ in range(10):
         if marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is True:
             time.sleep(0.5)
         else:
