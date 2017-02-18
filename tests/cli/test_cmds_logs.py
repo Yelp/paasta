@@ -25,19 +25,30 @@ import pytest
 from pytest import raises
 from six.moves.queue import Empty
 
-
-try:
-    from paasta_tools.cli.cmds import logs
-except ImportError:
-    pass
 from paasta_tools.cli.cli import parse_args
+from paasta_tools.cli.cmds import logs
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
-try:
+
+
+try:  # pragma: no cover (yelpy)
     from scribereader.scribereader import StreamTailerSetupError
     scribereader_available = True
-except ImportError:
+except ImportError:  # pragma: no cover (yelpy)
     scribereader_available = False
+
+
+class FakeKeyboardInterrupt(KeyboardInterrupt):
+    """Raising a real KeyboardInterrupt causes pytest to, y'know, stop."""
+
+
+@contextlib.contextmanager
+def reraise_keyboardinterrupt():
+    """If it's not caught, this kills pytest :'("""
+    try:
+        yield
+    except FakeKeyboardInterrupt:  # pragma: no cover (error case only)
+        raise AssertionError('library failed to catch KeyboardInterrupt')
 
 
 def test_cluster_to_scribe_env_good():
@@ -52,7 +63,7 @@ def test_cluster_to_scribe_env_bad():
         scribe_log_reader = logs.ScribeLogReader(cluster_map={})
         with raises(SystemExit) as sys_exit:
             scribe_log_reader.cluster_to_scribe_env('dne')
-            assert sys_exit.value.code == 1
+        assert sys_exit.value.code == 1
 
 
 def test_check_timestamp_in_range_with_none_arguments():
@@ -363,7 +374,7 @@ def test_parse_chronos_log_line_ok():
     assert sorted(logs.parse_chronos_log_line(line, clusters, fake_service)) == sorted(expected)
 
 
-@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')  # pragma: no cover (yelpy)
 def test_scribe_tail_log_everything():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -428,7 +439,7 @@ def test_scribe_tail_log_everything():
         assert 'level: second. component: deploy.' in second_line
 
 
-@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')  # pragma: no cover (yelpy)
 def test_scribe_tail_log_nothing():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -479,12 +490,7 @@ def test_scribe_tail_log_nothing():
         assert queue.qsize() == 0
 
 
-class FakeKeyboardInterrupt(KeyboardInterrupt):
-
-    """Raising a real KeyboardInterrupt causes pytest to, y'know, stop."""
-
-
-@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')  # pragma: no cover (yelpy)
 def test_scribe_tail_ctrl_c():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -504,7 +510,7 @@ def test_scribe_tail_ctrl_c():
         # KeyboardInterrupt. This just happens to be the first convenient place
         # to simulate the user pressing Ctrl-C.
         mock_scribereader.get_env_scribe_host.side_effect = FakeKeyboardInterrupt
-        try:
+        with reraise_keyboardinterrupt():
             logs.scribe_tail(
                 env,
                 stream_name,
@@ -515,14 +521,11 @@ def test_scribe_tail_ctrl_c():
                 queue,
                 filter_fn,
             )
-        # We have to catch this ourselves otherwise it will fool pytest too!
-        except FakeKeyboardInterrupt:
-            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
 
 
-@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')  # pragma: no cover (yelpy)
 def test_scribe_tail_handles_StreamTailerSetupError():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -761,11 +764,8 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = FakeKeyboardInterrupt
         queue_patch.return_value = fake_queue
-        try:
+        with reraise_keyboardinterrupt():
             logs.ScribeLogReader(cluster_map={}).tail_logs(service, levels, components, clusters, instances)
-        # We have to catch this ourselves otherwise it will fool pytest too!
-        except FakeKeyboardInterrupt:
-            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
 
@@ -801,11 +801,8 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         fake_process.is_alive.side_effect = FakeKeyboardInterrupt
         process_patch.return_value = fake_process
         scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
-        try:
+        with reraise_keyboardinterrupt():
             scribe_log_reader.tail_logs(service, levels, components, clusters, instances)
-        # We have to catch this ourselves otherwise it will fool pytest too!
-        except FakeKeyboardInterrupt:
-            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
 
@@ -1047,27 +1044,18 @@ def test_generate_start_end_time_human_durations():
 
 def test_generate_start_end_time_invalid():
     # Try giving a start time that's later than the end time
-    try:
+    with pytest.raises(ValueError):
         logs.generate_start_end_time("2016-06-06T20:26:49+00:00", "2016-06-06T20:25:49+00:00")
-        assert False
-    except ValueError:
-        assert True
 
 
 def test_generate_start_end_time_invalid_from():
-    try:
+    with pytest.raises(ValueError):
         logs.generate_start_end_time("invalid", "2016-06-06T20:25:49+00:00")
-        assert False
-    except ValueError:
-        assert True
 
 
 def test_generate_start_end_time_invalid_to():
-    try:
+    with pytest.raises(ValueError):
         logs.generate_start_end_time("2016-06-06T20:25:49+00:00", "invalid")
-        assert False
-    except ValueError:
-        assert True
 
 
 def test_validate_filtering_args_with_valid_inputs():

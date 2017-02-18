@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
-import contextlib
 import datetime
 
 from mock import MagicMock
@@ -90,29 +89,26 @@ _planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.in
         ' or has not been deployed to "cluster1" yet',
     ]
 ])
-def test_rerun_validations(test_case, capsys):
-    with contextlib.nested(
-        patch('paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.list_clusters', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.get_actual_deployments', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.get_planned_deployments', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.execute_chronos_rerun_on_remote_master', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.chronos_tools.load_chronos_job_config', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.chronos_tools.uses_time_variables', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun._get_default_execution_date', autospec=True),
-        patch('paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_figure_out_service_name,
-        mock_list_clusters,
-        mock_get_actual_deployments,
-        mock_get_planned_deployments,
-        mock_execute_rerun_remote,
-        mock_load_chronos_job_config,
-        mock_uses_time_variables,
-        mock_get_default_execution_date,
-        mock_load_system_paasta_config,
-    ):
-
+def test_rerun_validations(test_case, capfd):
+    with patch(
+        'paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True,
+    ) as mock_figure_out_service_name, patch(
+        'paasta_tools.cli.cmds.rerun.list_clusters', autospec=True,
+    ) as mock_list_clusters, patch(
+        'paasta_tools.cli.cmds.rerun.get_actual_deployments', autospec=True,
+    ) as mock_get_actual_deployments, patch(
+        'paasta_tools.cli.cmds.rerun.get_planned_deployments', autospec=True,
+    ) as mock_get_planned_deployments, patch(
+        'paasta_tools.cli.cmds.rerun.execute_chronos_rerun_on_remote_master', autospec=True,
+    ) as mock_execute_rerun_remote, patch(
+        'paasta_tools.cli.cmds.rerun.chronos_tools.load_chronos_job_config', autospec=True,
+    ) as mock_load_chronos_job_config, patch(
+        'paasta_tools.cli.cmds.rerun.chronos_tools.uses_time_variables', autospec=True,
+    ) as mock_uses_time_variables, patch(
+        'paasta_tools.cli.cmds.rerun._get_default_execution_date', autospec=True,
+    ) as mock_get_default_execution_date, patch(
+        'paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True,
+    ) as mock_load_system_paasta_config:
         (rerun_args,
          mock_figure_out_service_name.return_value,
          mock_list_clusters.return_value,
@@ -146,10 +142,11 @@ def test_rerun_validations(test_case, capsys):
                 == default_date.strftime(EXECUTION_DATE_FORMAT)
 
         # The job does use time vars interpolation. Make sure the User supplied date was used.
-        if args.execution_date is not None and mock_uses_time_variables.return_value:
-            assert mock_execute_rerun_remote.call_args[1]['execution_date'] == _user_supplied_execution_date
+        # TODO: this if statement is never true
+        # if args.execution_date is not None and mock_uses_time_variables.return_value:
+        #    assert mock_execute_rerun_remote.call_args[1]['execution_date'] == _user_supplied_execution_date
 
-        output, _ = capsys.readouterr()
+        output, _ = capfd.readouterr()
         assert expected_output in output
 
 

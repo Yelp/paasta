@@ -295,7 +295,7 @@ def instances_deployed(cluster_data, instances_out, green_light):
     num_threads = min(5, cluster_data.instances_queue.qsize())
 
     workers_launched = []
-    for _ in xrange(num_threads):
+    for _ in range(num_threads):
         worker = Thread(target=_run_instance_worker,
                         args=(cluster_data, instances_out, green_light))
         worker.start()

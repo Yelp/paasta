@@ -35,7 +35,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-YOCALHOST = b'169.254.255.254'
+YOCALHOST = '169.254.255.254'
 
 
 def parse_args():
@@ -76,7 +76,7 @@ def write_yaml_file(filename):
                 now=datetime.now().isoformat(),
             ),
         )
-        yaml.dump(
+        yaml.safe_dump(
             configuration,
             fp,
             indent=2,
@@ -93,9 +93,9 @@ def generate_configuration():
         proxy_port = data.get('proxy_port')
         if proxy_port is None:
             continue
-        config[name.encode('utf-8')] = {
-            b'host': YOCALHOST,
-            b'port': int(proxy_port),
+        config[name] = {
+            'host': YOCALHOST,
+            'port': int(proxy_port),
         }
     return config
 

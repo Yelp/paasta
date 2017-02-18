@@ -161,10 +161,11 @@ class MesosMaster(object):
         return lst[0]
 
     def slaves(self, fltr=""):
-        return list(map(
-            lambda x: slave.MesosSlave(self.config, x),
-            itertools.ifilter(
-                lambda x: fltr == x['id'], self.state['slaves'])))
+        return [
+            slave.MesosSlave(self.config, x)
+            for x in self.state['slaves']
+            if fltr == x['id']
+        ]
 
     def _task_list(self, active_only=False):
         keys = ["tasks"]
@@ -193,11 +194,11 @@ class MesosMaster(object):
 
     # XXX - need to filter on task state as well as id
     def tasks(self, fltr="", active_only=False):
-        return list(map(
-            lambda x: task.Task(self, x),
-            itertools.ifilter(
-                lambda x: fltr in x["id"] or fnmatch.fnmatch(x["id"], fltr),
-                self._task_list(active_only))))
+        return [
+            task.Task(self, x)
+            for x in self._task_list(active_only)
+            if fltr in x['id'] or fnmatch.fnmatch(x['id'], fltr)
+        ]
 
     def framework(self, fwid):
         return list(filter(

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import os
 
 from mock import call
@@ -97,7 +96,7 @@ def test_check_paasta_check_calls_everything(
 
 
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
-def test_check_service_dir_check_pass(mock_validate_service_name, capsys):
+def test_check_service_dir_check_pass(mock_validate_service_name, capfd):
     mock_validate_service_name.return_value = None
     service = 'fake_service'
     soa_dir = '/fake_yelpsoa_configs'
@@ -105,12 +104,12 @@ def test_check_service_dir_check_pass(mock_validate_service_name, capsys):
         "%s\n" % PaastaCheckMessages.service_dir_found(service, soa_dir)
     service_dir_check(service, soa_dir)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
-def test_check_service_dir_check_fail(mock_validate_service_name, capsys):
+def test_check_service_dir_check_fail(mock_validate_service_name, capfd):
     service = 'fake_service'
     soa_dir = '/fake_yelpsoa_configs'
     mock_validate_service_name.side_effect = NoSuchService(service)
@@ -118,12 +117,12 @@ def test_check_service_dir_check_fail(mock_validate_service_name, capsys):
                       % PaastaCheckMessages.service_dir_missing(service, soa_dir)
     service_dir_check(service, soa_dir)
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_deploy_check_pass(mock_is_file_in_dir, capsys):
+def test_check_deploy_check_pass(mock_is_file_in_dir, capfd):
     # Deploy check passes when file found in service path
 
     mock_is_file_in_dir.return_value = True
@@ -131,12 +130,12 @@ def test_check_deploy_check_pass(mock_is_file_in_dir, capsys):
     deploy_check('service_path')
     expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_FOUND
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_deploy_check_fail(mock_is_file_in_dir, capsys):
+def test_check_deploy_check_fail(mock_is_file_in_dir, capfd):
     # Deploy check fails when file not in service path
 
     mock_is_file_in_dir.return_value = False
@@ -144,32 +143,32 @@ def test_check_deploy_check_fail(mock_is_file_in_dir, capsys):
     deploy_check('service_path')
     expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_MISSING
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_docker_exists_and_is_valid(mock_is_file_in_dir, capsys):
+def test_check_docker_exists_and_is_valid(mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = "/fake/path"
 
     docker_check()
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert PaastaCheckMessages.DOCKERFILE_FOUND in output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_docker_check_file_not_found(mock_is_file_in_dir, capsys):
+def test_check_docker_check_file_not_found(mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = False
 
     docker_check()
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert PaastaCheckMessages.DOCKERFILE_MISSING in output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_yaml_check_pass(mock_is_file_in_dir, capsys):
+def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
@@ -178,12 +177,12 @@ def test_check_yaml_check_pass(mock_is_file_in_dir, capsys):
 
     yaml_check('path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_yaml_check_fail(mock_is_file_in_dir, capsys):
+def test_check_yaml_check_fail(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = False
@@ -191,13 +190,13 @@ def test_check_yaml_check_fail(mock_is_file_in_dir, capsys):
 
     yaml_check('path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_team', autospec=True)
-def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capsys):
+def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capfd):
     # monitoring.yaml exists and team is found
 
     mock_is_file_in_dir.return_value = "/fake/path"
@@ -208,7 +207,7 @@ def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capsys):
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
     mock_get_team.assert_called_once_with(service='fake_service', overrides={},
                                           soa_dir='path')
@@ -216,7 +215,7 @@ def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capsys):
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_team', autospec=True)
-def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capsys):
+def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capfd):
     # monitoring.yaml exists but team is not found
 
     mock_is_file_in_dir.return_value = "/fake/path"
@@ -226,12 +225,12 @@ def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capsys):
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_sensu_check_fail(mock_is_file_in_dir, capsys):
+def test_check_sensu_check_fail(mock_is_file_in_dir, capfd):
     # monitoring.yaml doest exist
 
     mock_is_file_in_dir.return_value = False
@@ -239,7 +238,7 @@ def test_check_sensu_check_fail(mock_is_file_in_dir, capsys):
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
@@ -247,7 +246,7 @@ def test_check_sensu_check_fail(mock_is_file_in_dir, capsys):
        'read_service_configuration', autospec=True)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_pass(
-        mock_is_file_in_dir, mock_read_service_info, capsys,
+        mock_is_file_in_dir, mock_read_service_info, capfd,
 ):
     # smartstack.yaml exists and port is found
 
@@ -269,7 +268,7 @@ def test_check_smartstack_check_pass(
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
@@ -277,7 +276,7 @@ def test_check_smartstack_check_pass(
        'read_service_configuration', autospec=True)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_missing_port(
-        mock_is_file_in_dir, mock_read_service_info, capsys,
+        mock_is_file_in_dir, mock_read_service_info, capfd,
 ):
     # smartstack.yaml, instance exists, but no ports found
 
@@ -295,7 +294,7 @@ def test_check_smartstack_check_missing_port(
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
@@ -303,7 +302,7 @@ def test_check_smartstack_check_missing_port(
        'read_service_configuration', autospec=True)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_missing_instance(
-        mock_is_file_in_dir, mock_read_service_info, capsys):
+        mock_is_file_in_dir, mock_read_service_info, capfd):
     # smartstack.yaml exists, but no instances found
 
     mock_is_file_in_dir.return_value = True
@@ -315,18 +314,18 @@ def test_check_smartstack_check_missing_instance(
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_smartstack_check_is_ok_when_no_smartstack(mock_is_file_in_dir, capsys):
+def test_check_smartstack_check_is_ok_when_no_smartstack(mock_is_file_in_dir, capfd):
 
     mock_is_file_in_dir.return_value = False
     expected_output = ""
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
@@ -347,14 +346,10 @@ def test_makefile_responds_to_run(mock_run):
 def test_makefile_has_a_tab_true():
     fake_makefile_path = 'UNUSED'
     fake_contents = 'target:\n\tcommand'
-    with contextlib.nested(
-        patch(
-            'paasta_tools.cli.cmds.check.get_file_contents',
-            autospec=True,
-            return_value=fake_contents
-        ),
-    ) as (
-        mock_get_file_contents,
+    with patch(
+        'paasta_tools.cli.cmds.check.get_file_contents',
+        autospec=True,
+        return_value=fake_contents
     ):
         assert makefile_has_a_tab(fake_makefile_path) is True
 
@@ -362,14 +357,10 @@ def test_makefile_has_a_tab_true():
 def test_makefile_has_a_tab_false():
     fake_makefile_path = 'UNUSED'
     fake_contents = 'target:\n    command'
-    with contextlib.nested(
-        patch(
-            'paasta_tools.cli.cmds.check.get_file_contents',
-            autospec=True,
-            return_value=fake_contents
-        ),
-    ) as (
-        mock_get_file_contents,
+    with patch(
+        'paasta_tools.cli.cmds.check.get_file_contents',
+        autospec=True,
+        return_value=fake_contents
     ):
         assert makefile_has_a_tab(fake_makefile_path) is False
 
@@ -377,14 +368,10 @@ def test_makefile_has_a_tab_false():
 def test_makefile_has_docker_tag_true():
     fake_makefile_path = 'UNUSED'
     fake_contents = 'Blah\nDOCKER_TAG ?= something:\ntarget:\n    command'
-    with contextlib.nested(
-        patch(
-            'paasta_tools.cli.cmds.check.get_file_contents',
-            autospec=True,
-            return_value=fake_contents
-        ),
-    ) as (
-        mock_get_file_contents,
+    with patch(
+        'paasta_tools.cli.cmds.check.get_file_contents',
+        autospec=True,
+        return_value=fake_contents
     ):
         assert makefile_has_docker_tag(fake_makefile_path) is True
 
@@ -392,20 +379,16 @@ def test_makefile_has_docker_tag_true():
 def test_makefile_has_docker_tag_false():
     fake_makefile_path = 'UNUSED'
     fake_contents = 'target:\n    command'
-    with contextlib.nested(
-        patch(
-            'paasta_tools.cli.cmds.check.get_file_contents',
-            autospec=True,
-            return_value=fake_contents
-        ),
-    ) as (
-        mock_get_file_contents,
+    with patch(
+        'paasta_tools.cli.cmds.check.get_file_contents',
+        autospec=True,
+        return_value=fake_contents
     ):
         assert makefile_has_docker_tag(fake_makefile_path) is False
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_security_check_false(mock_pipeline_config, capsys):
+def test_deploy_has_security_check_false(mock_pipeline_config, capfd):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
         {'step': 'push-to-registry', },
@@ -417,7 +400,7 @@ def test_deploy_has_security_check_false(mock_pipeline_config, capsys):
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_security_check_true(mock_pipeline_config, capsys):
+def test_deploy_has_security_check_true(mock_pipeline_config, capfd):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
         {'step': 'security-check', },
@@ -430,7 +413,7 @@ def test_deploy_has_security_check_true(mock_pipeline_config, capsys):
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_performance_check_false(mock_pipeline_config, capsys):
+def test_deploy_has_performance_check_false(mock_pipeline_config, capfd):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
         {'step': 'push-to-registry', },
@@ -442,7 +425,7 @@ def test_deploy_has_performance_check_false(mock_pipeline_config, capsys):
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_performance_check_true(mock_pipeline_config, capsys):
+def test_deploy_has_performance_check_true(mock_pipeline_config, capfd):
     mock_pipeline_config.return_value = [
         {'step': 'itest', },
         {'step': 'performance-check', },
@@ -482,7 +465,7 @@ def test_get_marathon_steps(
 def test_marathon_deployments_check_good(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
-    capsys,
+    capfd,
 ):
     mock_get_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -504,7 +487,7 @@ def test_marathon_deployments_check_good(
 def test_marathon_deployments_deploy_but_not_marathon(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
-    capsys,
+    capfd,
 ):
     mock_get_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -520,7 +503,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
     ]
     actual = deployments_check(service='fake_service', soa_dir='/fake/service')
     assert actual is False
-    assert 'EXTRA' in capsys.readouterr()[0]
+    assert 'EXTRA' in capfd.readouterr()[0]
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
@@ -528,7 +511,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
 def test_marathon_deployments_marathon_but_not_deploy(
     mock_get_marathon_steps,
     mock_get_pipeline_config,
-    capsys,
+    capfd,
 ):
     mock_get_pipeline_config.return_value = [
         {'step': 'itest', },
@@ -544,41 +527,29 @@ def test_marathon_deployments_marathon_but_not_deploy(
     ]
     actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
-    assert 'BOGUS' in capsys.readouterr()[0]
+    assert 'BOGUS' in capfd.readouterr()[0]
 
 
 def test_makefile_check():
     fake_makefile_path = 'UNUSED'
     fake_contents = "DOCKER_TAG ?= something\ntest:\n\tsomething\nitest:\n\tsomething"
-    with contextlib.nested(
-        patch(
-            'paasta_tools.cli.cmds.check.get_file_contents',
-            autospec=True,
-            return_value=fake_contents
-        ),
-        patch(
-            'paasta_tools.cli.cmds.check.makefile_has_a_tab',
-            autospec=True,
-        ),
-        patch(
-            'paasta_tools.cli.cmds.check.makefile_responds_to',
-            autospec=True,
-        ),
-        patch(
-            'paasta_tools.cli.cmds.check.makefile_has_docker_tag',
-            autospec=True,
-        ),
-        patch(
-            'paasta_tools.cli.cmds.check.is_file_in_dir',
-            autospec=True,
-            return_value=fake_makefile_path
-        ),
-    ) as (
-        mock_get_file_contents,
-        mock_makefile_has_a_tab,
-        mock_makefile_responds_to,
-        mock_makefile_has_docker_tag,
-        mock_is_file_in_dir,
+    with patch(
+        'paasta_tools.cli.cmds.check.get_file_contents',
+        autospec=True,
+        return_value=fake_contents
+    ), patch(
+        'paasta_tools.cli.cmds.check.makefile_has_a_tab',
+        autospec=True,
+    ) as mock_makefile_has_a_tab, patch(
+        'paasta_tools.cli.cmds.check.makefile_responds_to',
+        autospec=True,
+    ) as mock_makefile_responds_to, patch(
+        'paasta_tools.cli.cmds.check.makefile_has_docker_tag',
+        autospec=True,
+    ) as mock_makefile_has_docker_tag, patch(
+        'paasta_tools.cli.cmds.check.is_file_in_dir',
+        autospec=True,
+        return_value=fake_makefile_path
     ):
         makefile_check()
         assert mock_makefile_has_a_tab.call_count == 1

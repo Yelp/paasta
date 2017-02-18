@@ -78,7 +78,7 @@ def test_status_mesos_tasks_verbose(test_case):
             'state': 'NOT_RUNNING',
         }
         non_running_mesos_tasks = []
-        for _ in xrange(15):  # excercise the code that sorts/truncates the list of non running tasks
+        for _ in range(15):  # excercise the code that sorts/truncates the list of non running tasks
             task_return = template_task_return.copy()
             task_return['statuses'][0]['timestamp'] = str(1457109986 + random.randrange(-60 * 60 * 24, 60 * 60 * 24))
             non_running_mesos_tasks.append(task_return)
@@ -89,17 +89,14 @@ def test_status_mesos_tasks_verbose(test_case):
         format_stdstreams_tail_for_task_patch.return_value = ['tail']
         job_id = format_job_id('fake_service', 'fake_instance'),
 
-        def get_short_task_id(_):
-            return 'short_task_id'
-
         actual = mesos_tools.status_mesos_tasks_verbose(
             job_id=job_id,
-            get_short_task_id=get_short_task_id,
+            get_short_task_id=mock.sentinel.get_short_task_id,
             tail_lines=tail_lines,
         )
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
-        format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)
+        format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', mock.sentinel.get_short_task_id)
         assert format_non_running_mesos_task_row_patch.call_count == 10  # maximum n of tasks we display
         assert format_stdstreams_tail_for_task_patch.call_count == expected_format_tail_call_count
 
@@ -672,11 +669,6 @@ def test_get_count_running_tasks_on_slave():
         assert mesos_tools.get_count_running_tasks_on_slave('host3') == 0
         assert mock_master.state_summary.called
         mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
-
-
-def mock_getitem(key):
-    if key == 'id':
-        return 'fakeID'
 
 
 def test_get_tasks_from_app_id():

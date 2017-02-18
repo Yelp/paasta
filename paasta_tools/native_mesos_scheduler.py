@@ -139,7 +139,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
     def need_more_tasks(self, name):
         """Returns whether we need to start more tasks."""
         num_have = 0
-        for task, parameters in self.tasks_with_flags.iteritems():
+        for task, parameters in self.tasks_with_flags.items():
             if self.is_task_new(name, task) and (parameters.mesos_task_state in LIVE_TASK_STATES):
                 num_have += 1
         return num_have < self.service_config.get_desired_instances()
@@ -297,7 +297,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task in [task for task, parameters in self.tasks_with_flags.iteritems() if parameters.is_draining]:
+        for task in [task for task, parameters in self.tasks_with_flags.items() if parameters.is_draining]:
             if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
                 self.kill_task(driver, task)
 
@@ -312,7 +312,7 @@ class PaastaScheduler(mesos.interface.Scheduler):
 
     def get_draining_tasks(self, tasks):
         """Filter a list of tasks to those that are draining."""
-        return [t for t, p in self.tasks_with_flags.iteritems() if p.is_draining]
+        return [t for t, p in self.tasks_with_flags.items() if p.is_draining]
 
     def undrain_task(self, task):
         self.drain_method.stop_draining(DrainTask(id=task))

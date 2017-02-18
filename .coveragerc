@@ -1,7 +1,6 @@
 [run]
 branch = True
-source =
-    paasta_tools
+source = .
 omit =
     .tox/*
     /usr/*
@@ -11,7 +10,12 @@ omit =
     paasta_tools/tron_timeutils.py
 
 [report]
+skip_covered = True
+show_missing = True
 exclude_lines =
+    # Have to re-enable the standard pragma
+    \#\s*pragma: no cover
+
     # Don't complain if tests don't hit defensive assertion code:
     ^\s*raise AssertionError\b
     ^\s*raise NotImplementedError\b

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import json
 import pipes
 import shlex
@@ -59,7 +58,7 @@ def test_dry_run(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    capsys
+    capfd
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_validate_service_instance.return_value = 'marathon'
@@ -72,7 +71,7 @@ def test_dry_run(
     with raises(SystemExit) as excinfo:
         main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance'))
     ret = excinfo.value.code
-    out, err = capsys.readouterr()
+    out, err = capfd.readouterr()
     assert ret == 0
 
     # We don't care what the contents are, we just care that it is json loadable.
@@ -91,7 +90,7 @@ def test_dry_run_json_dict(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    capsys
+    capfd
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
@@ -111,7 +110,7 @@ def test_dry_run_json_dict(
     with raises(SystemExit) as excinfo:
         main(('local-run', '--dry-run', '--cluster', 'fake_cluster', '--instance', 'fake_instance', '--json-dict'))
     ret = excinfo.value.code
-    out, err = capsys.readouterr()
+    out, err = capfd.readouterr()
     assert ret == 0
 
     # Ensure it's a dict and check some keys
@@ -487,17 +486,15 @@ def test_configure_and_run_pulls_image_when_asked(
 
 
 def test_configure_and_run_docker_container_defaults_to_interactive_instance():
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0),
-        mock.patch('paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True),
-    ) as (
-        mock_stdin,
-        mock_validate_service_instance,
-        mock_run_docker_container,
-        mock_get_default_interactive_config,
-    ):
+    with mock.patch(
+        'paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True,
+    ) as mock_validate_service_instance, mock.patch(
+        'paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0,
+    ) as mock_run_docker_container, mock.patch(
+        'paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True,
+    ) as mock_get_default_interactive_config:
         mock_stdin.isatty.return_value = True
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -923,10 +920,10 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             healthcheck_only=False,
             instance_config=mock_service_manifest,
         )
-        # Cleanup wont' be necessary and the function should bail out early.
-        assert mock_docker_client.stop.call_count == 0
-        assert mock_docker_client.remove_container.call_count == 0
-        assert excinfo.value.code == 99
+    # Cleanup wont' be necessary and the function should bail out early.
+    assert mock_docker_client.stop.call_count == 0
+    assert mock_docker_client.remove_container.call_count == 0
+    assert excinfo.value.code == 1
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
@@ -1043,7 +1040,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     mock_simulate_healthcheck,
-    capsys,
+    capfd,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -1073,7 +1070,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
-    assert ATTACH_OUTPUT in capsys.readouterr()[0]
+    assert ATTACH_OUTPUT in capfd.readouterr()[0]
 
 
 @mock.patch('time.sleep', autospec=True)
@@ -1195,7 +1192,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
     mock_sleep,
-    capsys,
+    capfd,
 ):
     # change time to make sure we are sufficiently past grace period
     mock_run_healthcheck_on_container.side_effect = [(False, "400 noop"), (False, "400 noop"), (True, "200 noop")]
@@ -1220,7 +1217,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
     assert mock_sleep.call_count == 2
     assert mock_run_healthcheck_on_container.call_count == 3
-    out, _ = capsys.readouterr()
+    out, _ = capfd.readouterr()
     assert out.count('Healthcheck failed! (disregarded due to grace period)') == 1
     assert out.count('Healthcheck failed! (Attempt') == 1
     assert out.count('200 noop') == 1
@@ -1228,7 +1225,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     assert out.count('Healthcheck succeeded!') == 1
 
 
-def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys):
+def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd):
     with mock.patch(
             'time.sleep',
             autospec=True,
@@ -1250,7 +1247,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys
             'http', 'http://fake_host/status', True,
         )
         assert ret is False
-        out, _ = capsys.readouterr()
+        out, _ = capfd.readouterr()
         assert out.count('Container exited with code 127') == 1
 
 

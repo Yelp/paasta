@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import os
 
 import mock
@@ -31,14 +30,12 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_load_smartstack_info_for_service():
-    with contextlib.nested(
-        mock.patch('paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config',
-                   autospec=True),
-        mock.patch('paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute',
-                   autospec=True),
-    ) as (
-        mock_load_service_namespace_config,
-        mock_get_smartstack_replication_for_attribute,
+    with mock.patch(
+        'paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute',
+        autospec=True,
     ):
         # just a smoke test for now.
         smartstack_tools.load_smartstack_info_for_service(
@@ -69,15 +66,13 @@ def test_get_smartstack_replication_for_attribute():
     ]
 
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
-                   return_value=mock_filtered_slaves, autospec=True),
-        mock.patch('paasta_tools.smartstack_tools.get_replication_for_services',
-                   return_value={}, autospec=True),
-    ) as (
-        mock_get_all_slaves_for_blacklist_whitelist,
-        mock_get_replication_for_services,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
+        return_value=mock_filtered_slaves, autospec=True,
+    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        'paasta_tools.smartstack_tools.get_replication_for_services',
+        return_value={}, autospec=True,
+    ) as mock_get_replication_for_services:
         expected = {
             'foo': {},
             'bar': {}
@@ -238,4 +233,7 @@ def test_match_backends_and_tasks():
             (backends[4], None),
         ]
         actual = match_backends_and_tasks(backends, tasks)
-        assert sorted(actual) == sorted(expected)
+
+        def keyfunc(t):
+            return tuple(sorted((t[0] or {}).items())), t[1]
+        assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)

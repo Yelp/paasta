@@ -122,8 +122,11 @@ def get_latest_marked_sha(git_url, deploy_group):
     refs = list_remote_refs(git_url)
     last_ref = ''
     for ref in refs:
-        if (ref.startswith('refs/tags/paasta-{}-'.format(deploy_group)) and
-                ref.endswith('-deploy')) and ref > last_ref:
+        if (
+            ref.startswith('refs/tags/paasta-{}-'.format(deploy_group)) and
+            ref.endswith('-deploy') and
+            ref > last_ref
+        ):
             last_ref = ref
     return refs[last_ref] if last_ref else ''
 

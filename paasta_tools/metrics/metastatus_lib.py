@@ -228,7 +228,7 @@ def assert_no_duplicate_frameworks(state):
     output = ["Frameworks:"]
     ok = True
 
-    for framework, count in framework_counts.iteritems():
+    for framework, count in framework_counts.items():
         if count > 1:
             ok = False
             output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."

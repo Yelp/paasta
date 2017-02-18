@@ -14,22 +14,18 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 
 from paasta_tools import list_marathon_service_instances
 
 
 def test_get_desired_marathon_configs():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_services_for_cluster', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.load_marathon_service_config', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_get_services_for_cluster,
-        mock_load_marathon_service_config,
-        _,
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_services_for_cluster', autospec=True,
+    ) as mock_get_services_for_cluster, mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_marathon_service_config', autospec=True,
+    ) as mock_load_marathon_service_config, mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True,
     ):
         mock_app_dict = {'id': '/service.instance.git.configs'}
         mock_get_services_for_cluster.return_value = [('service', 'instance')]
@@ -41,13 +37,11 @@ def test_get_desired_marathon_configs():
 
 
 def test_get_service_instances_that_need_bouncing():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True),
-    ) as (
-        mock_get_desired_marathon_configs,
-        mock_get_num_at_risk_tasks,
-    ):
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
+    ) as mock_get_desired_marathon_configs, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
+    ) as mock_get_num_at_risk_tasks:
         mock_get_desired_marathon_configs.return_value = {
             'fake--service.fake--instance.sha.config': {'instances': 5},
             'fake--service2.fake--instance.sha.config': {'instances': 5},
@@ -63,13 +57,11 @@ def test_get_service_instances_that_need_bouncing():
 
 
 def test_get_service_instances_that_need_bouncing_two_existing_services():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True),
-    ) as (
-        mock_get_desired_marathon_configs,
-        mock_get_num_at_risk_tasks,
-    ):
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
+    ) as mock_get_desired_marathon_configs, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
+    ) as mock_get_num_at_risk_tasks:
         mock_get_desired_marathon_configs.return_value = {
             'fake--service.fake--instance.sha.config': {'instances': 5},
         }
@@ -84,13 +76,11 @@ def test_get_service_instances_that_need_bouncing_two_existing_services():
 
 
 def test_get_service_instances_that_need_bouncing_no_difference():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True),
-    ) as (
-        mock_get_desired_marathon_configs,
-        mock_get_num_at_risk_tasks,
-    ):
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
+    ) as mock_get_desired_marathon_configs, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
+    ) as mock_get_num_at_risk_tasks:
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
@@ -100,13 +90,11 @@ def test_get_service_instances_that_need_bouncing_no_difference():
 
 
 def test_get_service_instances_that_need_bouncing_instances_difference():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True),
-    ) as (
-        mock_get_desired_marathon_configs,
-        mock_get_num_at_risk_tasks,
-    ):
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
+    ) as mock_get_desired_marathon_configs, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
+    ) as mock_get_num_at_risk_tasks:
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=4, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
@@ -116,13 +104,11 @@ def test_get_service_instances_that_need_bouncing_instances_difference():
 
 
 def test_get_service_instances_that_need_bouncing_at_risk():
-    with contextlib.nested(
-        mock.patch('paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True),
-        mock.patch('paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True),
-    ) as (
-        mock_get_desired_marathon_configs,
-        mock_get_num_at_risk_tasks,
-    ):
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
+    ) as mock_get_desired_marathon_configs, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
+    ) as mock_get_num_at_risk_tasks:
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
