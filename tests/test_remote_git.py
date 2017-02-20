@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +46,21 @@ def test_make_determine_wants_func():
     actual = determine_wants(refs)
     expected = dict(refs, foo='bar')
     assert actual == expected
+
+
+def test_non_ascii_tags():
+    """git tags can be UTF-8 encoded"""
+
+    with mock.patch(
+        'dulwich.client.get_transport_and_path',
+        autospec=True,
+        return_value=(
+            mock.Mock(**{'fetch_pack.return_value': {'☃'.encode('UTF-8'): b'deadbeef'}}),
+            'path',
+        ),
+    ):
+        ret = remote_git.list_remote_refs('git-url')
+        assert ret == {'☃': 'deadbeef'}
 
 
 def test_make_force_push_mutate_refs_func_overwrites_shas():
