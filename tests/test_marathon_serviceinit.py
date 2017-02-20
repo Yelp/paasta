@@ -396,6 +396,8 @@ def test_status_smartstack_backends_normal():
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -465,6 +467,8 @@ def test_status_smartstack_backends_different_nerve_ns():
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -504,6 +508,8 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         assert "%s is NOT in smartstack" % service_instance in actual
 
@@ -561,6 +567,8 @@ def test_status_smartstack_backends_multiple_locations():
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -635,6 +643,8 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             verbose=False,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -709,6 +719,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             verbose=True,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -775,6 +787,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             verbose=True,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -845,6 +859,8 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             verbose=True,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         assert PaastaColors.red('MAINT') in actual
 
@@ -896,6 +912,8 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             verbose=True,
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            system_deploy_blacklist=[],
+            system_deploy_whitelist=[],
         )
         assert PaastaColors.red('MAINT') not in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.GREY), actual)

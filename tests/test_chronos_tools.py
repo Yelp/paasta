@@ -299,6 +299,7 @@ class TestChronosTools:
         }
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
+        fake_constraints = []
         dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
 
         expected = 'parsed_time'
@@ -312,8 +313,12 @@ class TestChronosTools:
                 config_dict=fake_config_dict,
                 branch_dict={},
             )
-            fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                            dummy_config.get_dockercfg_location())
+            fake_chronos_job_config.format_chronos_job_dict(
+                fake_docker_url,
+                fake_docker_volumes,
+                dummy_config.get_dockercfg_location(),
+                fake_constraints
+            )
             mock_parse_time_variables.assert_called_with(fake_cmd)
 
     def test_get_owner(self):
@@ -372,7 +377,10 @@ class TestChronosTools:
             config_dict={'constraints': fake_constraints},
             branch_dict={},
         )
-        actual = fake_conf.get_calculated_constraints()
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
+        actual = fake_conf.get_calculated_constraints(
+            system_paasta_config=fake_system_paasta_config
+        )
         assert actual == fake_constraints
 
     def test_get_calculated_constraints_respects_pool(self):
@@ -384,8 +392,45 @@ class TestChronosTools:
             config_dict={'pool': fake_pool},
             branch_dict={},
         )
-        actual = fake_conf.get_calculated_constraints()
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
+        actual = fake_conf.get_calculated_constraints(
+            system_paasta_config=fake_system_paasta_config
+        )
         assert actual == [['pool', 'LIKE', 'poolname']]
+
+    def test_get_calculated_constraints_includes_system_blacklist(self):
+        fake_pool = 'poolname'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'pool': fake_pool},
+            branch_dict={},
+        )
+        fake_system_paasta_config = SystemPaastaConfig({
+            'deploy_blacklist': [['region', 'foo']]
+        }, "/foo")
+        actual = fake_conf.get_calculated_constraints(
+            system_paasta_config=fake_system_paasta_config
+        )
+        assert sorted(actual) == sorted([['pool', 'LIKE', 'poolname'], ['region', 'UNLIKE', 'foo']])
+
+    def test_get_calculated_constraints_includes_system_whitelist(self):
+        fake_pool = 'poolname'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'pool': fake_pool},
+            branch_dict={},
+        )
+        fake_system_paasta_config = SystemPaastaConfig({
+            'deploy_whitelist': ['region', ['foo']]
+        }, "/foo")
+        actual = fake_conf.get_calculated_constraints(
+            system_paasta_config=fake_system_paasta_config
+        )
+        assert sorted(actual) == sorted([['pool', 'LIKE', 'poolname'], ['region', 'LIKE', 'foo']])
 
     def test_get_retries_default(self):
         fake_conf = chronos_tools.ChronosJobConfig(
@@ -968,7 +1013,7 @@ class TestChronosTools:
             'scheduleTimeZone': None,
             'environmentVariables': mock.ANY,
             'arguments': None,
-            'constraints': [['pool', 'LIKE', 'default']],
+            'constraints': [],
             'retries': 2,
             'epsilon': fake_epsilon,
             'cpus': fake_cpus,
@@ -993,8 +1038,12 @@ class TestChronosTools:
         }
         dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
         with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True):
-            actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockercfg_location())
+            actual = chronos_job_config.format_chronos_job_dict(
+                fake_docker_url,
+                fake_docker_volumes,
+                dummy_config.get_dockercfg_location(),
+                []
+            )
             assert actual == expected
 
     def test_format_chronos_job_dict_uses_net(self):
@@ -1020,8 +1069,12 @@ class TestChronosTools:
         )
         dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
         with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True):
-            result = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockercfg_location())
+            result = chronos_job_config.format_chronos_job_dict(
+                fake_docker_url,
+                fake_docker_volumes,
+                dummy_config.get_dockercfg_location(),
+                []
+            )
             assert result['container']['network'] == 'HOST'
 
     def test_format_chronos_job_dict_invalid_param(self):
@@ -1041,7 +1094,12 @@ class TestChronosTools:
             branch_dict={},
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockercfg_location={})
+            invalid_config.format_chronos_job_dict(
+                docker_url='',
+                docker_volumes=[],
+                docker_cfg_location={},
+                constraints=[]
+            )
         assert ('The specified schedule "%s" is neither a valid '
                 'cron schedule nor a valid ISO 8601 schedule' % fake_schedule) in str(exc.value)
 

@@ -284,28 +284,35 @@ class InstanceConfig(dict):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
-    def get_deploy_constraints(self):
+    def get_deploy_constraints(self, blacklist, whitelist):
         """Return the combination of deploy_blacklist and deploy_whitelist
         as a list of constraints.
         """
-        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
-                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
+        return (
+            deploy_blacklist_to_constraints(blacklist) +
+            deploy_whitelist_to_constraints(whitelist)
+        )
 
-    def get_deploy_blacklist(self):
+    def get_deploy_blacklist(self, system_deploy_blacklist):
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return self.config_dict.get('deploy_blacklist', [])
+        return (self.config_dict.get('deploy_blacklist', []) +
+                system_deploy_blacklist)
 
-    def get_deploy_whitelist(self):
+    def get_deploy_whitelist(self, system_deploy_whitelist):
         """The deploy whitelist is a list of lists, where the lists indicate
         which locations are explicitly allowed.  The blacklist will supersede
         this if a host matches both the white and blacklists."""
-        return self.config_dict.get('deploy_whitelist', [])
+        return (self.config_dict.get('deploy_whitelist', []) +
+                system_deploy_whitelist)
 
-    def get_monitoring_blacklist(self):
+    def get_monitoring_blacklist(self, system_deploy_blacklist):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
-        return self.config_dict.get('monitoring_blacklist', self.get_deploy_blacklist())
+        return (
+            self.config_dict.get('monitoring_blacklist', []) +
+            self.get_deploy_blacklist(system_deploy_blacklist)
+        )
 
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
@@ -991,6 +998,22 @@ class SystemPaastaConfig(dict):
         :returns: The mesos cli config
         """
         return self.get("mesos_config", {})
+
+    def get_deploy_blacklist(self):
+        """Get global blacklist. This applies to all services
+        in the cluster
+
+        :returns: The blacklist
+        """
+        return self.get("deploy_blacklist", [])
+
+    def get_deploy_whitelist(self):
+        """Get global whitelist. This applies to all services
+        in the cluster
+
+        :returns: The whitelist
+        """
+        return self.get("deploy_whitelist", [])
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

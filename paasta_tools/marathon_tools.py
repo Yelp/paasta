@@ -233,7 +233,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: The bounce method specified in the config, or 'crossover' if not specified"""
         return self.config_dict.get('bounce_method', 'crossover')
 
-    def get_calculated_constraints(self, service_namespace_config):
+    def get_calculated_constraints(self, system_paasta_config, service_namespace_config):
         """Gets the calculated constraints for a marathon instance
 
         If ``constraints`` is specified in the config, it will use that regardless.
@@ -244,16 +244,25 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: The constraints specified in the config, or defaults described above
         """
         constraints = self.get_constraints()
+        blacklist = self.get_deploy_blacklist(
+            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+        )
+        whitelist = self.get_deploy_whitelist(
+            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+        )
         if constraints is not None:
             return constraints
         else:
             constraints = self.get_extra_constraints()
-            constraints.extend(self.get_routing_constraints(service_namespace_config))
-            constraints.extend(self.get_deploy_constraints())
+            constraints.extend(self.get_routing_constraints(
+                service_namespace_config=service_namespace_config,
+                system_paasta_config=system_paasta_config,
+            ))
+            constraints.extend(self.get_deploy_constraints(blacklist, whitelist))
             constraints.extend(self.get_pool_constraints())
         return [[str(val) for val in constraint] for constraint in constraints]
 
-    def get_routing_constraints(self, service_namespace_config):
+    def get_routing_constraints(self, service_namespace_config, system_paasta_config):
         """
         Returns a set of constraints in order to evenly group a marathon
         application amongst instances of a discovery type.
@@ -275,8 +284,12 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             )
         filtered_slaves = filter_mesos_slaves_by_blacklist(
             slaves=slaves,
-            blacklist=self.get_deploy_blacklist(),
-            whitelist=self.get_deploy_whitelist(),
+            blacklist=self.get_deploy_blacklist(
+                system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+            ),
+            whitelist=self.get_deploy_whitelist(
+                system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+            ),
         )
         if not filtered_slaves:
             raise NoSlavesAvailableError(
@@ -350,7 +363,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
-            'constraints': self.get_calculated_constraints(service_namespace_config),
+            'constraints': self.get_calculated_constraints(
+                system_paasta_config=system_paasta_config,
+                service_namespace_config=service_namespace_config
+            ),
             'instances': self.get_desired_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),

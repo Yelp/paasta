@@ -1120,7 +1120,7 @@ class TestInstanceConfig:
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_monitoring_blacklist() == []
+        assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == []
 
     def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
@@ -1131,7 +1131,7 @@ class TestInstanceConfig:
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
             branch_dict={},
         )
-        assert fake_conf.get_monitoring_blacklist() == fake_deploy_blacklist
+        assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
 
     def test_deploy_blacklist_default(self):
         fake_conf = utils.InstanceConfig(
@@ -1141,7 +1141,7 @@ class TestInstanceConfig:
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist() == []
+        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == []
 
     def test_deploy_blacklist_reads_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
@@ -1152,7 +1152,7 @@ class TestInstanceConfig:
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
+        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
         fake_conf = utils.InstanceConfig(

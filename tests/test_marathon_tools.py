@@ -946,7 +946,6 @@ class TestMarathonTools:
             },
             branch_dict={'desired_state': 'start'}
         )
-
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
             return_value={'fake_region': [{}]},
@@ -962,10 +961,16 @@ class TestMarathonTools:
             return_value=fake_service_namespace_config,
         ), mock.patch(
             'paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-            return_value=mock.Mock(
-                get_volumes=mock.Mock(return_value=fake_volumes),
-                get_dockercfg_location=mock.Mock(return_value='file:///root/.dockercfg'),
-            ),
+            return_value=SystemPaastaConfig(
+                {
+                    'volumes': fake_volumes,
+                    'docker_registry': fake_url,
+                    'dockercfg_location': 'file:///root/.dockercfg',
+                    'deploy_blacklist': [],
+                    'deploy_whitelist': [],
+                },
+                "/foo"
+            )
         ):
             actual = config.format_marathon_app_dict()
             assert actual == expected_conf
@@ -1140,11 +1145,16 @@ class TestMarathonTools:
             config_dict={'constraints': [['something', 'GROUP_BY']], 'extra_constraints': [['ignore', 'this']]},
             branch_dict={},
         )
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
             autospec=True,
         ) as get_slaves_patch:
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == [['something', 'GROUP_BY']]
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == [['something', 'GROUP_BY']]
             assert get_slaves_patch.call_count == 0
 
     def test_get_calculated_constraints_default(self):
@@ -1156,6 +1166,7 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
         ) as get_slaves_patch, mock.patch(
@@ -1169,7 +1180,11 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
 
     def test_get_calculated_constraints_stringifies(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
@@ -1180,6 +1195,7 @@ class TestMarathonTools:
             config_dict={'extra_constraints': [['foo', 1]]},
             branch_dict={},
         )
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
         ) as get_slaves_patch, mock.patch(
@@ -1194,7 +1210,11 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
 
     def test_get_calculated_constraints_extra_constraints(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
@@ -1205,6 +1225,7 @@ class TestMarathonTools:
             config_dict={'extra_constraints': [['extra', 'constraint']]},
             branch_dict={},
         )
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
         ) as get_slaves_patch, mock.patch(
@@ -1219,7 +1240,11 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
 
     def test_get_calculated_constraints_from_discover(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
@@ -1234,6 +1259,7 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
         ) as get_slaves_patch, mock.patch(
@@ -1247,12 +1273,17 @@ class TestMarathonTools:
                 ["habitat", "GROUP_BY", "2"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
             get_slaves_patch.assert_called_once_with([{}], 'habitat')
 
     def test_get_calculated_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1274,12 +1305,17 @@ class TestMarathonTools:
             autospec=True, return_value=[{}],
         ):
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
             get_slaves_patch.assert_called_once_with([{}], 'region')
 
     def test_get_calculated_constraints_respects_deploy_whitelist(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
+        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1301,7 +1337,77 @@ class TestMarathonTools:
             autospec=True, return_value=[{}],
         ):
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
+            get_slaves_patch.assert_called_once_with([{}], 'region')
+
+    def test_get_calculated_constraints_includes_system_blacklist(self):
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
+        fake_system_paasta_config = SystemPaastaConfig({
+            'deploy_whitelist': ["region", ["foo"]]
+        }, "/foo")
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
+        expected_constraints = [
+            ["region", "GROUP_BY", "1"],
+            ["region", "LIKE", "foo"],
+            ["pool", "LIKE", "default"],
+        ]
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
+        ) as get_slaves_patch, mock.patch(
+            'paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}],
+        ), mock.patch(
+            'paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist',
+            autospec=True, return_value=[{}],
+        ):
+            get_slaves_patch.return_value = {'fake_region': {}}
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert sorted(actual) == sorted(expected_constraints)
+            get_slaves_patch.assert_called_once_with([{}], 'region')
+
+    def test_get_calculated_constraints_includes_system_whitelist(self):
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
+        fake_system_paasta_config = SystemPaastaConfig({
+            'deploy_whitelist': ['region', ['foo']]
+        }, "/foo")
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
+        expected_constraints = [
+            ["region", "GROUP_BY", "1"],
+            ["region", "LIKE", "foo"],
+            ["pool", "LIKE", "default"],
+        ]
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
+        ) as get_slaves_patch, mock.patch(
+            'paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}],
+        ), mock.patch(
+            'paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist',
+            autospec=True, return_value=[{}],
+        ):
+            get_slaves_patch.return_value = {'fake_region': {}}
+            actual = fake_conf.get_calculated_constraints(
+                service_namespace_config=fake_service_namespace_config,
+                system_paasta_config=fake_system_paasta_config
+            )
+            assert actual == expected_constraints
             get_slaves_patch.assert_called_once_with([{}], 'region')
 
     def test_instance_config_getters_in_config(self):
@@ -1477,6 +1583,11 @@ class TestMarathonTools:
             assert second_id == third_id
 
     def test_get_routing_constraints_no_slaves(self):
+        fake_system_paasta_config = SystemPaastaConfig({
+            'cluster': 'fake_cluster',
+            'volumes': [],
+            'docker_registry': 'fake_registry'
+        }, '/fake/dir/')
         with mock.patch('paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[]):
             fake_service_config = marathon_tools.MarathonServiceConfig(
                 service='fake_name',
@@ -1489,12 +1600,20 @@ class TestMarathonTools:
                 },
             )
             with raises(NoSlavesAvailableError) as excinfo:
-                fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
+                fake_service_config.get_routing_constraints(
+                    service_namespace_config=self.fake_service_namespace_config,
+                    system_paasta_config=fake_system_paasta_config
+                )
             assert str(excinfo.value) == (
                 "No slaves could be found in the cluster."
             )
 
     def test_get_routing_constraints_no_slaves_after_filter(self):
+        fake_system_paasta_config = SystemPaastaConfig({
+            'cluster': 'fake_cluster',
+            'volumes': [],
+            'docker_registry': 'fake_registry'
+        }, '/fake/dir/')
         with mock.patch(
             'paasta_tools.marathon_tools.get_slaves', autospec=True, return_value=[{}],
         ), mock.patch(
@@ -1512,7 +1631,10 @@ class TestMarathonTools:
                 },
             )
             with raises(NoSlavesAvailableError) as excinfo:
-                fake_service_config.get_routing_constraints(self.fake_service_namespace_config)
+                fake_service_config.get_routing_constraints(
+                    service_namespace_config=self.fake_service_namespace_config,
+                    system_paasta_config=fake_system_paasta_config
+                )
             assert str(excinfo.value) == (
                 "No suitable slaves could be found in the cluster for fake_name.fake_instance"
                 "There are 1 total slaves in the cluster, but after filtering"
