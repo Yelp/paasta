@@ -285,7 +285,7 @@ def do_bounce(
     # log if we appear to be finished
     if all([
         (apps_to_kill or tasks_to_kill),
-        apps_to_kill == old_app_live_happy_tasks.keys(),
+        apps_to_kill == list(old_app_live_happy_tasks),
         tasks_to_kill == all_old_tasks,
     ]):
         log_bounce_action(

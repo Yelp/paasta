@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 from time import sleep
 
 import mock
@@ -35,17 +34,15 @@ from paasta_tools.utils import SystemPaastaConfig
 
 def run_setup_marathon_job(context):
     update_context_marathon_config(context)
-    with contextlib.nested(
-        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
-        mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
-        mock.patch.object(MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
-                          return_value=context.marathon_complete_config),
-        mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
-    ) as (
-        mock_get_zk_hosts,
-        mock_parse_args,
-        _,
-        _,
+    with mock.patch.object(
+        SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts,
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.parse_args', autospec=True,
+    ) as mock_parse_args, mock.patch.object(
+        MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
+        return_value=context.marathon_complete_config,
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True,
     ):
         mock_parse_args.return_value = mock.Mock(
             verbose=True,
@@ -90,11 +87,7 @@ def set_number_instances(context, number):
 @when('we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
     for _ in range(20):
-        with contextlib.nested(
-            mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True),
-        ) as (
-            mock_load_credentials,
-        ):
+        with mock.patch('paasta_tools.mesos_maintenance.load_credentials', autospec=True) as mock_load_credentials:
             mock_load_credentials.side_effect = mesos_maintenance.load_credentials(
                 mesos_secrets='/etc/mesos-slave-secret',
             )
@@ -107,11 +100,7 @@ def run_until_number_tasks(context, number):
 
 @when('we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
 def zookeeper_scale_job(context, service, instance, number):
-    with contextlib.nested(
-        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts)
-    ) as (
-        _,
-    ):
+    with mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts):
         set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
@@ -142,13 +131,11 @@ def mark_host_running_on_at_risk(context):
 def mark_host_at_risk(context, host):
     start = mesos_maintenance.datetime_to_nanoseconds(mesos_maintenance.now())
     duration = mesos_maintenance.parse_timedelta('1h')
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_maintenance.get_principal', autospec=True),
-        mock.patch('paasta_tools.mesos_maintenance.get_secret', autospec=True),
-    ) as (
-        mock_get_principal,
-        mock_get_secret,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_maintenance.get_principal', autospec=True,
+    ) as mock_get_principal, mock.patch(
+        'paasta_tools.mesos_maintenance.get_secret', autospec=True,
+    ) as mock_get_secret:
         credentials = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
         mock_get_principal.return_value = credentials.principal
         mock_get_secret.return_value = credentials.secret

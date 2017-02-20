@@ -464,7 +464,7 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
         filled_in_task.slave_id.value = ""
 
         config_hash = get_config_hash(
-            binascii.b2a_base64(filled_in_task.SerializeToString()),
+            binascii.b2a_base64(filled_in_task.SerializeToString()).decode(),
             force_bounce=self.get_force_bounce(),
         )
 

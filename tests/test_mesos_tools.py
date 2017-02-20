@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import datetime
 import random
 import socket
@@ -58,19 +57,17 @@ def test_filter_not_running_tasks():
 ])
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True,),
-        mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_frameworks', autospec=True,),
-        mock.patch('paasta_tools.mesos_tools.format_running_mesos_task_row', autospec=True,),
-        mock.patch('paasta_tools.mesos_tools.format_non_running_mesos_task_row', autospec=True,),
-        mock.patch('paasta_tools.mesos_tools.format_stdstreams_tail_for_task', autospec=True,),
-    ) as (
-        get_running_mesos_tasks_patch,
-        get_non_running_mesos_tasks_patch,
-        format_running_mesos_task_row_patch,
-        format_non_running_mesos_task_row_patch,
-        format_stdstreams_tail_for_task_patch,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True,
+    ) as get_running_mesos_tasks_patch, mock.patch(
+        'paasta_tools.mesos_tools.get_non_running_tasks_from_frameworks', autospec=True,
+    ) as get_non_running_mesos_tasks_patch, mock.patch(
+        'paasta_tools.mesos_tools.format_running_mesos_task_row', autospec=True,
+    ) as format_running_mesos_task_row_patch, mock.patch(
+        'paasta_tools.mesos_tools.format_non_running_mesos_task_row', autospec=True,
+    ) as format_non_running_mesos_task_row_patch, mock.patch(
+        'paasta_tools.mesos_tools.format_stdstreams_tail_for_task', autospec=True,
+    ) as format_stdstreams_tail_for_task_patch:
         get_running_mesos_tasks_patch.return_value = ['doing a lap']
 
         template_task_return = {
@@ -186,15 +183,13 @@ def test_get_zookeeper_config():
 
 def test_get_mesos_leader():
     fake_url = 'http://93.184.216.34:5050'
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.socket.getfqdn', autospec=True),
-    ) as (
-        mock_get_master,
-        mock_gethostbyaddr,
-        mock_getfqdn,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_mesos_master', autospec=True,
+    ) as mock_get_master, mock.patch(
+        'paasta_tools.mesos_tools.socket.gethostbyaddr', autospec=True,
+    ) as mock_gethostbyaddr, mock.patch(
+        'paasta_tools.mesos_tools.socket.getfqdn', autospec=True,
+    ) as mock_getfqdn:
         mock_master = mock.Mock()
         mock_master.host = fake_url
         mock_get_master.return_value = mock_master
@@ -205,12 +200,10 @@ def test_get_mesos_leader():
 
 def test_get_mesos_leader_socket_error():
     fake_url = 'http://93.184.216.34:5050'
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error, autospec=True),
-    ) as (
-        mock_get_master,
-        mock_gethostbyaddr,
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_mesos_master', autospec=True,
+    ) as mock_get_master, mock.patch(
+        'paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error, autospec=True,
     ):
         mock_master = mock.Mock()
         mock_master.host = fake_url
@@ -221,11 +214,7 @@ def test_get_mesos_leader_socket_error():
 
 def test_get_mesos_leader_no_hostname():
     fake_url = 'localhost:5050'
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-    ) as (
-        mock_get_master,
-    ):
+    with mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True) as mock_get_master:
         mock_master = mock.Mock()
         mock_master.host = fake_url
         mock_get_master.return_value = mock_master
@@ -235,11 +224,9 @@ def test_get_mesos_leader_no_hostname():
 
 @mock.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True)
 def test_get_mesos_leader_cli_mesosmasterconnectionerror(mock_get_mesos_config):
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos.master.MesosMaster.resolve',
-                   side_effect=mesos.exceptions.MasterNotAvailableException, autospec=True),
-    ) as (
-        mock_resolve,
+    with mock.patch(
+        'paasta_tools.mesos.master.MesosMaster.resolve',
+        side_effect=mesos.exceptions.MasterNotAvailableException, autospec=True,
     ):
         with raises(mesos.exceptions.MasterNotAvailableException):
             mesos_tools.get_mesos_leader()
@@ -591,11 +578,7 @@ def test_slave_pid_to_ip():
 
 
 def test_get_mesos_task_count_by_slave():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_all_running_tasks', autospec=True),
-    ) as (
-        mock_get_all_running_tasks,
-    ):
+    with mock.patch('paasta_tools.mesos_tools.get_all_running_tasks', autospec=True) as mock_get_all_running_tasks:
         mock_chronos = mock.Mock()
         mock_chronos.name = 'chronos'
         mock_marathon = mock.Mock()
@@ -622,13 +605,13 @@ def test_get_mesos_task_count_by_slave():
         assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         assert mock_get_all_running_tasks.called
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
         # test slaves_list override
         mock_task2 = mock.Mock()
@@ -644,17 +627,15 @@ def test_get_mesos_task_count_by_slave():
         expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        assert len(ret) == len(expected) and sorted(ret) == sorted(expected)
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
 
 def test_get_count_running_tasks_on_slave():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.get_mesos_task_count_by_slave', autospec=True),
-    ) as (
-        mock_get_master,
-        mock_get_mesos_task_count_by_slave
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_mesos_master', autospec=True,
+    ) as mock_get_master, mock.patch(
+        'paasta_tools.mesos_tools.get_mesos_task_count_by_slave', autospec=True,
+    ) as mock_get_mesos_task_count_by_slave:
         mock_master = mock.Mock()
         mock_mesos_state = mock.Mock()
         mock_master.state_summary.return_value = mock_mesos_state
@@ -671,12 +652,14 @@ def test_get_count_running_tasks_on_slave():
         mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
 
 
+def _ids(list_of_mocks):
+    return {id(mck) for mck in list_of_mocks}
+
+
 def test_get_tasks_from_app_id():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True),
-    ) as (
-        mock_get_running_tasks_from_frameworks,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True,
+    ) as mock_get_running_tasks_from_frameworks:
         mock_task_1 = mock.Mock(slave={'hostname': 'host1'})
         mock_task_2 = mock.Mock(slave={'hostname': 'host2'})
         mock_task_3 = mock.Mock(slave={'hostname': 'host2.domain'})
@@ -685,20 +668,18 @@ def test_get_tasks_from_app_id():
         ret = mesos_tools.get_tasks_from_app_id('app_id')
         mock_get_running_tasks_from_frameworks.assert_called_with('app_id')
         expected = [mock_task_1, mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
+        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
 
         ret = mesos_tools.get_tasks_from_app_id('app_id', slave_hostname='host2')
         mock_get_running_tasks_from_frameworks.assert_called_with('app_id')
         expected = [mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and sorted(ret) == sorted(expected)
+        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
 
 
 def test_get_task():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True),
-    ) as (
-        mock_get_running_tasks_from_frameworks,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_running_tasks_from_frameworks', autospec=True,
+    ) as mock_get_running_tasks_from_frameworks:
         mock_task_1 = {'id': '123'}
         mock_task_2 = {'id': '789'}
         mock_task_3 = {'id': '789'}
@@ -744,13 +725,11 @@ def test_get_all_tasks_from_state():
 
 
 def test_get_running_tasks_from_frameworks():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.filter_running_tasks', autospec=True),
-    ) as (
-        mock_get_current_tasks,
-        mock_filter_running_tasks
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_current_tasks', autospec=True,
+    ) as mock_get_current_tasks, mock.patch(
+        'paasta_tools.mesos_tools.filter_running_tasks', autospec=True,
+    ) as mock_filter_running_tasks:
         ret = mesos_tools.get_running_tasks_from_frameworks(job_id='')
         mock_get_current_tasks.assert_called_with('')
         mock_filter_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
@@ -758,15 +737,13 @@ def test_get_running_tasks_from_frameworks():
 
 
 def test_get_all_running_tasks():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.filter_running_tasks', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-    ) as (
-        mock_get_current_tasks,
-        mock_filter_running_tasks,
-        mock_get_mesos_master,
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_current_tasks', autospec=True,
+    ) as mock_get_current_tasks, mock.patch(
+        'paasta_tools.mesos_tools.filter_running_tasks', autospec=True,
+    ) as mock_filter_running_tasks, mock.patch(
+        'paasta_tools.mesos_tools.get_mesos_master', autospec=True,
+    ) as mock_get_mesos_master:
         mock_task_1 = mock.Mock()
         mock_task_2 = mock.Mock()
         mock_task_3 = mock.Mock()
@@ -783,13 +760,11 @@ def test_get_all_running_tasks():
 
 
 def test_get_non_running_tasks_from_frameworks():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True),
-        mock.patch('paasta_tools.mesos_tools.filter_not_running_tasks', autospec=True),
-    ) as (
-        mock_get_current_tasks,
-        mock_filter_not_running_tasks
-    ):
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_current_tasks', autospec=True,
+    ) as mock_get_current_tasks, mock.patch(
+        'paasta_tools.mesos_tools.filter_not_running_tasks', autospec=True,
+    ) as mock_filter_not_running_tasks:
         ret = mesos_tools.get_non_running_tasks_from_frameworks(job_id='')
         mock_get_current_tasks.assert_called_with('')
         mock_filter_not_running_tasks.assert_called_with(mock_get_current_tasks.return_value)
@@ -797,11 +772,7 @@ def test_get_non_running_tasks_from_frameworks():
 
 
 def test_get_current_tasks():
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True),
-    ) as (
-        mock_get_mesos_master,
-    ):
+    with mock.patch('paasta_tools.mesos_tools.get_mesos_master', autospec=True) as mock_get_mesos_master:
         mock_task_1 = mock.Mock()
         mock_task_2 = mock.Mock()
         mock_tasks = mock.Mock(return_value=[mock_task_1, mock_task_2])

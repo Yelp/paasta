@@ -1629,7 +1629,7 @@ def deep_merge_dictionaries(overrides, defaults):
 
 class ZookeeperPool(object):
     """
-    A context manager that shares the same KazooClient with its children. The first nested contest manager
+    A context manager that shares the same KazooClient with its children. The first nested context manager
     creates and deletes the client and shares it with any of its children. This allows to place a context
     manager over a large number of zookeeper calls without opening and closing a connection each time.
     GIL makes this 'safe'.
@@ -1726,7 +1726,7 @@ def prompt_pick_one(sequence, choosing):
         return result
 
 
-def _to_bytes(obj):
+def to_bytes(obj):
     if isinstance(obj, bytes):
         return obj
     elif isinstance(obj, six.text_type):
@@ -1738,8 +1738,8 @@ def _to_bytes(obj):
 def paasta_print(*args, **kwargs):
     f = kwargs.pop('file', sys.stdout)
     f = getattr(f, 'buffer', f)
-    end = _to_bytes(kwargs.pop('end', '\n'))
-    sep = _to_bytes(kwargs.pop('sep', ' '))
+    end = to_bytes(kwargs.pop('end', '\n'))
+    sep = to_bytes(kwargs.pop('sep', ' '))
     assert not kwargs, kwargs
-    to_print = sep.join(_to_bytes(x) for x in args) + end
+    to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)

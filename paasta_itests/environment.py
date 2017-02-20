@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import os
 import shutil
 import time
@@ -140,13 +139,11 @@ def _clean_up_paasta_native_frameworks(context):
 def _clean_up_maintenance(context):
     """If a host is marked as draining/down for maintenance, bring it back up"""
     if hasattr(context, 'at_risk_host'):
-        with contextlib.nested(
-            mock.patch('paasta_tools.mesos_maintenance.get_principal', autospec=True),
-            mock.patch('paasta_tools.mesos_maintenance.get_secret', autospec=True),
-        ) as (
-            mock_get_principal,
-            mock_get_secret,
-        ):
+        with mock.patch(
+            'paasta_tools.mesos_maintenance.get_principal', autospec=True,
+        ) as mock_get_principal, mock.patch(
+            'paasta_tools.mesos_maintenance.get_secret', autospec=True,
+        ) as mock_get_secret:
             credentials = load_credentials(mesos_secrets='/etc/mesos-slave-secret')
             mock_get_principal.return_value = credentials.principal
             mock_get_secret.return_value = credentials.secret

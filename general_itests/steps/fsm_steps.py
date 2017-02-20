@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import os
 import shutil
 import tempfile
@@ -59,11 +58,7 @@ def step_impl_when_fsm_auto(context):
     fake_args = mock.Mock(
         yelpsoa_config_root=context.fake_yelpsoa_configs,
     )
-    with contextlib.nested(
-            mock.patch('paasta_tools.cli.cmds.fsm.load_system_paasta_config'),
-    ) as (
-        mock_load_system_paasta_config,
-    ):
+    with mock.patch('paasta_tools.cli.cmds.fsm.load_system_paasta_config') as mock_load_system_paasta_config:
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             config={},
             directory=context.fake_yelpsoa_configs,
