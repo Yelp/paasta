@@ -121,7 +121,7 @@ def test_add_hostname(input_args, expected_args):
 
 
 class TestMain(object):
-    @pytest.fixture(autouse=True)
+    @pytest.yield_fixture(autouse=True)
     def mock_execlp(self):
         # always patch execlp so we don't actually exec
         with mock.patch.object(docker_hostname_wrapper.os, 'execlp') as mock_execlp:
