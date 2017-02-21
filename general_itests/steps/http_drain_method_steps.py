@@ -14,13 +14,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import BaseHTTPServer
 import threading
 
 import mock
 from behave import given
 from behave import then
 from behave import when
+from six.moves import BaseHTTPServer
 
 from paasta_tools import drain_lib
 from paasta_tools.utils import paasta_print
@@ -99,5 +99,6 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             FakeHTTPServer.paths.append(self.path)
             self.send_response(self.status_code)
+            self.end_headers()
         except Exception as e:
             paasta_print(e)

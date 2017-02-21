@@ -52,7 +52,7 @@ def step_impl_given(context):
     commit = Commit()
     commit.author = commit.committer = b"itest author"
     commit.commit_time = commit.author_time = int(time())
-    commit.commit_timezone = commit.author_timezone = parse_timezone('-0200')[0]
+    commit.commit_timezone = commit.author_timezone = parse_timezone(b'-0200')[0]
     commit.message = b"Initial commit"
     commit.tree = tree.id
 
@@ -61,8 +61,9 @@ def step_impl_given(context):
     object_store.add_object(tree)
     object_store.add_object(commit)
 
-    context.test_git_repo.refs['refs/heads/master'] = commit.id
-    context.expected_commit = commit.id
+    context.test_git_repo.refs[b'refs/heads/master'] = commit.id
+    context.expected_commit_as_bytes = commit.id
+    context.expected_commit = context.expected_commit_as_bytes.decode()
 
 
 @when('paasta mark-for-deployments is run against the repo')
@@ -72,7 +73,7 @@ def step_paasta_mark_for_deployments_when(context):
         service='fake_deployments_json_service',
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
-        block=False
+        block=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
@@ -153,7 +154,7 @@ def step_impl_then(context):
 @then('that deployments.json has a desired_state of "{expected_state}"')
 def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    latest = sorted(deployments.items(), key=lambda kv: kv[1]['force_bounce'], reverse=True)[0][1]
+    latest = sorted(deployments.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
     desired_state = latest['desired_state']
     assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
 
@@ -165,6 +166,6 @@ def step_impl_then_correctly_tagged(context):
         return_value=context.force_bounce_timestamp,
     ):
         expected_tag = get_paasta_tag_from_deploy_group(identifier='test_cluster.test_instance', desired_state='deploy')
-    expected_formatted_tag = format_tag(expected_tag)
+    expected_formatted_tag = format_tag(expected_tag).encode('UTF-8')
     assert expected_formatted_tag in context.test_git_repo.refs
-    assert context.test_git_repo.refs[expected_formatted_tag] == context.expected_commit
+    assert context.test_git_repo.refs[expected_formatted_tag] == context.expected_commit_as_bytes

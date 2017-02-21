@@ -22,8 +22,8 @@ from paasta_tools import remote_git
 
 def test_make_determine_wants_func():
     refs = {
-        'refs/heads/foo': 'abcde',
-        'refs/tags/blah': '12345',
+        b'refs/heads/foo': b'abcde',
+        b'refs/tags/blah': b'12345',
     }
     # nothing changed, so nothing should change
     determine_wants = remote_git._make_determine_wants_func(lambda x: x)
@@ -44,7 +44,8 @@ def test_make_determine_wants_func():
         lambda x: {'foo': 'bar'}
     )
     actual = determine_wants(refs)
-    expected = dict(refs, foo='bar')
+    expected = dict(refs)
+    expected.update({b'foo': b'bar'})
     assert actual == expected
 
 
@@ -66,11 +67,11 @@ def test_non_ascii_tags():
 def test_make_force_push_mutate_refs_func_overwrites_shas():
     targets = ['refs/heads/targeta', 'refs/tags/targetb']
     input_refs = {
-        'refs/heads/foo': '12345',
-        'refs/heads/targeta': '12345',
-        'refs/tags/targetb': '12345',
-        'refs/heads/ignored': '12345',
-        'refs/tags/blah': '12345',
+        b'refs/heads/foo': b'12345',
+        b'refs/heads/targeta': b'12345',
+        b'refs/tags/targetb': b'12345',
+        b'refs/heads/ignored': b'12345',
+        b'refs/tags/blah': b'12345',
     }
     expected = {
         b'refs/heads/foo': b'12345',
