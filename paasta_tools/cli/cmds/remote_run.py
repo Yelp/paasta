@@ -17,6 +17,8 @@ from __future__ import unicode_literals
 
 import sys
 import os
+import shlex
+import service_configuration_lib
 
 sys.path.insert(0, '/usr/lib/python2.7/site-packages/mesos')
 from mesos.interface import Scheduler
@@ -33,8 +35,11 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import validate_service_instance
 
 from paasta_tools.native_mesos_scheduler import create_driver_with
+from paasta_tools.native_mesos_scheduler import compose_job_id
+from paasta_tools.native_mesos_scheduler import load_paasta_native_job_config
 
 
 class PaastaAdhocScheduler(Scheduler):
@@ -162,7 +167,32 @@ def add_subparser(subparsers):
         required=False,
         default=True,
     )
+    list_parser.add_argument(
+        '-d', '--dry-run',
+        help='Don\'t launch the task',
+        action='store_true',
+        required=False,
+        default=False,
+    )
     list_parser.set_defaults(command=paasta_remote_run)
+
+
+class UnknownPaastaRemoteServiceError(Exception):
+    pass
+
+
+def read_paasta_remote_config(service, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
+    conf_file = 'adhoc-%s' % cluster
+    full_path = '%s/%s/%s.yaml' % (soa_dir, service, conf_file)
+    paasta_print("Reading paasta-remote configuration file: %s" % full_path)
+    config = service_configuration_lib.read_extra_service_information(service, conf_file, soa_dir=soa_dir)
+
+    if instance not in config:
+        raise UnknownPaastaRemoteServiceError(
+            'No job named "%s" in config file %s: \n%s' % (instance, full_path, open(full_path).read())
+        )
+
+    return config
 
 
 def paasta_remote_run(args):
@@ -193,8 +223,7 @@ def paasta_remote_run(args):
         return 1
 
     soa_dir = args.yelpsoa_config_root
-    load_deployments = docker_hash is None
-    dry_run = args.action == 'dry_run'
+    dry_run = args.dry_run
     instance = args.instance
 
     if instance is None:
@@ -211,7 +240,8 @@ def paasta_remote_run(args):
         service=service,
         instance=instance,
         cluster=cluster,
-        soa_dir=args.yelpsoa_config_root
+        soa_dir=args.yelpsoa_config_root,
+        reader_func=read_paasta_remote_config
     )
     scheduler = PaastaAdhocScheduler(
         command=command,

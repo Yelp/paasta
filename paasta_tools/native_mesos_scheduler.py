@@ -411,24 +411,34 @@ class UnknownPaastaNativeServiceError(Exception):
     pass
 
 
-def read_paasta_native_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
+def read_paasta_native_jobs_for_service(service, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
     paasta_native_conf_file = 'paasta_native-%s' % cluster
-    log.info("Reading paasta_native configuration file: %s/%s/paasta_native-%s.yaml" % (soa_dir, service, cluster))
+    full_path = '%s/%s/%s.yaml' % (soa_dir, service, paasta_native_conf_file)
+    log.info("Reading paasta_native configuration file: %s" % full_path)
 
-    return service_configuration_lib.read_extra_service_information(
+    config = service_configuration_lib.read_extra_service_information(
         service,
         paasta_native_conf_file,
         soa_dir=soa_dir
     )
 
-
-def load_paasta_native_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
-    service_paasta_native_jobs = read_paasta_native_jobs_for_service(service, cluster, soa_dir=soa_dir)
-    if instance not in service_paasta_native_jobs:
-        filename = '%s/%s/paasta_native-%s.yaml' % (soa_dir, service, cluster)
+    if instance not in config:
         raise UnknownPaastaNativeServiceError(
-            'No job named "%s" in config file %s: \n%s' % (instance, filename, open(filename).read())
+            'No job named "%s" in config file %s: \n%s' % (instance, full_path, open(full_path).read())
         )
+
+    return config
+
+
+def load_paasta_native_job_config(
+    service,
+    instance,
+    cluster,
+    load_deployments=True,
+    soa_dir=DEFAULT_SOA_DIR,
+    reader_func=read_paasta_native_jobs_for_service
+):
+    service_paasta_native_jobs = reader_func(service, instance, cluster, soa_dir=soa_dir)
     branch_dict = {}
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
