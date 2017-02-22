@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 
 import os
 import re
+import socket
 import sys
 
 
@@ -58,8 +59,8 @@ def already_has_hostname(args):
     return False
 
 
-def generate_hostname(marathon_host, mesos_task_id):
-    host_hostname = marathon_host.partition('.')[0]
+def generate_hostname(fqdn, mesos_task_id):
+    host_hostname = fqdn.partition('.')[0]
     task_id = mesos_task_id.rpartition('.')[2]
 
     hostname = host_hostname + '-' + task_id
@@ -77,11 +78,11 @@ def add_hostname(args, hostname):
 
 def main():
     env_args = parse_env_args(sys.argv)
-    marathon_host = env_args.get('MARATHON_HOST')
+    fqdn = socket.getfqdn()
     mesos_task_id = env_args.get('MESOS_TASK_ID')
 
-    if marathon_host and mesos_task_id and not already_has_hostname(sys.argv[1:]):
-        hostname = generate_hostname(marathon_host, mesos_task_id)
+    if mesos_task_id and not already_has_hostname(sys.argv[1:]):
+        hostname = generate_hostname(fqdn, mesos_task_id)
         add_hostname(sys.argv, hostname)
 
     os.execlp('docker', 'docker', *sys.argv[1:])

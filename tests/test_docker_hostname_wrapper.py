@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import socket
 import sys
 
 import mock
@@ -131,45 +132,43 @@ class TestMain(object):
         with mock.patch.object(sys, 'argv', [
             'docker',
             'run',
-            '--env=MARATHON_HOST=mymarathon',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
         ]):
-            docker_hostname_wrapper.main()
+            with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+                docker_hostname_wrapper.main()
             assert mock_execlp.mock_calls == [mock.call(
                 'docker',
                 'docker',
                 'run',
-                '--hostname=mymarathon-my-mesos-task-id',
-                '--env=MARATHON_HOST=mymarathon',
+                '--hostname=myhostname-my-mesos-task-id',
                 '--env=MESOS_TASK_ID=my-mesos-task-id')]
 
     def test_env_not_present(self, mock_execlp):
         with mock.patch.object(sys, 'argv', [
             'docker',
             'run',
-            '--env=MARATHON_HOST=mymarathon',
+            'foobar',
         ]):
             docker_hostname_wrapper.main()
             assert mock_execlp.mock_calls == [mock.call(
                 'docker',
                 'docker',
                 'run',
-                '--env=MARATHON_HOST=mymarathon')]
+                'foobar')]
 
     def test_already_has_hostname(self, mock_execlp):
         with mock.patch.object(sys, 'argv', [
             'docker',
             'run',
-            '--env=MARATHON_HOST=mymarathon',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
             '--hostname=somehostname',
         ]):
-            docker_hostname_wrapper.main()
+            with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+                docker_hostname_wrapper.main()
             assert mock_execlp.mock_calls == [mock.call(
                 'docker',
                 'docker',
                 'run',
-                '--env=MARATHON_HOST=mymarathon',
                 '--env=MESOS_TASK_ID=my-mesos-task-id',
                 '--hostname=somehostname')]
 
@@ -177,7 +176,6 @@ class TestMain(object):
         with mock.patch.object(sys, 'argv', [
             'docker',
             'ps',
-            '--env=MARATHON_HOST=mymarathon',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
         ]):
             docker_hostname_wrapper.main()
@@ -185,5 +183,4 @@ class TestMain(object):
                 'docker',
                 'docker',
                 'ps',
-                '--env=MARATHON_HOST=mymarathon',
                 '--env=MESOS_TASK_ID=my-mesos-task-id')]
