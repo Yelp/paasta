@@ -659,7 +659,7 @@ def marathon_services_running_here():
     :returns: A list of triples of (service, instance, port)"""
 
     return mesos_services_running_here(
-        framework_filter=lambda fw: fw['name'].startswith('marathon-'),
+        framework_filter=lambda fw: fw['name'].startswith('marathon'),
         parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
     )
 
