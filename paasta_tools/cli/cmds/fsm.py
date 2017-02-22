@@ -15,11 +15,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
+import contextlib
+import os.path
+import shutil
 import sys
-from shutil import copyfile
-from shutil import copymode
 
+import six
 from cookiecutter.main import cookiecutter
 
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
@@ -28,28 +29,46 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
-def symlink_aware_copyfile(infile, outfile):
-    if os.path.islink(infile):
-        linkto = os.readlink(infile)
-        try:
-            os.symlink(linkto, outfile)
-        except OSError:
-            pass
-    else:
-        copyfile(infile, outfile)
+@contextlib.contextmanager
+def make_copyfile_symlink_aware():
+    """The reasoning behind this monkeypatch is that cookiecutter doesn't
+    respect symlinks at all, and at Yelp we use symlinks to reduce duplication
+    in the soa configs. Maybe cookie-cutter will accept a symlink-aware PR?
+    """
+    orig_copyfile = shutil.copyfile
+    orig_copymode = shutil.copymode
 
+    def symlink_aware_copyfile(*args, **kwargs):
+        if six.PY2:
+            infile, outfile = args
+            if os.path.islink(infile):
+                linkto = os.readlink(infile)
+                try:
+                    os.symlink(linkto, outfile)
+                except OSError:
+                    pass
+            else:
+                orig_copyfile(*args, **kwargs)
+        else:
+            kwargs.setdefault('follow_symlinks', False)
+            orig_copyfile(*args, **kwargs)
 
-def symlink_aware_copymode(infile, outfile):
-    if not os.path.islink(outfile):
-        copymode(infile, outfile)
+    def symlink_aware_copymode(*args, **kwargs):
+        if six.PY2:
+            _, outfile = args
+            if not os.path.islink(outfile):
+                orig_copymode(*args, **kwargs)
+        else:
+            kwargs.setdefault('follow_symlinks', False)
+            orig_copymode(*args, **kwargs)
 
-
-# The reasoning behind this monkeypatch is that cookiecutter doesn't respect
-# symlinks at all, and at Yelp we use symlinks to reduce duplication in
-# the soa configs. Maybe cookie-cutter will accept a symlink-aware PR?
-import shutil  # noqa
-shutil.copyfile = symlink_aware_copyfile
-shutil.copymode = symlink_aware_copymode
+    shutil.copyfile = symlink_aware_copyfile
+    shutil.copymode = symlink_aware_copymode
+    try:
+        yield
+    finally:
+        shutil.copyfile = orig_copyfile
+        shutil.copymode = orig_copymode
 
 
 def add_subparser(subparsers):
@@ -83,13 +102,14 @@ def get_paasta_config(yelpsoa_config_root):
 
 def write_paasta_config(variables, template, destination):
     paasta_print("Using cookiecutter template from %s" % template)
-    cookiecutter(
-        template=template,
-        extra_context=variables,
-        output_dir=destination,
-        overwrite_if_exists=True,
-        no_input=not sys.stdout.isatty(),
-    )
+    with make_copyfile_symlink_aware():
+        cookiecutter(
+            template=template,
+            extra_context=variables,
+            output_dir=destination,
+            overwrite_if_exists=True,
+            no_input=not sys.stdout.isatty(),
+        )
 
 
 def paasta_fsm(args):

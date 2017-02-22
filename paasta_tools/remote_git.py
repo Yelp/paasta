@@ -23,11 +23,27 @@ def _make_determine_wants_func(ref_mutator):
     determine_wants argument to dulwich's send_pack method. The returned
     function will not delete or modify any existing refs."""
     def determine_wants(old_refs):
-        refs = dict(old_refs)
+        refs = {k.decode('UTF-8'): v.decode('UTF-8') for k, v in old_refs.items()}
         new_refs = ref_mutator(refs)
+        new_refs = {k.encode('UTF-8'): v.encode('UTF-8') for k, v in new_refs.items()}
         new_refs.update(old_refs)  # Make sure we don't delete/modify anything.
         return new_refs
     return determine_wants
+
+
+def make_force_push_mutate_refs_func(targets, sha):
+    """Create a 'force push' function that will inform send_pack that we want
+    to mark a certain list of target branches/tags to point to a particular
+    git_sha.
+
+    :param targets: List of branches/tags to point at the input sha
+    :param sha: The git sha to point the branches/tags at
+    :returns: A function to do the ref manipulation that a dulwich client can use"""
+    def mutate_refs(refs):
+        for target in targets:
+            refs[target.encode('UTF-8')] = sha.encode('UTF-8')
+        return refs
+    return mutate_refs
 
 
 def create_remote_refs(git_url, ref_mutator, force=False):
@@ -68,19 +84,3 @@ def list_remote_refs(git_url):
         return {k.decode('UTF-8'): v.decode('UTF-8') for k, v in refs.items()}
     except dulwich.errors.HangupException as e:
         raise LSRemoteException("Unable to fetch remote refs: %s" % e)
-
-
-def make_force_push_mutate_refs_func(targets, sha):
-    """Create a 'force push' function that will inform send_pack that we want
-    to mark a certain list of target branches/tags to point to a particular
-    git_sha.
-
-    :param targets: List of branches/tags to point at the input sha
-    :param sha: The git sha to point the branches/tags at
-    :returns: A function to do the ref manipulation that a dulwich client can use"""
-    def mutate_refs(refs):
-        for target in targets:
-            refs[target] = sha
-        refs = {k.encode('UTF-8'): v.encode('UTF-8') for k, v in refs.items()}
-        return refs
-    return mutate_refs
