@@ -410,7 +410,7 @@ def find_connectable_master(masters):
     return (connectable_master, output)
 
 
-class NoMasterError:
+class NoMasterError(Exception):
     pass
 
 
@@ -508,7 +508,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     try:
         master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
-        return (255, e.strerror)
+        return (255, str(e))
 
     if ignore_ssh_output:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
@@ -542,7 +542,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
     try:
         master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
-        return (255, e.strerror)
+        return (255, str(e))
 
     return run_paasta_metastatus(master, humanize, groupings, verbose)
 
@@ -569,7 +569,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
             connectable_master(cluster, system_paasta_config),
             service, instancename, **kwargs)
     except NoMasterError as e:
-        return (-1, e.strerror)
+        return (-1, str(e))
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
@@ -595,7 +595,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     try:
         master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
-        return (err_code, e.strerror)
+        return (err_code, str(e))
 
     ssh_parts = ['ssh', '-A', '-n', master]
 
