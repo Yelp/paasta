@@ -200,7 +200,9 @@ def test_wait_for_deployment(mock_instances_deployed, mock__log,
     mock_instances_deployed.side_effect = instances_deployed_side_effect
 
     with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 0)
+        with patch('time.time', side_effect=[0, 0, 2], autospec=True):
+            with patch('time.sleep', autospec=True):
+                mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
 
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
