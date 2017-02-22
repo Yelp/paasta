@@ -65,7 +65,6 @@ def test_non_ascii_tags():
 
 def test_make_force_push_mutate_refs_func_overwrites_shas():
     targets = ['refs/heads/targeta', 'refs/tags/targetb']
-    newsha = 'newsha'
     input_refs = {
         'refs/heads/foo': '12345',
         'refs/heads/targeta': '12345',
@@ -74,19 +73,20 @@ def test_make_force_push_mutate_refs_func_overwrites_shas():
         'refs/tags/blah': '12345',
     }
     expected = {
-        'refs/heads/foo': '12345',
-        'refs/heads/targeta': newsha,
-        'refs/tags/targetb': newsha,
-        'refs/heads/ignored': '12345',
-        'refs/tags/blah': '12345',
+        b'refs/heads/foo': b'12345',
+        b'refs/heads/targeta': b'newsha',
+        b'refs/tags/targetb': b'newsha',
+        b'refs/heads/ignored': b'12345',
+        b'refs/tags/blah': b'12345',
     }
 
     mutate_refs_func = remote_git.make_force_push_mutate_refs_func(
         targets=targets,
-        sha=newsha,
+        sha='newsha',
     )
     actual = mutate_refs_func(input_refs)
     assert actual == expected
+    assert all([isinstance(k, bytes) for k in actual])
 
 
 @mock.patch('dulwich.client', autospec=True)

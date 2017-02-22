@@ -81,5 +81,6 @@ def make_force_push_mutate_refs_func(targets, sha):
     def mutate_refs(refs):
         for target in targets:
             refs[target] = sha
+        refs = {k.encode('UTF-8'): v.encode('UTF-8') for k, v in refs.items()}
         return refs
     return mutate_refs
