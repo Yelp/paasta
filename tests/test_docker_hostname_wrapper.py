@@ -123,8 +123,7 @@ class TestGenerateHostname(object):
     )
 ])
 def test_add_hostname(input_args, expected_args):
-    args = list(input_args)  # add_hostname modifies the parameter directly
-    docker_hostname_wrapper.add_hostname(args, 'myhostname')
+    args = docker_hostname_wrapper.add_hostname(input_args, 'myhostname')
     assert args == expected_args
 
 
@@ -136,73 +135,73 @@ class TestMain(object):
             yield mock_execlp
 
     def test_marathon(self, mock_execlp):
-        with mock.patch.object(sys, 'argv', [
+        argv = [
             'docker',
             'run',
             '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c',
-        ]):
-            with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-                docker_hostname_wrapper.main()
-            assert mock_execlp.mock_calls == [mock.call(
-                'docker',
-                'docker',
-                'run',
-                '--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c',
-                '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c')]
+        ]
+        with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+            docker_hostname_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c',
+            '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c')]
 
     def test_chronos(self, mock_execlp):
-        with mock.patch.object(sys, 'argv', [
+        argv = [
             'docker',
             'run',
             '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
-        ]):
-            with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-                docker_hostname_wrapper.main()
-            assert mock_execlp.mock_calls == [mock.call(
-                'docker',
-                'docker',
-                'run',
-                '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
-                '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
+        ]
+        with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+            docker_hostname_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
+            '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
 
     def test_env_not_present(self, mock_execlp):
-        with mock.patch.object(sys, 'argv', [
+        argv = [
             'docker',
             'run',
             'foobar',
-        ]):
-            docker_hostname_wrapper.main()
-            assert mock_execlp.mock_calls == [mock.call(
-                'docker',
-                'docker',
-                'run',
-                'foobar')]
+        ]
+        docker_hostname_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            'foobar')]
 
     def test_already_has_hostname(self, mock_execlp):
-        with mock.patch.object(sys, 'argv', [
+        argv = [
             'docker',
             'run',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
             '--hostname=somehostname',
-        ]):
-            with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-                docker_hostname_wrapper.main()
-            assert mock_execlp.mock_calls == [mock.call(
-                'docker',
-                'docker',
-                'run',
-                '--env=MESOS_TASK_ID=my-mesos-task-id',
-                '--hostname=somehostname')]
+        ]
+        with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+            docker_hostname_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=MESOS_TASK_ID=my-mesos-task-id',
+            '--hostname=somehostname')]
 
     def test_not_run(self, mock_execlp):
-        with mock.patch.object(sys, 'argv', [
+        argv = [
             'docker',
             'ps',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
-        ]):
-            docker_hostname_wrapper.main()
-            assert mock_execlp.mock_calls == [mock.call(
-                'docker',
-                'docker',
-                'ps',
-                '--env=MESOS_TASK_ID=my-mesos-task-id')]
+        ]
+        docker_hostname_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'ps',
+            '--env=MESOS_TASK_ID=my-mesos-task-id')]

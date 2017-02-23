@@ -72,21 +72,28 @@ def generate_hostname(fqdn, mesos_task_id):
 
 
 def add_hostname(args, hostname):
+    # Add --hostname argument immediately after 'run' command if it exists
+    args = list(args)
+
     try:
         run_index = args.index('run')
     except ValueError:
-        return
+        pass
+    else:
+        args.insert(run_index + 1, '--hostname=' + hostname)
 
-    args.insert(run_index + 1, '--hostname=' + hostname)
+    return args
 
 
-def main():
-    env_args = parse_env_args(sys.argv)
+def main(argv=None):
+    argv = argv if argv is not None else sys.argv[1:]
+
+    env_args = parse_env_args(argv)
     fqdn = socket.getfqdn()
     mesos_task_id = env_args.get('MESOS_TASK_ID')
 
-    if mesos_task_id and not already_has_hostname(sys.argv[1:]):
+    if mesos_task_id and not already_has_hostname(argv):
         hostname = generate_hostname(fqdn, mesos_task_id)
-        add_hostname(sys.argv, hostname)
+        argv = add_hostname(argv, hostname)
 
-    os.execlp('docker', 'docker', *sys.argv[1:])
+    os.execlp('docker', 'docker', *argv[1:])
