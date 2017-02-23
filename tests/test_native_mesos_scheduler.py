@@ -1,8 +1,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 import pytest
 from mesos.interface import mesos_pb2
@@ -14,14 +12,18 @@ from paasta_tools.native_mesos_scheduler import TASK_RUNNING
 
 
 def test_main():
-    with contextlib.nested(
-        mock.patch('paasta_tools.native_mesos_scheduler.get_paasta_native_jobs_for_cluster',
-                   return_value=[('service1', 'instance1'), ('service2', 'instance2')],
-                   autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.create_driver', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.sleep', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.PaastaScheduler', autospec=True),
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.get_paasta_native_jobs_for_cluster',
+        return_value=[('service1', 'instance1'), ('service2', 'instance2')],
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.create_driver', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.PaastaScheduler', autospec=True,
     ):
         native_mesos_scheduler.main(["--stay-alive-seconds=0"])
 
@@ -58,7 +60,7 @@ class TestPaastaScheduler(object):
         cluster = "cluster"
 
         service_configs = []
-        for force_bounce in xrange(2):
+        for force_bounce in range(2):
             service_configs.append(native_mesos_scheduler.PaastaNativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
@@ -149,9 +151,7 @@ class TestPaastaScheduler(object):
             scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_KILLED))
 
         # Clean up the TestDrainMethod for the rest of this test.
-        for task in list(scheduler.drain_method.downed_task_ids):
-            scheduler.drain_method.stop_draining(mock.Mock(id=task))
-        assert len(scheduler.drain_method.downed_task_ids) == 0
+        assert not list(scheduler.drain_method.downed_task_ids)
 
         # Now scale down old app
         scheduler.service_config.config_dict['instances'] = 2
@@ -207,7 +207,7 @@ class TestPaastaScheduler(object):
                 assert resource.ranges.range[0].end == 12345
                 break
         else:
-            raise Exception("never saw a ports resource")
+            raise AssertionError("never saw a ports resource")
 
 
 class TestPaastaNativeServiceConfig(object):
@@ -267,7 +267,9 @@ class TestPaastaNativeServiceConfig(object):
                 assert resource.scalar.value == 0.1
             elif resource.name == "mem":
                 assert resource.scalar.value == 50
-            elif resource.name == "port":
+            elif resource.name == 'ports':
                 pass
+            else:
+                raise AssertionError('Unreachable: {}'.format(resource.name))
 
         assert task.name.startswith("service_name.instance_name.gitfake/bus.config")

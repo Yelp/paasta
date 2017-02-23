@@ -41,7 +41,7 @@ logging.basicConfig()
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
-def parse_args():
+def parse_args(argv):
     parser = argparse.ArgumentParser(
         description='',
     )
@@ -60,13 +60,13 @@ def parse_args():
                         help="Print out more output regarding the state of the cluster")
     parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
                         help="Print human-readable sizes")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main():
+def main(argv=None):
     marathon_config = None
     chronos_config = None
-    args = parse_args()
+    args = parse_args(argv)
 
     master = get_mesos_master()
     try:
@@ -74,7 +74,7 @@ def main():
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % str(e)))
         sys.exit(2)
 
     mesos_state_status = metastatus_lib.get_mesos_state_status(
@@ -98,8 +98,10 @@ def main():
         marathon_client = metastatus_lib.get_marathon_client(marathon_config)
         try:
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
-        except (MarathonError, InternalServerError) as e:
-            paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Is the cluster healthy?"))
+        except (MarathonError, InternalServerError, ValueError) as e:
+            # catch ValueError until marathon-python/pull/167 is merged and this is handled upstream
+            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at %s!"
+                                           "Is the cluster healthy?".format(marathon_config["url"]))))
             sys.exit(2)
     else:
         marathon_results = [metastatus_lib.HealthCheckResult(message='Marathon is not configured to run here',

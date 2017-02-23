@@ -285,7 +285,7 @@ def do_bounce(
     # log if we appear to be finished
     if all([
         (apps_to_kill or tasks_to_kill),
-        apps_to_kill == old_app_live_happy_tasks.keys(),
+        apps_to_kill == list(old_app_live_happy_tasks),
         tasks_to_kill == all_old_tasks,
     ]):
         log_bounce_action(
@@ -525,6 +525,10 @@ def deploy_service(
             soa_dir=soa_dir,
             bounce_margin_factor=bounce_margin_factor,
         )
+    except bounce_lib.LockHeldException:
+        logline = 'Failed to get lock to create marathon app for %s.%s' % (service, instance)
+        log_deploy_error(logline, level='debug')
+        return (0, "Couldn't get marathon lock, skipping until next time")
     except Exception:
         logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
         log_deploy_error(logline, level='debug')

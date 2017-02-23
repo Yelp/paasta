@@ -292,7 +292,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             # mesos.cli is smart and can efficiently read a file backwards
             reversed_file = reversed(fobj)
             tail = []
-            for _ in xrange(nlines):
+            for _ in range(nlines):
                 line = next(reversed_file, None)
                 if line is None:
                     break
@@ -305,7 +305,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             mesos_exceptions.SlaveDoesNotExist,
             mesos_exceptions.TaskNotFoundException,
             mesos_exceptions.FileNotFoundForTaskException) as e:
-        output.append(error_message % (get_short_task_id(task['id']), e.message))
+        output.append(error_message % (get_short_task_id(task['id']), str(e)))
     except TimeoutError:
         output.append(error_message % (get_short_task_id(task['id']), 'timeout'))
     return output
@@ -319,7 +319,7 @@ def zip_tasks_verbose_output(table, stdstreams):
     if len(table) != len(stdstreams):
         raise ValueError('Can only zip same-length lists')
     output = []
-    for i in xrange(len(table)):
+    for i in range(len(table)):
         output.append(table[i])
         output.extend([line for line in stdstreams[i]])
     return output
@@ -431,7 +431,7 @@ def get_local_slave_state():
         raise MesosSlaveConnectionError(
             'Could not connect to the mesos slave to see which services are running\n'
             'on %s. Is the mesos-slave running?\n'
-            'Error was: %s\n' % (e.request.url, e.message)
+            'Error was: %s\n' % (e.request.url, str(e))
         )
     response.raise_for_status()
     return json.loads(response.text)

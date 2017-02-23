@@ -9,7 +9,7 @@ chronos-python==0.37.0
 cookiecutter==1.4.0
 cryptography==1.4
 docker-py==1.2.3
-dulwich==0.10.0
+dulwich==0.16.3
 ephemeral-port-reserve==1.0.1
 future>=0.15.2
 futures==3.0.1
@@ -22,7 +22,7 @@ isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.2
 lockfile==0.9.1
-marathon==0.8.10
+marathon==0.8.11
 mccabe==0.3.1
 mesos.interface==1.1.0
 ordereddict==1.1

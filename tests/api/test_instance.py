@@ -130,7 +130,10 @@ def test_instance_tasks(mock_get_tasks_from_app_id, mock_instance_status, mock_a
                                           mock.call(mock_add_executor_info.return_value)])
     expected = [mock_add_slave_info.return_value._Task__items,
                 mock_add_slave_info.return_value._Task__items]
-    assert len(ret) == len(expected) and sorted(expected) == sorted(ret)
+
+    def ids(l):
+        return {id(x) for x in l}
+    assert len(ret) == len(expected) and ids(expected) == ids(ret)
 
     mock_instance_status.return_value = {'chronos': {}}
     with raises(ApiFailure):
@@ -162,11 +165,6 @@ def test_instance_task(mock_get_task, mock_instance_status, mock_add_slave_info,
     mock_instance_status.return_value = {'chronos': {}}
     with raises(ApiFailure):
         ret = instance.instance_task(mock_request)
-
-
-def mock_getitem(key):
-    if key == 'id':
-        return 'fakeID'
 
 
 def test_add_executor_info():

@@ -43,7 +43,7 @@ setup(
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
-        'dulwich == 0.10.0',
+        'dulwich',
         'ephemeral-port-reserve >= 1.0.1',
         'futures',
         'gevent == 1.1.1',
@@ -84,6 +84,7 @@ setup(
         'paasta_tools/generate_deployments_for_service.py',
         'paasta_tools/generate_services_file.py',
         'paasta_tools/generate_services_yaml.py',
+        'paasta_tools/get_mesos_leader.py',
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',

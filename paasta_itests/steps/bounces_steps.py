@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import time
 
 import mock
@@ -108,11 +107,7 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         'backoff_factor': 1,
         'constraints': constraints,
     }
-    with contextlib.nested(
-        mock.patch('paasta_tools.bounce_lib.create_app_lock'),
-    ) as (
-        mock_creat_app_lock,
-    ):
+    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
@@ -131,7 +126,7 @@ def there_are_num_which_tasks(context, num, which, state, exact):
     app_id = which_id(context, which)
 
     # 120 * 0.5 = 60 seconds
-    for _ in xrange(120):
+    for _ in range(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)
@@ -156,44 +151,40 @@ def there_are_num_which_tasks(context, num, which, state, exact):
 
 @when('setup_service is initiated')
 def when_setup_service_initiated(context):
-    with contextlib.nested(
-        mock.patch(
-            'paasta_tools.bounce_lib.get_happy_tasks',
-            autospec=True,
-            # Wrap function call so we can select a subset of tasks or test
-            # intermediate steps, like when an app is not completely up
-            side_effect=lambda app, _, __, ___, **kwargs: get_happy_tasks(
-                app, context.service, "fake_nerve_ns", context.system_paasta_config)[:context.max_tasks],
-        ),
-        mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
-        mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
-        mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
-        mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
-        mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
-        mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
-        mock.patch('paasta_tools.mesos_maintenance.get_principal', autospec=True),
-        mock.patch('paasta_tools.mesos_maintenance.get_secret', autospec=True),
-    ) as (
-        _,
-        _,
-        _,
-        _,
-        mock_load_system_paasta_config,
-        _,
-        _,
-        _,
-        _,
-        mock_get_principal,
-        mock_get_secret,
-    ):
+    with mock.patch(
+        'paasta_tools.bounce_lib.get_happy_tasks',
+        autospec=True,
+        # Wrap function call so we can select a subset of tasks or test
+        # intermediate steps, like when an app is not completely up
+        side_effect=lambda app, _, __, ___, **kwargs: get_happy_tasks(
+            app, context.service, "fake_nerve_ns", context.system_paasta_config)[:context.max_tasks],
+    ), mock.patch(
+        'paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True,
+    ), mock.patch(
+        'paasta_tools.bounce_lib.create_app_lock', autospec=True,
+    ), mock.patch(
+        'paasta_tools.bounce_lib.time.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        'paasta_tools.setup_marathon_job._log', autospec=True,
+    ), mock.patch(
+        'paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash',
+    ), mock.patch(
+        'paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp',
+    ), mock.patch(
+        'paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox',
+    ), mock.patch(
+        'paasta_tools.mesos_maintenance.get_principal', autospec=True,
+    ) as mock_get_principal, mock.patch(
+        'paasta_tools.mesos_maintenance.get_secret', autospec=True,
+    ) as mock_get_secret:
         credentials = mesos_maintenance.load_credentials(mesos_secrets='/etc/mesos-slave-secret')
         mock_get_principal.return_value = credentials.principal
         mock_get_secret.return_value = credentials.secret
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         # 120 * 0.5 = 60 seconds
-        for _ in xrange(120):
+        for _ in range(120):
             try:
                 marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
                 (code, message) = setup_marathon_job.setup_service(
@@ -230,7 +221,7 @@ def then_the_which_app_should_be_running(context, which):
 def then_the_which_app_should_be_configured_to_have_num_instances(context, which, num, retries=10):
     app_id = which_id(context, which)
 
-    for _ in xrange(retries):
+    for _ in range(retries):
         app = context.marathon_client.get_app(app_id)
         if app.instances == int(num):
             return
@@ -248,7 +239,7 @@ def then_the_which_app_should_be_gone(context, which):
 def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
     """ Marathon will not make the app disappear until after all the tasks have died
     https://github.com/mesosphere/marathon/issues/1431 """
-    for _ in xrange(10):
+    for _ in range(10):
         if marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is True:
             time.sleep(0.5)
         else:

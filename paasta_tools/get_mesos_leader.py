@@ -1,4 +1,5 @@
-# Copyright 2015-2016 Yelp Inc.
+#!/usr/bin/env python
+# Copyright 2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# It is imperative that this file not contain any imports from our
-# dependencies. Since this file is imported from setup.py in the
-# setup phase, the dependencies may not exist on disk yet.
-#
-# Don't bump version manually. See `make release` docs in ./Makefile
+"""
+Usage: ./get_mesos_leader.py
+
+Displays the hostname of the current mesos-master leader.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
-__version__ = '0.57.10'
+
+from paasta_tools.mesos_tools import get_mesos_leader
+from paasta_tools.utils import paasta_print
+
+
+def main():
+    paasta_print(get_mesos_leader())
+
+
+if __name__ == "__main__":
+    exit(main())

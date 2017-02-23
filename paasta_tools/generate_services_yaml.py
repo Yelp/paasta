@@ -24,7 +24,7 @@ import yaml
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.utils import atomic_file_write
 
-YOCALHOST = b'169.254.255.254'
+YOCALHOST = '169.254.255.254'
 
 
 def generate_configuration():
@@ -35,9 +35,9 @@ def generate_configuration():
         proxy_port = data.get('proxy_port')
         if proxy_port is None:
             continue
-        config[name.encode('utf-8')] = {
-            b'host': YOCALHOST,
-            b'port': int(proxy_port),
+        config[name] = {
+            'host': YOCALHOST,
+            'port': int(proxy_port),
         }
 
     return config
@@ -58,7 +58,7 @@ def main(argv=None):
                 now=datetime.now().isoformat(),
             ),
         )
-        yaml.dump(
+        yaml.safe_dump(
             configuration,
             fp,
             indent=2,

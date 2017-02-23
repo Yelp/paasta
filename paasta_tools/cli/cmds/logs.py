@@ -796,7 +796,7 @@ class ScribeLogReader(LogReader):
                             line = {'raw_line': line, 'sort_key': timestamp}
                             aggregated_logs.append(line)
             except StreamTailerSetupError as e:
-                if 'No data in stream' in e.message:
+                if 'No data in stream' in str(e):
                     log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
                     log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
                     log.warning("output within this stream.")
@@ -869,7 +869,7 @@ class ScribeLogReader(LogReader):
             # traces.
             pass
         except StreamTailerSetupError as e:
-            if 'No data in stream' in e.message:
+            if 'No data in stream' in str(e):
                 log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
                 log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
                 log.warning("output within this stream.")
@@ -1152,7 +1152,7 @@ def paasta_logs(args):
     try:
         start_time, end_time = generate_start_end_time(args.time_from, args.time_to)
     except ValueError as e:
-        paasta_print(PaastaColors.red(e.message), file=sys.stderr)
+        paasta_print(PaastaColors.red(str(e)), file=sys.stderr)
         return 1
 
     log_reader.print_logs_by_time(

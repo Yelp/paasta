@@ -162,7 +162,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
     full_name = compose_job_id(service, namespace)
 
-    for value, hosts in attribute_slave_dict.iteritems():
+    for value, hosts in attribute_slave_dict.items():
         # arbitrarily choose the first host with a given attribute to query for replication stats
         synapse_host = hosts[0]['hostname']
         repl_info = get_replication_for_services(

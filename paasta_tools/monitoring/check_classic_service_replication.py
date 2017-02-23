@@ -170,10 +170,10 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         except Exception as e:
             self.log.error(
                 'Unable to collect replication information on {0}: {1}'.
-                format(synapse_host_port, e.message))
+                format(synapse_host_port, str(e)))
             self.critical(
                 'Unable to collect replication information: {0}'.
-                format(e.message))
+                format(str(e)))
         self.log.debug(
             "Finished gathering replication information from {0}".
             format(synapse_host_port))
@@ -191,7 +191,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         )
 
         checked_services = []
-        for service, service_config in all_service_config.iteritems():
+        for service, service_config in all_service_config.items():
             do_monitoring, monitoring_config = extract_replication_info(
                 service_config
             )

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import os
 import tempfile
 from datetime import datetime
@@ -53,7 +52,7 @@ def step_impl_given(context):
     commit = Commit()
     commit.author = commit.committer = b"itest author"
     commit.commit_time = commit.author_time = int(time())
-    commit.commit_timezone = commit.author_timezone = parse_timezone('-0200')[0]
+    commit.commit_timezone = commit.author_timezone = parse_timezone(b'-0200')[0]
     commit.message = b"Initial commit"
     commit.tree = tree.id
 
@@ -62,8 +61,9 @@ def step_impl_given(context):
     object_store.add_object(tree)
     object_store.add_object(commit)
 
-    context.test_git_repo.refs['refs/heads/master'] = commit.id
-    context.expected_commit = commit.id
+    context.test_git_repo.refs[b'refs/heads/master'] = commit.id
+    context.expected_commit_as_bytes = commit.id
+    context.expected_commit = context.expected_commit_as_bytes.decode()
 
 
 @when('paasta mark-for-deployments is run against the repo')
@@ -73,17 +73,15 @@ def step_paasta_mark_for_deployments_when(context):
         service='fake_deployments_json_service',
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
-        block=False
+        block=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.format_timestamp', autosepc=True,
-                   return_value=context.force_bounce_timestamp),
-        mock.patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True,
-                   return_value=True),
-    ) as (
-        mock_format_timestamp,
-        mock_validate_service_name,
+    with mock.patch(
+        'paasta_tools.utils.format_timestamp', autosepc=True,
+        return_value=context.force_bounce_timestamp,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True,
+        return_value=True,
     ):
         try:
             paasta_mark_for_deployment(fake_args)
@@ -100,14 +98,12 @@ def step_paasta_stop_when(context):
         service='fake_deployments_json_service',
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True,
-                   return_value=context.test_git_repo_dir),
-        mock.patch('paasta_tools.utils.format_timestamp', autospec=True,
-                   return_value=context.force_bounce_timestamp),
-    ) as (
-        mock_get_git_url,
-        mock_get_timestamp,
+    with mock.patch(
+        'paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True,
+        return_value=context.test_git_repo_dir,
+    ), mock.patch(
+        'paasta_tools.utils.format_timestamp', autospec=True,
+        return_value=context.force_bounce_timestamp,
     ):
         try:
             paasta_stop(fake_args)
@@ -127,14 +123,12 @@ def step_impl_when(context):
         soa_dir='fake_soa_configs',
         verbose=True,
     )
-    with contextlib.nested(
-        mock.patch('paasta_tools.generate_deployments_for_service.get_git_url', autospec=True,
-                   return_value=context.test_git_repo_dir),
-        mock.patch('paasta_tools.generate_deployments_for_service.parse_args',
-                   autospec=True, return_value=fake_args),
-    ) as (
-        mock_get_git_url,
-        mock_parse_args,
+    with mock.patch(
+        'paasta_tools.generate_deployments_for_service.get_git_url', autospec=True,
+        return_value=context.test_git_repo_dir,
+    ), mock.patch(
+        'paasta_tools.generate_deployments_for_service.parse_args',
+        autospec=True, return_value=fake_args,
     ):
         generate_deployments_for_service.main()
 
@@ -160,20 +154,18 @@ def step_impl_then(context):
 @then('that deployments.json has a desired_state of "{expected_state}"')
 def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    latest = sorted(deployments.iteritems(), key=lambda kv: kv[1]['force_bounce'], reverse=True)[0][1]
+    latest = sorted(deployments.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
     desired_state = latest['desired_state']
     assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
 
 
 @then('the repository should be correctly tagged')
 def step_impl_then_correctly_tagged(context):
-    with contextlib.nested(
-        mock.patch('paasta_tools.utils.format_timestamp', autosepc=True,
-                   return_value=context.force_bounce_timestamp),
-    ) as (
-        mock_format_timestamp,
+    with mock.patch(
+        'paasta_tools.utils.format_timestamp', autosepc=True,
+        return_value=context.force_bounce_timestamp,
     ):
         expected_tag = get_paasta_tag_from_deploy_group(identifier='test_cluster.test_instance', desired_state='deploy')
-    expected_formatted_tag = format_tag(expected_tag)
+    expected_formatted_tag = format_tag(expected_tag).encode('UTF-8')
     assert expected_formatted_tag in context.test_git_repo.refs
-    assert context.test_git_repo.refs[expected_formatted_tag] == context.expected_commit
+    assert context.test_git_repo.refs[expected_formatted_tag] == context.expected_commit_as_bytes

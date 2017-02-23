@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import unittest
 from math import floor
 
@@ -53,21 +52,18 @@ def test_get_instances_from_ip():
 
 
 def test_autoscale_local_cluster():
-    with contextlib.nested(
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True),
-        mock.patch('time.sleep', autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
-                   autospec=True),
-        mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True),
-    ) as (
-        mock_get_paasta_config,
-        mock_autoscale_cluster_resource,
-        _,
-        mock_is_resource_cancelled,
-        mock_get_sfr,
-    ):
-
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
+    ) as mock_get_paasta_config, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True,
+    ) as mock_autoscale_cluster_resource, mock.patch(
+        'time.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
+        autospec=True,
+    ) as mock_is_resource_cancelled, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
+    ) as mock_get_sfr:
         mock_get_sfr.return_value = False
         mock_scaling_resources = {'id1': {'id': 'sfr-blah1', 'type': 'aws_spot_fleet_request',
                                           'pool': 'default', 'region': 'westeros-1'},
@@ -109,13 +105,9 @@ def test_autoscale_cluster_resource():
 class TestAsgAutoscaler(unittest.TestCase):
 
     def setUp(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg', autospec=True),
-        ) as (
-            mock_get_asg,
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg', autospec=True, return_value={},
         ):
-            mock_get_asg.return_value = {}
-
             mock_resource = {'id': 'asg-blah', 'type': 'aws_autoscaling_group',
                              'region': 'westeros-1', 'pool': 'default'}
             mock_pool_settings = {'drain_timeout': 123}
@@ -134,11 +126,7 @@ class TestAsgAutoscaler(unittest.TestCase):
         assert not self.autoscaler.is_resource_cancelled()
 
     def test_get_asg(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-        ) as (
-            mock_ec2_client,
-        ):
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_asg = mock.Mock()
             mock_asgs = {'AutoScalingGroups': [mock_asg]}
             mock_describe_auto_scaling_groups = mock.Mock(return_value=mock_asgs)
@@ -154,11 +142,7 @@ class TestAsgAutoscaler(unittest.TestCase):
             assert ret is None
 
     def test_set_asg_capacity(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-        ) as (
-            mock_ec2_client,
-        ):
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_update_auto_scaling_group = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(update_auto_scaling_group=mock_update_auto_scaling_group)
             self.autoscaler.dry_run = True
@@ -244,25 +228,32 @@ class TestAsgAutoscaler(unittest.TestCase):
         ret = self.autoscaler.get_asg_delta(-0.5)
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
+        current_instances = int((10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1)
+        self.autoscaler.resource = {
+            'min_capacity': 10,
+            'max_capacity': 40
+        }
+        self.autoscaler.asg = {'Instances': [mock.Mock()] * current_instances}
+        ret = self.autoscaler.get_asg_delta(-1)
+        assert ret == (current_instances, 10)
+
     def test_asg_metrics_provider(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg_delta', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_mesos_utilization_error',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_aws_slaves', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.cleanup_cancelled_config',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.is_aws_launching_instances',
-                       autospec=True),
-        ) as (
-            mock_get_asg_delta,
-            mock_get_mesos_utilization_error,
-            mock_get_aws_slaves,
-            mock_get_mesos_master,
-            mock_cleanup_cancelled_config,
-            mock_is_aws_launching_asg_instances
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg_delta', autospec=True,
+        ) as mock_get_asg_delta, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_mesos_utilization_error',
+            autospec=True,
+        ) as mock_get_mesos_utilization_error, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_aws_slaves', autospec=True,
+        ) as mock_get_aws_slaves, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+        ) as mock_get_mesos_master, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.cleanup_cancelled_config',
+            autospec=True,
+        ) as mock_cleanup_cancelled_config, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.is_aws_launching_instances',
+            autospec=True,
+        ) as mock_is_aws_launching_asg_instances:
             mock_get_asg_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_asg_instances.return_value = False
@@ -320,14 +311,12 @@ class TestAsgAutoscaler(unittest.TestCase):
 class TestSpotAutoscaler(unittest.TestCase):
 
     def setUp(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_instances',
-                       autospec=True),
-        ) as (
-            mock_get_sfr,
-            mock_get_spot_fleet_instances,
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
+        ) as mock_get_sfr, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_instances',
+            autospec=True,
+        ) as mock_get_spot_fleet_instances:
             mock_get_sfr.return_value = {}
             mock_get_spot_fleet_instances.return_value = []
 
@@ -340,11 +329,7 @@ class TestSpotAutoscaler(unittest.TestCase):
                                                                      False)
 
     def test_get_spot_fleet_instances(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-        ) as (
-            mock_ec2_client,
-        ):
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_instances = mock.Mock()
             mock_sfr = {'ActiveInstances': mock_instances}
             mock_describe_spot_fleet_instances = mock.Mock(return_value=mock_sfr)
@@ -379,11 +364,7 @@ class TestSpotAutoscaler(unittest.TestCase):
         assert self.autoscaler.is_resource_cancelled()
 
     def test_get_sfr(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-        ) as (
-            mock_ec2_client,
-        ):
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_sfr_config = mock.Mock()
             mock_sfr = {'SpotFleetRequestConfigs': [mock_sfr_config]}
             mock_describe_spot_fleet_requests = mock.Mock(return_value=mock_sfr)
@@ -399,16 +380,14 @@ class TestSpotAutoscaler(unittest.TestCase):
             assert ret is None
 
     def test_set_spot_fleet_request_capacity(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.AWS_SPOT_MODIFY_TIMEOUT', autospec=True)
-        ) as (
-            mock_ec2_client,
-            mock_sleep,
-            mock_get_sfr,
-            _
+        with mock.patch(
+            'boto3.client', autospec=True,
+        ) as mock_ec2_client, mock.patch(
+            'time.sleep', autospec=True,
+        ) as mock_sleep, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
+        ) as mock_get_sfr, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AWS_SPOT_MODIFY_TIMEOUT', autospec=True,
         ):
             mock_sleep.side_effect = TimeoutError()
             mock_get_sfr.return_value = {'SpotFleetRequestState': 'modifying'}
@@ -489,29 +468,36 @@ class TestSpotAutoscaler(unittest.TestCase):
         ret = self.autoscaler.get_spot_fleet_delta(-0.5)
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
+        current_instances = (10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1
+        self.autoscaler.resource = {
+            'min_capacity': 10,
+            'max_capacity': 40
+        }
+        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': current_instances}}
+        ret = self.autoscaler.get_spot_fleet_delta(-1)
+        assert ret == (current_instances, 10)
+
     def test_spotfleet_metrics_provider(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_delta',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_mesos_utilization_error',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_aws_slaves', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_pool_slaves',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.cleanup_cancelled_config',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_aws_launching_instances',
-                       autospec=True),
-        ) as (
-            mock_get_spot_fleet_delta,
-            mock_get_mesos_utilization_error,
-            mock_get_aws_slaves,
-            mock_get_pool_slaves,
-            mock_get_mesos_master,
-            mock_cleanup_cancelled_config,
-            mock_is_aws_launching_sfr_instances
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_delta',
+            autospec=True,
+        ) as mock_get_spot_fleet_delta, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_mesos_utilization_error',
+            autospec=True,
+        ) as mock_get_mesos_utilization_error, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_aws_slaves', autospec=True,
+        ) as mock_get_aws_slaves, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_pool_slaves',
+            autospec=True,
+        ) as mock_get_pool_slaves, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+        ) as mock_get_mesos_master, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.cleanup_cancelled_config',
+            autospec=True,
+        ) as mock_cleanup_cancelled_config, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_aws_launching_instances',
+            autospec=True,
+        ) as mock_is_aws_launching_sfr_instances:
             mock_get_spot_fleet_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_sfr_instances.return_value = False
@@ -619,11 +605,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                                                                     False)
 
     def test_describe_instance(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-        ) as (
-            mock_ec2_client,
-        ):
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_instance_1 = mock.Mock()
             mock_instance_2 = mock.Mock()
             mock_instance_3 = mock.Mock()
@@ -652,22 +634,19 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert ret == [mock_instance_1, mock_instance_2, mock_instance_3]
 
     def test_scale_resource(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.filter_aws_slaves',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.downscale_aws_resource',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity', autospec=True)
-        ) as (
-            mock_filter_aws_slaves,
-            mock_get_mesos_master,
-            mock_get_mesos_task_count_by_slave,
-            mock_downscale_aws_resource,
-            mock_set_capacity
-        ):
-
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.filter_aws_slaves',
+            autospec=True,
+        ) as mock_filter_aws_slaves, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+        ) as mock_get_mesos_master, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True,
+        ) as mock_get_mesos_task_count_by_slave, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.downscale_aws_resource',
+            autospec=True,
+        ) as mock_downscale_aws_resource, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity', autospec=True,
+        ) as mock_set_capacity:
             mock_set_capacity.return_value = True
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
@@ -698,19 +677,17 @@ class TestClusterAutoscaler(unittest.TestCase):
                                                            target_capacity=2)
 
     def test_downscale_aws_resource(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.sort_slaves_to_kill',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.gracefully_terminate_slave',
-                       autospec=True)
-        ) as (
-            mock_get_mesos_master,
-            mock_get_mesos_task_count_by_slave,
-            mock_sort_slaves_to_kill,
-            mock_gracefully_terminate_slave
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+        ) as mock_get_mesos_master, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True,
+        ) as mock_get_mesos_task_count_by_slave, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.sort_slaves_to_kill',
+            autospec=True,
+        ) as mock_sort_slaves_to_kill, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.gracefully_terminate_slave',
+            autospec=True,
+        ) as mock_gracefully_terminate_slave:
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
@@ -820,21 +797,19 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert mock_gracefully_terminate_slave.call_count == 3
 
     def test_gracefully_terminate_slave(self):
-        with contextlib.nested(
-            mock.patch('time.time', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.drain', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.undrain', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.wait_and_terminate',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity',
-                       autospec=True),
-        ) as (
-            mock_time,
-            mock_drain,
-            mock_undrain,
-            mock_wait_and_terminate,
-            mock_set_capacity,
-        ):
+        with mock.patch(
+            'time.time', autospec=True,
+        ) as mock_time, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.drain', autospec=True,
+        ) as mock_drain, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.undrain', autospec=True,
+        ) as mock_undrain, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.wait_and_terminate',
+            autospec=True,
+        ) as mock_wait_and_terminate, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity',
+            autospec=True,
+        ) as mock_set_capacity:
             self.autoscaler.resource = {'id': 'sfr-blah', 'region': 'westeros-1', 'type': 'sfr'}
             mock_time.return_value = int(1)
             mock_start = (1 + 123) * 1000000000
@@ -894,15 +869,13 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert not mock_wait_and_terminate.called
 
     def test_wait_and_terminate(self):
-        with contextlib.nested(
-            mock.patch('boto3.client', autospec=True),
-            mock.patch('time.sleep', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True),
-        ) as (
-            mock_ec2_client,
-            _,
-            mock_is_safe_to_kill,
-        ):
+        with mock.patch(
+            'boto3.client', autospec=True,
+        ) as mock_ec2_client, mock.patch(
+            'time.sleep', autospec=True,
+        ), mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True,
+        ) as mock_is_safe_to_kill:
             mock_terminate_instances = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
 
@@ -935,12 +908,10 @@ class TestClusterAutoscaler(unittest.TestCase):
         assert ret == [mock_slave_1, mock_slave_3, mock_slave_2]
 
     def test_get_instance_ips(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
-                       autospec=True),
-        ) as (
-            mock_describe_instances,
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
+            autospec=True,
+        ) as mock_describe_instances:
             mock_instance_ids = [{'InstanceId': 'i-blah1'}, {'InstanceId': 'i-blah2'}]
             mock_instances = [{'PrivateIpAddress': '10.1.1.1'}, {'PrivateIpAddress': '10.2.2.2'}]
             mock_describe_instances.return_value = mock_instances
@@ -949,30 +920,27 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert ret == ['10.1.1.1', '10.2.2.2']
 
     def mock_pid_to_ip_side(self, pid):
-        if pid == 'slave(1)@10.1.1.1:5051':
-            return '10.1.1.1'
-        elif pid == 'slave(2)@10.2.2.2:5051':
-            return '10.2.2.2'
-        elif pid == 'slave(3)@10.3.3.3:5051':
-            return '10.3.3.3'
+        return {
+            'slave(1)@10.1.1.1:5051': '10.1.1.1',
+            'slave(2)@10.2.2.2:5051': '10.2.2.2',
+            'slave(3)@10.3.3.3:5051': '10.3.3.3',
+        }[pid]
 
     def test_filter_aws_slaves(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_ips',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_type_weights',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.PaastaAwsSlave', autospec=True)
-        ) as (
-            mock_get_instance_ips,
-            mock_pid_to_ip,
-            mock_describe_instances,
-            mock_get_instance_type_weights,
-            mock_paasta_aws_slave
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_ips',
+            autospec=True,
+        ) as mock_get_instance_ips, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True,
+        ) as mock_pid_to_ip, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
+            autospec=True,
+        ) as mock_describe_instances, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_type_weights',
+            autospec=True,
+        ) as mock_get_instance_type_weights, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.PaastaAwsSlave', autospec=True,
+        ) as mock_paasta_aws_slave:
             mock_get_instance_ips.return_value = ['10.1.1.1', '10.3.3.3']
             mock_pid_to_ip.side_effect = self.mock_pid_to_ip_side
             mock_instances = [{'InstanceId': 'i-1',
@@ -1012,14 +980,12 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert len(ret) == 2
 
     def test_get_aws_slaves(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_ips',
-                       autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True),
-        ) as (
-            mock_get_instance_ips,
-            mock_slave_pid_to_ip
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_instance_ips',
+            autospec=True,
+        ) as mock_get_instance_ips, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.slave_pid_to_ip', autospec=True,
+        ) as mock_slave_pid_to_ip:
             mock_slave_pid_to_ip.side_effect = pid_to_ip_sideeffect
             mock_get_instance_ips.return_value = ['10.1.1.1', '10.3.3.3', '10.4.4.4']
             self.autoscaler.instances = [mock.Mock(), mock.Mock(), mock.Mock()]
@@ -1037,13 +1003,11 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert ret == {'id1': mock_mesos_state['slaves'][0]}
 
     def test_cleanup_cancelled_config(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.os.walk', autospec=True),
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.os.remove', autospec=True),
-        ) as (
-            mock_os_walk,
-            mock_os_remove
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.os.walk', autospec=True,
+        ) as mock_os_walk, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.os.remove', autospec=True,
+        ) as mock_os_remove:
             mock_os_walk.return_value = [('/nail/blah', [], ['sfr-blah.json', 'sfr-another.json']),
                                          ('/nail/another', [], ['something'])]
             self.autoscaler.cleanup_cancelled_config('sfr-blah', '/nail')
@@ -1055,13 +1019,10 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert not mock_os_remove.called
 
     def test_get_mesos_utilization_error(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
-                       autospec=True),
-        ) as (
-            mock_get_resource_utilization_by_grouping,
-        ):
-
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
+            autospec=True,
+        ) as mock_get_resource_utilization_by_grouping:
             mock_mesos_state = {'slaves': [{'attributes': {'pool': 'default'}},
                                            {'attributes': {'pool': 'default'}}]}
             mock_utilization = {'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
@@ -1097,11 +1058,9 @@ class TestClusterAutoscaler(unittest.TestCase):
 class TestPaastaAwsSlave(unittest.TestCase):
 
     def setUp(self):
-        with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip', autospec=True),
-        ) as (
-            mock_get_instances_from_ip,
-        ):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip', autospec=True,
+        ) as mock_get_instances_from_ip:
             mock_get_instances_from_ip.return_value = [{'InstanceId': 'i-1'}]
             self.mock_instances = [{'InstanceId': 'i-1',
                                     'InstanceType': 'c4.blah'},

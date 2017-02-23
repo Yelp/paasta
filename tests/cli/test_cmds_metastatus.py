@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 
 from paasta_tools.cli.cmds import metastatus
@@ -23,7 +21,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 @mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True)
-def test_report_cluster_status(mock_load_system_paasta_config, capsys):
+def test_report_cluster_status(mock_load_system_paasta_config, capfd):
     cluster = 'fake_cluster'
 
     fake_system_paasta_config = SystemPaastaConfig({
@@ -53,7 +51,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capsys):
             groupings=[],
             verbose=0,
         )
-        actual, _ = capsys.readouterr()
+        actual, _ = capfd.readouterr()
         assert 'Cluster: %s' % cluster in actual
         assert 'mock_status' in actual
         assert return_code == mock.sentinel.return_value
@@ -110,14 +108,12 @@ def test_paasta_metastatus_returns_zero_all_clusters_ok():
         clusters='cluster1,cluster2,cluster3',
     )
 
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.metastatus.list_clusters', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.metastatus.print_cluster_status', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_list_clusters,
-        mock_print_cluster_status,
-        _
+    with mock.patch(
+        'paasta_tools.cli.cmds.metastatus.list_clusters', autospec=True,
+    ) as mock_list_clusters, mock.patch(
+        'paasta_tools.cli.cmds.metastatus.print_cluster_status', autospec=True,
+    ) as mock_print_cluster_status, mock.patch(
+        'paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True,
     ):
         mock_list_clusters.return_value = ['cluster1', 'cluster2', 'cluster3']
         mock_print_cluster_status.side_effect = [0, 0, 0]
@@ -133,14 +129,12 @@ def test_paasta_metastatus_returns_one_on_error():
         clusters='cluster1,cluster2,cluster3',
     )
 
-    with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.metastatus.list_clusters', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.metastatus.print_cluster_status', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_list_clusters,
-        mock_print_cluster_status,
-        _
+    with mock.patch(
+        'paasta_tools.cli.cmds.metastatus.list_clusters', autospec=True,
+    ) as mock_list_clusters, mock.patch(
+        'paasta_tools.cli.cmds.metastatus.print_cluster_status', autospec=True,
+    ) as mock_print_cluster_status, mock.patch(
+        'paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True,
     ):
         mock_list_clusters.return_value = ['cluster1', 'cluster2', 'cluster3']
         mock_print_cluster_status.side_effect = [0, 0, 255]

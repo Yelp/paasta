@@ -38,12 +38,12 @@ def each_command():
 
 
 @pytest.mark.parametrize('cmd', each_command())
-def test_help(cmd, capsys):
+def test_help(cmd, capfd):
     # Should pass and produce something
     with pytest.raises(SystemExit) as excinfo:
         main((cmd, '--help'))
     assert excinfo.value.code == 0
-    assert cmd in capsys.readouterr()[0]
+    assert cmd in capfd.readouterr()[0]
 
 
 def test_invalid_arguments_returns_non_zero():
