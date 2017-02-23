@@ -7,12 +7,12 @@ import socket
 import mock
 import pytest
 
-from paasta_tools import docker_hostname_wrapper
+from paasta_tools import docker_wrapper
 
 
 class TestParseEnvArgs(object):
     def test_empty(self):
-        env = docker_hostname_wrapper.parse_env_args(['docker'])
+        env = docker_wrapper.parse_env_args(['docker'])
         assert env == {}
 
     @pytest.mark.parametrize('args', [
@@ -22,7 +22,7 @@ class TestParseEnvArgs(object):
         ['docker', '-et', 'key=value'],  # -t takes no additional parameters so docker allows this order
     ])
     def test_short(self, args):
-        env = docker_hostname_wrapper.parse_env_args(args)
+        env = docker_wrapper.parse_env_args(args)
         assert env == {'key': 'value'}
 
     @pytest.mark.parametrize('args', [
@@ -30,7 +30,7 @@ class TestParseEnvArgs(object):
         ['docker', '--env=key=value'],
     ])
     def test_long(self, args):
-        env = docker_hostname_wrapper.parse_env_args(args)
+        env = docker_wrapper.parse_env_args(args)
         assert env == {'key': 'value'}
 
     @pytest.mark.parametrize('args', [
@@ -39,29 +39,29 @@ class TestParseEnvArgs(object):
         ['docker', '-'],  # just don't crash
     ])
     def test_short_invalid(self, args):
-        env = docker_hostname_wrapper.parse_env_args(args)
+        env = docker_wrapper.parse_env_args(args)
         assert env == {}
 
     def test_mixed_short_long(self):
-        env = docker_hostname_wrapper.parse_env_args(['docker', '-e', 'foo=bar', '--env=apple=banana', '--env', 'c=d'])
+        env = docker_wrapper.parse_env_args(['docker', '-e', 'foo=bar', '--env=apple=banana', '--env', 'c=d'])
         assert env == {'foo': 'bar', 'apple': 'banana', 'c': 'd'}
 
     def test_multiple_equals(self):
-        env = docker_hostname_wrapper.parse_env_args(['docker', '-e', 'foo=bar=cat'])
+        env = docker_wrapper.parse_env_args(['docker', '-e', 'foo=bar=cat'])
         assert env == {'foo': 'bar=cat'}
 
     def test_dupe(self):
-        env = docker_hostname_wrapper.parse_env_args(['docker', '-e', 'foo=bar', '-e', 'foo=cat'])
+        env = docker_wrapper.parse_env_args(['docker', '-e', 'foo=bar', '-e', 'foo=cat'])
         assert env == {'foo': 'cat'}
 
     def test_empty_value(self):
-        env = docker_hostname_wrapper.parse_env_args(['docker', '-e', 'foo=', '--env=bar='])
+        env = docker_wrapper.parse_env_args(['docker', '-e', 'foo=', '--env=bar='])
         assert env == {'foo': '', 'bar': ''}
 
 
 class TestAlreadyHasHostname(object):
     def test_empty(self):
-        assert docker_hostname_wrapper.already_has_hostname(['docker']) is False
+        assert docker_wrapper.already_has_hostname(['docker']) is False
 
     @pytest.mark.parametrize('args', [
         ['docker', '-h'],
@@ -69,7 +69,7 @@ class TestAlreadyHasHostname(object):
         ['docker', '-ht'],
     ])
     def test_short(self, args):
-        assert docker_hostname_wrapper.already_has_hostname(args) is True
+        assert docker_wrapper.already_has_hostname(args) is True
 
     @pytest.mark.parametrize('args', [
         ['docker', '-e=foo=hhh'],
@@ -77,32 +77,32 @@ class TestAlreadyHasHostname(object):
         ['docker', '-'],
     ])
     def test_short_invalid(self, args):
-        assert docker_hostname_wrapper.already_has_hostname(args) is False
+        assert docker_wrapper.already_has_hostname(args) is False
 
     @pytest.mark.parametrize('args', [
         ['docker', '--hostname', 'foo'],
         ['docker', '--hostname=foo'],
     ])
     def test_long(self, args):
-        assert docker_hostname_wrapper.already_has_hostname(args) is True
+        assert docker_wrapper.already_has_hostname(args) is True
 
 
 class TestGenerateHostname(object):
     def test_simple(self):
-        hostname = docker_hostname_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname(
             'first.part.matters',
             'what.only.matters.is.lastpart')
         assert hostname == 'first-lastpart'
 
     def test_truncate(self):
-        hostname = docker_hostname_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname(
             'reallllllllllllllylooooooooooooooong',
             'reallyreallylongidsssssssssssssssssssssssss')
         assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidssssssss'
         assert len(hostname) == 63
 
     def test_symbols(self):
-        hostname = docker_hostname_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname(
             'first.part.matters',
             'chronos:can_do!s0me weird-stuff')
         assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
@@ -122,7 +122,7 @@ class TestGenerateHostname(object):
     )
 ])
 def test_add_hostname(input_args, expected_args):
-    args = docker_hostname_wrapper.add_hostname(input_args, 'myhostname')
+    args = docker_wrapper.add_hostname(input_args, 'myhostname')
     assert args == expected_args
 
 
@@ -130,7 +130,7 @@ class TestMain(object):
     @pytest.yield_fixture(autouse=True)
     def mock_execlp(self):
         # always patch execlp so we don't actually exec
-        with mock.patch.object(docker_hostname_wrapper.os, 'execlp') as mock_execlp:
+        with mock.patch.object(docker_wrapper.os, 'execlp') as mock_execlp:
             yield mock_execlp
 
     def test_marathon(self, mock_execlp):
@@ -140,7 +140,7 @@ class TestMain(object):
             '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c',
         ]
         with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-            docker_hostname_wrapper.main(argv)
+            docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
@@ -155,7 +155,7 @@ class TestMain(object):
             '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
         ]
         with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-            docker_hostname_wrapper.main(argv)
+            docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
@@ -169,7 +169,7 @@ class TestMain(object):
             'run',
             'foobar',
         ]
-        docker_hostname_wrapper.main(argv)
+        docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
@@ -184,7 +184,7 @@ class TestMain(object):
             '--hostname=somehostname',
         ]
         with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
-            docker_hostname_wrapper.main(argv)
+            docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
@@ -198,7 +198,7 @@ class TestMain(object):
             'ps',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
         ]
-        docker_hostname_wrapper.main(argv)
+        docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
