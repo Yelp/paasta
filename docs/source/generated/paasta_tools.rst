@@ -51,6 +51,7 @@ Submodules
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
+   paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
    paasta_tools.setup_chronos_job
