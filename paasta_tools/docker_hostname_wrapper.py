@@ -90,7 +90,9 @@ def main(argv=None):
 
     env_args = parse_env_args(argv)
     fqdn = socket.getfqdn()
-    mesos_task_id = env_args.get('MESOS_TASK_ID')
+
+    # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
+    mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
     if mesos_task_id and not already_has_hostname(argv):
         hostname = generate_hostname(fqdn, mesos_task_id)

@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import socket
-import sys
 
 import mock
 import pytest
@@ -153,7 +152,7 @@ class TestMain(object):
         argv = [
             'docker',
             'run',
-            '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
+            '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
         ]
         with mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
             docker_hostname_wrapper.main(argv)
@@ -162,7 +161,7 @@ class TestMain(object):
             'docker',
             'run',
             '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
-            '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
+            '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
 
     def test_env_not_present(self, mock_execlp):
         argv = [
