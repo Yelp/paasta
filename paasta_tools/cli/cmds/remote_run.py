@@ -20,6 +20,7 @@ import os
 import shlex
 import service_configuration_lib
 import re
+from datetime import datetime
 
 sys.path.insert(0, '/usr/lib/python2.7/site-packages/mesos')
 from mesos.interface import Scheduler
@@ -247,8 +248,10 @@ def run_framework(args, system_paasta_config):
         dry_run=dry_run
     )
     driver = create_driver_with(
-        # TODO: randomize framework name to get one per task?
-        framework_name="paasta %s" % compose_job_id(service, instance),
+        framework_name="paasta-remote %s %s" % (
+            compose_job_id(service, instance),
+            datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+        ),
         scheduler=scheduler,
         system_paasta_config=system_paasta_config,
         implicit_acks=True
