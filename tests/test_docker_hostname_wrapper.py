@@ -99,8 +99,15 @@ class TestGenerateHostname(object):
         hostname = docker_hostname_wrapper.generate_hostname(
             'reallllllllllllllylooooooooooooooong',
             'reallyreallylongidsssssssssssssssssssssssss')
-        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidsssssssss'
-        assert len(hostname) == 64
+        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidssssssss'
+        assert len(hostname) == 63
+
+    def test_symbols(self):
+        hostname = docker_hostname_wrapper.generate_hostname(
+            'first.part.matters',
+            'chronos:can_do!s0me weird-stuff')
+        assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
+
 
 
 @pytest.mark.parametrize('input_args,expected_args', [
@@ -155,7 +162,7 @@ class TestMain(object):
                 'docker',
                 'docker',
                 'run',
-                '--hostname=myhostname-ct:1487804100000:0:thirdparty_feeds',
+                '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
                 '--env=MESOS_TASK_ID=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
 
     def test_env_not_present(self, mock_execlp):

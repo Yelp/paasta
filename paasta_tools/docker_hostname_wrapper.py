@@ -19,7 +19,7 @@ import sys
 
 
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
-MAX_HOSTNAME_LENGTH = 64
+MAX_HOSTNAME_LENGTH = 63
 
 
 def parse_env_args(args):
@@ -61,11 +61,14 @@ def already_has_hostname(args):
 
 def generate_hostname(fqdn, mesos_task_id):
     host_hostname = fqdn.partition('.')[0]
-    task_id_no_spaces = mesos_task_id.partition(' ')[0]  # Chronos has spaces in MESOS_TASK_ID
-    task_id = task_id_no_spaces.rpartition('.')[2]
+    task_id = mesos_task_id.rpartition('.')[2]
 
     hostname = host_hostname + '-' + task_id
-    return hostname[:MAX_HOSTNAME_LENGTH]
+
+    # hostnames can only contain alphanumerics and dashes and must be no more
+    # than 63 characters
+    hostname = re.sub('[^a-zA-Z0-9-]+', '-', hostname)[:MAX_HOSTNAME_LENGTH]
+    return hostname
 
 
 def add_hostname(args, hostname):
