@@ -474,7 +474,7 @@ class MarathonDeployStatus:
 
     @classmethod
     def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
+        for k, v in vars(cls).items():
             if v == val:
                 return k
 
@@ -714,7 +714,7 @@ def get_puppet_services_that_run_here():
 
 def get_puppet_services_running_here_for_nerve(soa_dir):
     puppet_services = []
-    for service, namespaces in sorted(get_puppet_services_that_run_here().iteritems()):
+    for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
         for namespace in namespaces:
             puppet_services.append(
                 _namespaced_get_classic_service_information_for_nerve(

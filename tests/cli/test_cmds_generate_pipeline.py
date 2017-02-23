@@ -29,7 +29,7 @@ from paasta_tools.cli.utils import NoSuchService
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
 def test_paasta_generate_pipeline_service_not_found(
-        mock_guess_service_name, mock_validate_service_name, capsys):
+        mock_guess_service_name, mock_validate_service_name, capfd):
     # paasta generate cannot guess service name and none is provided
 
     mock_guess_service_name.return_value = 'not_a_service'
@@ -40,7 +40,7 @@ def test_paasta_generate_pipeline_service_not_found(
     expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
     assert paasta_generate_pipeline(args) == 1
-    output, _ = capsys.readouterr()
+    output, _ = capfd.readouterr()
     assert output == expected_output
 
 
@@ -172,5 +172,5 @@ def test_validate_git_url_for_fab_repo_invalid():
     bad_git_url = 'git@github.com:foobar'
     with raises(NotImplementedError) as exc:
         validate_git_url_for_fab_repo(bad_git_url)
-        assert 'cannot handle' in exc.value
-        assert bad_git_url in exc.value
+    assert 'cannot currently handle' in str(exc.value)
+    assert bad_git_url in str(exc.value)

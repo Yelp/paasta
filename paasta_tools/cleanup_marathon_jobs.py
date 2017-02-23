@@ -58,7 +58,7 @@ class DontKillEverythingError(Exception):
     pass
 
 
-def parse_args():
+def parse_args(argv):
     parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=DEFAULT_SOA_DIR,
@@ -73,8 +73,7 @@ def parse_args():
                         dest="force", default=False,
                         help="Force the cleanup if we are above the "
                              "kill_threshold")
-    args = parser.parse_args()
-    return args
+    return parser.parse_args(argv)
 
 
 def delete_app(app_id, client, soa_dir):
@@ -178,8 +177,8 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
         )
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     soa_dir = args.soa_dir
     kill_threshold = args.kill_threshold
     force = args.force

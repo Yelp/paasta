@@ -57,7 +57,7 @@ def check_exit_code(context, expected_exit_code):
 
 @when('we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')
 def old_jobs_leftover(context, job_count, job_name):
-    for i in xrange(job_count):
+    for i in range(job_count):
         job_definition = copy.deepcopy(context.jobs[job_name])
         # modify the name by replacing the last character in the config hash
         modified_name = "%s%s" % (job_definition['name'][:-1], i)

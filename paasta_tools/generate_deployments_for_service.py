@@ -99,7 +99,7 @@ def get_latest_deployment_tag(refs, deploy_group):
     most_recent_dtime = None
     most_recent_ref = None
     most_recent_sha = None
-    pattern = re.compile("^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$" % deploy_group)
+    pattern = re.compile('^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$' % deploy_group)
 
     for ref_name, sha in refs.items():
         match = pattern.match(ref_name)

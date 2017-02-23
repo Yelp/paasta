@@ -53,7 +53,7 @@ def test_parse_range():
         (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200)
     ]
 
-    computed_ranges = map(parse_range, range_data)
+    computed_ranges = [parse_range(x) for x in range_data]
     assert computed_ranges == expected_ranges
 
 

@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
-import contextlib
 from socket import gaierror
 
 import mock
@@ -387,15 +386,13 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
 def test_execute_chronos_rerun_on_remote_master(test_case):
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    with contextlib.nested(
-        patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True),
-        patch('paasta_tools.cli.utils.find_connectable_master', autospec=True),
-        patch('paasta_tools.cli.utils.run_chronos_rerun', autospec=True),
-    ) as (
-        mock_calculate_remote_masters,
-        mock_find_connectable_master,
-        mock_run_chronos_rerun,
-    ):
+    with patch(
+        'paasta_tools.cli.utils.calculate_remote_masters', autospec=True,
+    ) as mock_calculate_remote_masters, patch(
+        'paasta_tools.cli.utils.find_connectable_master', autospec=True,
+    ) as mock_find_connectable_master, patch(
+        'paasta_tools.cli.utils.run_chronos_rerun', autospec=True,
+    ) as mock_run_chronos_rerun:
         (mock_calculate_remote_masters.return_value,
          mock_find_connectable_master.return_value,
          mock_run_chronos_rerun.return_value) = test_case
@@ -573,7 +570,7 @@ def test_get_instance_config_unknown(
             cluster='fake_cluster',
             soa_dir='fake_soa_dir',
         )
-        assert mock_validate_service_instance.call_count == 1
+    assert mock_validate_service_instance.call_count == 1
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)

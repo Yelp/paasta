@@ -22,6 +22,7 @@ import mock
 import pytest
 from dateutil import tz
 
+from paasta_tools.mesos_maintenance import _make_request_payload
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_down
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_draining
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
@@ -276,6 +277,16 @@ def test_build_reservation_payload(
     assert actual == expected
 
 
+def test_make_request_payload():
+    ret = _make_request_payload('slave_id', {'name': 'res+ource'})
+    assert ret == {
+        'slaveId': b'slave_id',
+        'resources': b'{"name": "res%20ource"}',
+    }
+    assert type(ret['slaveId']) is bytes
+    assert type(ret['resources']) is bytes
+
+
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.get_machine_ids', autospec=True)
 def test_build_maintenance_schedule_payload_schedule(
@@ -520,7 +531,10 @@ def test_undrain(
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
 
-@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch(
+    'paasta_tools.mesos_maintenance.build_reservation_payload',
+    autospec=True, return_value={'name': 'payload'},
+)
 @mock.patch('paasta_tools.mesos_maintenance.reserve_api', autospec=True)
 def test_reserve(
     mock_reserve_api,
@@ -539,7 +553,10 @@ def test_reserve(
     assert mock_reserve_api.return_value.call_count == 1
 
 
-@mock.patch('paasta_tools.mesos_maintenance.build_reservation_payload', autospec=True)
+@mock.patch(
+    'paasta_tools.mesos_maintenance.build_reservation_payload',
+    autospec=True, return_value={'name': 'payload'},
+)
 @mock.patch('paasta_tools.mesos_maintenance.unreserve_api', autospec=True)
 def test_unreserve(
     mock_unreserve_api,

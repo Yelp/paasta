@@ -1,8 +1,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import mock
 import pytest
 from mesos.interface import mesos_pb2
@@ -15,14 +13,18 @@ from paasta_tools.native_mesos_scheduler import TASK_RUNNING
 
 
 def test_main():
-    with contextlib.nested(
-        mock.patch('paasta_tools.native_mesos_scheduler.get_paasta_native_jobs_for_cluster',
-                   return_value=[('service1', 'instance1'), ('service2', 'instance2')],
-                   autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.create_driver', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.sleep', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.load_system_paasta_config', autospec=True),
-        mock.patch('paasta_tools.native_mesos_scheduler.PaastaScheduler', autospec=True),
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.get_paasta_native_jobs_for_cluster',
+        return_value=[('service1', 'instance1'), ('service2', 'instance2')],
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.create_driver', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.native_mesos_scheduler.PaastaScheduler', autospec=True,
     ):
         native_mesos_scheduler.main(["--stay-alive-seconds=0"])
 
@@ -59,7 +61,7 @@ class TestPaastaScheduler(object):
         cluster = "cluster"
 
         service_configs = []
-        for force_bounce in xrange(2):
+        for force_bounce in range(2):
             service_configs.append(native_mesos_scheduler.PaastaNativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
@@ -150,9 +152,7 @@ class TestPaastaScheduler(object):
             scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_KILLED))
 
         # Clean up the TestDrainMethod for the rest of this test.
-        for task in list(scheduler.drain_method.downed_task_ids):
-            scheduler.drain_method.stop_draining(mock.Mock(id=task))
-        assert len(scheduler.drain_method.downed_task_ids) == 0
+        assert not list(scheduler.drain_method.downed_task_ids)
 
         # Now scale down old app
         scheduler.service_config.config_dict['instances'] = 2
@@ -208,7 +208,7 @@ class TestPaastaScheduler(object):
                 assert resource.ranges.range[0].end == 12345
                 break
         else:
-            raise Exception("never saw a ports resource")
+            raise AssertionError("never saw a ports resource")
 
 
 class TestPaastaNativeServiceConfig(object):
@@ -268,8 +268,10 @@ class TestPaastaNativeServiceConfig(object):
                 assert resource.scalar.value == 0.1
             elif resource.name == "mem":
                 assert resource.scalar.value == 50
-            elif resource.name == "port":
+            elif resource.name == 'ports':
                 pass
+            else:
+                raise AssertionError('Unreachable: {}'.format(resource.name))
 
         assert task.name.startswith("service_name.instance_name.gitbusybox.config")
 
@@ -339,21 +341,19 @@ def test_get_paasta_native_services_running_here_for_nerve():
                    long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
     expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666}),
                 ('no_docstrings.dos', {'binary': 1, 'port': 2222, 'proxy_port': 6666})]
-    with contextlib.nested(
-        mock.patch('paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-                   autospec=True,
-                   return_value=fake_marathon_services),
-        mock.patch('paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
-                   autospec=True,
-                   side_effect=lambda *args, **kwargs: registrations.pop()),
-        mock.patch('paasta_tools.native_mesos_scheduler.load_service_namespace_config',
-                   autospec=True,
-                   side_effect=lambda *args, **kwargs: nerve_dicts.pop()),
-    ) as (
-        pnsrh_patch,
-        get_namespace_patch,
-        read_ns_config_patch,
-    ):
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=fake_marathon_services
+    ) as pnsrh_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        autospec=True,
+        side_effect=lambda *args, **kwargs: registrations.pop()
+    ) as get_namespace_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
+        autospec=True,
+        side_effect=lambda *args, **kwargs: nerve_dicts.pop()
+    ) as read_ns_config_patch:
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -384,21 +384,19 @@ def test_get_paasta_native_services_running_here_for_nerve_multiple_namespaces()
                 ('no_test.dos', {'port': 1111, 'proxy_port': 6667}),
                 ('no_test.tres', {'port': 1111, 'proxy_port': 6668}),
                 ('no_docstrings.quatro', {'port': 2222, 'proxy_port': 6669})]
-    with contextlib.nested(
-        mock.patch('paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-                   autospec=True,
-                   return_value=fake_marathon_services),
-        mock.patch('paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
-                   autospec=True,
-                   side_effect=lambda *args, **kwargs: namespaces.pop()),
-        mock.patch('paasta_tools.native_mesos_scheduler.load_service_namespace_config',
-                   autospec=True,
-                   side_effect=lambda service, namespace, soa_dir: nerve_dicts.pop((service, namespace))),
-    ) as (
-        pnsrh_patch,
-        get_namespace_patch,
-        read_ns_config_patch,
-    ):
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=fake_marathon_services
+    ) as pnsrh_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        autospec=True,
+        side_effect=lambda *args, **kwargs: namespaces.pop()
+    ) as get_namespace_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
+        autospec=True,
+        side_effect=lambda service, namespace, soa_dir: nerve_dicts.pop((service, namespace))
+    ) as read_ns_config_patch:
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -424,21 +422,19 @@ def test_get_paasta_native_services_running_here_for_nerve_when_not_in_smartstac
     nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1}),
                    long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
     expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666})]
-    with contextlib.nested(
-        mock.patch('paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-                   autospec=True,
-                   return_value=fake_marathon_services),
-        mock.patch('paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
-                   autospec=True,
-                   side_effect=lambda *args, **kwargs: registrations.pop()),
-        mock.patch('paasta_tools.native_mesos_scheduler.load_service_namespace_config',
-                   autospec=True,
-                   side_effect=lambda *args, **kwargs: nerve_dicts.pop()),
-    ) as (
-        pnsrh_patch,
-        get_namespace_patch,
-        read_ns_config_patch,
-    ):
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=fake_marathon_services
+    ) as pnsrh_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        autospec=True,
+        side_effect=lambda *args, **kwargs: registrations.pop()
+    ) as get_namespace_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
+        autospec=True,
+        side_effect=lambda *args, **kwargs: nerve_dicts.pop()
+    ) as read_ns_config_patch:
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -453,19 +449,13 @@ def test_get_paasta_native_services_running_here_for_nerve_when_not_in_smartstac
 def test_get_paasta_native_services_running_here_for_nerve_when_get_cluster_raises_custom_exception():
     cluster = None
     soa_dir = 'the_sound_of_music'
-    with contextlib.nested(
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
-            autospec=True,
-        ),
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-            autospec=True,
-            return_value=[],
-        ),
-    ) as (
-        load_system_paasta_config_patch,
-        paasta_native_services_running_here_patch,
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
+        autospec=True,
+    ) as load_system_paasta_config_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=[],
     ):
         load_system_paasta_config_patch.return_value.get_cluster \
             = mock.Mock(side_effect=native_mesos_scheduler.PaastaNotConfiguredError)
@@ -476,19 +466,13 @@ def test_get_paasta_native_services_running_here_for_nerve_when_get_cluster_rais
 def test_get_paasta_native_services_running_here_for_nerve_when_paasta_not_configured():
     cluster = None
     soa_dir = 'the_sound_of_music'
-    with contextlib.nested(
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
-            autospec=True,
-        ),
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-            autospec=True,
-            return_value=[],
-        ),
-    ) as (
-        load_system_paasta_config_patch,
-        paasta_native_services_running_here_patch,
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
+        autospec=True,
+    ) as load_system_paasta_config_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=[],
     ):
         load_system_paasta_config_patch.return_value.get_cluster \
             = mock.Mock(side_effect=native_mesos_scheduler.PaastaNotConfiguredError)
@@ -499,19 +483,13 @@ def test_get_paasta_native_services_running_here_for_nerve_when_paasta_not_confi
 def test_get_paasta_native_services_running_here_for_nerve_when_get_cluster_raises_other_exception():
     cluster = None
     soa_dir = 'the_sound_of_music'
-    with contextlib.nested(
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
-            autospec=True,
-        ),
-        mock.patch(
-            'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
-            autospec=True,
-            return_value=[],
-        ),
-    ) as (
-        load_system_paasta_config_patch,
-        paasta_native_services_running_here_patch,
+    with mock.patch(
+        'paasta_tools.native_mesos_scheduler.load_system_paasta_config',
+        autospec=True,
+    ) as load_system_paasta_config_patch, mock.patch(
+        'paasta_tools.native_mesos_scheduler.paasta_native_services_running_here',
+        autospec=True,
+        return_value=[],
     ):
         load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(side_effect=Exception)
         with pytest.raises(Exception):

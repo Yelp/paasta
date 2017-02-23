@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 import inspect
 
+import mock
 from mock import Mock
 from mock import patch
 
@@ -182,32 +183,35 @@ def test_failing_disk_health():
     assert "CRITICAL: Less than 10% disk available. (Currently using 97.66%)" in failure_output
 
 
-def assert_cpu_health_mesos_reports_zero():
+def test_cpu_health_mesos_reports_zero():
     mesos_metrics = {
         'master/cpus_total': 0,
         'master/cpus_used': 1,
     }
-    failure_output, failure_health = metastatus_lib.assert_cpu_health(mesos_metrics)
+    fake_mesos_state = {'slaves': []}
+    failure_output, failure_health = metastatus_lib.assert_cpu_health(mesos_metrics, fake_mesos_state)
     assert failure_output == "Error reading total available cpu from mesos!"
     assert failure_health is False
 
 
-def assert_memory_health_mesos_reports_zero():
+def test_memory_health_mesos_reports_zero():
     mesos_metrics = {
         'master/mem_total': 0,
         'master/mem_used': 1,
     }
-    failure_output, failure_health = metastatus_lib.assert_memory_health(mesos_metrics)
+    fake_mesos_state = {'slaves': []}
+    failure_output, failure_health = metastatus_lib.assert_memory_health(mesos_metrics, fake_mesos_state)
     assert failure_output == "Error reading total available memory from mesos!"
     assert failure_health is False
 
 
-def assert_disk_health_mesos_reports_zero():
+def test_disk_health_mesos_reports_zero():
     mesos_metrics = {
         'master/disk_total': 0,
         'master/disk_used': 1,
     }
-    failure_output, failure_health = metastatus_lib.assert_disk_health(mesos_metrics)
+    fake_mesos_state = {'slaves': []}
+    failure_output, failure_health = metastatus_lib.assert_disk_health(mesos_metrics, fake_mesos_state)
     assert failure_output == "Error reading total available disk from mesos!"
     assert failure_health is False
 
@@ -231,8 +235,10 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = metastatus_lib.assert_no_duplicate_frameworks(state)
 
-    expected_output = "\n".join(["Frameworks:"] +
-                                map(lambda x: '    Framework: %s count: 1' % x['name'], state['frameworks']))
+    expected_output = "\n".join(
+        ["Frameworks:"] +
+        ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']]
+    )
     assert output == expected_output
     assert ok
 
@@ -259,7 +265,7 @@ def test_duplicate_frameworks():
     assert not ok
 
 
-def assert_connected_frameworks():
+def test_connected_frameworks():
     metrics = {
         'master/frameworks_connected': 2,
     }
@@ -268,11 +274,11 @@ def assert_connected_frameworks():
     assert "Connected Frameworks: expected: 2 actual: 2" in hcr.message
 
 
-def assert_disconnected_frameworks():
+def test_disconnected_frameworks():
     metrics = {
         'master/frameworks_disconnected': 1
     }
-    hcr = metastatus_lib.assert_connected_frameworks(metrics)
+    hcr = metastatus_lib.assert_disconnected_frameworks(metrics)
     assert not hcr.healthy
     assert "Disconnected Frameworks: expected: 0 actual: 1" in hcr.message
 
@@ -595,7 +601,7 @@ def test_get_resource_utilization_by_grouping(
         'slaves': [{}]
     }
     actual = metastatus_lib.get_resource_utilization_by_grouping(
-        grouping_func=lambda slave: slave['attributes']['habitat'],
+        grouping_func=mock.sentinel.grouping_func,
         mesos_state=state,
     )
     mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)

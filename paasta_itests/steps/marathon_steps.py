@@ -62,7 +62,7 @@ def marathon_services_running_here_works(context):
 @when('the task has started')
 def when_the_task_has_started(context):
     # 120 * 0.5 = 60 seconds
-    for _ in xrange(120):
+    for _ in range(120):
         app = context.marathon_client.get_app(APP_ID)
         happy_count = app.tasks_running
         if happy_count >= 3:

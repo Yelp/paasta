@@ -43,7 +43,7 @@ setup(
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
-        'dulwich == 0.10.0',
+        'dulwich',
         'ephemeral-port-reserve >= 1.0.1',
         'futures',
         'gevent == 1.1.1',
