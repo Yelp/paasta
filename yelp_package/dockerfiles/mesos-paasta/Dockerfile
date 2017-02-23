@@ -5,6 +5,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 RUN mkdir -p /var/log/paasta_logs 
 RUN mkdir /var/run/sshd
 ADD ./yelp_package/dockerfiles/mesos-paasta/cron.d /etc/cron.d
+RUN chmod -R 600 /etc/cron.d
 RUN mkdir -p /nail/etc
 RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
