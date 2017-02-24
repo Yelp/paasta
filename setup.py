@@ -109,6 +109,7 @@ setup(
             'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
             'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
             'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
+            'paasta_docker_wrapper=paasta_tools.docker_wrapper:main',
         ],
         'paste.app_factory': [
             'paasta-api-config=paasta_tools.api.api:make_app'
