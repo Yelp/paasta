@@ -8,6 +8,15 @@ Feature: setup_marathon_job can create a "complete" app
      Then we should see it in the list of apps
      Then we can run get_app
 
+  Scenario: duplicate create app does not fail with conflict
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we create a marathon app called "test-service.main" with 1 instance(s)
+     Then we should see it in the list of apps
+     Then we can run get_app
+     When we create a marathon app called "test-service.main" with 1 instance(s) with no apps found running
+
   Scenario: marathon apps can be scaled up
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
