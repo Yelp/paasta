@@ -25,6 +25,7 @@ import chronos
 import dateutil
 import isodate
 import service_configuration_lib
+from croniter import croniter
 from crontab import CronSlices
 from six.moves.urllib_parse import urlsplit
 
@@ -256,6 +257,18 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_schedule(self):
         return self.config_dict.get('schedule')
+
+    def get_schedule_interval_in_seconds(self):
+        schedule = self.get_schedule()
+        if CronSlices.is_valid(schedule):
+            c = croniter(schedule)
+            return c.get_next() - c.get_prev()
+        else:
+            try:
+                _, _, interval = self.get_schedule().split('/')
+                return int(float(isodate.parse_duration(interval).total_seconds()))
+            except (isodate.ISO8601Error, ValueError):
+                return None
 
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
