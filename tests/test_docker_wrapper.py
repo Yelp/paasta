@@ -108,7 +108,6 @@ class TestGenerateHostname(object):
         assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
 
 
-
 @pytest.mark.parametrize('input_args,expected_args', [
     (  # do not add it for non-run commands
         ['docker', 'ps'],
