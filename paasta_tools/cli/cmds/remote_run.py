@@ -20,9 +20,11 @@ import os
 import shlex
 import service_configuration_lib
 import re
+import uuid
 from datetime import datetime
 
 sys.path.insert(0, '/usr/lib/python2.7/site-packages/mesos')
+import mesos
 from mesos.interface import Scheduler
 from mesos.interface import mesos_pb2
 
@@ -52,6 +54,8 @@ class PaastaAdhocScheduler(Scheduler):
         self.service_config = service_config
         self.system_paasta_config = system_paasta_config
         self.dry_run = dry_run
+        self.launched = False
+        self.status = None
 
 
     def registered(self, driver, framework_id, master_info):
@@ -76,34 +80,32 @@ class PaastaAdhocScheduler(Scheduler):
             self.status = 0
             driver.stop()
         else:
-            # driver.launchTasks(offer.id, tasks)
-            paasta_print("THIS IS NOT A DRILL!"
-                         "Would have launched: {task}".format(task=task))
-            self.status = 0
-            driver.stop()
+            driver.launchTasks(offer.id, [task])
 
 
     def statusUpdate(self, driver, update):
-        paasta_print("Mesos Scheduler: task %s is in state %d", update.task_id.value, update.state)
+        paasta_print("Mesos Scheduler: task %s is in state %d" % (update.task_id.value, update.state))
 
         if update.state == mesos_pb2.TASK_FINISHED:
             self.status = 0
-        elif update.state == mesos_pb2.TASK_FAILED:
+        elif update.state == mesos_pb2.TASK_FAILED or update.state == mesos_pb2.TASK_ERROR:
+            paasta_print("Task failed: %s" % update.message)
             self.status = 1
         elif update.state == mesos_pb2.TASK_LOST or update.state == mesos_pb2.TASK_KILLED:
-            self.launched = False
+            self.status = 1
+            # self.launched = False
 
         if self.status != None:
-            paasta_print("Task %s is finished.", update.task_id.value)
-            for stream in mesos.cli.cluster.files(flist=['stdout','stderr'], fltr=update.task_id.value):
-                print("Printing %s for task %s" % (stream[0].path, update.task_id.value))
-                for line in stream[0].readlines():
-                    print line
+            paasta_print("Task %s is finished." % update.task_id.value)
+            # for stream in mesos.cli.cluster.files(flist=['stdout','stderr'], fltr=update.task_id.value):
+            #     print("Printing %s for task %s" % (stream[0].path, update.task_id.value))
+            #     for line in stream[0].readlines():
+            #         print line
             driver.stop()
 
 
     def new_task(self, offer):
-        task = self.service_config.base_task(self.system_paasta_config)
+        task = self.service_config.base_task(self.system_paasta_config, portMappings=False)
         id = uuid.uuid4()
         task.task_id.value = str(id)
         task.slave_id.value = offer.slave_id.value
@@ -224,7 +226,7 @@ def run_framework(args, system_paasta_config):
     soa_dir = args.yelpsoa_config_root
     dry_run = args.dry_run
     instance = args.instance
-    command = shlex.split(args.cmd, posix=False) if args.cmd else None
+    command = args.cmd
 
     if instance is None:
         instance_type = 'adhoc'

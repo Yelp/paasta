@@ -10,4 +10,6 @@ ADD ./requirements.txt /paasta/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install --upgrade virtualenv
 RUN pip install -r /paasta/requirements-dev.txt
+RUN wget http://downloads.mesosphere.io/master/ubuntu/14.04/mesos-0.27.0-py2.7-linux-x86_64.egg
+RUN easy_install mesos-0.27.0-py2.7-linux-x86_64.egg
 ADD ./yelp_package/dockerfiles/playground/start.sh /start.sh

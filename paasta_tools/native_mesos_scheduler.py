@@ -499,7 +499,7 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             spacer=MESOS_TASK_SPACER,
         )
 
-    def base_task(self, system_paasta_config):
+    def base_task(self, system_paasta_config, portMappings=True):
         """Return a TaskInfo protobuf with all the fields corresponding to the configuration filled in. Does not
         include task.slave_id or a task.id; those need to be computed separately."""
         task = mesos_pb2.TaskInfo()
@@ -521,11 +521,6 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
             v.container_path = volume['containerPath']
             v.host_path = volume['hostPath']
 
-        pm = task.container.docker.port_mappings.add()
-        pm.container_port = 8888
-        pm.host_port = 0  # will be filled in by start_task()
-        pm.protocol = "tcp"
-
         task.command.value = self.get_cmd()
         cpus = task.resources.add()
         cpus.name = "cpus"
@@ -535,12 +530,19 @@ class PaastaNativeServiceConfig(LongRunningServiceConfig):
         mem.name = "mem"
         mem.type = mesos_pb2.Value.SCALAR
         mem.scalar.value = self.get_mem()
-        port = task.resources.add()
-        port.name = "ports"
-        port.type = mesos_pb2.Value.RANGES
-        port.ranges.range.add()
-        port.ranges.range[0].begin = 0  # will be filled in by start_task().
-        port.ranges.range[0].end = 0  # will be filled in by start_task().
+
+        if portMappings:
+            pm = task.container.docker.port_mappings.add()
+            pm.container_port = 8888
+            pm.host_port = 0  # will be filled in by start_task()
+            pm.protocol = "tcp"
+
+            port = task.resources.add()
+            port.name = "ports"
+            port.type = mesos_pb2.Value.RANGES
+            port.ranges.range.add()
+            port.ranges.range[0].begin = 0  # will be filled in by start_task().
+            port.ranges.range[0].end = 0  # will be filled in by start_task().
 
         task.name = self.task_name(task)
 
