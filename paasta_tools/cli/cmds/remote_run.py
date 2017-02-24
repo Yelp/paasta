@@ -89,7 +89,6 @@ class PaastaAdhocScheduler(Scheduler):
         if update.state == mesos_pb2.TASK_FINISHED:
             self.status = 0
         elif update.state == mesos_pb2.TASK_FAILED:
-            # TODO: self.launched = False to retry?
             self.status = 1
         elif update.state == mesos_pb2.TASK_LOST or update.state == mesos_pb2.TASK_KILLED:
             self.launched = False
@@ -97,10 +96,10 @@ class PaastaAdhocScheduler(Scheduler):
         if self.status != None:
             paasta_print("Task %s is finished.", update.task_id.value)
             for stream in mesos.cli.cluster.files(flist=['stdout','stderr'], fltr=update.task_id.value):
-                print "Printing %s for task %s" % (stream[0].path, update.task_id.value)
+                print("Printing %s for task %s" % (stream[0].path, update.task_id.value))
                 for line in stream[0].readlines():
                     print line
-            driver.stop() # is this the right place to stop the driver?
+            driver.stop()
 
 
     def new_task(self, offer):
