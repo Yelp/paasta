@@ -15,6 +15,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import sys
+import uuid
+
 sys.path.insert(0, '/usr/lib/python2.7/site-packages/mesos')
 import mesos
 from mesos.interface import Scheduler
@@ -43,9 +46,6 @@ class PaastaAdhocScheduler(Scheduler):
 
         paasta_print("Recieved resource offers: {}".format([o.id.value for o in offers]))
         offer = offers[0]
-        driver.suppressOffers()
-        for i in offers[1:]:
-            driver.declineOffer(offers[i].id)
         task = self.new_task(offer)
         paasta_print("Launching task {task} "
                      "using offer {offer}.".format(task=task.task_id.value,
@@ -62,7 +62,9 @@ class PaastaAdhocScheduler(Scheduler):
 
 
     def statusUpdate(self, driver, update):
-        paasta_print("Mesos Scheduler: task %s is in state %d" % (update.task_id.value, update.state))
+        paasta_print(
+            "Mesos Scheduler: task %s is in state %d" %
+                (update.task_id.value, update.state))
 
         if update.state == mesos_pb2.TASK_FINISHED:
             self.status = 0

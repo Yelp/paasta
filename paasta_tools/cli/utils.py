@@ -573,7 +573,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, shell=True, join=True, err_code=-1):
+                  timeout=None, shell=True, join=True, dry=False, err_code=-1):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -605,7 +605,10 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     else:
         ssh_parts.extend([cmd_parts])
 
-    return _run(ssh_parts, timeout=timeout)
+    if dry:
+        return (0, "Would have run: %s" % ssh_parts)
+    else:
+        return _run(ssh_parts, timeout=timeout)
 
 
 def lazy_choices_completer(list_func):

@@ -16,12 +16,12 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import service_configuration_lib
+
+from datetime import datetime
 
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_instances
-from paasta_tools.cli.utils import list_clusters
-from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.cmds.remote_run import add_remote_run_args
 
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -34,58 +34,8 @@ from paasta_tools.utils import validate_service_instance
 from paasta_tools.native_mesos_scheduler import create_driver_with
 from paasta_tools.native_mesos_scheduler import compose_job_id
 from paasta_tools.native_mesos_scheduler import load_paasta_native_job_config
-from paasta_tools.frameworks.adhoc_scheduler import PaastaAdhocScheduler
 
-def add_remote_run_args(parser):
-    parser.add_argument(
-        '-s', '--service',
-        help='The name of the service you wish to inspect',
-    ).completer = lazy_choices_completer(list_services)
-    parser.add_argument(
-        '-c', '--cluster',
-        help=("The name of the cluster you wish to run your task on. "
-              "If omitted, uses the default cluster defined in the paasta remote-run configs"),
-    ).completer = lazy_choices_completer(list_clusters)
-    parser.add_argument(
-        '-y', '--yelpsoa-config-root',
-        dest='yelpsoa_config_root',
-        help='A directory from which yelpsoa-configs should be read from',
-        default=DEFAULT_SOA_DIR,
-    )
-    parser.add_argument(
-        '--json-dict',
-        help='When running dry run, output the arguments as a json dict',
-        action='store_true',
-        dest='dry_run_json_dict',
-    )
-    parser.add_argument(
-        '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
-        required=False,
-        default=None,
-    )
-    parser.add_argument(
-        '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
-        required=False,
-        default=None,
-    ).completer = lazy_choices_completer(list_instances)
-    parser.add_argument(
-        '-v', '--verbose',
-        help='Show Docker commands output',
-        action='store_true',
-        required=False,
-        default=True,
-    )
-    parser.add_argument(
-        '-d', '--dry-run',
-        help='Don\'t launch the task',
-        action='store_true',
-        required=False,
-        default=False,
-    )
+from paasta_tools.frameworks.adhoc_scheduler import PaastaAdhocScheduler
 
 
 def parse_args(argv):
@@ -115,7 +65,7 @@ def make_config_reader(instance_type):
     return reader
 
 
-def run_framework(argv=None):
+def main(argv=None):
     args = parse_args(argv)
     try:
         system_paasta_config = load_system_paasta_config()
