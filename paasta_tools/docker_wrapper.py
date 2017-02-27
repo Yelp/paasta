@@ -8,6 +8,11 @@ underlying docker command.
 If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
+
+Additionally this wrapper will look for the environment variable
+PIN_TO_NUMA_NODE which contains the physical CPU and memory to restrict the
+container to. If the system is NUMA enabled, docker will be called with the
+arguments cpuset-cpus and cpuset-mems.
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals
@@ -84,31 +89,105 @@ def generate_hostname(fqdn, mesos_task_id):
     return hostname
 
 
-def add_hostname(args, hostname):
-    # Add --hostname argument immediately after 'run' command if it exists
+def add_argument(args, argument):
+    # Add an argument immediately after 'run' command if it exists
     args = list(args)
-
     try:
         run_index = args.index('run')
     except ValueError:
         pass
     else:
-        args.insert(run_index + 1, '--hostname=' + hostname)
-
+        args.insert(run_index + 1, argument)
     return args
+
+
+def get_cpumap():
+    # Return a dict containing the core numbers per physical CPU
+    core = 0
+    cpumap = {}
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                m = re.match('physical\sid.*(\d)', line)
+                if m:
+                    cpuid = int(m.group(1))
+                    if cpuid not in cpumap:
+                        cpumap[cpuid] = []
+                    cpumap[cpuid].append(core)
+                    core += 1
+    except IOError:
+        pass
+    return cpumap
+
+
+def is_numa_enabled():
+    return os.path.exists('/proc/1/numa_maps')
+
+
+def arg_collision(new_args, current_args):
+    # Returns True if one of the new arguments is already in the
+    # current argument list.
+    cur_arg_keys = []
+    for c in current_args:
+        cur_arg_keys.append(c.split('=')[0])
+    return bool(set(new_args).intersection(set(cur_arg_keys)))
+
+
+def validate_int(i):
+    try:
+        return int(i)
+    except (ValueError, TypeError):
+        return None
+
+
+def validate_float(f):
+    # Ensure we return a float. If input is invalid we return 0.0
+    try:
+        return float(f)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def generate_cpuset_args(env_args, pinned_numa_node):
+    required_cores = validate_float(env_args.get('MARATHON_APP_RESOURCE_CPUS'))
+    cpumap = get_cpumap()
+    result = []
+
+    # No need to set up docker cpuset options if one of the above fails:
+    if (
+        # NUMA is supported by the system
+        is_numa_enabled() and
+        # Machine has multiple CPUs
+        len(cpumap) > 1 and
+        # Requested numa node exists
+        pinned_numa_node in cpumap and
+        # The numa node has more cores than the container requires
+        len(cpumap[pinned_numa_node]) >= required_cores
+    ):
+        result.append('--cpuset-cpus=' + ','.join(str(c) for c in cpumap[pinned_numa_node]))
+        result.append('--cpuset-mems=' + str(pinned_numa_node))
+
+    return result
 
 
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
+    # Get Docker env variables
     env_args = parse_env_args(argv)
-    fqdn = socket.getfqdn()
 
     # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
     mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
-    if mesos_task_id and can_add_hostname(argv):
-        hostname = generate_hostname(fqdn, mesos_task_id)
-        argv = add_hostname(argv, hostname)
+    # Check if we require this container to stick to a given NUMA node
+    pinned_numa_node = validate_int(env_args.get('PIN_TO_NUMA_NODE'))
+
+    if pinned_numa_node and not arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv):
+        for c in generate_cpuset_args(env_args, pinned_numa_node):
+            argv = add_argument(argv, c)
+
+    if mesos_task_id and not already_has_hostname(argv):
+        hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
+        argv = add_argument(argv, '--hostname=' + hostname)
 
     os.execlp('docker', 'docker', *argv[1:])

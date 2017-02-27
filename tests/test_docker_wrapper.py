@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import socket
+from contextlib import contextmanager
 
 import mock
 import pytest
@@ -129,8 +130,8 @@ class TestGenerateHostname(object):
         ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t']
     )
 ])
-def test_add_hostname(input_args, expected_args):
-    args = docker_wrapper.add_hostname(input_args, 'myhostname')
+def test_add_argument(input_args, expected_args):
+    args = docker_wrapper.add_argument(input_args, '--hostname=myhostname')
     assert args == expected_args
 
 
@@ -212,3 +213,273 @@ class TestMain(object):
             'docker',
             'ps',
             '--env=MESOS_TASK_ID=my-mesos-task-id')]
+
+    def test_numa_string_value(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE="true"',
+        ]
+        docker_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE="true"')]
+
+    def test_numa_bogus_node(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=True',
+        ]
+        docker_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=True')]
+
+    def test_numa_unsupported(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=False,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+        ]
+
+    def test_marathon_bogus_value(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=blah',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=blah',
+        )]
+
+    def test_numa_OK(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        )]
+
+    def test_cpuset_already_set(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--cpuset-cpus=0,2',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-cpus=0,2',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        )]
+
+    def test_numa_req_exact_amount_of_cores(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+        )]
+
+    def test_numa_req_too_many_cores(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=3.0',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=3.0',
+        )]
+
+    def test_numa_enabled_no_marathon(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+        )]
+
+    def test_numa_wrong_cpu(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=2',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=2',
+        )]
+
+    def test_numa_single_cpu(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 0',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+        )]
+
+    @contextmanager
+    def _patch_docker_wrapper_dependencies(self, is_numa_enabled, cpu_info):
+        m = mock.mock_open()
+        m.return_value.__iter__.return_value = cpu_info
+        with mock.patch.object(
+            docker_wrapper,
+            'is_numa_enabled',
+            return_value=is_numa_enabled,
+        ), mock.patch.object(docker_wrapper, 'open', new=m):
+            yield
