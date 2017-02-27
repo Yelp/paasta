@@ -63,8 +63,15 @@ class PaastaAdhocScheduler(Scheduler):
 
     def statusUpdate(self, driver, update):
         paasta_print(
-            "Mesos Scheduler: task %s is in state %d" %
-                (update.task_id.value, update.state))
+            "Update for task id %s: reason: %s state: %s message: %s slave_id: %s executor_id: %s" % (
+                update.task_id.value,
+                str(update.reason),
+                update.state,
+                update.message,
+                update.slave_id.value,
+                update.executor_id.value
+            )
+        )
 
         if update.state == mesos_pb2.TASK_FINISHED:
             self.status = 0
