@@ -574,23 +574,21 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
                   timeout=None, shell=True, join=True, err_code=-1):
-    """Find connectable master for `cluster` and `system_paasta_config` args and
-    invoke command from `*args`, wrapping it in ssh call.
+    """Find connectable master for :cluster: and :system_paasta_config: args and
+    invoke command from :cmd_parts:, wrapping it in ssh call.
 
-    Returns: (exit code, output)
+    :returns (exit code, output)
 
-    Arguments:
-        `cluster`   - cluster to find master in
-        `system_paasta_config`
-                    - system configuration to lookup master data
-        `cmd_parts` - passed into paasta_tools.utils._run as command along with
-                      ssh bits
-        `timeout`   - see paasta_tools.utils._run documentation (default: None)
-        `shell`     - prepend command from `*args` with 'sh -c' (default: True)
-        `join`      - join `*args` on ' ' when passing it to
-                      paasta_tools.utils._run (default: True)
-        `err_code`  - code to return along with error message when something goes
-                      wrong (default: -1)
+    :param cluster: cluster to find master in
+    :param system_paasta_config: system configuration to lookup master data
+    :param cmd_parts: passed into paasta_tools.utils._run as command along with
+        ssh bits
+    :param timeout: see paasta_tools.utils._run documentation (default: None)
+    :param shell: prepend command from :cmd_parts: with 'sh -c' (default: True)
+    :param join: join :cmd_parts: on ' ' when passing it to
+        paasta_tools.utils._run (default: True)
+    :param err_code: code to return along with error message when something goes
+        wrong (default: -1)
     """
     try:
         master = connectable_master(cluster, system_paasta_config)
