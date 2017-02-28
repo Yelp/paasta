@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 import logging
 import os
 import time
+from collections import namedtuple
 from math import ceil
 from math import floor
 
@@ -37,6 +38,15 @@ from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
 
+AutoscalingInfo = namedtuple("AutoscalingInfo",
+                             ["resource_id",
+                              "pool",
+                              "state",
+                              "current",
+                              "target",
+                              "min_capacity",
+                              "max_capacity",
+                              "instances"])
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
 DEFAULT_DRAIN_TIMEOUT = 600  # seconds
@@ -373,6 +383,10 @@ class SpotAutoscaler(ClusterAutoscaler):
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
 
+    @property
+    def exists(self):
+        return True if self.sfr else False
+
     def get_sfr(self, spotfleet_request_id, region=None):
         ec2_client = boto3.client('ec2', region_name=region)
         try:
@@ -445,8 +459,12 @@ class SpotAutoscaler(ClusterAutoscaler):
         target_capacity = self.sfr['SpotFleetRequestConfig']['TargetCapacity']
         return target_capacity > fulfilled_capacity
 
+    @property
+    def current_capacity(self):
+        return float(self.sfr['SpotFleetRequestConfig']['FulfilledCapacity'])
+
     def get_spot_fleet_delta(self, error):
-        current_capacity = float(self.sfr['SpotFleetRequestConfig']['FulfilledCapacity'])
+        current_capacity = self.current_capacity
         ideal_capacity = int(ceil((1 + error) * current_capacity))
         self.log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
         new_capacity = int(min(
@@ -529,6 +547,10 @@ class AsgAutoscaler(ClusterAutoscaler):
         if self.asg:
             self.instances = self.asg['Instances']
 
+    @property
+    def exists(self):
+        return True if self.asg else False
+
     def get_asg(self, asg_name, region=None):
         asg_client = boto3.client('autoscaling', region_name=region)
         asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
@@ -565,8 +587,12 @@ class AsgAutoscaler(ClusterAutoscaler):
         target_capacity = self.asg['DesiredCapacity']
         return target_capacity > fulfilled_capacity
 
+    @property
+    def current_capacity(self):
+        return len(self.asg['Instances'])
+
     def get_asg_delta(self, error):
-        current_capacity = len(self.asg['Instances'])
+        current_capacity = self.current_capacity
         if current_capacity == 0:
             new_capacity = int(min(
                 max(1, self.resource['min_capacity']),
@@ -734,3 +760,40 @@ def get_instances_from_ip(ip, instance_descriptions):
     :returns: list of instance description dicts"""
     instances = [instance for instance in instance_descriptions if instance['PrivateIpAddress'] == ip]
     return instances
+
+
+def get_autoscaling_info():
+    header = ("Resource ID",
+              "Pool",
+              "State",
+              "Current Capacity",
+              "Target Capacity",
+              "Min Capacity",
+              "Max Capacity",
+              "No. Instances")
+    table = [header]
+    system_config = load_system_paasta_config()
+    autoscaling_resources = system_config.get_cluster_autoscaling_resources()
+    all_pool_settings = system_config.get_resource_pool_settings()
+    for identifier, resource in autoscaling_resources.items():
+        pool_settings = all_pool_settings.get(resource['pool'], {})
+        scaler = get_scaler(resource['type'])(resource=resource,
+                                              pool_settings=pool_settings,
+                                              config_folder=None,
+                                              dry_run=True)
+        if not scaler.exists:
+            continue
+        try:
+            current_capacity, target_capacity = scaler.metrics_provider()
+        except ClusterAutoscalingError:
+            current_capacity, target_capacity = scaler.current_capacity, "Exception"
+        autoscaling_info = AutoscalingInfo(resource_id=scaler.resource['id'],
+                                           pool=scaler.resource['pool'],
+                                           state="active" if not scaler.is_resource_cancelled() else "cancelled",
+                                           current=str(current_capacity),
+                                           target=str(target_capacity),
+                                           min_capacity=str(scaler.resource['min_capacity']),
+                                           max_capacity=str(scaler.resource['max_capacity']),
+                                           instances=str(len(scaler.instances)))
+        table.append(autoscaling_info)
+    return table
