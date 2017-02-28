@@ -259,7 +259,11 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule')
 
     def get_schedule_interval_in_seconds(self):
+        """Return the job interval in seconds or None if there is no interval"""
         schedule = self.get_schedule()
+        if schedule is None:
+            return None
+
         if CronSlices.is_valid(schedule):
             c = croniter(schedule)
             return c.get_next() - c.get_prev()
