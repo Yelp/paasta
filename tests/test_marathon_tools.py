@@ -2378,6 +2378,11 @@ def test_is_old_task_missing_healthchecks():
                           started_at=datetime.datetime.now())
     assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
 
+    # test missing started at time
+    mock_task = mock.Mock(health_check_results=[],
+                          started_at=None)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+
     # test no health checks
     mock_marathon_app = mock.Mock(health_checks=[])
     mock_get_app = mock.Mock(return_value=mock_marathon_app)
