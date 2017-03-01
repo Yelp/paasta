@@ -86,7 +86,7 @@ def add_hostname(args, hostname):
 
 
 def main(argv=None):
-    argv = argv if argv is not None else sys.argv[1:]
+    argv = argv if argv is not None else sys.argv
 
     env_args = parse_env_args(argv)
     fqdn = socket.getfqdn()
