@@ -383,6 +383,10 @@ class SpotAutoscaler(ClusterAutoscaler):
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
 
+    @property
+    def exists(self):
+        return True if self.sfr else False
+
     def get_sfr(self, spotfleet_request_id, region=None):
         ec2_client = boto3.client('ec2', region_name=region)
         try:
@@ -542,6 +546,10 @@ class AsgAutoscaler(ClusterAutoscaler):
         self.asg = self.get_asg(self.resource['id'], region=self.resource['region'])
         if self.asg:
             self.instances = self.asg['Instances']
+
+    @property
+    def exists(self):
+        return True if self.asg else False
 
     def get_asg(self, asg_name, region=None):
         asg_client = boto3.client('autoscaling', region_name=region)
@@ -773,6 +781,8 @@ def get_autoscaling_info():
                                               pool_settings=pool_settings,
                                               config_folder=None,
                                               dry_run=True)
+        if not scaler.exists:
+            continue
         try:
             current_capacity, target_capacity = scaler.metrics_provider()
         except ClusterAutoscalingError:

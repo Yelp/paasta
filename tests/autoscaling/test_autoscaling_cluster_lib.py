@@ -194,6 +194,17 @@ class TestAsgAutoscaler(unittest.TestCase):
                                                                     False)
             self.autoscaler.instances = []
 
+    def test_exists(self):
+        self.autoscaler.asg = mock.Mock()
+        assert self.autoscaler.exists
+
+        self.autoscaler.asg = None
+        assert not self.autoscaler.exists
+
+    def test_current_capacity(self):
+        self.autoscaler.asg = {'Instances': [mock.Mock()] * 3}
+        assert self.autoscaler.current_capacity == 3
+
     def test_is_asg_cancelled(self):
         self.autoscaler.asg = None
         assert self.autoscaler.is_resource_cancelled()
@@ -403,6 +414,17 @@ class TestSpotAutoscaler(unittest.TestCase):
                                                                      mock_pool_settings,
                                                                      mock_config_folder,
                                                                      False)
+
+    def test_exists(self):
+        self.autoscaler.sfr = mock.Mock()
+        assert self.autoscaler.exists
+
+        self.autoscaler.sfr = None
+        assert not self.autoscaler.exists
+
+    def test_current_capacity(self):
+        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 2}}
+        assert self.autoscaler.current_capacity == 2
 
     def test_get_spot_fleet_instances(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
