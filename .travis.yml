@@ -3,6 +3,7 @@ branches:
     - master
     - /^v[0-9.]+$/
 language: python
+cache: pip
 env:
   - TOXENV=py27
   - TOXENV=py3
