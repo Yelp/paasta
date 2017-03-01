@@ -939,7 +939,7 @@ def is_old_task_missing_healthchecks(task, marathon_client):
     and healthy but marathon has simply decided to stop healthchecking it.
     """
     health_checks = marathon_client.get_app(task.app_id).health_checks
-    if not task.health_check_results and health_checks:
+    if not task.health_check_results and health_checks and task.started_at:
         healthcheck_startup_time = datetime.timedelta(seconds=health_checks[0].grace_period_seconds) + \
             datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)
         is_task_old = task.started_at + healthcheck_startup_time < datetime.datetime.now()

@@ -518,6 +518,21 @@ Basic HTTP and TCP options
       extra_headers:
         X-Mode: ro
 
+ * ``proxied_through``: for specifying a service that will proxy requests
+   transparently. This can be used to, for example, to proxy requests to caching
+   services.
+
+   - The value of this directive needs to be another smartstack-
+   namsespace, for example, ``servicename.main``
+
+   - If the proxy service is down, then smartstack will automatically failover
+   to the default backend
+
+   - Example:
+
+       proxied_through: servicename.main
+
+
 Advertisement/Discovery
 ```````````````````````
 

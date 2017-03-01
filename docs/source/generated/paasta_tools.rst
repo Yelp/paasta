@@ -33,6 +33,7 @@ Submodules
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.deployment_utils
+   paasta_tools.docker_wrapper
    paasta_tools.drain_lib
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
@@ -51,6 +52,7 @@ Submodules
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
+   paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
    paasta_tools.setup_chronos_job

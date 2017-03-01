@@ -87,7 +87,6 @@ def paasta_itest(args):
         component='build',
         service=service,
         loglevel='debug',
-        stream=True,
     )
     if returncode != 0:
         loglines.append(

@@ -444,6 +444,49 @@ class TestChronosTools:
         actual = fake_conf.get_schedule()
         assert actual == fake_schedule
 
+    def test_get_schedule_interval_in_seconds(self):
+        fake_schedule = 'R/2016-10-21T00:30:00Z/P1D'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24  # once a day
+
+    def test_get_schedule_interval_in_seconds_if_crontab_format(self):
+        fake_schedule = '0 2 */2 * *'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24 * 2  # every second day
+
+    def test_get_schedule_interval_in_seconds_if_no_interval(self):
+        fake_schedule = '2016-10-21T00:30:00Z'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
+        assert fake_conf.get_schedule_interval_in_seconds() is None
+
+    def test_get_schedule_interval_in_seconds_if_no_schedule(self):
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_schedule_interval_in_seconds() is None
+
     def test_get_schedule_time_zone(self):
         fake_schedule_time_zone = 'fake_schedule_time_zone'
         fake_conf = chronos_tools.ChronosJobConfig(

@@ -24,6 +24,7 @@ import requests_cache
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
+from paasta_tools import paasta_native_serviceinit
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -125,6 +126,15 @@ def main():
                 )
             elif instance_type == 'chronos':
                 return_code = chronos_serviceinit.perform_command(
+                    command=command,
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    verbose=args.verbose,
+                    soa_dir=args.soa_dir,
+                )
+            elif instance_type == 'paasta_native':
+                return_code = paasta_native_serviceinit.perform_command(
                     command=command,
                     service=service,
                     instance=instance,

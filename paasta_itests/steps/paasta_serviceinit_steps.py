@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import re
 import time
 
 import itest_utils
@@ -163,6 +164,23 @@ def paasta_serviceinit_status_multi_instances(context, service, instances):
     assert exit_code != 0
 
 
+@then('paasta_serviceinit status for the native service "{service_instance}"'
+      ' exits with return code {expected_exit_code:d}')
+def paasta_native_status_returns_healthy(context, service_instance, expected_exit_code):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, context.output = _run(cmd)
+    paasta_print('Got exitcode %s with output:\n%s' % (exit_code, context.output))
+    paasta_print()  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == expected_exit_code
+
+
+@then('the output matches regex "{pattern}"')
+def output_matches_pattern(context, pattern):
+    assert re.search(pattern, context.output, re.MULTILINE)
+
+
 @when('we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
@@ -239,6 +257,13 @@ def wait_launch_tasks(context, job_id, task_count):
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
     itest_utils.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
+
+
+@when('we wait for our native scheduler to launch exactly {task_count:d} tasks')
+def wait_launch_tasks_native(context, task_count):
+    while not context.scheduler.get_happy_tasks(context.scheduler.tasks_with_flags.keys()):
+        paasta_print("waiting for scheduler to have %d tasks; %r" % (task_count, context.scheduler.tasks_with_flags))
+        time.sleep(0.5)
 
 
 @then('"{job_id}" has exactly {task_count:d} requested tasks in marathon')
