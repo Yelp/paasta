@@ -25,7 +25,8 @@ from marathon.exceptions import MarathonError
 
 from paasta_tools import __version__
 from paasta_tools import marathon_tools
-from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info
+from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
+from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
@@ -78,7 +79,7 @@ def main(argv=None):
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % str(e)))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
     mesos_state_status = metastatus_lib.get_mesos_state_status(
@@ -104,7 +105,7 @@ def main(argv=None):
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
         except (MarathonError, InternalServerError, ValueError) as e:
             # catch ValueError until marathon-python/pull/167 is merged and this is handled upstream
-            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at %s!"
+            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at {}!"
                                            "Is the cluster healthy?".format(marathon_config["url"]))))
             sys.exit(2)
     else:
@@ -165,8 +166,14 @@ def main(argv=None):
 
         if args.autoscaling_info:
             print_with_indent("Autoscaling resources:", 2)
-            autoscaling_info = get_autoscaling_info()
-            for line in format_table(autoscaling_info):
+            headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
+            table = reduce(
+                lambda x, y: x + [(y)],
+                get_autoscaling_info_for_all_resources(),
+                [headers]
+            )
+
+            for line in format_table(table):
                 print_with_indent(line, 4)
 
         if args.verbose == 3:

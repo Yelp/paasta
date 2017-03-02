@@ -762,38 +762,40 @@ def get_instances_from_ip(ip, instance_descriptions):
     return instances
 
 
-def get_autoscaling_info():
-    header = ("Resource ID",
-              "Pool",
-              "State",
-              "Current Capacity",
-              "Target Capacity",
-              "Min Capacity",
-              "Max Capacity",
-              "No. Instances")
-    table = [header]
+def get_autoscaling_info_for_all_resources():
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
-    all_pool_settings = system_config.get_resource_pool_settings()
-    for identifier, resource in autoscaling_resources.items():
-        pool_settings = all_pool_settings.get(resource['pool'], {})
-        scaler = get_scaler(resource['type'])(resource=resource,
-                                              pool_settings=pool_settings,
-                                              config_folder=None,
-                                              dry_run=True)
-        if not scaler.exists:
-            continue
-        try:
-            current_capacity, target_capacity = scaler.metrics_provider()
-        except ClusterAutoscalingError:
-            current_capacity, target_capacity = scaler.current_capacity, "Exception"
-        autoscaling_info = AutoscalingInfo(resource_id=scaler.resource['id'],
-                                           pool=scaler.resource['pool'],
-                                           state="active" if not scaler.is_resource_cancelled() else "cancelled",
-                                           current=str(current_capacity),
-                                           target=str(target_capacity),
-                                           min_capacity=str(scaler.resource['min_capacity']),
-                                           max_capacity=str(scaler.resource['max_capacity']),
-                                           instances=str(len(scaler.instances)))
-        table.append(autoscaling_info)
-    return table
+    pool_settings = system_config.get_resource_pool_settings()
+    vals = [
+        autoscaling_info_for_resource(resource, pool_settings)
+        for resource in autoscaling_resources.values()
+    ]
+    return [x for x in vals if x is not None]
+
+
+def autoscaling_info_for_resource(resource, pool_settings):
+    pool_settings.get(resource['pool'], {})
+    scaler_ref = get_scaler(resource['type'])
+    scaler = scaler_ref(
+        resource=resource,
+        pool_settings=pool_settings,
+        config_folder=None,
+        dry_run=True
+    )
+    if not scaler.exists:
+        log.info("no scaler for resource {}. ignoring").format(resource['id'])
+        return None
+    try:
+        current_capacity, target_capacity = scaler.metrics_provider()
+    except ClusterAutoscalingError:
+        current_capacity, target_capacity = scaler.current_capacity, "Exception"
+    return AutoscalingInfo(
+        resource_id=scaler.resource['id'],
+        pool=scaler.resource['pool'],
+        state="active" if not scaler.is_resource_cancelled() else "cancelled",
+        current=str(current_capacity),
+        target=str(target_capacity),
+        min_capacity=str(scaler.resource['min_capacity']),
+        max_capacity=str(scaler.resource['max_capacity']),
+        instances=str(len(scaler.instances))
+    )
