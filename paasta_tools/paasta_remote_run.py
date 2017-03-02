@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import sys
 import service_configuration_lib
 
 from datetime import datetime
@@ -30,12 +31,12 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import validate_service_instance
+from paasta_tools.utils import compose_job_id
 
-from paasta_tools.native_mesos_scheduler import create_driver_with
-from paasta_tools.native_mesos_scheduler import compose_job_id
-from paasta_tools.native_mesos_scheduler import load_paasta_native_job_config
+from paasta_tools.frameworks.native_scheduler import create_driver
+from paasta_tools.frameworks.native_scheduler import read_service_config
 
-from paasta_tools.frameworks.adhoc_scheduler import PaastaAdhocScheduler
+from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 
 
 def parse_args(argv):
@@ -48,24 +49,7 @@ class UnknownPaastaRemoteServiceError(Exception):
     pass
 
 
-def make_config_reader(instance_type):
-    def reader(service, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
-        conf_file = '%s-%s' % (instance_type, cluster)
-        full_path = '%s/%s/%s.yaml' % (soa_dir, service, conf_file)
-        paasta_print("Reading paasta-remote configuration file: %s" % full_path)
-        config = service_configuration_lib.read_extra_service_information(service, conf_file, soa_dir=soa_dir)
-
-        if instance not in config:
-            raise UnknownPaastaRemoteServiceError(
-                'No job named "%s" in config file %s: \n%s' % (instance, full_path, open(full_path).read())
-            )
-
-        return config
-
-    return reader
-
-
-def main(argv=None):
+def main(argv):
     args = parse_args(argv)
     try:
         system_paasta_config = load_system_paasta_config()
@@ -105,31 +89,27 @@ def main(argv=None):
         instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     paasta_print('Scheduling a task on Mesos')
-    service_config = load_paasta_native_job_config(
-        service=service,
-        instance=instance,
+    scheduler = AdhocScheduler(
+        service_name=service,
+        instance_name=instance,
+        instance_type=instance_type,
         cluster=cluster,
-        soa_dir=args.yelpsoa_config_root,
-        reader_func=make_config_reader(instance_type)
-    )
-    scheduler = PaastaAdhocScheduler(
-        command=command,
-        service_config=service_config,
         system_paasta_config=system_paasta_config,
-        dry_run=dry_run
+        soa_dir=soa_dir,
+        reconcile_backoff=0,
+        dry_run=dry_run,
+        service_config_overrides={'cmd': command}
     )
-    driver = create_driver_with(
+    driver = create_driver(
         framework_name="paasta-remote %s %s" % (
             compose_job_id(service, instance),
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
         ),
         scheduler=scheduler,
-        system_paasta_config=system_paasta_config,
-        implicit_acks=True
+        system_paasta_config=system_paasta_config
     )
     driver.run()
-    return scheduler.status
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
