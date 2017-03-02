@@ -621,7 +621,7 @@ class ScribeLogReader(LogReader):
                 kw['clusters'] = [cluster]
             else:
                 kw['stream_name'] = stream_info.stream_name_fn(service)
-
+            log.debug("Running the equivalent of 'scribereader -e %s %s'" % (scribe_env, kw['stream_name']))
             process = Process(target=self.scribe_tail, kwargs=kw)
             spawned_processes.append(process)
             process.start()
@@ -1014,12 +1014,7 @@ def validate_filtering_args(args, log_reader):
 
 def pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances):
     if log_reader.SUPPORTS_LINE_COUNT:
-        paasta_print(
-            PaastaColors.cyan(
-                "No filtering specified, grabbing last 100 lines"
-            ),
-            file=sys.stdout,
-        )
+        paasta_print(PaastaColors.cyan("Fetching the last 100 lines and applying filters..."), file=sys.stderr)
         log_reader.print_last_n_logs(
             service=service,
             line_count=100,
@@ -1030,11 +1025,9 @@ def pick_default_log_mode(args, log_reader, service, levels, components, cluster
             raw_mode=args.raw_mode,
         )
         return 0
-
     elif log_reader.SUPPORTS_TIME:
         start_time, end_time = generate_start_end_time()
-
-        paasta_print(PaastaColors.cyan("No filtering specified, grabbing last 30 minutes of logs"), file=sys.stderr)
+        paasta_print(PaastaColors.cyan("Fetching a specific time period and applying filters..."), file=sys.stderr)
         log_reader.print_logs_by_time(
             service=service,
             start_time=start_time,
@@ -1046,9 +1039,8 @@ def pick_default_log_mode(args, log_reader, service, levels, components, cluster
             raw_mode=args.raw_mode,
         )
         return 0
-
     elif log_reader.SUPPORTS_TAILING:
-        paasta_print(PaastaColors.cyan("No filtering specified, tailing logs"), file=sys.stderr)
+        paasta_print(PaastaColors.cyan("Tailing logs and applying filters..."), file=sys.stderr)
         log_reader.tail_logs(
             service=service,
             levels=levels,
@@ -1106,7 +1098,7 @@ def paasta_logs(args):
         return pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances)
 
     if args.tail:
-        paasta_print(PaastaColors.cyan("Tailing logs"), file=sys.stderr)
+        paasta_print(PaastaColors.cyan("Tailing logs and applying filters..."), file=sys.stderr)
         log_reader.tail_logs(
             service=service,
             levels=levels,
