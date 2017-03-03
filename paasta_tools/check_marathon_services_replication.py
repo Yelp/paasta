@@ -137,7 +137,9 @@ def check_smartstack_replication_for_instance(
 
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
-    monitoring_blacklist = job_config.get_monitoring_blacklist()
+    monitoring_blacklist = job_config.get_monitoring_blacklist(
+        system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+    )
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
         service=service,
