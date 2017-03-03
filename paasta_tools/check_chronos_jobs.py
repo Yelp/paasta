@@ -72,6 +72,17 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     return monitoring_overrides
 
 
+def add_realert_status(sensu_output, realert_every_in_minutes):
+    if realert_every_in_minutes is None or realert_every_in_minutes == -1:
+        return "{}\n\nThis check will not realert.".format(sensu_output)
+    else:
+        hours = realert_every_in_minutes // 60
+        minutes = realert_every_in_minutes % 60
+        interval_string = (hours > 0) * ('%sh' % hours) + (minutes > 0) * ('%sm' % minutes)
+        return ("{}\n\nThis check realerts every {}."
+                .format(sensu_output, interval_string))
+
+
 def send_event(service, instance, monitoring_overrides, soa_dir, status_code, message):
     check_name = compose_check_name_for_service_instance('check_chronos_jobs', service, instance)
 
@@ -80,7 +91,7 @@ def send_event(service, instance, monitoring_overrides, soa_dir, status_code, me
         check_name=check_name,
         overrides=monitoring_overrides,
         status=status_code,
-        output=message,
+        output=add_realert_status(message, monitoring_overrides.get('realert_every')),
         soa_dir=soa_dir,
     )
 

@@ -110,7 +110,7 @@ def test_compose_check_name_for_job():
 
 
 @patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
-def test_send_event_to_sensu(mock_send_event):
+def test_send_event_with_no_realert_every_to_sensu(mock_send_event):
     check_chronos_jobs.send_event(
         service='myservice',
         instance='myinstance',
@@ -124,7 +124,27 @@ def test_send_event_to_sensu(mock_send_event):
         check_name='check_chronos_jobs.myservice.myinstance',
         overrides={},
         status=0,
-        output='this is great',
+        output='this is great\n\nThis check will not realert.',
+        soa_dir='soadir',
+    )
+
+
+@patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
+def test_send_event_with_realert_every_to_sensu(mock_send_event):
+    check_chronos_jobs.send_event(
+        service='myservice',
+        instance='myinstance',
+        monitoring_overrides={'realert_every': 150},
+        soa_dir='soadir',
+        status_code=0,
+        message='this is great',
+    )
+    mock_send_event.assert_called_once_with(
+        service='myservice',
+        check_name='check_chronos_jobs.myservice.myinstance',
+        overrides={'realert_every': 150},
+        status=0,
+        output='this is great\n\nThis check realerts every 2h30m.',
         soa_dir='soadir',
     )
 
