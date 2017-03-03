@@ -25,19 +25,34 @@ class AdhocScheduler(NativeScheduler):
         super(AdhocScheduler, self).__init__(*args, **kwargs)
 
     def need_more_tasks(self, *args, **kwargs):
+        # One of pre-conditions in start_task for launching tasks, returning
+        # True doesn't actually guarantee the task was launched.
         return len(self.tasks_with_flags) == 0
 
-    def kill_tasks_if_necessary(self, *args, **kwargs):
-        return
+    def need_to_stop(self):
+        # Is used to decide whether to stop the driver or try to start more tasks.
+        return self.task_started and self.need_more_tasks()
 
     def statusUpdate(self, driver, update):
         super(AdhocScheduler, self).statusUpdate(driver, update)
-        # task ran and finished
-        if self.task_started and len(self.tasks_with_flags) == 0:
+        # Stop if task ran and finished
+        if self.need_to_stop():
             driver.stop()
 
     def start_task(self, *args, **kwargs):
+        # Possibly statusUpdate already removed the task from tasks_with_flags
+        # but didn't stop() the driver yet. We don't want to launch one more
+        # task in this case.
+        if self.need_to_stop():
+            return None
+
         tasks = super(AdhocScheduler, self).start_task(*args, **kwargs)
-        if len(self.tasks_with_flags) > 0:
+
+        # Task was launched, tell driver to stop after it finishes.
+        if not self.need_more_tasks():
             self.task_started = True
+
         return tasks
+
+    def kill_tasks_if_necessary(self, *args, **kwargs):
+        return

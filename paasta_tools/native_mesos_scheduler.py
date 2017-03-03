@@ -10,6 +10,7 @@ from time import sleep
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import compose_job_id
 
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.frameworks.native_scheduler import get_paasta_native_jobs_for_cluster
