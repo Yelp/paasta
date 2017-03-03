@@ -21,22 +21,23 @@ from paasta_tools.frameworks.native_scheduler import NativeScheduler
 class AdhocScheduler(NativeScheduler):
     def __init__(self, *args, **kwargs):
         self.dry_run = kwargs.pop('dry_run')
-        self.number_of_runs = 0
+        self.task_started = False
         super(AdhocScheduler, self).__init__(*args, **kwargs)
 
     def need_more_tasks(self, *args, **kwargs):
-        if self.number_of_runs == 0:
-            self.number_of_runs += 1
-            return True
-        else:
-            return False
+        return len(self.tasks_with_flags) == 0
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
         return
 
     def statusUpdate(self, driver, update):
         super(AdhocScheduler, self).statusUpdate(driver, update)
-
         # task ran and finished
-        if self.number_of_runs > 0 and len(self.tasks_with_flags) == 0:
+        if self.task_started and len(self.tasks_with_flags) == 0:
             driver.stop()
+
+    def start_task(self, *args, **kwargs):
+        tasks = super(AdhocScheduler, self).start_task(*args, **kwargs)
+        if len(self.tasks_with_flags) > 0:
+            self.task_started = True
+        return tasks
