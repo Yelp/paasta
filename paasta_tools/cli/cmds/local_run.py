@@ -368,9 +368,9 @@ def get_container_name():
 
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
-    cmd = ['docker', 'run']
+    cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
-        cmd.append('--env=\"%s=%s\"' % (k, v))
+        cmd.append('--env=%s=%s' % (k, v))
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
@@ -490,7 +490,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['CHRONOS_JOB_NAME'] = "%s %s" % (instance_config.get_service(), instance_config.get_instance())
         env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0),
         env['mesos_task_id'] = 'ct:simulated-task-id'
-
     return env
 
 
@@ -558,7 +557,7 @@ def run_docker_container(
     if interactive:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        execlp('docker', *docker_run_cmd)
+        execlp('paasta_docker_wrapper', *docker_run_cmd)
         # For testing, when execlp is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
