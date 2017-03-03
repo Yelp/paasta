@@ -1,11 +1,16 @@
-paasta-tools (0.57.15) UNRELEASED; urgency=medium
+paasta-tools (0.57.16) UNRELEASED; urgency=medium
 
+  [ robj ]
   * 0.57.14 tagged with 'make release'
     Commit:
   * 0.57.15 tagged with 'make release'
     Commit:
 
- -- robj <robj@robj-MacBookPro>  Thu, 02 Mar 2017 10:26:01 +0000
+  [ Kyle Anderson ]
+  * 0.57.16 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 03 Mar 2017 11:24:11 -0800
 
 paasta-tools (0.57.13) lucid; urgency=low
 
