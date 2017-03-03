@@ -71,21 +71,21 @@ class TestAdhocScheduler(object):
 
         tasks = scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 1
-        assert scheduler.need_more_tasks() == False
-        assert scheduler.task_started == True
+        assert scheduler.need_more_tasks() is False
+        assert scheduler.task_started is True
 
         scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 1
-        assert scheduler.need_more_tasks() == False
-        assert scheduler.task_started == True
+        assert scheduler.need_more_tasks() is False
+        assert scheduler.task_started is True
 
         scheduler.statusUpdate(
             fake_driver,
             mock.Mock(task_id=tasks[0].task_id,
                       state=native_scheduler.TASK_FINISHED))
         assert len(scheduler.tasks_with_flags) == 0
-        assert scheduler.need_more_tasks() == True
-        assert scheduler.task_started == True
+        assert scheduler.need_more_tasks() is True
+        assert scheduler.task_started is True
 
         scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 0

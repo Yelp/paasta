@@ -3,14 +3,11 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import argparse
 import binascii
 import logging
 import random
-import sys
 import time
 import uuid
-from time import sleep
 
 import mesos.interface
 import service_configuration_lib
@@ -35,7 +32,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -420,7 +416,7 @@ def read_service_config(service, instance, instance_type, cluster, soa_dir=DEFAU
     )
 
     if instance not in config:
-        raise UnknownPaastaRemoteServiceError(
+        raise UnknownNativeServiceError(
             'No job named "%s" in config file %s: \n%s' % (
                 instance, full_path, open(full_path).read())
         )

@@ -18,20 +18,16 @@ from __future__ import unicode_literals
 import re
 
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_clusters
+from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.cli.utils import connectable_master
-from paasta_tools.cli.utils import NoMasterError
-
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import validate_service_instance
 
 
 def add_remote_run_args(parser):
@@ -137,7 +133,7 @@ def paasta_remote_run(args):
     }
     for key in args_vars:
         # skip args we don't know about
-        if not key in args_keys:
+        if key not in args_keys:
             continue
 
         value = args_vars[key]

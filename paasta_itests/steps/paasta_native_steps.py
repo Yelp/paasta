@@ -15,12 +15,13 @@ from itest_utils import clear_mesos_tools_cache
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
+from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
 from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
-from paasta_tools.frameworks.native_scheduler import main
-from paasta_tools.frameworks.native_scheduler import NativeServiceConfig
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
+from paasta_tools.frameworks.native_scheduler import NativeServiceConfig
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
+from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 

@@ -15,8 +15,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from paasta_tools.utils import paasta_print
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
+
 
 class AdhocScheduler(NativeScheduler):
     def __init__(self, *args, **kwargs):

@@ -17,36 +17,25 @@ from __future__ import unicode_literals
 
 import argparse
 import sys
-import service_configuration_lib
-
 from datetime import datetime
 
-from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.cmds.remote_run import add_remote_run_args
-
+from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
+from paasta_tools.frameworks.native_scheduler import create_driver
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import validate_service_instance
-from paasta_tools.utils import compose_job_id
-
-from paasta_tools.frameworks.native_scheduler import create_driver
-from paasta_tools.frameworks.native_scheduler import read_service_config
-
-from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
     add_remote_run_args(parser)
     return parser.parse_args(argv)
-
-
-class UnknownPaastaRemoteServiceError(Exception):
-    pass
 
 
 def main(argv):

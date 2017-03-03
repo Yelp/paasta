@@ -5,8 +5,8 @@ import mock
 import pytest
 from mesos.interface import mesos_pb2
 
-from paasta_tools.frameworks import native_scheduler
 from paasta_tools import utils
+from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 
