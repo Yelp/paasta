@@ -102,22 +102,43 @@ def test_autoscale_cluster_resource():
     mock_scale_resource.assert_called_with(2, 6)
 
 
-def test_get_autoscaling_info():
+def test_get_autoscaling_info_for_all_resources():
+    mock_resource_1 = mock.Mock()
+    mock_resource_2 = mock.Mock()
+    mock_resources = {'id1': mock_resource_1,
+                      'id2': mock_resource_2}
+    mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_resources)
+    mock_system_config = mock.Mock(get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
+                                   get_resource_pool_settings=mock.Mock(return_value={}))
+
+    mock_autoscaling_info = mock.Mock()
+
+    def mock_autoscaling_info_for_resource_side_effect(resource, pool_settings):
+        return {mock_resource_1: None, mock_resource_2: mock_autoscaling_info}[resource]
+
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
+        return_value=mock_system_config
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscaling_info_for_resource', autospec=True
+    ) as mock_autoscaling_info_for_resource:
+        mock_autoscaling_info_for_resource.side_effect = mock_autoscaling_info_for_resource_side_effect
+        ret = autoscaling_cluster_lib.get_autoscaling_info_for_all_resources()
+        calls = [mock.call(mock_resource_1, {}), mock.call(mock_resource_2, {})]
+        mock_autoscaling_info_for_resource.assert_has_calls(calls, any_order=True)
+        assert ret == [mock_autoscaling_info]
+
+
+def test_autoscaling_info_for_resources():
     mock_resources = {'sfr-blah': {'id': 'sfr-blah',
                                    'min_capacity': 1,
                                    'max_capacity': 5,
                                    'pool': 'default',
                                    'type': 'sfr'}}
-    mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_resources)
-    mock_system_config = mock.Mock(get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
-                                   get_resource_pool_settings=mock.Mock(return_value={}))
 
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_scaler', autospec=True
-    ) as mock_get_scaler, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
-        return_value=mock_system_config
-    ):
+    ) as mock_get_scaler:
         # test cancelled
         mock_metrics_provider = mock.Mock(return_value=(2, 4))
         mock_scaler = mock.Mock(metrics_provider=mock_metrics_provider,
@@ -126,20 +147,20 @@ def test_get_autoscaling_info():
                                 instances=["mock_instance"])
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.get_autoscaling_info()
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
         assert mock_metrics_provider.called
         mock_scaler_class.assert_called_with(resource=mock_resources['sfr-blah'],
                                              pool_settings={},
                                              config_folder=None,
                                              dry_run=True)
-        assert ret[1] == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
-                                                                 pool='default',
-                                                                 state='cancelled',
-                                                                 current='2',
-                                                                 target='4',
-                                                                 min_capacity='1',
-                                                                 max_capacity='5',
-                                                                 instances='1')
+        assert ret == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
+                                                              pool='default',
+                                                              state='cancelled',
+                                                              current='2',
+                                                              target='4',
+                                                              min_capacity='1',
+                                                              max_capacity='5',
+                                                              instances='1')
 
         # test active
         mock_scaler = mock.Mock(metrics_provider=mock_metrics_provider,
@@ -148,15 +169,15 @@ def test_get_autoscaling_info():
                                 instances=["mock_instance"])
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.get_autoscaling_info()
-        assert ret[1] == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
-                                                                 pool='default',
-                                                                 state='active',
-                                                                 current='2',
-                                                                 target='4',
-                                                                 min_capacity='1',
-                                                                 max_capacity='5',
-                                                                 instances='1')
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
+        assert ret == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
+                                                              pool='default',
+                                                              state='active',
+                                                              current='2',
+                                                              target='4',
+                                                              min_capacity='1',
+                                                              max_capacity='5',
+                                                              instances='1')
 
         # Test exception getting target
         mock_metrics_provider = mock.Mock(side_effect=autoscaling_cluster_lib.ClusterAutoscalingError)
@@ -167,15 +188,15 @@ def test_get_autoscaling_info():
                                 instances=["mock_instance"])
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.get_autoscaling_info()
-        assert ret[1] == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
-                                                                 pool='default',
-                                                                 state='active',
-                                                                 current='2',
-                                                                 target='Exception',
-                                                                 min_capacity='1',
-                                                                 max_capacity='5',
-                                                                 instances='1')
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
+        assert ret == autoscaling_cluster_lib.AutoscalingInfo(resource_id='sfr-blah',
+                                                              pool='default',
+                                                              state='active',
+                                                              current='2',
+                                                              target='Exception',
+                                                              min_capacity='1',
+                                                              max_capacity='5',
+                                                              instances='1')
 
 
 class TestAsgAutoscaler(unittest.TestCase):
@@ -416,8 +437,11 @@ class TestSpotAutoscaler(unittest.TestCase):
                                                                      False)
 
     def test_exists(self):
-        self.autoscaler.sfr = mock.Mock()
+        self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
         assert self.autoscaler.exists
+
+        self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled'}
+        assert not self.autoscaler.exists
 
         self.autoscaler.sfr = None
         assert not self.autoscaler.exists

@@ -385,7 +385,7 @@ class SpotAutoscaler(ClusterAutoscaler):
 
     @property
     def exists(self):
-        return True if self.sfr else False
+        return False if not self.sfr or self.sfr['SpotFleetRequestState'] == 'cancelled' else True
 
     def get_sfr(self, spotfleet_request_id, region=None):
         ec2_client = boto3.client('ec2', region_name=region)
@@ -783,7 +783,7 @@ def autoscaling_info_for_resource(resource, pool_settings):
         dry_run=True
     )
     if not scaler.exists:
-        log.info("no scaler for resource {}. ignoring").format(resource['id'])
+        log.info("no scaler for resource {}. ignoring".format(resource['id']))
         return None
     try:
         current_capacity, target_capacity = scaler.metrics_provider()
