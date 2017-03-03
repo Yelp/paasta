@@ -74,7 +74,7 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
 
 def add_realert_status(sensu_output, realert_every_in_minutes):
     if realert_every_in_minutes is None or realert_every_in_minutes == -1:
-        return "{}\n\nThis check will not realert.".format(sensu_output)
+        return sensu_output
     else:
         hours = realert_every_in_minutes // 60
         minutes = realert_every_in_minutes % 60

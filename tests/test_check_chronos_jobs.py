@@ -124,7 +124,7 @@ def test_send_event_with_no_realert_every_to_sensu(mock_send_event):
         check_name='check_chronos_jobs.myservice.myinstance',
         overrides={},
         status=0,
-        output='this is great\n\nThis check will not realert.',
+        output='this is great',
         soa_dir='soadir',
     )
 
