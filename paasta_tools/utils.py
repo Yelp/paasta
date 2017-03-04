@@ -1038,7 +1038,9 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
         instance = kwargs.get('instance', ANY_INSTANCE)
         loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        if not isinstance(command, list):
+            command = shlex.split(command)
+        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
         process.name = command
         # start the timer if we specified a timeout
         if timeout:

@@ -93,6 +93,7 @@ setup(
         'paasta_tools/paasta_execute_docker_command.py',
         'paasta_tools/paasta_maintenance.py',
         'paasta_tools/paasta_metastatus.py',
+        'paasta_tools/paasta_remote_run.py',
         'paasta_tools/paasta_serviceinit.py',
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
