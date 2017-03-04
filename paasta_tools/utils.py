@@ -1015,6 +1015,11 @@ class SystemPaastaConfig(dict):
         """
         return self.get("deploy_whitelist", [])
 
+    def get_expected_slave_attributes(self):
+        """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
+        calculating the default routing constraints."""
+        return self.get('expected_slave_attributes')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
