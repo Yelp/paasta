@@ -24,6 +24,7 @@ from time import sleep
 import chronos
 import dateutil
 import isodate
+import pytz
 import service_configuration_lib
 from croniter import croniter
 from crontab import CronSlices
@@ -271,7 +272,11 @@ class ChronosJobConfig(InstanceConfig):
             return None
 
         if CronSlices.is_valid(schedule):
-            c = croniter(schedule)
+            try:
+                job_tz = pytz.timezone(self.get_schedule_time_zone())
+            except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
+                job_tz = pytz.utc
+            c = croniter(schedule, datetime.datetime.now(job_tz))
             return c.get_next() - c.get_prev()
         else:
             try:
