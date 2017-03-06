@@ -23,6 +23,7 @@ import mock
 
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
+from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 from paasta_tools.utils import NoDockerImageError
@@ -101,10 +102,15 @@ def test_status_marathon_job_verbose():
     ) as mock_is_app_id_running:
         mock_get_matching_appids.return_value = ['/app1']
         mock_get_verbose_app.return_value = ([task], 'fake_return')
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client)
+        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client, 'fake_cluster',
+                                                                      '/nail/blah')
         mock_is_app_id_running.assert_called_once_with('/app1', client)
         mock_get_matching_appids.assert_called_once_with(service, instance, client)
-        mock_get_verbose_app.assert_called_once_with(app)
+        mock_get_verbose_app.assert_called_once_with(app=app,
+                                                     service=service,
+                                                     instance=instance,
+                                                     cluster='fake_cluster',
+                                                     soa_dir='/nail/blah')
         assert tasks == [task]
         assert 'fake_return' in out
 
@@ -123,7 +129,8 @@ def test_status_marathon_job_verbose_when_not_running():
         'paasta_tools.marathon_tools.is_app_id_running', return_value=False, autospec=True,
     ) as mock_is_app_id_running:
         mock_get_matching_appids.return_value = ['/app1']
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client)
+        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client, 'fake_cluster',
+                                                                      '/nail/blah')
         mock_is_app_id_running.assert_called_once_with('/app1', client)
         assert not mock_get_verbose_app.called
         assert tasks == []
@@ -131,50 +138,89 @@ def test_status_marathon_job_verbose_when_not_running():
 
 
 def test_get_verbose_status_of_marathon_app():
-    fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
-    fake_app.version = '2015-01-15T05:30:49.862Z'
-    fake_app.id = '/fake--service'
-    fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
-    fake_task.id = 'fake_task_id'
-    fake_task.host = 'fake_deployed_host'
-    fake_task.ports = [6666]
-    fake_task.staged_at = datetime.datetime.fromtimestamp(0)
-    fake_task.health_check_results = []
-    fake_app.tasks = [fake_task]
-    tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
-    assert 'fake_task_id' in out
-    assert '/fake--service' in out
-    assert 'App created: 2015-01-15 05:30:49' in out
-    assert 'fake_deployed_host:6666' in out
-    assert tasks == [fake_task]
+    mock_autoscaling_info = ServiceAutoscalingInfo(current_instances=str(3),
+                                                   max_instances=str(5),
+                                                   min_instances=str(1),
+                                                   current_utilization="81%",
+                                                   target_instances=str(4))
+
+    with mock.patch(
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info
+    ):
+        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        fake_app.version = '2015-01-15T05:30:49.862Z'
+        fake_app.id = '/fake--service'
+        fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
+        fake_task.id = 'fake_task_id'
+        fake_task.host = 'fake_deployed_host'
+        fake_task.ports = [6666]
+        fake_task.staged_at = datetime.datetime.fromtimestamp(0)
+        fake_task.health_check_results = []
+        fake_app.tasks = [fake_task]
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
+                                                                             'fake_cluster', '/nail/blah')
+        assert 'fake_task_id' in out
+        assert '/fake--service' in out
+        assert 'App created: 2015-01-15 05:30:49' in out
+        assert 'fake_deployed_host:6666' in out
+        assert 'Autoscaling Info' in out
+        assert tasks == [fake_task]
+
+
+def test_get_verbose_status_of_marathon_app_no_autoscaling():
+    with mock.patch(
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+    ):
+        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        fake_app.version = '2015-01-15T05:30:49.862Z'
+        fake_app.id = '/fake--service'
+        fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
+        fake_task.id = 'fake_task_id'
+        fake_task.host = 'fake_deployed_host'
+        fake_task.ports = [6666]
+        fake_task.staged_at = datetime.datetime.fromtimestamp(0)
+        fake_task.health_check_results = []
+        fake_app.tasks = [fake_task]
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
+                                                                             'fake_cluster', '/nail/blah')
+        assert 'fake_task_id' in out
+        assert '/fake--service' in out
+        assert 'App created: 2015-01-15 05:30:49' in out
+        assert 'fake_deployed_host:6666' in out
+        assert 'Autoscaling Info' not in out
+        assert tasks == [fake_task]
 
 
 def test_get_verbose_status_of_marathon_app_column_alignment():
-    fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
-    fake_app.version = '2015-01-15T05:30:49.862Z'
-    fake_app.id = '/fake--service'
+    with mock.patch(
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+    ):
+        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        fake_app.version = '2015-01-15T05:30:49.862Z'
+        fake_app.id = '/fake--service'
 
-    fake_task1 = mock.create_autospec(marathon.models.app.MarathonTask)
-    fake_task1.id = 'fake_task1_id'
-    fake_task1.host = 'fake_deployed_host'
-    fake_task1.ports = [6666]
-    fake_task1.staged_at = datetime.datetime.fromtimestamp(0)
-    fake_task1.health_check_results = []
+        fake_task1 = mock.create_autospec(marathon.models.app.MarathonTask)
+        fake_task1.id = 'fake_task1_id'
+        fake_task1.host = 'fake_deployed_host'
+        fake_task1.ports = [6666]
+        fake_task1.staged_at = datetime.datetime.fromtimestamp(0)
+        fake_task1.health_check_results = []
 
-    fake_task2 = mock.create_autospec(marathon.models.app.MarathonTask)
-    fake_task2.id = 'fake_task2_id'
-    fake_task2.host = 'fake_deployed_host_with_a_really_long_name'
-    fake_task2.ports = [6666]
-    fake_task2.staged_at = datetime.datetime.fromtimestamp(0)
-    fake_task2.health_check_results = []
+        fake_task2 = mock.create_autospec(marathon.models.app.MarathonTask)
+        fake_task2.id = 'fake_task2_id'
+        fake_task2.host = 'fake_deployed_host_with_a_really_long_name'
+        fake_task2.ports = [6666]
+        fake_task2.staged_at = datetime.datetime.fromtimestamp(0)
+        fake_task2.health_check_results = []
 
-    fake_app.tasks = [fake_task1, fake_task2]
-    tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
-    (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
-    assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
-    assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
-    assert headers_line.index('Deployed at what localtime') == task1_line.index('1970-01-01T00:00')
-    assert headers_line.index('Deployed at what localtime') == task2_line.index('1970-01-01T00:00')
+        fake_app.tasks = [fake_task1, fake_task2]
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
+                                                                             'fake_cluster', '/nail/blah')
+        (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
+        assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
+        assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
+        assert headers_line.index('Deployed at what localtime') == task1_line.index('1970-01-01T00:00')
+        assert headers_line.index('Deployed at what localtime') == task2_line.index('1970-01-01T00:00')
 
 
 def test_status_marathon_job_when_running():

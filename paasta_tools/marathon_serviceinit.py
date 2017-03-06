@@ -22,6 +22,8 @@ import humanize
 import isodate
 
 from paasta_tools import marathon_tools
+from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
+from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
@@ -149,15 +151,22 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
                                      running_instances, normal_instance_count)
 
 
-def get_verbose_status_of_marathon_app(app):
+def get_verbose_status_of_marathon_app(app, service, instance, cluster, soa_dir):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("    Tasks:")
 
+    autoscaling_info = get_autoscaling_info(service, instance, cluster, soa_dir)
+    if autoscaling_info:
+        output.append("    Autoscaling Info:")
+        headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
+        table = [headers, autoscaling_info]
+        output.append('\n'.join(["      %s" % line for line in format_table(table)]))
+
+    output.append("    Tasks:")
     rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
@@ -187,7 +196,7 @@ def get_verbose_status_of_marathon_app(app):
     return app.tasks, "\n".join(output)
 
 
-def status_marathon_job_verbose(service, instance, client):
+def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
     """Returns detailed information about a marathon apps for a service
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
@@ -200,7 +209,13 @@ def status_marathon_job_verbose(service, instance, client):
     for app_id in marathon_tools.get_matching_appids(service, instance, client):
         if marathon_tools.is_app_id_running(app_id, client):
             app = client.get_app(app_id)
-            tasks, output = get_verbose_status_of_marathon_app(app)
+            tasks, output = get_verbose_status_of_marathon_app(
+                app=app,
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir
+            )
             all_tasks.extend(tasks)
             all_output.append(output)
         else:
@@ -421,7 +436,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     elif command == 'status':
         paasta_print(status_desired_state(service, instance, client, job_config))
         paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, client))
-        tasks, out = status_marathon_job_verbose(service, instance, client)
+        tasks, out = status_marathon_job_verbose(service, instance, client, cluster, soa_dir)
         if verbose > 0:
             paasta_print(out)
         paasta_print(status_mesos_tasks(service, instance, normal_instance_count))
