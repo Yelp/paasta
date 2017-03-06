@@ -29,7 +29,7 @@ test: .paasta/bin/activate
 	.paasta/bin/tox
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.7 .paasta
+	test -d .paasta/bin/activate || virtualenv -p python2.7 .paasta
 	.paasta/bin/pip install -U pip
 	.paasta/bin/pip install -U virtualenv
 	.paasta/bin/pip install -U tox
