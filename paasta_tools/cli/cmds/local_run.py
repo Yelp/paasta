@@ -19,7 +19,6 @@ import datetime
 import functools
 import json
 import os
-import pipes
 import shlex
 import socket
 import sys
@@ -391,7 +390,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.extend((
             'sh', '-c'
         ))
-        cmd.append(pipes.quote(' '.join(command)))
+        cmd.append(' '.join(command))
     return cmd
 
 
