@@ -22,14 +22,22 @@ endif
 
 .PHONY: all docs test itest
 
-docs:
-	./docs.sh
+docs: .paasta/bin/activate
+	.paasta/bin/tox -e docs
 
-test:
-	./test.sh
+test: .paasta/bin/activate
+	.paasta/bin/tox
 
-itest: test
-	./itest.sh
+.paasta/bin/activate: requirements.txt requirements-dev.txt
+	test -d .paasta/bin/activate || virtualenv -p python2.7 .paasta
+	.paasta/bin/pip install -U pip==9.0.1
+	.paasta/bin/pip install -U virtualenv==15.1.0
+	.paasta/bin/pip install -U tox==2.6.0
+	touch .paasta/bin/activate
+
+itest: test .paasta/bin/activate
+	.paasta/bin/tox -e general_itests
+	.paasta/bin/tox -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -41,7 +49,6 @@ itest_%:
 release:
 	make -C yelp_package release
 
-
 clean:
 	rm -rf ./dist
 	make -C yelp_package clean
@@ -49,3 +56,4 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 	rm -rf .tox
+	rm -rf .paasta
