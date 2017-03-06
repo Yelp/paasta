@@ -468,7 +468,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         'MESOS_TASK_ID': 'simulated_mesos_task_id',
         'PAASTA_DOCKER_IMAGE': docker_image,
     }
-    if framework == "marathon":
+    if framework == 'marathon':
         env['MARATHON_PORT'] = str(port0)
         env['MARATHON_PORT0'] = str(port0)
         env['MARATHON_PORTS'] = str(port0)
@@ -486,9 +486,9 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['CHRONOS_RESOURCE_CPU'] = str(instance_config.get_cpus())
         env['CHRONOS_RESOURCE_MEM'] = str(instance_config.get_mem())
         env['CHRONOS_JOB_OWNER'] = 'simulated-owner'
-        env['CHRONOS_JOB_RUN_TIME'] = str(time.gmtime())
+        env['CHRONOS_JOB_RUN_TIME'] = str(int(time.time()))
         env['CHRONOS_JOB_NAME'] = "%s %s" % (instance_config.get_service(), instance_config.get_instance())
-        env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0),
+        env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0)
         env['mesos_task_id'] = 'ct:simulated-task-id'
     return env
 
