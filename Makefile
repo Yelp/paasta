@@ -25,8 +25,18 @@ endif
 docs:
 	./docs.sh
 
-test:
-	./test.sh
+test: venv
+	.paasta/bin/tox
+
+venv: .paasta/bin/activate
+
+.paasta/bin/activate: requirements.txt requirements-dev.txt
+	test -d .paasta/bin/activate || virtualenv -p python2.7 .paasta
+	.paasta/bin/pip install -U pip
+	.paasta/bin/pip install -U virtualenv
+	.paasta/bin/pip install -U tox
+	touch .paasta/bin/activate
+
 
 itest: test
 	./itest.sh
@@ -49,3 +59,4 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 	rm -rf .tox
+	rm -rf .paasta
