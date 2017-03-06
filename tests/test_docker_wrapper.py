@@ -59,9 +59,9 @@ class TestParseEnvArgs(object):
         assert env == {'foo': '', 'bar': ''}
 
 
-class TestAlreadyHasHostname(object):
+class TestCanAddHostname(object):
     def test_empty(self):
-        assert docker_wrapper.already_has_hostname(['docker']) is False
+        assert docker_wrapper.can_add_hostname(['docker']) is True
 
     @pytest.mark.parametrize('args', [
         ['docker', '-h'],
@@ -69,22 +69,31 @@ class TestAlreadyHasHostname(object):
         ['docker', '-ht'],
     ])
     def test_short(self, args):
-        assert docker_wrapper.already_has_hostname(args) is True
+        assert docker_wrapper.can_add_hostname(args) is False
 
     @pytest.mark.parametrize('args', [
         ['docker', '-e=foo=hhh'],
         ['docker', '--hhh'],
         ['docker', '-'],
+        ['docker', '--net', 'bridged'],
+        ['docker', '--net'],
+        ['docker', '--network', 'bridged'],
+        ['docker', '--network'],
     ])
     def test_short_invalid(self, args):
-        assert docker_wrapper.already_has_hostname(args) is False
+        assert docker_wrapper.can_add_hostname(args) is True
 
     @pytest.mark.parametrize('args', [
         ['docker', '--hostname', 'foo'],
         ['docker', '--hostname=foo'],
+        ['docker', '--net=host'],
+        ['docker', '--net', 'host'],
+        ['docker', '--network=host'],
+        ['docker', '--network', 'host'],
+        ['docker', '--hostname=foo', '--net=host'],
     ])
     def test_long(self, args):
-        assert docker_wrapper.already_has_hostname(args) is True
+        assert docker_wrapper.can_add_hostname(args) is False
 
 
 class TestGenerateHostname(object):
