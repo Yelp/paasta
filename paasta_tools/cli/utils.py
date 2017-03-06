@@ -410,6 +410,24 @@ def find_connectable_master(masters):
     return (connectable_master, output)
 
 
+class NoMasterError(Exception):
+    pass
+
+
+def connectable_master(cluster, system_paasta_config):
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
+    if masters == []:
+        raise NoMasterError('ERROR: %s' % output)
+
+    master, output = find_connectable_master(masters)
+    if not master:
+        raise NoMasterError(
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+        )
+
+    return master
+
+
 def check_ssh_and_sudo_on_master(master, timeout=10):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
@@ -487,15 +505,11 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return 255, 'ERROR: %s' % output
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            255,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
-        )
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (255, str(e))
+
     if ignore_ssh_output:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
                                       ssh_flags='-o LogLevel=QUIET', **kwargs)
@@ -525,15 +539,11 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return 255, 'ERROR: %s' % output
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            255,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
-        )
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (255, str(e))
+
     return run_paasta_metastatus(master, humanize, groupings, verbose)
 
 
@@ -554,16 +564,51 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_chronos_rerun().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return (-1, 'ERROR: %s' % output)
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            -1,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
-        )
-    return run_chronos_rerun(master, service, instancename, **kwargs)
+    try:
+        return run_chronos_rerun(
+            connectable_master(cluster, system_paasta_config),
+            service, instancename, **kwargs)
+    except NoMasterError as e:
+        return (-1, str(e))
+
+
+def run_on_master(cluster, system_paasta_config, cmd_parts,
+                  timeout=None, shell=True, join=True, dry=False, err_code=-1):
+    """Find connectable master for :cluster: and :system_paasta_config: args and
+    invoke command from :cmd_parts:, wrapping it in ssh call.
+
+    :returns (exit code, output)
+
+    :param cluster: cluster to find master in
+    :param system_paasta_config: system configuration to lookup master data
+    :param cmd_parts: passed into paasta_tools.utils._run as command along with
+        ssh bits
+    :param timeout: see paasta_tools.utils._run documentation (default: None)
+    :param shell: prepend command from :cmd_parts: with 'sh -c' (default: True)
+    :param join: join :cmd_parts: on ' ' when passing it to
+        paasta_tools.utils._run (default: True)
+    :param err_code: code to return along with error message when something goes
+        wrong (default: -1)
+    """
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (err_code, str(e))
+
+    ssh_parts = ['ssh', '-A', '-n', master]
+
+    if shell:
+        ssh_parts.extend(['sh', '-c'])
+
+    if join:
+        ssh_parts.append(' '.join(cmd_parts))
+    else:
+        ssh_parts.extend([cmd_parts])
+
+    if dry:
+        return (0, "Would have run: %s" % ssh_parts)
+    else:
+        return _run(ssh_parts, timeout=timeout)
 
 
 def lazy_choices_completer(list_func):

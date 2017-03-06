@@ -25,6 +25,8 @@ from marathon.exceptions import MarathonError
 
 from paasta_tools import __version__
 from paasta_tools import marathon_tools
+from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
+from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
@@ -39,6 +41,7 @@ from paasta_tools.utils import print_with_indent
 logging.basicConfig()
 # kazoo can be really noisy - turn it down
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
+logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(logging.ERROR)
 
 
 def parse_args(argv):
@@ -56,6 +59,8 @@ def parse_args(argv):
         )
     )
     parser.add_argument('-t', '--threshold', type=int, default=90)
+    parser.add_argument('-a', '--autoscaling-info', action='store_true', default=False,
+                        dest="autoscaling_info")
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
     parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
@@ -74,7 +79,7 @@ def main(argv=None):
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % str(e)))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
     mesos_state_status = metastatus_lib.get_mesos_state_status(
@@ -100,7 +105,7 @@ def main(argv=None):
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
         except (MarathonError, InternalServerError, ValueError) as e:
             # catch ValueError until marathon-python/pull/167 is merged and this is handled upstream
-            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at %s!"
+            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at {}!"
                                            "Is the cluster healthy?".format(marathon_config["url"]))))
             sys.exit(2)
     else:
@@ -157,6 +162,18 @@ def main(argv=None):
             table_rows = sorted(table_rows, key=lambda x: x[0])
             all_rows.extend(table_rows)
             for line in format_table(all_rows):
+                print_with_indent(line, 4)
+
+        if args.autoscaling_info:
+            print_with_indent("Autoscaling resources:", 2)
+            headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
+            table = reduce(
+                lambda x, y: x + [(y)],
+                get_autoscaling_info_for_all_resources(),
+                [headers]
+            )
+
+            for line in format_table(table):
                 print_with_indent(line, 4)
 
         if args.verbose == 3:

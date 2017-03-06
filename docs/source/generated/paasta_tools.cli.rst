@@ -6,7 +6,6 @@ Subpackages
 
 .. toctree::
 
-    paasta_tools.cli.argparse
     paasta_tools.cli.cmds
     paasta_tools.cli.fsm
 
