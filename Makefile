@@ -22,8 +22,8 @@ endif
 
 .PHONY: all docs test itest
 
-docs:
-	./docs.sh
+docs: .paasta/bin/activate
+	.paasta/bin/tox -e docs
 
 test: .paasta/bin/activate
 	.paasta/bin/tox
@@ -35,8 +35,9 @@ test: .paasta/bin/activate
 	.paasta/bin/pip install -U tox
 	touch .paasta/bin/activate
 
-itest: test
-	./itest.sh
+itest: test .paasta/bin/activate
+	.paasta/bin/tox -e general_itests
+	.paasta/bin/tox -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
