@@ -370,7 +370,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
                        docker_hash, command, net, docker_params):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
-        cmd.append('--env=%s=%s' % (k, v))
+        cmd.append("--env='%s=%s'" % (k, v))
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
