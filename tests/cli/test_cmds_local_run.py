@@ -15,8 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import json
-import pipes
-import shlex
 
 import docker
 import mock
@@ -363,7 +361,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
-        command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
+        command=mock_get_instance_config.return_value.get_cmd.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -416,7 +414,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
-        command=['bash'],
+        command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -475,7 +473,7 @@ def test_configure_and_run_pulls_image_when_asked(
         docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
-        command=['bash'],
+        command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -529,7 +527,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             docker_hash='fake_hash',
             volumes=[],
             interactive=True,
-            command=['bash'],
+            command='bash',
             healthcheck=args.healthcheck,
             healthcheck_only=args.healthcheck_only,
             instance_config=mock_config,
@@ -637,7 +635,7 @@ def test_get_docker_run_cmd_interactive_false():
     env = {}
     interactive = False
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
@@ -651,7 +649,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
     assert docker_hash in actual
-    assert ' '.join(pipes.quote(part) for part in command) in ' '.join(actual)
+    assert command in ' '.join(actual)
 
 
 def test_get_docker_run_cmd_interactive_true():
@@ -662,7 +660,7 @@ def test_get_docker_run_cmd_interactive_true():
     env = {}
     interactive = True
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
@@ -680,7 +678,7 @@ def test_get_docker_run_docker_params():
     env = {}
     interactive = False
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
                      {'key': 'cpu-period', 'value': '200000'},
@@ -700,7 +698,7 @@ def test_get_docker_run_cmd_host_networking():
     env = {}
     interactive = True
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
@@ -718,7 +716,7 @@ def test_get_docker_run_cmd_quote_cmd():
     env = {}
     interactive = True
     docker_hash = '8' * 40
-    command = ['make', 'test']
+    command = 'make test'
     net = 'host'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
