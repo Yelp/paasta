@@ -36,8 +36,7 @@ test: .paasta/bin/activate
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate
-	.paasta/bin/tox -e general_itests
-	.paasta/bin/tox -e paasta_itests
+	./itest.sh
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
