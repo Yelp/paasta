@@ -17,11 +17,11 @@ arguments cpuset-cpus and cpuset-mems.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
 import os
 import re
 import socket
 import sys
-
 
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
@@ -120,8 +120,18 @@ def get_cpumap():
     return cpumap
 
 
-def is_numa_enabled():
-    return os.path.exists('/proc/1/numa_maps')
+def get_numa_memsize(nb_nodes):
+    # Return memory size in mB per NUMA node assuming memory is split evenly
+    # TODO: calculate and return real memory map
+    try:
+        with open('/proc/meminfo', 'r') as f:
+            for line in f:
+                m = re.match('MemTotal:\s*(\d)kb', line)
+                if m:
+                    return int(m) / 1024 / int(nb_nodes)
+    except IOError:
+        pass
+    return 0
 
 
 def arg_collision(new_args, current_args):
@@ -133,28 +143,41 @@ def arg_collision(new_args, current_args):
     return bool(set(new_args).intersection(set(cur_arg_keys)))
 
 
-def validate_int(i):
-    try:
-        return int(i)
-    except (ValueError, TypeError):
-        return None
-
-
-def validate_float(f):
+def extract_float(f):
     # Ensure we return a float. If input is invalid we return 0.0
     try:
         return float(f)
     except (ValueError, TypeError):
+        logging.warning('Could not read %s as a float' % str(f))
         return 0.0
 
 
-def generate_cpuset_args(env_args, pinned_numa_node):
-    required_cores = validate_float(env_args.get('MARATHON_APP_RESOURCE_CPUS'))
-    cpumap = get_cpumap()
-    result = []
+def is_numa_enabled():
+    if os.path.exists('/proc/1/numa_maps'):
+        return True
+    else:
+        logging.warning('The system does not support NUMA')
+        return False
 
-    # No need to set up docker cpuset options if one of the above fails:
+
+def append_cpuset_args(argv, env_args):
+    # Enable log messages to stderr
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    try:
+        pinned_numa_node = int(env_args.get('PIN_TO_NUMA_NODE'))
+    except (ValueError, TypeError):
+        logging.warning('Could not read PIN_TO_NUMA_NODE value as an int.' +
+                        str(env_args.get('PIN_TO_NUMA_NODE')))
+        pinned_numa_node = None
+
+    cpumap = get_cpumap()
+
+    # We do nothing if any of these conditions are not met
     if (
+        # PIN_TO_NUMA_NODE has a correct value
+        pinned_numa_node and
+        # cpuset is not already manually set
+        not arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv) and
         # NUMA is supported by the system
         is_numa_enabled() and
         # Machine has multiple CPUs
@@ -162,12 +185,15 @@ def generate_cpuset_args(env_args, pinned_numa_node):
         # Requested numa node exists
         pinned_numa_node in cpumap and
         # The numa node has more cores than the container requires
-        len(cpumap[pinned_numa_node]) >= required_cores
+        len(cpumap[pinned_numa_node]) >= extract_float(env_args.get('MARATHON_APP_RESOURCE_CPUS')) and
+        # Requested memory fits in one NUMA node
+        get_numa_memsize(len(cpumap)) > extract_float(env_args.get('MARATHON_APP_RESOURCE_MEM'))
     ):
-        result.append('--cpuset-cpus=' + ','.join(str(c) for c in cpumap[pinned_numa_node]))
-        result.append('--cpuset-mems=' + str(pinned_numa_node))
+        argv = add_argument(argv, ('--cpuset-cpus=' + ','.join(str(c) for c in cpumap[pinned_numa_node])))
+        argv = add_argument(argv, ('--cpuset-mems=' + str(pinned_numa_node)))
+        logging.info('NUMA optimization requested. Pinning to NUMA node %d' % pinned_numa_node)
 
-    return result
+    return argv
 
 
 def main(argv=None):
@@ -176,17 +202,14 @@ def main(argv=None):
     # Get Docker env variables
     env_args = parse_env_args(argv)
 
+    # Check if we require this container to stick to a given NUMA node
+    if env_args.get('PIN_TO_NUMA_NODE'):
+        argv = append_cpuset_args(argv, env_args)
+
     # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
     mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
-    # Check if we require this container to stick to a given NUMA node
-    pinned_numa_node = validate_int(env_args.get('PIN_TO_NUMA_NODE'))
-
-    if pinned_numa_node and not arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv):
-        for c in generate_cpuset_args(env_args, pinned_numa_node):
-            argv = add_argument(argv, c)
-
-    if mesos_task_id and not already_has_hostname(argv):
+    if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
         argv = add_argument(argv, '--hostname=' + hostname)
 

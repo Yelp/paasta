@@ -249,6 +249,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=False,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -272,6 +273,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -300,6 +302,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -329,6 +332,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -347,6 +351,97 @@ class TestMain(object):
             '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
         )]
 
+    def test_numa_req_bogus_mem_value(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=overflowwwww',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            node_mem=32000,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=overflowwwww',
+        )]
+
+    def test_numa_req_more_mem_than_available(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=40000.0',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            node_mem=32000,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=40000.0',
+        )]
+
+    def test_numa_req_less_mem_than_available(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=20000.0',
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=True,
+            node_mem=32000,
+            cpu_info=[
+                'physical id    : 0',
+                'physical id    : 1',
+                'physical id    : 0',
+                'physical id    : 1',
+            ],
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=PIN_TO_NUMA_NODE=1',
+            '--env=MARATHON_APP_RESOURCE_CPUS=2',
+            '--env=MARATHON_APP_RESOURCE_MEM=20000.0',
+        )]
+
     def test_numa_req_exact_amount_of_cores(self, mock_execlp):
         argv = [
             'docker',
@@ -356,6 +451,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -384,6 +480,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -409,6 +506,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -435,6 +533,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 1',
@@ -459,6 +558,7 @@ class TestMain(object):
         ]
         with self._patch_docker_wrapper_dependencies(
             is_numa_enabled=True,
+            node_mem=32000,
             cpu_info=[
                 'physical id    : 0',
                 'physical id    : 0',
@@ -474,12 +574,15 @@ class TestMain(object):
         )]
 
     @contextmanager
-    def _patch_docker_wrapper_dependencies(self, is_numa_enabled, cpu_info):
+    def _patch_docker_wrapper_dependencies(self, is_numa_enabled, cpu_info, node_mem):
         m = mock.mock_open()
         m.return_value.__iter__.return_value = cpu_info
         with mock.patch.object(
             docker_wrapper,
             'is_numa_enabled',
-            return_value=is_numa_enabled,
-        ), mock.patch.object(docker_wrapper, 'open', new=m):
+            return_value=is_numa_enabled
+        ), mock.patch.object(docker_wrapper,
+                             'get_numa_memsize',
+                             return_value=node_mem
+                             ), mock.patch.object(docker_wrapper, 'open', new=m):
             yield
