@@ -72,7 +72,7 @@ class TestNativeScheduler(object):
         fake_driver = mock.Mock()
 
         # First, start up 3 old tasks
-        old_tasks = scheduler.start_task(fake_driver, make_fake_offer())
+        old_tasks = scheduler.tasksForOffer(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 3
         # and mark the old tasks as up
         for task in old_tasks:
@@ -83,7 +83,7 @@ class TestNativeScheduler(object):
         scheduler.service_config = service_configs[1]
 
         # and start 3 more tasks
-        new_tasks = scheduler.start_task(fake_driver, make_fake_offer())
+        new_tasks = scheduler.tasksForOffer(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 6
         # It should not drain anything yet, since the new tasks aren't up.
         scheduler.kill_tasks_if_necessary(fake_driver)
@@ -147,7 +147,7 @@ class TestNativeScheduler(object):
         scheduler.kill_tasks_if_necessary(fake_driver)
         assert len(killed_tasks) == 1
 
-    def test_start_task_chooses_port(self, system_paasta_config):
+    def test_tasksForOffer_chooses_port(self, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -181,7 +181,7 @@ class TestNativeScheduler(object):
         fake_driver = mock.Mock()
 
         fake_offer = make_fake_offer(port_begin=12345, port_end=12345)
-        tasks = scheduler.start_task(fake_driver, fake_offer)
+        tasks = scheduler.tasksForOffer(fake_driver, fake_offer)
 
         assert len(tasks) == 1
         for resource in tasks[0].resources:
