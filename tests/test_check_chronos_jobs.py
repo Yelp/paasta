@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 
 import pysensu_yelp
+import pytz
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -282,14 +283,11 @@ def test_sensu_message_status_disabled():
     assert status == pysensu_yelp.Status.OK
 
 
-utc = check_chronos_jobs.TZ()
-
-
 def test_sensu_message_status_stuck():
     fake_job = {
         'name': 'fake_job_id',
         'disabled': False,
-        'lastSuccess': (datetime.now(utc) - timedelta(hours=4)).isoformat(),
+        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=4)).isoformat(),
         'schedule': '* * * * *'
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
@@ -317,10 +315,10 @@ def test_job_is_stuck_when_no_last_run():
 
 
 def test_job_is_stuck_when_not_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=4)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
     assert not check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
 
 
 def test_job_is_stuck_when_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=25)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     assert check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)

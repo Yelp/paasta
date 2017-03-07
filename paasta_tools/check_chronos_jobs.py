@@ -13,11 +13,11 @@ import argparse
 import sys
 from datetime import datetime
 from datetime import timedelta
-from datetime import tzinfo
 
 import chronos
 import isodate
 import pysensu_yelp
+import pytz
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -144,23 +144,11 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-class TZ(tzinfo):
-
-    def utcoffset(self, dt):
-        return timedelta(minutes=0)
-
-    def dst(self, dt):
-        return timedelta(minutes=0)
-
-
-utc = TZ()
-
-
 def job_is_stuck(last_run_iso_time, interval_in_seconds):
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
     last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(utc)
+    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
 
 
 def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds, schedule):
