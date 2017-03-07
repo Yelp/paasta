@@ -45,18 +45,31 @@ def parse_env_args(args):
     return result
 
 
-def already_has_hostname(args):
-    for arg in args:
+def can_add_hostname(args):
+    # return False if --hostname is already specified or if --network=host
+    for index, arg in enumerate(args):
+
+        # Check for --hostname and variants
         if arg == '-h':
-            return True
+            return False
         if arg.startswith('--hostname'):
-            return True
+            return False
         if len(arg) > 1 and arg[0] == '-' and arg[1] != '-':
             # several short args
             arg = arg.partition('=')[0]
             if 'h' in arg:
-                return True
-    return False
+                return False
+
+        # Check for --network=host and variants
+        if arg in ('--net=host', '--network=host'):
+            return False
+        try:
+            if arg in ('--net', '--network') and args[index + 1] == 'host':
+                return False
+        except IndexError:
+            pass
+
+    return True
 
 
 def generate_hostname(fqdn, mesos_task_id):
@@ -94,7 +107,7 @@ def main(argv=None):
     # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
     mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
-    if mesos_task_id and not already_has_hostname(argv):
+    if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(fqdn, mesos_task_id)
         argv = add_hostname(argv, hostname)
 
