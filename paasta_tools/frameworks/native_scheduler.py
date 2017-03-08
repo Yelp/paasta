@@ -77,7 +77,8 @@ class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
-                 instance_type='paasta_native', service_config_overrides={}):
+                 instance_type='paasta_native', service_config_overrides={},
+                 reconcile_start_time=float('inf')):
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -85,12 +86,16 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
         self.tasks_with_flags = {}
-
-        self.reconcile_start_time = float('inf')  # don't accept resources until we reconcile.
-        self.reconcile_backoff = reconcile_backoff  # wait this long after starting a reconcile before accepting offers.
-        self.framework_id = None  # Gets set when registered() is called
-
         self.service_config_overrides = service_config_overrides
+
+        # don't accept resources until we reconcile.
+        self.reconcile_start_time = reconcile_start_time
+
+        # wait this long after starting a reconcile before accepting offers.
+        self.reconcile_backoff = reconcile_backoff
+
+        # Gets set when registered() is called
+        self.framework_id = None
 
         if service_config is not None:
             self.service_config = service_config
@@ -110,10 +115,14 @@ class NativeScheduler(mesos.interface.Scheduler):
             paasta_print("Declining all offers since we started reconciliation too recently")
             for offer in offers:
                 driver.declineOffer(offer.id)
-            return
+        else:
+            self.launch_tasks_for_offers(driver, offers)
+
+    def launch_tasks_for_offers(self, driver, offers):
+        launched_tasks = []
 
         for offer in offers:
-            tasks = self.tasksForOffer(driver, offer)
+            tasks = self.tasks_for_offer(driver, offer)
             if tasks:
                 for task in tasks:
                     self.tasks_with_flags.setdefault(
@@ -125,8 +134,12 @@ class NativeScheduler(mesos.interface.Scheduler):
                 operation.type = mesos_pb2.Offer.Operation.LAUNCH
                 operation.launch.task_infos.extend(tasks)
                 driver.acceptOffers([offer.id], [operation])
+
+                launched_tasks.extend(tasks)
             else:
                 driver.declineOffer(offer.id)
+
+        return launched_tasks
 
     def task_fits(self, offer):
         """Checks whether the offer is big enough to fit the tasks"""
@@ -144,7 +157,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         return True
 
-    def needMoreTasks(self, name, existingTasks=[], scheduledTasks=[]):
+    def need_more_tasks(self, name, existingTasks={}, scheduledTasks=[]):
         """Returns whether we need to start more tasks."""
         num_have = 0
         for task, parameters in existingTasks.items():
@@ -166,7 +179,7 @@ class NativeScheduler(mesos.interface.Scheduler):
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
-    def tasksForOffer(self, driver, offer):
+    def tasks_for_offer(self, driver, offer):
         """Starts a task using the offer, and subtracts any resources used from the offer."""
         tasks = []
         offerCpus = 0
@@ -191,7 +204,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         task_mem = self.service_config.get_mem()
         task_cpus = self.service_config.get_cpus()
 
-        while self.needMoreTasks(base_task.name, self.tasks_with_flags, tasks) and \
+        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks) and \
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem and \
                 len(remainingPorts) >= 1:
@@ -226,7 +239,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             driver.reviveOffers()
 
         self.load_config()
-        self.killTasksIfNecessary(driver)
+        self.kill_tasks_if_necessary(driver)
 
     def statusUpdate(self, driver, update):
         # update tasks
@@ -246,7 +259,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             task_params.marked_for_gc = True
 
         driver.acknowledgeStatusUpdate(update)
-        self.killTasksIfNecessary(driver)
+        self.kill_tasks_if_necessary(driver)
 
     def make_healthiness_sorter(self, base_task_name):
         def healthiness_score(task_id):
@@ -272,7 +285,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             return (params.is_healthy, state_score, self.is_task_new(base_task_name, task_id))
         return healthiness_score
 
-    def killTasksIfNecessary(self, driver):
+    def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
         new_tasks = self.get_new_tasks(base_task.name, self.tasks_with_flags.keys())
@@ -549,15 +562,15 @@ class NativeServiceConfig(LongRunningServiceConfig):
         if portMappings:
             pm = task.container.docker.port_mappings.add()
             pm.container_port = 8888
-            pm.host_port = 0  # will be filled in by tasksForOffer()
+            pm.host_port = 0  # will be filled in by tasks_for_offer()
             pm.protocol = "tcp"
 
             port = task.resources.add()
             port.name = "ports"
             port.type = mesos_pb2.Value.RANGES
             port.ranges.range.add()
-            port.ranges.range[0].begin = 0  # will be filled in by tasksForOffer().
-            port.ranges.range[0].end = 0  # will be filled in by tasksForOffer().
+            port.ranges.range[0].begin = 0  # will be filled in by tasks_for_offer().
+            port.ranges.range[0].end = 0  # will be filled in by tasks_for_offer().
 
         task.name = self.task_name(task)
 

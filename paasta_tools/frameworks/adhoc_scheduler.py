@@ -30,7 +30,7 @@ class AdhocScheduler(NativeScheduler):
 
         super(AdhocScheduler, self).__init__(*args, **kwargs)
 
-    def needToStop(self):
+    def need_to_stop(self):
         # Is used to decide whether to stop the driver or try to start more tasks.
         for task, params in self.tasks_with_flags.items():
             if params.mesos_task_state not in LIVE_TASK_STATES:
@@ -40,19 +40,19 @@ class AdhocScheduler(NativeScheduler):
     def statusUpdate(self, driver, update):
         super(AdhocScheduler, self).statusUpdate(driver, update)
         # Stop if task ran and finished
-        if self.needToStop():
+        if self.need_to_stop():
             driver.stop()
 
-    def tasksForOffer(self, driver, offer):
+    def tasks_for_offer(self, driver, offer):
         # In dry run satisfy exit-conditions after we got the offer
-        if self.dry_run or self.needToStop():
+        if self.dry_run or self.need_to_stop():
             if self.dry_run:
-                tasks = super(AdhocScheduler, self).tasksForOffer(driver, offer)
+                tasks = super(AdhocScheduler, self).tasks_for_offer(driver, offer)
                 paasta_print("Would have launched: ", tasks)
             driver.stop()
             return None
 
-        return super(AdhocScheduler, self).tasksForOffer(driver, offer)
+        return super(AdhocScheduler, self).tasks_for_offer(driver, offer)
 
-    def killTasksIfNecessary(self, *args, **kwargs):
+    def kill_tasks_if_necessary(self, *args, **kwargs):
         return

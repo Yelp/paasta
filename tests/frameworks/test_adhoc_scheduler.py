@@ -69,12 +69,12 @@ class TestAdhocScheduler(object):
         )
         fake_driver = mock.Mock()
 
-        tasks = scheduler.tasksForOffer(fake_driver, make_fake_offer())
+        tasks = scheduler.tasks_for_offer(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 1
         assert scheduler.need_more_tasks() is False
         assert scheduler.task_started is True
 
-        scheduler.tasksForOffer(fake_driver, make_fake_offer())
+        scheduler.tasks_for_offer(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 1
         assert scheduler.need_more_tasks() is False
         assert scheduler.task_started is True
@@ -87,5 +87,5 @@ class TestAdhocScheduler(object):
         assert scheduler.need_more_tasks() is True
         assert scheduler.task_started is True
 
-        scheduler.tasksForOffer(fake_driver, make_fake_offer())
+        scheduler.tasks_for_offer(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 0
