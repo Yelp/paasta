@@ -64,7 +64,10 @@ def get_any_mesos_master(cluster):
 def paasta_sysdig(args):
     if not args.local:
         mesos_master = get_any_mesos_master(cluster=args.cluster)
-        ssh_cmd = 'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET {0} "sudo paasta {1} --local"'.format(mesos_master, ' '.join(sys.argv[1:]))
+        ssh_cmd = (
+            'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET {0} '
+            '"sudo paasta {1} --local"'
+        ).format(mesos_master, ' '.join(sys.argv[1:]))
         return_code, output = _run(ssh_cmd)
         if return_code != 0:
             paasta_print(output)

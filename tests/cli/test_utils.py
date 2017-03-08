@@ -146,7 +146,10 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -o StrictHostKeyChecking=no -t fake_master sudo paasta_serviceinit -s fake_service -i fake_instance status'
+    expected_command = (
+        'ssh -A -o StrictHostKeyChecking=no -t fake_master '
+        'sudo paasta_serviceinit -s fake_service -i fake_instance status'
+    )
 
     return_code, actual = utils.run_paasta_serviceinit(
         'status',
@@ -164,7 +167,10 @@ def test_run_paasta_serviceinit_status(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -o StrictHostKeyChecking=no -t fake_master sudo paasta_serviceinit -s fake_service -i fake_instance -v status'
+    expected_command = (
+        'ssh -A -o StrictHostKeyChecking=no -t fake_master '
+        'sudo paasta_serviceinit -s fake_service -i fake_instance -v status'
+    )
 
     return_code, actual = utils.run_paasta_serviceinit(
         'status',
@@ -576,8 +582,11 @@ def test_get_instance_config_unknown(
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_chronos_rerun(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = ('ssh -A -n -o StrictHostKeyChecking=no fake_master \'sudo chronos_rerun -v -v "a_service an_instance" '
-                        '"2016-04-08T02:37:27"\'')
+    expected_command = (
+        'ssh -A -n -o StrictHostKeyChecking=no fake_master '
+        '\'sudo chronos_rerun -v -v "a_service an_instance" '
+        '"2016-04-08T02:37:27"\''
+    )
 
     actual = utils.run_chronos_rerun(
         'fake_master',
