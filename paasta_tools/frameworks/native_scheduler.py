@@ -182,6 +182,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         while self.need_more_tasks(base_task.name) and \
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem and \
+                self.offer_matches_pool(offer) and \
                 len(remainingPorts) >= 1:
 
             task_port = random.choice(list(remainingPorts))
@@ -211,6 +212,13 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingPorts -= set([task_port])
 
         return tasks
+
+    def offer_matches_pool(self, offer):
+        for attribute in offer.attributes:
+            if attribute.name == "pool":
+                return attribute.text.value == self.service_config.get_pool()
+        # we didn't find a pool attribute on this slave, so assume it's not in our pool.
+        return False
 
     def within_reconcile_backoff(self):
         return time.time() - self.reconcile_backoff < self.reconcile_start_time
