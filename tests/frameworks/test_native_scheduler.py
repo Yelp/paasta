@@ -72,7 +72,7 @@ class TestNativeScheduler(object):
         fake_driver = mock.Mock()
 
         # First, start up 3 old tasks
-        old_tasks = scheduler.tasksForOffer(fake_driver, make_fake_offer())
+        old_tasks = scheduler.resourceOffers(fake_driver, [make_fake_offer()])
         assert len(scheduler.tasks_with_flags) == 3
         # and mark the old tasks as up
         for task in old_tasks:
@@ -83,10 +83,10 @@ class TestNativeScheduler(object):
         scheduler.service_config = service_configs[1]
 
         # and start 3 more tasks
-        new_tasks = scheduler.tasksForOffer(fake_driver, make_fake_offer())
+        new_tasks = scheduler.resourceOffers(fake_driver, [make_fake_offer()])
         assert len(scheduler.tasks_with_flags) == 6
         # It should not drain anything yet, since the new tasks aren't up.
-        scheduler.kill_tasks_if_necessary(fake_driver)
+        scheduler.killTasksIfNecessary(fake_driver)
         assert len(scheduler.tasks_with_flags) == 6
         assert len(scheduler.drain_method.downed_task_ids) == 0
 
@@ -178,19 +178,18 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
         )
-        fake_driver = mock.Mock()
+        scheduler.resourceOffers(
+            mock.Mock(), [make_fake_offer(port_begin=12345, port_end=12345)])
 
-        fake_offer = make_fake_offer(port_begin=12345, port_end=12345)
-        tasks = scheduler.tasksForOffer(fake_driver, fake_offer)
-
-        assert len(tasks) == 1
-        for resource in tasks[0].resources:
-            if resource.name == "ports":
-                assert resource.ranges.range[0].begin == 12345
-                assert resource.ranges.range[0].end == 12345
-                break
-        else:
-            raise AssertionError("never saw a ports resource")
+        assert len(scheduler.tasks_with_flags) == 1
+        for _, task in scheduler.tasks_with_flags.items():
+            for resource in task.resources:
+                if resource.name == "ports":
+                    assert resource.ranges.range[0].begin == 12345
+                    assert resource.ranges.range[0].end == 12345
+                    break
+            else:
+                raise AssertionError("never saw a ports resource")
 
 
 class TestNativeServiceConfig(object):
