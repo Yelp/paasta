@@ -19,8 +19,6 @@ import datetime
 import functools
 import json
 import os
-import pipes
-import shlex
 import socket
 import sys
 import time
@@ -391,7 +389,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.extend((
             'sh', '-c'
         ))
-        cmd.append(pipes.quote(' '.join(command)))
+        cmd.append(command)
     return cmd
 
 
@@ -565,7 +563,7 @@ def run_docker_container(
     container_started = False
     container_id = None
     try:
-        (returncode, output) = _run(joined_docker_run_cmd)
+        (returncode, output) = _run(docker_run_cmd)
         if returncode != 0:
             paasta_print(
                 'Failure trying to start your container!'
@@ -758,14 +756,14 @@ def configure_and_run_docker_container(
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if interactive is True and args.cmd is None:
-        command = ['bash']
+        command = 'bash'
     elif args.cmd:
-        command = shlex.split(args.cmd, posix=False)
+        command = args.cmd
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
             command_modifier = command_function_for_framework(instance_type)
-            command = shlex.split(command_modifier(command_from_config), posix=False)
+            command = command_modifier(command_from_config)
         else:
             command = instance_config.get_args()
 
