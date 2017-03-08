@@ -77,7 +77,15 @@ class TestAdhocScheduler(object):
             service_config=service_configs[0],
             dry_run=False
         )
+
         fake_driver = mock.Mock()
+
+        # Check that offers with invalid pool don't get accepted
+        scheduler.start_task(fake_driver, make_fake_offer(pool='notdefault'))
+        scheduler.start_task(fake_driver, make_fake_offer(pool=None))
+        assert len(scheduler.tasks_with_flags) == 0
+        assert scheduler.need_more_tasks() is True
+        assert scheduler.task_started is False
 
         tasks = scheduler.start_task(fake_driver, make_fake_offer())
         assert len(scheduler.tasks_with_flags) == 1
