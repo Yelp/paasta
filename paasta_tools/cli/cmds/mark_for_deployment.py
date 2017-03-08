@@ -498,7 +498,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
                 sys.stdout.flush()
                 return 0
             else:
-                time.sleep(min(10, timeout))
+                time.sleep(min(60, timeout))
             sys.stdout.flush()
 
     _log(
