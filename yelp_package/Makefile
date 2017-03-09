@@ -24,12 +24,12 @@ DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
-	ACTUAL_PACKAGE_VERSION:=$(RELEASE)-yelp1
-	ADD_YELP_PREFIX_MAYBE=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
+	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp1
+	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
-	ADD_YELP_PREFIX_MAYBE:=$(NOOP)
-	ACTUAL_PACKAGE_VERSION:=$(RELEASE)
+	ACTUAL_PACKAGE_VERSION=$(RELEASE)~$*1
+	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
 endif
 
 build_%_docker:
@@ -45,7 +45,7 @@ package_%: build_$$*_docker
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
-	$(ADD_YELP_PREFIX_MAYBE)
+	$(ADD_VERSION_SUFFIX)
 
 	$(DOCKER_RUN) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
