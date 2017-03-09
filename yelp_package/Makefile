@@ -71,7 +71,7 @@ clean:
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 # This sed isn't really right but at least it doesn't crash (and I couldn't get
 # \' or ''' or \\' to work :( )
-LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/'\''/"/g')
 # github_changelog_generator comes from
 # https://github.com/skywinder/github-changelog-generator
 # Follow the instructions to generate a github api token
