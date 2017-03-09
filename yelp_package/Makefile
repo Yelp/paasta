@@ -28,7 +28,7 @@ ifeq ($(PAASTA_ENV),YELP)
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
-	ACTUAL_PACKAGE_VERSION=$(RELEASE)~$*1
+	ACTUAL_PACKAGE_VERSION=$(RELEASE)-1~$*1
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
 endif
 
