@@ -209,7 +209,7 @@ def test_run_paasta_serviceinit_status_verbose_multi(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus'
+    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master paasta_metastatus'
     return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 0)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert return_code == 0
@@ -219,7 +219,7 @@ def test_run_paasta_metastatus(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -v'
+    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master paasta_metastatus -v'
     return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 1)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert return_code == 0
@@ -229,7 +229,7 @@ def test_run_paasta_metastatus_verbose(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_very_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -vv'
+    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master paasta_metastatus -vv'
     return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert return_code == 0
