@@ -230,7 +230,7 @@ def test_run_paasta_metastatus_verbose(mock_run):
 def test_run_paasta_metastatus_very_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
     expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master paasta_metastatus -vv'
-    return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2)
+    return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2, False)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert return_code == 0
     assert actual == mock_run.return_value[1]
@@ -341,10 +341,10 @@ def test_execute_paasta_metastatus_on_remote_master(
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
     return_code, actual = utils.execute_paasta_metastatus_on_remote_master(
-        cluster, fake_system_paasta_config, False, [], 0)
+        cluster, fake_system_paasta_config, False, [], 0, False)
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
-    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0)
+    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0, False)
     assert return_code == mock.sentinel.paasta_metastatus_return_code
     assert actual == mock.sentinel.paasta_metastatus_output
 
