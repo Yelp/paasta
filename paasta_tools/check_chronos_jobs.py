@@ -13,11 +13,11 @@ import argparse
 import sys
 from datetime import datetime
 from datetime import timedelta
-from datetime import tzinfo
 
 import chronos
 import isodate
 import pysensu_yelp
+import pytz
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -144,28 +144,17 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-class TZ(tzinfo):
-
-    def utcoffset(self, dt):
-        return timedelta(minutes=0)
-
-    def dst(self, dt):
-        return timedelta(minutes=0)
-
-
-utc = TZ()
-
-
 def job_is_stuck(last_run_iso_time, interval_in_seconds):
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
     last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(utc)
+    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
 
 
-def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds):
-    return ("Job %(service)s%(separator)s%(instance)s hasn't run since %(last_run)s,"
-            " and is configured to run every %(interval).1f minutes.\n\n"
+def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds, schedule):
+    return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s "
+            "hasn't run since %(last_run)s, and is configured to run every "
+            "%(interval).1f minutes.\n\n"
             "You can view the logs for the job with:\n"
             "\n"
             "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
@@ -175,7 +164,8 @@ def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interva
                  'cluster': cluster,
                  'separator': utils.SPACER,
                  'interval': interval_in_seconds / 60.0,
-                 'last_run': last_run_iso_time}
+                 'last_run': last_run_iso_time,
+                 'schedule': schedule}
 
 
 def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job):
@@ -198,8 +188,14 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
             interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
             if job_is_stuck(last_run_time, interval_in_seconds):
                 sensu_status = pysensu_yelp.Status.CRITICAL
-                output = message_for_stuck_job(service, instance, cluster,
-                                               last_run_time, interval_in_seconds)
+                output = message_for_stuck_job(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    last_run_iso_time=last_run_time,
+                    interval_in_seconds=interval_in_seconds,
+                    schedule=chronos_job_config.get_schedule(),
+                )
             else:
                 sensu_status = sensu_event_for_last_run_state(state)
                 output = message_for_status(sensu_status, service, instance, cluster)

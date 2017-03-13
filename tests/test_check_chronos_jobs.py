@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 
 import pysensu_yelp
+import pytz
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -271,24 +272,36 @@ def test_sensu_message_status_no_run_disabled():
 def test_sensu_message_status_disabled():
     fake_job = {'name': 'fake_job_id', 'disabled': True}
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(), 'myservice', 'myinstance', 'mycluster', fake_job)
+        chronos_job_config=Mock(),
+        service='myservice',
+        instance='myinstance',
+        cluster='mycluster',
+        chronos_job=fake_job
+    )
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
 
 
-utc = check_chronos_jobs.TZ()
-
-
 def test_sensu_message_status_stuck():
-    fake_job = {'name': 'fake_job_id',
-                'disabled': False,
-                'lastSuccess': (datetime.now(utc) - timedelta(hours=4)).isoformat()}
+    fake_job = {
+        'name': 'fake_job_id',
+        'disabled': False,
+        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=4)).isoformat(),
+        'schedule': '* * * * *'
+    }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3)),
-        'myservice', 'myinstance', 'mycluster', fake_job)
+        chronos_job_config=Mock(
+            get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3),
+            get_schedule=Mock(return_value='* * * * *')
+        ),
+        service='myservice',
+        instance='myinstance',
+        cluster='mycluster',
+        chronos_job=fake_job
+    )
     assert status == pysensu_yelp.Status.CRITICAL
-    assert "Job myservice.myinstance hasn't run since" in output
+    assert "Job myservice.myinstance with schedule * * * * * hasn't run since " in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
     assert "and is configured to run every 180.0 minutes." in output
 
@@ -302,10 +315,10 @@ def test_job_is_stuck_when_no_last_run():
 
 
 def test_job_is_stuck_when_not_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=4)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
     assert not check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
 
 
 def test_job_is_stuck_when_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=25)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     assert check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)

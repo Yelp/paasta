@@ -1,3 +1,24 @@
+paasta-tools (0.57.19) lucid; urgency=low
+
+  * 0.57.19 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Wed, 08 Mar 2017 20:54:06 -0800
+
+paasta-tools (0.57.18) lucid; urgency=low
+
+  * 0.57.18 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 08 Mar 2017 12:14:22 -0800
+
+paasta-tools (0.57.17) lucid; urgency=low
+
+  * 0.57.17 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 07 Mar 2017 04:12:57 -0800
+
 paasta-tools (0.57.16) UNRELEASED; urgency=medium
 
   [ robj ]

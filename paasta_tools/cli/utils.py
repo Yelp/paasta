@@ -437,7 +437,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
@@ -489,7 +489,7 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     ssh_flags = ssh_flags.strip()
 
     command_parts = [
-        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flags, master),
+        "ssh -A -o StrictHostKeyChecking=no %s %s sudo paasta_serviceinit" % (ssh_flags, master),
         "-s %s" % service,
         "-i %s" % instances,
         verbose_flag,
@@ -531,7 +531,7 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0):
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
     cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
-    command = ('ssh -A -n %s sudo paasta_metastatus %s' % (
+    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_metastatus %s' % (
         master,
         cmd_args,
     )).strip()
@@ -554,7 +554,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
-    command = 'ssh -A -n %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
+    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
         master,
         verbose_flags,
         service,

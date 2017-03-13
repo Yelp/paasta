@@ -42,7 +42,7 @@ PyStaticConfiguration==0.9.0
 python-crontab==2.1.1
 python-dateutil==2.4.2
 pytimeparse==1.1.5
-pytz==2014.10
+pytz==2016.10
 PyYAML==3.11
 requests==2.6.2
 requests-cache==0.4.10

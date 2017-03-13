@@ -133,7 +133,7 @@ class MesosMaster(object):
         else:
             return cfg
 
-    @util.CachedProperty(ttl=5)
+    @util.CachedProperty(ttl=15)
     def state(self):
         return self.fetch("/master/state.json").json()
 
@@ -211,7 +211,7 @@ class MesosMaster(object):
             keys.append("completed_frameworks")
         return util.merge(self._frameworks, *keys)
 
-    @util.CachedProperty(ttl=5)
+    @util.CachedProperty(ttl=15)
     def _frameworks(self):
         return self.fetch("/master/frameworks").json()
 

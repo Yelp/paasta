@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
+from mesos.interface import mesos_pb2
 
 from paasta_tools import utils
 from paasta_tools.frameworks import adhoc_scheduler
@@ -17,19 +18,28 @@ def system_paasta_config():
     }, "/fake/system/configs")
 
 
-def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000):
-    offer = mock.Mock(
-        resources=[
-            mock.Mock(scalar=mock.Mock(value=cpu)),
-            mock.Mock(scalar=mock.Mock(value=mem)),
-            mock.Mock(ranges=mock.Mock(range=[mock.Mock(begin=port_begin, end=port_end)])),
-        ],
-        slave_id=mock.Mock(value="super big slave"),
-    )
+def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
+    offer = mesos_pb2.Offer()
+    offer.slave_id.value = "super big slave"
 
-    offer.resources[0].name = "cpus"
-    offer.resources[1].name = "mem"
-    offer.resources[2].name = "ports"
+    cpus_resource = offer.resources.add()
+    cpus_resource.name = "cpus"
+    cpus_resource.scalar.value = cpu
+
+    mem_resource = offer.resources.add()
+    mem_resource.name = "mem"
+    mem_resource.scalar.value = mem
+
+    ports_resource = offer.resources.add()
+    ports_resource.name = "ports"
+    ports_range = ports_resource.ranges.range.add()
+    ports_range.begin = port_begin
+    ports_range.end = port_end
+
+    if pool is not None:
+        pool_attribute = offer.attributes.add()
+        pool_attribute.name = "pool"
+        pool_attribute.text.value = pool
 
     return offer
 
@@ -68,7 +78,14 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
         )
+
         fake_driver = mock.Mock()
+
+        # Check that offers with invalid pool don't get accepted
+        tasks = scheduler.tasks_for_offer(fake_driver, make_fake_offer(pool='notdefault'))
+        assert len(tasks) == 0
+        tasks = scheduler.tasks_for_offer(fake_driver, make_fake_offer(pool=None))
+        assert len(tasks) == 0
 
         tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
         task_id = tasks[0].task_id.value
