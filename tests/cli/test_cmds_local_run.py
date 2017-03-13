@@ -724,6 +724,24 @@ def test_get_docker_run_cmd_quote_cmd():
     assert actual[-3:] == [u'sh', u'-c', u'make test']
 
 
+def test_get_docker_run_cmd_quote_list():
+    # Regression test to ensure we properly quote array custom commands
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
+    interactive = True
+    docker_hash = '8' * 40
+    command = ['zsh', '-c', 'make test']
+    net = 'host'
+    docker_params = []
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, net, docker_params)
+
+    assert actual[-3:] == [u'zsh', u'-c', u'make test']
+
+
 def test_get_container_id():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_containers = [

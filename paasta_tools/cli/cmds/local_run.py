@@ -389,7 +389,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.extend((
             'sh', '-c'
         ))
-        cmd.append(command)
+        if isinstance(command, list):
+            cmd.extend(command)
+        else:
+            cmd.append(command)
     return cmd
 
 
