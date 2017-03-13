@@ -99,6 +99,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if service_config is not None:
             self.service_config = service_config
+            self.service_config.config_dict.update(service_config_overrides)
             self.recreate_drain_method()
         else:
             self.load_config()
@@ -171,10 +172,18 @@ class NativeScheduler(mesos.interface.Scheduler):
         return num_have < self.service_config.get_desired_instances()
 
     def get_new_tasks(self, name, tasks):
-        return set([tid for tid in tasks if self.is_task_new(name, tid)])
+        return filter(
+            lambda tid:
+                self.is_task_new(name, tid) and
+                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
+            tasks)
 
     def get_old_tasks(self, name, tasks):
-        return set([tid for tid in tasks if not self.is_task_new(name, tid)])
+        return filter(
+            lambda tid:
+                not(self.is_task_new(name, tid)) and
+                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
+            tasks)
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
@@ -295,8 +304,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         # this puts the most-desired tasks first. I would have left them in order of bad->good and used
         # new_tasks_by_desirability[:-desired_instances] instead, but list[:-0] is an empty list, rather than the full
         # list.
-        new_tasks_by_desirability = sorted(list(new_tasks), key=self.make_healthiness_sorter(base_task.name),
-                                           reverse=True)
+        new_tasks_by_desirability = sorted(
+            list(new_tasks),
+            key=self.make_healthiness_sorter(base_task.name),
+            reverse=True)
         new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
 
         old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
@@ -317,8 +328,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task in [task for task, parameters in self.tasks_with_flags.items() if parameters.is_draining]:
-            if self.drain_method.is_safe_to_kill(DrainTask(id=task)):
+        for task, parameters in self.tasks_with_flags.items():
+            if parameters.is_draining and \
+                    self.drain_method.is_safe_to_kill(DrainTask(id=task)) and \
+                    parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
     def get_happy_tasks(self, tasks):
