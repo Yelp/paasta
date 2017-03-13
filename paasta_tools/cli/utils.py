@@ -43,6 +43,10 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 log = logging.getLogger(__name__)
 
@@ -573,7 +577,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, shell=True, join=True, dry=False, err_code=-1):
+                  timeout=None, shell=False, dry=False, err_code=-1):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -584,9 +588,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     :param cmd_parts: passed into paasta_tools.utils._run as command along with
         ssh bits
     :param timeout: see paasta_tools.utils._run documentation (default: None)
-    :param shell: prepend command from :cmd_parts: with 'sh -c' (default: True)
-    :param join: join :cmd_parts: on ' ' when passing it to
-        paasta_tools.utils._run (default: True)
+    :param shell: prepend :cmd_parts: with 'sh -c' (default: False)
     :param err_code: code to return along with error message when something goes
         wrong (default: -1)
     """
@@ -598,12 +600,9 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     ssh_parts = ['ssh', '-A', '-n', master]
 
     if shell:
-        ssh_parts.extend(['sh', '-c'])
-
-    if join:
-        ssh_parts.append(' '.join(cmd_parts))
+        ssh_parts.extend('sh -c "%s"' % quote(' '.join(cmd_parts)))
     else:
-        ssh_parts.extend([cmd_parts])
+        ssh_parts.append(' '.join(cmd_parts))
 
     if dry:
         return (0, "Would have run: %s" % ssh_parts)
