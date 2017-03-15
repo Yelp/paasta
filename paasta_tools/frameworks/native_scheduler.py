@@ -172,18 +172,18 @@ class NativeScheduler(mesos.interface.Scheduler):
         return num_have < self.service_config.get_desired_instances()
 
     def get_new_tasks(self, name, tasks):
-        return filter(
+        return set(filter(
             lambda tid:
                 self.is_task_new(name, tid) and
                 self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks)
+            tasks))
 
     def get_old_tasks(self, name, tasks):
-        return filter(
+        return set(filter(
             lambda tid:
                 not(self.is_task_new(name, tid)) and
                 self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks)
+            tasks))
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
@@ -268,7 +268,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
         task_params.mesos_task_state = state
 
-        for task, params in self.tasks_with_flags.items():
+        for task, params in list(self.tasks_with_flags.items()):
             if params.marked_for_gc:
                 self.tasks_with_flags.pop(task)
 
