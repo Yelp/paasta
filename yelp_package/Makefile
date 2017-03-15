@@ -32,7 +32,16 @@ else
 	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
 endif
 
-build_%_docker:
+build_%_base:
+	set -x && \
+	cd dockerfiles/$*/ && \
+	export from=`grep ^FROM Dockerfile | cut -d' ' -f2` && \
+	[ -d ../../dockerfiles/paasta-$*-base/ ] && \
+	cd ../../dockerfiles/paasta-$*-base/ && \
+	docker pull $$from || docker build -t $$from .
+
+.SECONDEXPANSION:
+build_%_docker: build_$$*_base
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/$*/ && docker build -t "paastatools_$*_container" .
 
