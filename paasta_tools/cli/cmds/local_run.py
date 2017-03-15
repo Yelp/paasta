@@ -27,6 +27,7 @@ from random import randint
 
 import ephemeral_port_reserve
 import requests
+import six
 from docker import errors
 from six.moves.urllib_parse import urlparse
 
@@ -386,10 +387,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        cmd.extend((
-            'sh', '-c'
-        ))
-        cmd.append(command)
+        if isinstance(command, six.string_types):
+            cmd.extend(('sh', '-c', command))
+        else:
+            cmd.extend(command)
     return cmd
 
 

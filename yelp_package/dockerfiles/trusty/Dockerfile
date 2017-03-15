@@ -56,7 +56,7 @@ RUN apt-get install -yq mesos=1.0.1-2.0.93.ubuntu1404 && \
 	zip -r /root/mesos.scheduler-1.0.1-cp27-none-linux_x86_64.whl mesos/scheduler mesos.scheduler-1.0.1.dist-info && \
 	apt-get remove -yq mesos
 
-RUN pip install --upgrade virtualenv
+RUN pip install --upgrade virtualenv==15.1.0
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
