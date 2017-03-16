@@ -27,10 +27,8 @@ from contextlib import contextmanager
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
-from requests.exceptions import ConnectionError
 
 from paasta_tools import marathon_tools
-from paasta_tools import mesos_tools
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
@@ -216,38 +214,14 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def get_smartstack_tasks(tasks, service, nerve_ns, system_paasta_config):
-    tasks_in_smartstack = []
-    service_namespace = compose_job_id(service, nerve_ns)
-
-    service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=nerve_ns)
-    discover_location_type = service_namespace_config.get_discover()
-    mesos_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-        slaves=mesos_tools.get_slaves(),
-        attribute=discover_location_type
+def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
+    return task in get_registered_marathon_tasks(
+        synapse_host=task.host,
+        synapse_port=system_paasta_config.get_synapse_port(),
+        synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+        service=compose_job_id(service, nerve_ns),
+        marathon_tasks=[task],
     )
-
-    for slaves in mesos_slaves.values():
-        hosts = iter(slaves)
-        while True:
-            try:
-                synapse_hostname = next(hosts)['hostname']
-            except StopIteration:
-                log.error("Failed to connect to any smartstack hosts for %s, %s" % (service, nerve_ns))
-                raise
-            try:
-                tasks_in_smartstack.extend(get_registered_marathon_tasks(
-                    synapse_hostname,
-                    system_paasta_config.get_synapse_port(),
-                    system_paasta_config.get_synapse_haproxy_url_format(),
-                    service_namespace,
-                    tasks,
-                ))
-                break
-            except ConnectionError:
-                log.warning("Failed to connect to %s smartstack, host probably terminated" % synapse_hostname)
-    return tasks_in_smartstack
 
 
 def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
@@ -266,9 +240,6 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
     happy = []
     now = datetime.datetime.utcnow()
 
-    if check_haproxy:
-        tasks = get_smartstack_tasks(tasks, service, nerve_ns, system_paasta_config)
-
     for task in tasks:
         if task.started_at is None:
             # Can't be healthy if it hasn't started
@@ -285,8 +256,12 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
         # if there are health check results, check if at least one healthcheck is passing
         if not marathon_tools.is_task_healthy(task, require_all=False, default_healthy=True):
             continue
-        happy.append(task)
 
+        if check_haproxy:
+            if not is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
+                continue
+
+        happy.append(task)
     return happy
 
 
