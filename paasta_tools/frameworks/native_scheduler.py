@@ -129,6 +129,8 @@ class NativeScheduler(mesos.interface.Scheduler):
             self.launch_tasks_for_offers(driver, offers)
 
     def launch_tasks_for_offers(self, driver, offers):
+        """For each offer tries to launch all tasks that can fit in there.
+        Declines offer if no fitting tasks found."""
         launched_tasks = []
 
         for offer in offers:
@@ -203,7 +205,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         return tid.startswith("%s." % name)
 
     def tasks_for_offer(self, driver, offer):
-        """Starts a task using the offer, and subtracts any resources used from the offer."""
+        """Returns collection of tasks that can fit inside an offer."""
         tasks = []
         offerCpus = 0
         offerMem = 0

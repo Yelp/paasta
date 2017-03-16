@@ -19,8 +19,6 @@ import datetime
 
 import marathon
 import mock
-from pytest import raises
-from requests.exceptions import ConnectionError
 
 from paasta_tools import bounce_lib
 from paasta_tools import utils
@@ -173,44 +171,24 @@ class TestBounceLib:
         expected = bounce_lib.brutal_bounce
         assert actual == expected
 
-    def test_get_smartstack_tasks(self):
-        with mock.patch(
-            'paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
-            return_value=['task1', 'task2']
-        ) as mock_get_registered_marathon_tasks, mock.patch(
-            'paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-            return_value={'fake_region': [{'hostname': 'fakehost'},
-                                          {'hostname': 'anotherhost'}]}, autospec=True
-        ), mock.patch(
-            'paasta_tools.mesos_tools.get_slaves', autospec=True
-        ):
-            mock_tasks = mock.Mock()
-            # test happy flow
-            ret = bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
-                                                  self.fake_system_paasta_config())
-            assert ret == ['task1', 'task2']
-            mock_get_registered_marathon_tasks.assert_called_with('fakehost',
-                                                                  123456,
-                                                                  'http://{host:s}:{port:d}/;csv;norefresh',
-                                                                  'fake-service.fake-nerve-ns',
-                                                                  mock_tasks)
+    def test_is_task_in_smartstack(self):
+        service = 'foo'
+        nerve_ns = 'bar'
+        fake_task = mock.Mock(host='foo', ports=[123456])
+        fake_backend = {
+            "svname": "foo_256.256.256.256:123456",
+            "status": "UP",
+        }
 
-            # test we try another host if haproxy times out
-            mock_get_registered_marathon_tasks.side_effect = [ConnectionError, ['task1', 'task2']]
-            ret = bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
-                                                  self.fake_system_paasta_config())
-            assert ret == ['task1', 'task2']
-            mock_get_registered_marathon_tasks.assert_called_with('anotherhost',
-                                                                  123456,
-                                                                  'http://{host:s}:{port:d}/;csv;norefresh',
-                                                                  'fake-service.fake-nerve-ns',
-                                                                  mock_tasks)
+        with mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True,
+                        return_value=[fake_backend]):
+            with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
+                assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
 
-            # test we throw an error if all the haproxy hosts timeout
-            mock_get_registered_marathon_tasks.side_effect = [ConnectionError] * 2
-            with raises(StopIteration):
-                bounce_lib.get_smartstack_tasks(mock_tasks, 'fake-service', 'fake-nerve-ns',
-                                                self.fake_system_paasta_config())
+        with mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True, return_value=[]):
+            with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
+                assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns,
+                                                            self.fake_system_paasta_config())
 
     def test_get_happy_tasks_when_running_without_healthchecks_defined(self):
         """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
@@ -292,12 +270,6 @@ class TestBounceLib:
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
-        ), mock.patch(
-            'paasta_tools.bounce_lib.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-            return_value={'fake_region': [{'hostname': 'fakehost'}]}, autospec=True,
-        ), mock.patch(
-            'paasta_tools.mesos_tools.get_slaves',
-            return_value=[], autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
@@ -311,53 +283,34 @@ class TestBounceLib:
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
-        ), mock.patch(
-            'paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
-            return_value={'fake_region': [{'hostname': 'fake_host'}]}, autospec=True,
-        ), mock.patch(
-            'paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
             expected = []
             assert actual == expected
 
-    def test_get_happy_tasks_check_haproxy_multiple_locations(self):
+    def test_get_happy_tasks_check_each_host(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in range(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)], host='fake_host1') for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks',
-            side_effect=[tasks[2:3], tasks[3:]], autospec=True,
-        ) as get_registered_marathon_tasks_patch, mock.patch(
-            'paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
-        ) as get_mesos_slaves_grouped_by_attribute_patch, mock.patch(
-            'paasta_tools.mesos_tools.get_slaves', return_value=[], autospec=True,
-        ):
-            get_mesos_slaves_grouped_by_attribute_patch.return_value = {
-                'fake_region': [{'hostname': 'fake_host1'}],
-                'fake_other_region': [{'hostname': 'fake_host2'}]
-            }
+            side_effect=[([t] if i >= 2 else []) for i, t in enumerate(tasks)], autospec=True,
+        ) as get_registered_marathon_tasks_patch:
             actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
                                                 check_haproxy=True)
             expected = tasks[2:]
             assert actual == expected
 
-            get_registered_marathon_tasks_patch.assert_any_call(
-                'fake_host1',
-                123456,
-                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-                'service.namespace',
-                tasks,
-            )
-            get_registered_marathon_tasks_patch.assert_any_call(
-                'fake_host2',
-                123456,
-                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-                'service.namespace',
-                tasks,
-            )
+            for task in tasks:
+                get_registered_marathon_tasks_patch.assert_any_call(
+                    'fake_host1',
+                    123456,
+                    utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+                    'service.namespace',
+                    [task],
+                )
 
     def test_flatten_tasks(self):
         """Simple check of flatten_tasks."""
