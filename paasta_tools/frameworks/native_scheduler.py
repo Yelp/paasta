@@ -251,14 +251,21 @@ class NativeScheduler(mesos.interface.Scheduler):
         return tasks
 
     def offer_matches_constraints(self, offer, constraints):
-        try:
-            for (attr, op, val) in constraints:
-                for oa in offer.attributes:
-                    if oa.name == attr and not(CONS_OPS[op](val, oa.text.value)):
-                        return False
-        except Exception as err:
-            paasta_print("Error while mathing constrains: %s" % err)
-            return False
+        for (attr, op, val) in constraints:
+            try:
+                offer_attr = next(
+                    (x for x in offer.attributes if x.name == attr), None)
+                if offer_attr is None:
+                    paasta_print("Attribute not found for a constraint: %s" % attr)
+                    return False
+                elif not(CONS_OPS[op](val, offer_attr.text.value)):
+                    paasta_print("Constraint not satisfied: [%s %s %s for %s]" % (
+                        attr, op, val, offer_attr.text.value))
+                    return False
+            except Exception as err:
+                paasta_print("Error while mathing constraint: [%s %s %s] %s" % (
+                    attr, op, val, err.strerror))
+                raise err
 
         return True
 
