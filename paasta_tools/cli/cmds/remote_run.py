@@ -15,7 +15,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
 import re
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
@@ -103,6 +108,24 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-E', '--cons-eq',
+        help='Mesos EQUALS constraint, --cons-eq <attr>,<value>',
+        required=False,
+        action='append'
+    )
+    list_parser.add_argument(
+        '-L', '--cons-like',
+        help='Mesos LIKE constraint, --cons-like <attr>,<value>',
+        required=False,
+        action='append'
+    )
+    list_parser.add_argument(
+        '-U', '--cons-unlike',
+        help='Mesos UNLIKE constraint, --cons-unlike <attr>,<value>',
+        required=False,
+        action='append'
+    )
     list_parser.set_defaults(command=paasta_remote_run)
 
 
@@ -149,7 +172,16 @@ def paasta_remote_run(args):
         elif not isinstance(value, bool):
             cmd_parts.extend(['--%s' % arg_key, value])
 
-    paasta_print('Running on master: %s' % cmd_parts)
+    constraints = []
+    for k, v in {'eq': 'EQUALS', 'like': 'LIKE', 'unlike': 'UNLIKE'}.items():
+        constraints.extend(
+            map(lambda e: e.replace(',', ',%s,' % v).split(',', 2),
+                args_vars['cons_%s' % k] or []))
+
+    if len(constraints) > 0:
+        cmd_parts.extend(['--constraints', quote(json.dumps(constraints))])
+
+    paasta_print('Running on master: %s' % ' '.join(cmd_parts))
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
         dry=args.very_dry_run)

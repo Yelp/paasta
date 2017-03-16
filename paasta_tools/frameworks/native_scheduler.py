@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import binascii
 import logging
 import random
+import re
 import time
 import uuid
 
@@ -73,12 +74,19 @@ class MesosTaskParameters(object):
         self.marked_for_gc = False
 
 
+CONS_OPS = {
+    'EQUALS': lambda pair: pair[0] == pair[1],
+    'LIKE': lambda pair: re.match(pair[0], pair[1]),
+    'UNLIKE': lambda pair: not(re.match(pair[0], pair[1])),
+}
+
+
 class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
                  instance_type='paasta_native', service_config_overrides={},
-                 reconcile_start_time=float('inf')):
+                 reconcile_start_time=float('inf'), constraints=[]):
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -87,6 +95,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.soa_dir = soa_dir
         self.tasks_with_flags = {}
         self.service_config_overrides = service_config_overrides
+        self.constraints = constraints
 
         # don't accept resources until we reconcile.
         self.reconcile_start_time = reconcile_start_time
@@ -217,6 +226,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem and \
                 self.offer_matches_pool(offer) and \
+                self.offer_matches_constraints(offer, self.constraints) and \
                 len(remainingPorts) >= 1:
 
             task_port = random.choice(list(remainingPorts))
@@ -239,6 +249,18 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingPorts -= set([task_port])
 
         return tasks
+
+    def offer_matches_constraints(self, offer, constraints):
+        try:
+            for (attr, op, val) in constraints:
+                for oa in offer.attributes:
+                    if oa.name == attr and not(CONS_OPS[op](val, oa.text.value)):
+                        return False
+        except Exception as err:
+            paasta_print("Error while mathing constrains: %s" % err)
+            return False
+
+        return True
 
     def offer_matches_pool(self, offer):
         for attribute in offer.attributes:
