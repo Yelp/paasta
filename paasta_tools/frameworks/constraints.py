@@ -7,6 +7,14 @@ import re
 
 from paasta_tools.utils import paasta_print
 
+
+def max_per(args):
+    cv, ov, at, st = args
+    if not cv:
+        cv = 1
+    return st.get('MAX_PER', {}).get(at, {}).get(ov, 0) <= int(cv)
+
+
 # lambda args: [constraint value, offer value, attribute, state]
 CONS_OPS = {
     'EQUALS': lambda pair: pair[0] == pair[1],
@@ -18,8 +26,8 @@ CONS_OPS = {
     #   offer value:      default
     #   attribute:        pool
     #   state:            {'MAX_PER' => {'pool' => {'default' => 6}}}
-    'MAX_PER': lambda quad: quad[3]['MAX_PER'][quad[2]][quad[1]] <= quad[0],
-    'UNIQUE': lambda quad: quad[3]['UNIQUE'][quad[2]][quad[1]] <= 1,
+    'MAX_PER': max_per,
+    'UNIQUE': max_per,
 }
 
 
@@ -56,7 +64,7 @@ def test_offer_constraints(offer, constraints, state):
                 return False
             elif not(CONS_OPS[op]([val, offer_attr.text.value,
                                    offer_attr.name, state])):
-                paasta_print("Constraint not satisfied: [%s %s %s for %s]" % (
+                paasta_print("Constraint not satisfied: [%s %s %s] for %s with %s" % (
                     attr, op, val, offer_attr.text.value, state))
                 return False
         except Exception as err:
