@@ -151,7 +151,8 @@ def paasta_remote_run(args):
 
     paasta_print('Running on master: %s' % cmd_parts)
     return_code, status = run_on_master(
-        args.cluster, system_paasta_config, cmd_parts, dry=args.very_dry_run)
+        args.cluster, system_paasta_config, cmd_parts,
+        dry=args.very_dry_run)
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
