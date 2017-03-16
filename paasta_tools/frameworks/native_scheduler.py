@@ -258,13 +258,13 @@ class NativeScheduler(mesos.interface.Scheduler):
                 if offer_attr is None:
                     paasta_print("Attribute not found for a constraint: %s" % attr)
                     return False
-                elif not(CONS_OPS[op](val, offer_attr.text.value)):
+                elif not(CONS_OPS[op]([val, offer_attr.text.value])):
                     paasta_print("Constraint not satisfied: [%s %s %s for %s]" % (
                         attr, op, val, offer_attr.text.value))
                     return False
             except Exception as err:
                 paasta_print("Error while mathing constraint: [%s %s %s] %s" % (
-                    attr, op, val, err.strerror))
+                    attr, op, val, str(err)))
                 raise err
 
         return True
