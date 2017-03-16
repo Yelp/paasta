@@ -616,7 +616,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
         if ideal_capacity > self.resource['max_capacity']:
             self.log.warning(
-                "Our ideal capacity (%d) is higher than max_capacity (%d). Consider rasing max_capacity!" % (
+                "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!" % (
                     ideal_capacity, self.resource['max_capacity']
                 ))
         if ideal_capacity < self.resource['min_capacity']:
