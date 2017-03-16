@@ -43,16 +43,18 @@ class AdhocScheduler(NativeScheduler):
         if self.need_to_stop():
             driver.stop()
 
-    def tasks_for_offer(self, driver, offer):
+    def tasks_and_state_for_offer(self, driver, offer, state):
         # In dry run satisfy exit-conditions after we got the offer
         if self.dry_run or self.need_to_stop():
             if self.dry_run:
-                tasks = super(AdhocScheduler, self).tasks_for_offer(driver, offer)
+                tasks, _ = super(AdhocScheduler, self). \
+                    tasks_and_state_for_offer(driver, offer, state)
                 paasta_print("Would have launched: ", tasks)
             driver.stop()
-            return None
+            return None, state
 
-        return super(AdhocScheduler, self).tasks_for_offer(driver, offer)
+        return super(AdhocScheduler, self). \
+            tasks_and_state_for_offer(driver, offer, state)
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
         return

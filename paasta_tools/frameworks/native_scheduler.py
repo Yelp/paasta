@@ -69,12 +69,14 @@ class MesosTaskParameters(object):
         mesos_task_state=None,
         is_draining=False,
         is_healthy=False,
+        offer=None
     ):
         self.health = health
         self.mesos_task_state = mesos_task_state
 
         self.is_draining = is_draining
         self.is_healthy = is_healthy
+        self.offer = offer
         self.marked_for_gc = False
 
 
@@ -135,7 +137,8 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         for offer in offers:
             self.constraint_state_lock.acquire()
-            tasks, new_state = self.tasks_for_offer(driver, offer)
+            tasks, new_state = self.tasks_and_state_for_offer(
+                driver, offer, self.constraint_state)
             if tasks:
                 for task in tasks:
                     self.tasks_with_flags.setdefault(
@@ -204,7 +207,7 @@ class NativeScheduler(mesos.interface.Scheduler):
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
-    def tasks_for_offer(self, driver, offer):
+    def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
         tasks = []
         offerCpus = 0
@@ -230,7 +233,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         task_cpus = self.service_config.get_cpus()
 
         # don't mutate existing state
-        new_constraint_state = copy.deepcopy(self.constraint_state)
+        new_constraint_state = copy.deepcopy(state)
         while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks) and \
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem and \
@@ -259,7 +262,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         update_constraint_state(offer, self.constraints,
                                 new_constraint_state, step=len(tasks))
-        return tasks
+        return tasks, new_constraint_state
 
     def offer_matches_pool(self, offer):
         for attribute in offer.attributes:
@@ -608,15 +611,15 @@ class NativeServiceConfig(LongRunningServiceConfig):
         if portMappings:
             pm = task.container.docker.port_mappings.add()
             pm.container_port = 8888
-            pm.host_port = 0  # will be filled in by tasks_for_offer()
+            pm.host_port = 0  # will be filled in by tasks_and_state_for_offer()
             pm.protocol = "tcp"
 
             port = task.resources.add()
             port.name = "ports"
             port.type = mesos_pb2.Value.RANGES
             port.ranges.range.add()
-            port.ranges.range[0].begin = 0  # will be filled in by tasks_for_offer().
-            port.ranges.range[0].end = 0  # will be filled in by tasks_for_offer().
+            port.ranges.range[0].begin = 0  # will be filled in by tasks_and_state_for_offer().
+            port.ranges.range[0].end = 0  # will be filled in by tasks_and_state_for_offer().
 
         task.name = self.task_name(task)
 
