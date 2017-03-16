@@ -4,9 +4,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import binascii
+import copy
 import logging
 import random
-import re
+import threading
 import time
 import uuid
 
@@ -37,6 +38,9 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
+
+from paasta_tools.frameworks.constraints import update_constraint_state
+from paasta_tools.frameworks.constraints import test_offer_constraints
 
 
 log = logging.getLogger(__name__)
@@ -74,13 +78,6 @@ class MesosTaskParameters(object):
         self.marked_for_gc = False
 
 
-CONS_OPS = {
-    'EQUALS': lambda pair: pair[0] == pair[1],
-    'LIKE': lambda pair: re.match(pair[0], pair[1]),
-    'UNLIKE': lambda pair: not(re.match(pair[0], pair[1])),
-}
-
-
 class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
@@ -96,6 +93,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.tasks_with_flags = {}
         self.service_config_overrides = service_config_overrides
         self.constraints = constraints
+
+        self.constraint_state = {}
+        self.constraint_state_lock = threading.Lock()
 
         # don't accept resources until we reconcile.
         self.reconcile_start_time = reconcile_start_time
@@ -132,13 +132,16 @@ class NativeScheduler(mesos.interface.Scheduler):
         launched_tasks = []
 
         for offer in offers:
-            tasks = self.tasks_for_offer(driver, offer)
+            self.constraint_state_lock.acquire()
+            tasks, new_state = self.tasks_for_offer(driver, offer)
             if tasks:
                 for task in tasks:
                     self.tasks_with_flags.setdefault(
                         task.task_id.value,
                         MesosTaskParameters(
-                            health=None, mesos_task_state=TASK_STAGING))
+                            health=None,
+                            mesos_task_state=TASK_STAGING,
+                            offer=offer))
 
                 operation = mesos_pb2.Offer.Operation()
                 operation.type = mesos_pb2.Offer.Operation.LAUNCH
@@ -146,8 +149,10 @@ class NativeScheduler(mesos.interface.Scheduler):
                 driver.acceptOffers([offer.id], [operation])
 
                 launched_tasks.extend(tasks)
+                self.constraint_state = new_state
             else:
                 driver.declineOffer(offer.id)
+            self.constraint_state_lock.release()
 
         return launched_tasks
 
@@ -222,12 +227,14 @@ class NativeScheduler(mesos.interface.Scheduler):
         task_mem = self.service_config.get_mem()
         task_cpus = self.service_config.get_cpus()
 
+        # don't mutate existing state
+        new_constraint_state = copy.deepcopy(self.constraint_state)
         while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks) and \
                 remainingCpus >= task_cpus and \
                 remainingMem >= task_mem and \
                 self.offer_matches_pool(offer) and \
-                self.offer_matches_constraints(offer, self.constraints) and \
-                len(remainingPorts) >= 1:
+                len(remainingPorts) >= 1 and \
+                test_offer_constraints(offer, self.constraints, new_constraint_state):
 
             task_port = random.choice(list(remainingPorts))
 
@@ -248,26 +255,9 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingMem -= task_mem
             remainingPorts -= set([task_port])
 
+        update_constraint_state(offer, self.constraints,
+                                new_constraint_state, step=len(tasks))
         return tasks
-
-    def offer_matches_constraints(self, offer, constraints):
-        for (attr, op, val) in constraints:
-            try:
-                offer_attr = next(
-                    (x for x in offer.attributes if x.name == attr), None)
-                if offer_attr is None:
-                    paasta_print("Attribute not found for a constraint: %s" % attr)
-                    return False
-                elif not(CONS_OPS[op]([val, offer_attr.text.value])):
-                    paasta_print("Constraint not satisfied: [%s %s %s for %s]" % (
-                        attr, op, val, offer_attr.text.value))
-                    return False
-            except Exception as err:
-                paasta_print("Error while mathing constraint: [%s %s %s] %s" % (
-                    attr, op, val, str(err)))
-                raise err
-
-        return True
 
     def offer_matches_pool(self, offer):
         for attribute in offer.attributes:
@@ -303,6 +293,10 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
+            self.constraint_state_lock.acquire()
+            update_constraint_state(task_params.offer, self.constraints,
+                                    self.constraint_state, step=-1)
+            self.constraint_state_lock.release()
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
