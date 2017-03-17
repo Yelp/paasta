@@ -112,7 +112,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if service_config is not None:
             self.service_config = service_config
-            self.service_config.config_dict.update(service_config_overrides)
+            self.service_config.config_dict.update(self.service_config_overrides)
             self.recreate_drain_method()
             self.reload_constraints()
         else:
