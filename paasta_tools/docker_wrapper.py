@@ -116,6 +116,7 @@ def get_cpumap():
                     cpumap[cpuid].append(core)
                     core += 1
     except IOError:
+        logging.warning('Error while trying to read cpuinfo')
         pass
     return cpumap
 
@@ -130,6 +131,7 @@ def get_numa_memsize(nb_nodes):
                 if m:
                     return int(m) / 1024 / int(nb_nodes)
     except IOError:
+        logging.warning('Error while trying to read meminfo')
         pass
     return 0
 
@@ -163,36 +165,47 @@ def is_numa_enabled():
 def append_cpuset_args(argv, env_args):
     # Enable log messages to stderr
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+
     try:
         pinned_numa_node = int(env_args.get('PIN_TO_NUMA_NODE'))
     except (ValueError, TypeError):
-        logging.warning('Could not read PIN_TO_NUMA_NODE value as an int.' +
-                        str(env_args.get('PIN_TO_NUMA_NODE')))
-        pinned_numa_node = None
+        logging.error('Could not read PIN_TO_NUMA_NODE value as an int: {}'.format(
+            env_args.get('PIN_TO_NUMA_NODE')))
+        return argv
 
     cpumap = get_cpumap()
 
-    # We do nothing if any of these conditions are not met
-    if (
-        # PIN_TO_NUMA_NODE has a correct value
-        pinned_numa_node and
-        # cpuset is not already manually set
-        not arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv) and
-        # NUMA is supported by the system
-        is_numa_enabled() and
-        # Machine has multiple CPUs
-        len(cpumap) > 1 and
-        # Requested numa node exists
-        pinned_numa_node in cpumap and
-        # The numa node has more cores than the container requires
-        len(cpumap[pinned_numa_node]) >= extract_float(env_args.get('MARATHON_APP_RESOURCE_CPUS')) and
-        # Requested memory fits in one NUMA node
-        get_numa_memsize(len(cpumap)) > extract_float(env_args.get('MARATHON_APP_RESOURCE_MEM'))
-    ):
-        argv = add_argument(argv, ('--cpuset-cpus=' + ','.join(str(c) for c in cpumap[pinned_numa_node])))
-        argv = add_argument(argv, ('--cpuset-mems=' + str(pinned_numa_node)))
-        logging.info('NUMA optimization requested. Pinning to NUMA node %d' % pinned_numa_node)
+    if len(cpumap) < 1:
+        logging.error('Less than 2 physical CPU detected')
+        return argv
 
+    if pinned_numa_node not in cpumap:
+        logging.error('Specified NUMA node: {} does not exist on this system'.format(
+            pinned_numa_node))
+        return argv
+
+    if arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv):
+        logging.error('--cpuset options are already set. Not overriding')
+        return argv
+
+    if not is_numa_enabled():
+        logging.error('Could not detect NUMA on the system')
+        return argv
+
+    if len(cpumap[pinned_numa_node]) < extract_float(env_args.get(
+            'MARATHON_APP_RESOURCE_CPUS')):
+        logging.error('The NUMA node has less cores than requested')
+        return argv
+
+    if get_numa_memsize(len(cpumap)) <= extract_float(env_args.get(
+            'MARATHON_APP_RESOURCE_MEM')):
+        logging.error('Requested memory does not fit in one NUMA node')
+        return argv
+
+    logging.info('Binding container to NUMA node {}'.format(pinned_numa_node))
+    argv = add_argument(argv, ('--cpuset-cpus=' + ','.join(
+        str(c) for c in cpumap[pinned_numa_node])))
+    argv = add_argument(argv, ('--cpuset-mems=' + str(pinned_numa_node)))
     return argv
 
 

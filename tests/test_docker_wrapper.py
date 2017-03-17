@@ -258,11 +258,12 @@ class TestMain(object):
             ],
         ):
             docker_wrapper.main(argv)
-        argv = [
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
             'docker',
             'run',
             '--env=PIN_TO_NUMA_NODE=1',
-        ]
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5')]
 
     def test_marathon_bogus_value(self, mock_execlp):
         argv = [
