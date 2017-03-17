@@ -168,9 +168,9 @@ def validate_deploy_group(deploy_group, service, soa_dir):
 
     if len(invalid_deploy_groups) == 1:
         raise DeployGroupError("ERROR: These deploy groups are not currently "
-                               "used anywhere: {0}.\n"
+                               "used anywhere: {}.\n"
                                "You probably need one of these in-use deploy "
-                               "groups?:\n   {1}"
+                               "groups?:\n   {}"
                                .format(",".join(invalid_deploy_groups),
                                        ",".join(in_use_deploy_groups)))
 
@@ -206,7 +206,7 @@ def paasta_wait_for_deployment(args):
                             timeout=args.timeout)
         _log(service=service,
              component='deploy',
-             line=("Deployment of {0} for {1} complete".
+             line=("Deployment of {} for {} complete".
                    format(args.commit, args.deploy_group)),
              level='event')
 

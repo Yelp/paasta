@@ -32,7 +32,7 @@ from paasta_tools.utils import timeout
 
 
 def update_context_marathon_config(context):
-    whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
+    whitelist_keys = {'id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'}
     with mock.patch.object(
         MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1,
     ), mock.patch.object(

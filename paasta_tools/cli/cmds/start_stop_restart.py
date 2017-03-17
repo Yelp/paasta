@@ -171,7 +171,7 @@ def paasta_start_or_stop(args, desired_state):
     # and we figure out which ones are needed for each service later.
     if instances:
         instance_clusters = [list_clusters(service, soa_dir, instance) for instance in args.instances]
-        valid_clusters = sorted(list(set([cluster for cluster_list in instance_clusters for cluster in cluster_list])))
+        valid_clusters = sorted(list({cluster for cluster_list in instance_clusters for cluster in cluster_list}))
     else:
         valid_clusters = list_clusters(service, soa_dir)
 

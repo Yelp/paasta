@@ -221,7 +221,7 @@ def paasta_mark_for_deployment(args):
                                 git_sha=args.commit,
                                 soa_dir=args.soa_dir,
                                 timeout=args.timeout)
-            line = "Deployment of {0} for {1} complete".format(args.commit, args.deploy_group)
+            line = "Deployment of {} for {} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
                 component='deploy',
@@ -341,18 +341,18 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                                                  instance=instance).result()
         except HTTPError as e:
             if e.response.status_code == 404:
-                log.warning("Can't get status for instance {0}, service {1} in "
-                            "cluster {2}. This is normally because it is a new "
+                log.warning("Can't get status for instance {}, service {} in "
+                            "cluster {}. This is normally because it is a new "
                             "service that hasn't been deployed by PaaSTA yet"
                             .format(instance, cluster_data.service,
                                     cluster_data.cluster))
             else:
-                log.warning("Error getting service status from PaaSTA API: {0}:"
-                            "{1}".format(e.response.status_code,
-                                         e.response.text))
+                log.warning("Error getting service status from PaaSTA API: {}:"
+                            "{}".format(e.response.status_code,
+                                        e.response.text))
         except ConnectionError as e:
-            log.warning("Error getting service status from PaaSTA API for {0}:"
-                        "{1}".format(cluster_data.cluster, e))
+            log.warning("Error getting service status from PaaSTA API for {}:"
+                        "{}".format(cluster_data.cluster, e))
 
         if not status:
             log.debug("No status for {}.{}, in {}. Not deployed yet."
@@ -463,12 +463,12 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         _log(
             service=service,
             component='deploy',
-            line=("Couldn't find any instances for service {0} in deploy "
-                  "group {1}".format(service, deploy_group)),
+            line=("Couldn't find any instances for service {} in deploy "
+                  "group {}".format(service, deploy_group)),
             level='event'
         )
         raise NoInstancesFound
-    paasta_print("Waiting for deployment of {0} for '{1}' complete..."
+    paasta_print("Waiting for deployment of {} for '{}' complete..."
                  .format(git_sha, deploy_group))
 
     total_instances = 0

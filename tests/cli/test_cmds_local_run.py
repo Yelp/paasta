@@ -721,7 +721,7 @@ def test_get_docker_run_cmd_quote_cmd():
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
-    assert actual[-3:] == [u'sh', u'-c', u'make test']
+    assert actual[-3:] == ['sh', '-c', 'make test']
 
 
 def test_get_docker_run_cmd_quote_list():
@@ -739,7 +739,7 @@ def test_get_docker_run_cmd_quote_list():
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
-    assert actual[-3:] == [u'zsh', u'-c', u'make test']
+    assert actual[-3:] == ['zsh', '-c', 'make test']
 
 
 def test_get_container_id():

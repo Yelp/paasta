@@ -51,3 +51,7 @@
         entry: except:$
         language: pcre
         files: \.py$
+-   repo: https://github.com/asottile/pyupgrade
+    sha: v1.0.0
+    hooks:
+    -   id: pyupgrade

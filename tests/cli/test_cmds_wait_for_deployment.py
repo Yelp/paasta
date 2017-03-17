@@ -240,7 +240,7 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
     mock_list_deploy_groups,
     mock_validate_service_name,
 ):
-    mock_list_deploy_groups.return_value = set(['another_test_deploy_group'])
+    mock_list_deploy_groups.return_value = {'another_test_deploy_group'}
     assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_wait_for_deployment.call_args_list == []
     assert mock_validate_service_name.called
@@ -254,7 +254,7 @@ def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
     mock_validate_service_name,
     mock_get_cluster_instance_map_for_service
 ):
-    mock_list_deploy_groups.return_value = set(['test_deploy_group'])
+    mock_list_deploy_groups.return_value = {'test_deploy_group'}
     mock_get_cluster_instance_map_for_service.return_value = {}
     assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_validate_service_name.called

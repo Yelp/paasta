@@ -33,7 +33,7 @@ def fatal(msg, code=1):
 
 
 def fn(f, *args, **kwargs):
-    logging.debug("{0}: {1} {2}".format(repr(f), args, kwargs))
+    logging.debug("{}: {} {}".format(repr(f), args, kwargs))
     return f(*args, **kwargs)
 
 
@@ -44,7 +44,7 @@ def duration(fn):
         try:
             return fn(*args, **kwargs)
         finally:
-            debug("duration: {0}.{1}: {2:2.2f}s".format(
+            debug("duration: {}.{}: {:2.2f}s".format(
                 fn.__module__,
                 fn.__name__,
                 time.time() - start))

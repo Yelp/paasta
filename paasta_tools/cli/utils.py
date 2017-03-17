@@ -677,10 +677,10 @@ def extract_tags(paasta_tag):
 def list_deploy_groups(parsed_args=None, service=None, soa_dir=DEFAULT_SOA_DIR, **kwargs):
     if service is None:
         service = parsed_args.service or guess_service_name()
-    return set([config.get_deploy_group() for config in get_instance_configs_for_service(
+    return {config.get_deploy_group() for config in get_instance_configs_for_service(
         service=service,
         soa_dir=soa_dir,
-    )])
+    )}
 
 
 def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
@@ -693,7 +693,7 @@ def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
     """
     if len(args_deploy_groups) is 0:
         valid_deploy_groups = set(all_deploy_groups)
-        invalid_deploy_groups = set([])
+        invalid_deploy_groups = set()
     else:
         valid_deploy_groups = set(args_deploy_groups).intersection(all_deploy_groups)
         invalid_deploy_groups = set(args_deploy_groups).difference(all_deploy_groups)
@@ -828,7 +828,7 @@ class PaastaTaskNotFound(Exception):
 def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None, verbose=True):
     api = client.get_paasta_api_client(cluster=cluster)
     if not api:
-        log.error("Could not get API client for cluster {0}".format(cluster))
+        log.error("Could not get API client for cluster {}".format(cluster))
         raise PaastaTaskNotFound
     if task_id:
         log.warning("Specifying a task_id, so ignoring hostname if specified")
@@ -850,21 +850,21 @@ def get_task_from_instance(cluster, service, instance, slave_hostname=None, task
                                            verbose=True,
                                            slave_hostname=slave_hostname).result()
     except HTTPNotFound:
-        log.error("Cannot find instance {0}, for service {1}, in cluster {2}".format(instance,
-                                                                                     service,
-                                                                                     cluster))
+        log.error("Cannot find instance {}, for service {}, in cluster {}".format(instance,
+                                                                                  service,
+                                                                                  cluster))
         raise PaastaTaskNotFound
     except HTTPError as e:
         log.error("Problem with API call to find task details")
         log.error(e.response.text)
         raise PaastaTaskNotFound
     if not tasks:
-        log.error("Cannot find any tasks on host: {0} or with task_id: {1}".format(slave_hostname,
-                                                                                   task_id))
+        log.error("Cannot find any tasks on host: {} or with task_id: {}".format(slave_hostname,
+                                                                                 task_id))
         raise PaastaTaskNotFound
     return tasks[0]
 
 
 def get_container_name(task):
-    container_name = "mesos-{0}.{1}".format(task.slave_id, task.executor['container'])
+    container_name = "mesos-{}.{}".format(task.slave_id, task.executor['container'])
     return container_name
