@@ -156,7 +156,9 @@ class NativeScheduler(mesos.interface.Scheduler):
                 launched_tasks.extend(tasks)
                 self.constraint_state = new_state
             else:
-                driver.declineOffer(offer.id)
+                filters = mesos_pb2.Filters()
+                filters.refuse_seconds = 60
+                driver.declineOffer(offer.id, filters)
             self.constraint_state_lock.release()
 
         return launched_tasks
