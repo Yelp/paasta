@@ -52,6 +52,6 @@
         language: pcre
         files: \.py$
 -   repo: https://github.com/asottile/pyupgrade
-    sha: v1.0.0
+    sha: v1.0.4
     hooks:
     -   id: pyupgrade
