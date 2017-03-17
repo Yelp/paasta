@@ -112,6 +112,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             self.service_config = service_config
             self.service_config.config_dict.update(service_config_overrides)
             self.recreate_drain_method()
+            self.reload_constraints()
         else:
             self.load_config()
 
@@ -417,6 +418,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             config_overrides=self.service_config_overrides
         )
         self.recreate_drain_method()
+        self.reload_constraints()
 
     def recreate_drain_method(self):
         """Re-instantiate self.drain_method. Should be called after self.service_config changes."""
@@ -427,6 +429,10 @@ class NativeScheduler(mesos.interface.Scheduler):
             nerve_ns=self.service_config.get_nerve_namespace(),
             **self.service_config.get_drain_method_params(self.service_config.service_namespace_config)
         )
+
+    def reload_constraints(self):
+        if len(self.constraints) == 0 and self.service_config.get_constraints():
+            self.constraints = self.service_config.get_constraints()
 
 
 class DrainTask(object):
@@ -629,6 +635,9 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
     def get_mesos_network_mode(self):
         return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
+
+    def get_constraints(self):
+        return self.config_dict.get('constraints', None)
 
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
