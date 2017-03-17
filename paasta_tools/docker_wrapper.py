@@ -145,21 +145,30 @@ def arg_collision(new_args, current_args):
     return bool(set(new_args).intersection(set(cur_arg_keys)))
 
 
-def extract_float(f):
-    # Ensure we return a float. If input is invalid we return 0.0
-    try:
-        return float(f)
-    except (ValueError, TypeError):
-        logging.warning('Could not read %s as a float' % str(f))
-        return 0.0
-
-
 def is_numa_enabled():
     if os.path.exists('/proc/1/numa_maps'):
         return True
     else:
         logging.warning('The system does not support NUMA')
         return False
+
+
+def get_cpu_requierements(env_args):
+    # Ensure we return a float. If no requierements we return 0.0
+    try:
+        return float(env_args.get('MARATHON_APP_RESOURCE_CPUS'))
+    except (ValueError, TypeError):
+        logging.warning('Could not read {} as a float'.format(env_args.get('MARATHON_APP_RESOURCE_CPUS')))
+        return 0.0
+
+
+def get_mem_requierements(env_args):
+    # Ensure we return a float. If no requierements we return 0.0
+    try:
+        return float(env_args.get('MARATHON_APP_RESOURCE_MEM'))
+    except (ValueError, TypeError):
+        logging.warning('Could not read {} as a float'.format(env_args.get('MARATHON_APP_RESOURCE_MEM')))
+        return 0.0
 
 
 def append_cpuset_args(argv, env_args):
@@ -178,27 +187,20 @@ def append_cpuset_args(argv, env_args):
     if len(cpumap) < 1:
         logging.error('Less than 2 physical CPU detected')
         return argv
-
     if pinned_numa_node not in cpumap:
         logging.error('Specified NUMA node: {} does not exist on this system'.format(
             pinned_numa_node))
         return argv
-
     if arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv):
         logging.error('--cpuset options are already set. Not overriding')
         return argv
-
     if not is_numa_enabled():
         logging.error('Could not detect NUMA on the system')
         return argv
-
-    if len(cpumap[pinned_numa_node]) < extract_float(env_args.get(
-            'MARATHON_APP_RESOURCE_CPUS')):
+    if len(cpumap[pinned_numa_node]) < get_cpu_requierements(env_args):
         logging.error('The NUMA node has less cores than requested')
         return argv
-
-    if get_numa_memsize(len(cpumap)) <= extract_float(env_args.get(
-            'MARATHON_APP_RESOURCE_MEM')):
+    if get_numa_memsize(len(cpumap)) <= get_mem_requierements(env_args):
         logging.error('Requested memory does not fit in one NUMA node')
         return argv
 
@@ -212,10 +214,8 @@ def append_cpuset_args(argv, env_args):
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
-    # Get Docker env variables
     env_args = parse_env_args(argv)
 
-    # Check if we require this container to stick to a given NUMA node
     if env_args.get('PIN_TO_NUMA_NODE'):
         argv = append_cpuset_args(argv, env_args)
 
@@ -224,6 +224,6 @@ def main(argv=None):
 
     if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
-        argv = add_argument(argv, '--hostname=' + hostname)
+        argv = add_argument(argv, '--hostname={}'.format(hostname))
 
     os.execlp('docker', 'docker', *argv[1:])

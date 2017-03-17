@@ -472,7 +472,7 @@ class TestMain(object):
             '--env=MARATHON_APP_RESOURCE_CPUS=2',
         )]
 
-    def test_numa_req_too_many_cores(self, mock_execlp):
+    def test_numa_too_many_cores_requested(self, mock_execlp):
         argv = [
             'docker',
             'run',
@@ -499,7 +499,7 @@ class TestMain(object):
             '--env=MARATHON_APP_RESOURCE_CPUS=3.0',
         )]
 
-    def test_numa_enabled_no_marathon(self, mock_execlp):
+    def test_numa_enabled_unknown_cpu_requirement_skips_cpusets(self, mock_execlp):
         argv = [
             'docker',
             'run',
@@ -551,7 +551,7 @@ class TestMain(object):
             '--env=PIN_TO_NUMA_NODE=2',
         )]
 
-    def test_numa_single_cpu(self, mock_execlp):
+    def test_numa_single_cpu_doesnt_bother_with_cpusets(self, mock_execlp):
         argv = [
             'docker',
             'run',
