@@ -47,7 +47,7 @@ UPDATE_OPS = {
     'LIKE': lambda _: None,
     'UNLIKE': lambda _: None,
     'MAX_PER': lambda x: nested_inc('MAX_PER', x),
-    'UNIQUE': lambda x: nested_inc('UNIQUE', x),
+    'UNIQUE': lambda x: nested_inc('MAX_PER', x),
 }
 
 
