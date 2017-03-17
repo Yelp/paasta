@@ -109,20 +109,11 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
-        '-E', '--cons-eq',
-        help='Mesos EQUALS constraint, --cons-eq <attr>,<value>',
-        required=False,
-        action='append'
-    )
-    list_parser.add_argument(
-        '-L', '--cons-like',
-        help='Mesos LIKE constraint, --cons-like <attr>,<value>',
-        required=False,
-        action='append'
-    )
-    list_parser.add_argument(
-        '-U', '--cons-unlike',
-        help='Mesos UNLIKE constraint, --cons-unlike <attr>,<value>',
+        '-X', '--cons',
+        help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
+        'the following: EQUALS matches attribute value exactly, LIKE and '
+        'UNLIKE match on regular expression, MAX_PER constrains number of '
+        'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
         required=False,
         action='append'
     )
@@ -172,14 +163,9 @@ def paasta_remote_run(args):
         elif not isinstance(value, bool):
             cmd_parts.extend(['--%s' % arg_key, value])
 
-    constraints = []
-    for k, v in {'eq': 'EQUALS', 'like': 'LIKE', 'unlike': 'UNLIKE'}.items():
-        constraints.extend(
-            map(lambda e: e.replace(',', ',%s,' % v).split(',', 2),
-                args_vars['cons_%s' % k] or []))
-
+    constraints = map(lambda x: x.split(',', 2), args_vars['cons'])
     if len(constraints) > 0:
-        cmd_parts.extend(['--constraints', quote(json.dumps(constraints))])
+        cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
     paasta_print('Running on master: %s' % ' '.join(cmd_parts))
     return_code, status = run_on_master(

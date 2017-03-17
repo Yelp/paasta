@@ -15,7 +15,7 @@ def max_per(args):
     return st.get('MAX_PER', {}).get(at, {}).get(ov, 0) <= int(cv)
 
 
-# lambda args: [constraint value, offer value, attribute, state]
+# lambda arg: [constraint value, offer value, attribute, state]
 CONS_OPS = {
     'EQUALS': lambda pair: pair[0] == pair[1],
     'LIKE': lambda pair: re.match(pair[0], pair[1]),

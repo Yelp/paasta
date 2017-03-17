@@ -37,8 +37,8 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
     add_remote_run_args(parser)
     parser.add_argument(
-        '-X', '--constraints',
-        help=('Mesos constraints'),
+        '-X', '--constraints-json',
+        help=('Mesos constraints JSON'),
         required=False,
         default=None,
     )
@@ -85,7 +85,7 @@ def main(argv):
         instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     try:
-        constraints = json.loads(args.constraints or '[]')
+        constraints = json.loads(args.constraints_json or '[]')
     except Exception as e:
         paasta_print("Error while parsing constraints: %s", e)
 
