@@ -1,3 +1,10 @@
+paasta-tools (0.58.3) xenial; urgency=low
+
+  * 0.58.3 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Fri, 17 Mar 2017 11:03:40 -0700
+
 paasta-tools (0.58.0) xenial; urgency=medium
 
   * 0.58.0 tagged with 'make release'
