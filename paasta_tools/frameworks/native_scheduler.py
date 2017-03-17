@@ -42,7 +42,6 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.constraints import test_offer_constraints
 
-
 log = logging.getLogger(__name__)
 
 MESOS_TASK_SPACER = '.'
@@ -60,6 +59,10 @@ TASK_LOST = mesos_pb2.TASK_LOST
 TASK_ERROR = mesos_pb2.TASK_ERROR
 
 LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
+
+
+class ConstraintFailAllTasksError(Exception):
+    pass
 
 
 class MesosTaskParameters(object):
@@ -138,25 +141,30 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         for offer in offers:
             self.constraint_state_lock.acquire()
-            tasks, new_state = self.tasks_and_state_for_offer(
-                driver, offer, self.constraint_state)
-            if tasks:
-                for task in tasks:
-                    self.tasks_with_flags.setdefault(
-                        task.task_id.value,
-                        MesosTaskParameters(
-                            health=None,
-                            mesos_task_state=TASK_STAGING,
-                            offer=offer))
+            try:
+                tasks, new_state = self.tasks_and_state_for_offer(
+                    driver, offer, self.constraint_state)
 
-                operation = mesos_pb2.Offer.Operation()
-                operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                operation.launch.task_infos.extend(tasks)
-                driver.acceptOffers([offer.id], [operation])
+                if len(tasks) > 0:
+                    operation = mesos_pb2.Offer.Operation()
+                    operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                    operation.launch.task_infos.extend(tasks)
+                    driver.acceptOffers([offer.id], [operation])
 
-                launched_tasks.extend(tasks)
-                self.constraint_state = new_state
-            else:
+                    for task in tasks:
+                        self.tasks_with_flags.setdefault(
+                            task.task_id.value,
+                            MesosTaskParameters(
+                                health=None,
+                                mesos_task_state=TASK_STAGING,
+                                offer=offer))
+
+                    launched_tasks.extend(tasks)
+                    self.constraint_state = new_state
+                else:
+                    driver.declineOffer(offer.id)
+            except ConstraintFailAllTasksError:
+                paasta_print("Offer failed constraints for every task, rejecting 60s")
                 filters = mesos_pb2.Filters()
                 filters.refuse_seconds = 60
                 driver.declineOffer(offer.id, filters)
@@ -237,12 +245,21 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         # don't mutate existing state
         new_constraint_state = copy.deepcopy(state)
-        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks) and \
-                remainingCpus >= task_cpus and \
-                remainingMem >= task_mem and \
-                self.offer_matches_pool(offer) and \
-                len(remainingPorts) >= 1 and \
-                test_offer_constraints(offer, self.constraints, new_constraint_state):
+        total = 0
+        failed_constraints = 0
+        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks):
+            total += 1
+
+            if not(remainingCpus >= task_cpus and
+                   remainingMem >= task_mem and
+                   self.offer_matches_pool(offer) and
+                   len(remainingPorts) >= 1):
+                break
+
+            if not(test_offer_constraints(offer, self.constraints,
+                                          new_constraint_state)):
+                failed_constraints += 1
+                break
 
             task_port = random.choice(list(remainingPorts))
 
@@ -263,8 +280,14 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingMem -= task_mem
             remainingPorts -= set([task_port])
 
-        update_constraint_state(offer, self.constraints,
-                                new_constraint_state, step=len(tasks))
+        # raise constraint error but only if no other tasks fit/fail the offer
+        if total > 0 and failed_constraints == total:
+            raise ConstraintFailAllTasksError
+
+        if len(tasks) > 0:
+            update_constraint_state(offer, self.constraints,
+                                    new_constraint_state, step=len(tasks))
+
         return tasks, new_constraint_state
 
     def offer_matches_pool(self, offer):
