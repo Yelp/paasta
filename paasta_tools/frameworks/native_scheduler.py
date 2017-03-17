@@ -87,8 +87,8 @@ class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
-                 instance_type='paasta_native', service_config_overrides={},
-                 reconcile_start_time=float('inf'), constraints=[]):
+                 instance_type='paasta_native', service_config_overrides=None,
+                 reconcile_start_time=float('inf'), constraints=None):
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -96,9 +96,8 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
         self.tasks_with_flags = {}
-        self.service_config_overrides = service_config_overrides
-        self.constraints = constraints
-
+        self.service_config_overrides = service_config_overrides or {}
+        self.constraints = constraints or []
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
 
@@ -140,35 +139,34 @@ class NativeScheduler(mesos.interface.Scheduler):
         launched_tasks = []
 
         for offer in offers:
-            self.constraint_state_lock.acquire()
-            try:
-                tasks, new_state = self.tasks_and_state_for_offer(
-                    driver, offer, self.constraint_state)
+            with self.constraint_state_lock:
+                try:
+                    tasks, new_state = self.tasks_and_state_for_offer(
+                        driver, offer, self.constraint_state)
 
-                if len(tasks) > 0:
-                    operation = mesos_pb2.Offer.Operation()
-                    operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                    operation.launch.task_infos.extend(tasks)
-                    driver.acceptOffers([offer.id], [operation])
+                    if len(tasks) > 0:
+                        operation = mesos_pb2.Offer.Operation()
+                        operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                        operation.launch.task_infos.extend(tasks)
+                        driver.acceptOffers([offer.id], [operation])
 
-                    for task in tasks:
-                        self.tasks_with_flags.setdefault(
-                            task.task_id.value,
-                            MesosTaskParameters(
-                                health=None,
-                                mesos_task_state=TASK_STAGING,
-                                offer=offer))
+                        for task in tasks:
+                            self.tasks_with_flags.setdefault(
+                                task.task_id.value,
+                                MesosTaskParameters(
+                                    health=None,
+                                    mesos_task_state=TASK_STAGING,
+                                    offer=offer))
 
-                    launched_tasks.extend(tasks)
-                    self.constraint_state = new_state
-                else:
-                    driver.declineOffer(offer.id)
-            except ConstraintFailAllTasksError:
-                paasta_print("Offer failed constraints for every task, rejecting 60s")
-                filters = mesos_pb2.Filters()
-                filters.refuse_seconds = 60
-                driver.declineOffer(offer.id, filters)
-            self.constraint_state_lock.release()
+                        launched_tasks.extend(tasks)
+                        self.constraint_state = new_state
+                    else:
+                        driver.declineOffer(offer.id)
+                except ConstraintFailAllTasksError:
+                    paasta_print("Offer failed constraints for every task, rejecting 60s")
+                    filters = mesos_pb2.Filters()
+                    filters.refuse_seconds = 60
+                    driver.declineOffer(offer.id, filters)
 
         return launched_tasks
 
@@ -324,10 +322,9 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
-            self.constraint_state_lock.acquire()
-            update_constraint_state(task_params.offer, self.constraints,
-                                    self.constraint_state, step=-1)
-            self.constraint_state_lock.release()
+            with self.constraint_state_lock:
+                update_constraint_state(task_params.offer, self.constraints,
+                                        self.constraint_state, step=-1)
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
@@ -531,7 +528,7 @@ def load_paasta_native_job_config(
     load_deployments=True,
     soa_dir=DEFAULT_SOA_DIR,
     instance_type='paasta_native',
-    config_overrides={}
+    config_overrides=None
 ):
     service_paasta_native_jobs = read_service_config(
         service=service,
@@ -547,7 +544,7 @@ def load_paasta_native_job_config(
         branch_dict = deployments_json.get_branch_dict(service, branch)
 
     instance_config_dict = service_paasta_native_jobs[instance].copy()
-    instance_config_dict.update(config_overrides)
+    instance_config_dict.update(config_overrides or {})
     service_config = NativeServiceConfig(
         service=service,
         cluster=cluster,

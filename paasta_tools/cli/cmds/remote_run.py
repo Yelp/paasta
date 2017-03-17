@@ -163,7 +163,7 @@ def paasta_remote_run(args):
         elif not isinstance(value, bool):
             cmd_parts.extend(['--%s' % arg_key, value])
 
-    constraints = map(lambda x: x.split(',', 2), args_vars['cons'])
+    constraints = [x.split(',', 2) for x in args_vars['cons']]
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
