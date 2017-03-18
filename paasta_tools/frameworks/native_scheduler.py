@@ -238,7 +238,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
-            remainingPorts -= set([task_port])
+            remainingPorts -= {task_port}
 
         return tasks
 

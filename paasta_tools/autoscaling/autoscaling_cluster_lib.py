@@ -99,7 +99,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             instance_descriptions = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
-                self.log.warn('Cannot find one or more instance from IDs {0}'.format(instance_ids))
+                self.log.warn('Cannot find one or more instance from IDs {}'.format(instance_ids))
                 return None
             else:
                 raise
@@ -115,20 +115,20 @@ class ClusterAutoscaler(ResourceLogMixin):
             try:
                 instance_ips.append(instance['PrivateIpAddress'])
             except KeyError:
-                self.log.warning("Instance {0} does not have an IP. This normally means it has been"
+                self.log.warning("Instance {} does not have an IP. This normally means it has been"
                                  " terminated".format(instance['InstanceId']))
         return instance_ips
 
     def cleanup_cancelled_config(self, resource_id, config_folder, dry_run=False):
-        file_name = "{0}.json".format(resource_id)
+        file_name = "{}.json".format(resource_id)
         configs_to_delete = [os.path.join(walk[0], file_name)
                              for walk in os.walk(config_folder) if file_name in walk[2]]
         if not configs_to_delete:
-            self.log.info("Resource config for {0} not found".format(resource_id))
+            self.log.info("Resource config for {} not found".format(resource_id))
             return
         if not dry_run:
             os.remove(configs_to_delete[0])
-        self.log.info("Deleted Resource config {0}".format(configs_to_delete[0]))
+        self.log.info("Deleted Resource config {}".format(configs_to_delete[0]))
 
     def get_aws_slaves(self, mesos_state):
         instance_ips = self.get_instance_ips(self.instances, region=self.resource['region'])
@@ -199,12 +199,12 @@ class ClusterAutoscaler(ResourceLogMixin):
                     instance_id = slave.instance_id
                     if not instance_id:
                         self.log.warning(
-                            "Didn't find instance ID for slave: {0}. Skipping terminating".format(slave.pid)
+                            "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid)
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
                     if is_safe_to_kill(slave.hostname) or dry_run:
-                        self.log.info("TERMINATING: {0} (Hostname = {1}, IP = {2})".format(
+                        self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
                             slave.ip,
@@ -218,12 +218,12 @@ class ClusterAutoscaler(ResourceLogMixin):
                                 raise
                         break
                     else:
-                        self.log.info("Instance {0}: NOT ready to kill".format(instance_id))
+                        self.log.info("Instance {}: NOT ready to kill".format(instance_id))
                     self.log.debug("Waiting 5 seconds and then checking again")
                     time.sleep(5)
         except TimeoutError:
-            self.log.error("Timed out after {0} waiting to drain {1}, now terminating anyway".format(drain_timeout,
-                                                                                                     slave.pid))
+            self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(drain_timeout,
+                                                                                                   slave.pid))
             try:
                 ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
             except ClientError as e:
@@ -254,10 +254,10 @@ class ClusterAutoscaler(ResourceLogMixin):
         target_capacity = int(target_capacity)
         delta = target_capacity - current_capacity
         if delta == 0:
-            self.log.info("Already at target capacity: {0}".format(target_capacity))
+            self.log.info("Already at target capacity: {}".format(target_capacity))
             return
         elif delta > 0:
-            self.log.info("Increasing resource capacity to: {0}".format(target_capacity))
+            self.log.info("Increasing resource capacity to: {}".format(target_capacity))
             self.set_capacity(target_capacity)
             return
         elif delta < 0:
@@ -284,16 +284,16 @@ class ClusterAutoscaler(ResourceLogMixin):
         # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
         # do anything at the end of the maintenance window.
         duration = 600 * 1000000000  # nanoseconds
-        self.log.info("Draining {0}".format(slave_to_kill.pid))
+        self.log.info("Draining {}".format(slave_to_kill.pid))
         if not self.dry_run:
             try:
-                drain_host_string = "{0}|{1}".format(slave_to_kill.hostname, slave_to_kill.ip)
+                drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
                 drain([drain_host_string], start, duration)
             except HTTPError as e:
                 self.log.error("Failed to start drain "
-                               "on {0}: {1}\n Trying next host".format(slave_to_kill.hostname, e))
+                               "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
                 raise
-        self.log.info("Decreasing resource from {0} to: {1}".format(current_capacity, new_capacity))
+        self.log.info("Decreasing resource from {} to: {}".format(current_capacity, new_capacity))
         # Instance weights can be floats but the target has to be an integer
         # because this is all AWS allows on the API call to set target capacity
         new_capacity = int(floor(new_capacity))
@@ -301,7 +301,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             self.set_capacity(new_capacity)
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
-            self.log.info("Undraining {0}".format(slave_to_kill.pid))
+            self.log.info("Undraining {}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
             raise
@@ -309,16 +309,16 @@ class ClusterAutoscaler(ResourceLogMixin):
         try:
             self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
         except ClientError as e:
-            self.log.error("Failure when terminating: {0}: {1}".format(slave_to_kill.pid, e))
-            self.log.error("Setting resource capacity back to {0}".format(current_capacity))
+            self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
+            self.log.error("Setting resource capacity back to {}".format(current_capacity))
             self.set_capacity(current_capacity)
-            self.log.info("Undraining {0}".format(slave_to_kill.pid))
+            self.log.info("Undraining {}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
 
     def filter_aws_slaves(self, slaves_list):
         ips = self.get_instance_ips(self.instances, region=self.resource['region'])
-        self.log.debug("IPs in AWS resources: {0}".format(ips))
+        self.log.debug("IPs in AWS resources: {}".format(ips))
         slaves = [slave for slave in slaves_list if slave_pid_to_ip(slave['task_counts'].slave['pid']) in ips]
         slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
         instance_descriptions = self.describe_instances([], region=self.resource['region'],
@@ -335,14 +335,14 @@ class ClusterAutoscaler(ResourceLogMixin):
             if len(filtered_sorted_slaves) == 0:
                 self.log.info("ALL slaves killed so moving on to next resource!")
                 break
-            self.log.info("Resource slave kill preference: {0}".format([slave.hostname
-                                                                        for slave in filtered_sorted_slaves]))
+            self.log.info("Resource slave kill preference: {}".format([slave.hostname
+                                                                       for slave in filtered_sorted_slaves]))
             filtered_sorted_slaves.reverse()
             slave_to_kill = filtered_sorted_slaves.pop()
             instance_capacity = slave_to_kill.instance_weight
             new_capacity = current_capacity - instance_capacity
             if new_capacity < target_capacity:
-                self.log.info("Terminating instance {0} with weight {1} would take us below our target of {2},"
+                self.log.info("Terminating instance {} with weight {} would take us below our target of {},"
                               " so this is as close to our target as we can get".format(
                                   slave_to_kill.instance_id,
                                   slave_to_kill.instance_weight,
@@ -393,7 +393,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             sfrs = ec2_client.describe_spot_fleet_requests(SpotFleetRequestIds=[spotfleet_request_id])
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidSpotFleetRequestId.NotFound':
-                self.log.warn('Cannot find SFR {0}'.format(spotfleet_request_id))
+                self.log.warn('Cannot find SFR {}'.format(spotfleet_request_id))
                 return None
             else:
                 raise
@@ -424,14 +424,14 @@ class SpotAutoscaler(ClusterAutoscaler):
                 mesos_state=mesos_state,
                 expected_instances=expected_instances)
         elif self.sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
-            self.log.warning("Not scaling an SFR in state: {0} so {1}, skipping...".format(
+            self.log.warning("Not scaling an SFR in state: {} so {}, skipping...".format(
                 self.sfr['SpotFleetRequestState'],
                 self.resource['id'])
             )
             return 0, 0
         else:
-            self.log.error("Unexpected SFR state: {0} for {1}".format(self.sfr['SpotFleetRequestState'],
-                                                                      self.resource['id']))
+            self.log.error("Unexpected SFR state: {} for {}".format(self.sfr['SpotFleetRequestState'],
+                                                                    self.resource['id']))
             raise ClusterAutoscalingError
         if self.is_aws_launching_instances() and self.sfr['SpotFleetRequestState'] == 'active':
             self.log.warning("AWS hasn't reached the TargetCapacity that is currently set. We won't make any "
@@ -510,11 +510,11 @@ class SpotAutoscaler(ClusterAutoscaler):
                         self.log.info("Not updating target capacity because this is a cancelled SFR, "
                                       "we are just draining and killing the instances")
                         return
-                    self.log.debug("SFR {0} in state {1}, waiting for state: active".format(self.resource['id'], state))
+                    self.log.debug("SFR {} in state {}, waiting for state: active".format(self.resource['id'], state))
                     self.log.debug("Sleep 5 seconds")
                     time.sleep(5)
             except TimeoutError:
-                self.log.error("Spot fleet {0} not in active state so we can't modify it.".format(self.resource['id']))
+                self.log.error("Spot fleet {} not in active state so we can't modify it.".format(self.resource['id']))
                 raise FailSetResourceCapacity
         if self.dry_run:
             return True
@@ -522,7 +522,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             ret = ec2_client.modify_spot_fleet_request(SpotFleetRequestId=self.resource['id'], TargetCapacity=capacity,
                                                        ExcessCapacityTerminationPolicy='noTermination')
         except ClientError as e:
-            self.log.error("Error modifying spot fleet request: {0}".format(e))
+            self.log.error("Error modifying spot fleet request: {}".format(e))
             raise FailSetResourceCapacity
         return ret
 
@@ -557,12 +557,12 @@ class AsgAutoscaler(ClusterAutoscaler):
         try:
             return asgs['AutoScalingGroups'][0]
         except IndexError:
-            self.log.warning("No ASG found in this account with name: {0}".format(asg_name))
+            self.log.warning("No ASG found in this account with name: {}".format(asg_name))
             return None
 
     def metrics_provider(self):
         if not self.asg:
-            self.log.warning("ASG {0} not found, removing config file".format(self.resource['id']))
+            self.log.warning("ASG {} not found, removing config file".format(self.resource['id']))
             self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
             return 0, 0
         if self.is_aws_launching_instances():
@@ -635,7 +635,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             ret = asg_client.update_auto_scaling_group(AutoScalingGroupName=self.resource['id'],
                                                        DesiredCapacity=capacity)
         except ClientError as e:
-            self.log.error("Error modifying ASG: {0}".format(e))
+            self.log.error("Error modifying ASG: {}".format(e))
             raise FailSetResourceCapacity
         return ret
 
@@ -674,7 +674,7 @@ class PaastaAwsSlave(object):
     @property
     def instance(self):
         if not self.instances:
-            log.warning("Couldn't find instance for ip {0}".format(self.ip))
+            log.warning("Couldn't find instance for ip {}".format(self.ip))
             return None
         if len(self.instances) > 1:
             log.error("Found more than one instance with the same private IP {0}. "
@@ -725,7 +725,7 @@ def autoscale_local_cluster(config_folder, dry_run=False):
                                                                     config_folder=config_folder,
                                                                     dry_run=dry_run))
         except KeyError:
-            log.warning("Couldn't find a metric provider for resource of type: {0}".format(resource['type']))
+            log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
             continue
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
@@ -743,10 +743,10 @@ def get_scaler(scaler_type):
 
 
 def autoscale_cluster_resource(scaler):
-    log.info("Autoscaling {0} in pool, {1}".format(scaler.resource['id'], scaler.resource['pool']))
+    log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
-        log.info("Target capacity: {0}, Capacity current: {1}".format(target, current))
+        log.info("Target capacity: {}, Capacity current: {}".format(target, current))
         scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (scaler.resource['id'], e))

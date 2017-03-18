@@ -68,7 +68,7 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 # A set of config attributes that don't get included in the hash of the config.
 # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
+CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_instances'}
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)

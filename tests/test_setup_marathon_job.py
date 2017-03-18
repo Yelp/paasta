@@ -440,7 +440,7 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': set([fake_task_to_drain])}
+        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': {fake_task_to_drain}}
         fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set()}
         fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
         fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set()}
@@ -505,10 +505,10 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': set([fake_task_to_drain])}
-        fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set([])}
-        fake_old_app_draining_tasks = {'fake_app_to_kill_1': set([])}
-        fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set([])}
+        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': {fake_task_to_drain}}
+        fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set()}
+        fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
+        fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -696,10 +696,10 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 3}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'old_app': set([])}
+        fake_old_app_live_happy_tasks = {'old_app': set()}
         fake_old_app_live_unhappy_tasks = {'old_app': set(old_tasks)}
-        fake_old_app_draining_tasks = {'old_app': set([])}
-        fake_old_app_at_risk_tasks = {'old_app': set([])}
+        fake_old_app_draining_tasks = {'old_app': set()}
+        fake_old_app_at_risk_tasks = {'old_app': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -997,7 +997,7 @@ class TestSetupMarathonJob:
             assert mock_do_bounce.call_args[1]['old_app_draining_tasks']['/some_id'] < set(tasks[1:])
             assert len(mock_do_bounce.call_args[1]['old_app_draining_tasks']['/some_id']) == 2
             # we don't bounce happy tasks when draining tasks are available
-            assert mock_do_bounce.call_args[1]['old_app_live_happy_tasks']['/some_id'] == set([])
+            assert mock_do_bounce.call_args[1]['old_app_live_happy_tasks']['/some_id'] == set()
             # we only stopped draining the tasks we aren't scaling down
             assert mock_stop_draining.call_count == 3
 
@@ -1355,7 +1355,7 @@ class TestSetupMarathonJob:
                 new_config=fake_config,
                 new_app_running=False,
                 happy_new_tasks=[],
-                old_app_live_happy_tasks={old_app.id: set([old_task_to_drain, old_task_dont_drain])},
+                old_app_live_happy_tasks={old_app.id: {old_task_to_drain, old_task_dont_drain}},
                 old_app_live_unhappy_tasks={old_app.id: set()},
                 margin_factor=1,
             )
@@ -1365,7 +1365,7 @@ class TestSetupMarathonJob:
             fake_drain_method.drain.assert_any_call(old_task_to_drain)
 
             assert fake_client.kill_given_tasks.call_count == 1
-            assert set([old_task_to_drain.id, old_task_is_draining.id]) == set(
+            assert {old_task_to_drain.id, old_task_is_draining.id} == set(
                 fake_client.kill_given_tasks.call_args[1]['task_ids'])
             assert fake_client.kill_given_tasks.call_args[1]['scale'] is True
 
@@ -1579,16 +1579,16 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
         expected_live_happy_tasks = {
-            fake_apps[0].id: set([fake_apps[0].tasks[0]]),
-            fake_apps[1].id: set([fake_apps[1].tasks[0]]),
+            fake_apps[0].id: {fake_apps[0].tasks[0]},
+            fake_apps[1].id: {fake_apps[1].tasks[0]},
         }
         expected_live_unhappy_tasks = {
-            fake_apps[0].id: set([fake_apps[0].tasks[1]]),
-            fake_apps[1].id: set([fake_apps[1].tasks[1]]),
+            fake_apps[0].id: {fake_apps[0].tasks[1]},
+            fake_apps[1].id: {fake_apps[1].tasks[1]},
         }
         expected_draining_tasks = {
-            fake_apps[0].id: set([fake_apps[0].tasks[2]]),
-            fake_apps[1].id: set([fake_apps[1].tasks[2]]),
+            fake_apps[0].id: {fake_apps[0].tasks[2]},
+            fake_apps[1].id: {fake_apps[1].tasks[2]},
         }
         expected_at_risk_tasks = {
             fake_apps[0].id: set(),
@@ -1617,7 +1617,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 
 class TestDrainTasksAndFindTasksToKill(object):
     def test_catches_exception_during_drain(self):
-        tasks_to_drain = set([mock.Mock(id='to_drain')])
+        tasks_to_drain = {mock.Mock(id='to_drain')}
         already_draining_tasks = set()
         at_risk_tasks = set()
         fake_drain_method = mock.Mock(
@@ -1642,7 +1642,7 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
     def test_catches_exception_during_is_safe_to_kill(self):
-        tasks_to_drain = set([mock.Mock(id='to_drain')])
+        tasks_to_drain = {mock.Mock(id='to_drain')}
         already_draining_tasks = set()
         at_risk_tasks = set()
         fake_drain_method = mock.Mock(

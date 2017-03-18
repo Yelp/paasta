@@ -59,14 +59,14 @@ class MesosMaster(object):
         self.config = config
 
     def __str__(self):
-        return "<master: {0}>".format(self.key())
+        return "<master: {}>".format(self.key())
 
     def key(self):
         return self.config["master"]
 
     @util.CachedProperty(ttl=5)
     def host(self):
-        return "{0}://{1}".format(self.config["scheme"], self.resolve(self.config["master"]))
+        return "{}://{}".format(self.config["scheme"], self.resolve(self.config["master"]))
 
     @log.duration
     def fetch(self, url, **kwargs):
@@ -98,7 +98,7 @@ class MesosMaster(object):
             leader = sorted(get_masters(), key=lambda x: master_id(x))
 
             if len(leader) == 0:
-                raise exceptions.MasterNotAvailableException("cannot find any masters at {0}".format(cfg,))
+                raise exceptions.MasterNotAvailableException("cannot find any masters at {}".format(cfg,))
             data, stat = zk.get(os.path.join(path, leader[0]))
 
             if not data:
@@ -144,11 +144,11 @@ class MesosMaster(object):
     def slave(self, fltr):
         lst = self.slaves(fltr)
 
-        log.debug("master.slave({0})".format(fltr))
+        log.debug("master.slave({})".format(fltr))
 
         if len(lst) == 0:
             raise exceptions.SlaveDoesNotExist(
-                "Slave {0} no longer exists.".format(fltr))
+                "Slave {} no longer exists.".format(fltr))
 
         elif len(lst) > 1:
             raise exceptions.MultipleSlavesForIDError(

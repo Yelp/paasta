@@ -60,12 +60,12 @@ def test_do_replication_check():
     mock_keys = ['team', 'notification_email', 'runbook', 'tip', 'page',
                  'alert_after', 'realert_every']
 
-    mock_default_data = dict([(key, None) for key in mock_keys])
+    mock_default_data = {key: None for key in mock_keys}
     mock_default_data['team'] = 'test_team'
 
-    mock_specific_data = dict(
-        [(key, "test_{0}".format(key)) for key in mock_keys]
-    )
+    mock_specific_data = {
+        key: "test_{}".format(key) for key in mock_keys
+    }
     mock_specific_data['extra'] = {
         'replication': {
             'key': 'test_key',
