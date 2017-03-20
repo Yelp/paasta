@@ -72,6 +72,9 @@ class Task(object):
         except exceptions.MissingExecutor:
             return {}
 
+    def stats_callable(self):
+        return self.stats
+
     @property
     def cpu_time(self):
         st = self.stats
