@@ -127,9 +127,9 @@ def get_numa_memsize(nb_nodes):
     try:
         with open('/proc/meminfo', 'r') as f:
             for line in f:
-                m = re.match('MemTotal:\s*(\d)kb', line)
+                m = re.match('MemTotal:\s*(\d+)\skB', line)
                 if m:
-                    return int(m) / 1024 / int(nb_nodes)
+                    return int(m.group(1)) / 1024 / int(nb_nodes)
     except IOError:
         logging.warning('Error while trying to read meminfo')
         pass
@@ -201,7 +201,8 @@ def append_cpuset_args(argv, env_args):
         logging.error('The NUMA node has less cores than requested')
         return argv
     if get_numa_memsize(len(cpumap)) <= get_mem_requierements(env_args):
-        logging.error('Requested memory does not fit in one NUMA node')
+        logging.error('Requested memory:{} MB does not fit in one NUMA node: {} MB'.format(
+            get_mem_requierements(env_args), get_numa_memsize(len(cpumap))))
         return argv
 
     logging.info('Binding container to NUMA node {}'.format(pinned_numa_node))

@@ -97,6 +97,18 @@ class TestCanAddHostname(object):
         assert docker_wrapper.can_add_hostname(args) is False
 
 
+class TestMemInfo(object):
+    def test_get_numa_memsize(self):
+        m = mock.mock_open()
+        m.return_value.__iter__.return_value = [
+            'MemTotal:       1024000 kB',
+            'MemFree:        42 kB',
+        ]
+        with mock.patch.object(docker_wrapper, 'open', new=m):
+            memtotal = docker_wrapper.get_numa_memsize(2)
+            assert memtotal == 500
+
+
 class TestGenerateHostname(object):
     def test_simple(self):
         hostname = docker_wrapper.generate_hostname(
