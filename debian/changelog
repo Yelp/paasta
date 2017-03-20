@@ -1,3 +1,10 @@
+paasta-tools (0.58.5) xenial; urgency=medium
+
+  * 0.58.5 tagged with 'make release'
+    Commit:
+
+ -- robj <robj@robj-MacBookPro>  Mon, 20 Mar 2017 14:22:04 +0000
+
 paasta-tools (0.58.4) xenial; urgency=low
 
   * 0.58.4 tagged with 'make release'
