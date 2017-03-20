@@ -504,19 +504,44 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     _log(
         service=service,
         component='deploy',
-        line=("\n\nTimed out after {0} seconds, waiting for {2} in {1} to be "
-              "deployed by PaaSTA. \n\n"
-              "This probably means the deploy hasn't suceeded. The new service "
-              "might not be healthy or one or more clusters could be having "
-              "issues.\n\n"
-              "To debug: try running:\n\n    paasta status -s {2} -vv\n"
-              "    paasta logs -s {2}\n\nto determine the cause.\n\n"
-              "If the service is known to be slow to start you may wish to "
-              "increase the timeout on this step."
-              .format(timeout, deploy_group, service)),
+        line=compose_timeout_message(clusters_data, timeout, deploy_group, service),
         level='event'
     )
     raise TimeoutError
+
+
+def compose_timeout_message(clusters_data, timeout, deploy_group, service):
+    cluster_instances = {}
+    for c_d in clusters_data:
+        while c_d.instances_queue.qsize() > 0:
+            cluster_instances.setdefault(c_d.cluster, []).append(c_d.instances_queue.get(block=False))
+            c_d.instances_queue.task_done()
+
+    paasta_status = []
+    paasta_logs = []
+    for cluster, instances in sorted(cluster_instances.items()):
+        if instances:
+            joined_instances = ','.join(instances)
+            paasta_status.append('paasta status -c {cluster} -s {service} -i {instances}'
+                                 .format(cluster=cluster, service=service,
+                                         instances=joined_instances))
+            paasta_logs.append('paasta logs -c {cluster} -s {service} -i {instances} -C deploy -l 1000'
+                               .format(cluster=cluster, service=service,
+                                       instances=joined_instances))
+
+    return ("\n\nTimed out after {timeout} seconds, waiting for {service} "
+            "in {deploy_group} to be deployed by PaaSTA.\n"
+            "This probably means the deploy hasn't succeeded. The new service "
+            "might not be healthy or one or more clusters could be having issues.\n\n"
+            "To debug try running:\n\n"
+            "  {status_commands}\n\n  {logs_commands}"
+            "\n\nIf the service is known to be slow to start you may wish to "
+            "increase the timeout on this step."
+            .format(timeout=timeout,
+                    deploy_group=deploy_group,
+                    service=service,
+                    status_commands='\n  '.join(paasta_status),
+                    logs_commands='\n  '.join(paasta_logs)))
 
 
 class NoInstancesFound(Exception):
