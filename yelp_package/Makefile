@@ -19,7 +19,7 @@ SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
+DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw keymone/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -36,7 +36,11 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "keymone/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "keymone/paastatools_$*_container" .
+	test "$$DOCKER_USERNAME" != "" || echo "no username"
+	test "$$TRAVIS_BRANCH" = "faster-itests" || echo "wrong branch: $$TRAVIS_BRANCH"
+	test "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" || echo "and?"
 	if [ "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" ]; then \
+	  echo "pushing"; \
 	  docker push "keymone/paastatools_$*_container"; \
 	fi
 
