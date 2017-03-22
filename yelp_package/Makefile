@@ -36,11 +36,7 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "keymone/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "keymone/paastatools_$*_container" .
-	test "$$DOCKER_USERNAME" != "" || echo "no username"
-	test "$$TRAVIS_BRANCH" = "faster-itests" || echo "wrong branch: $$TRAVIS_BRANCH"
-	test "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" || echo "and?"
-	if [ "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" ]; then \
-	  echo "pushing"; \
+	if [ "$$DOCKER_USERNAME" != "" ]; then \
 	  docker push "keymone/paastatools_$*_container"; \
 	fi
 
