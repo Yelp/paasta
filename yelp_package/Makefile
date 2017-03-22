@@ -36,7 +36,9 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "keymone/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "keymone/paastatools_$*_container" .
-	if [ "$$DOCKER_USERNAME" != "" ]; then \
+	if [ "$$TRAVIS_BRANCH" = "master" -a \
+	     "$$TRAVIS_PULL_REQUEST" != "false" -a \
+	     "$$DOCKER_USERNAME" != "" ]; then \
 	  docker push "keymone/paastatools_$*_container"; \
 	fi
 
