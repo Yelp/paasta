@@ -36,8 +36,9 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "keymone/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "keymone/paastatools_$*_container" .
-	[ "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" ] && \
-	docker push "keymone/paastatools_$*_container"
+	if [ "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" ]; then \
+	  docker push "keymone/paastatools_$*_container"; \
+	fi
 
 .SECONDEXPANSION:
 itest_%: package_$$* bintray_$$*
