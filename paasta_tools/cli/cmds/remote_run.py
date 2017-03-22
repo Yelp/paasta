@@ -109,7 +109,7 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
-        '-X', '--cons',
+        '-X', '--constraint',
         help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
         'the following: EQUALS matches attribute value exactly, LIKE and '
         'UNLIKE match on regular expression, MAX_PER constrains number of '
@@ -163,7 +163,7 @@ def paasta_remote_run(args):
         elif not isinstance(value, bool):
             cmd_parts.extend(['--%s' % arg_key, value])
 
-    constraints = [x.split(',', 2) for x in args_vars['cons']]
+    constraints = [x.split(',', 2) for x in args_vars['constraint']]
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
