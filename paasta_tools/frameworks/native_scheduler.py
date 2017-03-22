@@ -88,7 +88,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
                  instance_type='paasta_native', service_config_overrides=None,
-                 reconcile_start_time=float('inf'), constraints=None):
+                 reconcile_start_time=float('inf')):
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -97,7 +97,6 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.soa_dir = soa_dir
         self.tasks_with_flags = {}
         self.service_config_overrides = service_config_overrides or {}
-        self.constraints = constraints or []
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
 
@@ -449,8 +448,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         )
 
     def reload_constraints(self):
-        if len(self.constraints) == 0 and self.service_config.get_constraints():
-            self.constraints = self.service_config.get_constraints()
+        self.constraints = self.service_config.get_constraints() or []
 
 
 class DrainTask(object):

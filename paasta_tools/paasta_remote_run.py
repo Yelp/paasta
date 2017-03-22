@@ -85,9 +85,16 @@ def main(argv):
         instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     try:
-        constraints = json.loads(args.constraints_json or '[]')
+        constraints = json.loads(args.constraints_json)
     except Exception as e:
+        constraints = None
         paasta_print("Error while parsing constraints: %s", e)
+
+    overrides_dict = {}
+    if command:
+        overrides_dict['cmd'] = command
+    if constraints:
+        overrides_dict['constraints'] = constraints
 
     paasta_print('Scheduling a task on Mesos')
     scheduler = AdhocScheduler(
@@ -99,8 +106,7 @@ def main(argv):
         soa_dir=soa_dir,
         reconcile_backoff=0,
         dry_run=dry_run,
-        service_config_overrides={'cmd': command},
-        constraints=constraints
+        service_config_overrides=overrides_dict,
     )
     driver = create_driver(
         framework_name="paasta-remote %s %s" % (
