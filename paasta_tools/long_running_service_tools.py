@@ -61,8 +61,8 @@ class LongRunningServiceConfig(InstanceConfig):
                 decompose_job_id(registration)
             except InvalidJobNameError:
                 log.error(
-                    'Provided registration {0} for service '
-                    '{1} is invalid'.format(registration, self.service)
+                    'Provided registration {} for service '
+                    '{} is invalid'.format(registration, self.service)
                 )
 
         # Backwards compatbility with nerve_ns
@@ -235,7 +235,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     # We also can't just copy the whole dict, as we only care about some keys
     # and there's other things that appear in the smartstack section in
     # several cases.
-    key_whitelist = set([
+    key_whitelist = {
         'healthcheck_mode',
         'healthcheck_uri',
         'healthcheck_port',
@@ -250,7 +250,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'discover',
         'advertise',
         'extra_healthcheck_headers'
-    ])
+    }
 
     for key, value in namespace_config_from_file.items():
         if key in key_whitelist:

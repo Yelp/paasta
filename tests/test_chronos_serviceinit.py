@@ -324,16 +324,6 @@ def test_format_chronos_job_one_mesos_task(mock_status):
     assert PaastaColors.yellow('Running') in actual
 
 
-@mock.patch('paasta_tools.chronos_tools.get_chronos_status_for_job', autospec=True)
-def test_format_chronos_job_two_mesos_tasks(mock_status):
-    example_job = {'name': 'my_service my_instance', 'schedule': 'foo'}
-    running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
-    verbose = False
-    mock_client = mock.Mock()
-    actual = chronos_serviceinit.format_chronos_job_status(mock_client, example_job, running_tasks, verbose)
-    assert 'Critical' in actual
-
-
 def test_format_parents_summary():
     parents = ['service instance', 'service otherinstance']
     assert chronos_serviceinit._format_parents_summary(parents) == ' service instance,service otherinstance'
@@ -548,3 +538,18 @@ def test_get_schedule_for_job_type_dependent():
 def test_get_schedule_for_job_type_invalid():
     with pytest.raises(ValueError):
         assert chronos_serviceinit._get_schedule_field_for_job_type(3)
+
+
+def test_format_mesos_status_no_tasks():
+    running_tasks = []
+    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.grey('Not running')
+
+
+def test_format_mesos_status_tasks():
+    running_tasks = [{'id': 'fake_task'}]
+    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.yellow('Running')
+
+
+def test_format_mesos_status_multiple_tasks():
+    running_tasks = [{'id': 'fake_task'}, {'id': 'tmp foo'}]
+    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.yellow('Running')

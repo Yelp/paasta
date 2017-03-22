@@ -34,7 +34,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 def read_key(key):
-    with open("/nail/etc/{0}".format(key)) as fd:
+    with open("/nail/etc/{}".format(key)) as fd:
         return fd.read().strip()
 
 
@@ -92,7 +92,7 @@ def do_replication_check(service, monitoring_config, service_replication):
                                              service_replication,
                                              warn_range, crit_range)
     return {
-        'name': "replication_{0}".format(service),
+        'name': "replication_{}".format(service),
         'status': status_code,
         'output': message,
         'team': monitoring_config['team'],
@@ -150,7 +150,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         # Get the replication data once for performance
         synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
         self.log.debug(
-            "Gathering replication information from {0}".
+            "Gathering replication information from {}".
             format(synapse_host_port))
         service_replication = {}
         try:
@@ -162,20 +162,20 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             )
         except requests.exceptions.ConnectionError:
             self.log.error(
-                'Failed to connect synapse haproxy on {0}'.
+                'Failed to connect synapse haproxy on {}'.
                 format(synapse_host_port))
             self.critical(
-                'Failed to connect synapse haproxy on {0}'.
+                'Failed to connect synapse haproxy on {}'.
                 format(synapse_host_port))
         except Exception as e:
             self.log.error(
-                'Unable to collect replication information on {0}: {1}'.
+                'Unable to collect replication information on {}: {}'.
                 format(synapse_host_port, str(e)))
             self.critical(
-                'Unable to collect replication information: {0}'.
+                'Unable to collect replication information: {}'.
                 format(str(e)))
         self.log.debug(
-            "Finished gathering replication information from {0}".
+            "Finished gathering replication information from {}".
             format(synapse_host_port))
         return service_replication
 
@@ -197,18 +197,18 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             )
 
             if do_monitoring:
-                self.log.debug("Checking {0}".format(service))
+                self.log.debug("Checking {}".format(service))
                 replication = service_replication.get('%s.main' % service, 0)
                 event = do_replication_check(service, monitoring_config,
                                              replication)
                 checked_services.append(service)
-                self.log.debug("Result for {0}: {1}".format(service,
-                                                            event['output']))
+                self.log.debug("Result for {}: {}".format(service,
+                                                          event['output']))
                 report_event(event)
             else:
-                self.log.debug("Not checking {0}".format(service))
+                self.log.debug("Not checking {}".format(service))
 
-        self.ok("Finished checking services: {0}".format(checked_services))
+        self.ok("Finished checking services: {}".format(checked_services))
 
 
 if __name__ == "__main__":

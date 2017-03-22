@@ -500,10 +500,10 @@ def test_list_teams():
             },
         }
     }
-    expected = set([
+    expected = {
         'red_jaguars',
         'blue_barracudas',
-    ])
+    }
     with mock.patch(
         'paasta_tools.cli.utils._load_sensu_team_data',
         autospec=True,
@@ -672,7 +672,7 @@ def test_list_deploy_groups_parses_configs(
         ),
     ]
     actual = utils.list_deploy_groups(service="foo")
-    assert actual == set(['fake_deploy_group', 'fake_cluster.fake_instance'])
+    assert actual == {'fake_deploy_group', 'fake_cluster.fake_instance'}
 
 
 @patch('paasta_tools.cli.utils.client', autospec=True)

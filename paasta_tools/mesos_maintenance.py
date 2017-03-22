@@ -710,7 +710,7 @@ def get_hosts_past_maintenance_start(grace=0):
         for window in schedules['windows']:
             if window['unavailability']['start']['nanoseconds'] < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    log.debug("Hosts past maintenance start: {0}".format(ret))
+    log.debug("Hosts past maintenance start: {}".format(ret))
     return ret
 
 
@@ -728,5 +728,5 @@ def get_hosts_past_maintenance_end(grace=0):
             end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
             if end < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    log.debug("Hosts past maintenance end: {0}".format(ret))
+    log.debug("Hosts past maintenance end: {}".format(ret))
     return ret

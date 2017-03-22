@@ -48,7 +48,7 @@ def main():
     )
 
     if not marathon_tools.is_app_id_running(app_id=full_appid, client=client):
-        paasta_print("Couldn't find an app named {0}".format(full_appid))
+        paasta_print("Couldn't find an app named {}".format(full_appid))
         sys.exit(1)
 
     service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
@@ -94,7 +94,7 @@ def main():
             old_app_live_happy_tasks=old_app_live_happy_tasks,
             old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             old_app_draining_tasks=old_app_draining_tasks,
-            serviceinstance="{0}.{1}".format(service, instance),
+            serviceinstance="{}.{}".format(service, instance),
             bounce_method='down',
             service=service,
             cluster=cluster,
@@ -107,7 +107,7 @@ def main():
         paasta_print("Sleeping for 10 seconds to give the tasks time to drain")
         time.sleep(10)
 
-    paasta_print("Sucessfully killed {0}".format(full_appid))
+    paasta_print("Sucessfully killed {}".format(full_appid))
 
 
 if __name__ == '__main__':

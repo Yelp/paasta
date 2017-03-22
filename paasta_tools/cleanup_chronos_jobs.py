@@ -151,8 +151,8 @@ def main():
 
     running_jobs = set(deployed_job_names(client))
 
-    expected_service_jobs = set([chronos_tools.compose_job_id(*job) for job in
-                                 chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)])
+    expected_service_jobs = {chronos_tools.compose_job_id(*job) for job in
+                             chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)}
 
     all_tmp_jobs = set(filter_tmp_jobs(filter_paasta_jobs(running_jobs)))
     expired_tmp_jobs = set(filter_expired_tmp_jobs(client, all_tmp_jobs))

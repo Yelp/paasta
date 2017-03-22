@@ -178,8 +178,8 @@ def test_validate_given_deploy_groups_no_arg():
     service_deploy_groups = ['deploy_group1', 'deploy_group2']
     given_deploy_groups = []
 
-    expected_valid = set(['deploy_group1', 'deploy_group2'])
-    expected_invalid = set([])
+    expected_valid = {'deploy_group1', 'deploy_group2'}
+    expected_invalid = set()
 
     actual_valid, actual_invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
@@ -191,8 +191,8 @@ def test_validate_given_deploy_groups_wrong_arg():
     service_deploy_groups = ['deploy_group1', 'deploy_group2']
     given_deploy_groups = ['deploy_group0', 'not_an_deploy_group']
 
-    expected_valid = set([])
-    expected_invalid = set(['deploy_group0', 'not_an_deploy_group'])
+    expected_valid = set()
+    expected_invalid = {'deploy_group0', 'not_an_deploy_group'}
 
     actual_valid, actual_invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
@@ -204,8 +204,8 @@ def test_validate_given_deploy_groups_single_arg():
     service_deploy_groups = ['deploy_group1', 'deploy_group2']
     given_deploy_groups = ['deploy_group1']
 
-    expected_valid = set(['deploy_group1'])
-    expected_invalid = set([])
+    expected_valid = {'deploy_group1'}
+    expected_invalid = set()
 
     actual_valid, actual_invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
@@ -217,8 +217,8 @@ def test_validate_given_deploy_groups_multiple_args():
     service_deploy_groups = ['deploy_group1', 'deploy_group2', 'deploy_group3']
     given_deploy_groups = ['deploy_group1', 'deploy_group2']
 
-    expected_valid = set(['deploy_group1', 'deploy_group2'])
-    expected_invalid = set([])
+    expected_valid = {'deploy_group1', 'deploy_group2'}
+    expected_invalid = set()
 
     actual_valid, actual_invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
@@ -230,8 +230,8 @@ def test_validate_given_deploy_groups_duplicate_args():
     service_deploy_groups = ['deploy_group1', 'deploy_group2', 'deploy_group3']
     given_deploy_groups = ['deploy_group1', 'deploy_group1']
 
-    expected_valid = set(['deploy_group1'])
-    expected_invalid = set([])
+    expected_valid = {'deploy_group1'}
+    expected_invalid = set()
 
     actual_valid, actual_invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
