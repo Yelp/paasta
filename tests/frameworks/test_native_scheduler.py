@@ -77,6 +77,7 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
+            staging_timeout=1,
         )
         fake_driver = mock.Mock()
 
@@ -187,6 +188,7 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             reconcile_start_time=0,
+            staging_timeout=1,
         )
 
         tasks, _ = scheduler.tasks_and_state_for_offer(
@@ -224,6 +226,7 @@ class TestNativeScheduler(object):
                 'desired_state': 'start',
                 'force_bounce': '0',
             },
+
         )
 
         scheduler = native_scheduler.NativeScheduler(
@@ -232,6 +235,7 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_config,
+            staging_timeout=1
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))

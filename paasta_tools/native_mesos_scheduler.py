@@ -21,6 +21,7 @@ def parse_args(argv):
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR", default=DEFAULT_SOA_DIR)
     parser.add_argument('--stay-alive-seconds', dest="stay_alive_seconds", type=int, default=300)
     parser.add_argument('--periodic-interval', dest="periodic_interval", type=int, default=30)
+    parser.add_argument('--staging-timeout', dest="staging_timeout", type=float, default=60)
     return parser.parse_args(argv)
 
 
@@ -37,6 +38,7 @@ def main(argv):
             service_name=service,
             instance_name=instance,
             cluster=cluster,
+            staging_timeout=args.staging_timeout,
             system_paasta_config=system_paasta_config,
             soa_dir=args.soa_dir,
         )

@@ -77,6 +77,7 @@ class TestAdhocScheduler(object):
             service_config=service_configs[0],
             dry_run=False,
             reconcile_start_time=0,
+            staging_timeout=30,
         )
 
         fake_driver = mock.Mock()

@@ -85,6 +85,13 @@ def add_remote_run_args(parser):
         required=False,
         default=False,
     )
+    parser.add_argument(
+        '-t', '--staging-timeout',
+        help='A timeout for the task to be launching before killed',
+        required=False,
+        default=60,
+        type=float,
+    )
 
 
 def add_subparser(subparsers):
@@ -115,7 +122,8 @@ def add_subparser(subparsers):
         'UNLIKE match on regular expression, MAX_PER constrains number of '
         'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
         required=False,
-        action='append'
+        action='append',
+        default=[]
     )
     list_parser.set_defaults(command=paasta_remote_run)
 
@@ -143,7 +151,8 @@ def paasta_remote_run(args):
         'json_dict': False,
         'cmd': None,
         'verbose': True,
-        'dry_run': False
+        'dry_run': False,
+        'staging_timeout': None,
     }
     for key in args_vars:
         # skip args we don't know about
@@ -161,9 +170,9 @@ def paasta_remote_run(args):
         if isinstance(value, bool) and value:
             cmd_parts.append('--%s' % arg_key)
         elif not isinstance(value, bool):
-            cmd_parts.extend(['--%s' % arg_key, value])
+            cmd_parts.extend(['--%s' % arg_key, str(value)])
 
-    constraints = [x.split(',', 2) for x in args_vars['constraint']]
+    constraints = [x.split(',', 2) for x in args_vars.get('constraint', [])]
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
