@@ -940,7 +940,7 @@ def test_determine_scribereader_envs():
             cluster: 'fake_scribe_env',
         }
         actual = logs.ScribeLogReader(cluster_map=cluster_map).determine_scribereader_envs(components, cluster)
-        assert actual == set(['devc', 'fake_scribe_env'])
+        assert actual == {'devc', 'fake_scribe_env'}
 
 
 def test_determine_scribereader_additional_envs():

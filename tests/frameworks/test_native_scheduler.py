@@ -108,9 +108,9 @@ class TestNativeScheduler(object):
         # Now let's roll back and make sure it undrains the old ones and drains new.
         scheduler.service_config = service_configs[0]
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == set([])
+        assert scheduler.drain_method.downed_task_ids == set()
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == set([t.task_id.value for t in new_tasks])
+        assert scheduler.drain_method.downed_task_ids == {t.task_id.value for t in new_tasks}
 
         # Once we drain the new tasks, it should kill them.
         assert fake_driver.killTask.call_count == 0
@@ -132,7 +132,7 @@ class TestNativeScheduler(object):
         assert len(killed_tasks) == 2
         scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.safe_to_kill_task_ids == set([t.task_id.value for t in new_tasks])
+        assert scheduler.drain_method.safe_to_kill_task_ids == {t.task_id.value for t in new_tasks}
         assert len(killed_tasks) == 3
 
         for task in new_tasks:

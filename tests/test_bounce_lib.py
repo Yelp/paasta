@@ -370,12 +370,12 @@ class TestBrutalBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.brutal_bounce(
@@ -401,12 +401,12 @@ class TestBrutalBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.brutal_bounce(
@@ -452,12 +452,12 @@ class TestUpthendownBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -479,12 +479,12 @@ class TestUpthendownBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -506,12 +506,12 @@ class TestUpthendownBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(5)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.upthendown_bounce(
@@ -580,8 +580,8 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
@@ -606,8 +606,8 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 100}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(60)),
-            'app2': set(mock.Mock() for _ in range(40)),
+            'app1': {mock.Mock() for _ in range(60)},
+            'app2': {mock.Mock() for _ in range(40)},
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
@@ -633,12 +633,12 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.crossover_bounce(
@@ -661,8 +661,8 @@ class TestCrossoverBounce:
         happy_tasks = []
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(2)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         assert bounce_lib.crossover_bounce(
@@ -688,8 +688,8 @@ class TestCrossoverBounce:
         happy_tasks = []
         old_app_live_happy_tasks = {}
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(5)),
-            'app2': set(mock.Mock() for _ in range(5)),
+            'app1': {mock.Mock() for _ in range(5)},
+            'app2': {mock.Mock() for _ in range(5)},
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -710,10 +710,10 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(5)),
+            'app1': {mock.Mock() for _ in range(5)},
         }
         old_app_live_unhappy_tasks = {
-            'app2': set(mock.Mock() for _ in range(5)),
+            'app2': {mock.Mock() for _ in range(5)},
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -735,8 +735,8 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {}
 
@@ -758,11 +758,11 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(1)),
+            'app1': {mock.Mock() for _ in range(1)},
             'app2': set(),
         }
 
@@ -788,12 +788,12 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(2)},
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in range(5)),
+            'app2': {mock.Mock() for _ in range(5)},
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -819,8 +819,8 @@ class TestCrossoverBounce:
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(3)},
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -837,12 +837,12 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 500}
         happy_tasks = [mock.Mock() for _ in range(100)]
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(300)),
+            'app1': {mock.Mock() for _ in range(300)},
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in range(100)),
+            'app2': {mock.Mock() for _ in range(100)},
         }
 
         actual = bounce_lib.crossover_bounce(
@@ -860,7 +860,7 @@ class TestCrossoverBounce:
         new_config = {'id': 'foo.bar.12345', 'instances': 3}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
+            'app1': {mock.Mock() for _ in range(3)},
             'app2': set(),
         }
         old_app_live_unhappy_tasks = {
@@ -955,12 +955,12 @@ class TestDownThenUpBounce(object):
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
         old_app_live_happy_tasks = {
-            'app1': set(mock.Mock() for _ in range(3)),
-            'app2': set(mock.Mock() for _ in range(2)),
+            'app1': {mock.Mock() for _ in range(3)},
+            'app2': {mock.Mock() for _ in range(2)},
         }
         old_app_live_unhappy_tasks = {
             'app1': set(),
-            'app2': set(mock.Mock() for _ in range(1)),
+            'app2': {mock.Mock() for _ in range(1)},
         }
 
         assert bounce_lib.downthenup_bounce(

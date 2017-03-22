@@ -133,7 +133,7 @@ def main(argv=None):
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    paasta_print("Master paasta_tools version: {0}".format(__version__))
+    paasta_print("Master paasta_tools version: {}".format(__version__))
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1:
         for grouping in args.groupings:

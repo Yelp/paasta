@@ -240,7 +240,7 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
     mock_list_deploy_groups,
     mock_validate_service_name,
 ):
-    mock_list_deploy_groups.return_value = set(['another_test_deploy_group'])
+    mock_list_deploy_groups.return_value = {'another_test_deploy_group'}
     assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_wait_for_deployment.call_args_list == []
     assert mock_validate_service_name.called
@@ -254,7 +254,7 @@ def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
     mock_validate_service_name,
     mock_get_cluster_instance_map_for_service
 ):
-    mock_list_deploy_groups.return_value = set(['test_deploy_group'])
+    mock_list_deploy_groups.return_value = {'test_deploy_group'}
     mock_get_cluster_instance_map_for_service.return_value = {}
     assert paasta_wait_for_deployment(fake_args) == 1
     assert mock_validate_service_name.called
@@ -291,3 +291,28 @@ def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs):
     mock_list_remote_refs.side_effect = LSRemoteException(test_error_message)
     assert validate_git_sha('fake sha', 'fake_git_url',
                             'fake_group', 'fake_service') is None
+
+
+def test_compose_timeout_message():
+    clusters_data = []
+    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster1',
+                                                         service='someservice',
+                                                         git_sha='somesha',
+                                                         instances_queue=Queue()))
+    clusters_data[0].instances_queue.put('instance1')
+    clusters_data[0].instances_queue.put('instance2')
+    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster2',
+                                                         service='someservice',
+                                                         git_sha='somesha',
+                                                         instances_queue=Queue()))
+    clusters_data[1].instances_queue.put('instance3')
+    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster3',
+                                                         service='someservice',
+                                                         git_sha='somesha',
+                                                         instances_queue=Queue()))
+    message = mark_for_deployment.compose_timeout_message(clusters_data, 1, 'fake_group',
+                                                          'someservice')
+    assert '  paasta status -c cluster1 -s someservice -i instance1,instance2' in message
+    assert '  paasta status -c cluster2 -s someservice -i instance3' in message
+    assert '  paasta logs -c cluster1 -s someservice -i instance1,instance2 -C deploy -l 1000' in message
+    assert '  paasta logs -c cluster2 -s someservice -i instance3 -C deploy -l 1000' in message

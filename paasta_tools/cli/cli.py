@@ -78,7 +78,7 @@ def get_argparser():
     parser.add_argument(
         '-V', '--version',
         action='version',
-        version='paasta-tools {0}'.format(
+        version='paasta-tools {}'.format(
             pkg_resources.get_distribution('paasta-tools').version
         )
     )

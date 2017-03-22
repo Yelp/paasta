@@ -133,7 +133,7 @@ def instance_task(request):
     try:
         task = get_task(task_id, app_id=mstatus['app_id'])
     except TaskNotFound:
-        raise ApiFailure("Task with id {0} not found".format(task_id), 404)
+        raise ApiFailure("Task with id {} not found".format(task_id), 404)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)

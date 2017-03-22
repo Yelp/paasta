@@ -276,7 +276,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
-            remainingPorts -= set([task_port])
+            remainingPorts -= {task_port}
 
         # raise constraint error but only if no other tasks fit/fail the offer
         if total > 0 and failed_constraints == total:
