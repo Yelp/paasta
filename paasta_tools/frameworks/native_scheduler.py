@@ -40,7 +40,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 
 from paasta_tools.frameworks.constraints import update_constraint_state
-from paasta_tools.frameworks.constraints import test_offer_constraints
+from paasta_tools.frameworks.constraints import check_offer_constraints
 
 log = logging.getLogger(__name__)
 
@@ -254,8 +254,8 @@ class NativeScheduler(mesos.interface.Scheduler):
                    len(remainingPorts) >= 1):
                 break
 
-            if not(test_offer_constraints(offer, self.constraints,
-                                          new_constraint_state)):
+            if not(check_offer_constraints(offer, self.constraints,
+                                           new_constraint_state)):
                 failed_constraints += 1
                 break
 
@@ -278,13 +278,11 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingMem -= task_mem
             remainingPorts -= {task_port}
 
+            update_constraint_state(offer, self.constraints, new_constraint_state)
+
         # raise constraint error but only if no other tasks fit/fail the offer
         if total > 0 and failed_constraints == total:
             raise ConstraintFailAllTasksError
-
-        if len(tasks) > 0:
-            update_constraint_state(offer, self.constraints,
-                                    new_constraint_state, step=len(tasks))
 
         return tasks, new_constraint_state
 

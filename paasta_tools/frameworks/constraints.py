@@ -8,32 +8,29 @@ import re
 from paasta_tools.utils import paasta_print
 
 
-def max_per(args):
-    cv, ov, at, st = args
+def max_per(cv, ov, at, st):
     if not cv:
         cv = 1
     return st.get('MAX_PER', {}).get(at, {}).get(ov, 0) <= int(cv)
 
 
 # lambda arg: [constraint value, offer value, attribute, state]
+# example constraint: ['pool', 'MAX_PER', 5]
+#   constraint value: 5
+#   offer value:      default
+#   attribute:        pool
+#   state:            {'MAX_PER' => {'pool' => {'default' => 6}}}
 CONS_OPS = {
-    'EQUALS': lambda pair: pair[0] == pair[1],
-    'LIKE': lambda pair: re.match(pair[0], pair[1]),
-    'UNLIKE': lambda pair: not(re.match(pair[0], pair[1])),
-
-    # example: ['pool', 'MAX_PER', 5]
-    #   constraint value: 5
-    #   offer value:      default
-    #   attribute:        pool
-    #   state:            {'MAX_PER' => {'pool' => {'default' => 6}}}
+    'EQUALS': lambda cv, ov, *_: cv == ov,
+    'LIKE': lambda cv, ov, *_: re.match(cv, ov),
+    'UNLIKE': lambda cv, ov, *_: not(re.match(cv, ov)),
     'MAX_PER': max_per,
     'UNIQUE': max_per,
 }
 
 
-def nested_inc(op, args):
+def nested_inc(op, _, attr_val, attr_name, state, step=1):
     """Increments relevant counter by step from args array"""
-    _, attr_val, attr_name, state, step = args
     oph = state.setdefault(op, {})
     nameh = oph.setdefault(attr_name, {})
     nameh.setdefault(attr_val, 0)
@@ -43,15 +40,15 @@ def nested_inc(op, args):
 
 # lambda args same as CONS_OPS + update step
 UPDATE_OPS = {
-    'EQUALS': lambda _: None,
-    'LIKE': lambda _: None,
-    'UNLIKE': lambda _: None,
-    'MAX_PER': lambda x: nested_inc('MAX_PER', x),
-    'UNIQUE': lambda x: nested_inc('MAX_PER', x),
+    'EQUALS': lambda *_: None,
+    'LIKE': lambda *_: None,
+    'UNLIKE': lambda *_: None,
+    'MAX_PER': lambda *args: nested_inc('MAX_PER', *args),
+    'UNIQUE': lambda *args: nested_inc('MAX_PER', *args),
 }
 
 
-def test_offer_constraints(offer, constraints, state):
+def check_offer_constraints(offer, constraints, state):
     """Returns True if all constraints are satisfied by offer's attributes,
     returns False otherwise. Prints a error message and re-raises if an error
     was thrown."""
@@ -62,8 +59,7 @@ def test_offer_constraints(offer, constraints, state):
             if offer_attr is None:
                 paasta_print("Attribute not found for a constraint: %s" % attr)
                 return False
-            elif not(CONS_OPS[op]([val, offer_attr.text.value,
-                                   offer_attr.name, state])):
+            elif not(CONS_OPS[op](val, offer_attr.text.value, offer_attr.name, state)):
                 paasta_print("Constraint not satisfied: [%s %s %s] for %s with %s" % (
                     attr, op, val, offer_attr.text.value, state))
                 return False
@@ -81,4 +77,4 @@ def update_constraint_state(offer, constraints, state, step=1):
     for (attr, op, val) in constraints:
         for oa in offer.attributes:
             if attr == oa.name:
-                UPDATE_OPS[op]([val, oa.text.value, attr, state, step])
+                UPDATE_OPS[op](val, oa.text.value, attr, state, step)
