@@ -34,7 +34,7 @@ endif
 
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	docker pull "yelp/paastatools_$*_container"
+	docker pull "yelp/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
 	[ "$$DOCKER_USERNAME" != "" -a "$$TRAVIS_BRANCH" = "faster-itests" ] && \
 	docker push "yelp/paastatools_$*_container"
