@@ -22,6 +22,8 @@ RUN cd /usr/lib/python2.7/site-packages && \
 	zip -r /root/mesos.native-1.2.0-cp27-none-linux_x86_64.whl mesos/native mesos.native-1.2.0.dist-info && \
 	zip -r /root/mesos.executor-1.2.0-cp27-none-linux_x86_64.whl mesos/executor mesos.executor-1.2.0.dist-info && \
 	zip -r /root/mesos.scheduler-1.2.0-cp27-none-linux_x86_64.whl mesos/scheduler mesos.scheduler-1.2.0.dist-info && \
+	zip -r /root/mesos.interface-1.2.0-cp27-none-linux_x86_64.whl mesos/interface mesos.interface-1.2.0.dist-info && \
+  pip install /root/mesos.interface-1.2.0-cp27-none-linux_x86_64.whl &&\
   pip install /root/mesos.executor-1.2.0-cp27-none-linux_x86_64.whl &&\
   pip install /root/mesos.scheduler-1.2.0-cp27-none-linux_x86_64.whl &&\
   pip install /root/mesos.native-1.2.0-cp27-none-linux_x86_64.whl
