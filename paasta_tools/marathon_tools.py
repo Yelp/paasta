@@ -377,10 +377,19 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             complete_config['container']['docker']['portMappings'] = [
                 {
                     'containerPort': CONTAINER_PORT,
-                    'hostPort': 0,
+                    'hostPort': self.get_host_port(),
                     'protocol': 'tcp',
                 },
             ]
+        else:
+            complete_config['port_definitions'] = [
+                {
+                    'port': self.get_host_port(),
+                    'protocol': 'tcp',
+                },
+            ]
+            # Without this, we may end up with multiple containers requiring the same port on the same box.
+            complete_config['require_ports'] = True
 
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
@@ -482,6 +491,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_replication_crit_percentage(self):
         return self.config_dict.get('replication_threshold', 50)
+
+    def get_host_port(self):
+        '''Map this port on the host to your container's port 8888. Default is 0, which means Marathon picks a port.'''
+        return self.config_dict.get('host_port', 0)
 
 
 class MarathonDeployStatus:
