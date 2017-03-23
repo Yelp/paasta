@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import socket
 import time
 
 import mock
@@ -45,8 +46,29 @@ def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
 @given('a new {state} app to be deployed, ' +
        'with bounce strategy "{bounce_method}" ' +
        'and drain method "{drain_method}" ' +
+       'and host_port {host_port:d} ' +
+       'and {net} networking ' +
+       'and {instances:d} instances')
+def given_a_new_app_to_be_deployed_host_port_net(context, state, bounce_method, drain_method, host_port, net,
+                                                 instances):
+    given_a_new_app_to_be_deployed_constraints(
+        context=context,
+        state=state,
+        bounce_method=bounce_method,
+        drain_method=drain_method,
+        constraints=str([]),
+        host_port=host_port,
+        net=net,
+        instances=instances,
+    )
+
+
+@given('a new {state} app to be deployed, ' +
+       'with bounce strategy "{bounce_method}" ' +
+       'and drain method "{drain_method}" ' +
        'and constraints {constraints}')
-def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints):
+def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints, host_port=0,
+                                               net='bridge', instances=2):
     constraints = eval(constraints)
     if state == "healthy":
         cmd = "/bin/true"
@@ -64,7 +86,7 @@ def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, dr
         instance=context.instance,
         config_dict={
             "cmd": "/bin/sleep 300",
-            "instances": 2,
+            "instances": instances,
             "healthcheck_mode": "cmd",
             "healthcheck_cmd": cmd,
             "bounce_method": str(bounce_method),
@@ -73,6 +95,8 @@ def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, dr
             "mem": 100,
             "disk": 10,
             "constraints": constraints,
+            "host_port": host_port,
+            "net": net,
         },
         branch_dict={
             'docker_image': 'busybox',
@@ -258,3 +282,17 @@ def when_a_task_has_drained(context):
     this step does.
     """
     drain_lib.TestDrainMethod.mark_arbitrary_task_as_safe_to_kill()
+
+
+@then('it should be discoverable on port {host_port:d}')
+def marathon_services_running_here_works(context, host_port):
+    all_discovered = {}
+    for slave_ip in socket.gethostbyname_ex('mesosslave')[2]:
+        with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value=slave_ip):
+            discovered = marathon_tools.marathon_services_running_here()
+            all_discovered[slave_ip] = discovered
+            if discovered == [('bounce', 'test1', host_port)]:
+                return
+
+    raise Exception("Did not find bounce.test1 in marathon_services_running_here for any of our slaves: %r",
+                    all_discovered)
