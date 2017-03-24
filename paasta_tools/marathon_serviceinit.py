@@ -90,7 +90,7 @@ def desired_state_human(desired_state, instances):
 def status_desired_state(service, instance, client, job_config):
     status = get_bouncing_status(service, instance, client, job_config)
     desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
-    return "State:      %s - Desired state: %s" % (status, desired_state)
+    return "Desired State:      %s and %s" % (status, desired_state)
 
 
 def status_marathon_job_human(service, instance, deploy_status, app_id,
