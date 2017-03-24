@@ -8,10 +8,11 @@ import re
 from paasta_tools.utils import paasta_print
 
 
-def max_per(cv, ov, at, st):
-    if not cv:
-        cv = 1
-    return st.get('MAX_PER', {}).get(at, {}).get(ov, 0) <= int(cv)
+def max_per(constraint_value, offer_value, attribute, state):
+    if not constraint_value:
+        constraint_value = 1
+    state_value = state.get('MAX_PER', {}).get(attribute, {}).get(offer_value, 0)
+    return state_value <= int(constraint_value)
 
 
 # lambda arg: [constraint value, offer value, attribute, state]
