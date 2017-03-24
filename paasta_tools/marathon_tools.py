@@ -389,7 +389,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 },
             ]
             # Without this, we may end up with multiple containers requiring the same port on the same box.
-            complete_config['require_ports'] = True
+            complete_config['require_ports'] = (self.get_host_port() != 0)
 
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
