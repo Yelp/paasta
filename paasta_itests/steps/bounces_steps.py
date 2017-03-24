@@ -285,7 +285,7 @@ def when_a_task_has_drained(context):
 
 
 @then('it should be discoverable on port {host_port:d}')
-def marathon_services_running_here_works(context, host_port):
+def should_be_discoverable_on_port(context, host_port):
     all_discovered = {}
     for slave_ip in socket.gethostbyname_ex('mesosslave')[2]:
         with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value=slave_ip):
@@ -296,3 +296,8 @@ def marathon_services_running_here_works(context, host_port):
 
     raise Exception("Did not find bounce.test1 in marathon_services_running_here for any of our slaves: %r",
                     all_discovered)
+
+
+@then('it should be discoverable on any port')
+def should_be_discoverable_on_any_port(context):
+    return should_be_discoverable_on_port(context, mock.ANY)
