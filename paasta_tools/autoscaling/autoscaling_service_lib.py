@@ -25,6 +25,7 @@ from math import floor
 import gevent
 import requests
 from gevent import monkey
+from gevent import pool
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
@@ -159,10 +160,10 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-def get_json_body_from_service(host, port, endpoint):
+def get_json_body_from_service(host, port, endpoint, timeout=2):
     return requests.get(
         'http://%s:%s/%s' % (host, port, endpoint),
-        headers={'User-Agent': get_user_agent()},
+        headers={'User-Agent': get_user_agent()}, timeout=timeout
     ).json()
 
 
@@ -182,19 +183,28 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
     endpoint = endpoint.lstrip('/')
     utilization = []
-    for task in marathon_tasks:
-        try:
-            utilization.append(json_mapper(get_json_body_from_service(task.host, task.ports[0], endpoint)))
-        except requests.exceptions.Timeout:
+
+    monkey.patch_socket()
+    gevent_pool = pool.Pool(20)
+    jobs = [gevent_pool.spawn(json_mapper, get_json_body_from_service(task.host, task.ports[0], endpoint))
+            for task in marathon_tasks]
+    gevent.joinall(jobs)
+
+    for job in jobs:
+        if job.value is not None:
+            utilization.append(job.value)
+        elif isinstance(job.exception, requests.exceptions.Timeout):
             # If we time out querying an endpoint, assume the task is fully loaded
             # This won't trigger in the event of DNS error or when a request is refused
             # a requests.exception.ConnectionError is raised in those cases
             utilization.append(1.0)
-            log.debug("Recieved a timeout when querying %s on %s:%s. Assuming the service is at full utilization." % (
-                marathon_service_config.get_service(), task.host, task.ports[0]))
-        except Exception as e:
-            log.debug("Caught exception when querying %s on %s:%s : %s" % (
-                marathon_service_config.get_service(), task.host, task.ports[0], str(e)))
+            log.debug("Recieved a timeout when querying %s (%s). Assuming the service is at full utilization." % (
+                marathon_service_config.get_service(), str(job.exception)))
+        elif job.exception is not None:
+            log.error("Caught exception when querying %s on %s:%s : %s" % (marathon_service_config.get_service(),
+                                                                           task.host,
+                                                                           task.ports[0],
+                                                                           str(job.exception)))
     if not utilization:
         raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
