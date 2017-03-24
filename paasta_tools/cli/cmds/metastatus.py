@@ -64,6 +64,13 @@ def add_subparser(subparsers):
         help="define a different soa config directory",
     )
     status_parser.add_argument(
+        '-a', '--autoscaling-info',
+        action='store_true',
+        default=False,
+        dest="autoscaling_info",
+        help="Show cluster autoscaling info, implies -vv"
+    )
+    status_parser.add_argument(
         '-g',
         '--groupings',
         nargs='+',
@@ -78,7 +85,7 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0):
+def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0, autoscaling_info=False):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     return_code, output = execute_paasta_metastatus_on_remote_master(
@@ -86,7 +93,8 @@ def print_cluster_status(cluster, system_paasta_config, humanize, groupings, ver
         system_paasta_config=system_paasta_config,
         humanize=humanize,
         groupings=groupings,
-        verbose=verbose
+        verbose=verbose,
+        autoscaling_info=autoscaling_info
     )
 
     paasta_print("Cluster: %s" % cluster)
@@ -139,6 +147,7 @@ def paasta_metastatus(args):
                     humanize=args.humanize,
                     groupings=args.groupings,
                     verbose=args.verbose,
+                    autoscaling_info=args.autoscaling_info,
                 )
             )
         else:

@@ -41,7 +41,7 @@ class fake_args:
     verbose = False
 
 
-def mock_status_instance_side_effect(service, instance):
+def mock_status_instance_side_effect(service, instance):  # pragma: no cover (gevent)
     if instance in ['instance1', 'instance6', 'notaninstance', 'api_error']:
         # valid completed instance
         mock_mstatus = Mock(app_count=1, deploy_status='Running',
@@ -184,7 +184,7 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     assert instances_out.empty()
 
 
-def instances_deployed_side_effect(cluster_data, instances_out, green_light):
+def instances_deployed_side_effect(cluster_data, instances_out, green_light):  # pragma: no cover (gevent)
     while not cluster_data.instances_queue.empty():
         instance = cluster_data.instances_queue.get()
         if instance not in ['instance1', 'instance2']:
