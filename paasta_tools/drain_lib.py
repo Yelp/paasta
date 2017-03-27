@@ -145,28 +145,36 @@ class HacheckDrainMethod(DrainMethod):
         self.expiration = float(expiration) or float(delay) * 10
 
     def spool_url(self, task):
-        return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
-            'task_host': task.host,
-            'task_port': task.ports[0],
-            'hacheck_port': self.hacheck_port,
-            'service': self.service,
-            'nerve_ns': self.nerve_ns,
-        }
+        if task.ports == []:
+            return None
+        else:
+            return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
+                'task_host': task.host,
+                'task_port': task.ports[0],
+                'hacheck_port': self.hacheck_port,
+                'service': self.service,
+                'nerve_ns': self.nerve_ns,
+            }
 
     def post_spool(self, task, status):
-        resp = requests.post(
-            self.spool_url(task),
-            data={
-                'status': status,
-                'expiration': time.time() + self.expiration,
-                'reason': 'Drained by Paasta',
-            },
-            headers={'User-Agent': get_user_agent()},
-        )
-        resp.raise_for_status()
+        spool_url = self.spool_url(task)
+        if spool_url is not None:
+            resp = requests.post(
+                self.spool_url(task),
+                data={
+                    'status': status,
+                    'expiration': time.time() + self.expiration,
+                    'reason': 'Drained by Paasta',
+                },
+                headers={'User-Agent': get_user_agent()},
+            )
+            resp.raise_for_status()
 
     def get_spool(self, task):
         """Query hacheck for the state of a task, and parse the result into a dictionary."""
+        spool_url = self.spool_url(task)
+        if spool_url is None:
+            return None
         response = requests.get(self.spool_url(task), headers={'User-Agent': get_user_agent()})
         if response.status_code == 200:
             return {
@@ -203,14 +211,14 @@ class HacheckDrainMethod(DrainMethod):
 
     def is_draining(self, task):
         info = self.get_spool(task)
-        if info["state"] == "up":
+        if info is None or info["state"] == "up":
             return False
         else:
             return True
 
     def is_safe_to_kill(self, task):
         info = self.get_spool(task)
-        if info["state"] == "up":
+        if info is None or info["state"] == "up":
             return False
         else:
             return info.get("since", 0) < (time.time() - self.delay)
