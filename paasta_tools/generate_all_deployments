@@ -6,18 +6,14 @@
 
 function delete_old_deployments {
     # Delete any deployments.json file that is older than an hour
-    find /nail/etc/services -iname deployments.json  -mmin +60 -delete
+    for service in $(comm -2 -3 <(find /nail/etc/services/ -maxdepth 1 -type d -printf %f\\n|tail -n +2|sort) <(paasta list|sort)); do
+        if [ -f /nail/etc/services/$service/deployments.json ]; then
+	    echo "Removing $service deployment.json as no instances found by paasta list"
+	    rm -f /nail/etc/services/$service/deployments.json
+        fi
+    done
 }
 
+delete_old_deployments
 # xargs will return 0 if everything went ok, but 12X if something else went wrong
 paasta list | shuf | xargs -n 1 -r -P 4 generate_deployments_for_service -s
-ret=$?
-
-if [[ $ret -eq 0 ]]; then
-    # Only delete old files if we are confident than everything went ok
-    delete_old_deployments
-else
-    # Otherwise return whatever exit code xargs gives us, so we can
-    # get alerted
-    exit $ret
-fi
