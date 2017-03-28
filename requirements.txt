@@ -35,6 +35,7 @@ protobuf==2.6.1
 pyasn1==0.1.8
 pycrypto==2.6.1
 Pygments==2.0.2
+pyinotify
 pyramid==1.7
 pyramid-swagger==2.2.3
 pysensu-yelp==0.3.3
