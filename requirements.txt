@@ -38,7 +38,7 @@ Pygments==2.0.2
 pyramid==1.7
 pyramid-swagger==2.2.3
 pysensu-yelp==0.3.3
-PyStaticConfiguration==0.9.0
+PyStaticConfiguration==0.10.3
 python-crontab==2.1.1
 python-dateutil==2.4.2
 pytimeparse==1.1.5
