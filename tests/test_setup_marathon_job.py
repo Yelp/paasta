@@ -307,7 +307,9 @@ class TestSetupMarathonJob:
         ) as mock_create_marathon_app, mock.patch(
             'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True
         ) as mock_kill_old_ids:
-            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock.Mock(status_code=409))
+            mock_bad_response = mock.Mock(status_code=409,
+                                          headers={'content-type': 'application/json'})
+            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock_bad_response)
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
@@ -405,7 +407,9 @@ class TestSetupMarathonJob:
             assert mock_kill_old_ids.call_count == 0
 
             # test failure from marathon raised
-            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock.Mock(status_code=500))
+            mock_bad_response = mock.Mock(status_code=500,
+                                          headers={'content-type': 'application/json'})
+            mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock_bad_response)
             with raises(marathon.exceptions.MarathonHttpError):
                 setup_marathon_job.do_bounce(
                     bounce_func=fake_bounce_func,
@@ -1048,6 +1052,7 @@ class TestSetupMarathonJob:
         fake_instance = 'psychatrists_would_be_broke'
         fake_response = mock.Mock(
             json=mock.Mock(return_value={'message': 'test'}))
+        fake_response.headers = {'content-type': 'application/json'}
         fake_client = mock.MagicMock(get_app=mock.Mock(
             side_effect=marathon.exceptions.NotFoundError(fake_response)))
         full_id = marathon_tools.format_job_id(fake_name, fake_instance, 'oogabooga', 'bananafanafofooga')
