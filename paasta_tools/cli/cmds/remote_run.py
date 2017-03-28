@@ -15,7 +15,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
 import re
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
@@ -103,6 +108,15 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-X', '--constraint',
+        help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
+        'the following: EQUALS matches attribute value exactly, LIKE and '
+        'UNLIKE match on regular expression, MAX_PER constrains number of '
+        'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
+        required=False,
+        action='append'
+    )
     list_parser.set_defaults(command=paasta_remote_run)
 
 
@@ -149,7 +163,11 @@ def paasta_remote_run(args):
         elif not isinstance(value, bool):
             cmd_parts.extend(['--%s' % arg_key, value])
 
-    paasta_print('Running on master: %s' % cmd_parts)
+    constraints = [x.split(',', 2) for x in args_vars['constraint']]
+    if len(constraints) > 0:
+        cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
+
+    paasta_print('Running on master: %s' % ' '.join(cmd_parts))
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
         dry=args.very_dry_run)

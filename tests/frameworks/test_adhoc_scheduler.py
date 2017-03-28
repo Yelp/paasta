@@ -82,9 +82,12 @@ class TestAdhocScheduler(object):
         fake_driver = mock.Mock()
 
         # Check that offers with invalid pool don't get accepted
-        tasks = scheduler.tasks_for_offer(fake_driver, make_fake_offer(pool='notdefault'))
+        tasks, _ = scheduler.tasks_and_state_for_offer(
+            fake_driver, make_fake_offer(pool='notdefault'), {})
         assert len(tasks) == 0
-        tasks = scheduler.tasks_for_offer(fake_driver, make_fake_offer(pool=None))
+
+        tasks, _ = scheduler.tasks_and_state_for_offer(
+            fake_driver, make_fake_offer(pool=None), {})
         assert len(tasks) == 0
 
         tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])

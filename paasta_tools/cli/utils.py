@@ -609,7 +609,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         ssh_parts.append(' '.join(cmd_parts))
 
     if dry:
-        return (0, "Would have run: %s" % ssh_parts)
+        return (0, "Would have run: %s" % ' '.join(ssh_parts))
     else:
         return _run(ssh_parts, timeout=timeout)
 
