@@ -20,7 +20,9 @@ set -euxo pipefail
 mkdir -p /nail/etc/services
 
 mkdir -p docs/man/
+set +u
 . .tox/manpages/bin/activate
+set -u
 
 VERSION=`paasta --version 2>&1 | cut -f 2 -d ' '`
 
