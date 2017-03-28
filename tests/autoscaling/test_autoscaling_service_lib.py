@@ -206,11 +206,11 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         branch_dict={},
     )
     fake_mesos_task = mock.MagicMock(
-        stats={
+        stats_callable=mock.MagicMock(return_value={
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
-        },
+        })
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
 
@@ -240,11 +240,11 @@ def test_mesos_cpu_metrics_provider():
         branch_dict={},
     )
     fake_mesos_task = mock.MagicMock(
-        stats={
+        stats_callable=mock.MagicMock(return_value={
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
-        },
+        })
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
 

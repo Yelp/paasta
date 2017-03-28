@@ -521,16 +521,19 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
-def run_paasta_metastatus(master, humanize, groupings, verbose=0):
+def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_info=False):
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
     else:
         verbose_flag = ''
         timeout = 20
+    autoscaling_flag = "-a" if autoscaling_info else ""
+    if autoscaling_flag and verbose < 2:
+        verbose_flag = '-vv'
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
+    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag, autoscaling_flag]))
     command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_metastatus %s' % (
         master,
         cmd_args,
@@ -539,7 +542,8 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0):
     return return_code, output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose):
+def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose,
+                                               autoscaling_info=False):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
@@ -548,7 +552,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
     except NoMasterError as e:
         return (255, str(e))
 
-    return run_paasta_metastatus(master, humanize, groupings, verbose)
+    return run_paasta_metastatus(master, humanize, groupings, verbose, autoscaling_info)
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):
@@ -605,7 +609,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         ssh_parts.append(' '.join(cmd_parts))
 
     if dry:
-        return (0, "Would have run: %s" % ssh_parts)
+        return (0, "Would have run: %s" % ' '.join(ssh_parts))
     else:
         return _run(ssh_parts, timeout=timeout)
 

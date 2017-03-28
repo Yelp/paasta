@@ -4,8 +4,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import binascii
+import copy
 import logging
 import random
+import threading
 import time
 import uuid
 
@@ -37,6 +39,8 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 
+from paasta_tools.frameworks.constraints import update_constraint_state
+from paasta_tools.frameworks.constraints import check_offer_constraints
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +61,10 @@ TASK_ERROR = mesos_pb2.TASK_ERROR
 LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
 
 
+class ConstraintFailAllTasksError(Exception):
+    pass
+
+
 class MesosTaskParameters(object):
     def __init__(
         self,
@@ -64,12 +72,14 @@ class MesosTaskParameters(object):
         mesos_task_state=None,
         is_draining=False,
         is_healthy=False,
+        offer=None
     ):
         self.health = health
         self.mesos_task_state = mesos_task_state
 
         self.is_draining = is_draining
         self.is_healthy = is_healthy
+        self.offer = offer
         self.marked_for_gc = False
 
 
@@ -77,7 +87,7 @@ class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
-                 instance_type='paasta_native', service_config_overrides={},
+                 instance_type='paasta_native', service_config_overrides=None,
                  reconcile_start_time=float('inf')):
         self.service_name = service_name
         self.instance_name = instance_name
@@ -86,7 +96,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
         self.tasks_with_flags = {}
-        self.service_config_overrides = service_config_overrides
+        self.service_config_overrides = service_config_overrides or {}
+        self.constraint_state = {}
+        self.constraint_state_lock = threading.Lock()
 
         # don't accept resources until we reconcile.
         self.reconcile_start_time = reconcile_start_time
@@ -99,8 +111,9 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if service_config is not None:
             self.service_config = service_config
-            self.service_config.config_dict.update(service_config_overrides)
+            self.service_config.config_dict.update(self.service_config_overrides)
             self.recreate_drain_method()
+            self.reload_constraints()
         else:
             self.load_config()
 
@@ -125,22 +138,34 @@ class NativeScheduler(mesos.interface.Scheduler):
         launched_tasks = []
 
         for offer in offers:
-            tasks = self.tasks_for_offer(driver, offer)
-            if tasks:
-                for task in tasks:
-                    self.tasks_with_flags.setdefault(
-                        task.task_id.value,
-                        MesosTaskParameters(
-                            health=None, mesos_task_state=TASK_STAGING))
+            with self.constraint_state_lock:
+                try:
+                    tasks, new_state = self.tasks_and_state_for_offer(
+                        driver, offer, self.constraint_state)
 
-                operation = mesos_pb2.Offer.Operation()
-                operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                operation.launch.task_infos.extend(tasks)
-                driver.acceptOffers([offer.id], [operation])
+                    if len(tasks) > 0:
+                        operation = mesos_pb2.Offer.Operation()
+                        operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                        operation.launch.task_infos.extend(tasks)
+                        driver.acceptOffers([offer.id], [operation])
 
-                launched_tasks.extend(tasks)
-            else:
-                driver.declineOffer(offer.id)
+                        for task in tasks:
+                            self.tasks_with_flags.setdefault(
+                                task.task_id.value,
+                                MesosTaskParameters(
+                                    health=None,
+                                    mesos_task_state=TASK_STAGING,
+                                    offer=offer))
+
+                        launched_tasks.extend(tasks)
+                        self.constraint_state = new_state
+                    else:
+                        driver.declineOffer(offer.id)
+                except ConstraintFailAllTasksError:
+                    paasta_print("Offer failed constraints for every task, rejecting 60s")
+                    filters = mesos_pb2.Filters()
+                    filters.refuse_seconds = 60
+                    driver.declineOffer(offer.id, filters)
 
         return launched_tasks
 
@@ -190,7 +215,7 @@ class NativeScheduler(mesos.interface.Scheduler):
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
-    def tasks_for_offer(self, driver, offer):
+    def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
         tasks = []
         offerCpus = 0
@@ -215,11 +240,23 @@ class NativeScheduler(mesos.interface.Scheduler):
         task_mem = self.service_config.get_mem()
         task_cpus = self.service_config.get_cpus()
 
-        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks) and \
-                remainingCpus >= task_cpus and \
-                remainingMem >= task_mem and \
-                self.offer_matches_pool(offer) and \
-                len(remainingPorts) >= 1:
+        # don't mutate existing state
+        new_constraint_state = copy.deepcopy(state)
+        total = 0
+        failed_constraints = 0
+        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks):
+            total += 1
+
+            if not(remainingCpus >= task_cpus and
+                   remainingMem >= task_mem and
+                   self.offer_matches_pool(offer) and
+                   len(remainingPorts) >= 1):
+                break
+
+            if not(check_offer_constraints(offer, self.constraints,
+                                           new_constraint_state)):
+                failed_constraints += 1
+                break
 
             task_port = random.choice(list(remainingPorts))
 
@@ -240,7 +277,13 @@ class NativeScheduler(mesos.interface.Scheduler):
             remainingMem -= task_mem
             remainingPorts -= {task_port}
 
-        return tasks
+            update_constraint_state(offer, self.constraints, new_constraint_state)
+
+        # raise constraint error but only if no other tasks fit/fail the offer
+        if total > 0 and failed_constraints == total:
+            raise ConstraintFailAllTasksError
+
+        return tasks, new_constraint_state
 
     def offer_matches_pool(self, offer):
         for attribute in offer.attributes:
@@ -276,6 +319,9 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
+            with self.constraint_state_lock:
+                update_constraint_state(task_params.offer, self.constraints,
+                                        self.constraint_state, step=-1)
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
@@ -389,6 +435,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             config_overrides=self.service_config_overrides
         )
         self.recreate_drain_method()
+        self.reload_constraints()
 
     def recreate_drain_method(self):
         """Re-instantiate self.drain_method. Should be called after self.service_config changes."""
@@ -399,6 +446,9 @@ class NativeScheduler(mesos.interface.Scheduler):
             nerve_ns=self.service_config.get_nerve_namespace(),
             **self.service_config.get_drain_method_params(self.service_config.service_namespace_config)
         )
+
+    def reload_constraints(self):
+        self.constraints = self.service_config.get_constraints() or []
 
 
 class DrainTask(object):
@@ -474,7 +524,7 @@ def load_paasta_native_job_config(
     load_deployments=True,
     soa_dir=DEFAULT_SOA_DIR,
     instance_type='paasta_native',
-    config_overrides={}
+    config_overrides=None
 ):
     service_paasta_native_jobs = read_service_config(
         service=service,
@@ -490,7 +540,7 @@ def load_paasta_native_job_config(
         branch_dict = deployments_json.get_branch_dict(service, branch)
 
     instance_config_dict = service_paasta_native_jobs[instance].copy()
-    instance_config_dict.update(config_overrides)
+    instance_config_dict.update(config_overrides or {})
     service_config = NativeServiceConfig(
         service=service,
         cluster=cluster,
@@ -585,15 +635,15 @@ class NativeServiceConfig(LongRunningServiceConfig):
         if portMappings:
             pm = task.container.docker.port_mappings.add()
             pm.container_port = 8888
-            pm.host_port = 0  # will be filled in by tasks_for_offer()
+            pm.host_port = 0  # will be filled in by tasks_and_state_for_offer()
             pm.protocol = "tcp"
 
             port = task.resources.add()
             port.name = "ports"
             port.type = mesos_pb2.Value.RANGES
             port.ranges.range.add()
-            port.ranges.range[0].begin = 0  # will be filled in by tasks_for_offer().
-            port.ranges.range[0].end = 0  # will be filled in by tasks_for_offer().
+            port.ranges.range[0].begin = 0  # will be filled in by tasks_and_state_for_offer().
+            port.ranges.range[0].end = 0  # will be filled in by tasks_and_state_for_offer().
 
         task.name = self.task_name(task)
 
@@ -601,6 +651,9 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
     def get_mesos_network_mode(self):
         return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
+
+    def get_constraints(self):
+        return self.config_dict.get('constraints', None)
 
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):

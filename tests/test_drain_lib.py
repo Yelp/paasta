@@ -40,6 +40,11 @@ class TestHacheckDrainMethod(object):
         expected = 'http://fake_host:12345/spool/srv.ns/54321/status'
         assert actual == expected
 
+    def test_spool_url_handles_tasks_with_no_ports(self):
+        fake_task = mock.Mock(host="fake_host", ports=[])
+        actual = self.drain_method.spool_url(fake_task)
+        assert actual is None
+
     def test_get_spool(self):
         fake_response = mock.Mock(
             status_code=503,
@@ -57,6 +62,11 @@ class TestHacheckDrainMethod(object):
             'until': 1435694178.780000,
         }
         assert actual == expected
+
+    def test_get_spool_handles_no_ports(self):
+        fake_task = mock.Mock(host="fake_host", ports=[])
+        actual = self.drain_method.get_spool(fake_task)
+        assert actual is None
 
     def test_is_draining_yes(self):
         fake_response = mock.Mock(

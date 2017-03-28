@@ -189,8 +189,8 @@ class TestNativeScheduler(object):
             reconcile_start_time=0,
         )
 
-        tasks = scheduler.tasks_for_offer(
-            mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345))
+        tasks, _ = scheduler.tasks_and_state_for_offer(
+            mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
 
         assert len(tasks) == 1
         for task in tasks:
