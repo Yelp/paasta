@@ -23,7 +23,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
         gcc \
         gdebi-core \
         git \
-        help2man \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
