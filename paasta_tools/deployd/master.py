@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import inspect
 import logging
 import socket
-import sys
 import time
 
 from six.moves.queue import Empty
@@ -72,28 +71,30 @@ class Inbox(PaastaThread):
                 self.bounce_q.put(service_instance)
 
 
-class DeployDaemon(object):
+class DeployDaemon(PaastaThread):
     def __init__(self):
-        self.log.info("paasta-deployd starting up...")
+        PaastaThread.__init__(self)
+        PaastaThread.daemon = True
+        self.started = False
         self.bounce_q = PaastaQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
         self.config = load_system_paasta_config()
+
+    def run(self):
+        self.log.info("paasta-deployd starting up...")
         with ZookeeperPool() as zk:
             self.log.info("Waiting to become leader")
             self.election = PaastaLeaderElection(zk, "/paasta-deployd-leader", socket.getfqdn(), control=self.control)
-            self.election.run(self.start)
-
-    @property
-    def log(self):
-        name = '.'.join([__name__, self.__class__.__name__])
-        return logging.getLogger(name)
+            self.is_leader = False
+            self.election.run(self.startup)
 
     def bounce(self, service_instance):
         self.inbox_q.put(service_instance)
 
-    def start(self):
+    def startup(self):
+        self.is_leader = True
         self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
         self.inbox.start()
         self.log.info("Starting all watcher threads")
@@ -102,23 +103,26 @@ class DeployDaemon(object):
         self.add_all_services()
         self.log.info("Starting worker threads")
         self.start_workers()
+        self.started = True
+        self.main_loop()
+
+    def main_loop(self):
         while True:
             try:
                 message = self.control.get(block=False)
             except Empty:
                 message = None
-            self.handle_control_message(message)
-            time.sleep(1)
+            if message == "ABORT":
+                break
+            time.sleep(0.1)
+
+    def stop(self):
+        self.control.put("ABORT")
 
     def start_workers(self):
         for i in range(5):
             worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q)
             worker.start()
-
-    def handle_control_message(self, message):
-        if message == "ABORT":
-            self.log.debug("Quitting!")
-            sys.exit(2)
 
     def add_all_services(self):
         instances = get_services_for_cluster(cluster=self.config.get_cluster(),
@@ -147,6 +151,8 @@ class DeployDaemon(object):
 
 def splay_instances(instances, splay_minutes, watcher_name):
     service_instances = []
+    if not instances:
+        return []
     time_now = int(time.time())
     time_step = int((splay_minutes * 60) / len(instances))
     bounce_time = time_now
@@ -160,4 +166,7 @@ def splay_instances(instances, splay_minutes, watcher_name):
 
 
 if __name__ == '__main__':
-    DeployDaemon()
+    dd = DeployDaemon()
+    dd.start()
+    while dd.is_alive():
+        time.sleep(0.1)
