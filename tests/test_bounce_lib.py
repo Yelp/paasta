@@ -93,11 +93,10 @@ class TestBounceLib:
             'paasta_tools.bounce_lib.wait_for_delete', autospec=True,
         ) as wait_patch, mock.patch(
             'time.sleep', autospec=True,
-        ) as sleep_patch:
+        ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
             fake_client.scale_app.assert_called_once_with(fake_id, instances=0, force=True)
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
-            sleep_patch.assert_called_once_with(1)
             wait_patch.assert_called_once_with(fake_id, fake_client)
             assert lock_patch.called
 
