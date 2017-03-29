@@ -50,6 +50,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
             humanize=False,
             groupings=[],
             verbose=0,
+            autoscaling_info=False
         )
         actual, _ = capfd.readouterr()
         assert 'Cluster: %s' % cluster in actual

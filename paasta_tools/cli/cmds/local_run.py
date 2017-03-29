@@ -19,8 +19,6 @@ import datetime
 import functools
 import json
 import os
-import pipes
-import shlex
 import socket
 import sys
 import time
@@ -29,6 +27,7 @@ from random import randint
 
 import ephemeral_port_reserve
 import requests
+import six
 from docker import errors
 from six.moves.urllib_parse import urlparse
 
@@ -368,9 +367,9 @@ def get_container_name():
 
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
-    cmd = ['docker', 'run']
+    cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
-        cmd.append('--env=\"%s=%s\"' % (k, v))
+        cmd.append("--env='%s=%s'" % (k, v))
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
@@ -388,10 +387,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        cmd.extend((
-            'sh', '-c'
-        ))
-        cmd.append(pipes.quote(' '.join(command)))
+        if isinstance(command, six.string_types):
+            cmd.extend(('sh', '-c', command))
+        else:
+            cmd.extend(command)
     return cmd
 
 
@@ -468,7 +467,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         'MESOS_TASK_ID': 'simulated_mesos_task_id',
         'PAASTA_DOCKER_IMAGE': docker_image,
     }
-    if framework == "marathon":
+    if framework == 'marathon':
         env['MARATHON_PORT'] = str(port0)
         env['MARATHON_PORT0'] = str(port0)
         env['MARATHON_PORTS'] = str(port0)
@@ -486,11 +485,10 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['CHRONOS_RESOURCE_CPU'] = str(instance_config.get_cpus())
         env['CHRONOS_RESOURCE_MEM'] = str(instance_config.get_mem())
         env['CHRONOS_JOB_OWNER'] = 'simulated-owner'
-        env['CHRONOS_JOB_RUN_TIME'] = str(time.gmtime())
+        env['CHRONOS_JOB_RUN_TIME'] = str(int(time.time()))
         env['CHRONOS_JOB_NAME'] = "%s %s" % (instance_config.get_service(), instance_config.get_instance())
-        env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0),
+        env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0)
         env['mesos_task_id'] = 'ct:simulated-task-id'
-
     return env
 
 
@@ -558,7 +556,7 @@ def run_docker_container(
     if interactive:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        execlp('docker', *docker_run_cmd)
+        execlp('paasta_docker_wrapper', *docker_run_cmd)
         # For testing, when execlp is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
@@ -566,7 +564,7 @@ def run_docker_container(
     container_started = False
     container_id = None
     try:
-        (returncode, output) = _run(joined_docker_run_cmd)
+        (returncode, output) = _run(docker_run_cmd)
         if returncode != 0:
             paasta_print(
                 'Failure trying to start your container!'
@@ -596,7 +594,7 @@ def run_docker_container(
                 healthcheck_enabled=healthcheck,
             )
 
-        def _output_on_failure():
+        def _output_stdout_and_exit_code():
             returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
             paasta_print('Container exited: %d)' % returncode)
             paasta_print('Here is the stdout and stderr:\n\n')
@@ -606,14 +604,14 @@ def run_docker_container(
 
         if healthcheck_only:
             if container_started:
+                _output_stdout_and_exit_code()
                 _cleanup_container(docker_client, container_id)
             if healthcheck_mode is None:
                 paasta_print('--healthcheck-only, but no healthcheck is defined for this instance!')
                 sys.exit(1)
-            elif healthcheck_result:
+            elif healthcheck_result[0] is True:
                 sys.exit(0)
             else:
-                _output_on_failure()
                 sys.exit(1)
 
         running = docker_client.inspect_container(container_id)['State']['Running']
@@ -622,7 +620,7 @@ def run_docker_container(
             for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
                 paasta_print(line)
         else:
-            _output_on_failure()
+            _output_stdout_and_exit_code()
             returncode = 3
 
     except KeyboardInterrupt:
@@ -759,14 +757,14 @@ def configure_and_run_docker_container(
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if interactive is True and args.cmd is None:
-        command = ['bash']
+        command = 'bash'
     elif args.cmd:
-        command = shlex.split(args.cmd, posix=False)
+        command = args.cmd
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
             command_modifier = command_function_for_framework(instance_type)
-            command = shlex.split(command_modifier(command_from_config), posix=False)
+            command = command_modifier(command_from_config)
         else:
             command = instance_config.get_args()
 

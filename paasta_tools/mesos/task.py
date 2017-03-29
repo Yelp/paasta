@@ -35,7 +35,7 @@ class Task(object):
         self.__items = items
 
     def __str__(self):
-        return "{0}:{1}".format(self.slave, self["id"])
+        return "{}:{}".format(self.slave, self["id"])
 
     def __getitem__(self, name):
         return self.__items[name]
@@ -71,6 +71,9 @@ class Task(object):
             return self.slave.task_stats(self["id"])
         except exceptions.MissingExecutor:
             return {}
+
+    def stats_callable(self):
+        return self.stats
 
     @property
     def cpu_time(self):

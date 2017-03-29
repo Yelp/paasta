@@ -64,13 +64,16 @@ def get_any_mesos_master(cluster):
 def paasta_sysdig(args):
     if not args.local:
         mesos_master = get_any_mesos_master(cluster=args.cluster)
-        ssh_cmd = 'ssh -At -o LogLevel=QUIET {0} "sudo paasta {1} --local"'.format(mesos_master, ' '.join(sys.argv[1:]))
+        ssh_cmd = (
+            'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET {0} '
+            '"sudo paasta {1} --local"'
+        ).format(mesos_master, ' '.join(sys.argv[1:]))
         return_code, output = _run(ssh_cmd)
         if return_code != 0:
             paasta_print(output)
             sys.exit(return_code)
         slave, command = output.split(':', 1)
-        subprocess.call(shlex.split("ssh -tA {0} '{1}'".format(slave, command.strip())))
+        subprocess.call(shlex.split("ssh -tA {} '{}'".format(slave, command.strip())))
         return
     status = get_status_for_instance(cluster=args.cluster,
                                      service=args.service,
@@ -83,12 +86,12 @@ def paasta_sysdig(args):
     marathon_pass = marathon_config.get_password()
     mesos_url = get_mesos_master().host
     marathon_parsed_url = urlparse(marathon_url)
-    marathon_creds_url = marathon_parsed_url._replace(netloc="{0}:{1}@{2}".format(marathon_user, marathon_pass,
-                                                                                  marathon_parsed_url.netloc))
+    marathon_creds_url = marathon_parsed_url._replace(netloc="{}:{}@{}".format(marathon_user, marathon_pass,
+                                                                               marathon_parsed_url.netloc))
     paasta_print(format_mesos_command(slave, status.marathon.app_id, mesos_url, marathon_creds_url.geturl()))
 
 
 def format_mesos_command(slave, app_id, mesos_url, marathon_url):
-    sysdig_mesos = '{0},{1}'.format(mesos_url, marathon_url)
-    command = 'sudo csysdig -m {0} marathon.app.id="/{1}" -v mesos_tasks'.format(sysdig_mesos, app_id)
+    sysdig_mesos = '{},{}'.format(mesos_url, marathon_url)
+    command = 'sudo csysdig -m {} marathon.app.id="/{}" -v mesos_tasks'.format(sysdig_mesos, app_id)
     return slave + ":" + command

@@ -192,12 +192,12 @@ class InstanceConfig(dict):
             hard = val.get('hard')
             if soft is None:
                 raise InvalidInstanceConfig(
-                    'soft limit missing in ulimit configuration for {0}.'.format(key)
+                    'soft limit missing in ulimit configuration for {}.'.format(key)
                 )
             combined_val = '%i' % soft
             if hard is not None:
                 combined_val += ':%i' % hard
-            yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
+            yield {"key": "ulimit", "value": "{}={}".format(key, combined_val)}
 
     def get_cap_add(self):
         """Get the --cap-add options to be passed to docker
@@ -208,7 +208,7 @@ class InstanceConfig(dict):
 
         :returns: A generator of cap_add options to be passed as --cap-add flags"""
         for value in self.config_dict.get('cap_add', []):
-            yield {"key": "cap-add", "value": "{0}".format(value)}
+            yield {"key": "cap-add", "value": "{}".format(value)}
 
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
@@ -284,28 +284,35 @@ class InstanceConfig(dict):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
-    def get_deploy_constraints(self):
+    def get_deploy_constraints(self, blacklist, whitelist):
         """Return the combination of deploy_blacklist and deploy_whitelist
         as a list of constraints.
         """
-        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
-                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
+        return (
+            deploy_blacklist_to_constraints(blacklist) +
+            deploy_whitelist_to_constraints(whitelist)
+        )
 
-    def get_deploy_blacklist(self):
+    def get_deploy_blacklist(self, system_deploy_blacklist):
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return self.config_dict.get('deploy_blacklist', [])
+        return (self.config_dict.get('deploy_blacklist', []) +
+                system_deploy_blacklist)
 
-    def get_deploy_whitelist(self):
+    def get_deploy_whitelist(self, system_deploy_whitelist):
         """The deploy whitelist is a list of lists, where the lists indicate
         which locations are explicitly allowed.  The blacklist will supersede
         this if a host matches both the white and blacklists."""
-        return self.config_dict.get('deploy_whitelist', [])
+        return (self.config_dict.get('deploy_whitelist', []) +
+                system_deploy_whitelist)
 
-    def get_monitoring_blacklist(self):
+    def get_monitoring_blacklist(self, system_deploy_blacklist):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
-        return self.config_dict.get('monitoring_blacklist', self.get_deploy_blacklist())
+        return (
+            self.config_dict.get('monitoring_blacklist', []) +
+            self.get_deploy_blacklist(system_deploy_blacklist)
+        )
 
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
@@ -992,6 +999,27 @@ class SystemPaastaConfig(dict):
         """
         return self.get("mesos_config", {})
 
+    def get_deploy_blacklist(self):
+        """Get global blacklist. This applies to all services
+        in the cluster
+
+        :returns: The blacklist
+        """
+        return self.get("deploy_blacklist", [])
+
+    def get_deploy_whitelist(self):
+        """Get global whitelist. This applies to all services
+        in the cluster
+
+        :returns: The whitelist
+        """
+        return self.get("deploy_whitelist", [])
+
+    def get_expected_slave_attributes(self):
+        """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
+        calculating the default routing constraints."""
+        return self.get('expected_slave_attributes')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
@@ -1015,7 +1043,9 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
         instance = kwargs.get('instance', ANY_INSTANCE)
         loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        if not isinstance(command, list):
+            command = shlex.split(command)
+        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
         process.name = command
         # start the timer if we specified a timeout
         if timeout:

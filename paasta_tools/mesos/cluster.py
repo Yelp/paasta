@@ -22,7 +22,7 @@ from . import exceptions
 from . import parallel
 from paasta_tools.utils import paasta_print
 
-missing_slave = set([])
+missing_slave = set()
 
 
 def get_files_for_tasks(task_list, file_list, max_workers):

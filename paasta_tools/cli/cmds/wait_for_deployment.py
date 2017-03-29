@@ -30,6 +30,7 @@ from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
@@ -137,9 +138,16 @@ def validate_git_sha(git_sha, git_url, deploy_group, service):
     Raise exception when the provided git_sha is not the latest
     marked for deployment in 'deploy_group' for 'service'.
     """
-    marked_sha = get_latest_marked_sha(git_url, deploy_group)
+    try:
+        marked_sha = get_latest_marked_sha(git_url, deploy_group)
+    except LSRemoteException as e:
+        paasta_print("Error talking to the git server: {}\n"
+                     "It is not possible to verify that {} is marked for deployment in {}, "
+                     "but I assume that it is marked and will conitune waiting.."
+                     .format(e, git_sha, deploy_group))
+        return
     if marked_sha == '':
-        raise GitShaError("ERROR: Nothing is marked to deployment "
+        raise GitShaError("ERROR: Nothing is marked for deployment "
                           "in {} for {}"
                           .format(deploy_group, service))
     if git_sha != marked_sha:
@@ -160,9 +168,9 @@ def validate_deploy_group(deploy_group, service, soa_dir):
 
     if len(invalid_deploy_groups) == 1:
         raise DeployGroupError("ERROR: These deploy groups are not currently "
-                               "used anywhere: {0}.\n"
+                               "used anywhere: {}.\n"
                                "You probably need one of these in-use deploy "
-                               "groups?:\n   {1}"
+                               "groups?:\n   {}"
                                .format(",".join(invalid_deploy_groups),
                                        ",".join(in_use_deploy_groups)))
 
@@ -198,7 +206,7 @@ def paasta_wait_for_deployment(args):
                             timeout=args.timeout)
         _log(service=service,
              component='deploy',
-             line=("Deployment of {0} for {1} complete".
+             line=("Deployment of {} for {} complete".
                    format(args.commit, args.deploy_group)),
              level='event')
 

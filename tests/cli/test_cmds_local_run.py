@@ -15,8 +15,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import json
-import pipes
-import shlex
 
 import docker
 import mock
@@ -363,7 +361,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
-        command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
+        command=mock_get_instance_config.return_value.get_cmd.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -416,7 +414,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
-        command=['bash'],
+        command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -475,7 +473,7 @@ def test_configure_and_run_pulls_image_when_asked(
         docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
-        command=['bash'],
+        command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -529,7 +527,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             docker_hash='fake_hash',
             volumes=[],
             interactive=True,
-            command=['bash'],
+            command='bash',
             healthcheck=args.healthcheck,
             healthcheck_only=args.healthcheck_only,
             instance_config=mock_config,
@@ -624,9 +622,8 @@ def test_get_docker_run_cmd_with_env_vars():
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
-    assert '--env="foo=bar"' in actual
-    assert '--env="baz=qux"' in actual
-    assert '--env="x= with spaces"' in actual
+    assert "--env='foo=bar'" in actual
+    assert "--env='baz=qux'" in actual
 
 
 def test_get_docker_run_cmd_interactive_false():
@@ -637,7 +634,7 @@ def test_get_docker_run_cmd_interactive_false():
     env = {}
     interactive = False
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
@@ -651,7 +648,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
     assert docker_hash in actual
-    assert ' '.join(pipes.quote(part) for part in command) in ' '.join(actual)
+    assert command in ' '.join(actual)
 
 
 def test_get_docker_run_cmd_interactive_true():
@@ -662,7 +659,7 @@ def test_get_docker_run_cmd_interactive_true():
     env = {}
     interactive = True
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
@@ -680,7 +677,7 @@ def test_get_docker_run_docker_params():
     env = {}
     interactive = False
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
                      {'key': 'cpu-period', 'value': '200000'},
@@ -700,13 +697,49 @@ def test_get_docker_run_cmd_host_networking():
     env = {}
     interactive = True
     docker_hash = '8' * 40
-    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--net=host' in actual
+
+
+def test_get_docker_run_cmd_quote_cmd():
+    # Regression test to ensure we properly quote multiword custom commands
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
+    interactive = True
+    docker_hash = '8' * 40
+    command = 'make test'
+    net = 'host'
+    docker_params = []
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, net, docker_params)
+
+    assert actual[-3:] == ['sh', '-c', 'make test']
+
+
+def test_get_docker_run_cmd_quote_list():
+    # Regression test to ensure we properly quote array custom commands
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
+    interactive = True
+    docker_hash = '8' * 40
+    command = ['zsh', '-c', 'make test']
+    net = 'host'
+    docker_params = []
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, net, docker_params)
+
+    assert actual[-3:] == ['zsh', '-c', 'make test']
 
 
 def test_get_container_id():
@@ -945,6 +978,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_pick_random_port,
     mock_simulate_healthcheck,
 ):
+    mock_simulate_healthcheck.return_value = (True, "HEALTHCHECK WORKED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach.return_value = ['line1', 'line2']
@@ -996,6 +1030,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_pick_random_port,
     mock_simulate_healthcheck
 ):
+    mock_simulate_healthcheck.return_value = (True, "HEALTHCHECK WORKED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach.return_value = 'line1'
@@ -1042,6 +1077,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_simulate_healthcheck,
     capfd,
 ):
+    mock_simulate_healthcheck.return_value = (False, "HEALTHCHECK FAILED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     ATTACH_OUTPUT = "I'm the stdout / stderr!\n"

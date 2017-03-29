@@ -1,3 +1,89 @@
+paasta-tools (0.58.7) xenial; urgency=medium
+
+  * 0.58.7 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Fri, 24 Mar 2017 11:44:44 -0700
+
+paasta-tools (0.58.6) xenial; urgency=medium
+
+  * 0.58.6 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Thu, 23 Mar 2017 11:11:04 -0700
+
+paasta-tools (0.58.5) xenial; urgency=medium
+
+  * 0.58.5 tagged with 'make release'
+    Commit:
+
+ -- robj <robj@robj-MacBookPro>  Mon, 20 Mar 2017 14:22:04 +0000
+
+paasta-tools (0.58.4) xenial; urgency=low
+
+  * 0.58.4 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Fri, 17 Mar 2017 11:30:48 -0700
+
+paasta-tools (0.58.3) xenial; urgency=low
+
+  * 0.58.3 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Fri, 17 Mar 2017 11:03:40 -0700
+
+paasta-tools (0.58.0) xenial; urgency=medium
+
+  * 0.58.0 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Wed, 15 Mar 2017 13:17:25 -0700
+
+paasta-tools (0.57.20) UNRELEASED; urgency=medium
+
+  * 0.57.20 tagged with 'make release'
+    Commit:
+  * 0.57.20 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 14 Mar 2017 13:26:55 -0700
+
+paasta-tools (0.57.19) lucid; urgency=low
+
+  * 0.57.19 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Wed, 08 Mar 2017 20:54:06 -0800
+
+paasta-tools (0.57.18) lucid; urgency=low
+
+  * 0.57.18 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 08 Mar 2017 12:14:22 -0800
+
+paasta-tools (0.57.17) lucid; urgency=low
+
+  * 0.57.17 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 07 Mar 2017 04:12:57 -0800
+
+paasta-tools (0.57.16) UNRELEASED; urgency=medium
+
+  [ robj ]
+  * 0.57.14 tagged with 'make release'
+    Commit:
+  * 0.57.15 tagged with 'make release'
+    Commit:
+
+  [ Kyle Anderson ]
+  * 0.57.16 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 03 Mar 2017 11:24:11 -0800
+
 paasta-tools (0.57.13) lucid; urgency=low
 
   * 0.57.13 tagged with 'make release'

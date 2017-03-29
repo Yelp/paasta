@@ -56,13 +56,13 @@ class File(object):
         return hash(self.__str__())
 
     def __repr__(self):
-        return "<open file '{0}', for '{1}'>".format(self.path, self._where)
+        return "<open file '{}', for '{}'>".format(self.path, self._where)
 
     def __str__(self):
-        return "{0}:{1}".format(self._where, self.path)
+        return "{}:{}".format(self._where, self.path)
 
     def key(self):
-        return "{0}:{1}".format(self.host.key(), self._host_path)
+        return "{}:{}".format(self.host.key(), self._host_path)
 
     @property
     def _where(self):

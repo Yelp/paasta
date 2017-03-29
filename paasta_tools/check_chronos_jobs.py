@@ -13,11 +13,11 @@ import argparse
 import sys
 from datetime import datetime
 from datetime import timedelta
-from datetime import tzinfo
 
 import chronos
 import isodate
 import pysensu_yelp
+import pytz
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -38,6 +38,19 @@ def parse_args():
     return args
 
 
+def guess_realert_every(chronos_job_config):
+    """Returns the job interval (in minutes) or None if the job has no interval.
+
+    As we run check_chronos_jobs once a minute, we are going to skip
+    all re-alert attempts until the next scheduled run of the job.
+
+    This value is clamped by 1 day (1440 minutes) because we want a batch
+    that has a big interval to realert once per day anyway.
+    """
+    interval = chronos_job_config.get_schedule_interval_in_seconds()
+    return min(interval // 60, 24 * 60) if interval is not None else None
+
+
 def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
@@ -46,9 +59,28 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
-    monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-        monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+
+    if 'realert_every' not in monitoring_overrides:
+        guessed_realert_every = guess_realert_every(chronos_job_config)
+        if guessed_realert_every is not None:
+            monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
+                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+                monitoring_defaults=lambda x: {'realert_every': guessed_realert_every}.get(x))
+        else:
+            monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
+                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
     return monitoring_overrides
+
+
+def add_realert_status(sensu_output, realert_every_in_minutes):
+    if realert_every_in_minutes is None or realert_every_in_minutes == -1:
+        return sensu_output
+    else:
+        hours = realert_every_in_minutes // 60
+        minutes = realert_every_in_minutes % 60
+        interval_string = (hours > 0) * ('%sh' % hours) + (minutes > 0) * ('%sm' % minutes)
+        return ("{}\n\nThis check realerts every {}."
+                .format(sensu_output, interval_string))
 
 
 def send_event(service, instance, monitoring_overrides, soa_dir, status_code, message):
@@ -59,7 +91,7 @@ def send_event(service, instance, monitoring_overrides, soa_dir, status_code, me
         check_name=check_name,
         overrides=monitoring_overrides,
         status=status_code,
-        output=message,
+        output=add_realert_status(message, monitoring_overrides.get('realert_every')),
         soa_dir=soa_dir,
     )
 
@@ -144,28 +176,17 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-class TZ(tzinfo):
-
-    def utcoffset(self, dt):
-        return timedelta(minutes=0)
-
-    def dst(self, dt):
-        return timedelta(minutes=0)
-
-
-utc = TZ()
-
-
 def job_is_stuck(last_run_iso_time, interval_in_seconds):
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
     last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(utc)
+    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
 
 
-def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds):
-    return ("Job %(service)s%(separator)s%(instance)s hasn't run since %(last_run)s,"
-            " and is configured to run every %(interval).1f minutes.\n\n"
+def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds, schedule):
+    return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s "
+            "hasn't run since %(last_run)s, and is configured to run every "
+            "%(interval).1f minutes.\n\n"
             "You can view the logs for the job with:\n"
             "\n"
             "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
@@ -175,7 +196,8 @@ def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interva
                  'cluster': cluster,
                  'separator': utils.SPACER,
                  'interval': interval_in_seconds / 60.0,
-                 'last_run': last_run_iso_time}
+                 'last_run': last_run_iso_time,
+                 'schedule': schedule}
 
 
 def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job):
@@ -198,8 +220,14 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
             interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
             if job_is_stuck(last_run_time, interval_in_seconds):
                 sensu_status = pysensu_yelp.Status.CRITICAL
-                output = message_for_stuck_job(service, instance, cluster,
-                                               last_run_time, interval_in_seconds)
+                output = message_for_stuck_job(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    last_run_iso_time=last_run_time,
+                    interval_in_seconds=interval_in_seconds,
+                    schedule=chronos_job_config.get_schedule(),
+                )
             else:
                 sensu_status = sensu_event_for_last_run_state(state)
                 output = message_for_status(sensu_status, service, instance, cluster)

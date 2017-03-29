@@ -90,7 +90,7 @@ def desired_state_human(desired_state, instances):
 def status_desired_state(service, instance, client, job_config):
     status = get_bouncing_status(service, instance, client, job_config)
     desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
-    return "State:      %s - Desired state: %s" % (status, desired_state)
+    return "Desired State:      %s and %s" % (status, desired_state)
 
 
 def status_marathon_job_human(service, instance, deploy_status, app_id,
@@ -258,8 +258,20 @@ def format_haproxy_backend_row(backend, is_correct_instance):
         return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row)
 
 
-def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose,
-                               synapse_port, synapse_haproxy_url_format):
+def status_smartstack_backends(
+    service,
+    instance,
+    job_config,
+    cluster,
+    tasks,
+    expected_count,
+    soa_dir,
+    synapse_port,
+    synapse_haproxy_url_format,
+    system_deploy_blacklist,
+    system_deploy_whitelist,
+    verbose,
+):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -270,9 +282,14 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     )
 
     service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=instance, soa_dir=soa_dir)
+        service=service,
+        namespace=instance,
+        soa_dir=soa_dir
+    )
     discover_location_type = service_namespace_config.get_discover()
-    monitoring_blacklist = job_config.get_monitoring_blacklist()
+    monitoring_blacklist = job_config.get_monitoring_blacklist(
+        system_deploy_blacklist=system_deploy_blacklist
+    )
 
     filtered_slaves = get_all_slaves_for_blacklist_whitelist(
         blacklist=monitoring_blacklist,
@@ -424,6 +441,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 verbose=verbose > 0,
                 synapse_port=system_config.get_synapse_port(),
                 synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
+                system_deploy_blacklist=system_config.get_deploy_blacklist(),
+                system_deploy_whitelist=system_config.get_deploy_whitelist(),
             ))
     else:
         # The command parser shouldn't have let us get this far...

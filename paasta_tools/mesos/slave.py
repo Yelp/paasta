@@ -43,7 +43,7 @@ class MesosSlave(object):
 
     @property
     def host(self):
-        return "{0}://{1}:{2}".format(
+        return "{}://{}:{}".format(
             self.config["scheme"],
             self["hostname"],
             self["pid"].split(":")[-1])
@@ -55,7 +55,7 @@ class MesosSlave(object):
                 self.host, url), timeout=self.config["response_timeout"], **kwargs)
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(
-                "Unable to connect to the slave at {0}".format(self.host))
+                "Unable to connect to the slave at {}".format(self.host))
 
     @util.CachedProperty(ttl=5)
     def state(self):

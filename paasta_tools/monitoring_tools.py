@@ -37,6 +37,19 @@ from paasta_tools.utils import load_system_paasta_config
 log = logging.getLogger(__name__)
 
 
+def monitoring_defaults(key):
+    defaults = {
+        'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
+                   'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
+        'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
+               'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
+        'ticket': False,
+        'project': None,
+        'realert_every': -1
+    }
+    return defaults.get(key, None)
+
+
 def get_team(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('team', overrides, service, soa_dir)
 
@@ -61,8 +74,13 @@ def get_alert_after(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('alert_after', overrides, service, soa_dir)
 
 
-def get_realert_every(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('realert_every', overrides, service, soa_dir)
+def get_realert_every(overrides, service, soa_dir=DEFAULT_SOA_DIR,
+                      monitoring_defaults=monitoring_defaults):
+    return __get_monitoring_config_value('realert_every',
+                                         overrides=overrides,
+                                         service=service,
+                                         soa_dir=soa_dir,
+                                         monitoring_defaults=monitoring_defaults)
 
 
 def get_check_every(overrides, service, soa_dir=DEFAULT_SOA_DIR):
@@ -85,26 +103,15 @@ def get_project(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('project', overrides, service, soa_dir)
 
 
-def __get_monitoring_config_value(key, overrides, service, soa_dir=DEFAULT_SOA_DIR):
+def __get_monitoring_config_value(key, overrides, service,
+                                  soa_dir=DEFAULT_SOA_DIR,
+                                  monitoring_defaults=monitoring_defaults):
     general_config = service_configuration_lib.read_service_configuration(service, soa_dir=soa_dir)
     monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
     service_default = monitor_config.get(key, service_default)
     return overrides.get(key, service_default)
-
-
-def monitoring_defaults(key):
-    defaults = {
-        'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
-                   'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
-        'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
-               'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
-        'ticket': False,
-        'project': None,
-        'realert_every': -1
-    }
-    return defaults.get(key, None)
 
 
 def get_team_email_address(service, overrides=None, soa_dir=DEFAULT_SOA_DIR):

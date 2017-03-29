@@ -22,7 +22,9 @@ from datetime import datetime
 from math import ceil
 from math import floor
 
+import gevent
 import requests
+from gevent import monkey
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
@@ -50,6 +52,7 @@ from paasta_tools.utils import mean
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
+
 
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
@@ -272,7 +275,11 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
             last_time = 0.0
             last_cpu_data = []
 
-    mesos_tasks = {task['id']: task.stats for task in mesos_tasks}
+    monkey.patch_socket()
+    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
+    gevent.joinall(jobs, timeout=10)
+    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 

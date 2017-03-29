@@ -22,7 +22,7 @@ create for your job.
 
 If autoscaling information for your service is not available in Zookeeper (e.g.
 you've just created your service) PaaSTA will "fail safe" and default to
-creating ``max_instances`` instances. The reasoning behind this is that durning
+creating ``max_instances`` instances. The reasoning behind this is that during
 a situation where there is a loss of autoscaling state, a service up is the
 safest course of action until the autoscaler can scale back down to a "normal"
 instance count.

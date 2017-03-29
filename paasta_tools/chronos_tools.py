@@ -24,6 +24,7 @@ from time import sleep
 import chronos
 import dateutil
 import isodate
+import pytz
 import service_configuration_lib
 from croniter import croniter
 from crontab import CronSlices
@@ -228,13 +229,19 @@ class ChronosJobConfig(InstanceConfig):
         original_env = super(ChronosJobConfig, self).get_env()
         return [{"name": key, "value": value} for key, value in original_env.items()]
 
-    def get_calculated_constraints(self):
+    def get_calculated_constraints(self, system_paasta_config):
         constraints = self.get_constraints()
+        blacklist = self.get_deploy_blacklist(
+            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+        )
+        whitelist = self.get_deploy_whitelist(
+            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+        )
         if constraints is not None:
             return constraints
         else:
             constraints = self.get_extra_constraints()
-            constraints.extend(self.get_deploy_constraints())
+            constraints.extend(self.get_deploy_constraints(blacklist, whitelist))
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
         return [[str(val) for val in constraint] for constraint in constraints]
@@ -265,7 +272,11 @@ class ChronosJobConfig(InstanceConfig):
             return None
 
         if CronSlices.is_valid(schedule):
-            c = croniter(schedule)
+            try:
+                job_tz = pytz.timezone(self.get_schedule_time_zone())
+            except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
+                job_tz = pytz.utc
+            c = croniter(schedule, datetime.datetime.now(job_tz))
             return c.get_next() - c.get_prev()
         else:
             try:
@@ -427,7 +438,7 @@ class ChronosJobConfig(InstanceConfig):
         else:
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
-    def format_chronos_job_dict(self, docker_url, docker_volumes, dockercfg_location):
+    def format_chronos_job_dict(self, docker_url, docker_volumes, docker_cfg_location, constraints):
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
@@ -443,12 +454,12 @@ class ChronosJobConfig(InstanceConfig):
                 'volumes': docker_volumes,
                 'parameters': self.format_docker_parameters(),
             },
-            'uris': [dockercfg_location, ],
+            'uris': [docker_cfg_location],
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
-            'constraints': self.get_calculated_constraints(),
+            'constraints': constraints,
             'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
@@ -535,10 +546,15 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
         system_paasta_config.get_docker_registry(), chronos_job_config.get_docker_image())
     docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
+    constraints = chronos_job_config.get_calculated_constraints(
+        system_paasta_config=system_paasta_config
+    )
+
     complete_config = chronos_job_config.format_chronos_job_dict(
-        docker_url,
-        docker_volumes,
-        system_paasta_config.get_dockercfg_location(),
+        docker_url=docker_url,
+        docker_volumes=docker_volumes,
+        docker_cfg_location=system_paasta_config.get_dockercfg_location(),
+        constraints=constraints
     )
 
     complete_config['name'] = compose_job_id(service, job_name)

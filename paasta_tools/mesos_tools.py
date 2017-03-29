@@ -624,11 +624,11 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     }
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
-            log.debug("Slave {0} not found for task".format(task.slave['id']))
+            log.debug("Slave {} not found for task".format(task.slave['id']))
             continue
         else:
             slaves[task.slave['id']]['count'] += 1
-            log.debug("Task framework: {0}".format(task.framework.name))
+            log.debug("Task framework: {}".format(task.framework.name))
             if task.framework.name == CHRONOS_FRAMEWORK_NAME:
                 slaves[task.slave['id']]['chronos_count'] += 1
     if slaves_list:
@@ -641,10 +641,10 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     else:
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
     for slave in slaves:
-        log.debug("Slave: {0}, running {1} tasks, "
-                  "including {2} chronos tasks".format(slave['task_counts'].slave['hostname'],
-                                                       slave['task_counts'].count,
-                                                       slave['task_counts'].chronos_count))
+        log.debug("Slave: {}, running {} tasks, "
+                  "including {} chronos tasks".format(slave['task_counts'].slave['hostname'],
+                                                      slave['task_counts'].count,
+                                                      slave['task_counts'].chronos_count))
     return slaves
 
 
@@ -696,9 +696,9 @@ def get_task(task_id, app_id=''):
     tasks = get_running_tasks_from_frameworks(app_id)
     tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
     if len(tasks) < 1:
-        raise TaskNotFound("Couldn't find task for given id: {0}".format(task_id))
+        raise TaskNotFound("Couldn't find task for given id: {}".format(task_id))
     if len(tasks) > 1:
-        raise TooManyTasks("Found more than one task with id: {0}, this should not happen!".format(task_id))
+        raise TooManyTasks("Found more than one task with id: {}, this should not happen!".format(task_id))
     return tasks[0]
 
 

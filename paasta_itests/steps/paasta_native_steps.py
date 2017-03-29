@@ -16,13 +16,14 @@ from itest_utils import clear_mesos_tools_cache
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
-from paasta_tools.native_mesos_scheduler import create_driver
-from paasta_tools.native_mesos_scheduler import LIVE_TASK_STATES
+from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
+from paasta_tools.frameworks.native_scheduler import create_driver
+from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
+from paasta_tools.frameworks.native_scheduler import NativeScheduler
+from paasta_tools.frameworks.native_scheduler import NativeServiceConfig
+from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
-from paasta_tools.native_mesos_scheduler import PaastaNativeServiceConfig
-from paasta_tools.native_mesos_scheduler import PaastaScheduler
-from paasta_tools.native_mesos_scheduler import TASK_RUNNING
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
@@ -33,7 +34,7 @@ def new_paasta_native_config(context, num):
     context.instance = 'fake_instance'
     context.service = 'fake_service'
 
-    context.new_config = PaastaNativeServiceConfig(
+    context.new_config = NativeServiceConfig(
         cluster=context.cluster,
         instance=context.instance,
         service=context.service,
@@ -53,13 +54,20 @@ def new_paasta_native_config(context, num):
     )
 
 
-@when('we start a paasta_native scheduler with reconcile_backoff {reconcile_backoff}')
-def start_paasta_native_framework(context, reconcile_backoff):
+@when('we start a {scheduler} scheduler with reconcile_backoff {reconcile_backoff}')
+def start_paasta_native_framework(context, scheduler, reconcile_backoff):
     clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
     system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
 
-    context.scheduler = PaastaScheduler(
+    if scheduler == 'paasta_native':
+        scheduler_class = NativeScheduler
+    elif scheduler == 'adhoc':
+        scheduler_class = AdhocScheduler
+    else:
+        raise "unknown scheduler: %s" % scheduler
+
+    context.scheduler = scheduler_class(
         service_name=context.service,
         instance_name=context.instance,
         cluster=context.cluster,
@@ -278,9 +286,9 @@ def periodic_should_eventually_be_called(context):
         raise Exception("periodic() not called on all schedulers")
 
 
-@then(u'our service should show up in paasta_native_services_running_here {expected_num:d} times on any of our slaves')
+@then('our service should show up in paasta_native_services_running_here {expected_num:d} times on any of our slaves')
 def pnsrhfn_n_times(context, expected_num):
-    mesosslave_ips = set(x[4][0] for x in socket.getaddrinfo('mesosslave', 5051))
+    mesosslave_ips = {x[4][0] for x in socket.getaddrinfo('mesosslave', 5051)}
 
     results = []
     for mesosslave_ip in mesosslave_ips:

@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 
 import pysensu_yelp
+import pytz
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -22,13 +23,14 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
         Mock(
             service='myservice',
             get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
         'alert_after': '2m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': -1
+        'realert_every': 480
     }
 
 
@@ -39,13 +41,14 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
         Mock(
             service='myservice',
             get_monitoring=Mock(return_value={'alert_after': '10m'}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
         'alert_after': '10m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': -1
+        'realert_every': 480
     }
 
 
@@ -59,7 +62,8 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
         Mock(
             service='myservice',
-            get_monitoring=Mock(return_value={'realert_every': 5})
+            get_monitoring=Mock(return_value={'realert_every': 5}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
@@ -69,11 +73,26 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         'realert_every': 5
     }
 
+    assert check_chronos_jobs.compose_monitoring_overrides_for_service(
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=None),
+        ),
+        'soa_dir'
+    ) == {
+        'alert_after': '2m',
+        'check_every': '1m',
+        'runbook': 'myrunbook',
+        'realert_every': -1,
+    }
+
     mock_read_monitoring.return_value = {'runbook': 'myrunbook', 'realert_every': 10}
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
         Mock(
             service='myservice',
-            get_monitoring=Mock(return_value={})
+            get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=None),
         ),
         'soa_dir'
     ) == {
@@ -91,7 +110,7 @@ def test_compose_check_name_for_job():
 
 
 @patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
-def test_send_event_to_sensu(mock_send_event):
+def test_send_event_with_no_realert_every_to_sensu(mock_send_event):
     check_chronos_jobs.send_event(
         service='myservice',
         instance='myinstance',
@@ -106,6 +125,26 @@ def test_send_event_to_sensu(mock_send_event):
         overrides={},
         status=0,
         output='this is great',
+        soa_dir='soadir',
+    )
+
+
+@patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
+def test_send_event_with_realert_every_to_sensu(mock_send_event):
+    check_chronos_jobs.send_event(
+        service='myservice',
+        instance='myinstance',
+        monitoring_overrides={'realert_every': 150},
+        soa_dir='soadir',
+        status_code=0,
+        message='this is great',
+    )
+    mock_send_event.assert_called_once_with(
+        service='myservice',
+        check_name='check_chronos_jobs.myservice.myinstance',
+        overrides={'realert_every': 150},
+        status=0,
+        output='this is great\n\nThis check realerts every 2h30m.',
         soa_dir='soadir',
     )
 
@@ -271,24 +310,36 @@ def test_sensu_message_status_no_run_disabled():
 def test_sensu_message_status_disabled():
     fake_job = {'name': 'fake_job_id', 'disabled': True}
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(), 'myservice', 'myinstance', 'mycluster', fake_job)
+        chronos_job_config=Mock(),
+        service='myservice',
+        instance='myinstance',
+        cluster='mycluster',
+        chronos_job=fake_job
+    )
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
 
 
-utc = check_chronos_jobs.TZ()
-
-
 def test_sensu_message_status_stuck():
-    fake_job = {'name': 'fake_job_id',
-                'disabled': False,
-                'lastSuccess': (datetime.now(utc) - timedelta(hours=4)).isoformat()}
+    fake_job = {
+        'name': 'fake_job_id',
+        'disabled': False,
+        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=4)).isoformat(),
+        'schedule': '* * * * *'
+    }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3)),
-        'myservice', 'myinstance', 'mycluster', fake_job)
+        chronos_job_config=Mock(
+            get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3),
+            get_schedule=Mock(return_value='* * * * *')
+        ),
+        service='myservice',
+        instance='myinstance',
+        cluster='mycluster',
+        chronos_job=fake_job
+    )
     assert status == pysensu_yelp.Status.CRITICAL
-    assert "Job myservice.myinstance hasn't run since" in output
+    assert "Job myservice.myinstance with schedule * * * * * hasn't run since " in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
     assert "and is configured to run every 180.0 minutes." in output
 
@@ -302,10 +353,17 @@ def test_job_is_stuck_when_no_last_run():
 
 
 def test_job_is_stuck_when_not_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=4)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
     assert not check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
 
 
 def test_job_is_stuck_when_stuck():
-    last_time_run = datetime.now(utc) - timedelta(hours=25)
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     assert check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
+
+
+def test_guess_realert_every():
+    assert check_chronos_jobs.guess_realert_every(
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3))) == 60 * 3
+    assert check_chronos_jobs.guess_realert_every(
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 48))) == 60 * 24

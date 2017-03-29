@@ -43,6 +43,10 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 log = logging.getLogger(__name__)
 
@@ -410,12 +414,30 @@ def find_connectable_master(masters):
     return (connectable_master, output)
 
 
+class NoMasterError(Exception):
+    pass
+
+
+def connectable_master(cluster, system_paasta_config):
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
+    if masters == []:
+        raise NoMasterError('ERROR: %s' % output)
+
+    master, output = find_connectable_master(masters)
+    if not master:
+        raise NoMasterError(
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+        )
+
+    return master
+
+
 def check_ssh_and_sudo_on_master(master, timeout=10):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
@@ -467,7 +489,7 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     ssh_flags = ssh_flags.strip()
 
     command_parts = [
-        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flags, master),
+        "ssh -A -o StrictHostKeyChecking=no %s %s sudo paasta_serviceinit" % (ssh_flags, master),
         "-s %s" % service,
         "-i %s" % instances,
         verbose_flag,
@@ -487,15 +509,11 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return 255, 'ERROR: %s' % output
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            255,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
-        )
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (255, str(e))
+
     if ignore_ssh_output:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
                                       ssh_flags='-o LogLevel=QUIET', **kwargs)
@@ -503,17 +521,20 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
-def run_paasta_metastatus(master, humanize, groupings, verbose=0):
+def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_info=False):
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
     else:
         verbose_flag = ''
         timeout = 20
+    autoscaling_flag = "-a" if autoscaling_info else ""
+    if autoscaling_flag and verbose < 2:
+        verbose_flag = '-vv'
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag]))
-    command = ('ssh -A -n %s sudo paasta_metastatus %s' % (
+    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag, autoscaling_flag]))
+    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_metastatus %s' % (
         master,
         cmd_args,
     )).strip()
@@ -521,26 +542,23 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0):
     return return_code, output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose):
+def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose,
+                                               autoscaling_info=False):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return 255, 'ERROR: %s' % output
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            255,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
-        )
-    return run_paasta_metastatus(master, humanize, groupings, verbose)
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (255, str(e))
+
+    return run_paasta_metastatus(master, humanize, groupings, verbose, autoscaling_info)
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
-    command = 'ssh -A -n %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
+    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
         master,
         verbose_flags,
         service,
@@ -554,16 +572,46 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_chronos_rerun().
     """
-    masters, output = calculate_remote_masters(cluster, system_paasta_config)
-    if masters == []:
-        return (-1, 'ERROR: %s' % output)
-    master, output = find_connectable_master(masters)
-    if not master:
-        return (
-            -1,
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
-        )
-    return run_chronos_rerun(master, service, instancename, **kwargs)
+    try:
+        return run_chronos_rerun(
+            connectable_master(cluster, system_paasta_config),
+            service, instancename, **kwargs)
+    except NoMasterError as e:
+        return (-1, str(e))
+
+
+def run_on_master(cluster, system_paasta_config, cmd_parts,
+                  timeout=None, shell=False, dry=False, err_code=-1):
+    """Find connectable master for :cluster: and :system_paasta_config: args and
+    invoke command from :cmd_parts:, wrapping it in ssh call.
+
+    :returns (exit code, output)
+
+    :param cluster: cluster to find master in
+    :param system_paasta_config: system configuration to lookup master data
+    :param cmd_parts: passed into paasta_tools.utils._run as command along with
+        ssh bits
+    :param timeout: see paasta_tools.utils._run documentation (default: None)
+    :param shell: prepend :cmd_parts: with 'sh -c' (default: False)
+    :param err_code: code to return along with error message when something goes
+        wrong (default: -1)
+    """
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (err_code, str(e))
+
+    ssh_parts = ['ssh', '-A', '-n', master]
+
+    if shell:
+        ssh_parts.extend('sh -c "%s"' % quote(' '.join(cmd_parts)))
+    else:
+        ssh_parts.append(' '.join(cmd_parts))
+
+    if dry:
+        return (0, "Would have run: %s" % ' '.join(ssh_parts))
+    else:
+        return _run(ssh_parts, timeout=timeout)
 
 
 def lazy_choices_completer(list_func):
@@ -633,10 +681,10 @@ def extract_tags(paasta_tag):
 def list_deploy_groups(parsed_args=None, service=None, soa_dir=DEFAULT_SOA_DIR, **kwargs):
     if service is None:
         service = parsed_args.service or guess_service_name()
-    return set([config.get_deploy_group() for config in get_instance_configs_for_service(
+    return {config.get_deploy_group() for config in get_instance_configs_for_service(
         service=service,
         soa_dir=soa_dir,
-    )])
+    )}
 
 
 def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
@@ -649,7 +697,7 @@ def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
     """
     if len(args_deploy_groups) is 0:
         valid_deploy_groups = set(all_deploy_groups)
-        invalid_deploy_groups = set([])
+        invalid_deploy_groups = set()
     else:
         valid_deploy_groups = set(args_deploy_groups).intersection(all_deploy_groups)
         invalid_deploy_groups = set(args_deploy_groups).difference(all_deploy_groups)
@@ -784,7 +832,7 @@ class PaastaTaskNotFound(Exception):
 def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None, verbose=True):
     api = client.get_paasta_api_client(cluster=cluster)
     if not api:
-        log.error("Could not get API client for cluster {0}".format(cluster))
+        log.error("Could not get API client for cluster {}".format(cluster))
         raise PaastaTaskNotFound
     if task_id:
         log.warning("Specifying a task_id, so ignoring hostname if specified")
@@ -806,21 +854,21 @@ def get_task_from_instance(cluster, service, instance, slave_hostname=None, task
                                            verbose=True,
                                            slave_hostname=slave_hostname).result()
     except HTTPNotFound:
-        log.error("Cannot find instance {0}, for service {1}, in cluster {2}".format(instance,
-                                                                                     service,
-                                                                                     cluster))
+        log.error("Cannot find instance {}, for service {}, in cluster {}".format(instance,
+                                                                                  service,
+                                                                                  cluster))
         raise PaastaTaskNotFound
     except HTTPError as e:
         log.error("Problem with API call to find task details")
         log.error(e.response.text)
         raise PaastaTaskNotFound
     if not tasks:
-        log.error("Cannot find any tasks on host: {0} or with task_id: {1}".format(slave_hostname,
-                                                                                   task_id))
+        log.error("Cannot find any tasks on host: {} or with task_id: {}".format(slave_hostname,
+                                                                                 task_id))
         raise PaastaTaskNotFound
     return tasks[0]
 
 
 def get_container_name(task):
-    container_name = "mesos-{0}.{1}".format(task.slave_id, task.executor['container'])
+    container_name = "mesos-{}.{}".format(task.slave_id, task.executor['container'])
     return container_name

@@ -49,5 +49,5 @@ def paasta_docker_exec(args):
         sys.exit(1)
     container = get_container_name(task)
     slave = task.slave['hostname']
-    command = "sudo docker exec -ti {0} ''{1}''".format(container, args.exec_command)
+    command = "sudo docker exec -ti {} ''{}''".format(container, args.exec_command)
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])
