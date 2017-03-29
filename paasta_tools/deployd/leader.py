@@ -5,6 +5,7 @@ import logging
 import time
 
 from kazoo.client import KazooState
+from kazoo.exceptions import ConnectionClosedError
 from kazoo.recipe.election import Election
 
 from paasta_tools.deployd.common import PaastaThread
@@ -24,13 +25,19 @@ class PaastaLeaderElection(Election):
         name = '.'.join([__name__, self.__class__.__name__])
         return logging.getLogger(name)
 
+    def run(self, func, *args, **kwargs):
+        try:
+            super(PaastaLeaderElection, self).run(func, *args, **kwargs)
+        except ConnectionClosedError:
+            self.log.error("Zookeeper connection closed so can't tidy up!")
+            return
+
     def connection_listener(self, state):
         self.log.warning("Zookeeper connection transitioned to: {}".format(state))
         if state == KazooState.SUSPENDED:
             self.log.warning("Zookeeper connection suspended, waiting to see if it recovers.")
             if not self.waiting_for_reconnect:
                 self.waiting_for_reconnect = True
-                self.log.error("CREATED")
                 reconnection_checker = PaastaThread(target=self.reconnection_listener)
                 reconnection_checker.daemon = True
                 reconnection_checker.start()
