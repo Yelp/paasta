@@ -722,6 +722,12 @@ class TooManyTasks(Exception):
 
 def mesos_services_running_here(framework_filter, parse_service_instance_from_executor_id, hostname=None):
     """See what paasta_native services are being run by a mesos-slave on this host.
+
+    :param framework_filter: a function that returns true if we should consider a given framework.
+    :param parse_service_instance_from_executor_id: A function that returns a tuple of (service, instance) from the
+                                                    executor ID.
+    :param hostname: Hostname to fetch mesos slave state from. See get_local_slave_state.
+
     :returns: A list of triples of (service, instance, port)"""
     slave_state = get_local_slave_state(hostname=hostname)
     frameworks = [fw for fw in slave_state.get('frameworks', []) if framework_filter(fw)]
