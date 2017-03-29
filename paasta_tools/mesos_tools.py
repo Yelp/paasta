@@ -418,7 +418,9 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
 
 
 def get_local_slave_state(hostname=None):
-    """Fetches mesos slave state and returns it as a dict."""
+    """Fetches mesos slave state and returns it as a dict.
+
+    :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine."""
     if hostname is None:
         hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
