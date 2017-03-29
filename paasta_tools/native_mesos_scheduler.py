@@ -139,7 +139,11 @@ def read_all_registrations_for_service_instance(service, instance, cluster=None,
         cluster = load_system_paasta_config().get_cluster()
 
     job_config = load_paasta_native_job_config(
-        service, instance, cluster, load_deployments=False, soa_dir=soa_dir
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        load_deployments=False,
+        soa_dir=soa_dir,
     )
     return job_config.get_registrations()
 
