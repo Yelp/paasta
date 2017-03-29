@@ -287,7 +287,7 @@ def periodic_should_eventually_be_called(context):
 
 
 @then('our service should show up in paasta_native_services_running_here {expected_num:d} times on any of our slaves')
-def pnsrhfn_n_times(context, expected_num):
+def service_should_show_up_in_pnsrh_n_times(context, expected_num):
     mesosslave_ips = {x[4][0] for x in socket.getaddrinfo('mesosslave', 5051)}
 
     results = []
