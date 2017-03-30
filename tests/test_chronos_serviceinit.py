@@ -17,13 +17,14 @@ from __future__ import unicode_literals
 
 import datetime
 
-import dateutil.parser
-import dateutil.relativedelta
+import humanize
 import mock
 import pytest
+import pytz
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import PaastaColors
 
 
@@ -335,6 +336,7 @@ def test_format_parents_verbose():
         'parents': ['testservice testinstance']
     }
     fake_last_datetime = '2007-04-01T17:52:58.908Z'
+    fake_last_datetime_dt = datetime.datetime(2007, 4, 1, 17, 52, 58, 908000, pytz.utc)
     example_status = (fake_last_datetime, chronos_tools.LastRunState.Success)
     with mock.patch(
         'paasta_tools.chronos_tools.get_jobs_for_service_instance',
@@ -345,13 +347,10 @@ def test_format_parents_verbose():
         autospec=True,
         return_value=example_status
     ):
-        expected_years = dateutil.relativedelta.relativedelta(
-            datetime.datetime.now(dateutil.tz.tzutc()),
-            dateutil.parser.parse(fake_last_datetime)
-        ).years
+        expected_time = humanize.naturaltime(datetime_from_utc_to_local(fake_last_datetime_dt))
         actual = chronos_serviceinit._format_parents_verbose(example_job)
         assert "testservice testinstance" in actual
-        assert "  Last Run: %s (2007-04-01T17:52, %s years ago)" % (PaastaColors.green("OK"), expected_years) in actual
+        assert "  Last Run: %s (2007-04-01T17:52, %s)" % (PaastaColors.green("OK"), expected_time) in actual
 
 
 def test_format_schedule_dependent_job():
