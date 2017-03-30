@@ -50,4 +50,4 @@ def test_get_latest_deployment_no_deployment_tag(capfd):
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 1
         assert "A deployment could not be found for fake_deploy_group in fake_service" in \
-            capfd.readouterr()[0]
+            capfd.readouterr()[1]

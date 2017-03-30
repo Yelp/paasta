@@ -15,6 +15,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import sys
+
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -57,7 +59,10 @@ def paasta_get_latest_deployment(args):
 
     git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group, soa_dir=soa_dir)
     if not git_sha:
-        paasta_print(PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service)))
+        paasta_print(
+            PaastaColors.red("A deployment could not be found for %s in %s" % (deploy_group, service)),
+            file=sys.stderr,
+        )
         return 1
     else:
         paasta_print(git_sha)
