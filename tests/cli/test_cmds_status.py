@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from collections import namedtuple
+
 from mock import MagicMock
 from mock import Mock
 from mock import patch
@@ -24,6 +26,7 @@ from pytest import raises
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import paasta_args_mixer
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import report_status
@@ -636,3 +639,33 @@ def test_report_status_handle_none_whitelist(
         verbose=0,
         use_api_endpoint=False
     )
+
+
+@patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
+def test_paasta_args_mixer_clusters_and_instances_override_deploy_group(mock_cluster_instance_map):
+    PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
+    args = PaastaArgs(soa_dir='/fake/soa/dir',
+                      deploy_group='fake_deploy_group',
+                      clusters='cluster1',
+                      instances='instance1')
+    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
+                                              'cluster2': {'instances': ['instance3']}}
+
+    pargs = paasta_args_mixer(args, 'fake_service')
+    assert pargs.instance_whitelist == ['instance1']
+    assert pargs.cluster_whitelist == ['cluster1']
+
+
+@patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
+def test_paasta_args_mixer_clusters_uses_deploy_group_when_no_clusters_and_instances(mock_cluster_instance_map):
+    PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
+    args = PaastaArgs(soa_dir='/fake/soa/dir',
+                      deploy_group='fake_deploy_group',
+                      clusters=None,
+                      instances=None)
+    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
+                                              'cluster2': {'instances': ['instance3']}}
+
+    pargs = paasta_args_mixer(args, 'fake_service')
+    assert sorted(pargs.instance_whitelist) == ['instance1', 'instance2', 'instance3']
+    assert sorted(pargs.cluster_whitelist) == ['cluster1', 'cluster2']
