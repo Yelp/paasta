@@ -10,6 +10,7 @@ import random
 import threading
 import time
 import uuid
+from threading import Timer
 
 import mesos.interface
 import service_configuration_lib
@@ -72,6 +73,7 @@ class MesosTaskParameters(object):
         mesos_task_state=None,
         is_draining=False,
         is_healthy=False,
+        staging_timer=None,
         offer=None
     ):
         self.health = health
@@ -81,11 +83,12 @@ class MesosTaskParameters(object):
         self.is_healthy = is_healthy
         self.offer = offer
         self.marked_for_gc = False
+        self.staging_timer = staging_timer
 
 
 class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
-                 system_paasta_config, soa_dir=DEFAULT_SOA_DIR,
+                 system_paasta_config, staging_timeout, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
                  instance_type='paasta_native', service_config_overrides=None,
                  reconcile_start_time=float('inf')):
@@ -105,6 +108,9 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         # wait this long after starting a reconcile before accepting offers.
         self.reconcile_backoff = reconcile_backoff
+
+        # wait this long for a task to launch.
+        self.staging_timeout = staging_timeout
 
         # Gets set when registered() is called
         self.framework_id = None
@@ -150,13 +156,20 @@ class NativeScheduler(mesos.interface.Scheduler):
                         driver.acceptOffers([offer.id], [operation])
 
                         for task in tasks:
+                            staging_timer = self.staging_timer_for_task(
+                                self.staging_timeout,
+                                driver,
+                                task.task_id.value
+                            )
                             self.tasks_with_flags.setdefault(
                                 task.task_id.value,
                                 MesosTaskParameters(
                                     health=None,
                                     mesos_task_state=TASK_STAGING,
-                                    offer=offer))
-
+                                    offer=offer,
+                                    staging_timer=staging_timer,
+                                ))
+                            staging_timer.start()
                         launched_tasks.extend(tasks)
                         self.constraint_state = new_state
                     else:
@@ -166,7 +179,6 @@ class NativeScheduler(mesos.interface.Scheduler):
                     filters = mesos_pb2.Filters()
                     filters.refuse_seconds = 60
                     driver.declineOffer(offer.id, filters)
-
         return launched_tasks
 
     def task_fits(self, offer):
@@ -185,7 +197,7 @@ class NativeScheduler(mesos.interface.Scheduler):
 
         return True
 
-    def need_more_tasks(self, name, existingTasks={}, scheduledTasks=[]):
+    def need_more_tasks(self, name, existingTasks, scheduledTasks):
         """Returns whether we need to start more tasks."""
         num_have = 0
         for task, parameters in existingTasks.items():
@@ -214,6 +226,13 @@ class NativeScheduler(mesos.interface.Scheduler):
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
+
+    def log_and_kill(self, driver, taskId):
+        log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
+        self.kill_task(driver, taskId)
+
+    def staging_timer_for_task(self, timeout_value, driver, taskId):
+        return Timer(timeout_value, lambda: self.log_and_kill(driver, taskId))
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -316,6 +335,11 @@ class NativeScheduler(mesos.interface.Scheduler):
         for task, params in list(self.tasks_with_flags.items()):
             if params.marked_for_gc:
                 self.tasks_with_flags.pop(task)
+
+        if task_params.mesos_task_state is not TASK_STAGING:
+            if self.tasks_with_flags[task_id].staging_timer:
+                self.tasks_with_flags[task_id].staging_timer.cancel()
+                self.tasks_with_flags[task_id].staging_timer = None
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
