@@ -2206,6 +2206,7 @@ def test_kill_tasks_passes_catches_fewer_than_error():
     fake_client = mock.Mock()
     bad_fake_response = mock.Mock()
     bad_fake_response.status_code = 422
+    bad_fake_response.headers = {'content-type': 'application/json'}
     bad_fake_response.json.return_value = {
         "message": "Object is not valid",
         "errors": [{"attribute": "instances", "error": "must be greater than or equal to 0"}],
@@ -2221,6 +2222,7 @@ def test_kill_tasks_passes_catches_already_dead_task():
     fake_client = mock.Mock()
     bad_fake_response = mock.Mock()
     bad_fake_response.status_code = 404
+    bad_fake_response.headers = {'content-type': 'application/json'}
     bad_fake_response.json.return_value = {
         "message": "Task 'foo' does not exist",
         "errors": [],

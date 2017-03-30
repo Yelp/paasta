@@ -978,6 +978,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_pick_random_port,
     mock_simulate_healthcheck,
 ):
+    mock_simulate_healthcheck.return_value = (True, "HEALTHCHECK WORKED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach.return_value = ['line1', 'line2']
@@ -1029,6 +1030,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_pick_random_port,
     mock_simulate_healthcheck
 ):
+    mock_simulate_healthcheck.return_value = (True, "HEALTHCHECK WORKED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach.return_value = 'line1'
@@ -1075,6 +1077,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_simulate_healthcheck,
     capfd,
 ):
+    mock_simulate_healthcheck.return_value = (False, "HEALTHCHECK FAILED")
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     ATTACH_OUTPUT = "I'm the stdout / stderr!\n"
