@@ -1,3 +1,10 @@
+paasta-tools (0.58.8) xenial; urgency=medium
+
+  * 0.58.8 tagged with 'make release'
+    Commit:
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Thu, 30 Mar 2017 15:34:57 -0700
+
 paasta-tools (0.58.7) xenial; urgency=medium
 
   * 0.58.7 tagged with 'make release'
