@@ -1,19 +1,7 @@
 #!/bin/bash
 #
 # Generates all the per-service deployments.json files
-# and cleans up any leftovers
 #
 
-function delete_old_deployments {
-    # Delete any deployments.json file that is older than an hour
-    for service in $(comm -2 -3 <(find /nail/etc/services/ -maxdepth 1 -type d -printf %f\\n|tail -n +2|sort) <(paasta list|sort)); do
-        if [ -f /nail/etc/services/$service/deployments.json ]; then
-	    echo "Removing $service deployment.json as no instances found by paasta list"
-	    rm -f /nail/etc/services/$service/deployments.json
-        fi
-    done
-}
-
-delete_old_deployments
 # xargs will return 0 if everything went ok, but 12X if something else went wrong
 paasta list | shuf | xargs -n 1 -r -P 4 generate_deployments_for_service -s
