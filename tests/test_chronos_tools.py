@@ -501,7 +501,7 @@ class TestChronosTools:
         assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24  # once a day
 
     def test_get_schedule_interval_in_seconds_if_crontab_format(self):
-        fake_schedule = '0 2 */2 * *'
+        fake_schedule = '0 2 * * *'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -509,7 +509,7 @@ class TestChronosTools:
             config_dict={'schedule': fake_schedule},
             branch_dict={},
         )
-        assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24 * 2  # every second day
+        assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24
 
     def test_get_schedule_interval_in_seconds_if_no_interval(self):
         fake_schedule = '2016-10-21T00:30:00Z'
