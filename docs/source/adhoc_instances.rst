@@ -34,4 +34,30 @@ can be further increased by editing ``adhoc-[clustername].yaml`` for the
 cluster the interactive service is being used in and creating an
 ``interactive`` instance config. The interactive instance can be configured
 like any other adhoc instance, e.g. by adding additional mounted volumes or
-changing the networking type.
+changing the networking type. See the examples below for more details.
+
+Example Adhoc YAML Definitions
+------------------------------
+
+Example adhoc definition for a batch we run periodically that need external
+files on the host::
+
+    $ cat adhoc-norcal-prod.yaml
+    backfill_batch:
+      deploy_group: prod.non_canary
+      cpus: 1
+      mem: 1000
+      extra_volumes:
+      - {containerPath: /tmp/, hostPath: /tmp, mode: RW}
+      cmd: "python -m batch.adhoc.backfill_batch --dest=/tmp/backfill.csv"
+
+Example "interactive" definition that users will get when they run
+``paasta local-run --pull --interactive``. It needs lots of ram and
+defaults to an ipython repl. Also uses the canary version of the code::
+
+    # This is the default config that is run when you don't specify an instance
+    # This config is optional and any parameters specified here will override the
+    # global defaults
+    interactive:
+      deploy_group: prod.canary
+      mem: 10000
