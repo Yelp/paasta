@@ -167,6 +167,31 @@ def get_json_body_from_service(host, port, endpoint, timeout=2):
     ).json()
 
 
+def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
+    """
+    Gets the task utilization by fetching json from an http endpoint
+    and applying a function that maps it to a utilization.
+
+    :param task: the Marathon task to get data from
+    :param service: service name
+    :param endpoint: the http endpoint to get the task stats from
+    :param json_mapper: a function that takes a dictionary for a task and returns that task's utilization
+
+    :returns: the service's utilization, from 0 to 1, or None
+    """
+    try:
+        return json_mapper(get_json_body_from_service(task.host, task.ports[0], endpoint))
+    except requests.exceptions.Timeout:
+        # If we time out querying an endpoint, assume the task is fully loaded
+        # This won't trigger in the event of DNS error or when a request is refused
+        # a requests.exception.ConnectionError is raised in those cases
+        log.debug("Recieved a timeout when querying %s on %s:%s. Assuming the service "
+                  "is at full utilization." % (service, task.host, task.ports[0]))
+        return 1.0
+    except Exception as e:
+        log.error("Caught exception when querying %s on %s:%s : %s" % (service, task.host, task.ports[0], str(e)))
+
+
 def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
     """
     Gets the mean utilization of a service across all of its tasks by fetching
@@ -183,28 +208,18 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
     endpoint = endpoint.lstrip('/')
     utilization = []
+    service = marathon_service_config.get_service()
 
     monkey.patch_socket()
     gevent_pool = pool.Pool(20)
-    jobs = [gevent_pool.spawn(json_mapper, get_json_body_from_service(task.host, task.ports[0], endpoint))
+    jobs = [gevent_pool.spawn(get_http_utilization_for_a_task, task, service, endpoint, json_mapper)
             for task in marathon_tasks]
     gevent.joinall(jobs)
 
     for job in jobs:
         if job.value is not None:
             utilization.append(job.value)
-        elif isinstance(job.exception, requests.exceptions.Timeout):
-            # If we time out querying an endpoint, assume the task is fully loaded
-            # This won't trigger in the event of DNS error or when a request is refused
-            # a requests.exception.ConnectionError is raised in those cases
-            utilization.append(1.0)
-            log.debug("Recieved a timeout when querying %s (%s). Assuming the service is at full utilization." % (
-                marathon_service_config.get_service(), str(job.exception)))
-        elif job.exception is not None:
-            log.error("Caught exception when querying %s on %s:%s : %s" % (marathon_service_config.get_service(),
-                                                                           task.host,
-                                                                           task.ports[0],
-                                                                           str(job.exception)))
+
     if not utilization:
         raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
