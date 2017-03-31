@@ -82,10 +82,8 @@ def add_subparser(subparsers):
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
         '-l', '--deploy-group',
-        help=('Name of the deploy group which you want to get status for. This option is intended to be used '
-              'without --clusters (-c)  and --instances (-i). '
-              'If both --deploy-group and --instances (or --clusters) are provided, only --instances (or --clusters) '
-              'will be used.'),
+        help=('Name of the deploy group which you want to get status for. '
+              'If specified together with --instances and/or --clusters, will show common instances only.'),
     ).completer = lazy_choices_completer(list_deploy_groups)
     status_parser.add_argument(
         '-d', '--soa-dir',
@@ -296,21 +294,36 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
 
 
 def paasta_args_mixer(args, service):
-    clusters_instances = get_cluster_instance_map_for_service(soa_dir=args.soa_dir, service=service,
-                                                              deploy_group=args.deploy_group) \
-        if args.deploy_group is not None else {}
+    if args.deploy_group is None:
+        cluster_whitelist = args.clusters.split(",") if args.clusters is not None else []
+        instance_whitelist = args.instances.split(",") if args.instances is not None else []
+    else:
+        clusters_instances = get_cluster_instance_map_for_service(soa_dir=args.soa_dir,
+                                                                  service=service,
+                                                                  deploy_group=args.deploy_group)
+        cluster_whitelist = list((set(args.clusters.split(",")) & set(clusters_instances))
+                                 if args.clusters is not None else clusters_instances)
 
-    if args.clusters is not None:
-        cluster_whitelist = args.clusters.split(",")
-    else:
-        cluster_whitelist = [cluster for cluster in clusters_instances]
-    if args.instances is not None:
-        instance_whitelist = args.instances.split(",")
-    else:
-        instance_whitelist = []
-        for cluster in clusters_instances.values():
-            instance_whitelist.extend(cluster.get('instances', []))
-        instance_whitelist = list(set(instance_whitelist))
+        diff = set(cluster_whitelist) - set(clusters_instances)
+        if (args.clusters is not None and not cluster_whitelist) or diff:
+            paasta_print("The %s deploy_group doesn't have any instances of %s on %s." %
+                         (args.deploy_group, service, ', '.join(diff) or args.clusters))
+            return None
+
+        instances_set = set()
+        for cluster in cluster_whitelist:
+            for instance in clusters_instances[cluster].get('instances', []):
+                instances_set.add(instance)
+
+        instance_whitelist = list(set(args.instances.split(",")) & instances_set
+                                  if args.instances is not None else instances_set)
+
+        diff = set(instance_whitelist) - instances_set
+        if (args.instances is not None and not instance_whitelist) or diff:
+            paasta_print("The %s deploy_group doesn't have any instances of %s matching %s." %
+                         (args.deploy_group, service, ', '.join(diff) or args.instances))
+            return None
+
     PaastaArgs = namedtuple('PaastaArgs', ['cluster_whitelist', 'instance_whitelist'])
     return PaastaArgs(cluster_whitelist=cluster_whitelist,
                       instance_whitelist=instance_whitelist)
@@ -328,6 +341,8 @@ def paasta_status(args):
         use_api_endpoint = False
 
     pargs = paasta_args_mixer(args, service)
+    if pargs is None:
+        return 1
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(service, soa_dir))
