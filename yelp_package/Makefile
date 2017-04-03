@@ -37,7 +37,7 @@ build_%_docker:
 	docker pull "yelp/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
 	if [ "$$TRAVIS_BRANCH" = "master" -a \
-	     "$$TRAVIS_PULL_REQUEST" != "false" -a \
+	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
 	     "$$DOCKER_USERNAME" != "" ]; then \
 	  docker push "yelp/paastatools_$*_container"; \
 	fi
