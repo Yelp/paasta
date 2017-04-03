@@ -292,7 +292,7 @@ def test_get_json_body_from_service():
             'fake-host', 'fake-port', 'fake-endpoint') == mock.sentinel.json_body
         mock_request_get.assert_called_once_with(
             'http://fake-host:fake-port/fake-endpoint',
-            headers={'User-Agent': mock.ANY},
+            headers={'User-Agent': mock.ANY}, timeout=2
         )
 
 
@@ -335,8 +335,8 @@ def test_get_http_utilization_for_all_tasks_no_data():
     mock_json_mapper = mock.Mock(side_effect=KeyError(str('Detailed message')))
 
     with mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.log.debug', autospec=True,
-    ) as mock_log_debug, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.log.error', autospec=True,
+    ) as mock_log_error, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True,
     ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
@@ -346,7 +346,7 @@ def test_get_http_utilization_for_all_tasks_no_data():
                 endpoint='fake-endpoint',
                 json_mapper=mock_json_mapper,
             )
-        mock_log_debug.assert_called_once_with(
+        mock_log_error.assert_called_once_with(
             "Caught exception when querying fake-service on fake_host:30101 : 'Detailed message'")
 
 
