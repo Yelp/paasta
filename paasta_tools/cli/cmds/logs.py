@@ -544,7 +544,7 @@ class ScribeLogReader(LogReader):
         :param callback: The callback function. Gets called with (component_name, stream_info, scribe_env, cluster)
                          The cluster field will only be set if the componenet is set to per_cluster
         """
-        scribe_envs = set([])
+        scribe_envs = set()
         for cluster in clusters:
             scribe_envs.update(self.determine_scribereader_envs(components, cluster))
         log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)

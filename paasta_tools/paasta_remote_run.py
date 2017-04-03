@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import json
 import sys
 from datetime import datetime
 
@@ -35,6 +36,12 @@ from paasta_tools.utils import validate_service_instance
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
     add_remote_run_args(parser)
+    parser.add_argument(
+        '-X', '--constraints-json',
+        help=('Mesos constraints JSON'),
+        required=False,
+        default=None,
+    )
     return parser.parse_args(argv)
 
 
@@ -77,6 +84,21 @@ def main(argv):
     else:
         instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
+    overrides_dict = {}
+
+    constraints_json = args.constraints_json
+    if constraints_json:
+        try:
+            constraints = json.loads(constraints_json)
+        except Exception as e:
+            paasta_print("Error while parsing constraints: %s", e)
+
+        if constraints:
+            overrides_dict['constraints'] = constraints
+
+    if command:
+        overrides_dict['cmd'] = command
+
     paasta_print('Scheduling a task on Mesos')
     scheduler = AdhocScheduler(
         service_name=service,
@@ -87,7 +109,8 @@ def main(argv):
         soa_dir=soa_dir,
         reconcile_backoff=0,
         dry_run=dry_run,
-        service_config_overrides={'cmd': command}
+        staging_timeout=args.staging_timeout,
+        service_config_overrides=overrides_dict,
     )
     driver = create_driver(
         framework_name="paasta-remote %s %s" % (

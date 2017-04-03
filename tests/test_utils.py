@@ -555,7 +555,7 @@ def test_list_all_instances_for_service():
     service = 'fake_service'
     clusters = ['fake_cluster']
     mock_instances = [(service, 'instance1'), (service, 'instance2')]
-    expected = set(['instance1', 'instance2'])
+    expected = {'instance1', 'instance2'}
     with mock.patch(
         'paasta_tools.utils.list_clusters', autospec=True,
     ) as mock_list_clusters, mock.patch(
@@ -686,13 +686,13 @@ def test_get_running_mesos_docker_containers():
     fake_container_data = [
         {
             "Status": "Up 2 hours",
-            "Names": [u'/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
+            "Names": ['/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
             "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3"
         },
         {
             "Status": "Up 3 days",
-            "Names": [u'/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
-            "Id": u"ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
+            "Names": ['/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
+            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
         }
     ]
 
@@ -1419,7 +1419,7 @@ def test_format_table_with_interjected_lines():
             ['looooong', 'y', 'z'],
             'interjection',
             ['a', 'looooong', 'c'],
-            u'unicode interjection',
+            'unicode interjection',
             ['j', 'k', 'looooong']
         ]
     )
@@ -1427,7 +1427,7 @@ def test_format_table_with_interjected_lines():
         'looooong  y         z',
         'interjection',
         'a         looooong  c',
-        u'unicode interjection',
+        'unicode interjection',
         'j         k         looooong',
     ]
     assert actual == expected

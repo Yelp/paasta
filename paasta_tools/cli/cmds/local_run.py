@@ -27,6 +27,7 @@ from random import randint
 
 import ephemeral_port_reserve
 import requests
+import six
 from docker import errors
 from six.moves.urllib_parse import urlparse
 
@@ -386,10 +387,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        cmd.extend((
-            'sh', '-c'
-        ))
-        cmd.append(command)
+        if isinstance(command, six.string_types):
+            cmd.extend(('sh', '-c', command))
+        else:
+            cmd.extend(command)
     return cmd
 
 
@@ -593,7 +594,7 @@ def run_docker_container(
                 healthcheck_enabled=healthcheck,
             )
 
-        def _output_on_failure():
+        def _output_stdout_and_exit_code():
             returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
             paasta_print('Container exited: %d)' % returncode)
             paasta_print('Here is the stdout and stderr:\n\n')
@@ -603,14 +604,14 @@ def run_docker_container(
 
         if healthcheck_only:
             if container_started:
+                _output_stdout_and_exit_code()
                 _cleanup_container(docker_client, container_id)
             if healthcheck_mode is None:
                 paasta_print('--healthcheck-only, but no healthcheck is defined for this instance!')
                 sys.exit(1)
-            elif healthcheck_result:
+            elif healthcheck_result is True:
                 sys.exit(0)
             else:
-                _output_on_failure()
                 sys.exit(1)
 
         running = docker_client.inspect_container(container_id)['State']['Running']
@@ -619,7 +620,7 @@ def run_docker_container(
             for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
                 paasta_print(line)
         else:
-            _output_on_failure()
+            _output_stdout_and_exit_code()
             returncode = 3
 
     except KeyboardInterrupt:

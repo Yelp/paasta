@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.57.19
+RELEASE=0.58.9
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -34,7 +34,13 @@ endif
 
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/$*/ && docker build -t "paastatools_$*_container" .
+	docker pull "yelp/paastatools_$*_container" || true
+	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
+	if [ "$$TRAVIS_BRANCH" = "master" -a \
+	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
+	     "$$DOCKER_USERNAME" != "" ]; then \
+	  docker push "yelp/paastatools_$*_container"; \
+	fi
 
 .SECONDEXPANSION:
 itest_%: package_$$* bintray_$$*
@@ -76,7 +82,7 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/'\''/"/g')
 # https://github.com/skywinder/github-changelog-generator
 # Follow the instructions to generate a github api token
 release:
-	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
+	dch -v $(RELEASE) --distribution xenial --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/__version__ = .*/__version__ = '$(VERSION)'/" ../paasta_tools/__init__.py
 	@echo "$(RELEASE) has the changelog set."
 	github_changelog_generator --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!!

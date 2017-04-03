@@ -1,3 +1,68 @@
+paasta-tools (0.58.9) xenial; urgency=low
+
+  * 0.58.9 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 31 Mar 2017 11:01:07 -0700
+
+paasta-tools (0.58.8) xenial; urgency=medium
+
+  * 0.58.8 tagged with 'make release'
+    Commit:
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Thu, 30 Mar 2017 15:34:57 -0700
+
+paasta-tools (0.58.7) xenial; urgency=medium
+
+  * 0.58.7 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Fri, 24 Mar 2017 11:44:44 -0700
+
+paasta-tools (0.58.6) xenial; urgency=medium
+
+  * 0.58.6 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Thu, 23 Mar 2017 11:11:04 -0700
+
+paasta-tools (0.58.5) xenial; urgency=medium
+
+  * 0.58.5 tagged with 'make release'
+    Commit:
+
+ -- robj <robj@robj-MacBookPro>  Mon, 20 Mar 2017 14:22:04 +0000
+
+paasta-tools (0.58.4) xenial; urgency=low
+
+  * 0.58.4 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Fri, 17 Mar 2017 11:30:48 -0700
+
+paasta-tools (0.58.3) xenial; urgency=low
+
+  * 0.58.3 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Fri, 17 Mar 2017 11:03:40 -0700
+
+paasta-tools (0.58.0) xenial; urgency=medium
+
+  * 0.58.0 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Wed, 15 Mar 2017 13:17:25 -0700
+
+paasta-tools (0.57.20) UNRELEASED; urgency=medium
+
+  * 0.57.20 tagged with 'make release'
+    Commit:
+  * 0.57.20 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 14 Mar 2017 13:26:55 -0700
+
 paasta-tools (0.57.19) lucid; urgency=low
 
   * 0.57.19 tagged with 'make release'

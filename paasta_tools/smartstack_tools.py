@@ -201,7 +201,7 @@ def get_replication_for_services(synapse_host, synapse_port, synapse_haproxy_url
     )
 
     counter = collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
-    return dict((sn, counter[sn]) for sn in services)
+    return {sn: counter[sn] for sn in services}
 
 
 def backend_is_up(backend):

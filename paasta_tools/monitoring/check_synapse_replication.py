@@ -61,9 +61,9 @@ def check_replication(service, service_replication,
 
     expected_message = ""
     if interval is not None:
-        expected_message = ", expected value in {0}".format(interval)
+        expected_message = ", expected value in {}".format(interval)
 
-    message = "{0} {1} has {2} instance(s){3}".format(
+    message = "{} {} has {} instance(s){}".format(
         status, service, service_replication, expected_message
     )
 
@@ -81,7 +81,7 @@ def parse_range(str_range):
     try:
         return tuple(map(int, int_range))
     except Exception:
-        fail("Failed to parse range {0}".format(str_range))
+        fail("Failed to parse range {}".format(str_range))
 
 
 def parse_synapse_check_options(system_paasta_config):
@@ -143,7 +143,7 @@ def run_synapse_check():
             paasta_print(message)
         sys.exit(max(all_codes))
     except Exception as e:
-        fail('UNKNOWN: {0}'.format(e), 3)
+        fail('UNKNOWN: {}'.format(e), 3)
 
 
 if __name__ == "__main__":

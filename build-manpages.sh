@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2015-2016 Yelp Inc.
+set -euxo pipefail
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +20,16 @@
 mkdir -p /nail/etc/services
 
 mkdir -p docs/man/
+set +u
 . .tox/manpages/bin/activate
+set -u
 
 VERSION=`paasta --version 2>&1 | cut -f 2 -d ' '`
 
 function build_man() {
     COMMAND=$1
     echo "paasta $COMMAND --help"
-    help2man --name=$COMMAND --version-string=$VERSION "paasta $COMMAND" > docs/man/paasta-$COMMAND.1
+    help2man --name="$COMMAND" --version-string="$VERSION" "paasta $COMMAND" > "docs/man/paasta-$COMMAND.1"
 }
 
 for FILE in paasta_tools/cli/cmds/*.py

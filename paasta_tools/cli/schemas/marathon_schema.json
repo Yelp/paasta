@@ -265,8 +265,15 @@
                     "type": "integer",
                     "minimum": 0,
                     "exclusiveMinimum": false
+                },
+                "host_port": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                    "maximum": 65535,
+                    "exclusiveMinimum": false
                 }
             }
-	}
+        }
     }
 }

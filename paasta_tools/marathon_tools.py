@@ -41,7 +41,6 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -69,7 +68,7 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 # A set of config attributes that don't get included in the hash of the config.
 # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
+CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_instances'}
 
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
@@ -269,21 +268,23 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         If, for example, a given app's 'discover' key is set to 'region', then this function
         computes the constraints required to group the app evenly amongst each
         of the actual 'region' values in the cluster.
-        It does so by querying the value of the region attribute for each slave
-        in the cluster, returning a GROUP_BY constraint where the value is the
-        number of unique regions.
+        It does so by querying the value of the discover attribute for each expected slave in the cluster (as defined
+        by the expected_slave_attributes key in system paasta config), returning a GROUP_BY constraint where the value
+        is the number of unique values for that attribute.
+        If you have not set expected_slave_attributes in the system paasta config, this function returns an empty list.
 
         :param service_namespace_config: the config for this service
         :returns: a set of constraints for marathon
         """
         discover_level = service_namespace_config.get_discover()
-        slaves = get_slaves()
-        if not slaves:
-            raise NoSlavesAvailableError(
-                "No slaves could be found in the cluster."
-            )
+
+        expected_slave_attributes = system_paasta_config.get_expected_slave_attributes()
+        if expected_slave_attributes is None:
+            return []
+
+        fake_slaves = [{"attributes": a} for a in expected_slave_attributes]
         filtered_slaves = filter_mesos_slaves_by_blacklist(
-            slaves=slaves,
+            slaves=fake_slaves,
             blacklist=self.get_deploy_blacklist(
                 system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
             ),
@@ -293,11 +294,11 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         )
         if not filtered_slaves:
             raise NoSlavesAvailableError(
-                ("No suitable slaves could be found in the cluster for %s.%s"
-                 "There are %d total slaves in the cluster, but after filtering"
-                 " those available to the app according to the constraints set"
-                 " by the deploy_blacklist and deploy_whitelist, there are 0"
-                 " available.") % (self.service, self.instance, len(slaves))
+                (
+                    "We do not believe any slaves on the cluster will match the constraints for %s.%s. If you believe "
+                    "this is incorrect, have your system administrator adjust the value of expected_slave_attributes "
+                    "in the system paasta configs."
+                ) % (self.service, self.instance)
             )
 
         value_dict = get_mesos_slaves_grouped_by_attribute(
@@ -376,10 +377,19 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             complete_config['container']['docker']['portMappings'] = [
                 {
                     'containerPort': CONTAINER_PORT,
-                    'hostPort': 0,
+                    'hostPort': self.get_host_port(),
                     'protocol': 'tcp',
                 },
             ]
+        else:
+            complete_config['port_definitions'] = [
+                {
+                    'port': self.get_host_port(),
+                    'protocol': 'tcp',
+                },
+            ]
+            # Without this, we may end up with multiple containers requiring the same port on the same box.
+            complete_config['require_ports'] = (self.get_host_port() != 0)
 
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
@@ -481,6 +491,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_replication_crit_percentage(self):
         return self.config_dict.get('replication_threshold', 50)
+
+    def get_host_port(self):
+        '''Map this port on the host to your container's port 8888. Default is 0, which means Marathon picks a port.'''
+        return self.config_dict.get('host_port', 0)
 
 
 class MarathonDeployStatus:

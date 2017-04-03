@@ -236,15 +236,13 @@ def _format_command(job):
     return command
 
 
-def _format_mesos_status(job, running_tasks):
+def _format_mesos_status(running_tasks):
     mesos_status = PaastaColors.red("UNKNOWN")
     num_tasks = len(running_tasks)
     if num_tasks == 0:
         mesos_status = PaastaColors.grey("Not running")
-    elif num_tasks == 1:
-        mesos_status = PaastaColors.yellow("Running")
     else:
-        mesos_status = PaastaColors.red("Critical - %d tasks running (expected 1)" % num_tasks)
+        mesos_status = PaastaColors.yellow("Running")
     return mesos_status
 
 
@@ -286,7 +284,7 @@ def format_chronos_job_status(client, job, running_tasks, verbose=0):
     schedule_value = schedule_formatter(job)
 
     command = _format_command(job)
-    mesos_status = _format_mesos_status(job, running_tasks)
+    mesos_status = _format_mesos_status(running_tasks)
     if verbose > 0:
         tail_lines = calculate_tail_lines(verbose_level=verbose)
         mesos_status_verbose = status_mesos_tasks_verbose(

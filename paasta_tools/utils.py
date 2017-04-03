@@ -192,12 +192,12 @@ class InstanceConfig(dict):
             hard = val.get('hard')
             if soft is None:
                 raise InvalidInstanceConfig(
-                    'soft limit missing in ulimit configuration for {0}.'.format(key)
+                    'soft limit missing in ulimit configuration for {}.'.format(key)
                 )
             combined_val = '%i' % soft
             if hard is not None:
                 combined_val += ':%i' % hard
-            yield {"key": "ulimit", "value": "{0}={1}".format(key, combined_val)}
+            yield {"key": "ulimit", "value": "{}={}".format(key, combined_val)}
 
     def get_cap_add(self):
         """Get the --cap-add options to be passed to docker
@@ -208,7 +208,7 @@ class InstanceConfig(dict):
 
         :returns: A generator of cap_add options to be passed as --cap-add flags"""
         for value in self.config_dict.get('cap_add', []):
-            yield {"key": "cap-add", "value": "{0}".format(value)}
+            yield {"key": "cap-add", "value": "{}".format(value)}
 
     def format_docker_parameters(self):
         """Formats extra flags for running docker.  Will be added in the format
@@ -1014,6 +1014,11 @@ class SystemPaastaConfig(dict):
         :returns: The whitelist
         """
         return self.get("deploy_whitelist", [])
+
+    def get_expected_slave_attributes(self):
+        """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
+        calculating the default routing constraints."""
+        return self.get('expected_slave_attributes')
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

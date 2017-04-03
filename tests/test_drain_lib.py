@@ -40,6 +40,11 @@ class TestHacheckDrainMethod(object):
         expected = 'http://fake_host:12345/spool/srv.ns/54321/status'
         assert actual == expected
 
+    def test_spool_url_handles_tasks_with_no_ports(self):
+        fake_task = mock.Mock(host="fake_host", ports=[])
+        actual = self.drain_method.spool_url(fake_task)
+        assert actual is None
+
     def test_get_spool(self):
         fake_response = mock.Mock(
             status_code=503,
@@ -57,6 +62,11 @@ class TestHacheckDrainMethod(object):
             'until': 1435694178.780000,
         }
         assert actual == expected
+
+    def test_get_spool_handles_no_ports(self):
+        fake_task = mock.Mock(host="fake_host", ports=[])
+        actual = self.drain_method.get_spool(fake_task)
+        assert actual is None
 
     def test_is_draining_yes(self):
         fake_response = mock.Mock(
@@ -97,10 +107,10 @@ class TestHTTPDrainMethod(object):
 
     def test_parse_success_codes(self):
         drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
-        assert drain_method.parse_success_codes('200') == set([200])
-        assert drain_method.parse_success_codes('200-203') == set([200, 201, 202, 203])
-        assert drain_method.parse_success_codes('200-202,302,305-306') == set([200, 201, 202, 302, 305, 305, 306])
-        assert drain_method.parse_success_codes(200) == set([200])
+        assert drain_method.parse_success_codes('200') == {200}
+        assert drain_method.parse_success_codes('200-203') == {200, 201, 202, 203}
+        assert drain_method.parse_success_codes('200-202,302,305-306') == {200, 201, 202, 302, 305, 305, 306}
+        assert drain_method.parse_success_codes(200) == {200}
 
     def test_check_response_code(self):
         drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})

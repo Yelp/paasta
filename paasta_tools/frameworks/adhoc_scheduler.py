@@ -15,23 +15,27 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
+from paasta_tools.utils import paasta_print
 
 
 class AdhocScheduler(NativeScheduler):
     def __init__(self, *args, **kwargs):
         self.dry_run = kwargs.pop('dry_run')
-        self.task_started = False
-        super(AdhocScheduler, self).__init__(*args, **kwargs)
 
-    def need_more_tasks(self, *args, **kwargs):
-        # One of pre-conditions in start_task for launching tasks, returning
-        # True doesn't actually guarantee the task was launched.
-        return len(self.tasks_with_flags) == 0
+        if kwargs.get('service_config_overrides') is None:
+            kwargs['service_config_overrides'] = {}
+        kwargs['service_config_overrides']['instances'] = 1
+
+        super(AdhocScheduler, self).__init__(*args, **kwargs)
 
     def need_to_stop(self):
         # Is used to decide whether to stop the driver or try to start more tasks.
-        return self.task_started and self.need_more_tasks()
+        for task, params in self.tasks_with_flags.items():
+            if params.mesos_task_state not in LIVE_TASK_STATES:
+                return True
+        return False
 
     def statusUpdate(self, driver, update):
         super(AdhocScheduler, self).statusUpdate(driver, update)
@@ -39,20 +43,18 @@ class AdhocScheduler(NativeScheduler):
         if self.need_to_stop():
             driver.stop()
 
-    def start_task(self, *args, **kwargs):
-        # Possibly statusUpdate already removed the task from tasks_with_flags
-        # but didn't stop() the driver yet. We don't want to launch one more
-        # task in this case.
-        if self.need_to_stop():
-            return None
+    def tasks_and_state_for_offer(self, driver, offer, state):
+        # In dry run satisfy exit-conditions after we got the offer
+        if self.dry_run or self.need_to_stop():
+            if self.dry_run:
+                tasks, _ = super(AdhocScheduler, self). \
+                    tasks_and_state_for_offer(driver, offer, state)
+                paasta_print("Would have launched: ", tasks)
+            driver.stop()
+            return None, state
 
-        tasks = super(AdhocScheduler, self).start_task(*args, **kwargs)
-
-        # Task was launched, tell driver to stop after it finishes.
-        if not self.need_more_tasks():
-            self.task_started = True
-
-        return tasks
+        return super(AdhocScheduler, self). \
+            tasks_and_state_for_offer(driver, offer, state)
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
         return

@@ -77,11 +77,12 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
+            staging_timeout=1,
         )
         fake_driver = mock.Mock()
 
         # First, start up 3 old tasks
-        old_tasks = scheduler.start_task(fake_driver, make_fake_offer())
+        old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
         assert len(scheduler.tasks_with_flags) == 3
         # and mark the old tasks as up
         for task in old_tasks:
@@ -92,7 +93,7 @@ class TestNativeScheduler(object):
         scheduler.service_config = service_configs[1]
 
         # and start 3 more tasks
-        new_tasks = scheduler.start_task(fake_driver, make_fake_offer())
+        new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
         assert len(scheduler.tasks_with_flags) == 6
         # It should not drain anything yet, since the new tasks aren't up.
         scheduler.kill_tasks_if_necessary(fake_driver)
@@ -108,9 +109,9 @@ class TestNativeScheduler(object):
         # Now let's roll back and make sure it undrains the old ones and drains new.
         scheduler.service_config = service_configs[0]
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == set([])
+        assert scheduler.drain_method.downed_task_ids == set()
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == set([t.task_id.value for t in new_tasks])
+        assert scheduler.drain_method.downed_task_ids == {t.task_id.value for t in new_tasks}
 
         # Once we drain the new tasks, it should kill them.
         assert fake_driver.killTask.call_count == 0
@@ -132,7 +133,7 @@ class TestNativeScheduler(object):
         assert len(killed_tasks) == 2
         scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
         scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.safe_to_kill_task_ids == set([t.task_id.value for t in new_tasks])
+        assert scheduler.drain_method.safe_to_kill_task_ids == {t.task_id.value for t in new_tasks}
         assert len(killed_tasks) == 3
 
         for task in new_tasks:
@@ -156,7 +157,7 @@ class TestNativeScheduler(object):
         scheduler.kill_tasks_if_necessary(fake_driver)
         assert len(killed_tasks) == 1
 
-    def test_start_task_chooses_port(self, system_paasta_config):
+    def test_tasks_for_offer_chooses_port(self, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -186,20 +187,22 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
+            reconcile_start_time=0,
+            staging_timeout=1,
         )
-        fake_driver = mock.Mock()
 
-        fake_offer = make_fake_offer(port_begin=12345, port_end=12345)
-        tasks = scheduler.start_task(fake_driver, fake_offer)
+        tasks, _ = scheduler.tasks_and_state_for_offer(
+            mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
 
         assert len(tasks) == 1
-        for resource in tasks[0].resources:
-            if resource.name == "ports":
-                assert resource.ranges.range[0].begin == 12345
-                assert resource.ranges.range[0].end == 12345
-                break
-        else:
-            raise AssertionError("never saw a ports resource")
+        for task in tasks:
+            for resource in task.resources:
+                if resource.name == "ports":
+                    assert resource.ranges.range[0].begin == 12345
+                    assert resource.ranges.range[0].end == 12345
+                    break
+            else:
+                raise AssertionError("never saw a ports resource")
 
     def test_offer_matches_pool(self):
         service_name = "service_name"
@@ -223,6 +226,7 @@ class TestNativeScheduler(object):
                 'desired_state': 'start',
                 'force_bounce': '0',
             },
+
         )
 
         scheduler = native_scheduler.NativeScheduler(
@@ -231,6 +235,7 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_config,
+            staging_timeout=1
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))

@@ -229,8 +229,8 @@ def test_run_paasta_metastatus_verbose(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_very_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
+    return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2, False)
     expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -vv'
-    return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert return_code == 0
     assert actual == mock_run.return_value[1]
@@ -341,10 +341,10 @@ def test_execute_paasta_metastatus_on_remote_master(
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
     return_code, actual = utils.execute_paasta_metastatus_on_remote_master(
-        cluster, fake_system_paasta_config, False, [], 0)
+        cluster, fake_system_paasta_config, False, [], 0, False)
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
-    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0)
+    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0, False)
     assert return_code == mock.sentinel.paasta_metastatus_return_code
     assert actual == mock.sentinel.paasta_metastatus_output
 
@@ -500,10 +500,10 @@ def test_list_teams():
             },
         }
     }
-    expected = set([
+    expected = {
         'red_jaguars',
         'blue_barracudas',
-    ])
+    }
     with mock.patch(
         'paasta_tools.cli.utils._load_sensu_team_data',
         autospec=True,
@@ -672,7 +672,7 @@ def test_list_deploy_groups_parses_configs(
         ),
     ]
     actual = utils.list_deploy_groups(service="foo")
-    assert actual == set(['fake_deploy_group', 'fake_cluster.fake_instance'])
+    assert actual == {'fake_deploy_group', 'fake_cluster.fake_instance'}
 
 
 @patch('paasta_tools.cli.utils.client', autospec=True)
