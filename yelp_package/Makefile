@@ -19,7 +19,7 @@ SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -34,7 +34,13 @@ endif
 
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/$*/ && docker build -t "paastatools_$*_container" .
+	docker pull "yelp/paastatools_$*_container" || true
+	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
+	if [ "$$TRAVIS_BRANCH" = "master" -a \
+	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
+	     "$$DOCKER_USERNAME" != "" ]; then \
+	  docker push "yelp/paastatools_$*_container"; \
+	fi
 
 .SECONDEXPANSION:
 itest_%: package_$$* bintray_$$*
