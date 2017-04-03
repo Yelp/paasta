@@ -24,4 +24,4 @@ from paasta_tools.autoscale_cluster import main
 @mock.patch('paasta_tools.autoscale_cluster.autoscale_local_cluster', autospec=True)
 def test_main(mock_autoscale_local_cluster, logging):
     main(('--dry-run', '--autoscaler-configs=/nail/blah'))
-    mock_autoscale_local_cluster.assert_called_with(dry_run=True, config_folder='/nail/blah')
+    mock_autoscale_local_cluster.assert_called_with(dry_run=True, config_folder='/nail/blah', log_level=None)
