@@ -69,14 +69,14 @@ def start_paasta_native_framework(context, scheduler, reconcile_backoff):
         service_name=context.service,
         instance_name=context.instance,
         cluster=context.cluster,
+        staging_timeout=30,
         system_paasta_config=system_paasta_config,
         service_config=context.new_config,
         reconcile_backoff=int(reconcile_backoff),
     )
 
     context.driver = create_driver(
-        service=context.service,
-        instance=context.instance,
+        framework_name="test",
         scheduler=context.scheduler,
         system_paasta_config=system_paasta_config,
     )

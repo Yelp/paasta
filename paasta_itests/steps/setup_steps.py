@@ -27,8 +27,8 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
-from paasta_tools import native_mesos_scheduler
 from paasta_tools import utils
+from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
 
@@ -250,7 +250,7 @@ def write_soa_dir_native_service(context, job_id):
 
 @given('we load_paasta_native_job_config')
 def call_load_paasta_native_job_config(context):
-    context.new_config = native_mesos_scheduler.load_paasta_native_job_config(
+    context.new_config = native_scheduler.load_paasta_native_job_config(
         service=context.service,
         instance=context.instance,
         cluster=context.cluster,
