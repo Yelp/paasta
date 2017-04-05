@@ -98,6 +98,7 @@ def test_dry_run_json_dict(
     mock_get_instance_config.return_value.get_cpu.return_value = 123
     mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
     mock_get_instance_config.return_value.get_docker_image.return_value = 'fake_docker_image'
+    mock_get_instance_config.return_value.get_container_port.return_value = 8888
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
@@ -593,6 +594,7 @@ def test_run_cook_image_fails(
 def test_get_docker_run_cmd_without_additional_args():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -601,7 +603,7 @@ def test_get_docker_run_cmd_without_additional_args():
     command = None
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
@@ -612,6 +614,7 @@ def test_get_docker_run_cmd_without_additional_args():
 def test_get_docker_run_cmd_with_env_vars():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {'foo': 'bar', 'baz': 'qux', 'x': ' with spaces'}
@@ -620,7 +623,7 @@ def test_get_docker_run_cmd_with_env_vars():
     command = None
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     assert "--env='foo=bar'" in actual
     assert "--env='baz=qux'" in actual
@@ -629,6 +632,7 @@ def test_get_docker_run_cmd_with_env_vars():
 def test_get_docker_run_cmd_interactive_false():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -637,7 +641,7 @@ def test_get_docker_run_cmd_interactive_false():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--memory=%dm' % memory in actual
@@ -654,6 +658,7 @@ def test_get_docker_run_cmd_interactive_false():
 def test_get_docker_run_cmd_interactive_true():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -662,7 +667,7 @@ def test_get_docker_run_cmd_interactive_true():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--interactive=true' in actual
@@ -672,6 +677,7 @@ def test_get_docker_run_cmd_interactive_true():
 def test_get_docker_run_docker_params():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -682,7 +688,7 @@ def test_get_docker_run_docker_params():
     docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
                      {'key': 'cpu-period', 'value': '200000'},
                      {'key': 'cpu-quota', 'value': '150000'}]
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     assert '--memory-swap=555m' in actual
     assert '--cpu-period=200000' in actual
@@ -692,6 +698,7 @@ def test_get_docker_run_docker_params():
 def test_get_docker_run_cmd_host_networking():
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -700,7 +707,7 @@ def test_get_docker_run_cmd_host_networking():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--net=host' in actual
@@ -710,6 +717,7 @@ def test_get_docker_run_cmd_quote_cmd():
     # Regression test to ensure we properly quote multiword custom commands
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -718,7 +726,7 @@ def test_get_docker_run_cmd_quote_cmd():
     command = 'make test'
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert actual[-3:] == ['sh', '-c', 'make test']
@@ -728,6 +736,7 @@ def test_get_docker_run_cmd_quote_list():
     # Regression test to ensure we properly quote array custom commands
     memory = 555
     random_port = 666
+    container_port = 8888
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -736,7 +745,7 @@ def test_get_docker_run_cmd_quote_list():
     command = ['zsh', '-c', 'make test']
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert actual[-3:] == ['zsh', '-c', 'make test']

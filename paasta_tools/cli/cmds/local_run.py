@@ -40,7 +40,6 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
-from paasta_tools.long_running_service_tools import DEFAULT_CONTAINER_PORT
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
@@ -365,7 +364,7 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
+def get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
@@ -374,7 +373,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
     if net == 'bridge':
-        cmd.append('--publish=%d:%d' % (random_port, DEFAULT_CONTAINER_PORT))
+        cmd.append('--publish=%d:%d' % (random_port, container_port))
     elif net == 'host':
         cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
@@ -530,6 +529,7 @@ def run_docker_container(
     docker_run_args = dict(
         memory=memory,
         random_port=random_port,
+        container_port=instance_config.get_container_port(),
         container_name=container_name,
         volumes=volumes,
         env=environment,
