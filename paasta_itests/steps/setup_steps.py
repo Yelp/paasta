@@ -145,7 +145,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
         "cluster": "testcluster",
-        "zookeeper": "zk://zookeeper",
+        "zookeeper": "zk://zookeeper/mesos-testcluster",
         "docker_registry": docker_registry
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
