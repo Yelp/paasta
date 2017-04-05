@@ -158,9 +158,7 @@ def main():
         service = environment['PAASTA_SERVICE']
         instance = environment['PAASTA_INSTANCE']
         paasta_print("# %s.%s" % (service, instance))
-        port_bindings = docker_inspect_data[0]['HostConfig']['PortBindings']
-        marathon_port = int(port_bindings['8888/tcp'][0]['HostPort'])
-        assert marathon_port == int(environment['MARATHON_PORT'])
+        marathon_port = int(environment['MARATHON_PORT'])
         proxy_port = get_proxy_port(service, instance)
         paasta_print("# %s,%s,%s,%s,%s" % (container_id, service, instance, proxy_port, marathon_port))
         paasta_print("sudo hadown -P %s -e $((`date +'%%s'`+%s)) %s.%s" % (

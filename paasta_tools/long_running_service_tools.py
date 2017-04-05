@@ -15,6 +15,8 @@ from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import ZookeeperPool
 
+DEFAULT_CONTAINER_PORT = 8888
+
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
@@ -161,6 +163,9 @@ class LongRunningServiceConfig(InstanceConfig):
             self.get_min_instances(),
             min(self.get_max_instances(), instances),
         )
+
+    def get_container_port(self):
+        return self.config_dict.get('container_port', DEFAULT_CONTAINER_PORT)
 
 
 class InvalidHealthcheckMode(Exception):

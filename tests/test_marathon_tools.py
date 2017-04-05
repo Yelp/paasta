@@ -895,7 +895,7 @@ class TestMarathonTools:
                     'network': 'BRIDGE',
                     'portMappings': [
                         {
-                            'containerPort': marathon_tools.CONTAINER_PORT,
+                            'containerPort': long_running_service_tools.DEFAULT_CONTAINER_PORT,
                             'hostPort': 0,
                             'protocol': 'tcp',
                         },

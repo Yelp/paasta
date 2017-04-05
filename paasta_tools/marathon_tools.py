@@ -57,7 +57,6 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
 
-CONTAINER_PORT = 8888
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
 # this spacer, i.e. you can't change it here and expect the world to change
@@ -376,7 +375,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         if net == 'BRIDGE':
             complete_config['container']['docker']['portMappings'] = [
                 {
-                    'containerPort': CONTAINER_PORT,
+                    'containerPort': self.get_container_port(),
                     'hostPort': self.get_host_port(),
                     'protocol': 'tcp',
                 },

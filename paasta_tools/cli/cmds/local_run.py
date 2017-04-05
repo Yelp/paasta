@@ -40,8 +40,8 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.long_running_service_tools import DEFAULT_CONTAINER_PORT
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
-from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -374,7 +374,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
     if net == 'bridge':
-        cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+        cmd.append('--publish=%d:%d' % (random_port, DEFAULT_CONTAINER_PORT))
     elif net == 'host':
         cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
@@ -471,7 +471,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['MARATHON_PORT'] = str(port0)
         env['MARATHON_PORT0'] = str(port0)
         env['MARATHON_PORTS'] = str(port0)
-        env['MARATHON_PORT_8888'] = str(port0)
+        env['MARATHON_PORT_%d' % instance_config.get_container_port()] = str(port0)
         env['MARATHON_APP_VERSION'] = 'simulated_marathon_app_version'
         env['MARATHON_APP_RESOURCE_CPUS'] = str(instance_config.get_cpus())
         env['MARATHON_APP_DOCKER_IMAGE'] = docker_image
