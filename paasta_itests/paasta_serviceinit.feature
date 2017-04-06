@@ -43,7 +43,7 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for native service "testservice.testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance" image "busybox"
       And we load_paasta_native_job_config
-     When we start a paasta_native scheduler with reconcile_backoff 0
+     When we start a paasta_native scheduler with reconcile_backoff 0 and name test
       And we wait for our native scheduler to launch exactly 1 tasks
      Then paasta_serviceinit status for the native service "testservice.testinstance" exits with return code 0
       And the output matches regex "^    testservice.testinstance.git"
