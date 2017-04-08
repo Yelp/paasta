@@ -34,6 +34,7 @@ import signal
 import sys
 import tempfile
 import threading
+import time
 from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import wraps
@@ -1773,3 +1774,21 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
+
+
+class time_cache():
+    def __init__(self, *args, **kwargs):
+        self.cached_results = {}
+        self.ttl = kwargs.get("ttl", 0.0)
+
+    def __call__(self, f):
+        def cache(*args, **kwargs):
+            if 'ttl' in kwargs:
+                ttl = kwargs['ttl']
+                del kwargs['ttl']
+            else:
+                ttl = self.ttl
+            if not ttl or f not in self.cached_results or (time.time() - self.cached_results[f]['fetch_time'] > ttl):
+                self.cached_results[f] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
+            return self.cached_results[f]['data']
+        return cache

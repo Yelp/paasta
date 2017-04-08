@@ -386,18 +386,18 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None):
+def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, client=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
     :param verbose: int verbosity level
+    :param client: MarathonClient or CachedMarathonClient
     :returns: A unix-style return code
     """
     system_config = load_system_paasta_config()
 
-    marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     if not app_id:
         try:
@@ -411,8 +411,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
-    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                                marathon_config.get_password())
+    if client is None:
+        marathon_config = marathon_tools.load_marathon_config()
+        client = marathon_tools.get_marathon_client(marathon_config.get_url(),
+                                                    marathon_config.get_username(),
+                                                    marathon_config.get_password())
+
     if command == 'restart':
         restart_marathon_job(service, instance, app_id, client, cluster)
     elif command == 'status':
