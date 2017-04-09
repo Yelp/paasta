@@ -116,6 +116,20 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
+class cached_marathon_service_config():
+    def __init__(self):
+        self.loaded_configs = {}
+
+    def __call__(self, f):
+        def cache(*args, **kwargs):
+            key = (args, ''.join("%s%s" % (k, v) for (k, v) in kwargs.items()))
+            if key not in self.loaded_configs:
+                self.loaded_configs[key] = f(*args, **kwargs)
+            return self.loaded_configs[key]
+        return cache
+
+
+@cached_marathon_service_config()
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
