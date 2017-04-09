@@ -108,7 +108,7 @@ class TestMarathonTools:
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
     def test_load_marathon_service_config_bails_with_no_config(self):
-        fake_name = 'jazz'
+        fake_name = 'folk'
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'

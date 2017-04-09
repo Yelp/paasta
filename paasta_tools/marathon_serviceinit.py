@@ -408,7 +408,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
             return 1
 
     normal_instance_count = job_config.get_instances()
-    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
     if client is None:
@@ -434,6 +433,9 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 tail_lines=tail_lines,
             ))
         if proxy_port is not None:
+            normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service,
+                                                                                               instance,
+                                                                                               cluster)
             paasta_print(status_smartstack_backends(
                 service=service,
                 instance=instance,
