@@ -372,7 +372,7 @@ def get_docker_run_cmd(memory, random_port, container_port, container_name, volu
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
-    if net == 'bridge':
+    if net == 'bridge' and container_port is not None:
         cmd.append('--publish=%d:%d' % (random_port, container_port))
     elif net == 'host':
         cmd.append('--net=host')
@@ -526,10 +526,16 @@ def run_docker_container(
     memory = instance_config.get_mem()
     container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
+
+    try:
+        container_port = instance_config.get_container_port()
+    except AttributeError:
+        container_port = None
+
     docker_run_args = dict(
         memory=memory,
         random_port=random_port,
-        container_port=instance_config.get_container_port(),
+        container_port=container_port,
         container_name=container_name,
         volumes=volumes,
         env=environment,
