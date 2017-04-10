@@ -89,10 +89,3 @@ Feature: Paasta native mesos framework
      Then it should undrain 3 tasks and drain 0 more
      When we call periodic
      Then it should undrain 0 tasks and drain 3 more
-
-  Scenario: native_mesos_scheduler waits for task reconciliation before accepting offers
-    Given a working paasta cluster, with docker registry docker.io
-      And a new paasta_native config to be deployed, with 3 instances
-     When we start a paasta_native scheduler with reconcile_backoff 10 and name test
-     Then it should not start tasks for 9 seconds
-      And it should eventually start 3 tasks
