@@ -268,7 +268,7 @@ def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expecte
 def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
-    for _ in range(30):
+    for _ in range(60):
         actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
         if actual_num <= num:
             return
