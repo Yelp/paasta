@@ -89,6 +89,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         'fake_cluster.fake_instance': 'sha'
     }
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -108,7 +109,9 @@ def test_report_status_for_cluster_displays_deployed_service(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     output, _ = capfd.readouterr()
     assert expected_output in output
@@ -131,6 +134,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         'cluster.instance': 'this_is_a_sha'
     }
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -149,7 +153,9 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     output, _ = capfd.readouterr()
     assert expected_output in output
@@ -173,6 +179,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'fake_cluster.fake_instance_b': '533976a9',
     }
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -192,7 +199,9 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     output, _ = capfd.readouterr()
     assert expected_output in output
@@ -218,6 +227,7 @@ def test_print_cluster_status_missing_deploys_in_red(
         'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_status = 'status: SOMETHING FAKE'
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -242,7 +252,9 @@ def test_print_cluster_status_missing_deploys_in_red(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     output, _ = capfd.readouterr()
     assert expected_output in output
@@ -266,6 +278,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         'a_cluster.a_instance': 'this_is_a_sha',
     }
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     fake_output = "Marathon: 5 instances"
@@ -280,7 +293,9 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
         verbose=verbosity_level,
     )
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
@@ -307,6 +322,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
         'fake_cluster.fake_instance_b': 'sha',
     }
     instance_whitelist = ['fake_instance_a']
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -320,7 +336,9 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a',
@@ -338,6 +356,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
     actual_deployments = {}
     instance_whitelist = []
+    deploy_group_whitelist = []
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     status.report_status_for_cluster(
@@ -346,7 +365,9 @@ def test_report_status_calls_report_invalid_whitelist_values(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
         instance_whitelist,
@@ -377,6 +398,7 @@ def test_status_pending_pipeline_build_message(
 
     args = MagicMock()
     args.service = service
+    args.deploy_group = None
 
     paasta_status(args)
     output, _ = capfd.readouterr()
@@ -453,6 +475,7 @@ def test_status_calls_sergeants(
     args.service = service
     args.clusters = None
     args.instances = None
+    args.deploy_groups = None
     args.verbose = False
     args.soa_dir = '/fake/soa/dir'
     return_value = paasta_status(args)
@@ -467,7 +490,9 @@ def test_status_calls_sergeants(
         actual_deployments=actual_deployments,
         cluster_whitelist=[],
         instance_whitelist=[],
+        deploy_group_whitelist=[],
         system_paasta_config=fake_system_paasta_config,
+        soa_dir='/fake/soa/dir',
         verbose=0,
         use_api_endpoint=False
     )
@@ -501,6 +526,7 @@ def test_report_status_returns_zero_when_clusters_pass(
     service = 'fake_service'
     cluster_whitelist = []
     instance_whitelist = []
+    deploy_group_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
@@ -513,7 +539,9 @@ def test_report_status_returns_zero_when_clusters_pass(
         actual_deployments=actual_deployments,
         cluster_whitelist=cluster_whitelist,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
 
     assert return_value == 0
@@ -530,6 +558,7 @@ def test_report_status_returns_one_when_clusters_pass(
     service = 'fake_service'
     cluster_whitelist = []
     instance_whitelist = []
+    deploy_group_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
@@ -542,7 +571,9 @@ def test_report_status_returns_one_when_clusters_pass(
         actual_deployments=actual_deployments,
         cluster_whitelist=cluster_whitelist,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
 
     assert return_value == 1
@@ -559,6 +590,7 @@ def test_report_status_obeys_cluster_whitelist(
     service = 'fake_service'
     cluster_whitelist = ['cluster1']
     instance_whitelist = []
+    deploy_group_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
@@ -568,7 +600,9 @@ def test_report_status_obeys_cluster_whitelist(
         actual_deployments=actual_deployments,
         cluster_whitelist=cluster_whitelist,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
         cluster_whitelist, ['cluster1', 'cluster2', 'cluster3'], 'cluster')
@@ -578,7 +612,9 @@ def test_report_status_obeys_cluster_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
         verbose=0,
         use_api_endpoint=False
     )
@@ -594,6 +630,7 @@ def test_report_status_handle_none_whitelist(
     service = 'fake_service'
     cluster_whitelist = []
     instance_whitelist = []
+    deploy_group_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
@@ -603,7 +640,9 @@ def test_report_status_handle_none_whitelist(
         actual_deployments=actual_deployments,
         cluster_whitelist=cluster_whitelist,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
     )
 
     mock_report_status_for_cluster.assert_any_call(
@@ -612,7 +651,9 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
         verbose=0,
         use_api_endpoint=False
     )
@@ -622,7 +663,9 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
         verbose=0,
         use_api_endpoint=False
     )
@@ -632,7 +675,9 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        deploy_group_whitelist=deploy_group_whitelist,
         system_paasta_config=fake_system_paasta_config,
+        soa_dir=utils.DEFAULT_SOA_DIR,
         verbose=0,
         use_api_endpoint=False
     )

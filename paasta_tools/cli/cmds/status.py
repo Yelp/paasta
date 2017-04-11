@@ -25,7 +25,9 @@ from service_configuration_lib import read_deploy
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_instance_configs_for_service_for_cluster
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -77,6 +79,11 @@ def add_subparser(subparsers):
         help="A comma-separated list of instances to view. Defaults to view all instances.\n"
              "For example: --instances canary,main"
     )  # No completer because we need to know service first and we can't until some other stuff has happened
+    status_parser.add_argument(
+        '-l', '--deploy-groups',
+        help=('Name of the deploy group which you want to get status for. '
+              'If specified together with --instances and/or --clusters, will show common instances only.'),
+    ).completer = lazy_choices_completer(list_deploy_groups)
     status_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -189,13 +196,16 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
 
 
 def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
-                              system_paasta_config, verbose=0, use_api_endpoint=False):
+                              deploy_group_whitelist, system_paasta_config, soa_dir, verbose=0, use_api_endpoint=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     paasta_print()
     paasta_print("cluster: %s" % cluster)
     seen_instances = []
     deployed_instances = []
+
+    instance_configs = get_instance_configs_for_service_for_cluster(service, cluster, soa_dir=soa_dir)
+    deploy_groups_by_instance = {ic.instance: ic.get_deploy_group() for ic in instance_configs}
 
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
@@ -204,6 +214,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         if cluster_in_pipeline != cluster:
             continue
         if instance_whitelist and instance not in instance_whitelist:
+            continue
+        if deploy_group_whitelist and deploy_groups_by_instance[instance] not in deploy_group_whitelist:
             continue
 
         # Case: service deployed to cluster.instance
@@ -263,7 +275,7 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
 
 
 def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-                  system_paasta_config, verbose=0, use_api_endpoint=False):
+                  deploy_group_whitelist, system_paasta_config, soa_dir, verbose=0, use_api_endpoint=False):
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     return_codes = [
@@ -273,7 +285,9 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
             deploy_pipeline=deploy_pipeline,
             actual_deployments=actual_deployments,
             instance_whitelist=instance_whitelist,
+            deploy_group_whitelist=deploy_group_whitelist,
             system_paasta_config=system_paasta_config,
+            soa_dir=soa_dir,
             verbose=verbose,
             use_api_endpoint=use_api_endpoint
         )
@@ -291,7 +305,6 @@ def paasta_status(args):
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
     actual_deployments = get_actual_deployments(service, soa_dir)
-    system_paasta_config = load_system_paasta_config()
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
     else:
@@ -301,10 +314,16 @@ def paasta_status(args):
         cluster_whitelist = args.clusters.split(",")
     else:
         cluster_whitelist = []
+
     if args.instances is not None:
         instance_whitelist = args.instances.split(",")
     else:
         instance_whitelist = []
+
+    if args.deploy_groups is not None:
+        deploy_group_whitelist = args.deploy_groups.split(",")
+    else:
+        deploy_group_whitelist = []
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(service, soa_dir))
@@ -314,9 +333,11 @@ def paasta_status(args):
             actual_deployments=actual_deployments,
             cluster_whitelist=cluster_whitelist,
             instance_whitelist=instance_whitelist,
-            system_paasta_config=system_paasta_config,
+            deploy_group_whitelist=deploy_group_whitelist,
+            system_paasta_config=load_system_paasta_config(),
+            soa_dir=args.soa_dir,
             verbose=args.verbose,
-            use_api_endpoint=use_api_endpoint
+            use_api_endpoint=use_api_endpoint,
         )
         return return_code
     else:

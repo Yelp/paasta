@@ -784,45 +784,50 @@ def get_instance_configs_for_service(service, soa_dir):
         service=service,
         soa_dir=soa_dir,
     ):
-        for _, instance in get_service_instance_list(
+        for instance_config in get_instance_configs_for_service_for_cluster(service, cluster, soa_dir):
+            yield instance_config
+
+
+def get_instance_configs_for_service_for_cluster(service, cluster, soa_dir):
+    for _, instance in get_service_instance_list(
+        service=service,
+        cluster=cluster,
+        instance_type='marathon',
+        soa_dir=soa_dir,
+    ):
+        yield load_marathon_service_config(
             service=service,
+            instance=instance,
             cluster=cluster,
-            instance_type='marathon',
             soa_dir=soa_dir,
-        ):
-            yield load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-        for _, instance in get_service_instance_list(
+            load_deployments=False,
+        )
+    for _, instance in get_service_instance_list(
+        service=service,
+        cluster=cluster,
+        instance_type='chronos',
+        soa_dir=soa_dir,
+    ):
+        yield load_chronos_job_config(
             service=service,
+            instance=instance,
             cluster=cluster,
-            instance_type='chronos',
             soa_dir=soa_dir,
-        ):
-            yield load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-        for _, instance in get_service_instance_list(
+            load_deployments=False,
+        )
+    for _, instance in get_service_instance_list(
+        service=service,
+        cluster=cluster,
+        instance_type='adhoc',
+        soa_dir=soa_dir,
+    ):
+        yield load_adhoc_job_config(
             service=service,
+            instance=instance,
             cluster=cluster,
-            instance_type='adhoc',
             soa_dir=soa_dir,
-        ):
-            yield load_adhoc_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
+            load_deployments=False,
+        )
 
 
 class PaastaTaskNotFound(Exception):
