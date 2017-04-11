@@ -27,6 +27,7 @@ import re
 from math import ceil
 
 import requests
+import requests_cache
 import service_configuration_lib
 from marathon import MarathonClient
 from marathon import MarathonHttpError
@@ -56,7 +57,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import time_cache
 
 CONTAINER_PORT = 8888
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
@@ -556,9 +556,9 @@ def get_marathon_app_deploy_status(client, app_id):
 
 class CachedMarathonClient(MarathonClient):
 
-    @time_cache(ttl=20)
     def list_apps(self, *args, **kwargs):
-        return super(CachedMarathonClient, self).list_apps(*args, **kwargs)
+        with requests_cache.enabled('list_apps', backend='memory', expire_after=20):
+            return super(CachedMarathonClient, self).list_apps(*args, **kwargs)
 
 
 def get_marathon_client(url, user, passwd, cached=False):
