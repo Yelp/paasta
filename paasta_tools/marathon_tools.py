@@ -56,6 +56,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import time_cache
 
 CONTAINER_PORT = 8888
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
@@ -115,6 +116,20 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
+class cached_marathon_service_config():
+    def __init__(self):
+        self.loaded_configs = {}
+
+    def __call__(self, f):
+        def cache(*args, **kwargs):
+            key = (args, ''.join("%s%s" % (k, v) for (k, v) in kwargs.items()))
+            if key not in self.loaded_configs:
+                self.loaded_configs[key] = f(*args, **kwargs)
+            return self.loaded_configs[key]
+        return cache
+
+
+@cached_marathon_service_config()
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
@@ -539,19 +554,30 @@ def get_marathon_app_deploy_status(client, app_id):
     return deploy_status
 
 
-def get_marathon_client(url, user, passwd):
+class CachedMarathonClient(MarathonClient):
+
+    @time_cache(ttl=20)
+    def list_apps(self, *args, **kwargs):
+        return super(CachedMarathonClient, self).list_apps(*args, **kwargs)
+
+
+def get_marathon_client(url, user, passwd, cached=False):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
     :param url: The url to connect to marathon at
     :param user: The username to connect with
     :param passwd: The password to connect with
+    :param cached: If true, return CachedMarathonClient
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
 
     session = requests.Session()
     session.headers.update({'User-Agent': get_user_agent()})
 
-    return MarathonClient(url, user, passwd, timeout=30, session=session)
+    if cached:
+        return CachedMarathonClient(url, user, passwd, timeout=30, session=session)
+    else:
+        return MarathonClient(url, user, passwd, timeout=30, session=session)
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):
@@ -812,9 +838,7 @@ def list_all_marathon_app_ids(client):
     in the original form, without leading "/"'s.
 
     returns: List of app ids in the same format they are POSTed."""
-    all_app_ids = [app.id for app in client.list_apps()]
-    stripped_app_ids = [app_id.lstrip('/') for app_id in all_app_ids]
-    return stripped_app_ids
+    return [app.id.lstrip('/') for app in get_all_marathon_apps(client)]
 
 
 def is_app_id_running(app_id, client):
