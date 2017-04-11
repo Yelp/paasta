@@ -50,6 +50,7 @@ Feature: paasta_serviceinit
      Then paasta_serviceinit status for the native service "testservice.testinstance" exits with return code 0
       And the output matches regex "^    testservice.testinstance.git"
 
+  @skip
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
