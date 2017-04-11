@@ -1,6 +1,10 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
+ifeq ($(PAASTA_ENV),YELP)
+	EXTRA_PYPI="--extra-index-url 'https://pypi.yelpcorp.com/simple'"
+endif
+
 %:
 	dh $@ --with python-virtualenv
 
@@ -19,7 +23,4 @@ override_dh_auto_test:
 	true
 
 override_dh_virtualenv:
-	dh_virtualenv `host pypi.yelpcorp.com >/dev/null 2>&1 && echo '--extra-index-url https://pypi.yelpcorp.com/simple'` \
-	--python=/usr/bin/python2.7 --preinstall no-manylinux1 \
-	--preinstall pip-custom-platform --pip-tool pip-custom-platform
-
+	dh_virtualenv $EXTRA_PYPI --python=/usr/bin/python2.7 --preinstall no-manylinux1 --preinstall pip-custom-platform --pip-tool pip-custom-platform
