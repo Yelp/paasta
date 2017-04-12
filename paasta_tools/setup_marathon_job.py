@@ -308,7 +308,7 @@ def do_bounce(
 
 
 def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
-                               system_paasta_config):
+                               system_paasta_config, log_deploy_error):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
@@ -319,22 +319,31 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
     happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
     draining_hosts = get_draining_hosts()
     for task in app.tasks:
-        if drain_method.is_draining(task):
-            state = 'draining'
-        elif task in happy_tasks:
-            if task.host in draining_hosts:
-                state = 'at_risk'
-            else:
-                state = 'happy'
-        else:
+        try:
+            is_draining = drain_method.is_draining(task)
+        except Exception as e:
+            log_deploy_error(
+                "Ignoring exception during is_draining of task %s:"
+                " %s. Treating task as 'unhappy'." % (task, e)
+            )
             state = 'unhappy'
+        else:
+            if is_draining is True:
+                state = 'draining'
+            elif task in happy_tasks:
+                if task.host in draining_hosts:
+                    state = 'at_risk'
+                else:
+                    state = 'happy'
+            else:
+                state = 'unhappy'
         tasks_by_state[state].add(task)
 
     return tasks_by_state
 
 
 def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_health_params,
-                       system_paasta_config):
+                       system_paasta_config, log_deploy_error):
     """Split tasks from old apps into 4 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -350,7 +359,14 @@ def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_healt
     for app in other_apps:
 
         tasks_by_state = get_tasks_by_state_for_app(
-            app, drain_method, service, nerve_ns, bounce_health_params, system_paasta_config)
+            app=app,
+            drain_method=drain_method,
+            service=service,
+            nerve_ns=nerve_ns,
+            bounce_health_params=bounce_health_params,
+            system_paasta_config=system_paasta_config,
+            log_deploy_error=log_deploy_error,
+        )
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -448,12 +464,13 @@ def deploy_service(
      old_app_draining_tasks,
      old_app_at_risk_tasks,
      ) = get_tasks_by_state(
-        other_apps,
-        drain_method,
-        service,
-        nerve_ns,
-        bounce_health_params,
-        system_paasta_config,
+        other_apps=other_apps,
+        drain_method=drain_method,
+        service=service,
+        nerve_ns=nerve_ns,
+        bounce_health_params=bounce_health_params,
+        system_paasta_config=system_paasta_config,
+        log_deploy_error=log_deploy_error,
     )
 
     if new_app_running:
@@ -467,12 +484,13 @@ def deploy_service(
         elif new_app.instances > config['instances']:
             num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
             task_dict = get_tasks_by_state_for_app(
-                new_app,
-                drain_method,
-                service,
-                nerve_ns,
-                bounce_health_params,
-                system_paasta_config,
+                app=new_app,
+                drain_method=drain_method,
+                service=service,
+                nerve_ns=nerve_ns,
+                bounce_health_params=bounce_health_params,
+                system_paasta_config=system_paasta_config,
+                log_deploy_error=log_deploy_error,
             )
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])

@@ -1544,12 +1544,13 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ):
             actual = setup_marathon_job.get_tasks_by_state(
-                fake_apps,
-                self.fake_drain_method(),
+                other_apps=fake_apps,
+                drain_method=self.fake_drain_method(),
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
+                log_deploy_error=None,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
@@ -1606,12 +1607,13 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ):
             actual = setup_marathon_job.get_tasks_by_state(
-                fake_apps,
-                self.fake_drain_method(),
+                other_apps=fake_apps,
+                drain_method=self.fake_drain_method(),
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
+                log_deploy_error=None,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
