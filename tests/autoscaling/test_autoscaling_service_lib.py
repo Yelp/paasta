@@ -1082,17 +1082,14 @@ def test_get_autoscaling_info():
     ) as mock_get_error_from_utilization, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_new_instance_count', autospec=True
     ) as mock_get_new_instance_count, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_marathon_client', autospec=True,
-    ) as mock_marathon_client, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.load_system_paasta_config', autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock())
-    ), mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.load_marathon_config', autospec=True,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_all_marathon_mesos_tasks', autospec=True,
         return_value=([], [])
     ) as mock_get_all_marathon_mesos_tasks:
         mock_get_utilization.return_value = 0.80131
+        mock_marathon_client = mock.Mock()
         mock_get_new_instance_count.return_value = 6
         mock_service_config = mock.Mock(get_max_instances=mock.Mock(return_value=10),
                                         get_min_instances=mock.Mock(return_value=2),
@@ -1104,8 +1101,12 @@ def test_get_autoscaling_info():
         mock_marathon_task = mock.Mock()
         mock_mesos_tasks = mock.Mock()
         mock_filter_autoscaling_tasks.return_value = ({'id1': mock_marathon_task}, mock_mesos_tasks)
-        ret = autoscaling_service_lib.get_autoscaling_info('someservice', 'main', 'dev', '/nail/whatever')
-        mock_filter_autoscaling_tasks.assert_called_with(mock_marathon_client.return_value,
+        ret = autoscaling_service_lib.get_autoscaling_info(mock_marathon_client,
+                                                           'someservice',
+                                                           'main',
+                                                           'dev',
+                                                           '/nail/whatever')
+        mock_filter_autoscaling_tasks.assert_called_with(mock_marathon_client,
                                                          mock_get_all_marathon_mesos_tasks.return_value[0],
                                                          mock_get_all_marathon_mesos_tasks.return_value[1],
                                                          mock_service_config)
@@ -1134,5 +1135,9 @@ def test_get_autoscaling_info():
         # test regular service has no autoscaling info
         mock_service_config = mock.Mock(get_max_instances=mock.Mock(return_value=None))
         mock_load_marathon_service_config.return_value = mock_service_config
-        ret = autoscaling_service_lib.get_autoscaling_info('someservice', 'main', 'dev', '/nail/whatever')
+        ret = autoscaling_service_lib.get_autoscaling_info(mock_marathon_client,
+                                                           'someservice',
+                                                           'main',
+                                                           'dev',
+                                                           '/nail/whatever')
         assert ret is None

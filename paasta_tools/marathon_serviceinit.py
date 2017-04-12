@@ -151,7 +151,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
                                      running_instances, normal_instance_count)
 
 
-def get_verbose_status_of_marathon_app(app, service, instance, cluster, soa_dir):
+def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
@@ -159,7 +159,7 @@ def get_verbose_status_of_marathon_app(app, service, instance, cluster, soa_dir)
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
 
-    autoscaling_info = get_autoscaling_info(service, instance, cluster, soa_dir)
+    autoscaling_info = get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir)
     if autoscaling_info:
         output.append("    Autoscaling Info:")
         headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
@@ -210,6 +210,7 @@ def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
         if marathon_tools.is_app_id_running(app_id, client):
             app = client.get_app(app_id)
             tasks, output = get_verbose_status_of_marathon_app(
+                marathon_client=client,
                 app=app,
                 service=service,
                 instance=instance,

@@ -365,18 +365,13 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
         return 0.0
 
 
-def get_autoscaling_info(service, instance, cluster, soa_dir):
+def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
     service_config = load_marathon_service_config(
         service=service,
         instance=instance,
         cluster=cluster,
         soa_dir=soa_dir,
     )
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password())
     all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
         marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,

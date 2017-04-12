@@ -106,7 +106,8 @@ def test_status_marathon_job_verbose():
                                                                       '/nail/blah')
         mock_is_app_id_running.assert_called_once_with('/app1', client)
         mock_get_matching_appids.assert_called_once_with(service, instance, client)
-        mock_get_verbose_app.assert_called_once_with(app=app,
+        mock_get_verbose_app.assert_called_once_with(marathon_client=client,
+                                                     app=app,
                                                      service=service,
                                                      instance=instance,
                                                      cluster='fake_cluster',
@@ -147,6 +148,7 @@ def test_get_verbose_status_of_marathon_app():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info
     ):
+        mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
@@ -157,8 +159,12 @@ def test_get_verbose_status_of_marathon_app():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
-                                                                             'fake_cluster', '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
+                                                                             fake_app,
+                                                                             'fake_service',
+                                                                             'main',
+                                                                             'fake_cluster',
+                                                                             '/nail/blah')
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
@@ -171,6 +177,7 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
     ):
+        mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
@@ -181,8 +188,12 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
-                                                                             'fake_cluster', '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
+                                                                             fake_app,
+                                                                             'fake_service',
+                                                                             'main',
+                                                                             'fake_cluster',
+                                                                             '/nail/blah')
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
@@ -195,6 +206,7 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
     ):
+        mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
@@ -214,8 +226,12 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
         fake_task2.health_check_results = []
 
         fake_app.tasks = [fake_task1, fake_task2]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app, 'fake_service', 'main',
-                                                                             'fake_cluster', '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
+                                                                             fake_app,
+                                                                             'fake_service',
+                                                                             'main',
+                                                                             'fake_cluster',
+                                                                             '/nail/blah')
         (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
         assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
         assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
