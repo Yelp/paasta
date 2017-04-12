@@ -170,7 +170,7 @@ def paasta_remote_run(args):
         if isinstance(value, bool) and value:
             cmd_parts.append('--%s' % arg_key)
         elif not isinstance(value, bool):
-            cmd_parts.extend(['--%s' % arg_key, str(value)])
+            cmd_parts.extend(['--%s' % arg_key, quote(str(value))])
 
     constraints = [x.split(',', 2) for x in args_vars.get('constraint', [])]
     if len(constraints) > 0:
