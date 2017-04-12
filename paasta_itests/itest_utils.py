@@ -91,7 +91,7 @@ def wait_for_marathon():
             break
 
 
-@timeout()
+@timeout(30)
 def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
     and retry. Times out after 30 seconds.

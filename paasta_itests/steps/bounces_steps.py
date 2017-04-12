@@ -149,8 +149,8 @@ def there_are_num_which_tasks(context, num, which, state, exact):
     context.max_tasks = num
     app_id = which_id(context, which)
 
-    # 120 * 0.5 = 60 seconds
-    for _ in range(120):
+    # 180 * 0.5 = 90 seconds
+    for _ in range(180):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)

@@ -161,3 +161,15 @@ def after_scenario(context, scenario):
     _clean_up_maintenance(context)
     _clean_up_paasta_native_frameworks(context)  # this must come before _clean_up_etc_paasta
     _clean_up_etc_paasta(context)
+
+
+def before_feature(context, feature):
+    if "skip" in feature.tags:
+        feature.skip("Marked with @skip")
+        return
+
+
+def before_scenario(context, scenario):
+    if "skip" in scenario.effective_tags:
+        scenario.skip("Marked with @skip")
+        return

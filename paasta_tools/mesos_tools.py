@@ -460,8 +460,8 @@ def get_master_flags():
 
 
 def get_zookeeper_host_path():
-    flags = get_master_flags()
-    parsed = urlparse(flags['flags']['zk'])
+    zk_url = load_system_paasta_config()['zookeeper']
+    parsed = urlparse(zk_url)
     return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
 
 
