@@ -601,7 +601,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     except NoMasterError as e:
         return (err_code, str(e))
 
-    ssh_parts = ['ssh', '-A', '-n', master]
+    ssh_parts = ['ssh', '-t', '-t', '-A', '-n', master]
 
     if shell:
         ssh_parts.extend('sh -c "%s"' % quote(' '.join(cmd_parts)))

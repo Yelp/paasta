@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 import argparse
 import json
+import signal
 import sys
 from datetime import datetime
 
@@ -43,6 +44,15 @@ def parse_args(argv):
         default=None,
     )
     return parser.parse_args(argv)
+
+
+def handle_interrupt(scheduler, driver):
+    def handle_interrupt_closure():
+        paasta_print(PaastaColors.red("Interrupt received, shutting down scheduler."))
+        scheduler.shutdown(driver)
+        driver.stop()
+
+    return handle_interrupt_closure
 
 
 def main(argv):
@@ -120,6 +130,9 @@ def main(argv):
         scheduler=scheduler,
         system_paasta_config=system_paasta_config
     )
+    signal.signal(signal.SIGTERM, handle_interrupt(scheduler, driver))
+    signal.signal(signal.SIGINT, handle_interrupt(scheduler, driver))
+    signal.signal(signal.SIGHUP, handle_interrupt(scheduler, driver))
     driver.run()
 
 

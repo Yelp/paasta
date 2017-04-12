@@ -102,6 +102,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
+        self.frozen = False
 
         # don't accept resources until we reconcile.
         self.reconcile_start_time = reconcile_start_time
@@ -123,6 +124,16 @@ class NativeScheduler(mesos.interface.Scheduler):
         else:
             self.load_config()
 
+    def shutdown(self, driver):
+        # TODO: this is naive, as it does nothing to stop on-going calls
+        #       to statusUpdate or resourceOffers.
+        paasta_print("Freezing the scheduler. Further status updates and resource offers are ignored.")
+        self.frozen = True
+        paasta_print("Killing any remaining live tasks.")
+        for task, parameters in self.tasks_with_flags.items():
+            if parameters.mesos_task_state in LIVE_TASK_STATES:
+                self.kill_task(driver, task)
+
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
         paasta_print("Registered with framework ID %s" % frameworkId.value)
@@ -131,6 +142,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
+        if self.frozen:
+            return
+
         if self.within_reconcile_backoff():
             paasta_print("Declining all offers since we started reconciliation too recently")
             for offer in offers:
@@ -315,6 +329,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         return time.time() - self.reconcile_backoff < self.reconcile_start_time
 
     def periodic(self, driver):
+        if self.frozen:
+            return
+
         self.periodic_was_called = True  # Used for testing.
         if not self.within_reconcile_backoff():
             driver.reviveOffers()
@@ -323,6 +340,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.kill_tasks_if_necessary(driver)
 
     def statusUpdate(self, driver, update):
+        if self.frozen:
+            return
+
         # update tasks
         task_id = update.task_id.value
         state = update.state
