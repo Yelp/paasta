@@ -372,8 +372,17 @@ def get_autoscaling_info(service, instance, cluster, soa_dir):
         cluster=cluster,
         soa_dir=soa_dir,
     )
+    marathon_config = load_marathon_config()
+    marathon_client = get_marathon_client(
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        passwd=marathon_config.get_password())
+    all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        marathon_tasks, mesos_tasks = get_autoscaling_tasks(service_config)
+        marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
+                                                               all_marathon_tasks,
+                                                               all_mesos_tasks,
+                                                               service_config)
 
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
@@ -393,7 +402,7 @@ def get_autoscaling_info(service, instance, cluster, soa_dir):
         return ServiceAutoscalingInfo(current_instances=str(service_config.get_instances()),
                                       max_instances=str(service_config.get_max_instances()),
                                       min_instances=str(service_config.get_min_instances()),
-                                      current_utilization="{0:.1f}%".format(utilization * 100),
+                                      current_utilization="{:.1f}%".format(utilization * 100),
                                       target_instances=str(new_instance_count))
     return None
 
@@ -550,11 +559,20 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
         with create_autoscaling_lock():
             cluster = load_system_paasta_config().get_cluster()
             configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
+            marathon_config = load_marathon_config()
+            marathon_client = get_marathon_client(
+                url=marathon_config.get_url(),
+                user=marathon_config.get_username(),
+                passwd=marathon_config.get_password())
+            all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
             if configs:
                 with ZookeeperPool():
                     for config in configs:
                         try:
-                            marathon_tasks, mesos_tasks = get_autoscaling_tasks(config)
+                            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
+                                                                                   all_marathon_tasks,
+                                                                                   all_mesos_tasks,
+                                                                                   config)
                             autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)
@@ -562,14 +580,13 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
         log.warning("Skipping autoscaling run for services because the lock is held")
 
 
-def get_autoscaling_tasks(config):
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password())
+def get_all_marathon_mesos_tasks(marathon_client):
     all_marathon_tasks = marathon_client.list_tasks()
     all_mesos_tasks = get_all_running_tasks()
+    return all_marathon_tasks, all_mesos_tasks
+
+
+def filter_autoscaling_tasks(marathon_client, all_marathon_tasks, all_mesos_tasks, config):
     job_id = config.format_marathon_app_dict()['id']
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
     # are healthy. We assume tasks with no healthcheck results but a defined
