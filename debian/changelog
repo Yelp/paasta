@@ -1,3 +1,11 @@
+paasta-tools (0.59.0) xenial; urgency=medium
+
+  * 0.59.0 tagged with 'make release'
+    Commit: Merge pull request #1129 from Yelp/nothing-to-see-here
+    "Fix" the itests
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:45:57 -0700
+
 paasta-tools (0.58.10) xenial; urgency=low
 
   * 0.58.10 tagged with 'make release'
