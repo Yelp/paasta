@@ -1,3 +1,11 @@
+paasta-tools (0.59.1) xenial; urgency=medium
+
+  * 0.59.1 tagged with 'make release'
+    Commit: Merge pull request #1131 from Yelp/PAASTa-9932  Make paasta
+    draining tolerant of connection errors. PAASTA-9932
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:56:19 -0700
+
 paasta-tools (0.59.0) xenial; urgency=medium
 
   * 0.59.0 tagged with 'make release'
