@@ -5,6 +5,7 @@ import sys
 import unittest
 
 import mock
+from pytest import raises
 
 from paasta_tools.deployd.common import ServiceInstance
 
@@ -34,12 +35,140 @@ sys.modules['pyinotify'] = FakePyinotify
 from paasta_tools.deployd.watchers import PaastaWatcher  # noqa
 from paasta_tools.deployd.watchers import FileWatcher  # noqa
 from paasta_tools.deployd.watchers import YelpSoaEventHandler  # noqa
+from paasta_tools.deployd.watchers import AutoscalerWatcher  # noqa
 
 
 class TestPaastaWatcher(unittest.TestCase):
     def test_init(self):
         mock_inbox_q = mock.Mock()
         PaastaWatcher(mock_inbox_q, 'westeros-prod')
+
+
+class TestAutoscalerWatcher(unittest.TestCase):
+    def setUp(self):
+        self.mock_zk = mock.Mock()
+        self.mock_inbox_q = mock.Mock()
+        self.watcher = AutoscalerWatcher(self.mock_inbox_q, "westeros-prod", zookeeper_client=self.mock_zk)
+
+    def test_watch_folder(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.ChildrenWatch', autospec=True
+        ) as mock_children_watch, mock.patch(
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_node', autospec=True
+        ) as mock_watch_node:
+            self.watcher.watch_folder('/path/autoscaling.lock')
+            assert not mock_children_watch.called
+
+            mock_watcher = mock.Mock(_prior_children=[])
+            mock_children_watch.return_value = mock_watcher
+            self.watcher.watch_folder('/rick/beth')
+            mock_children_watch.assert_called_with(self.mock_zk,
+                                                   '/rick/beth',
+                                                   func=self.watcher.process_folder_event,
+                                                   send_event=True)
+            assert not mock_watch_node.called
+
+            mock_children = mock.PropertyMock(side_effect=[['morty', 'summer'], [], []])
+            mock_watcher = mock.Mock()
+            type(mock_watcher)._prior_children = mock_children
+            mock_children_watch.return_value = mock_watcher
+            self.watcher.watch_folder('/rick/beth')
+            assert not mock_watch_node.called
+            calls = [mock.call(self.mock_zk,
+                               '/rick/beth',
+                               func=self.watcher.process_folder_event,
+                               send_event=True),
+                     mock.call(self.mock_zk,
+                               '/rick/beth/morty',
+                               func=self.watcher.process_folder_event,
+                               send_event=True),
+                     mock.call(self.mock_zk,
+                               '/rick/beth/summer',
+                               func=self.watcher.process_folder_event,
+                               send_event=True)]
+            mock_children_watch.assert_has_calls(calls)
+
+            mock_watcher = mock.Mock(_prior_children=['instances'])
+            mock_children_watch.return_value = mock_watcher
+            self.watcher.watch_folder('/rick/beth')
+            mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances')
+
+    def test_watch_node(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.DataWatch', autospec=True
+        ) as mock_data_watch:
+            self.watcher.watch_node('/some/node')
+            mock_data_watch.assert_called_with(self.mock_zk,
+                                               '/some/node',
+                                               func=self.watcher.process_node_event,
+                                               send_event=True)
+
+    def test_process_node_event(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.EventType', autospec=True
+        ) as mock_event_type, mock.patch(
+            'time.time', autospec=True, return_value=1
+        ):
+            mock_event_other = mock_event_type.DELETED
+            mock_event = mock.Mock(type=mock_event_other,
+                                   path='/autoscaling/service/instance/instances')
+            assert not self.mock_inbox_q.put.called
+
+            mock_event_created = mock_event_type.CREATED
+            mock_event = mock.Mock(type=mock_event_created,
+                                   path='/autoscaling/service/instance/instances')
+            self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
+            self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='service',
+                                                                     instance='instance',
+                                                                     bounce_by=1,
+                                                                     bounce_timers=None,
+                                                                     watcher=self.watcher.__class__.__name__))
+
+            mock_event_changed = mock_event_type.CHANGED
+            mock_event = mock.Mock(type=mock_event_changed,
+                                   path='/autoscaling/service/instance/instances')
+            self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
+            self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='service',
+                                                                     instance='instance',
+                                                                     bounce_by=1,
+                                                                     bounce_timers=None,
+                                                                     watcher=self.watcher.__class__.__name__))
+
+    def test_process_folder_event(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.EventType', autospec=True
+        ) as mock_event_type, mock.patch(
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True
+        ) as mock_watch_folder:
+            mock_event_other = mock_event_type.DELETED
+            mock_event = mock.Mock(type=mock_event_other,
+                                   path='/autoscaling/service/instance')
+            self.watcher.process_folder_event([], mock_event)
+            assert not mock_watch_folder.called
+
+            mock_event_child = mock_event_type.CHILD
+            mock_event = mock.Mock(type=mock_event_child,
+                                   path='/rick/beth')
+            self.watcher.process_folder_event(['morty', 'summer'], mock_event)
+            calls = [mock.call(self.watcher, '/rick/beth/morty'),
+                     mock.call(self.watcher, '/rick/beth/summer')]
+            mock_watch_folder.assert_has_calls(calls)
+
+    def test_run(self):
+        with mock.patch(
+            'time.sleep', autospec=True, side_effect=LoopBreak
+        ), mock.patch(
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True
+        ) as mock_watch_folder:
+            assert not self.watcher.is_ready
+            with raises(LoopBreak):
+                self.watcher.run()
+            assert self.watcher.is_ready
+            mock_watch_folder.assert_called_with(self.watcher, '/autoscaling')
+
+
+class LoopBreak(Exception):
+    pass
 
 
 class TestFileWatcher(unittest.TestCase):
