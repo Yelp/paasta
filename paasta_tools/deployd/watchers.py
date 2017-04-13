@@ -15,8 +15,8 @@ from paasta_tools.utils import list_all_instances_for_service
 class PaastaWatcher(PaastaThread):
 
     def __init__(self, inbox_q, cluster):
-        PaastaThread.__init__(self)
-        PaastaThread.daemon = True
+        super(PaastaWatcher, self).__init__()
+        self.daemon = True
         self.inbox_q = inbox_q
         self.cluster = cluster
         self.is_ready = False
@@ -24,8 +24,8 @@ class PaastaWatcher(PaastaThread):
 
 class FileWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster):
-        PaastaWatcher.__init__(self, inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, **kwargs):
+        super(FileWatcher, self).__init__(inbox_q, cluster)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(watch_manager=self.wm,
@@ -81,4 +81,5 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                                                  bounce_by=int(time.time()),
                                                  watcher=self.__class__.__name__)
                                  for instance in instances]
-            [self.filewatcher.inbox_q.put(service_instance) for service_instance in service_instances]
+            for service_instance in service_instances:
+                self.filewatcher.inbox_q.put(service_instance)

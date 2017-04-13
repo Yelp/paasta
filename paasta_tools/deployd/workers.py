@@ -10,9 +10,9 @@ from paasta_tools.setup_marathon_job import deploy_marathon_service
 
 class PaastaDeployWorker(PaastaThread):
     def __init__(self, worker_number, inbox_q, bounce_q):
-        PaastaThread.__init__(self)
-        PaastaThread.daemon = True
-        PaastaThread.name = "Worker{}".format(worker_number)
+        super(PaastaDeployWorker, self).__init__()
+        self.daemon = True
+        self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.setup()
@@ -36,4 +36,4 @@ class PaastaDeployWorker(PaastaThread):
                                     marathon_config=self.marathon_config,
                                     marathon_apps=marathon_apps)
             # TODO: make this return a time to wait for bounce and re-add to inbox_q
-            time.sleep(1)
+            time.sleep(0.1)

@@ -26,9 +26,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Inbox(PaastaThread):
     def __init__(self, inbox_q, bounce_q):
-        PaastaThread.__init__(self)
-        PaastaThread.daemon = True
-        PaastaThread.name = "Inbox"
+        super(Inbox, self).__init__()
+        self.daemon = True
+        self.name = "Inbox"
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.to_bounce = {}
@@ -73,9 +73,9 @@ class Inbox(PaastaThread):
 
 class DeployDaemon(PaastaThread):
     def __init__(self):
-        PaastaThread.__init__(self)
-        PaastaThread.daemon = True
+        super(DeployDaemon, self).__init__()
         self.started = False
+        self.daemon = True
         self.bounce_q = PaastaQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
@@ -84,9 +84,12 @@ class DeployDaemon(PaastaThread):
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
-        with ZookeeperPool() as zk:
+        with ZookeeperPool() as self.zk:
             self.log.info("Waiting to become leader")
-            self.election = PaastaLeaderElection(zk, "/paasta-deployd-leader", socket.getfqdn(), control=self.control)
+            self.election = PaastaLeaderElection(self.zk,
+                                                 "/paasta-deployd-leader",
+                                                 socket.getfqdn(),
+                                                 control=self.control)
             self.is_leader = False
             self.election.run(self.startup)
 
@@ -138,13 +141,15 @@ class DeployDaemon(PaastaThread):
         """ should block until all threads happy"""
         watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
-        self.watchers = [watcher(inbox_q=self.inbox_q,
-                                 cluster=self.config.get_cluster())
-                         for watcher in watcher_classes]
-        self.log.info("Starting the following watchers {}".format(self.watchers))
-        [watcher.start() for watcher in self.watchers]
+        watcher_threads = [watcher(inbox_q=self.inbox_q,
+                                   cluster=self.config.get_cluster(),
+                                   zookeeper_client=self.zk)
+                           for watcher in watcher_classes]
+        self.log.info("Starting the following watchers {}".format(watcher_threads))
+        for watcher in watcher_threads:
+            watcher.start()
         self.log.info("Waiting for all watchers to start")
-        while not all([watcher.is_ready for watcher in self.watchers]):
+        while not all([watcher.is_ready for watcher in watcher_threads]):
             self.log.debug("Sleeping and waiting for watchers to all start")
             time.sleep(1)
 
