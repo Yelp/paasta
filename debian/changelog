@@ -1,3 +1,11 @@
+paasta-tools (0.59.2) xenial; urgency=low
+
+  * 0.59.2 tagged with 'make release'
+    Commit: Merge pull request #1134 from Yelp/security_check_v1
+    Security check v1
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 13 Apr 2017 02:26:59 -0700
+
 paasta-tools (0.59.1) xenial; urgency=medium
 
   * 0.59.1 tagged with 'make release'
