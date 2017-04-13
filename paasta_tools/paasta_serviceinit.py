@@ -122,15 +122,15 @@ def main():
     clients = PaastaClients(cached=(command == 'status'))
 
     for instance in instances:
-        # For an instance, there might be multiple versions running, e.g. in crossover bouncing.
-        # In addition, mesos master does not have information of a chronos service's git hash.
-        # The git sha in deployment.json is simply used here.
-        version = get_deployment_version(actual_deployments, cluster, instance)
-        paasta_print('instance: %s' % PaastaColors.blue(instance))
-        paasta_print('Git sha:    %s (desired)' % version)
-
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
+            if instance_type == 'adhoc':
+                continue
+
+            version = get_deployment_version(actual_deployments, cluster, instance)
+            paasta_print('instance: %s' % PaastaColors.blue(instance))
+            paasta_print('Git sha:    %s (desired)' % version)
+
             if instance_type == 'marathon':
                 return_code = marathon_serviceinit.perform_command(
                     command=command,
