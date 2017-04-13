@@ -15,29 +15,38 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from paasta_tools.utils import _run
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'security-check',
-        description='Performs a security check (not implemented)',
-        help='Performs a security check (not implemented)',
+        description='Performs a security check (alpha)',
+        help='Performs a security check (alpha)',
     )
     list_parser.add_argument(
         '-s', '--service',
         help='Name of service for which you wish to check. Leading "services-", as included in a '
              'Jenkins job name, will be stripped.',
-        required=True,
+        required=False,
     )
     list_parser.add_argument(
         '-c', '--commit',
         help='Git sha of the image to check',
-        required=True,
+        required=False,
     )
     list_parser.set_defaults(command=perform_security_check)
 
 
 def perform_security_check(args):
-    paasta_print('Not implemented yet')
+    security_check_command = load_system_paasta_config().get_security_check_command()
+    if not security_check_command:
+        paasta_print("Nothing to be executed during the security-check step")
+        return 0
+
+    ret_code, output = _run(security_check_command, timeout=300, stream=True)
+    paasta_print("{0} exited with {1}", security_check_command, ret_code)
+    # The security-check should not block the pipeline in case of a failure
     return 0

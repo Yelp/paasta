@@ -1021,6 +1021,13 @@ class SystemPaastaConfig(dict):
         calculating the default routing constraints."""
         return self.get('expected_slave_attributes')
 
+    def get_security_check_command(self):
+        """Get the script to be executed during the security-check build step
+
+        :return: The name of the file
+        """
+        return self.get("security_check_command", None)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
