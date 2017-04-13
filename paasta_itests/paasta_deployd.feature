@@ -18,7 +18,21 @@ Feature: paasta-deployd deploys apps
      Then we can run get_app
      Then we set a new command for our service instance to "/bin/bash -c 'echo deploy-all-the-things'"
     Given I have yelpsoa-configs for the marathon job "test-service.main"
-     Then the config sha for "test-service.main" should have changed
+     Then the appid for "test-service.main" should have changed
+     Then we should not see the old version listed in marathon after 60 seconds
+     Then we should see "test-service.main" listed in marathon after 60 seconds
+     Then we can run get_app
+     Then paasta-deployd can be stopped
+
+  Scenario: deployd will re-deploy an app if its deployment.json is updated
+    Given a working paasta cluster
+      And paasta-deployd is running
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     Then we should see "test-service.main" listed in marathon after 30 seconds
+     Then we can run get_app
+    Given we have a deployments.json for the service "test-service" with enabled instance "main" image "test-image-foobar1"
+     Then the appid for "test-service.main" should have changed
      Then we should not see the old version listed in marathon after 60 seconds
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
