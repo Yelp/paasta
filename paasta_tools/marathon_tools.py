@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import time
 from math import ceil
 
 import requests
@@ -117,19 +118,25 @@ class MarathonConfig(dict):
 
 
 class cached_marathon_service_config():
-    def __init__(self):
-        self.loaded_configs = {}
+    def __init__(self, *args, **kwargs):
+        self.configs = {}
+        self.ttl = kwargs.get("ttl", 0.0)
 
     def __call__(self, f):
         def cache(*args, **kwargs):
+            if 'ttl' in kwargs:
+                ttl = kwargs['ttl']
+                del kwargs['ttl']
+            else:
+                ttl = self.ttl
             key = (args, ''.join("%s%s" % (k, v) for (k, v) in kwargs.items()))
-            if key not in self.loaded_configs:
-                self.loaded_configs[key] = f(*args, **kwargs)
-            return self.loaded_configs[key]
+            if (not ttl) or (key not in self.configs) or (time.time() - self.configs[key]['fetch_time'] > ttl):
+                self.configs[key] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
+            return self.configs[key]['data']
         return cache
 
 
-@cached_marathon_service_config()
+@cached_marathon_service_config(ttl=5)
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
