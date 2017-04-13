@@ -40,6 +40,11 @@ def chronos_instance_status(instance_status, service, instance, verbose):
     return cstatus
 
 
+def adhoc_instance_status(instance_status, service, instance, verbose):
+    cstatus = {}
+    return cstatus
+
+
 def marathon_job_status(mstatus, client, job_config):
     try:
         app_id = job_config.format_marathon_app_dict()['id']
@@ -111,6 +116,8 @@ def instance_status(request):
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
             instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
+        elif instance_type['adhoc'] == 'adhoc':
+            instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
             raise ApiFailure(error_message, 404)
