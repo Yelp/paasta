@@ -216,13 +216,14 @@ def write_soa_dir_marathon_job(context, job_id):
         soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
+
+    soa = {"%s" % instance: {
+           'cpus': 0.1,
+           'mem': 100}}
+    if hasattr(context, "cmd"):
+        soa[instance]['cmd'] = context.cmd
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump({
-            "%s" % instance: {
-                'cpus': 0.1,
-                'mem': 100,
-            }
-        }))
+        f.write(yaml.dump(soa))
     context.soa_dir = soa_dir
 
 
