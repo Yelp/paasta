@@ -940,10 +940,10 @@ def test_get_short_task_id():
 
 def test_status_mesos_tasks_working():
     with mock.patch(
-            'paasta_tools.marathon_serviceinit.get_running_tasks_from_frameworks', autospec=True) as mock_tasks:
-        mock_tasks.return_value = [
-            {'id': 1}, {'id': 2}
-        ]
+            'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
+            autospec=True) as mock_tasks:
+        mock_tasks.return_value = [{'id': 'unused{0}unused{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
+                                   for _ in xrange(2)]
         normal_count = 2
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
         assert 'Healthy' in actual
@@ -951,18 +951,19 @@ def test_status_mesos_tasks_working():
 
 def test_status_mesos_tasks_warning():
     with mock.patch(
-            'paasta_tools.marathon_serviceinit.get_running_tasks_from_frameworks', autospec=True) as mock_tasks:
-        mock_tasks.return_value = [
-            {'id': 1}, {'id': 2}
-        ]
+            'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
+            autospec=True) as mock_tasks:
+        mock_tasks.return_value = [{'id': 'fake{0}fake{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
+                                   for _ in xrange(2)]
         normal_count = 4
-        actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+        actual = marathon_serviceinit.status_mesos_tasks('fake', 'fake', normal_count)
         assert 'Warning' in actual
 
 
 def test_status_mesos_tasks_critical():
     with mock.patch(
-            'paasta_tools.marathon_serviceinit.get_running_tasks_from_frameworks', autospec=True) as mock_tasks:
+            'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
+            autospec=True) as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
