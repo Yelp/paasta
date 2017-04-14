@@ -116,7 +116,7 @@ def instance_status(request):
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
             instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
-        elif instance_type['adhoc'] == 'adhoc':
+        elif instance_type == 'adhoc':
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)

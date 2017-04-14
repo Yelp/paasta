@@ -30,7 +30,7 @@ from paasta_tools.api.views.exception import ApiFailure
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.load_marathon_service_config', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.get_actual_deployments', autospec=True)
-def test_instances_status(
+def test_instances_status_marathon(
     mock_get_actual_deployments,
     mock_validate_service_instance,
     mock_load_marathon_service_config,
@@ -70,6 +70,33 @@ def test_instances_status(
     response = instance.instance_status(request)
     assert response['marathon']['bounce_method'] == 'fake_bounce'
     assert response['marathon']['desired_state'] == 'start'
+
+
+@mock.patch('paasta_tools.api.views.instance.adhoc_instance_status', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_actual_deployments', autospec=True)
+def test_instances_status_adhoc(
+    mock_get_actual_deployments,
+    mock_validate_service_instance,
+    mock_adhoc_instance_status,
+):
+    settings.cluster = 'fake_cluster'
+    mock_get_actual_deployments.return_value = {'fake_cluster.fake_instance': 'GIT_SHA',
+                                                'fake_cluster.fake_instance2': 'GIT_SHA',
+                                                'fake_cluster2.fake_instance': 'GIT_SHA',
+                                                'fake_cluster2.fake_instance2': 'GIT_SHA'}
+    mock_validate_service_instance.return_value = 'adhoc'
+    mock_adhoc_instance_status.return_value = {}
+
+    request = testing.DummyRequest()
+    request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
+
+    response = instance.instance_status(request)
+    assert mock_adhoc_instance_status.called
+    assert response == {'service': 'fake_service',
+                        'instance': 'fake_instance',
+                        'git_sha': 'GIT_SHA',
+                        'adhoc': {}}
 
 
 @mock.patch('paasta_tools.api.views.instance.get_running_tasks_from_frameworks', autospec=True)
