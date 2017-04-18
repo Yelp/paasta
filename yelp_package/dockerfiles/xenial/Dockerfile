@@ -19,16 +19,11 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         debhelper \
-        dpkg-dev \
         gcc \
         gdebi-core \
         git \
         help2man \
-        libffi-dev \
-        libssl-dev \
-        libyaml-dev \
         pyflakes \
-        python-dev \
         python-pytest \
         python-setuptools \
         python-tox \
