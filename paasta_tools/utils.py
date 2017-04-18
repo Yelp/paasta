@@ -86,6 +86,27 @@ log.addHandler(logging.NullHandler())
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
 
+class time_cache:
+    def __init__(self, ttl=0):
+        self.configs = {}
+        self.ttl = ttl
+
+    def __call__(self, f):
+        def cache(*args, **kwargs):
+            if 'ttl' in kwargs:
+                ttl = kwargs['ttl']
+                del kwargs['ttl']
+            else:
+                ttl = self.ttl
+            key = args
+            for item in kwargs.items():
+                key += item
+            if (not ttl) or (key not in self.configs) or (time.time() - self.configs[key]['fetch_time'] > ttl):
+                self.configs[key] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
+            return self.configs[key]['data']
+        return cache
+
+
 def sort_dicts(dcts):
     def key(dct):
         return tuple(sorted(dct.items()))
@@ -1304,6 +1325,7 @@ def list_all_instances_for_service(service, clusters=None, instance_type=None, s
     return instances
 
 
+@time_cache(ttl=5)
 def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
@@ -1762,24 +1784,6 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
-
-
-class time_cache():
-    def __init__(self, *args, **kwargs):
-        self.cached_results = {}
-        self.ttl = kwargs.get("ttl", 0.0)
-
-    def __call__(self, f):
-        def cache(*args, **kwargs):
-            if 'ttl' in kwargs:
-                ttl = kwargs['ttl']
-                del kwargs['ttl']
-            else:
-                ttl = self.ttl
-            if not ttl or f not in self.cached_results or (time.time() - self.cached_results[f]['fetch_time'] > ttl):
-                self.cached_results[f] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
-            return self.cached_results[f]['data']
-        return cache
 
 
 def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):
