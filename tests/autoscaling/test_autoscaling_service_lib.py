@@ -630,6 +630,51 @@ def test_autoscale_marathon_with_http_stuff():
         assert mock_get_http_utilization_for_all_tasks.called
 
 
+def test_is_task_data_insufficient():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'min_instances': 1, 'max_instances': 100},
+        branch_dict={},
+    )
+    # Test all running
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [mock.Mock()] * 10,
+                                                            10)
+    assert not ret
+
+    # Test none running
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [],
+                                                            10)
+    assert ret
+
+    # Test more instances above threshold
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1),
+                                                            10)
+    assert ret
+
+    # Test more instances below threshold
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1),
+                                                            10)
+    assert not ret
+
+    # Test fewer below threshold
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1),
+                                                            10)
+    assert ret
+
+    # Test fewer above threshold
+    ret = autoscaling_service_lib.is_task_data_insufficient(fake_marathon_service_config,
+                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1),
+                                                            10)
+    assert not ret
+
+
 def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -638,65 +683,61 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         config_dict={'min_instances': 1, 'max_instances': 100},
         branch_dict={},
     )
+    mock_autoscaling_decision = mock.Mock()
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.is_task_data_insufficient', autospec=True,
+    ) as mock_is_task_data_insufficient, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
         **{'return_value.return_value': 0.0}
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=1),
+        return_value=mock_autoscaling_decision,
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True,
     ) as mock_get_instances, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
     ):
-        # Test all running
+        # test insufficient data scale up
         mock_set_instances_for_marathon_service.reset_mock()
+        mock_is_task_data_insufficient.return_value = True
         mock_get_instances.return_value = 10
+        mock_autoscaling_decision.return_value = 1
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
                                                             [mock.Mock()] * 10,
                                                             [mock.Mock()] * 10)
         assert mock_set_instances_for_marathon_service.called
 
-        # Test none running
+        # test inusfficient data scale down
         mock_set_instances_for_marathon_service.reset_mock()
+        mock_is_task_data_insufficient.return_value = True
         mock_get_instances.return_value = 10
+        mock_autoscaling_decision.return_value = -1
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [], [])
+                                                            [mock.Mock()] * 10,
+                                                            [mock.Mock()] * 10)
         assert not mock_set_instances_for_marathon_service.called
 
-        # Test more instances above threshold
+        # test sufficient data scale up
         mock_set_instances_for_marathon_service.reset_mock()
+        mock_is_task_data_insufficient.return_value = False
         mock_get_instances.return_value = 10
+        mock_autoscaling_decision.return_value = 1
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1),
-                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1))
-        assert not mock_set_instances_for_marathon_service.called
-
-        # Test more instances below threshold
-        mock_set_instances_for_marathon_service.reset_mock()
-        mock_get_instances.return_value = 10
-        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1),
-                                                            [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1))
+                                                            [mock.Mock()] * 10,
+                                                            [mock.Mock()] * 10)
         assert mock_set_instances_for_marathon_service.called
 
-        # Test fewer below threshold
+        # test sufficient data scale down
         mock_set_instances_for_marathon_service.reset_mock()
+        mock_is_task_data_insufficient.return_value = False
         mock_get_instances.return_value = 10
+        mock_autoscaling_decision.return_value = -1
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1),
-                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1))
-        assert not mock_set_instances_for_marathon_service.called
-
-        # Test fewer above threshold
-        mock_set_instances_for_marathon_service.reset_mock()
-        mock_get_instances.return_value = 10
-        autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config,
-                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1),
-                                                            [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1))
+                                                            [mock.Mock()] * 10,
+                                                            [mock.Mock()] * 10)
         assert mock_set_instances_for_marathon_service.called
 
 

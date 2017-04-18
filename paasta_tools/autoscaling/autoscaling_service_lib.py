@@ -443,30 +443,15 @@ def get_utilization(marathon_service_config, autoscaling_params, log_utilization
     )
 
 
-def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
-    current_instances = marathon_service_config.get_instances()
+def is_task_data_insufficient(marathon_service_config, marathon_tasks, current_instances):
     too_many_instances_running = len(marathon_tasks) > int((1 + MAX_TASK_DELTA) * current_instances)
     too_few_instances_running = len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
-    if too_many_instances_running or too_few_instances_running:
-        if current_instances < marathon_service_config.get_min_instances():
-            write_to_log(
-                config=marathon_service_config,
-                line='Scaling from %d to %d instances because we are below min_instances' % (
-                    current_instances, marathon_service_config.get_min_instances())
-            )
-            set_instances_for_marathon_service(
-                service=marathon_service_config.service,
-                instance=marathon_service_config.instance,
-                instance_count=marathon_service_config.get_min_instances()
-            )
+    return too_many_instances_running or too_few_instances_running
 
-        else:
-            write_to_log(config=marathon_service_config,
-                         line='Delaying scaling as we found too many or too few tasks running in marathon. '
-                              'This can happen because tasks are delayed/waiting/unhealthy or because we are '
-                              'waiting for tasks to be killed.')
-        return
 
+def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
+    current_instances = marathon_service_config.get_instances()
+    task_data_insufficient = is_task_data_insufficient(marathon_service_config, marathon_tasks, current_instances)
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     log_utilization_data = {}
     utilization = get_utilization(
@@ -491,6 +476,13 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
 
     safe_downscaling_threshold = int(current_instances * 0.7)
     if new_instance_count != current_instances:
+        if new_instance_count < current_instances and task_data_insufficient:
+            write_to_log(config=marathon_service_config,
+                         line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
+                              'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                              'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
+                              'we make a decision to scale down.')
+            return
         if new_instance_count == safe_downscaling_threshold:
             write_to_log(
                 config=marathon_service_config,
