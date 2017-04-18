@@ -200,6 +200,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+        self.framework = 'marathon'
 
     def __repr__(self):
         return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (

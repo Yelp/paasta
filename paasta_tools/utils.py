@@ -104,6 +104,7 @@ class InstanceConfig(dict):
         self.cluster = cluster
         self.instance = instance
         self.service = service
+        self.framework = None
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
@@ -125,6 +126,9 @@ class InstanceConfig(dict):
 
     def get_service(self):
         return self.service
+
+    def get_framework(self):
+        return self.framework
 
     def get_branch(self):
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
