@@ -211,7 +211,7 @@ def when_setup_service_initiated(context):
         for _ in range(120):
             try:
                 marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
-                (code, message) = setup_marathon_job.setup_service(
+                (code, message, bounce_again) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
                     client=context.marathon_client,
