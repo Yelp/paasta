@@ -96,6 +96,7 @@ def step_paasta_stop_when(context):
         instances='test_instance',
         soa_dir='fake_soa_configs',
         service='fake_deployments_json_service',
+        deploy_group=None,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
