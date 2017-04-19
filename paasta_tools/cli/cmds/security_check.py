@@ -47,6 +47,6 @@ def perform_security_check(args):
         return 0
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
-    paasta_print("{0} exited with {1}", security_check_command, ret_code)
+    paasta_print("{} exited with code {}".format(security_check_command, ret_code))
     # The security-check should not block the pipeline in case of a failure
     return 0
