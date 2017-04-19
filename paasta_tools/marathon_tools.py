@@ -23,7 +23,6 @@ import datetime
 import json
 import logging
 import os
-import time
 from math import ceil
 
 import requests
@@ -116,26 +115,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
-class cached_marathon_service_config():
-    def __init__(self, *args, **kwargs):
-        self.configs = {}
-        self.ttl = kwargs.get("ttl", 0.0)
-
-    def __call__(self, f):
-        def cache(*args, **kwargs):
-            if 'ttl' in kwargs:
-                ttl = kwargs['ttl']
-                del kwargs['ttl']
-            else:
-                ttl = self.ttl
-            key = (args, ''.join("%s%s" % (k, v) for (k, v) in kwargs.items()))
-            if (not ttl) or (key not in self.configs) or (time.time() - self.configs[key]['fetch_time'] > ttl):
-                self.configs[key] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
-            return self.configs[key]['data']
-        return cache
-
-
-@cached_marathon_service_config(ttl=5)
+@time_cache(ttl=5)
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 

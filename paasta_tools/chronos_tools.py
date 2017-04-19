@@ -47,6 +47,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout
 
 
@@ -128,14 +129,30 @@ def load_chronos_config():
         raise ChronosNotConfigured("Could not find chronos_config in configuration directory")
 
 
-def get_chronos_client(config):
+class CachingChronosClient(chronos.ChronosClient):
+
+    @time_cache(ttl=20)
+    def list(self):
+        return super(CachingChronosClient, self).list()
+
+    @time_cache(ttl=20)
+    def scheduler_graph(self):
+        return super(CachingChronosClient, self).scheduler_graph()
+
+
+def get_chronos_client(config, cached=False):
     """Returns a chronos client object for interacting with the API"""
     chronos_hosts = config.get_url()
     chronos_hostnames = [urlsplit(hostname).netloc for hostname in chronos_hosts]
     log.info("Attempting to connect to Chronos servers: %s" % chronos_hosts)
-    return chronos.connect(servers=chronos_hostnames,
-                           username=config.get_username(),
-                           password=config.get_password())
+    if cached:
+        return CachingChronosClient(servers=chronos_hostnames,
+                                    username=config.get_username(),
+                                    password=config.get_password())
+    else:
+        return chronos.connect(servers=chronos_hostnames,
+                               username=config.get_username(),
+                               password=config.get_password())
 
 
 def compose_job_id(service, instance):

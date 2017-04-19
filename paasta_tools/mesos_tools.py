@@ -36,6 +36,7 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -158,6 +159,52 @@ def get_all_running_tasks():
     framework_tasks += mesos_master.orphan_tasks()
     running_tasks = filter_running_tasks(framework_tasks)
     return running_tasks
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_all_current_tasks():
+    """Returns a cached list of all mesos tasks.
+
+    This function is used by 'paasta status' and 'paasta_serviceinit status'
+    to avoid re-quering mesos master and re-parsing json to get mesos.Task objects.
+
+
+    The time_cache decorator caches the list for 600 seconds.
+    ttl doesn't really matter for this function because when we run 'paasta status'
+    the corresponding HTTP request to mesos master is cached by requests_cache.
+
+    :return tasks: a list of mesos.Task
+    """
+    return get_current_tasks('')
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_running_tasks_from_frameworks():
+    """Retruns a cached list of all running mesos tasks.
+    See the docstring for get_cached_list_of_all_current_tasks().
+
+    :return tasks: a list of mesos.Task
+    """
+    return [task for task in filter_running_tasks(get_cached_list_of_all_current_tasks())]
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_not_running_tasks_from_frameworks():
+    """Retruns a cached list of mesos tasks that are NOT running.
+    See the docstring for get_cached_list_of_all_current_tasks().
+
+    :return tasks: a list of mesos.Task"""
+    return [task for task in filter_not_running_tasks(get_cached_list_of_all_current_tasks())]
+
+
+def select_tasks_by_id(tasks, job_id=''):
+    """Retruns a list of the tasks with a given job_id.
+
+    :param tasks: a list of mesos.Task.
+    :param job_id: the job id.
+    :return tasks: a list of mesos.Task.
+    """
+    return [task for task in tasks if job_id in task['id']]
 
 
 def get_non_running_tasks_from_frameworks(job_id=''):
@@ -373,7 +420,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
                        report.
     """
     output = []
-    running_and_active_tasks = get_running_tasks_from_frameworks(job_id)
+    running_and_active_tasks = select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), job_id)
     list_title = "Running Tasks:"
     table_header = [
         "Mesos Task ID",
@@ -392,7 +439,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
         tail_lines=tail_lines,
     ))
 
-    non_running_tasks = get_non_running_tasks_from_frameworks(job_id)
+    non_running_tasks = select_tasks_by_id(get_cached_list_of_not_running_tasks_from_frameworks(), job_id)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))

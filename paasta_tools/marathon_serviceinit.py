@@ -23,8 +23,9 @@ import isodate
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
+from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
@@ -371,8 +372,7 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
-    running_and_active_tasks = get_running_tasks_from_frameworks(filter_string)
-    count = len(running_and_active_tasks)
+    count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
@@ -393,7 +393,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
     :param verbose: int verbosity level
-    :param client: MarathonClient or CachedMarathonClient
+    :param client: MarathonClient or CachingMarathonClient
     :returns: A unix-style return code
     """
     system_config = load_system_paasta_config()
