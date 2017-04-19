@@ -311,7 +311,7 @@ def test_compose_timeout_message():
                                                          git_sha='somesha',
                                                          instances_queue=Queue()))
     message = mark_for_deployment.compose_timeout_message(clusters_data, 1, 'fake_group',
-                                                          'someservice')
+                                                          'someservice', 'some_git_sha')
     assert '  paasta status -c cluster1 -s someservice -i instance1,instance2' in message
     assert '  paasta status -c cluster2 -s someservice -i instance3' in message
     assert '  paasta logs -c cluster1 -s someservice -i instance1,instance2 -C deploy -l 1000' in message

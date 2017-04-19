@@ -504,13 +504,13 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     _log(
         service=service,
         component='deploy',
-        line=compose_timeout_message(clusters_data, timeout, deploy_group, service),
+        line=compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha),
         level='event'
     )
     raise TimeoutError
 
 
-def compose_timeout_message(clusters_data, timeout, deploy_group, service):
+def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha):
     cluster_instances = {}
     for c_d in clusters_data:
         while c_d.instances_queue.qsize() > 0:
@@ -536,10 +536,13 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service):
             "To debug try running:\n\n"
             "  {status_commands}\n\n  {logs_commands}"
             "\n\nIf the service is known to be slow to start you may wish to "
-            "increase the timeout on this step."
+            "increase the timeout on this step.\n"
+            "To wait a little longer run:\n\n"
+            "  paasta wait-for-deployment -s {service} -l {deploy_group} -c {git_sha}"
             .format(timeout=timeout,
                     deploy_group=deploy_group,
                     service=service,
+                    git_sha=git_sha,
                     status_commands='\n  '.join(paasta_status),
                     logs_commands='\n  '.join(paasta_logs)))
 
