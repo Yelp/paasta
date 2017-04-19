@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.58.7
+RELEASE=0.59.2
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -34,7 +34,13 @@ endif
 
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	cd dockerfiles/$*/ && docker build -t "paastatools_$*_container" .
+	docker pull "yelp/paastatools_$*_container" || true
+	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
+	if [ "$$TRAVIS_BRANCH" = "master" -a \
+	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
+	     "$$DOCKER_USERNAME" != "" ]; then \
+	  docker push "yelp/paastatools_$*_container"; \
+	fi
 
 .SECONDEXPANSION:
 itest_%: package_$$* bintray_$$*
@@ -69,9 +75,7 @@ clean:
 
 
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
-# This sed isn't really right but at least it doesn't crash (and I couldn't get
-# \' or ''' or \\' to work :( )
-LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
 # github_changelog_generator comes from
 # https://github.com/skywinder/github-changelog-generator
 # Follow the instructions to generate a github api token

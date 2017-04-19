@@ -16,6 +16,7 @@ from itest_utils import clear_mesos_tools_cache
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
+from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
 from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
@@ -26,6 +27,27 @@ from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
+
+
+@given('a new adhoc config to be deployed')
+def new_adhoc_config(context):
+    context.cluster = 'fake_cluster'
+    context.instance = 'fake_instance'
+    context.service = 'fake_service'
+    context.new_config = AdhocJobConfig(
+        cluster=context.cluster,
+        instance=context.instance,
+        service=context.service,
+        config_dict={
+            "cpus": 0.1,
+            "mem": 50,
+        },
+        branch_dict={
+            'docker_image': 'busybox',
+            'desired_state': 'start',
+            'force_bounce': None,
+        },
+    )
 
 
 @given('a new paasta_native config to be deployed, with {num} instances')
@@ -54,8 +76,8 @@ def new_paasta_native_config(context, num):
     )
 
 
-@when('we start a {scheduler} scheduler with reconcile_backoff {reconcile_backoff}')
-def start_paasta_native_framework(context, scheduler, reconcile_backoff):
+@when('we start a {scheduler} scheduler with reconcile_backoff {reconcile_backoff} and name {framework_name}')
+def start_paasta_native_framework(context, scheduler, reconcile_backoff, framework_name):
     clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
     system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
@@ -67,18 +89,19 @@ def start_paasta_native_framework(context, scheduler, reconcile_backoff):
     else:
         raise "unknown scheduler: %s" % scheduler
 
+    context.framework_name = framework_name
     context.scheduler = scheduler_class(
         service_name=context.service,
         instance_name=context.instance,
         cluster=context.cluster,
+        staging_timeout=30,
         system_paasta_config=system_paasta_config,
         service_config=context.new_config,
         reconcile_backoff=int(reconcile_backoff),
     )
 
     context.driver = create_driver(
-        service=context.service,
-        instance=context.instance,
+        framework_name=framework_name,
         scheduler=context.scheduler,
         system_paasta_config=system_paasta_config,
     )
@@ -248,7 +271,7 @@ def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expecte
 def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
-    for _ in range(30):
+    for _ in range(60):
         actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
         if actual_num <= num:
             return
@@ -300,4 +323,4 @@ def service_should_show_up_in_pnsrh_n_times(context, expected_num):
         )
 
     matching_results = [res for res in results if res == (context.service, context.instance, mock.ANY)]
-    assert len(matching_results) == expected_num
+    assert len(matching_results) == expected_num, ("matching results %r, all results %r" % (matching_results, results))

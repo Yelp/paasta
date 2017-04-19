@@ -24,6 +24,7 @@ import requests_cache
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
+from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.utils import compose_job_id
@@ -76,6 +77,22 @@ def get_deployment_version(actual_deployments, cluster, instance):
     return actual_deployments[key][:8] if key in actual_deployments else None
 
 
+class PaastaClients():
+
+    def __init__(self, cached=False):
+        self._cached = cached
+        self._marathon = None
+
+    def marathon(self):
+        if self._marathon is None:
+            marathon_config = marathon_tools.load_marathon_config()
+            self._marathon = marathon_tools.get_marathon_client(marathon_config.get_url(),
+                                                                marathon_config.get_username(),
+                                                                marathon_config.get_password(),
+                                                                cached=self._cached)
+        return self._marathon
+
+
 def main():
     args = parse_args()
     if args.debug:
@@ -102,17 +119,18 @@ def main():
 
     cluster = load_system_paasta_config().get_cluster()
     actual_deployments = get_actual_deployments(service, args.soa_dir)
+    clients = PaastaClients(cached=(command == 'status'))
 
     for instance in instances:
-        # For an instance, there might be multiple versions running, e.g. in crossover bouncing.
-        # In addition, mesos master does not have information of a chronos service's git hash.
-        # The git sha in deployment.json is simply used here.
-        version = get_deployment_version(actual_deployments, cluster, instance)
-        paasta_print('instance: %s' % PaastaColors.blue(instance))
-        paasta_print('Git sha:    %s (desired)' % version)
-
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
+            if instance_type == 'adhoc':
+                continue
+
+            version = get_deployment_version(actual_deployments, cluster, instance)
+            paasta_print('instance: %s' % PaastaColors.blue(instance))
+            paasta_print('Git sha:    %s (desired)' % version)
+
             if instance_type == 'marathon':
                 return_code = marathon_serviceinit.perform_command(
                     command=command,
@@ -123,6 +141,7 @@ def main():
                     soa_dir=args.soa_dir,
                     app_id=args.app_id,
                     delta=args.delta,
+                    client=clients.marathon(),
                 )
             elif instance_type == 'chronos':
                 return_code = chronos_serviceinit.perform_command(

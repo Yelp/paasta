@@ -139,7 +139,11 @@
                 },
                 "bounce_margin_factor": {
                     "type": "number",
-                    "default": 1
+                    "default": 1,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "exclusiveMinimum": true,
+                    "exclusiveMaximum": false
                 },
                 "deploy_group": {
                     "type": "string"

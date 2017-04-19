@@ -609,7 +609,7 @@ def run_docker_container(
             if healthcheck_mode is None:
                 paasta_print('--healthcheck-only, but no healthcheck is defined for this instance!')
                 sys.exit(1)
-            elif healthcheck_result[0] is True:
+            elif healthcheck_result is True:
                 sys.exit(0)
             else:
                 sys.exit(1)

@@ -394,7 +394,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
-            if (status.marathon.expected_instance_count !=
+            if (status.marathon.expected_instance_count <
                     status.marathon.running_instance_count):
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
                              "has {} out of {}"

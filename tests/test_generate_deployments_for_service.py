@@ -193,6 +193,22 @@ def test_main():
         )
         json_load_patch.assert_called_once_with(file_mock.return_value.__enter__.return_value)
 
+        # test no update to file if content unchanged
+        json_load_patch.return_value = {
+            'v1': {
+                'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+            },
+            'v2': mock.sentinel.v2_mappings,
+        }
+        json_dump_patch.reset_mock()
+        generate_deployments_for_service.main()
+        assert not json_dump_patch.called
+
+        # test IOError path
+        open_patch.side_effect = IOError
+        generate_deployments_for_service.main()
+        assert json_dump_patch.called
+
 
 def test_get_deployments_dict():
     branch_mappings = {

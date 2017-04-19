@@ -244,6 +244,7 @@ def generate_deployments_for_service(service, soa_dir):
             old_mappings = get_deploy_group_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
+        old_deployments_dict = {}
     mappings, v2_mappings = get_deploy_group_mappings(
         soa_dir=soa_dir,
         service=service,
@@ -251,9 +252,9 @@ def generate_deployments_for_service(service, soa_dir):
     )
 
     deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings, v2_mappings)
-
-    with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
-        json.dump(deployments_dict, f)
+    if deployments_dict != old_deployments_dict:
+        with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
+            json.dump(deployments_dict, f)
 
 
 def main():

@@ -27,8 +27,8 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
-from paasta_tools import native_mesos_scheduler
 from paasta_tools import utils
+from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
 
@@ -145,7 +145,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(context, {
         "cluster": "testcluster",
-        "zookeeper": "zk://zookeeper",
+        "zookeeper": "zk://zookeeper/mesos-testcluster",
         "docker_registry": docker_registry
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
@@ -216,13 +216,14 @@ def write_soa_dir_marathon_job(context, job_id):
         soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
+
+    soa = {"%s" % instance: {
+           'cpus': 0.1,
+           'mem': 100}}
+    if hasattr(context, "cmd"):
+        soa[instance]['cmd'] = context.cmd
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump({
-            "%s" % instance: {
-                'cpus': 0.1,
-                'mem': 100,
-            }
-        }))
+        f.write(yaml.dump(soa))
     context.soa_dir = soa_dir
 
 
@@ -250,7 +251,7 @@ def write_soa_dir_native_service(context, job_id):
 
 @given('we load_paasta_native_job_config')
 def call_load_paasta_native_job_config(context):
-    context.new_config = native_mesos_scheduler.load_paasta_native_job_config(
+    context.new_config = native_scheduler.load_paasta_native_job_config(
         service=context.service,
         instance=context.instance,
         cluster=context.cluster,

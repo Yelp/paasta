@@ -57,6 +57,7 @@ setup(
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
+        'pyinotify',
         'pyramid == 1.7',
         'pyramid-swagger == 2.2.3',
         'pysensu-yelp >= 0.2.2',

@@ -39,14 +39,22 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv)
     log_format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
-    if args.verbose >= 2:
+    log_level = None
+    if args.verbose >= 3:
         logging.basicConfig(level=logging.DEBUG, format=log_format)
+    elif args.verbose == 2:
+        logging.basicConfig(level=logging.INFO, format=log_format)
+        log_level = logging.DEBUG
     elif args.verbose == 1:
         logging.basicConfig(level=logging.INFO, format=log_format)
     else:
         logging.basicConfig(level=logging.WARNING, format=log_format)
 
-    autoscale_local_cluster(dry_run=args.dry_run, config_folder=args.autoscaler_configs)
+    autoscale_local_cluster(
+        dry_run=args.dry_run,
+        config_folder=args.autoscaler_configs,
+        log_level=log_level,
+    )
 
 
 if __name__ == '__main__':

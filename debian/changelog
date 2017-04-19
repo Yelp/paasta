@@ -1,3 +1,48 @@
+paasta-tools (0.59.2) xenial; urgency=low
+
+  * 0.59.2 tagged with 'make release'
+    Commit: Merge pull request #1134 from Yelp/security_check_v1
+    Security check v1
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 13 Apr 2017 02:26:59 -0700
+
+paasta-tools (0.59.1) xenial; urgency=medium
+
+  * 0.59.1 tagged with 'make release'
+    Commit: Merge pull request #1131 from Yelp/PAASTa-9932  Make paasta
+    draining tolerant of connection errors. PAASTA-9932
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:56:19 -0700
+
+paasta-tools (0.59.0) xenial; urgency=medium
+
+  * 0.59.0 tagged with 'make release'
+    Commit: Merge pull request #1129 from Yelp/nothing-to-see-here
+    "Fix" the itests
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:45:57 -0700
+
+paasta-tools (0.58.10) xenial; urgency=low
+
+  * 0.58.10 tagged with 'make release'
+    Commit:
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 06 Apr 2017 06:37:23 -0700
+
+paasta-tools (0.58.9) xenial; urgency=low
+
+  * 0.58.9 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 31 Mar 2017 11:01:07 -0700
+
+paasta-tools (0.58.8) xenial; urgency=medium
+
+  * 0.58.8 tagged with 'make release'
+    Commit:
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Thu, 30 Mar 2017 15:34:57 -0700
+
 paasta-tools (0.58.7) xenial; urgency=medium
 
   * 0.58.7 tagged with 'make release'

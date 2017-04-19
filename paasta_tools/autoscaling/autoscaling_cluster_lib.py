@@ -70,11 +70,13 @@ class ResourceLogMixin(object):
 
 class ClusterAutoscaler(ResourceLogMixin):
 
-    def __init__(self, resource, pool_settings, config_folder, dry_run):
+    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None):
         self.resource = resource
         self.pool_settings = pool_settings
         self.config_folder = config_folder
         self.dry_run = dry_run
+        if log_level is not None:
+            self.log.setLevel(log_level)
 
     def set_capacity(self, capacity):
         pass
@@ -708,7 +710,7 @@ class PaastaAwsSlave(object):
             return 1
 
 
-def autoscale_local_cluster(config_folder, dry_run=False):
+def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     log.debug("Sleep 20s to throttle AWS API calls")
     time.sleep(20)
     if dry_run:
@@ -723,7 +725,8 @@ def autoscale_local_cluster(config_folder, dry_run=False):
             autoscaling_scalers.append(get_scaler(resource['type'])(resource=resource,
                                                                     pool_settings=pool_settings,
                                                                     config_folder=config_folder,
-                                                                    dry_run=dry_run))
+                                                                    dry_run=dry_run,
+                                                                    log_level=log_level))
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
             continue
