@@ -1,7 +1,447 @@
 # Change Log
 
-## [0.56.17](https://github.com/Yelp/paasta/tree/0.56.17) (2017-01-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.16...0.56.17)
+## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.60.1...HEAD)
+
+**Merged pull requests:**
+
+- Reduce possibility of noisy alerts due to delayed chronos jobs [\#1154](https://github.com/Yelp/paasta/pull/1154) ([oktopuz](https://github.com/oktopuz))
+- Add a sample re-run command to the timeout message [\#1153](https://github.com/Yelp/paasta/pull/1153) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.60.1](https://github.com/Yelp/paasta/tree/v0.60.1) (2017-04-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.60.0...v0.60.1)
+
+## [v0.60.0](https://github.com/Yelp/paasta/tree/v0.60.0) (2017-04-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.59.2...v0.60.0)
+
+**Closed issues:**
+
+- dfccegifrbggvuknklrruieeultgniiltkihtfrift [\#1151](https://github.com/Yelp/paasta/issues/1151)
+- dfccegifrbuuugvejlfivgkennvrvtrvdvvuthdthc [\#1147](https://github.com/Yelp/paasta/issues/1147)
+- override\_dh\_virtualenv forces paasta packaging to use internal pypi [\#1074](https://github.com/Yelp/paasta/issues/1074)
+
+**Merged pull requests:**
+
+- A new version of pyOpenSSL requires this upgrade [\#1155](https://github.com/Yelp/paasta/pull/1155) ([mattmb](https://github.com/mattmb))
+- Add entrypoint for paasta-deployd [\#1150](https://github.com/Yelp/paasta/pull/1150) ([mattmb](https://github.com/mattmb))
+- Fix security check output [\#1149](https://github.com/Yelp/paasta/pull/1149) ([transcedentalia](https://github.com/transcedentalia))
+- Increase timeout on deployd itests [\#1146](https://github.com/Yelp/paasta/pull/1146) ([mattmb](https://github.com/mattmb))
+- More caching for paasta status [\#1144](https://github.com/Yelp/paasta/pull/1144) ([oktopuz](https://github.com/oktopuz))
+- Fixing status of adhoc instances for real [\#1143](https://github.com/Yelp/paasta/pull/1143) ([oktopuz](https://github.com/oktopuz))
+- Update schema to require that 0 \< bounce\_margin\_factor \<= 1 [\#1142](https://github.com/Yelp/paasta/pull/1142) ([nhandler](https://github.com/nhandler))
+- Let wait-for-deployment finish when instance count is more than expected. [\#1141](https://github.com/Yelp/paasta/pull/1141) ([EvanKrall](https://github.com/EvanKrall))
+- Add another itest for deployd file watcher [\#1140](https://github.com/Yelp/paasta/pull/1140) ([mattmb](https://github.com/mattmb))
+- Updating docs to reflect discovery only services [\#1136](https://github.com/Yelp/paasta/pull/1136) ([jolynch](https://github.com/jolynch))
+- \[WIP\] Paasta deployd [\#1120](https://github.com/Yelp/paasta/pull/1120) ([mattmb](https://github.com/mattmb))
+- Add service autoscaling info to status [\#1061](https://github.com/Yelp/paasta/pull/1061) ([mattmb](https://github.com/mattmb))
+- Step 1 of getting paasta\_native services into smartstack: implement get\_paasta\_native\_services\_running\_here\_for\_nerve [\#1028](https://github.com/Yelp/paasta/pull/1028) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.59.2](https://github.com/Yelp/paasta/tree/v0.59.2) (2017-04-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.59.1...v0.59.2)
+
+**Merged pull requests:**
+
+- Cache load\_marathon\_service\_config\(\) for 5 seconds [\#1138](https://github.com/Yelp/paasta/pull/1138) ([oktopuz](https://github.com/oktopuz))
+- Don't throw an exception for unknown instance types [\#1137](https://github.com/Yelp/paasta/pull/1137) ([oktopuz](https://github.com/oktopuz))
+- Security check v1 [\#1134](https://github.com/Yelp/paasta/pull/1134) ([transcedentalia](https://github.com/transcedentalia))
+
+## [v0.59.1](https://github.com/Yelp/paasta/tree/v0.59.1) (2017-04-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.59.0...v0.59.1)
+
+**Merged pull requests:**
+
+- Make paasta draining tolerant of connection errors. PAASTA-9932 [\#1131](https://github.com/Yelp/paasta/pull/1131) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.59.0](https://github.com/Yelp/paasta/tree/v0.59.0) (2017-04-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.10...v0.59.0)
+
+**Closed issues:**
+
+- sys.exit in setup\_marathon\_job.main causes paasta\_itests to bail early [\#1110](https://github.com/Yelp/paasta/issues/1110)
+
+**Merged pull requests:**
+
+- "Fix" the itests [\#1129](https://github.com/Yelp/paasta/pull/1129) ([mattmb](https://github.com/mattmb))
+- Only use internal pypi when requested [\#1075](https://github.com/Yelp/paasta/pull/1075) ([nosmo](https://github.com/nosmo))
+
+## [v0.58.10](https://github.com/Yelp/paasta/tree/v0.58.10) (2017-04-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.9...v0.58.10)
+
+**Merged pull requests:**
+
+- Use marathon 1.4.2 [\#1128](https://github.com/Yelp/paasta/pull/1128) ([nhandler](https://github.com/nhandler))
+- better verbosity levels for cluster autoscaler [\#1127](https://github.com/Yelp/paasta/pull/1127) ([somic](https://github.com/somic))
+- Added docs for adhoc batch examples [\#1126](https://github.com/Yelp/paasta/pull/1126) ([solarkennedy](https://github.com/solarkennedy))
+- Fix crontab test [\#1125](https://github.com/Yelp/paasta/pull/1125) ([oktopuz](https://github.com/oktopuz))
+- --deploy-group option for paasta status [\#1121](https://github.com/Yelp/paasta/pull/1121) ([oktopuz](https://github.com/oktopuz))
+- Only update deployments.json if changed [\#1115](https://github.com/Yelp/paasta/pull/1115) ([mattmb](https://github.com/mattmb))
+- async version of uwsgi and http providers [\#1113](https://github.com/Yelp/paasta/pull/1113) ([oktopuz](https://github.com/oktopuz))
+- cache base image on docker hub [\#1086](https://github.com/Yelp/paasta/pull/1086) ([keymone](https://github.com/keymone))
+
+## [v0.58.9](https://github.com/Yelp/paasta/tree/v0.58.9) (2017-03-31)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.8...v0.58.9)
+
+**Merged pull requests:**
+
+- Local-run healthcheck\_result is a bool, not a tuple [\#1124](https://github.com/Yelp/paasta/pull/1124) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.58.8](https://github.com/Yelp/paasta/tree/v0.58.8) (2017-03-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.7...v0.58.8)
+
+**Fixed bugs:**
+
+- Regression: paasta local-run no longer prints output when container exits with a code [\#1104](https://github.com/Yelp/paasta/issues/1104)
+
+**Closed issues:**
+
+- native framework/remote-run should support a TASK\_STAGING timeout [\#1091](https://github.com/Yelp/paasta/issues/1091)
+- paasta remote run needs to support constraints [\#1087](https://github.com/Yelp/paasta/issues/1087)
+
+**Merged pull requests:**
+
+- Send "A deployment could not be found" to stderr [\#1123](https://github.com/Yelp/paasta/pull/1123) ([chriskuehl](https://github.com/chriskuehl))
+- Fix failing test\_format\_parents\_verbose [\#1122](https://github.com/Yelp/paasta/pull/1122) ([EvanKrall](https://github.com/EvanKrall))
+- Use proper quoting and a newer PyStaticConfiguration to fix manpages [\#1119](https://github.com/Yelp/paasta/pull/1119) ([nhandler](https://github.com/nhandler))
+- Fix the tests after a change in marathon-python [\#1117](https://github.com/Yelp/paasta/pull/1117) ([mattmb](https://github.com/mattmb))
+- Always output the docker stdout on local-run in healthcheck mode [\#1108](https://github.com/Yelp/paasta/pull/1108) ([solarkennedy](https://github.com/solarkennedy))
+- Make the drain lib handle the situation where a task is UNKNOWN and has no ports [\#1107](https://github.com/Yelp/paasta/pull/1107) ([solarkennedy](https://github.com/solarkennedy))
+- Remote run constraints support [\#1090](https://github.com/Yelp/paasta/pull/1090) ([keymone](https://github.com/keymone))
+
+## [v0.58.7](https://github.com/Yelp/paasta/tree/v0.58.7) (2017-03-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.6...v0.58.7)
+
+**Merged pull requests:**
+
+- If host\_port is 0 or unset, don't set requirePorts, as this causes Marathon to reject all offers. [\#1112](https://github.com/Yelp/paasta/pull/1112) ([EvanKrall](https://github.com/EvanKrall))
+- Fix misspelling [\#1111](https://github.com/Yelp/paasta/pull/1111) ([ddelnano](https://github.com/ddelnano))
+- I can't find the any key, and it doesn't work. [\#1106](https://github.com/Yelp/paasta/pull/1106) ([asottile](https://github.com/asottile))
+- Change words for desired state in marathon\_serviceinit [\#1081](https://github.com/Yelp/paasta/pull/1081) ([solarkennedy](https://github.com/solarkennedy))
+- Fix/autoscaling info [\#1076](https://github.com/Yelp/paasta/pull/1076) ([mattmb](https://github.com/mattmb))
+
+## [v0.58.6](https://github.com/Yelp/paasta/tree/v0.58.6) (2017-03-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.5...v0.58.6)
+
+**Closed issues:**
+
+- paasta status -v fails with JSONDecodeError [\#1080](https://github.com/Yelp/paasta/issues/1080)
+
+**Merged pull requests:**
+
+- Add host\_port parameter to marathon.yaml [\#1109](https://github.com/Yelp/paasta/pull/1109) ([EvanKrall](https://github.com/EvanKrall))
+- Use Mesos 1.2.0 in itests [\#1105](https://github.com/Yelp/paasta/pull/1105) ([nhandler](https://github.com/nhandler))
+- \[wip\] Timeout on task staging [\#1103](https://github.com/Yelp/paasta/pull/1103) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- gevent proof of concept for the service autoscaling [\#1102](https://github.com/Yelp/paasta/pull/1102) ([oktopuz](https://github.com/oktopuz))
+- add contrib script for calculating utilization [\#1100](https://github.com/Yelp/paasta/pull/1100) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Revert "Don't specify path to Python 3 executable in tox.ini" [\#1097](https://github.com/Yelp/paasta/pull/1097) ([keymone](https://github.com/keymone))
+
+## [v0.58.5](https://github.com/Yelp/paasta/tree/v0.58.5) (2017-03-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.4...v0.58.5)
+
+**Merged pull requests:**
+
+- Fixed the meminfo docker wrapper regex and added more test [\#1099](https://github.com/Yelp/paasta/pull/1099) ([matfra](https://github.com/matfra))
+- OMG pyupgrade precommit [\#1098](https://github.com/Yelp/paasta/pull/1098) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.58.4](https://github.com/Yelp/paasta/tree/v0.58.4) (2017-03-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.3...v0.58.4)
+
+## [v0.58.3](https://github.com/Yelp/paasta/tree/v0.58.3) (2017-03-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.58.0...v0.58.3)
+
+**Implemented enhancements:**
+
+- Add basic support for NUMA cpu affinity settings. This enable the use… [\#1044](https://github.com/Yelp/paasta/pull/1044) ([matfra](https://github.com/matfra))
+
+**Closed issues:**
+
+- paasta status shows CRITICAL when a job has been rerun [\#1013](https://github.com/Yelp/paasta/issues/1013)
+
+**Merged pull requests:**
+
+- Use marathon-python 0.8.12 [\#1096](https://github.com/Yelp/paasta/pull/1096) ([nhandler](https://github.com/nhandler))
+- more useful output in wait-for-deployment [\#1095](https://github.com/Yelp/paasta/pull/1095) ([oktopuz](https://github.com/oktopuz))
+- fix minor typo [\#1094](https://github.com/Yelp/paasta/pull/1094) ([somic](https://github.com/somic))
+- Don't use yelp's pypi if not available [\#1089](https://github.com/Yelp/paasta/pull/1089) ([keymone](https://github.com/keymone))
+- Fix command line suggestion in rollback [\#1088](https://github.com/Yelp/paasta/pull/1088) ([EvanKrall](https://github.com/EvanKrall))
+- iterating on remote-run [\#1066](https://github.com/Yelp/paasta/pull/1066) ([keymone](https://github.com/keymone))
+- \#1013 1 mesos tasks for a chronos job != CRITICAL [\#1057](https://github.com/Yelp/paasta/pull/1057) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.58.0](https://github.com/Yelp/paasta/tree/v0.58.0) (2017-03-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.20...v0.58.0)
+
+**Merged pull requests:**
+
+- Don't specify path to Python 3 executable in tox.ini [\#1085](https://github.com/Yelp/paasta/pull/1085) ([sjaensch](https://github.com/sjaensch))
+- Bump simplejson to 3.10.0 [\#1084](https://github.com/Yelp/paasta/pull/1084) ([oktopuz](https://github.com/oktopuz))
+- Stop querying slaves to figure out routing constraints or to determine smartstack healthiness of tasks [\#1065](https://github.com/Yelp/paasta/pull/1065) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.57.20](https://github.com/Yelp/paasta/tree/v0.57.20) (2017-03-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.19...v0.57.20)
+
+**Merged pull requests:**
+
+- install the mesos wheels in the master example\_playground container [\#1083](https://github.com/Yelp/paasta/pull/1083) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Try again to fix paasta local-run command [\#1082](https://github.com/Yelp/paasta/pull/1082) ([drolando](https://github.com/drolando))
+- Fix paasta local-run to support array commands [\#1079](https://github.com/Yelp/paasta/pull/1079) ([drolando](https://github.com/drolando))
+- Integrated test.sh in Makefile [\#1060](https://github.com/Yelp/paasta/pull/1060) ([matfra](https://github.com/matfra))
+
+## [v0.57.19](https://github.com/Yelp/paasta/tree/v0.57.19) (2017-03-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.18...v0.57.19)
+
+**Merged pull requests:**
+
+- Produce deb packages with different versions per distro, so trusty/xenial debs don't clobber each other on Bintray. [\#1073](https://github.com/Yelp/paasta/pull/1073) ([EvanKrall](https://github.com/EvanKrall))
+- Properly quote custom paasta local-run command [\#1062](https://github.com/Yelp/paasta/pull/1062) ([drolando](https://github.com/drolando))
+
+## [v0.57.18](https://github.com/Yelp/paasta/tree/v0.57.18) (2017-03-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.17...v0.57.18)
+
+**Closed issues:**
+
+- Support 'pool' \(constraints?\) in the native/adhoc schedulers \(paasta remote-run\) [\#1068](https://github.com/Yelp/paasta/issues/1068)
+
+**Merged pull requests:**
+
+- Increase internal query timeout in wait-for-deployment to 60 seconds [\#1072](https://github.com/Yelp/paasta/pull/1072) ([oktopuz](https://github.com/oktopuz))
+- Set StrictHostKeyChecking=no [\#1070](https://github.com/Yelp/paasta/pull/1070) ([nhandler](https://github.com/nhandler))
+- Implement pool restrictions on native mesos framework. [\#1069](https://github.com/Yelp/paasta/pull/1069) ([EvanKrall](https://github.com/EvanKrall))
+- Cache expensive endpoints more [\#1067](https://github.com/Yelp/paasta/pull/1067) ([mattmb](https://github.com/mattmb))
+- do not add --hostname when --network=host [\#1064](https://github.com/Yelp/paasta/pull/1064) ([bchess](https://github.com/bchess))
+- add schedule to the output of check\_chronos\_job [\#1058](https://github.com/Yelp/paasta/pull/1058) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Make local\_run use the new docker wrapper [\#1056](https://github.com/Yelp/paasta/pull/1056) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.57.17](https://github.com/Yelp/paasta/tree/v0.57.17) (2017-03-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/list...v0.57.17)
+
+## [list](https://github.com/Yelp/paasta/tree/list) (2017-03-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.16...list)
+
+**Closed issues:**
+
+- Autoscaling info in metastatus [\#984](https://github.com/Yelp/paasta/issues/984)
+
+**Merged pull requests:**
+
+- Fix crontab interval [\#1063](https://github.com/Yelp/paasta/pull/1063) ([oktopuz](https://github.com/oktopuz))
+- Add optional autoscaling info to metastatus [\#1047](https://github.com/Yelp/paasta/pull/1047) ([mattmb](https://github.com/mattmb))
+- paasta remote-run [\#1040](https://github.com/Yelp/paasta/pull/1040) ([keymone](https://github.com/keymone))
+
+## [v0.57.16](https://github.com/Yelp/paasta/tree/v0.57.16) (2017-03-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.15...v0.57.16)
+
+**Merged pull requests:**
+
+- fix error in get\_marathon\_services\_replication [\#1055](https://github.com/Yelp/paasta/pull/1055) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- format autoscalinginfo objects in metastatus [\#1053](https://github.com/Yelp/paasta/pull/1053) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Enable a pip cache [\#1052](https://github.com/Yelp/paasta/pull/1052) ([solarkennedy](https://github.com/solarkennedy))
+- Provide better tailing debug output for paasta logs [\#1050](https://github.com/Yelp/paasta/pull/1050) ([solarkennedy](https://github.com/solarkennedy))
+- Make realert\_every be a function of the interval [\#1018](https://github.com/Yelp/paasta/pull/1018) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.57.15](https://github.com/Yelp/paasta/tree/v0.57.15) (2017-03-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.14...v0.57.15)
+
+**Merged pull requests:**
+
+- don't strip argv\[0\] twice in docker\_wrapper [\#1051](https://github.com/Yelp/paasta/pull/1051) ([bchess](https://github.com/bchess))
+- More links [\#1048](https://github.com/Yelp/paasta/pull/1048) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.57.14](https://github.com/Yelp/paasta/tree/v0.57.14) (2017-03-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.13...v0.57.14)
+
+**Merged pull requests:**
+
+- Fix cron\_check\_chronos\_jobs\_staleness [\#1049](https://github.com/Yelp/paasta/pull/1049) ([oktopuz](https://github.com/oktopuz))
+- Add example cluster test suite [\#1039](https://github.com/Yelp/paasta/pull/1039) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.13](https://github.com/Yelp/paasta/tree/v0.57.13) (2017-02-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.12...v0.57.13)
+
+**Merged pull requests:**
+
+- Assume task with no started at is new [\#1046](https://github.com/Yelp/paasta/pull/1046) ([mattmb](https://github.com/mattmb))
+- Do not fail wait-for-deployment when the git server is unreachable [\#1045](https://github.com/Yelp/paasta/pull/1045) ([oktopuz](https://github.com/oktopuz))
+- Adding PaaSTA docs for proxied\_through [\#1043](https://github.com/Yelp/paasta/pull/1043) ([avadhutp](https://github.com/avadhutp))
+- detect stuck chronos jobs [\#1027](https://github.com/Yelp/paasta/pull/1027) ([oktopuz](https://github.com/oktopuz))
+- Add meaningful docker hostnames when run with mesos-slave [\#1026](https://github.com/Yelp/paasta/pull/1026) ([bchess](https://github.com/bchess))
+
+## [v0.57.12](https://github.com/Yelp/paasta/tree/v0.57.12) (2017-02-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.11...v0.57.12)
+
+**Closed issues:**
+
+- paasta itest prints everything twice [\#1004](https://github.com/Yelp/paasta/issues/1004)
+
+**Merged pull requests:**
+
+- Give the mesos wheel names more-correct impl / plat [\#1042](https://github.com/Yelp/paasta/pull/1042) ([asottile](https://github.com/asottile))
+- Don't stream already logged loglines [\#1041](https://github.com/Yelp/paasta/pull/1041) ([solarkennedy](https://github.com/solarkennedy))
+- Catch 409 conflict when bouncing marathon apps [\#1029](https://github.com/Yelp/paasta/pull/1029) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.11](https://github.com/Yelp/paasta/tree/v0.57.11) (2017-02-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.10...v0.57.11)
+
+**Merged pull requests:**
+
+- general\_itests pass in py3 [\#1038](https://github.com/Yelp/paasta/pull/1038) ([asottile](https://github.com/asottile))
+- Marathon 1.4.1 [\#1032](https://github.com/Yelp/paasta/pull/1032) ([nhandler](https://github.com/nhandler))
+- Make test\_wait\_for\_deployment not take 2.4 seconds. [\#1025](https://github.com/Yelp/paasta/pull/1025) ([EvanKrall](https://github.com/EvanKrall))
+- Initial implementation and test of paasta status for native framework: just print out mesos task statuses [\#1020](https://github.com/Yelp/paasta/pull/1020) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.57.10](https://github.com/Yelp/paasta/tree/v0.57.10) (2017-02-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.9...v0.57.10)
+
+**Merged pull requests:**
+
+- Send git refs as byte strings [\#1037](https://github.com/Yelp/paasta/pull/1037) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.9](https://github.com/Yelp/paasta/tree/v0.57.9) (2017-02-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.8...v0.57.9)
+
+**Merged pull requests:**
+
+- Fix remote\_git for non-ascii tags [\#1034](https://github.com/Yelp/paasta/pull/1034) ([asottile](https://github.com/asottile))
+- All the unit tests pass in python 3! [\#1031](https://github.com/Yelp/paasta/pull/1031) ([asottile](https://github.com/asottile))
+
+## [v0.57.8](https://github.com/Yelp/paasta/tree/v0.57.8) (2017-02-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.7...v0.57.8)
+
+**Closed issues:**
+
+- Go straight to min\_capacity [\#979](https://github.com/Yelp/paasta/issues/979)
+
+**Merged pull requests:**
+
+- Even more tests pass in python3 [\#1030](https://github.com/Yelp/paasta/pull/1030) ([asottile](https://github.com/asottile))
+- Ensure the cluster scaler jumps to min\_capacity [\#1024](https://github.com/Yelp/paasta/pull/1024) ([mattmb](https://github.com/mattmb))
+- Add a get\_mesos\_leader script [\#1023](https://github.com/Yelp/paasta/pull/1023) ([nhandler](https://github.com/nhandler))
+- Make service autoscaler lenient on running tasks [\#1019](https://github.com/Yelp/paasta/pull/1019) ([mattmb](https://github.com/mattmb))
+- Make paasta\_maintenance status human-friendly [\#1015](https://github.com/Yelp/paasta/pull/1015) ([nhandler](https://github.com/nhandler))
+
+## [v0.57.7](https://github.com/Yelp/paasta/tree/v0.57.7) (2017-02-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.6...v0.57.7)
+
+**Merged pull requests:**
+
+- catch ValueError when getting marathon status [\#1022](https://github.com/Yelp/paasta/pull/1022) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Handle create app lock failure gracefully [\#1021](https://github.com/Yelp/paasta/pull/1021) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.6](https://github.com/Yelp/paasta/tree/v0.57.6) (2017-02-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.5...v0.57.6)
+
+**Merged pull requests:**
+
+- Docker compose down before we start the itests [\#1017](https://github.com/Yelp/paasta/pull/1017) ([mattmb](https://github.com/mattmb))
+- Try multiple haproxy endpoints during bounce [\#1016](https://github.com/Yelp/paasta/pull/1016) ([mattmb](https://github.com/mattmb))
+- Upgrade mesos.interface to 1.1.0 [\#1014](https://github.com/Yelp/paasta/pull/1014) ([nhandler](https://github.com/nhandler))
+- Relax service autoscaler task counting [\#999](https://github.com/Yelp/paasta/pull/999) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.5](https://github.com/Yelp/paasta/tree/v0.57.5) (2017-02-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.4...v0.57.5)
+
+**Merged pull requests:**
+
+- Try except for reserve all in bounce [\#1009](https://github.com/Yelp/paasta/pull/1009) ([mattmb](https://github.com/mattmb))
+- Remove extra undrain call [\#1008](https://github.com/Yelp/paasta/pull/1008) ([mattmb](https://github.com/mattmb))
+- More tests pass in python3 [\#1007](https://github.com/Yelp/paasta/pull/1007) ([asottile](https://github.com/asottile))
+
+## [v0.57.4](https://github.com/Yelp/paasta/tree/v0.57.4) (2017-02-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.3...v0.57.4)
+
+**Fixed bugs:**
+
+- Oops master's build is broken [\#1005](https://github.com/Yelp/paasta/issues/1005)
+
+**Closed issues:**
+
+- test\_mark\_for\_deployment occasionally hangs [\#993](https://github.com/Yelp/paasta/issues/993)
+
+**Merged pull requests:**
+
+- Add a py2+py3 helper for sorting dictionaries [\#1006](https://github.com/Yelp/paasta/pull/1006) ([asottile](https://github.com/asottile))
+- Include orphan tasks in autoscaling decisions [\#1003](https://github.com/Yelp/paasta/pull/1003) ([mattmb](https://github.com/mattmb))
+- Make more tests pass in python3 [\#1002](https://github.com/Yelp/paasta/pull/1002) ([asottile](https://github.com/asottile))
+- Dedupe volumes when specified twice in a config [\#1001](https://github.com/Yelp/paasta/pull/1001) ([solarkennedy](https://github.com/solarkennedy))
+- Some python3 changes [\#997](https://github.com/Yelp/paasta/pull/997) ([asottile](https://github.com/asottile))
+
+## [v0.57.3](https://github.com/Yelp/paasta/tree/v0.57.3) (2017-02-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.2...v0.57.3)
+
+**Merged pull requests:**
+
+- Fix quotes typo [\#998](https://github.com/Yelp/paasta/pull/998) ([NicolasEhrhardt](https://github.com/NicolasEhrhardt))
+- Step one of porting to python3: Ensure the syntax passes [\#996](https://github.com/Yelp/paasta/pull/996) ([asottile](https://github.com/asottile))
+- Move bounce lock to higher level [\#991](https://github.com/Yelp/paasta/pull/991) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.2](https://github.com/Yelp/paasta/tree/v0.57.2) (2017-02-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.1...v0.57.2)
+
+**Implemented enhancements:**
+
+- Generate a services.json as well as services.yaml [\#950](https://github.com/Yelp/paasta/issues/950)
+
+**Closed issues:**
+
+- Change paasta metastatus to show 'used/total' rather than 'free/total' [\#985](https://github.com/Yelp/paasta/issues/985)
+- get\_running\_tasks\_from\_active\_frameworks includes tasks from inactive frameworks [\#960](https://github.com/Yelp/paasta/issues/960)
+- Upgrade marathon to 1.3.0 [\#639](https://github.com/Yelp/paasta/issues/639)
+- soa\_dir argument flag is inconsistent [\#447](https://github.com/Yelp/paasta/issues/447)
+
+**Merged pull requests:**
+
+- fixup! Latest pip + venv on lucid too [\#994](https://github.com/Yelp/paasta/pull/994) ([mattmb](https://github.com/mattmb))
+- Latest pip + venv on lucid too [\#992](https://github.com/Yelp/paasta/pull/992) ([mattmb](https://github.com/mattmb))
+- Spread the extra venv to other tests [\#990](https://github.com/Yelp/paasta/pull/990) ([mattmb](https://github.com/mattmb))
+- try adding a logging mixin to the autoscaler [\#989](https://github.com/Yelp/paasta/pull/989) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Update metastatus to show used/total rather than free/total for resou… [\#988](https://github.com/Yelp/paasta/pull/988) ([nhandler](https://github.com/nhandler))
+- Make list\_marathon\_service\_instances tolerate undeployed services [\#982](https://github.com/Yelp/paasta/pull/982) ([solarkennedy](https://github.com/solarkennedy))
+- Add intermediate venv [\#981](https://github.com/Yelp/paasta/pull/981) ([mattmb](https://github.com/mattmb))
+- Upgrade pre-commit to 0.12.0 [\#977](https://github.com/Yelp/paasta/pull/977) ([nhandler](https://github.com/nhandler))
+- Fix the build [\#976](https://github.com/Yelp/paasta/pull/976) ([mattmb](https://github.com/mattmb))
+- Remove use of the sphinxcontrib-programoutput module in docs [\#975](https://github.com/Yelp/paasta/pull/975) ([nhandler](https://github.com/nhandler))
+- Check marathon IDs are valid [\#973](https://github.com/Yelp/paasta/pull/973) ([mattmb](https://github.com/mattmb))
+- async version of wait-for-deployment [\#972](https://github.com/Yelp/paasta/pull/972) ([oktopuz](https://github.com/oktopuz))
+- update docs on cron schedule [\#971](https://github.com/Yelp/paasta/pull/971) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Added yaml and json output options to the services file command [\#969](https://github.com/Yelp/paasta/pull/969) ([solarkennedy](https://github.com/solarkennedy))
+- Fix/task count logic [\#968](https://github.com/Yelp/paasta/pull/968) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.1](https://github.com/Yelp/paasta/tree/v0.57.1) (2017-01-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.57.0...v0.57.1)
+
+**Merged pull requests:**
+
+- Fix a script missed in refactor [\#967](https://github.com/Yelp/paasta/pull/967) ([mattmb](https://github.com/mattmb))
+
+## [v0.57.0](https://github.com/Yelp/paasta/tree/v0.57.0) (2017-01-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.19...v0.57.0)
+
+**Merged pull requests:**
+
+- Correct task count objects [\#966](https://github.com/Yelp/paasta/pull/966) ([mattmb](https://github.com/mattmb))
+- Use kwargs consistently in autoscaling\_lib [\#965](https://github.com/Yelp/paasta/pull/965) ([solarkennedy](https://github.com/solarkennedy))
+- Autoscaler ASG support [\#881](https://github.com/Yelp/paasta/pull/881) ([mattmb](https://github.com/mattmb))
+
+## [v0.56.19](https://github.com/Yelp/paasta/tree/v0.56.19) (2017-01-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.18...v0.56.19)
+
+**Closed issues:**
+
+- paasta check fails on batches with monthly ISO8601Schedules [\#957](https://github.com/Yelp/paasta/issues/957)
+
+**Merged pull requests:**
+
+- Bump local-run timeout from 60s-\>90s for travis [\#963](https://github.com/Yelp/paasta/pull/963) ([nhandler](https://github.com/nhandler))
+- Fix multiple instances per reservation [\#962](https://github.com/Yelp/paasta/pull/962) ([mattmb](https://github.com/mattmb))
+- catch InternalServerError talking to Marathon [\#961](https://github.com/Yelp/paasta/pull/961) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Make native mesos scheduler pass volumes, docker parameters, network mode, and choose a port. [\#959](https://github.com/Yelp/paasta/pull/959) ([EvanKrall](https://github.com/EvanKrall))
+- issue 957 fix parsing of monthly/yearly periods [\#958](https://github.com/Yelp/paasta/pull/958) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Use marathon 1.4.0 rc3 in itests [\#943](https://github.com/Yelp/paasta/pull/943) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.56.18](https://github.com/Yelp/paasta/tree/v0.56.18) (2017-01-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.17...v0.56.18)
+
+## [v0.56.17](https://github.com/Yelp/paasta/tree/v0.56.17) (2017-01-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.56.16...v0.56.17)
 
 **Closed issues:**
 
@@ -10,6 +450,7 @@
 **Merged pull requests:**
 
 - Fix paths in example cluster [\#956](https://github.com/Yelp/paasta/pull/956) ([mattmb](https://github.com/mattmb))
+- promote kill\_orphaned\_docker\_containers [\#955](https://github.com/Yelp/paasta/pull/955) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Load correct namespace for determining drain\_method, drain\_method\_params, bounce\_method\_params. [\#954](https://github.com/Yelp/paasta/pull/954) ([EvanKrall](https://github.com/EvanKrall))
 
 ## [v0.56.16](https://github.com/Yelp/paasta/tree/v0.56.16) (2017-01-05)
@@ -1739,7 +2180,7 @@
 - Upgrade mesos in itests to 0.24.1 [\#233](https://github.com/Yelp/paasta/pull/233) ([nhandler](https://github.com/nhandler))
 
 ## [v0.17.11](https://github.com/Yelp/paasta/tree/v0.17.11) (2016-03-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10n...v0.17.11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10...v0.17.11)
 
 **Closed issues:**
 
@@ -1763,21 +2204,21 @@
 - Added missing pool docs [\#271](https://github.com/Yelp/paasta/pull/271) ([solarkennedy](https://github.com/solarkennedy))
 - Fix metastatus -vv [\#262](https://github.com/Yelp/paasta/pull/262) ([nhandler](https://github.com/nhandler))
 
-## [v0.17.10n](https://github.com/Yelp/paasta/tree/v0.17.10n) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10...v0.17.10n)
-
 ## [v0.17.10](https://github.com/Yelp/paasta/tree/v0.17.10) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9n...v0.17.10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10n...v0.17.10)
+
+## [v0.17.10n](https://github.com/Yelp/paasta/tree/v0.17.10n) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.10n)
 
 **Merged pull requests:**
 
 - changed do\_bounce to kill task w/the batch endpoint [\#267](https://github.com/Yelp/paasta/pull/267) ([mjksmith](https://github.com/mjksmith))
 
-## [v0.17.9n](https://github.com/Yelp/paasta/tree/v0.17.9n) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.9n)
-
 ## [v0.17.9](https://github.com/Yelp/paasta/tree/v0.17.9) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9n...v0.17.9)
+
+## [v0.17.9n](https://github.com/Yelp/paasta/tree/v0.17.9n) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9n)
 
 **Closed issues:**
 
@@ -2270,18 +2711,18 @@
 - execute docker pull before running container [\#67](https://github.com/Yelp/paasta/pull/67) ([Rob-Johnson](https://github.com/Rob-Johnson))
 
 ## [v0.15.6](https://github.com/Yelp/paasta/tree/v0.15.6) (2015-11-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/help...v0.15.6)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.5...v0.15.6)
 
 **Merged pull requests:**
 
 - fail gracefully if you try and run paasta logs without scribe existing [\#66](https://github.com/Yelp/paasta/pull/66) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Some refactoring related to the argument 'clusterinstance' [\#65](https://github.com/Yelp/paasta/pull/65) ([zeldinha](https://github.com/zeldinha))
 
-## [help](https://github.com/Yelp/paasta/tree/help) (2015-11-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.5...help)
-
 ## [v0.15.5](https://github.com/Yelp/paasta/tree/v0.15.5) (2015-11-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.4...v0.15.5)
+[Full Changelog](https://github.com/Yelp/paasta/compare/help...v0.15.5)
+
+## [help](https://github.com/Yelp/paasta/tree/help) (2015-11-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.4...help)
 
 ## [v0.15.4](https://github.com/Yelp/paasta/tree/v0.15.4) (2015-11-19)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.3...v0.15.4)
@@ -2427,1039 +2868,7 @@
 
 - add check\_chronos\_jobs script [\#1](https://github.com/Yelp/paasta/pull/1) ([Rob-Johnson](https://github.com/Rob-Johnson))
 
-## [v0.13.2](https://github.com/Yelp/paasta/tree/v0.13.2) (2015-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.13.1...v0.13.2)
-
-## [v0.13.1](https://github.com/Yelp/paasta/tree/v0.13.1) (2015-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.99...v0.13.1)
-
-## [v0.12.99](https://github.com/Yelp/paasta/tree/v0.12.99) (2015-10-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.98...v0.12.99)
-
-## [v0.12.98](https://github.com/Yelp/paasta/tree/v0.12.98) (2015-10-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.97...v0.12.98)
-
-## [v0.12.97](https://github.com/Yelp/paasta/tree/v0.12.97) (2015-10-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.96...v0.12.97)
-
-## [v0.12.96](https://github.com/Yelp/paasta/tree/v0.12.96) (2015-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.95...v0.12.96)
-
-## [v0.12.95](https://github.com/Yelp/paasta/tree/v0.12.95) (2015-10-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.94...v0.12.95)
-
-## [v0.12.94](https://github.com/Yelp/paasta/tree/v0.12.94) (2015-10-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.93...v0.12.94)
-
-## [v0.12.93](https://github.com/Yelp/paasta/tree/v0.12.93) (2015-10-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.92...v0.12.93)
-
-## [v0.12.92](https://github.com/Yelp/paasta/tree/v0.12.92) (2015-10-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.91...v0.12.92)
-
-## [v0.12.91](https://github.com/Yelp/paasta/tree/v0.12.91) (2015-10-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.90...v0.12.91)
-
-## [v0.12.90](https://github.com/Yelp/paasta/tree/v0.12.90) (2015-10-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.89...v0.12.90)
-
-## [v0.12.89](https://github.com/Yelp/paasta/tree/v0.12.89) (2015-10-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.88...v0.12.89)
-
-## [v0.12.88](https://github.com/Yelp/paasta/tree/v0.12.88) (2015-10-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.87...v0.12.88)
-
-## [v0.12.87](https://github.com/Yelp/paasta/tree/v0.12.87) (2015-09-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.86...v0.12.87)
-
-## [v0.12.86](https://github.com/Yelp/paasta/tree/v0.12.86) (2015-09-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.85...v0.12.86)
-
-## [v0.12.85](https://github.com/Yelp/paasta/tree/v0.12.85) (2015-09-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.84...v0.12.85)
-
-## [v0.12.84](https://github.com/Yelp/paasta/tree/v0.12.84) (2015-09-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.82...v0.12.84)
-
-## [v0.12.82](https://github.com/Yelp/paasta/tree/v0.12.82) (2015-09-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.81...v0.12.82)
-
-## [v0.12.81](https://github.com/Yelp/paasta/tree/v0.12.81) (2015-09-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.80...v0.12.81)
-
-## [v0.12.80](https://github.com/Yelp/paasta/tree/v0.12.80) (2015-09-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.79...v0.12.80)
-
-## [v0.12.79](https://github.com/Yelp/paasta/tree/v0.12.79) (2015-09-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.78...v0.12.79)
-
-## [v0.12.78](https://github.com/Yelp/paasta/tree/v0.12.78) (2015-09-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.77...v0.12.78)
-
-## [v0.12.77](https://github.com/Yelp/paasta/tree/v0.12.77) (2015-09-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.76...v0.12.77)
-
-## [v0.12.76](https://github.com/Yelp/paasta/tree/v0.12.76) (2015-09-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.75...v0.12.76)
-
-## [v0.12.75](https://github.com/Yelp/paasta/tree/v0.12.75) (2015-09-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.73...v0.12.75)
-
-## [v0.12.73](https://github.com/Yelp/paasta/tree/v0.12.73) (2015-09-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.72...v0.12.73)
-
-## [v0.12.72](https://github.com/Yelp/paasta/tree/v0.12.72) (2015-09-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.71...v0.12.72)
-
-## [v0.12.71](https://github.com/Yelp/paasta/tree/v0.12.71) (2015-09-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.70...v0.12.71)
-
-## [v0.12.70](https://github.com/Yelp/paasta/tree/v0.12.70) (2015-09-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.69...v0.12.70)
-
-## [v0.12.69](https://github.com/Yelp/paasta/tree/v0.12.69) (2015-09-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.68...v0.12.69)
-
-## [v0.12.68](https://github.com/Yelp/paasta/tree/v0.12.68) (2015-09-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.67...v0.12.68)
-
-## [v0.12.67](https://github.com/Yelp/paasta/tree/v0.12.67) (2015-09-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.66...v0.12.67)
-
-## [v0.12.66](https://github.com/Yelp/paasta/tree/v0.12.66) (2015-09-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.65...v0.12.66)
-
-## [v0.12.65](https://github.com/Yelp/paasta/tree/v0.12.65) (2015-09-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.64...v0.12.65)
-
-## [v0.12.64](https://github.com/Yelp/paasta/tree/v0.12.64) (2015-09-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.63...v0.12.64)
-
-## [v0.12.63](https://github.com/Yelp/paasta/tree/v0.12.63) (2015-09-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.62...v0.12.63)
-
-## [v0.12.62](https://github.com/Yelp/paasta/tree/v0.12.62) (2015-08-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.61...v0.12.62)
-
-## [v0.12.61](https://github.com/Yelp/paasta/tree/v0.12.61) (2015-08-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.60...v0.12.61)
-
-## [v0.12.60](https://github.com/Yelp/paasta/tree/v0.12.60) (2015-08-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.59...v0.12.60)
-
-## [v0.12.59](https://github.com/Yelp/paasta/tree/v0.12.59) (2015-08-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.58...v0.12.59)
-
-## [v0.12.58](https://github.com/Yelp/paasta/tree/v0.12.58) (2015-08-26)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.57...v0.12.58)
-
-## [v0.12.57](https://github.com/Yelp/paasta/tree/v0.12.57) (2015-08-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.56...v0.12.57)
-
-## [v0.12.56](https://github.com/Yelp/paasta/tree/v0.12.56) (2015-08-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.55...v0.12.56)
-
-## [v0.12.55](https://github.com/Yelp/paasta/tree/v0.12.55) (2015-08-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.54...v0.12.55)
-
-## [v0.12.54](https://github.com/Yelp/paasta/tree/v0.12.54) (2015-08-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.53...v0.12.54)
-
-## [v0.12.53](https://github.com/Yelp/paasta/tree/v0.12.53) (2015-08-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.52...v0.12.53)
-
-## [v0.12.52](https://github.com/Yelp/paasta/tree/v0.12.52) (2015-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.51...v0.12.52)
-
-## [v0.12.51](https://github.com/Yelp/paasta/tree/v0.12.51) (2015-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.50...v0.12.51)
-
-## [v0.12.50](https://github.com/Yelp/paasta/tree/v0.12.50) (2015-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.49...v0.12.50)
-
-## [v0.12.49](https://github.com/Yelp/paasta/tree/v0.12.49) (2015-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.48...v0.12.49)
-
-## [v0.12.48](https://github.com/Yelp/paasta/tree/v0.12.48) (2015-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.47...v0.12.48)
-
-## [v0.12.47](https://github.com/Yelp/paasta/tree/v0.12.47) (2015-08-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.46...v0.12.47)
-
-## [v0.12.46](https://github.com/Yelp/paasta/tree/v0.12.46) (2015-08-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.45...v0.12.46)
-
-## [v0.12.45](https://github.com/Yelp/paasta/tree/v0.12.45) (2015-08-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.44...v0.12.45)
-
-## [v0.12.44](https://github.com/Yelp/paasta/tree/v0.12.44) (2015-08-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.43...v0.12.44)
-
-## [v0.12.43](https://github.com/Yelp/paasta/tree/v0.12.43) (2015-08-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.42...v0.12.43)
-
-## [v0.12.42](https://github.com/Yelp/paasta/tree/v0.12.42) (2015-07-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.41...v0.12.42)
-
-## [v0.12.41](https://github.com/Yelp/paasta/tree/v0.12.41) (2015-07-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.40...v0.12.41)
-
-## [v0.12.40](https://github.com/Yelp/paasta/tree/v0.12.40) (2015-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.39...v0.12.40)
-
-## [v0.12.39](https://github.com/Yelp/paasta/tree/v0.12.39) (2015-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.38...v0.12.39)
-
-## [v0.12.38](https://github.com/Yelp/paasta/tree/v0.12.38) (2015-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.37...v0.12.38)
-
-## [v0.12.37](https://github.com/Yelp/paasta/tree/v0.12.37) (2015-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.36...v0.12.37)
-
-## [v0.12.36](https://github.com/Yelp/paasta/tree/v0.12.36) (2015-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.35...v0.12.36)
-
-## [v0.12.35](https://github.com/Yelp/paasta/tree/v0.12.35) (2015-07-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.34...v0.12.35)
-
-## [v0.12.34](https://github.com/Yelp/paasta/tree/v0.12.34) (2015-07-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.33...v0.12.34)
-
-## [v0.12.33](https://github.com/Yelp/paasta/tree/v0.12.33) (2015-07-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.32...v0.12.33)
-
-## [v0.12.32](https://github.com/Yelp/paasta/tree/v0.12.32) (2015-07-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.31...v0.12.32)
-
-## [v0.12.31](https://github.com/Yelp/paasta/tree/v0.12.31) (2015-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.30...v0.12.31)
-
-## [v0.12.30](https://github.com/Yelp/paasta/tree/v0.12.30) (2015-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.29...v0.12.30)
-
-## [v0.12.29](https://github.com/Yelp/paasta/tree/v0.12.29) (2015-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.28...v0.12.29)
-
-## [v0.12.28](https://github.com/Yelp/paasta/tree/v0.12.28) (2015-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.27...v0.12.28)
-
-## [v0.12.27](https://github.com/Yelp/paasta/tree/v0.12.27) (2015-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.26...v0.12.27)
-
-## [v0.12.26](https://github.com/Yelp/paasta/tree/v0.12.26) (2015-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.25...v0.12.26)
-
-## [v0.12.25](https://github.com/Yelp/paasta/tree/v0.12.25) (2015-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.24...v0.12.25)
-
-## [v0.12.24](https://github.com/Yelp/paasta/tree/v0.12.24) (2015-07-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.23...v0.12.24)
-
-## [v0.12.23](https://github.com/Yelp/paasta/tree/v0.12.23) (2015-07-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.22...v0.12.23)
-
-## [v0.12.22](https://github.com/Yelp/paasta/tree/v0.12.22) (2015-07-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.21...v0.12.22)
-
-## [v0.12.21](https://github.com/Yelp/paasta/tree/v0.12.21) (2015-07-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.20...v0.12.21)
-
-## [v0.12.20](https://github.com/Yelp/paasta/tree/v0.12.20) (2015-07-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.19...v0.12.20)
-
-## [v0.12.19](https://github.com/Yelp/paasta/tree/v0.12.19) (2015-07-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.18...v0.12.19)
-
-## [v0.12.18](https://github.com/Yelp/paasta/tree/v0.12.18) (2015-07-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.17...v0.12.18)
-
-## [v0.12.17](https://github.com/Yelp/paasta/tree/v0.12.17) (2015-07-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.16...v0.12.17)
-
-## [v0.12.16](https://github.com/Yelp/paasta/tree/v0.12.16) (2015-07-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.15...v0.12.16)
-
-## [v0.12.15](https://github.com/Yelp/paasta/tree/v0.12.15) (2015-07-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.14...v0.12.15)
-
-## [v0.12.14](https://github.com/Yelp/paasta/tree/v0.12.14) (2015-07-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.13...v0.12.14)
-
-## [v0.12.13](https://github.com/Yelp/paasta/tree/v0.12.13) (2015-07-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.12...v0.12.13)
-
-## [v0.12.12](https://github.com/Yelp/paasta/tree/v0.12.12) (2015-07-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.11...v0.12.12)
-
-## [v0.12.11](https://github.com/Yelp/paasta/tree/v0.12.11) (2015-07-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.10...v0.12.11)
-
-## [v0.12.10](https://github.com/Yelp/paasta/tree/v0.12.10) (2015-07-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.9...v0.12.10)
-
-## [v0.12.9](https://github.com/Yelp/paasta/tree/v0.12.9) (2015-07-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.8...v0.12.9)
-
-## [v0.12.8](https://github.com/Yelp/paasta/tree/v0.12.8) (2015-07-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.7...v0.12.8)
-
-## [v0.12.7](https://github.com/Yelp/paasta/tree/v0.12.7) (2015-07-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.6...v0.12.7)
-
-## [v0.12.6](https://github.com/Yelp/paasta/tree/v0.12.6) (2015-07-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.5...v0.12.6)
-
-## [v0.12.5](https://github.com/Yelp/paasta/tree/v0.12.5) (2015-06-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.4...v0.12.5)
-
-## [v0.12.4](https://github.com/Yelp/paasta/tree/v0.12.4) (2015-06-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.3...v0.12.4)
-
-## [v0.12.3](https://github.com/Yelp/paasta/tree/v0.12.3) (2015-06-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.2...v0.12.3)
-
-## [v0.12.2](https://github.com/Yelp/paasta/tree/v0.12.2) (2015-06-26)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.12.1...v0.12.2)
-
-## [v0.12.1](https://github.com/Yelp/paasta/tree/v0.12.1) (2015-06-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.24...v0.12.1)
-
-## [v0.11.24](https://github.com/Yelp/paasta/tree/v0.11.24) (2015-06-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.23...v0.11.24)
-
-## [v0.11.23](https://github.com/Yelp/paasta/tree/v0.11.23) (2015-06-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.22...v0.11.23)
-
-## [v0.11.22](https://github.com/Yelp/paasta/tree/v0.11.22) (2015-06-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.21...v0.11.22)
-
-## [v0.11.21](https://github.com/Yelp/paasta/tree/v0.11.21) (2015-06-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.20...v0.11.21)
-
-## [v0.11.20](https://github.com/Yelp/paasta/tree/v0.11.20) (2015-06-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.19...v0.11.20)
-
-## [v0.11.19](https://github.com/Yelp/paasta/tree/v0.11.19) (2015-06-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.18...v0.11.19)
-
-## [v0.11.18](https://github.com/Yelp/paasta/tree/v0.11.18) (2015-06-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.17...v0.11.18)
-
-## [v0.11.17](https://github.com/Yelp/paasta/tree/v0.11.17) (2015-06-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.16...v0.11.17)
-
-## [v0.11.16](https://github.com/Yelp/paasta/tree/v0.11.16) (2015-06-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.15...v0.11.16)
-
-## [v0.11.15](https://github.com/Yelp/paasta/tree/v0.11.15) (2015-06-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.14...v0.11.15)
-
-## [v0.11.14](https://github.com/Yelp/paasta/tree/v0.11.14) (2015-06-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.13...v0.11.14)
-
-## [v0.11.13](https://github.com/Yelp/paasta/tree/v0.11.13) (2015-06-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.12...v0.11.13)
-
-## [v0.11.12](https://github.com/Yelp/paasta/tree/v0.11.12) (2015-06-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.11...v0.11.12)
-
-## [v0.11.11](https://github.com/Yelp/paasta/tree/v0.11.11) (2015-06-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.10...v0.11.11)
-
-## [v0.11.10](https://github.com/Yelp/paasta/tree/v0.11.10) (2015-06-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.9...v0.11.10)
-
-## [v0.11.9](https://github.com/Yelp/paasta/tree/v0.11.9) (2015-06-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.8...v0.11.9)
-
-## [v0.11.8](https://github.com/Yelp/paasta/tree/v0.11.8) (2015-06-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.7...v0.11.8)
-
-## [v0.11.7](https://github.com/Yelp/paasta/tree/v0.11.7) (2015-06-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.6...v0.11.7)
-
-## [v0.11.6](https://github.com/Yelp/paasta/tree/v0.11.6) (2015-06-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.5...v0.11.6)
-
-## [v0.11.5](https://github.com/Yelp/paasta/tree/v0.11.5) (2015-06-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.4...v0.11.5)
-
-## [v0.11.4](https://github.com/Yelp/paasta/tree/v0.11.4) (2015-06-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.3...v0.11.4)
-
-## [v0.11.3](https://github.com/Yelp/paasta/tree/v0.11.3) (2015-06-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.2...v0.11.3)
-
-## [v0.11.2](https://github.com/Yelp/paasta/tree/v0.11.2) (2015-06-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.1...v0.11.2)
-
-## [v0.11.1](https://github.com/Yelp/paasta/tree/v0.11.1) (2015-05-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.11.0...v0.11.1)
-
-## [v0.11.0](https://github.com/Yelp/paasta/tree/v0.11.0) (2015-05-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.10.4...v0.11.0)
-
-## [v0.10.4](https://github.com/Yelp/paasta/tree/v0.10.4) (2015-05-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.10.3...v0.10.4)
-
-## [v0.10.3](https://github.com/Yelp/paasta/tree/v0.10.3) (2015-05-26)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.10.2...v0.10.3)
-
-## [v0.10.2](https://github.com/Yelp/paasta/tree/v0.10.2) (2015-05-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.10.1...v0.10.2)
-
-## [v0.10.1](https://github.com/Yelp/paasta/tree/v0.10.1) (2015-05-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.73...v0.10.1)
-
-## [v0.9.73](https://github.com/Yelp/paasta/tree/v0.9.73) (2015-05-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.72...v0.9.73)
-
-## [v0.9.72](https://github.com/Yelp/paasta/tree/v0.9.72) (2015-05-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.71...v0.9.72)
-
-## [v0.9.71](https://github.com/Yelp/paasta/tree/v0.9.71) (2015-05-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.70...v0.9.71)
-
-## [v0.9.70](https://github.com/Yelp/paasta/tree/v0.9.70) (2015-05-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.69...v0.9.70)
-
-## [v0.9.69](https://github.com/Yelp/paasta/tree/v0.9.69) (2015-05-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.68...v0.9.69)
-
-## [v0.9.68](https://github.com/Yelp/paasta/tree/v0.9.68) (2015-05-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.67...v0.9.68)
-
-## [v0.9.67](https://github.com/Yelp/paasta/tree/v0.9.67) (2015-05-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.66...v0.9.67)
-
-## [v0.9.66](https://github.com/Yelp/paasta/tree/v0.9.66) (2015-05-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.65...v0.9.66)
-
-## [v0.9.65](https://github.com/Yelp/paasta/tree/v0.9.65) (2015-05-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.64...v0.9.65)
-
-## [v0.9.64](https://github.com/Yelp/paasta/tree/v0.9.64) (2015-05-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.63...v0.9.64)
-
-## [v0.9.63](https://github.com/Yelp/paasta/tree/v0.9.63) (2015-05-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.62...v0.9.63)
-
-## [v0.9.62](https://github.com/Yelp/paasta/tree/v0.9.62) (2015-05-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.61...v0.9.62)
-
-## [v0.9.61](https://github.com/Yelp/paasta/tree/v0.9.61) (2015-05-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.60...v0.9.61)
-
-## [v0.9.60](https://github.com/Yelp/paasta/tree/v0.9.60) (2015-05-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.59...v0.9.60)
-
-## [v0.9.59](https://github.com/Yelp/paasta/tree/v0.9.59) (2015-05-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.58...v0.9.59)
-
-## [v0.9.58](https://github.com/Yelp/paasta/tree/v0.9.58) (2015-05-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.57...v0.9.58)
-
-## [v0.9.57](https://github.com/Yelp/paasta/tree/v0.9.57) (2015-05-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.56...v0.9.57)
-
-## [v0.9.56](https://github.com/Yelp/paasta/tree/v0.9.56) (2015-05-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.55...v0.9.56)
-
-## [v0.9.55](https://github.com/Yelp/paasta/tree/v0.9.55) (2015-05-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.54...v0.9.55)
-
-## [v0.9.54](https://github.com/Yelp/paasta/tree/v0.9.54) (2015-05-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.53...v0.9.54)
-
-## [v0.9.53](https://github.com/Yelp/paasta/tree/v0.9.53) (2015-04-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.52...v0.9.53)
-
-## [v0.9.52](https://github.com/Yelp/paasta/tree/v0.9.52) (2015-04-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.51...v0.9.52)
-
-## [v0.9.51](https://github.com/Yelp/paasta/tree/v0.9.51) (2015-04-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.50...v0.9.51)
-
-## [v0.9.50](https://github.com/Yelp/paasta/tree/v0.9.50) (2015-04-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.49...v0.9.50)
-
-## [v0.9.49](https://github.com/Yelp/paasta/tree/v0.9.49) (2015-04-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.48...v0.9.49)
-
-## [v0.9.48](https://github.com/Yelp/paasta/tree/v0.9.48) (2015-04-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.47...v0.9.48)
-
-## [v0.9.47](https://github.com/Yelp/paasta/tree/v0.9.47) (2015-04-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.46...v0.9.47)
-
-## [v0.9.46](https://github.com/Yelp/paasta/tree/v0.9.46) (2015-04-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.45...v0.9.46)
-
-## [v0.9.45](https://github.com/Yelp/paasta/tree/v0.9.45) (2015-04-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.44...v0.9.45)
-
-## [v0.9.44](https://github.com/Yelp/paasta/tree/v0.9.44) (2015-04-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.43...v0.9.44)
-
-## [v0.9.43](https://github.com/Yelp/paasta/tree/v0.9.43) (2015-04-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.42...v0.9.43)
-
-## [v0.9.42](https://github.com/Yelp/paasta/tree/v0.9.42) (2015-04-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.41...v0.9.42)
-
-## [v0.9.41](https://github.com/Yelp/paasta/tree/v0.9.41) (2015-03-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.40...v0.9.41)
-
-## [v0.9.40](https://github.com/Yelp/paasta/tree/v0.9.40) (2015-03-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.38...v0.9.40)
-
-## [v0.9.38](https://github.com/Yelp/paasta/tree/v0.9.38) (2015-03-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.37...v0.9.38)
-
-## [v0.9.37](https://github.com/Yelp/paasta/tree/v0.9.37) (2015-03-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.36...v0.9.37)
-
-## [v0.9.36](https://github.com/Yelp/paasta/tree/v0.9.36) (2015-03-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.35...v0.9.36)
-
-## [v0.9.35](https://github.com/Yelp/paasta/tree/v0.9.35) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.34...v0.9.35)
-
-## [v0.9.34](https://github.com/Yelp/paasta/tree/v0.9.34) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.33...v0.9.34)
-
-## [v0.9.33](https://github.com/Yelp/paasta/tree/v0.9.33) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.32...v0.9.33)
-
-## [v0.9.32](https://github.com/Yelp/paasta/tree/v0.9.32) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.31...v0.9.32)
-
-## [v0.9.31](https://github.com/Yelp/paasta/tree/v0.9.31) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.30...v0.9.31)
-
-## [v0.9.30](https://github.com/Yelp/paasta/tree/v0.9.30) (2015-03-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.29...v0.9.30)
-
-## [v0.9.29](https://github.com/Yelp/paasta/tree/v0.9.29) (2015-03-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.28...v0.9.29)
-
-## [v0.9.28](https://github.com/Yelp/paasta/tree/v0.9.28) (2015-03-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.27...v0.9.28)
-
-## [v0.9.27](https://github.com/Yelp/paasta/tree/v0.9.27) (2015-03-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.26...v0.9.27)
-
-## [v0.9.26](https://github.com/Yelp/paasta/tree/v0.9.26) (2015-03-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.24...v0.9.26)
-
-## [v0.9.24](https://github.com/Yelp/paasta/tree/v0.9.24) (2015-03-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.23...v0.9.24)
-
-## [v0.9.23](https://github.com/Yelp/paasta/tree/v0.9.23) (2015-03-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.22...v0.9.23)
-
-## [v0.9.22](https://github.com/Yelp/paasta/tree/v0.9.22) (2015-03-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.21...v0.9.22)
-
-## [v0.9.21](https://github.com/Yelp/paasta/tree/v0.9.21) (2015-03-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.20...v0.9.21)
-
-## [v0.9.20](https://github.com/Yelp/paasta/tree/v0.9.20) (2015-03-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.19...v0.9.20)
-
-## [v0.9.19](https://github.com/Yelp/paasta/tree/v0.9.19) (2015-03-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.18...v0.9.19)
-
-## [v0.9.18](https://github.com/Yelp/paasta/tree/v0.9.18) (2015-03-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.17...v0.9.18)
-
-## [v0.9.17](https://github.com/Yelp/paasta/tree/v0.9.17) (2015-03-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.16...v0.9.17)
-
-## [v0.9.16](https://github.com/Yelp/paasta/tree/v0.9.16) (2015-03-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.15...v0.9.16)
-
-## [v0.9.15](https://github.com/Yelp/paasta/tree/v0.9.15) (2015-03-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.14...v0.9.15)
-
-## [v0.9.14](https://github.com/Yelp/paasta/tree/v0.9.14) (2015-03-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.13...v0.9.14)
-
-## [v0.9.13](https://github.com/Yelp/paasta/tree/v0.9.13) (2015-03-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.12...v0.9.13)
-
-## [v0.9.12](https://github.com/Yelp/paasta/tree/v0.9.12) (2015-03-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.11...v0.9.12)
-
-## [v0.9.11](https://github.com/Yelp/paasta/tree/v0.9.11) (2015-03-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.9...v0.9.11)
-
-## [v0.9.9](https://github.com/Yelp/paasta/tree/v0.9.9) (2015-02-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.8...v0.9.9)
-
-## [v0.9.8](https://github.com/Yelp/paasta/tree/v0.9.8) (2015-02-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.7...v0.9.8)
-
-## [v0.9.7](https://github.com/Yelp/paasta/tree/v0.9.7) (2015-02-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.6...v0.9.7)
-
-## [v0.9.6](https://github.com/Yelp/paasta/tree/v0.9.6) (2015-02-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.5...v0.9.6)
-
-## [v0.9.5](https://github.com/Yelp/paasta/tree/v0.9.5) (2015-02-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.4...v0.9.5)
-
-## [v0.9.4](https://github.com/Yelp/paasta/tree/v0.9.4) (2015-02-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.3...v0.9.4)
-
-## [v0.9.3](https://github.com/Yelp/paasta/tree/v0.9.3) (2015-02-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.2...v0.9.3)
-
-## [v0.9.2](https://github.com/Yelp/paasta/tree/v0.9.2) (2015-02-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.1...v0.9.2)
-
-## [v0.9.1](https://github.com/Yelp/paasta/tree/v0.9.1) (2015-02-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.9.0...v0.9.1)
-
-## [v0.9.0](https://github.com/Yelp/paasta/tree/v0.9.0) (2015-02-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.36...v0.9.0)
-
-## [v0.8.36](https://github.com/Yelp/paasta/tree/v0.8.36) (2015-02-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.35...v0.8.36)
-
-## [v0.8.35](https://github.com/Yelp/paasta/tree/v0.8.35) (2015-02-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.34...v0.8.35)
-
-## [v0.8.34](https://github.com/Yelp/paasta/tree/v0.8.34) (2015-02-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.33...v0.8.34)
-
-## [v0.8.33](https://github.com/Yelp/paasta/tree/v0.8.33) (2015-02-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.32...v0.8.33)
-
-## [v0.8.32](https://github.com/Yelp/paasta/tree/v0.8.32) (2015-02-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.31...v0.8.32)
-
-## [v0.8.31](https://github.com/Yelp/paasta/tree/v0.8.31) (2015-02-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.30...v0.8.31)
-
-## [v0.8.30](https://github.com/Yelp/paasta/tree/v0.8.30) (2015-02-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.29...v0.8.30)
-
-## [v0.8.29](https://github.com/Yelp/paasta/tree/v0.8.29) (2015-02-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.28...v0.8.29)
-
-## [v0.8.28](https://github.com/Yelp/paasta/tree/v0.8.28) (2015-02-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.27...v0.8.28)
-
-## [v0.8.27](https://github.com/Yelp/paasta/tree/v0.8.27) (2015-02-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.26...v0.8.27)
-
-## [v0.8.26](https://github.com/Yelp/paasta/tree/v0.8.26) (2015-02-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.25...v0.8.26)
-
-## [v0.8.25](https://github.com/Yelp/paasta/tree/v0.8.25) (2015-02-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.24...v0.8.25)
-
-## [v0.8.24](https://github.com/Yelp/paasta/tree/v0.8.24) (2015-02-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.23...v0.8.24)
-
-## [v0.8.23](https://github.com/Yelp/paasta/tree/v0.8.23) (2015-02-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.22...v0.8.23)
-
-## [v0.8.22](https://github.com/Yelp/paasta/tree/v0.8.22) (2015-01-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.21...v0.8.22)
-
-## [v0.8.21](https://github.com/Yelp/paasta/tree/v0.8.21) (2015-01-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.20...v0.8.21)
-
-## [v0.8.20](https://github.com/Yelp/paasta/tree/v0.8.20) (2015-01-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.19...v0.8.20)
-
-## [v0.8.19](https://github.com/Yelp/paasta/tree/v0.8.19) (2015-01-27)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.18...v0.8.19)
-
-## [v0.8.18](https://github.com/Yelp/paasta/tree/v0.8.18) (2015-01-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.17...v0.8.18)
-
-## [v0.8.17](https://github.com/Yelp/paasta/tree/v0.8.17) (2015-01-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.16...v0.8.17)
-
-## [v0.8.16](https://github.com/Yelp/paasta/tree/v0.8.16) (2015-01-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.15...v0.8.16)
-
-## [v0.8.15](https://github.com/Yelp/paasta/tree/v0.8.15) (2015-01-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.14...v0.8.15)
-
-## [v0.8.14](https://github.com/Yelp/paasta/tree/v0.8.14) (2015-01-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.13...v0.8.14)
-
-## [v0.8.13](https://github.com/Yelp/paasta/tree/v0.8.13) (2015-01-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.12...v0.8.13)
-
-## [v0.8.12](https://github.com/Yelp/paasta/tree/v0.8.12) (2015-01-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.11...v0.8.12)
-
-## [v0.8.11](https://github.com/Yelp/paasta/tree/v0.8.11) (2015-01-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.0.1...v0.8.11)
-
-## [v0.0.1](https://github.com/Yelp/paasta/tree/v0.0.1) (2015-01-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.10...v0.0.1)
-
-## [v0.8.10](https://github.com/Yelp/paasta/tree/v0.8.10) (2015-01-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.9...v0.8.10)
-
-## [v0.8.9](https://github.com/Yelp/paasta/tree/v0.8.9) (2015-01-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.8...v0.8.9)
-
-## [v0.8.8](https://github.com/Yelp/paasta/tree/v0.8.8) (2015-01-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.7...v0.8.8)
-
-## [v0.8.7](https://github.com/Yelp/paasta/tree/v0.8.7) (2015-01-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.6...v0.8.7)
-
-## [v0.8.6](https://github.com/Yelp/paasta/tree/v0.8.6) (2015-01-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.5...v0.8.6)
-
-## [v0.8.5](https://github.com/Yelp/paasta/tree/v0.8.5) (2015-01-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.4...v0.8.5)
-
-## [v0.8.4](https://github.com/Yelp/paasta/tree/v0.8.4) (2015-01-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.3...v0.8.4)
-
-## [v0.8.3](https://github.com/Yelp/paasta/tree/v0.8.3) (2015-01-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.2...v0.8.3)
-
-## [v0.8.2](https://github.com/Yelp/paasta/tree/v0.8.2) (2015-01-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.1...v0.8.2)
-
-## [v0.8.1](https://github.com/Yelp/paasta/tree/v0.8.1) (2015-01-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.8.0...v0.8.1)
-
-## [v0.8.0](https://github.com/Yelp/paasta/tree/v0.8.0) (2015-01-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.40...v0.8.0)
-
-## [v0.7.40](https://github.com/Yelp/paasta/tree/v0.7.40) (2015-01-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.39...v0.7.40)
-
-## [v0.7.39](https://github.com/Yelp/paasta/tree/v0.7.39) (2015-01-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.38...v0.7.39)
-
-## [v0.7.38](https://github.com/Yelp/paasta/tree/v0.7.38) (2015-01-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.37...v0.7.38)
-
-## [v0.7.37](https://github.com/Yelp/paasta/tree/v0.7.37) (2015-01-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.36...v0.7.37)
-
-## [v0.7.36](https://github.com/Yelp/paasta/tree/v0.7.36) (2015-01-06)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.35...v0.7.36)
-
-## [v0.7.35](https://github.com/Yelp/paasta/tree/v0.7.35) (2015-01-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.34...v0.7.35)
-
-## [v0.7.34](https://github.com/Yelp/paasta/tree/v0.7.34) (2014-12-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.33...v0.7.34)
-
-## [v0.7.33](https://github.com/Yelp/paasta/tree/v0.7.33) (2014-12-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.32...v0.7.33)
-
-## [v0.7.32](https://github.com/Yelp/paasta/tree/v0.7.32) (2014-12-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.31...v0.7.32)
-
-## [v0.7.31](https://github.com/Yelp/paasta/tree/v0.7.31) (2014-12-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.30...v0.7.31)
-
-## [v0.7.30](https://github.com/Yelp/paasta/tree/v0.7.30) (2014-12-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.29...v0.7.30)
-
-## [v0.7.29](https://github.com/Yelp/paasta/tree/v0.7.29) (2014-12-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.28...v0.7.29)
-
-## [v0.7.28](https://github.com/Yelp/paasta/tree/v0.7.28) (2014-12-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.27...v0.7.28)
-
-## [v0.7.27](https://github.com/Yelp/paasta/tree/v0.7.27) (2014-12-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.25...v0.7.27)
-
-## [v0.7.25](https://github.com/Yelp/paasta/tree/v0.7.25) (2014-12-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.23...v0.7.25)
-
-## [v0.7.23](https://github.com/Yelp/paasta/tree/v0.7.23) (2014-12-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.22...v0.7.23)
-
-## [v0.7.22](https://github.com/Yelp/paasta/tree/v0.7.22) (2014-12-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.21...v0.7.22)
-
-## [v0.7.21](https://github.com/Yelp/paasta/tree/v0.7.21) (2014-12-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.20...v0.7.21)
-
-## [v0.7.20](https://github.com/Yelp/paasta/tree/v0.7.20) (2014-12-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.19...v0.7.20)
-
-## [v0.7.19](https://github.com/Yelp/paasta/tree/v0.7.19) (2014-12-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.18...v0.7.19)
-
-## [v0.7.18](https://github.com/Yelp/paasta/tree/v0.7.18) (2014-12-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.17...v0.7.18)
-
-## [v0.7.17](https://github.com/Yelp/paasta/tree/v0.7.17) (2014-12-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.16...v0.7.17)
-
-## [v0.7.16](https://github.com/Yelp/paasta/tree/v0.7.16) (2014-12-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.15...v0.7.16)
-
-## [v0.7.15](https://github.com/Yelp/paasta/tree/v0.7.15) (2014-12-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.14...v0.7.15)
-
-## [v0.7.14](https://github.com/Yelp/paasta/tree/v0.7.14) (2014-12-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.13...v0.7.14)
-
-## [v0.7.13](https://github.com/Yelp/paasta/tree/v0.7.13) (2014-12-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.11...v0.7.13)
-
-## [v0.7.11](https://github.com/Yelp/paasta/tree/v0.7.11) (2014-12-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.10...v0.7.11)
-
-## [v0.7.10](https://github.com/Yelp/paasta/tree/v0.7.10) (2014-12-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.9...v0.7.10)
-
-## [v0.7.9](https://github.com/Yelp/paasta/tree/v0.7.9) (2014-12-05)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.8...v0.7.9)
-
-## [v0.7.8](https://github.com/Yelp/paasta/tree/v0.7.8) (2014-12-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.7...v0.7.8)
-
-## [v0.7.7](https://github.com/Yelp/paasta/tree/v0.7.7) (2014-12-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.6...v0.7.7)
-
-## [v0.7.6](https://github.com/Yelp/paasta/tree/v0.7.6) (2014-12-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.5...v0.7.6)
-
-## [v0.7.5](https://github.com/Yelp/paasta/tree/v0.7.5) (2014-12-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.4...v0.7.5)
-
-## [v0.7.4](https://github.com/Yelp/paasta/tree/v0.7.4) (2014-12-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.3...v0.7.4)
-
-## [v0.7.3](https://github.com/Yelp/paasta/tree/v0.7.3) (2014-12-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.2...v0.7.3)
-
-## [v0.7.2](https://github.com/Yelp/paasta/tree/v0.7.2) (2014-12-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.7.1...v0.7.2)
-
-## [v0.7.1](https://github.com/Yelp/paasta/tree/v0.7.1) (2014-11-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.7...v0.7.1)
-
-## [v0.6.7](https://github.com/Yelp/paasta/tree/v0.6.7) (2014-11-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.6...v0.6.7)
-
-## [v0.6.6](https://github.com/Yelp/paasta/tree/v0.6.6) (2014-11-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.5...v0.6.6)
-
-## [v0.6.5](https://github.com/Yelp/paasta/tree/v0.6.5) (2014-11-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.4...v0.6.5)
-
-## [v0.6.4](https://github.com/Yelp/paasta/tree/v0.6.4) (2014-10-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.3...v0.6.4)
-
-## [v0.6.3](https://github.com/Yelp/paasta/tree/v0.6.3) (2014-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.2...v0.6.3)
-
-## [v0.6.2](https://github.com/Yelp/paasta/tree/v0.6.2) (2014-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.1...v0.6.2)
-
-## [v0.6.1](https://github.com/Yelp/paasta/tree/v0.6.1) (2014-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.6.0...v0.6.1)
-
-## [v0.6.0](https://github.com/Yelp/paasta/tree/v0.6.0) (2014-10-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.5.0...v0.6.0)
-
-## [v0.5.0](https://github.com/Yelp/paasta/tree/v0.5.0) (2014-10-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.5.0)
-
-## [v0.4.8](https://github.com/Yelp/paasta/tree/v0.4.8) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.4.8)
-
-## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.9)
-
-## [v0.4.7](https://github.com/Yelp/paasta/tree/v0.4.7) (2014-10-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.6...v0.4.7)
-
-## [v0.4.6](https://github.com/Yelp/paasta/tree/v0.4.6) (2014-10-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.5...v0.4.6)
-
-## [v0.4.5](https://github.com/Yelp/paasta/tree/v0.4.5) (2014-10-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.4...v0.4.5)
-
-## [v0.4.4](https://github.com/Yelp/paasta/tree/v0.4.4) (2014-10-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.3...v0.4.4)
-
-## [v0.4.3](https://github.com/Yelp/paasta/tree/v0.4.3) (2014-10-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.2...v0.4.3)
-
-## [v0.4.2](https://github.com/Yelp/paasta/tree/v0.4.2) (2014-09-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.1...v0.4.2)
-
-## [v0.4.1](https://github.com/Yelp/paasta/tree/v0.4.1) (2014-09-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.0...v0.4.1)
-
-## [v0.4.0](https://github.com/Yelp/paasta/tree/v0.4.0) (2014-08-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.5...v0.4.0)
-
-## [v0.3.5](https://github.com/Yelp/paasta/tree/v0.3.5) (2014-08-26)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.4...v0.3.5)
-
-## [v0.3.4](https://github.com/Yelp/paasta/tree/v0.3.4) (2014-08-19)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.3...v0.3.4)
-
-## [v0.3.3](https://github.com/Yelp/paasta/tree/v0.3.3) (2014-08-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.2...v0.3.3)
-
-## [v0.3.2](https://github.com/Yelp/paasta/tree/v0.3.2) (2014-08-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.1...v0.3.2)
-
-## [v0.3.1](https://github.com/Yelp/paasta/tree/v0.3.1) (2014-08-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.3.0...v0.3.1)
-
-## [v0.3.0](https://github.com/Yelp/paasta/tree/v0.3.0) (2014-08-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.14...v0.3.0)
-
-## [v0.2.14](https://github.com/Yelp/paasta/tree/v0.2.14) (2014-08-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.13...v0.2.14)
-
-## [v0.2.13](https://github.com/Yelp/paasta/tree/v0.2.13) (2014-08-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.12...v0.2.13)
-
-## [v0.2.12](https://github.com/Yelp/paasta/tree/v0.2.12) (2014-08-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.11...v0.2.12)
-
-## [v0.2.11](https://github.com/Yelp/paasta/tree/v0.2.11) (2014-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.10...v0.2.11)
-
-## [v0.2.10](https://github.com/Yelp/paasta/tree/v0.2.10) (2014-08-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.8...v0.2.10)
-
-## [v0.2.8](https://github.com/Yelp/paasta/tree/v0.2.8) (2014-08-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.7...v0.2.8)
-
-## [v0.2.7](https://github.com/Yelp/paasta/tree/v0.2.7) (2014-08-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.6...v0.2.7)
-
-## [v0.2.6](https://github.com/Yelp/paasta/tree/v0.2.6) (2014-08-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.5...v0.2.6)
-
-## [v0.2.5](https://github.com/Yelp/paasta/tree/v0.2.5) (2014-08-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.4...v0.2.5)
-
-## [v0.2.4](https://github.com/Yelp/paasta/tree/v0.2.4) (2014-08-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.3...v0.2.4)
-
-## [v0.2.3](https://github.com/Yelp/paasta/tree/v0.2.3) (2014-08-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.2...v0.2.3)
-
-## [v0.2.2](https://github.com/Yelp/paasta/tree/v0.2.2) (2014-08-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.1...v0.2.2)
-
-## [v0.2.1](https://github.com/Yelp/paasta/tree/v0.2.1) (2014-08-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.2.0...v0.2.1)
-
-## [v0.2.0](https://github.com/Yelp/paasta/tree/v0.2.0) (2014-08-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.31...v0.2.0)
-
-## [v0.1.31](https://github.com/Yelp/paasta/tree/v0.1.31) (2014-08-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.30...v0.1.31)
-
-## [v0.1.30](https://github.com/Yelp/paasta/tree/v0.1.30) (2014-08-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.29...v0.1.30)
-
-## [v0.1.29](https://github.com/Yelp/paasta/tree/v0.1.29) (2014-08-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.28...v0.1.29)
-
-## [v0.1.28](https://github.com/Yelp/paasta/tree/v0.1.28) (2014-08-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.27...v0.1.28)
-
-## [v0.1.27](https://github.com/Yelp/paasta/tree/v0.1.27) (2014-07-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.26...v0.1.27)
-
-## [v0.1.26](https://github.com/Yelp/paasta/tree/v0.1.26) (2014-07-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.25...v0.1.26)
-
-## [v0.1.25](https://github.com/Yelp/paasta/tree/v0.1.25) (2014-07-31)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.24...v0.1.25)
-
-## [v0.1.24](https://github.com/Yelp/paasta/tree/v0.1.24) (2014-07-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.23...v0.1.24)
-
-## [v0.1.23](https://github.com/Yelp/paasta/tree/v0.1.23) (2014-07-30)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.22...v0.1.23)
-
-## [v0.1.22](https://github.com/Yelp/paasta/tree/v0.1.22) (2014-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.21...v0.1.22)
-
-## [v0.1.21](https://github.com/Yelp/paasta/tree/v0.1.21) (2014-07-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.20...v0.1.21)
-
-## [v0.1.20](https://github.com/Yelp/paasta/tree/v0.1.20) (2014-07-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.19...v0.1.20)
-
-## [v0.1.19](https://github.com/Yelp/paasta/tree/v0.1.19) (2014-07-28)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.18...v0.1.19)
-
-## [v0.1.18](https://github.com/Yelp/paasta/tree/v0.1.18) (2014-07-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.17...v0.1.18)
-
-## [v0.1.17](https://github.com/Yelp/paasta/tree/v0.1.17) (2014-07-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.16...v0.1.17)
-
-## [v0.1.16](https://github.com/Yelp/paasta/tree/v0.1.16) (2014-07-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.15...v0.1.16)
-
-## [v0.1.15](https://github.com/Yelp/paasta/tree/v0.1.15) (2014-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.14...v0.1.15)
-
-## [v0.1.14](https://github.com/Yelp/paasta/tree/v0.1.14) (2014-07-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.13...v0.1.14)
-
-## [v0.1.13](https://github.com/Yelp/paasta/tree/v0.1.13) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.12...v0.1.13)
-
-## [v0.1.12](https://github.com/Yelp/paasta/tree/v0.1.12) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.11...v0.1.12)
-
-## [v0.1.11](https://github.com/Yelp/paasta/tree/v0.1.11) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.10...v0.1.11)
-
-## [v0.1.10](https://github.com/Yelp/paasta/tree/v0.1.10) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.9...v0.1.10)
-
-## [v0.1.9](https://github.com/Yelp/paasta/tree/v0.1.9) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.8...v0.1.9)
-
-## [v0.1.8](https://github.com/Yelp/paasta/tree/v0.1.8) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.7...v0.1.8)
-
-## [v0.1.7](https://github.com/Yelp/paasta/tree/v0.1.7) (2014-07-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.6...v0.1.7)
-
-## [v0.1.6](https://github.com/Yelp/paasta/tree/v0.1.6) (2014-07-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.5...v0.1.6)
-
-## [v0.1.5](https://github.com/Yelp/paasta/tree/v0.1.5) (2014-07-18)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.4...v0.1.5)
-
-## [v0.1.4](https://github.com/Yelp/paasta/tree/v0.1.4) (2014-07-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.3...v0.1.4)
-
-## [v0.1.3](https://github.com/Yelp/paasta/tree/v0.1.3) (2014-07-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.2...v0.1.3)
-
-## [v0.1.2](https://github.com/Yelp/paasta/tree/v0.1.2) (2014-07-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.1.1...v0.1.2)
-
-## [v0.1.1](https://github.com/Yelp/paasta/tree/v0.1.1) (2014-07-15)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.0.2...v0.1.1)
-
-## [v0.0.2](https://github.com/Yelp/paasta/tree/v0.0.2) (2014-07-07)
 
 
 \* *This Change Log was automatically generated by [github_changelog_generator](https://github.com/skywinder/Github-Changelog-Generator)*
+
