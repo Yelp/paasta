@@ -381,23 +381,28 @@ def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
 
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
-        utilization = get_utilization(marathon_service_config=service_config,
-                                      autoscaling_params=autoscaling_params,
-                                      log_utilization_data={},
-                                      marathon_tasks=list(marathon_tasks.values()),
-                                      mesos_tasks=mesos_tasks)
-        error = get_error_from_utilization(utilization=utilization,
-                                           setpoint=autoscaling_params.pop('setpoint'),
-                                           current_instances=service_config.get_instances())
-        new_instance_count = get_new_instance_count(utilization=utilization,
-                                                    error=error,
-                                                    autoscaling_params=autoscaling_params,
-                                                    current_instances=service_config.get_instances(),
-                                                    marathon_service_config=service_config)
+        try:
+            utilization = get_utilization(marathon_service_config=service_config,
+                                          autoscaling_params=autoscaling_params,
+                                          log_utilization_data={},
+                                          marathon_tasks=list(marathon_tasks.values()),
+                                          mesos_tasks=mesos_tasks)
+            error = get_error_from_utilization(utilization=utilization,
+                                               setpoint=autoscaling_params.pop('setpoint'),
+                                               current_instances=service_config.get_instances())
+            new_instance_count = get_new_instance_count(utilization=utilization,
+                                                        error=error,
+                                                        autoscaling_params=autoscaling_params,
+                                                        current_instances=service_config.get_instances(),
+                                                        marathon_service_config=service_config)
+            current_utilization = "{:.1f}%".format(utilization * 100)
+        except MetricsProviderNoDataError:
+            current_utilization = "Exception"
+            new_instance_count = "Exception"
         return ServiceAutoscalingInfo(current_instances=str(service_config.get_instances()),
                                       max_instances=str(service_config.get_max_instances()),
                                       min_instances=str(service_config.get_min_instances()),
-                                      current_utilization="{:.1f}%".format(utilization * 100),
+                                      current_utilization=current_utilization,
                                       target_instances=str(new_instance_count))
     return None
 
