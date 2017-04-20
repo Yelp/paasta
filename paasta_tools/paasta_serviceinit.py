@@ -23,6 +23,7 @@ import traceback
 import requests_cache
 
 from paasta_tools import chronos_serviceinit
+from paasta_tools import chronos_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
@@ -34,7 +35,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
-
 
 log = logging.getLogger(__name__)
 # kazoo can be really noisy - turn it down
@@ -82,6 +82,7 @@ class PaastaClients():
     def __init__(self, cached=False):
         self._cached = cached
         self._marathon = None
+        self._chronos = None
 
     def marathon(self):
         if self._marathon is None:
@@ -91,6 +92,12 @@ class PaastaClients():
                                                                 marathon_config.get_password(),
                                                                 cached=self._cached)
         return self._marathon
+
+    def chronos(self):
+        if self._chronos is None:
+            chronos_config = chronos_tools.load_chronos_config()
+            self._chronos = chronos_tools.get_chronos_client(chronos_config, cached=self._cached)
+        return self._chronos
 
 
 def main():
@@ -151,6 +158,7 @@ def main():
                     cluster=cluster,
                     verbose=args.verbose,
                     soa_dir=args.soa_dir,
+                    client=clients.chronos(),
                 )
             elif instance_type == 'paasta_native':
                 return_code = paasta_native_serviceinit.perform_command(

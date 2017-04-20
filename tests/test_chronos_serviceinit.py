@@ -407,27 +407,31 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
     assert 'status_mesos_tasks_verbose output' in actual
 
 
-def test_status_chronos_jobs_is_deployed():
-    jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
+@mock.patch('paasta_tools.chronos_serviceinit.format_chronos_job_status', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
+def test_status_chronos_jobs_is_deployed(mock_get_cached_list_of_running_tasks_from_frameworks,
+                                         mock_format_chronos_job_status):
+    jobs = [{'name': 'my_service my_instance'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
     verbose = False
-    with mock.patch(
-        'paasta_tools.chronos_serviceinit.format_chronos_job_status',
-        autospec=True,
-        return_value='job_status_output',
-    ), mock.patch(
-        'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
-        autospec=True,
-        return_value=[],
-    ):
-        actual = chronos_serviceinit.status_chronos_jobs(
-            mock.Mock(),  # Chronos client
-            jobs,
-            complete_job_config,
-            verbose,
-        )
-        assert '\njob_status_output' in actual
+
+    mock_format_chronos_job_status.return_value = 'job_status_output'
+    mock_get_cached_list_of_running_tasks_from_frameworks.return_value = [
+        {'id': 'ct:1492206300000:0:my_service my_instance:'},
+        {'id': 'ct:1492206300000:0:not_my_service not_my_instance:'}
+    ]
+    fake_client = mock.Mock()
+
+    actual = chronos_serviceinit.status_chronos_jobs(
+        fake_client,
+        jobs,
+        complete_job_config,
+        verbose,
+    )
+    assert '\njob_status_output' in actual
+    assert mock_get_cached_list_of_running_tasks_from_frameworks.called
+    mock_format_chronos_job_status.assert_called_once_with(fake_client, jobs[0], 1, verbose)
 
 
 def test_status_chronos_jobs_is_not_deployed():
@@ -440,7 +444,7 @@ def test_status_chronos_jobs_is_not_deployed():
         autospec=True,
         return_value='job_status_output',
     ), mock.patch(
-        'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
+        'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
     ):
@@ -463,7 +467,7 @@ def test_status_chronos_jobs_get_desired_state_human():
         autospec=True,
         return_value='job_status_output',
     ), mock.patch(
-        'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
+        'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
     ):
@@ -490,7 +494,7 @@ def test_status_chronos_jobs_multiple_jobs():
         autospec=True,
         return_value='job_status_output',
     ), mock.patch(
-        'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
+        'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
     ):
@@ -513,7 +517,7 @@ def test_status_chronos_jobs_get_running_tasks():
         autospec=True,
         return_value='job_status_output',
     ), mock.patch(
-        'paasta_tools.chronos_serviceinit.get_running_tasks_from_frameworks',
+        'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
     ) as mock_get_running_tasks:
@@ -537,18 +541,3 @@ def test_get_schedule_for_job_type_dependent():
 def test_get_schedule_for_job_type_invalid():
     with pytest.raises(ValueError):
         assert chronos_serviceinit._get_schedule_field_for_job_type(3)
-
-
-def test_format_mesos_status_no_tasks():
-    running_tasks = []
-    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.grey('Not running')
-
-
-def test_format_mesos_status_tasks():
-    running_tasks = [{'id': 'fake_task'}]
-    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.yellow('Running')
-
-
-def test_format_mesos_status_multiple_tasks():
-    running_tasks = [{'id': 'fake_task'}, {'id': 'tmp foo'}]
-    assert chronos_serviceinit._format_mesos_status(running_tasks) == PaastaColors.yellow('Running')
