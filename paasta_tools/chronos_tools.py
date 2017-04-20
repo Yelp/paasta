@@ -282,8 +282,11 @@ class ChronosJobConfig(InstanceConfig):
     def get_schedule(self):
         return self.config_dict.get('schedule')
 
-    def get_schedule_interval_in_seconds(self):
-        """Return the job interval in seconds or None if there is no interval"""
+    def get_schedule_interval_in_seconds(self, seconds_ago=0):
+        """Return the job interval in seconds or None if there is no interval
+
+        :params seconds_ago: return an interval the job had in the past
+        """
         schedule = self.get_schedule()
         if schedule is None:
             return None
@@ -293,7 +296,7 @@ class ChronosJobConfig(InstanceConfig):
                 job_tz = pytz.timezone(self.get_schedule_time_zone())
             except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
                 job_tz = pytz.utc
-            c = croniter(schedule, datetime.datetime.now(job_tz))
+            c = croniter(schedule, datetime.datetime.now(job_tz) - datetime.timedelta(seconds=seconds_ago))
             return c.get_next() - c.get_prev()
         else:
             try:
