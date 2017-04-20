@@ -1,3 +1,11 @@
+paasta-tools (0.60.1) xenial; urgency=medium
+
+  * 0.60.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    native_smartstack
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Apr 2017 10:11:51 -0700
+
 paasta-tools (0.60.0) xenial; urgency=low
 
   * 0.60.0 tagged with 'make release'
