@@ -104,6 +104,7 @@ setup(
         'console_scripts': [
             'paasta=paasta_tools.cli.cli:main',
             'paasta-api=paasta_tools.api.api:main',
+            'paasta-deployd=paasta_tools.deployd.master:main',
             'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
             'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
             'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',

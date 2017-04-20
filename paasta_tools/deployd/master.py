@@ -170,8 +170,12 @@ def splay_instances(instances, splay_minutes, watcher_name):
     return service_instances
 
 
-if __name__ == '__main__':
+def main():
     dd = DeployDaemon()
     dd.start()
     while dd.is_alive():
         time.sleep(0.1)
+
+
+if __name__ == '__main__':
+    main()
