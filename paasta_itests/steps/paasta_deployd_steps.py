@@ -113,7 +113,7 @@ def set_cmd(context, cmd):
     context.cmd = cmd
 
 
-@then('the config sha for "{service_instance}" should have changed')
+@then('the appid for "{service_instance}" should have changed')
 def check_sha_changed(context, service_instance):
     service, instance, _, _ = decompose_job_id(service_instance)
     service_configuration_lib._yaml_cache = {}
