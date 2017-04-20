@@ -372,8 +372,8 @@ def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
         cluster=cluster,
         soa_dir=soa_dir,
     )
-    all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
+        all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
         marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
                                                                all_marathon_tasks,
                                                                all_mesos_tasks,
