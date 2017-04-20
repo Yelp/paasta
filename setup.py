@@ -39,7 +39,7 @@ setup(
         'choice == 0.1',
         'chronos-python == 0.37.0',
         'cookiecutter == 1.4.0',
-        'cryptography == 1.4',
+        'cryptography == 1.7',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
@@ -104,6 +104,7 @@ setup(
         'console_scripts': [
             'paasta=paasta_tools.cli.cli:main',
             'paasta-api=paasta_tools.api.api:main',
+            'paasta-deployd=paasta_tools.deployd.master:main',
             'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
             'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
             'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',

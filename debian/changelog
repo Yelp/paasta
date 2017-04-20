@@ -1,3 +1,11 @@
+paasta-tools (0.60.0) xenial; urgency=low
+
+  * 0.60.0 tagged with 'make release'
+    Commit: Merge pull request #1061 from Yelp/autoscaling-service-info
+    Add service autoscaling info to status
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 20 Apr 2017 08:42:15 -0700
+
 paasta-tools (0.59.2) xenial; urgency=low
 
   * 0.59.2 tagged with 'make release'
