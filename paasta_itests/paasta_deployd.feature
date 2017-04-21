@@ -1,5 +1,6 @@
 Feature: paasta-deployd deploys apps
 
+  @skip
   Scenario: deployd will deploy a new app
     Given a working paasta cluster
       And paasta-deployd is running
@@ -9,6 +10,7 @@ Feature: paasta-deployd deploys apps
      Then we can run get_app
      Then paasta-deployd can be stopped
 
+  @skip
   Scenario: deployd will re-deploy an app if its marathon-*.yaml changes
     Given a working paasta cluster
       And paasta-deployd is running
@@ -24,6 +26,7 @@ Feature: paasta-deployd deploys apps
      Then we can run get_app
      Then paasta-deployd can be stopped
 
+  @skip
   Scenario: deployd will re-deploy an app if its deployment.json is updated
     Given a working paasta cluster
       And paasta-deployd is running
@@ -38,6 +41,7 @@ Feature: paasta-deployd deploys apps
      Then we can run get_app
      Then paasta-deployd can be stopped
 
+  @skip
   Scenario: deployd starts and only one leader
     Given a working paasta cluster
       And paasta-deployd is running
