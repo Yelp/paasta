@@ -25,6 +25,7 @@ from requests.exceptions import Timeout
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
+from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -1130,6 +1131,34 @@ def test_get_autoscaling_info():
                                                                   min_instances="2",
                                                                   current_utilization="80.1%",
                                                                   target_instances="6")
+        assert ret == expected
+
+        # test missing data
+        mock_get_utilization.side_effect = MetricsProviderNoDataError
+        ret = autoscaling_service_lib.get_autoscaling_info(mock_marathon_client,
+                                                           'someservice',
+                                                           'main',
+                                                           'dev',
+                                                           '/nail/whatever')
+        expected = autoscaling_service_lib.ServiceAutoscalingInfo(current_instances="4",
+                                                                  max_instances="10",
+                                                                  min_instances="2",
+                                                                  current_utilization="Exception",
+                                                                  target_instances="Exception")
+        assert ret == expected
+
+        mock_get_utilization.return_value = 0.80131
+        mock_filter_autoscaling_tasks.side_effect = MetricsProviderNoDataError
+        ret = autoscaling_service_lib.get_autoscaling_info(mock_marathon_client,
+                                                           'someservice',
+                                                           'main',
+                                                           'dev',
+                                                           '/nail/whatever')
+        expected = autoscaling_service_lib.ServiceAutoscalingInfo(current_instances="4",
+                                                                  max_instances="10",
+                                                                  min_instances="2",
+                                                                  current_utilization="Exception",
+                                                                  target_instances="Exception")
         assert ret == expected
 
         # test regular service has no autoscaling info
