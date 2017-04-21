@@ -20,7 +20,6 @@ import json
 import signal
 import sys
 import threading
-import time
 from datetime import datetime
 
 from paasta_tools.cli.cmds.remote_run import add_remote_run_args
@@ -46,15 +45,6 @@ def parse_args(argv):
         default=None,
     )
     return parser.parse_args(argv)
-
-
-def handle_interrupt(scheduler, driver):
-    def handle_interrupt_closure(_signum, _frame):
-        paasta_print(PaastaColors.red("Signal received, shutting down scheduler."))
-        scheduler.shutdown(driver)
-        driver.stop()
-
-    return handle_interrupt_closure
 
 
 def main(argv):
@@ -132,13 +122,17 @@ def main(argv):
         scheduler=scheduler,
         system_paasta_config=system_paasta_config
     )
-    signal.signal(signal.SIGTERM, handle_interrupt(scheduler, driver))
-    signal.signal(signal.SIGINT, handle_interrupt(scheduler, driver))
-    signal.signal(signal.SIGHUP, handle_interrupt(scheduler, driver))
+
+    def handle_interrupt(_signum, _frame):
+        paasta_print(PaastaColors.red("Signal received, shutting down scheduler."))
+        scheduler.shutdown(driver)
+        driver.stop()
+    signal.signal(signal.SIGINT, handle_interrupt)
+
+    # driver.run makes the thread uninterruptible
     t = threading.Thread(target=driver.run)
     t.start()
-    while t.isAlive():
-        time.sleep(1)
+    t.join(float("inf"))
 
 
 if __name__ == '__main__':
