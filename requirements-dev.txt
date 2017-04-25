@@ -2,7 +2,6 @@
 coverage
 docutils==0.12
 flake8==2.5.0
-mock==2.0.0
 pep8==1.5.7
 pre-commit==0.12.1
 pylint==1.6.4

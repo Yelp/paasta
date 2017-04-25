@@ -79,7 +79,8 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             service_instances = [ServiceInstance(service=service_name,
                                                  instance=instance,
                                                  bounce_by=int(time.time()),
-                                                 watcher=self.__class__.__name__)
+                                                 watcher=self.__class__.__name__,
+                                                 bounce_timers=None)
                                  for instance in instances]
             for service_instance in service_instances:
                 self.filewatcher.inbox_q.put(service_instance)

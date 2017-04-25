@@ -7,7 +7,8 @@ from threading import Thread
 
 from six.moves.queue import Queue
 
-ServiceInstance = namedtuple('ServiceInstance', ['service', 'instance', 'bounce_by', 'watcher'])
+BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
+ServiceInstance = namedtuple('ServiceInstance', ['service', 'instance', 'bounce_by', 'watcher', 'bounce_timers'])
 
 
 class PaastaThread(Thread):

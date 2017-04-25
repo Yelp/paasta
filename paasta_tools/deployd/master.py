@@ -14,6 +14,7 @@ from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
+from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -44,10 +45,10 @@ class Inbox(PaastaThread):
         except Empty:
             service_instance = None
         if service_instance:
-            self.log.debug("Processing {} to decide if we need to add it to bounce q".format(service_instance))
+            self.log.debug("Processing {}.{} to see if we need to add it to bounceq".format(service_instance.service,
+                                                                                            service_instance.instance))
             self.process_service_instance(service_instance)
         if self.inbox_q.empty() and self.to_bounce:
-            self.log.debug("Cleared inbox, checking if any services are ready to bounce")
             self.process_to_bounce()
         time.sleep(1)
 
@@ -99,6 +100,7 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
+        QueueMetrics(self.inbox_q, self.bounce_q).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -165,7 +167,8 @@ def splay_instances(instances, splay_minutes, watcher_name):
         service_instances.append(ServiceInstance(service=service,
                                                  instance=instance,
                                                  watcher=watcher_name,
-                                                 bounce_by=bounce_time))
+                                                 bounce_by=bounce_time,
+                                                 bounce_timers=None))
         bounce_time += time_step
     return service_instances
 
