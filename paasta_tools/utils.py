@@ -1021,7 +1021,8 @@ class SystemPaastaConfig(dict):
         return self.get('expected_slave_attributes')
 
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, eof_interrupt=False, **kwargs):
+def _run(command, env=os.environ, timeout=None, log=False, stream=False,
+         stdin=None, eof_interrupt=False, popen_kwargs={}, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1045,15 +1046,19 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
     try:
         if not isinstance(command, list):
             command = shlex.split(command)
-        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        popen_kwargs['stdout'] = PIPE
+        popen_kwargs['stderr'] = STDOUT
+        popen_kwargs['stdin'] = stdin
+        popen_kwargs['env'] = env
+        process = Popen(command, **popen_kwargs)
 
         if eof_interrupt:
             def signal_handler(signum, frame):
-                paasta_print("caught %d, closing stdin" % signum)
                 process.stdin.write("\n")
+                process.stdin.flush()
                 process.wait()
-
             signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
 
         process.name = command
         # start the timer if we specified a timeout

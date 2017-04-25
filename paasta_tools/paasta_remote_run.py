@@ -128,6 +128,7 @@ def main(argv):
         scheduler.shutdown(driver)
         driver.stop()
     signal.signal(signal.SIGINT, handle_interrupt)
+    signal.signal(signal.SIGTERM, handle_interrupt)
 
     # driver.run makes the thread uninterruptible
     t = threading.Thread(target=driver.run)

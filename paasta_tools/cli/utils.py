@@ -20,6 +20,7 @@ import logging
 import os
 import pkgutil
 import re
+import subprocess
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -604,31 +605,31 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     except NoMasterError as e:
         return (err_code, str(e))
 
-    import subprocess
     if graceful_exit:
-        # && kill -9 `ps --pid $$ -oppid=`
         cmd_parts.append(
-            # send original cmd to background
-            "& s=$$; p=$!; " +
-            # wait for original proc to die and kill the shell
-            "while kill -0 $p 2>/dev/null; do sleep 1; done; kill -INT $s & " +
-            # wait for stdin and kill original cmd
-            "read; kill -INT $p; wait")
-        paasta_print(cmd_parts)
+            # send target cmd to background
+            "& script=$$; target=$!; " +
+            # wait for stdin and kill target cmd
+            "read; kill $target & " +
+            # wait for target cmd to die and kill current script
+            "while kill -0 $target 2>/dev/null; do sleep 1; done; kill $script; wait"
+        )
         stdin = subprocess.PIPE
         eof_interrupt = True
+        popen_kwargs = {'preexec_fn': os.setsid}
     else:
         eof_interrupt = False
+        popen_kwargs = {}
 
-    cmd_parts = ['ssh', '-t', '-t', '-A', master, "/bin/bash -c %s" % quote('set -m; ' + ' '.join(cmd_parts))]
-    cmd_parts = ['bash', '-c', "set -m; " + ' '.join(cmd_parts)]
+    cmd_parts = ['ssh', '-t', '-t', '-A', master, "/bin/bash", "-c", quote(' '.join(cmd_parts))]
     paasta_print(' '.join(cmd_parts))
 
     if dry:
         return (0, "Would have run: %s" % ' '.join(cmd_parts))
     else:
         return _run(cmd_parts, timeout=timeout, stream=True,
-                    stdin=stdin, eof_interrupt=eof_interrupt)
+                    stdin=stdin, eof_interrupt=eof_interrupt,
+                    popen_kwargs=popen_kwargs)
 
 
 def lazy_choices_completer(list_func):
