@@ -13,4 +13,4 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
-RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools python-dev debhelper
+RUN apt-get update && apt-get -yq install dpkg-dev python-tox python-setuptools python-dev debhelper
