@@ -1050,7 +1050,8 @@ class SystemPaastaConfig(dict):
         return self.get("security_check_command", None)
 
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
+def _run(command, env=os.environ, timeout=None, log=False, stream=False,
+         stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1074,7 +1075,20 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
     try:
         if not isinstance(command, list):
             command = shlex.split(command)
-        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        popen_kwargs['stdout'] = PIPE
+        popen_kwargs['stderr'] = STDOUT
+        popen_kwargs['stdin'] = stdin
+        popen_kwargs['env'] = env
+        process = Popen(command, **popen_kwargs)
+
+        if stdin_interrupt:
+            def signal_handler(signum, frame):
+                process.stdin.write("\n")
+                process.stdin.flush()
+                process.wait()
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+
         process.name = command
         # start the timer if we specified a timeout
         if timeout:
@@ -1104,7 +1118,8 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
                     instance=instance,
                 )
         # when finished, get the exit code
-        returncode = process.wait()
+        process.wait()
+        returncode = process.returncode
     except OSError as e:
         if log:
             _log(
