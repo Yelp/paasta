@@ -1022,7 +1022,7 @@ class SystemPaastaConfig(dict):
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False,
-         stdin=None, eof_interrupt=False, popen_kwargs={}, **kwargs):
+         stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1052,7 +1052,7 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False,
         popen_kwargs['env'] = env
         process = Popen(command, **popen_kwargs)
 
-        if eof_interrupt:
+        if stdin_interrupt:
             def signal_handler(signum, frame):
                 process.stdin.write("\n")
                 process.stdin.flush()

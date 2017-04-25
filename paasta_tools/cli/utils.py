@@ -615,10 +615,10 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
             "while kill -0 $target 2>/dev/null; do sleep 1; done; kill $script; wait"
         )
         stdin = subprocess.PIPE
-        eof_interrupt = True
+        stdin_interrupt = True
         popen_kwargs = {'preexec_fn': os.setsid}
     else:
-        eof_interrupt = False
+        stdin_interrupt = False
         popen_kwargs = {}
 
     cmd_parts = ['ssh', '-t', '-t', '-A', master, "/bin/bash", "-c", quote(' '.join(cmd_parts))]
@@ -628,7 +628,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         return (0, "Would have run: %s" % ' '.join(cmd_parts))
     else:
         return _run(cmd_parts, timeout=timeout, stream=True,
-                    stdin=stdin, eof_interrupt=eof_interrupt,
+                    stdin=stdin, stdin_interrupt=stdin_interrupt,
                     popen_kwargs=popen_kwargs)
 
 
