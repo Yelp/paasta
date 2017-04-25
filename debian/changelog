@@ -1,3 +1,11 @@
+paasta-tools (0.60.2) xenial; urgency=low
+
+  * 0.60.2 tagged with 'make release'
+    Commit: Merge pull request #1157 from
+    Yelp/fix/setup_marathon_timeout  Fix threaded timeout decorator
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 25 Apr 2017 04:01:36 -0700
+
 paasta-tools (0.60.1) xenial; urgency=medium
 
   * 0.60.1 tagged with 'make release'
