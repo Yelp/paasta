@@ -1829,6 +1829,7 @@ class _Timeout(object):
         self.func_thread = threading.Thread(target=self.run,
                                             args=args,
                                             kwargs=kwargs)
+        self.func_thread.daemon = True
         self.timeout = self.seconds + time.time()
         self.func_thread.start()
         return self.get_and_raise()
