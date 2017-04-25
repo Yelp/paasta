@@ -238,9 +238,13 @@ class InstanceConfig(dict):
         Note: values must be strings
 
         :returns: A list of parameters to be added to docker run"""
-        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
-                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [
+            {"key": "memory-swap", "value": self.get_mem_swap()},
+            {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+            {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
+            {"key": "label", "value": "service=%s" % self.service()},
+            {"key": "label", "value": "instance=%s" % self.service()},
+        ]
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
