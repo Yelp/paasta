@@ -374,14 +374,13 @@ def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
     )
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
         all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
-        marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
-                                                               all_marathon_tasks,
-                                                               all_mesos_tasks,
-                                                               service_config)
-
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         try:
+            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
+                                                                   all_marathon_tasks,
+                                                                   all_mesos_tasks,
+                                                                   service_config)
             utilization = get_utilization(marathon_service_config=service_config,
                                           autoscaling_params=autoscaling_params,
                                           log_utilization_data={},
