@@ -825,6 +825,7 @@ class TestInstanceConfig:
             config_dict={
                 'cpus': 1,
                 'mem': 1024,
+                'monitoring': {'team': 'team1'},
             },
             branch_dict={},
         )
@@ -834,7 +835,7 @@ class TestInstanceConfig:
             {"key": "cpu-quota", "value": "1000000"},
             {"key": "label", "value": "paasta_service=fake_name"},
             {"key": "label", "value": "paasta_instance=fake_instance"},
-            {"key": "label", "value": "paasta_team=none"},
+            {"key": "label", "value": "paasta_team=team1"},
         ]
 
     def test_format_docker_parameters_non_default(self):
