@@ -54,7 +54,6 @@ from kazoo.client import KazooClient
 
 import paasta_tools
 
-
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
@@ -246,12 +245,20 @@ class InstanceConfig(dict):
         ]
         if with_labels:
             parameters.extend([
-                {"key": "label", "value": "service=%s" % self.service},
-                {"key": "label", "value": "instance=%s" % self.instance},
+                {"key": "label", "value": "paasta_service=%s" % self.service},
+                {"key": "label", "value": "paasta_instance=%s" % self.instance},
+                {"key": "label", "value": "paasta_team=%s" % self.get_team()},
             ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
+
+    def get_team(self):
+        "Gets monitoring team"
+        try:
+            return self.config_dict["monitoring"]["team"]
+        except KeyError:
+            return "none"
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.
