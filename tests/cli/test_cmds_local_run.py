@@ -154,7 +154,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
 
-    mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
+    mock_http_conn.return_value = mock.MagicMock(status_code=200, headers={}, content='ok')
     assert perform_http_healthcheck(fake_http_url, fake_timeout)
     mock_http_conn.assert_called_once_with(fake_http_url)
 
@@ -164,7 +164,7 @@ def test_perform_http_healthcheck_failure_known_high(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
 
-    mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
+    mock_http_conn.return_value = mock.MagicMock(status_code=400, headers={}, content='OK')
     result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
     assert result is False
     assert '400' in reason
@@ -201,11 +201,29 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     fake_timeout = 10
 
     mock_http_conn.return_value = mock.Mock(
-        status_code=200, headers={'content-type': 'fake_content_type_1, fake_content_type_2'})
+        status_code=200, headers={'content-type': 'fake_content_type_1, fake_content_type_2'}, content='OK')
     actual = perform_http_healthcheck(fake_http_url, fake_timeout)
     assert actual[0] is False
     assert "200" in actual[1]
     mock_http_conn.assert_called_once_with(fake_http_url)
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.requests.get', autospec=True)
+def test_perform_http_healthcheck_failure_no_content(mock_http_con):
+    fake_http_url = "http://fakehost:1234/fake_status_path"
+    fake_timeout = 10
+
+    mock_res = mock.MagicMock()
+    mock_res.status_code = 200
+    mock_res.headers = {'content-type': 'fake_content_type_2'}
+    mock_res.content.return_value = 'FOOO'
+    mock_res.return_value = mock_res
+
+    mock_http_con.return_value = mock_res
+    actual = perform_http_healthcheck(fake_http_url, fake_timeout)
+    assert actual[0] is False
+    assert "0 length response body detected" in actual[1]
+    mock_http_con.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
