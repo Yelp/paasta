@@ -13,7 +13,7 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
-RUN apt-get update > /dev/null && apt-get -yq install zookeeper > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install zookeeper > /dev/null
 
 EXPOSE 2181
 CMD /usr/share/zookeeper/bin/zkServer.sh start-foreground
