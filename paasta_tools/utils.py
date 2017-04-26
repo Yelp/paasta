@@ -232,15 +232,23 @@ class InstanceConfig(dict):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self):
+    def format_docker_parameters(self, with_labels=True):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
+        :param with_labels: Whether to build docker parameters with or without labels
         :returns: A list of parameters to be added to docker run"""
-        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
-                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [
+            {"key": "memory-swap", "value": self.get_mem_swap()},
+            {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+            {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
+        ]
+        if with_labels:
+            parameters.extend([
+                {"key": "label", "value": "service=%s" % self.service},
+                {"key": "label", "value": "instance=%s" % self.instance},
+            ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
