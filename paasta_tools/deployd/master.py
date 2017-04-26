@@ -14,6 +14,7 @@ from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
+from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
@@ -45,8 +46,9 @@ class Inbox(PaastaThread):
         except Empty:
             service_instance = None
         if service_instance:
-            self.log.debug("Processing {}.{} to see if we need to add it to bounceq".format(service_instance.service,
-                                                                                            service_instance.instance))
+            self.log.debug("Processing {}.{} to see if we need to add it "
+                           "to bounce queue".format(service_instance.service,
+                                                    service_instance.instance))
             self.process_service_instance(service_instance)
         if self.inbox_q.empty() and self.to_bounce:
             self.process_to_bounce()
@@ -61,7 +63,7 @@ class Inbox(PaastaThread):
     def should_add_to_bounce(self, service_instance, service_instance_key):
         if service_instance_key in self.to_bounce:
             if service_instance.bounce_by > self.to_bounce[service_instance_key].bounce_by:
-                self.log.debug("{} already in bounce q with higher priority".format(service_instance))
+                self.log.debug("{} already in bounce queue with higher priority".format(service_instance))
                 return False
         return True
 
@@ -100,7 +102,8 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
-        QueueMetrics(self.inbox_q, self.bounce_q).start()
+        self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
+        QueueMetrics(self.inbox_q, self.bounce_q, self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -126,7 +129,7 @@ class DeployDaemon(PaastaThread):
 
     def start_workers(self):
         for i in range(5):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q)
+            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.metrics)
             worker.start()
 
     def add_all_services(self):

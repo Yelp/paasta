@@ -9,17 +9,17 @@ from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
-from paasta_tools.deployd.metrics import create_timer
 from paasta_tools.setup_marathon_job import deploy_marathon_service
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, inbox_q, bounce_q):
+    def __init__(self, worker_number, inbox_q, bounce_q, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
         self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
+        self.metrics = metrics_provider
         self.setup()
 
     def setup(self):
@@ -34,16 +34,16 @@ class PaastaDeployWorker(PaastaThread):
             bounce_timers.processed_by_worker.stop()
             bounce_length_timer = bounce_timers.bounce_length
         else:
-            bounce_length_timer = create_timer('bounce_length_timer',
-                                               service=service_instance.service,
-                                               instance=service_instance.instance)
+            bounce_length_timer = self.metrics.create_timer('bounce_length_timer',
+                                                            service=service_instance.service,
+                                                            instance=service_instance.instance)
             bounce_length_timer.start()
-        processed_by_worker_timer = create_timer('processed_by_worker',
-                                                 service=service_instance.service,
-                                                 instance=service_instance.instance)
-        setup_marathon_timer = create_timer('setup_marathon_timer',
-                                            service=service_instance.service,
-                                            instance=service_instance.instance)
+        processed_by_worker_timer = self.metrics.create_timer('processed_by_worker',
+                                                              service=service_instance.service,
+                                                              instance=service_instance.instance)
+        setup_marathon_timer = self.metrics.create_timer('setup_marathon_timer',
+                                                         service=service_instance.service,
+                                                         instance=service_instance.instance)
         return BounceTimers(processed_by_worker=processed_by_worker_timer,
                             setup_marathon=setup_marathon_timer,
                             bounce_length=bounce_length_timer)

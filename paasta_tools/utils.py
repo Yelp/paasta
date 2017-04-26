@@ -948,6 +948,13 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
 
+    def get_deployd_metrics_provider(self):
+        """Get the metrics_provider configuration out of global paasta config
+
+        :returns: A string identifying the metrics_provider
+        """
+        return self.get('deployd_metrics_provider')
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 
