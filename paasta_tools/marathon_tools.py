@@ -399,13 +399,24 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         code_sha = get_code_sha_from_dockerurl(docker_url)
 
         config_hash = get_config_hash(
-            {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
+            self.sanitize_for_config_hash(complete_config),
             force_bounce=self.get_force_bounce(),
         )
         complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
 
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
+
+    def sanitize_for_config_hash(self, config):
+        """Removes some data from complete_config to make it suitable for
+        calculation of config hash.
+
+        :param config: complete_config hash to sanitize
+        :returns: sanitized copy of complete_config hash
+        """
+        ahash = {key: value for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
+        return ahash
 
     def get_healthchecks(self, service_namespace_config):
         """Returns a list of healthchecks per `the Marathon docs`_.

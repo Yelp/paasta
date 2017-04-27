@@ -832,6 +832,8 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "100000"},
             {"key": "cpu-quota", "value": "1000000"},
+            {"key": "label", "value": "paasta_service=fake_name"},
+            {"key": "label", "value": "paasta_instance=fake_instance"},
         ]
 
     def test_format_docker_parameters_non_default(self):
@@ -856,6 +858,8 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
+            {"key": "label", "value": "paasta_service=fake_name"},
+            {"key": "label", "value": "paasta_instance=fake_instance"},
             {"key": "ulimit", "value": "nice=20"},
             {"key": "ulimit", "value": "nofile=1024:2048"},
             {"key": "cap-add", "value": "IPC_LOCK"},
