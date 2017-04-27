@@ -17,12 +17,14 @@ from __future__ import unicode_literals
 
 import argparse
 import json
+import os
 import signal
 import sys
 import threading
 from datetime import datetime
 
-from paasta_tools.cli.cmds.remote_run import add_remote_run_args
+from paasta_tools.cli.cmds.remote_run import common_args
+from paasta_tools.cli.cmds.remote_run import start_args
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
@@ -37,13 +39,24 @@ from paasta_tools.utils import validate_service_instance
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
-    add_remote_run_args(parser)
-    parser.add_argument(
+    subs = parser.add_subparsers(dest='action', help='Subcommands of paasta_remote_run')
+
+    start_parser = subs.add_parser('start', help='Start task')
+    start_args(start_parser)
+    common_args(start_parser)
+    start_parser.add_argument(
         '-X', '--constraints-json',
         help=('Mesos constraints JSON'),
         required=False,
         default=None,
     )
+
+    stop_parser = subs.add_parser('stop', help='Stop task')
+    common_args(stop_parser)
+
+    list_parser = subs.add_parser('list', help='List tasks')
+    common_args(list_parser)
+
     return parser.parse_args(argv)
 
 
@@ -100,6 +113,16 @@ def main(argv):
 
     if command:
         overrides_dict['cmd'] = command
+
+    if args.detach:
+        paasta_print("Running in background")
+        if os.fork() > 0:
+            return
+        os.setsid()
+        if os.fork() > 0:
+            return
+        sys.stdout = open('/dev/null', 'w')
+        sys.stderr = open('/dev/null', 'w')
 
     paasta_print('Scheduling a task on Mesos')
     scheduler = AdhocScheduler(

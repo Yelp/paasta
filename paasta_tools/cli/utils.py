@@ -606,14 +606,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         return (err_code, str(e))
 
     if graceful_exit:
-        cmd_parts.append(
-            # send target cmd to background
-            "& script=$$; target=$!; " +
-            # wait for stdin and kill target cmd
-            "read; kill $target & " +
-            # wait for target cmd to die and kill current script
-            "while kill -0 $target 2>/dev/null; do sleep 1; done; kill $script; wait"
-        )
+        cmd_parts.append("; kill $$ & read; kill $!; wait")
         stdin = subprocess.PIPE
         stdin_interrupt = True
         popen_kwargs = {'preexec_fn': os.setsid}
