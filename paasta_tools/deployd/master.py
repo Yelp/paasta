@@ -22,9 +22,6 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
-log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-
 
 class Inbox(PaastaThread):
     def __init__(self, inbox_q, bounce_q):
@@ -84,6 +81,7 @@ class DeployDaemon(PaastaThread):
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
         self.config = load_system_paasta_config()
+        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
@@ -128,7 +126,7 @@ class DeployDaemon(PaastaThread):
         self.control.put("ABORT")
 
     def start_workers(self):
-        for i in range(5):
+        for i in range(self.config.get_deployd_number_workers()):
             worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.metrics)
             worker.start()
 
@@ -136,9 +134,9 @@ class DeployDaemon(PaastaThread):
         instances = get_services_for_cluster(cluster=self.config.get_cluster(),
                                              instance_type='marathon',
                                              soa_dir=DEFAULT_SOA_DIR)
-        instances_to_add = splay_instances(instances=instances,
-                                           splay_minutes=30,
-                                           watcher_name='daemon_start')
+        instances_to_add = rate_limit_instances(instances=instances,
+                                                number_per_minute=self.config.get_deployd_big_bounce_rate(),
+                                                watcher_name='daemon_start')
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
 
@@ -159,12 +157,12 @@ class DeployDaemon(PaastaThread):
             time.sleep(1)
 
 
-def splay_instances(instances, splay_minutes, watcher_name):
+def rate_limit_instances(instances, number_per_minute, watcher_name):
     service_instances = []
     if not instances:
         return []
     time_now = int(time.time())
-    time_step = int((splay_minutes * 60) / len(instances))
+    time_step = int(60 / number_per_minute)
     bounce_time = time_now
     for service, instance in instances:
         service_instances.append(ServiceInstance(service=service,
