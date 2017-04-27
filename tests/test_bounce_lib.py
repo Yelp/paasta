@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import datetime
 
 import marathon
@@ -72,12 +71,9 @@ class TestBounceLib:
         fake_client = marathon_client_mock
         fake_config = {'id': 'fake_creation'}
         with mock.patch(
-            'paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None,
-        ) as lock_patch, mock.patch(
             'paasta_tools.bounce_lib.wait_for_create', autospec=True,
         ) as wait_patch:
             bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
-            assert lock_patch.called
             assert fake_client.create_app.call_count == 1
             actual_call_args = fake_client.create_app.call_args
             actual_config = actual_call_args[0][1]
@@ -88,8 +84,6 @@ class TestBounceLib:
         fake_client = mock.Mock(delete_app=mock.Mock())
         fake_id = 'fake_deletion'
         with mock.patch(
-            'paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager, autospec=None,
-        ) as lock_patch, mock.patch(
             'paasta_tools.bounce_lib.wait_for_delete', autospec=True,
         ) as wait_patch, mock.patch(
             'time.sleep', autospec=True,
@@ -98,7 +92,6 @@ class TestBounceLib:
             fake_client.scale_app.assert_called_once_with(fake_id, instances=0, force=True)
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
             wait_patch.assert_called_once_with(fake_id, fake_client)
-            assert lock_patch.called
 
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']

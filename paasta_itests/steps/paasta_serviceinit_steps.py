@@ -48,8 +48,7 @@ def run_marathon_app(context, job_id, instances):
         'instances': instances,
         'constraints': [["hostname", "UNIQUE"]],
     }
-    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
+    paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
 
 
 @then('marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
