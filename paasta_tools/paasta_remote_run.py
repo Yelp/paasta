@@ -18,7 +18,9 @@ from __future__ import unicode_literals
 import argparse
 import json
 import os
+import random
 import signal
+import string
 import sys
 import threading
 from datetime import datetime
@@ -60,8 +62,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv):
-    args = parse_args(argv)
+def remote_run_start(args):
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
@@ -114,6 +115,12 @@ def main(argv):
     if command:
         overrides_dict['cmd'] = command
 
+    run_id = args.run_id
+    if run_id is None:
+        run_id = ''.join(
+            random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        paasta_print("Assigned random run-id: %s" % run_id)
+
     if args.detach:
         paasta_print("Running in background")
         if os.fork() > 0:
@@ -138,8 +145,9 @@ def main(argv):
         service_config_overrides=overrides_dict,
     )
     driver = create_driver(
-        framework_name="paasta-remote %s %s" % (
+        framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
+            run_id,
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
         ),
         scheduler=scheduler,
@@ -157,6 +165,26 @@ def main(argv):
     t = threading.Thread(target=driver.run)
     t.start()
     t.join(float("inf"))
+
+
+def remote_run_stop(args):
+    pass
+
+
+def remote_run_list(args):
+    pass
+
+
+def main(argv):
+    args = parse_args(argv)
+    if args.action == 'start':
+        remote_run_start(args)
+    elif args.action == 'stop':
+        remote_run_stop(args)
+    elif args.action == 'list':
+        remote_run_list(args)
+    else:
+        paasta_print("Unknown action: %s" % args.action)
 
 
 if __name__ == '__main__':
