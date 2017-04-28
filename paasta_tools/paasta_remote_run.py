@@ -26,13 +26,13 @@ import sys
 import threading
 from datetime import datetime
 
-import requests
-
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
 from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
+from paasta_tools.mesos_tools import get_all_frameworks
+from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -182,41 +182,36 @@ def remote_run_start(args):
 
 
 def remote_run_stop(args):
-    paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
-    # native_config = paasta_config.get_paasta_native_config()
-    # credential = mesos_pb2.Credential()
-    # credential.principal = native_config()['principal']
-    # credential.secret = native_config()['secret']
-    # mesos_uri = '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT)
+    _, service, cluster, _, instance, _ = extract_args(args)
+    if args.framework_id is None and args.run_id is None:
+        paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
+        os._exit(1)
+
+    frameworks = get_all_frameworks(active_only=True)
     framework_id = args.framework_id
     if framework_id is None:
-        if args.run_id is not None:
-            if re.match('\s', args.run_id):
-                paasta_print(PaastaColors.red("Run id must not contain whitespace."))
-                os._exit(1)
+        if re.match('\s', args.run_id):
+            paasta_print(PaastaColors.red("Run id must not contain whitespace."))
+            os._exit(1)
 
-            frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
-            found = [f for f in frameworks if re.search(' %s$' % args.run_id, f['name']) is not None]
-            if len(found) > 0:
-                framework_id = found[0]['id']
-            else:
-                paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
-                os._exit(1)
+        found = [f for f in frameworks if re.search(' %s$' % args.run_id, f.name) is not None]
+        if len(found) > 0:
+            framework_id = found[0].id
         else:
-            paasta_print(PaastaColors.red("Must provide either run id or frameowk id to stop."))
+            paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
             os._exit(1)
     else:
-        frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
-        found = [f for f in frameworks if f['id'] == framework_id]
-        if len(found) > 0 and re.search('^paasta-remote %s.%s ' % (service, instance), found[0]['name']) is None:
+        found = [f for f in frameworks if f.id == framework_id]
+        if len(found) > 0 and re.search('^paasta-remote %s.%s ' % (service, instance), found[0].name) is None:
             paasta_print(
                 PaastaColors.red(
                     "Framework name %s does not match remote-run service instance %s.%s" %
-                    (found[0]['name'], service, instance)))
+                    (found[0].name, service, instance)))
             os._exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
-    teardown = requests.post('http://localhost:5050/teardown', data="frameworkId=%s" % framework_id)
+    mesos_master = get_mesos_master()
+    teardown = mesos_master.teardown(framework_id)
     if teardown.status_code == 200:
         paasta_print(PaastaColors.green("OK"))
     else:
@@ -224,20 +219,15 @@ def remote_run_stop(args):
 
 
 def remote_run_list(args):
-    paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
-    # native_config = paasta_config.get_paasta_native_config()
-    # credential = mesos_pb2.Credential()
-    # credential.principal = native_config()['principal']
-    # credential.secret = native_config()['secret']
-    # mesos_uri = '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT)
-    frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
+    _, service, cluster, _, instance, _ = extract_args(args)
+    frameworks = get_all_frameworks(active_only=True)
     prefix = "paasta-remote %s.%s" % (service, instance)
-    filtered = [f for f in frameworks if f['name'].startswith(prefix)]
-    filtered.sort(key=lambda x: x['name'])
+    filtered = [f for f in frameworks if f.name.startswith(prefix)]
+    filtered.sort(key=lambda x: x.name)
     for f in filtered:
-        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f['name']).groups()
+        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f.name).groups()
         paasta_print("Launch time: %s, run id: %s, framework id: %s" %
-                     (launch_time, run_id, f['id']))
+                     (launch_time, run_id, f.id))
     if len(filtered) > 0:
         paasta_print(
             "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
