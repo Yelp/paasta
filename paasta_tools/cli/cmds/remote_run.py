@@ -81,7 +81,7 @@ def add_common_args_to_parser(parser):
         help='Show Docker commands output',
         action='store_true',
         required=False,
-        default=True,
+        default=False,
     )
     parser.add_argument(
         '-R', '--run-id',
