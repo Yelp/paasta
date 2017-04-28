@@ -13,4 +13,4 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
-RUN DEBIAN_FRONTEND=noninteractive apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install dpkg-dev python-tox python-setuptools python-dev debhelper > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install dpkg-dev python-tox python-setuptools python-dev debhelper > /dev/null

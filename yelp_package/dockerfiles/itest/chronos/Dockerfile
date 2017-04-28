@@ -14,20 +14,20 @@
 
 FROM ubuntu:trusty
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install apt-transport-https > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install apt-transport-https > /dev/null
 
 RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN DEBIAN_FRONTEND=noninteractive apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install libsasl2-modules mesos=1.2.0-2.0.2 > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install libsasl2-modules mesos=1.2.0-2.0.2 > /dev/null
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common > /dev/null
+RUN apt-get install -y software-properties-common > /dev/null
 RUN add-apt-repository ppa:webupd8team/java
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7B2C3B0889BF5709A105D03AC2518248EEA14886
 RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
-RUN DEBIAN_FRONTEND=noninteractive apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install lsb-release oracle-java8-installer > /dev/null
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated install chronos=2.5.0-yelp19-1.ubuntu1404 > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install lsb-release oracle-java8-installer > /dev/null
+RUN apt-get -y --allow-unauthenticated install chronos=2.5.0-yelp19-1.ubuntu1404 > /dev/null
 
 # Chronos will look in here for zk config, so we blow away the bogus defaults
 RUN rm -rf /etc/mesos/
