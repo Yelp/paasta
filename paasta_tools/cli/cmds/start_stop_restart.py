@@ -34,6 +34,8 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
+from paasta_tools.utils import Timeout
+from paasta_tools.utils import TimeoutError
 
 
 def add_subparser(subparsers):
@@ -198,16 +200,30 @@ def paasta_start_or_stop(args, desired_state):
     else:
         clusters = valid_clusters
 
+    git_timeout = 10
+
     try:
-        remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
-    except remote_git.LSRemoteException as e:
+        with Timeout(seconds=git_timeout):
+            try:
+                remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
+            except remote_git.LSRemoteException as e:
+                msg = (
+                    "Error talking to the git server: %s\n"
+                    "This PaaSTA command requires access to the git server to operate.\n"
+                    "The git server may be down or not reachable from here.\n"
+                    "Try again from somewhere where the git server can be reached, "
+                    "like your developer environment."
+                ) % str(e)
+                paasta_print(msg)
+                return 1
+    except TimeoutError:
         msg = (
-            "Error talking to the git server: %s\n"
+            "Timed out after waiting %s seconds trying to talk to the git server.\n"
             "This PaaSTA command requires access to the git server to operate.\n"
             "The git server may be down or not reachable from here.\n"
             "Try again from somewhere where the git server can be reached, "
             "like your developer environment."
-        ) % str(e)
+        ) % str(git_timeout)
         paasta_print(msg)
         return 1
 
