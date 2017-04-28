@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 import mock
 
 from paasta_tools import remote_git
+from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import start_stop_restart
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
@@ -139,12 +140,10 @@ def test_paasta_start_or_stop(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
 ):
-    args = mock.Mock()
-    args.clusters = 'cluster1,cluster2'
-    args.instances = 'main1,canary'
+    args, _ = parse_args(['start', '-s', 'fake_service', '-i', 'main1,canary',
+                          '-c', 'cluster1,cluster2', '-d', '/soa/dir'])
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.return_value = set(args.instances.split(","))
-    args.soa_dir = '/soa/dir'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = mock_instance_config
@@ -152,7 +151,7 @@ def test_paasta_start_or_stop(
     mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
-    ret = start_stop_restart.paasta_start_or_stop(args, 'start')
+    ret = args.command(args)
     c1_get_instance_config_call = mock.call(service='fake_service',
                                             cluster='cluster1',
                                             instance='main1',
@@ -196,6 +195,57 @@ def test_paasta_start_or_stop(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
+def test_paasta_start_or_stop_with_deploy_group(
+    mock_get_cluster_instance_map_for_service,
+    mock_list_clusters,
+    mock_list_all_instances,
+    mock_get_git_url,
+    mock_get_instance_config,
+    mock_instance_config,
+    mock_figure_out_service_name,
+    mock_list_remote_refs,
+    mock_get_latest_deployment_tag,
+    mock_format_timestamp,
+    mock_issue_state_change_for_service,
+):
+    args, _ = parse_args(['start', '-s', 'fake_service', '-c', 'cluster1',
+                          '-l', 'fake_group', '-d', '/soa/dir'])
+    mock_get_cluster_instance_map_for_service.return_value = {'cluster1': {'instances': ['instance1']}}
+    mock_list_clusters.return_value = ['cluster1', 'cluster2']
+    mock_list_all_instances.return_value = {'instance1', 'instance2', 'instance3'}
+    mock_get_git_url.return_value = 'fake_git_url'
+    mock_figure_out_service_name.return_value = 'fake_service'
+    mock_get_instance_config.return_value = mock_instance_config
+    mock_instance_config.get_deploy_group.return_value = args.deploy_group
+    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
+    mock_format_timestamp.return_value = 'not_a_real_timestamp'
+    ret = args.command(args)
+
+    mock_get_instance_config.assert_called_once_with(service='fake_service',
+                                                     cluster='cluster1',
+                                                     instance='instance1',
+                                                     soa_dir='/soa/dir',
+                                                     load_deployments=False)
+    mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
+                                                      args.deploy_group)
+    mock_issue_state_change_for_service.assert_called_once_with(service_config=mock_instance_config,
+                                                                force_bounce='not_a_real_timestamp',
+                                                                desired_state='start')
+    assert ret == 0
+
+
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
+@mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_stop_or_start_figures_out_correct_instances(
     mock_list_clusters,
     mock_list_all_instances,
@@ -208,15 +258,13 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
 ):
-    args = mock.Mock()
-    args.clusters = 'cluster1,cluster2'
-    args.instances = 'main1,canary'
+    args, _ = parse_args(['start', '-s', 'fake_service', '-i', 'main1,canary',
+                          '-c', 'cluster1,cluster2', '-d', '/soa/dir'])
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.side_effect = (
         lambda service, clusters, soa_dir:
             {'main1'} if 'cluster1' in clusters else {'main1', 'canary'}
     )
-    args.soa_dir = '/soa/dir'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = mock_instance_config
@@ -224,7 +272,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
-    ret = start_stop_restart.paasta_start_or_stop(args, 'start')
+    ret = args.command(args)
     c1_get_instance_config_call = mock.call(service='fake_service',
                                             cluster='cluster1',
                                             instance='main1',
@@ -265,9 +313,8 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_remote_refs,
     capfd,
 ):
-    args = mock.Mock()
-    args.clusters = 'cluster1'
-    args.instances = None
+    args, _ = parse_args(['restart', '-s', 'fake_service',
+                          '-c', 'cluster1', '-d', '/soa/dir'])
 
     mock_list_clusters.return_value = ['cluster1']
     mock_get_git_url.return_value = 'fake_git_url'
@@ -275,7 +322,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_instance_config.return_value = None
     mock_list_remote_refs.side_effect = remote_git.LSRemoteException
 
-    assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
+    assert args.command(args) == 1
     assert "may be down" in capfd.readouterr()[0]
 
 
@@ -292,12 +339,8 @@ def test_start_or_stop_bad_refs(
     mock_figure_out_service_name,
     capfd,
 ):
-    args = mock.Mock()
-    # To suppress any messages due to Mock making everything truthy
-    args.clusters = 'fake_cluster1,fake_cluster2'
-    args.soa_dir = '/fake/soa/dir'
-    args.instances = 'fake_instance'
-
+    args, _ = parse_args(['restart', '-s', 'fake_service', '-i', 'fake_instance',
+                          '-c', 'fake_cluster1,fake_cluster2', '-d', '/fake/soa/dir'])
     mock_list_clusters.return_value = ['fake_cluster1', 'fake_cluster2']
 
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -311,7 +354,7 @@ def test_start_or_stop_bad_refs(
     mock_list_remote_refs.return_value = {
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"}
     mock_list_all_instances.return_value = {args.instances}
-    assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
+    assert args.command(args) == 1
     assert "No branches found for" in capfd.readouterr()[0]
 
 
@@ -326,15 +369,13 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
         mock_figure_out_service_name,
         capfd,
 ):
-    mock_args = mock.Mock()
-    mock_args.soa_dir = '/foo'
-    mock_args.instances = None
-    mock_args.clusters = "fake_cluster_1,fake_cluster_2"
+    args, _ = parse_args(['restart', '-s', 'fake_service',
+                          '-c', 'fake_cluster_1,fake_cluster_2', '-d', '/foo'])
 
     mock_list_clusters.return_value = ['fake_cluster_2']
     mock_figure_out_service_name.return_value = 'fake_service'
 
-    assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
+    assert args.command(args) == 1
     output, _ = capfd.readouterr()
     assert "Invalid cluster name(s) specified: fake_cluster_1" in output
     assert "Valid options: fake_cluster_2" in output
@@ -347,17 +388,15 @@ def test_cluster_throws_exception_no_matching_instance_clusters(
         mock_figure_out_service_name,
         capfd,
 ):
-    mock_args = mock.Mock()
-    mock_args.soa_dir = '/foo'
-    mock_args.clusters = "fake_cluster_1,fake_cluster_2,fake_cluster_3"
-    mock_args.instances = "instance_one,instance_two"
+    args, _ = parse_args(['restart', '-s', 'fake_service', '-i', 'instance_one,instance_tw',
+                          '-c', 'fake_cluster_1,fake_cluster_2,fake_cluster_3', '-d', '/foo'])
 
     # this is called twice: once for each of the instances.
     # the code should flatten these out to be one list.
     mock_list_clusters.return_value = ['fake_cluster_1', 'fake_cluster_2']
     mock_figure_out_service_name.return_value = 'fake_service'
 
-    assert start_stop_restart.paasta_start_or_stop(mock_args, 'restart') == 1
+    assert args.command(args) == 1
     output, _ = capfd.readouterr()
     assert "Invalid cluster name(s) specified: fake_cluster_3" in output
     assert "Valid options: fake_cluster_1 fake_cluster_2" in output

@@ -337,6 +337,13 @@ def test_SystemPaastaConfig_get_sensu_port():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_deployd_metrics_provider():
+    fake_config = utils.SystemPaastaConfig({"deployd_metrics_provider": 'bar'}, '/some/fake/dir')
+    actual = fake_config.get_deployd_metrics_provider()
+    expected = 'bar'
+    assert actual == expected
+
+
 def test_SystemPaastaConfig_get_cluster_fqdn_format_default():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
     actual = fake_config.get_cluster_fqdn_format()
@@ -348,6 +355,27 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     fake_config = utils.SystemPaastaConfig({"cluster_fqdn_format": "paasta-{cluster:s}.something"}, '/some/fake/dir')
     actual = fake_config.get_cluster_fqdn_format()
     expected = 'paasta-{cluster:s}.something'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_deployd_number_workers():
+    fake_config = utils.SystemPaastaConfig({"deployd_number_workers": 3}, '/some/fake/dir')
+    actual = fake_config.get_deployd_number_workers()
+    expected = 3
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_deployd_big_bounce_rate():
+    fake_config = utils.SystemPaastaConfig({"deployd_big_bounce_rate": 3}, '/some/fake/dir')
+    actual = fake_config.get_deployd_big_bounce_rate()
+    expected = 3
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_deployd_log_level():
+    fake_config = utils.SystemPaastaConfig({"deployd_log_level": 'DEBUG'}, '/some/fake/dir')
+    actual = fake_config.get_deployd_log_level()
+    expected = 'DEBUG'
     assert actual == expected
 
 
@@ -832,6 +860,8 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "100000"},
             {"key": "cpu-quota", "value": "1000000"},
+            {"key": "label", "value": "paasta_service=fake_name"},
+            {"key": "label", "value": "paasta_instance=fake_instance"},
         ]
 
     def test_format_docker_parameters_non_default(self):
@@ -856,6 +886,8 @@ class TestInstanceConfig:
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
+            {"key": "label", "value": "paasta_service=fake_name"},
+            {"key": "label", "value": "paasta_instance=fake_instance"},
             {"key": "ulimit", "value": "nice=20"},
             {"key": "ulimit", "value": "nofile=1024:2048"},
             {"key": "cap-add", "value": "IPC_LOCK"},

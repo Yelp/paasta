@@ -20,6 +20,7 @@ import logging
 import os
 import pkgutil
 import re
+import subprocess
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -581,7 +582,8 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, shell=False, dry=False, err_code=-1):
+                  timeout=None, shell=False, dry=False, err_code=-1,
+                  graceful_exit=True, stdin=None):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -595,23 +597,39 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     :param shell: prepend :cmd_parts: with 'sh -c' (default: False)
     :param err_code: code to return along with error message when something goes
         wrong (default: -1)
+    :param graceful_exit: wrap command in a bash script that waits for input and
+        kills the original command; trap SIGINT and send newline into stdin
     """
     try:
         master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
         return (err_code, str(e))
 
-    ssh_parts = ['ssh', '-A', '-n', master]
-
-    if shell:
-        ssh_parts.extend('sh -c "%s"' % quote(' '.join(cmd_parts)))
+    if graceful_exit:
+        cmd_parts.append(
+            # send target cmd to background
+            "& script=$$; target=$!; " +
+            # wait for stdin and kill target cmd
+            "read; kill $target & " +
+            # wait for target cmd to die and kill current script
+            "while kill -0 $target 2>/dev/null; do sleep 1; done; kill $script; wait"
+        )
+        stdin = subprocess.PIPE
+        stdin_interrupt = True
+        popen_kwargs = {'preexec_fn': os.setsid}
     else:
-        ssh_parts.append(' '.join(cmd_parts))
+        stdin_interrupt = False
+        popen_kwargs = {}
+
+    cmd_parts = ['ssh', '-t', '-t', '-A', master, "/bin/bash", "-c", quote(' '.join(cmd_parts))]
+    paasta_print(' '.join(cmd_parts))
 
     if dry:
-        return (0, "Would have run: %s" % ' '.join(ssh_parts))
+        return (0, "Would have run: %s" % ' '.join(cmd_parts))
     else:
-        return _run(ssh_parts, timeout=timeout)
+        return _run(cmd_parts, timeout=timeout, stream=True,
+                    stdin=stdin, stdin_interrupt=stdin_interrupt,
+                    popen_kwargs=popen_kwargs)
 
 
 def lazy_choices_completer(list_func):

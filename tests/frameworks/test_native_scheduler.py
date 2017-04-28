@@ -277,6 +277,8 @@ class TestNativeServiceConfig(object):
             ("memory-swap", mock.ANY),
             ("cpu-period", mock.ANY),
             ("cpu-quota", mock.ANY),
+            ("label", mock.ANY),  # service
+            ("label", mock.ANY),  # instance
         ]
 
         assert task.container.docker.network == mesos_pb2.ContainerInfo.DockerInfo.BRIDGE

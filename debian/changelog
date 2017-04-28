@@ -1,3 +1,35 @@
+paasta-tools (0.61.0) xenial; urgency=medium
+
+  * 0.61.0 tagged with 'make release'
+    Commit: Merge pull request #1171 from Yelp/remove-create-app-lock
+    Remove create_app_lock when creating marathon apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 28 Apr 2017 10:34:16 -0700
+
+paasta-tools (0.60.4) xenial; urgency=low
+
+  * 0.60.4 tagged with 'make release'
+    Commit: Merge pull request #1170 from Yelp/deployd-config-options
+    Add some basic config options for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 28 Apr 2017 05:02:21 -0700
+
+paasta-tools (0.60.3) xenial; urgency=low
+
+  * 0.60.3 tagged with 'make release'
+    Commit: Merge pull request #1156 from Yelp/fix/autoscaling-stall
+    Ensure we always scale up if task data missing
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 26 Apr 2017 03:06:40 -0700
+
+paasta-tools (0.60.2) xenial; urgency=low
+
+  * 0.60.2 tagged with 'make release'
+    Commit: Merge pull request #1157 from
+    Yelp/fix/setup_marathon_timeout  Fix threaded timeout decorator
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 25 Apr 2017 04:01:36 -0700
+
 paasta-tools (0.60.1) xenial; urgency=medium
 
   * 0.60.1 tagged with 'make release'

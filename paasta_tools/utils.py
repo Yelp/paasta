@@ -232,15 +232,23 @@ class InstanceConfig(dict):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self):
+    def format_docker_parameters(self, with_labels=True):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
+        :param with_labels: Whether to build docker parameters with or without labels
         :returns: A list of parameters to be added to docker run"""
-        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
-                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [
+            {"key": "memory-swap", "value": self.get_mem_swap()},
+            {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+            {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
+        ]
+        if with_labels:
+            parameters.extend([
+                {"key": "label", "value": "paasta_service=%s" % self.service},
+                {"key": "label", "value": "paasta_instance=%s" % self.instance},
+            ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
@@ -940,6 +948,13 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
 
+    def get_deployd_metrics_provider(self):
+        """Get the metrics_provider configuration out of global paasta config
+
+        :returns: A string identifying the metrics_provider
+        """
+        return self.get('deployd_metrics_provider')
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 
@@ -1049,8 +1064,31 @@ class SystemPaastaConfig(dict):
         """
         return self.get("security_check_command", None)
 
+    def get_deployd_number_workers(self):
+        """Get the number of workers to consume deployment q
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
+        :return: integer
+        """
+        return self.get("deployd_number_workers", 4)
+
+    def get_deployd_big_bounce_rate(self):
+        """Get the number of deploys to do per minute when deployd starts
+        or determines it needs to bounce all services
+
+        :return: integer
+        """
+        return self.get("deployd_big_bounce_rate", 2)
+
+    def get_deployd_log_level(self):
+        """Get the log level for paasta-deployd
+
+        :return: string name of python logging level, e.g. INFO, DEBUG etc.
+        """
+        return self.get("deployd_log_level", 'INFO')
+
+
+def _run(command, env=os.environ, timeout=None, log=False, stream=False,
+         stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1074,7 +1112,20 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
     try:
         if not isinstance(command, list):
             command = shlex.split(command)
-        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        popen_kwargs['stdout'] = PIPE
+        popen_kwargs['stderr'] = STDOUT
+        popen_kwargs['stdin'] = stdin
+        popen_kwargs['env'] = env
+        process = Popen(command, **popen_kwargs)
+
+        if stdin_interrupt:
+            def signal_handler(signum, frame):
+                process.stdin.write("\n")
+                process.stdin.flush()
+                process.wait()
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+
         process.name = command
         # start the timer if we specified a timeout
         if timeout:
@@ -1104,7 +1155,8 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
                     instance=instance,
                 )
         # when finished, get the exit code
-        returncode = process.wait()
+        process.wait()
+        returncode = process.returncode
     except OSError as e:
         if log:
             _log(
@@ -1829,6 +1881,7 @@ class _Timeout(object):
         self.func_thread = threading.Thread(target=self.run,
                                             args=args,
                                             kwargs=kwargs)
+        self.func_thread.daemon = True
         self.timeout = self.seconds + time.time()
         self.func_thread.start()
         return self.get_and_raise()

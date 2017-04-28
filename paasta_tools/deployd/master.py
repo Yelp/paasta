@@ -14,14 +14,13 @@ from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
+from paasta_tools.deployd.metrics import get_metrics_interface
+from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
-
-log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 
 class Inbox(PaastaThread):
@@ -44,10 +43,11 @@ class Inbox(PaastaThread):
         except Empty:
             service_instance = None
         if service_instance:
-            self.log.debug("Processing {} to decide if we need to add it to bounce q".format(service_instance))
+            self.log.debug("Processing {}.{} to see if we need to add it "
+                           "to bounce queue".format(service_instance.service,
+                                                    service_instance.instance))
             self.process_service_instance(service_instance)
         if self.inbox_q.empty() and self.to_bounce:
-            self.log.debug("Cleared inbox, checking if any services are ready to bounce")
             self.process_to_bounce()
         time.sleep(1)
 
@@ -60,7 +60,7 @@ class Inbox(PaastaThread):
     def should_add_to_bounce(self, service_instance, service_instance_key):
         if service_instance_key in self.to_bounce:
             if service_instance.bounce_by > self.to_bounce[service_instance_key].bounce_by:
-                self.log.debug("{} already in bounce q with higher priority".format(service_instance))
+                self.log.debug("{} already in bounce queue with higher priority".format(service_instance))
                 return False
         return True
 
@@ -81,6 +81,7 @@ class DeployDaemon(PaastaThread):
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
         self.config = load_system_paasta_config()
+        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
@@ -99,6 +100,8 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
+        self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
+        QueueMetrics(self.inbox_q, self.bounce_q, self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -123,17 +126,17 @@ class DeployDaemon(PaastaThread):
         self.control.put("ABORT")
 
     def start_workers(self):
-        for i in range(5):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q)
+        for i in range(self.config.get_deployd_number_workers()):
+            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.metrics)
             worker.start()
 
     def add_all_services(self):
         instances = get_services_for_cluster(cluster=self.config.get_cluster(),
                                              instance_type='marathon',
                                              soa_dir=DEFAULT_SOA_DIR)
-        instances_to_add = splay_instances(instances=instances,
-                                           splay_minutes=30,
-                                           watcher_name='daemon_start')
+        instances_to_add = rate_limit_instances(instances=instances,
+                                                number_per_minute=self.config.get_deployd_big_bounce_rate(),
+                                                watcher_name='daemon_start')
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
 
@@ -154,18 +157,19 @@ class DeployDaemon(PaastaThread):
             time.sleep(1)
 
 
-def splay_instances(instances, splay_minutes, watcher_name):
+def rate_limit_instances(instances, number_per_minute, watcher_name):
     service_instances = []
     if not instances:
         return []
     time_now = int(time.time())
-    time_step = int((splay_minutes * 60) / len(instances))
+    time_step = int(60 / number_per_minute)
     bounce_time = time_now
     for service, instance in instances:
         service_instances.append(ServiceInstance(service=service,
                                                  instance=instance,
                                                  watcher=watcher_name,
-                                                 bounce_by=bounce_time))
+                                                 bounce_by=bounce_time,
+                                                 bounce_timers=None))
         bounce_time += time_step
     return service_instances
 
