@@ -1,3 +1,11 @@
+paasta-tools (0.61.0) xenial; urgency=medium
+
+  * 0.61.0 tagged with 'make release'
+    Commit: Merge pull request #1171 from Yelp/remove-create-app-lock
+    Remove create_app_lock when creating marathon apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 28 Apr 2017 10:34:16 -0700
+
 paasta-tools (0.60.4) xenial; urgency=low
 
   * 0.60.4 tagged with 'make release'
