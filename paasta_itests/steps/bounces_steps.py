@@ -131,8 +131,7 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         'backoff_factor': 1,
         'constraints': constraints,
     }
-    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
+    bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
 @when('there are exactly {num:d} {which} {state} tasks')
@@ -184,8 +183,6 @@ def when_setup_service_initiated(context):
             app, context.service, "fake_nerve_ns", context.system_paasta_config)[:context.max_tasks],
     ), mock.patch(
         'paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True,
-    ), mock.patch(
-        'paasta_tools.bounce_lib.create_app_lock', autospec=True,
     ), mock.patch(
         'paasta_tools.bounce_lib.time.sleep', autospec=True,
     ), mock.patch(

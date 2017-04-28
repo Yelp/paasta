@@ -41,8 +41,7 @@ def create_trivial_marathon_app(context):
         'instances': 3,
         'constraints': [["hostname", "UNIQUE"]],
     }
-    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
+    paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
 
 
 @then('we should see it running in marathon')
