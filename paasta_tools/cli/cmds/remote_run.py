@@ -35,7 +35,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def start_args(parser):
+def add_start_args_to_parser(parser):
     parser.add_argument(
         '-C', '--cmd',
         help=('Run Docker container with particular command, '
@@ -60,7 +60,7 @@ def start_args(parser):
     )
 
 
-def common_args(parser):
+def add_common_args_to_parser(parser):
     parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect',
@@ -125,8 +125,8 @@ def add_subparser(subparsers):
         'start',
         help="Start task subcommand"
     )
-    start_args(start_parser)
-    common_args(start_parser)
+    add_start_args_to_parser(start_parser)
+    add_common_args_to_parser(start_parser)
     start_parser.add_argument(
         '-X', '--constraint',
         help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
@@ -142,7 +142,7 @@ def add_subparser(subparsers):
         'stop',
         help="Stop task subcommand"
     )
-    common_args(stop_parser)
+    add_common_args_to_parser(stop_parser)
     stop_parser.add_argument(
         '-F', '--framework-id',
         help='ID of framework to stop. Must belong to remote-run of selected service instance.',
@@ -154,7 +154,7 @@ def add_subparser(subparsers):
         'list',
         help="Stop task subcommand"
     )
-    common_args(list_parser)
+    add_common_args_to_parser(list_parser)
 
     main_parser.set_defaults(command=paasta_remote_run)
 

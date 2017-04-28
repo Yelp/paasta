@@ -28,8 +28,8 @@ from datetime import datetime
 
 import requests
 
-from paasta_tools.cli.cmds.remote_run import common_args
-from paasta_tools.cli.cmds.remote_run import start_args
+from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
+from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
@@ -47,8 +47,8 @@ def parse_args(argv):
     subs = parser.add_subparsers(dest='action', help='Subcommands of paasta_remote_run')
 
     start_parser = subs.add_parser('start', help='Start task')
-    start_args(start_parser)
-    common_args(start_parser)
+    add_start_args_to_parser(start_parser)
+    add_common_args_to_parser(start_parser)
     start_parser.add_argument(
         '-X', '--constraints-json',
         help=('Mesos constraints JSON'),
@@ -57,7 +57,7 @@ def parse_args(argv):
     )
 
     stop_parser = subs.add_parser('stop', help='Stop task')
-    common_args(stop_parser)
+    add_common_args_to_parser(stop_parser)
     stop_parser.add_argument(
         '-F', '--framework-id',
         help=('ID of framework to stop'),
@@ -66,7 +66,7 @@ def parse_args(argv):
     )
 
     list_parser = subs.add_parser('list', help='List tasks')
-    common_args(list_parser)
+    add_common_args_to_parser(list_parser)
 
     return parser.parse_args(argv)
 
