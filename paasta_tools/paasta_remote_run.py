@@ -196,7 +196,7 @@ def remote_run_stop(args):
                 os._exit(1)
 
             frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
-            found = [f for f in frameworks if re.search('%s$' % args.run_id, f['name']) is not None]
+            found = [f for f in frameworks if re.search(' %s$' % args.run_id, f['name']) is not None]
             if len(found) > 0:
                 framework_id = found[0]['id']
             else:
@@ -208,7 +208,7 @@ def remote_run_stop(args):
     else:
         frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
         found = [f for f in frameworks if f['id'] == framework_id]
-        if len(found) > 0 and re.search('^paasta-remote %s.%s' % (service, instance), found[0]['name']) is None:
+        if len(found) > 0 and re.search('^paasta-remote %s.%s ' % (service, instance), found[0]['name']) is None:
             paasta_print(
                 PaastaColors.red(
                     "Framework name %s does not match remote-run service instance %s.%s" %
@@ -218,7 +218,7 @@ def remote_run_stop(args):
     paasta_print("Tearing down framework %s." % framework_id)
     teardown = requests.post('http://localhost:5050/teardown', data="frameworkId=%s" % framework_id)
     if teardown.status_code == 200:
-        paasta_print("OK")
+        paasta_print(PaastaColors.green("OK"))
     else:
         paasta_print(teardown.text)
 
