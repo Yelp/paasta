@@ -615,7 +615,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         popen_kwargs = {}
 
     cmd_parts = [
-        'ssh', '-q', '-o', 'StrictHostKeyChecking no', '-t', '-t', '-A',
+        'ssh', '-q', '-t', '-t', '-A',
         master, "/bin/bash", "-c", quote(' '.join(cmd_parts))
     ]
 
