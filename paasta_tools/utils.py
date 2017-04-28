@@ -1064,6 +1064,28 @@ class SystemPaastaConfig(dict):
         """
         return self.get("security_check_command", None)
 
+    def get_deployd_number_workers(self):
+        """Get the number of workers to consume deployment q
+
+        :return: integer
+        """
+        return self.get("deployd_number_workers", 4)
+
+    def get_deployd_big_bounce_rate(self):
+        """Get the number of deploys to do per minute when deployd starts
+        or determines it needs to bounce all services
+
+        :return: integer
+        """
+        return self.get("deployd_big_bounce_rate", 2)
+
+    def get_deployd_log_level(self):
+        """Get the log level for paasta-deployd
+
+        :return: string name of python logging level, e.g. INFO, DEBUG etc.
+        """
+        return self.get("deployd_log_level", 'INFO')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False,
          stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
