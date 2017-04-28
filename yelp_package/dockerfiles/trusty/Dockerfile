@@ -14,6 +14,9 @@
 
 FROM ubuntu:trusty
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 

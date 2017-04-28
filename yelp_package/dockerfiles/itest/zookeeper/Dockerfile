@@ -13,6 +13,9 @@
 # limitations under the License.
 
 FROM ubuntu:trusty
+
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update > /dev/null && apt-get -y install zookeeper > /dev/null
 
 EXPOSE 2181

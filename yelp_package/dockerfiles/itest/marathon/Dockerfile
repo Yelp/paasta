@@ -14,6 +14,9 @@
 
 FROM ubuntu:trusty
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+
 RUN apt-get update > /dev/null && apt-get -y install apt-transport-https > /dev/null
 
 RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
