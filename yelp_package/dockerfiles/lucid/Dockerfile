@@ -15,6 +15,7 @@
 FROM docker-dev.yelpcorp.com/lucid_pkgbuild
 MAINTAINER Kyle Anderson <kwa@yelp.com>
 
+ENV DEBIAN_FRONTEND=noninteractive
 # Make sure we get a package suitable for building this package correctly.
 # Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
 # Which at this time is in this package

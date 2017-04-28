@@ -14,10 +14,12 @@
 
 FROM ubuntu:xenial
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-RUN apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         debhelper \
         dpkg-dev \
         gcc \

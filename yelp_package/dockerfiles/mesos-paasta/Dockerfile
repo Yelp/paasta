@@ -1,4 +1,5 @@
 FROM examplecluster_mesosbase
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update > /dev/null && apt-get -y install python-tox python-setuptools \
   python-dev libyaml-dev openssh-server libffi-dev libssl-dev > /dev/null
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
