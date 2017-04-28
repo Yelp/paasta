@@ -614,8 +614,10 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         stdin_interrupt = False
         popen_kwargs = {}
 
-    cmd_parts = ['ssh', '-t', '-t', '-A', master, "/bin/bash", "-c", quote(' '.join(cmd_parts))]
-    paasta_print(' '.join(cmd_parts))
+    cmd_parts = [
+        'ssh', '-q', '-o', 'StrictHostKeyChecking no', '-t', '-t', '-A',
+        master, "/bin/bash", "-c", quote(' '.join(cmd_parts))
+    ]
 
     if dry:
         return (0, "Would have run: %s" % ' '.join(cmd_parts))

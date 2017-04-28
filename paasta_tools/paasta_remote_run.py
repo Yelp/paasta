@@ -19,11 +19,14 @@ import argparse
 import json
 import os
 import random
+import re
 import signal
 import string
 import sys
 import threading
 from datetime import datetime
+
+import requests
 
 from paasta_tools.cli.cmds.remote_run import common_args
 from paasta_tools.cli.cmds.remote_run import start_args
@@ -55,6 +58,12 @@ def parse_args(argv):
 
     stop_parser = subs.add_parser('stop', help='Stop task')
     common_args(stop_parser)
+    stop_parser.add_argument(
+        '-F', '--framework-id',
+        help=('ID of framework to stop'),
+        required=False,
+        default=None,
+    )
 
     list_parser = subs.add_parser('list', help='List tasks')
     common_args(list_parser)
@@ -62,7 +71,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def remote_run_start(args):
+def extract_args(args):
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
@@ -87,18 +96,23 @@ def remote_run_start(args):
             sep='\n',
             file=sys.stderr,
         )
-        return 1
+        os._exit(1)
 
     soa_dir = args.yelpsoa_config_root
-    dry_run = args.dry_run
     instance = args.instance
-    command = args.cmd
-
     if instance is None:
         instance_type = 'adhoc'
         instance = 'remote'
     else:
         instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+
+    return (system_paasta_config, service, cluster, soa_dir, instance, instance_type)
+
+
+def remote_run_start(args):
+    system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
+    dry_run = args.dry_run
+    command = args.cmd
 
     overrides_dict = {}
 
@@ -147,8 +161,8 @@ def remote_run_start(args):
     driver = create_driver(
         framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
-            run_id,
-            datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+            datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
+            run_id
         ),
         scheduler=scheduler,
         system_paasta_config=system_paasta_config
@@ -168,23 +182,78 @@ def remote_run_start(args):
 
 
 def remote_run_stop(args):
-    pass
+    paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
+    # native_config = paasta_config.get_paasta_native_config()
+    # credential = mesos_pb2.Credential()
+    # credential.principal = native_config()['principal']
+    # credential.secret = native_config()['secret']
+    # mesos_uri = '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT)
+    framework_id = args.framework_id
+    if framework_id is None:
+        if args.run_id is not None:
+            if re.match('\s', args.run_id):
+                paasta_print(PaastaColors.red("Run id must not contain whitespace."))
+                os._exit(1)
+
+            frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
+            found = [f for f in frameworks if re.search('%s$' % args.run_id, f['name']) is not None]
+            if len(found) > 0:
+                framework_id = found[0]['id']
+            else:
+                paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
+                os._exit(1)
+        else:
+            paasta_print(PaastaColors.red("Must provide either run id or frameowk id to stop."))
+            os._exit(1)
+    else:
+        frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
+        found = [f for f in frameworks if f['id'] == framework_id]
+        if len(found) > 0 and re.search('^paasta-remote %s.%s' % (service, instance), found[0]['name']) is None:
+            paasta_print(
+                PaastaColors.red(
+                    "Framework name %s does not match remote-run service instance %s.%s" %
+                    (found[0]['name'], service, instance)))
+            os._exit(1)
+
+    paasta_print("Tearing down framework %s." % framework_id)
+    teardown = requests.post('http://localhost:5050/teardown', data="frameworkId=%s" % framework_id)
+    if teardown.status_code == 200:
+        paasta_print("OK")
+    else:
+        paasta_print(teardown.text)
 
 
 def remote_run_list(args):
-    pass
+    paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
+    # native_config = paasta_config.get_paasta_native_config()
+    # credential = mesos_pb2.Credential()
+    # credential.principal = native_config()['principal']
+    # credential.secret = native_config()['secret']
+    # mesos_uri = '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT)
+    frameworks = requests.get('http://localhost:5050/frameworks').json()['frameworks']
+    prefix = "paasta-remote %s.%s" % (service, instance)
+    filtered = [f for f in frameworks if f['name'].startswith(prefix)]
+    filtered.sort(key=lambda x: x['name'])
+    for f in filtered:
+        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f['name']).groups()
+        paasta_print("Launch time: %s, run id: %s, framework id: %s" %
+                     (launch_time, run_id, f['id']))
+    if len(filtered) > 0:
+        paasta_print(
+            "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
+            (service, cluster, instance))
+    else:
+        paasta_print("Nothing found.")
 
 
 def main(argv):
     args = parse_args(argv)
-    if args.action == 'start':
-        remote_run_start(args)
-    elif args.action == 'stop':
-        remote_run_stop(args)
-    elif args.action == 'list':
-        remote_run_list(args)
-    else:
-        paasta_print("Unknown action: %s" % args.action)
+    actions = {
+        'start': remote_run_start,
+        'stop': remote_run_stop,
+        'list': remote_run_list
+    }
+    actions[args.action](args)
 
 
 if __name__ == '__main__':

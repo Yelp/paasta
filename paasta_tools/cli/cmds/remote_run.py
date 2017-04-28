@@ -58,19 +58,6 @@ def start_args(parser):
         default=60,
         type=float,
     )
-    parser.add_argument(
-        '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
-        required=False,
-        default=None,
-    ).completer = lazy_choices_completer(list_instances)
-    parser.add_argument(
-        '-d', '--dry-run',
-        help='Don\'t launch the task',
-        action='count',
-        required=False,
-        default=0,
-    )
 
 
 def common_args(parser):
@@ -103,6 +90,19 @@ def common_args(parser):
         required=False,
         default=None,
     )
+    parser.add_argument(
+        '-d', '--dry-run',
+        help='Don\'t launch the task',
+        action='count',
+        required=False,
+        default=0,
+    )
+    parser.add_argument(
+        '-i', '--instance',
+        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
+        required=False,
+        default=None,
+    ).completer = lazy_choices_completer(list_instances)
 
 
 def add_subparser(subparsers):
@@ -143,6 +143,12 @@ def add_subparser(subparsers):
         help="Stop task subcommand"
     )
     common_args(stop_parser)
+    stop_parser.add_argument(
+        '-F', '--framework-id',
+        help='ID of framework to stop. Must belong to remote-run of selected service instance.',
+        required=False,
+        default=None
+    )
 
     list_parser = main_subs.add_parser(
         'list',
@@ -154,8 +160,6 @@ def add_subparser(subparsers):
 
 
 def paasta_remote_run(args):
-    print(args)
-
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
@@ -180,6 +184,7 @@ def paasta_remote_run(args):
         'staging_timeout': None,
         'detach': False,
         'run_id': None,
+        'framework_id': None,
     }
     for key in args_vars:
         # skip args we don't know about
@@ -210,7 +215,7 @@ def paasta_remote_run(args):
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
         dry=args.dry_run > 1,
-        graceful_exit=not args.detach)
+        graceful_exit=args.action == 'start' and not args.detach)
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
