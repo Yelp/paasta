@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+
 class DockerTaskConfigs(object):
     def __init__(self, image, cmd, cpus, mem, disk, volumes, ports):
         self.image = image

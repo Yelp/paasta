@@ -4,14 +4,14 @@ from __future__ import unicode_literals
 
 import threading
 
-from mesos.interface import mesos_pb2
 import mesos.native
-
 from framework import MesosScheduler
+from mesos.interface import mesos_pb2
 
 
 class MesosTaskExecution(object):
     """ Interface for task execution."""
+
     def __init__(self, docker_configs):
         """
         Constructs the instance of a task execution, encapsulating all state required to run,
@@ -39,7 +39,8 @@ class MesosTaskExecution(object):
     def run_mesos_driver(self):
         status = 0 if self.driver.run() == mesos_pb2.DRIVER_STOPPED else 1
         # Ensure that the driver process terminates.
-        self.driver.stop();
+        self.driver.stop()
+        exit(status)
 
     def run(self):
         """
@@ -55,7 +56,6 @@ class MesosTaskExecution(object):
         thread = threading.Thread(target=self.run_mesos_driver, args=())
         thread.daemon = True
         thread.start()
-
 
     def kill(self, task_status=None):
         """ Stop the instance of the task """

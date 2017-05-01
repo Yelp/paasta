@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
 
-from mesos_task_execution import MesosTaskExecution
 from docker_task_configs import DockerTaskConfigs
+from mesos_task_execution import MesosTaskExecution
 
 
 def main():
-    print "here"
     d = DockerTaskConfigs(
         image="ubuntu:14.04",
         cmd="/bin/sleep 120",

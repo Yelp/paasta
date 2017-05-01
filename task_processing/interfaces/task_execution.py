@@ -2,8 +2,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+
 class TaskExecution(object):
     """ Interface for task execution."""
+
     def __init__(self, **executor_arguments):
         """
         Constructs the instance of a task execution, encapsulating all state required to run,
