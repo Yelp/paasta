@@ -93,9 +93,9 @@ def add_common_args_to_parser(parser):
     parser.add_argument(
         '-d', '--dry-run',
         help='Don\'t launch the task',
-        action='count',
+        action='store_true',
         required=False,
-        default=0,
+        default=False,
     )
     parser.add_argument(
         '-i', '--instance',
@@ -181,6 +181,7 @@ def paasta_remote_run(args):
         'yelpsoa_config_root': DEFAULT_SOA_DIR,
         'cmd': None,
         'verbose': True,
+        'dry_run': False,
         'staging_timeout': None,
         'detach': False,
         'run_id': None,
@@ -208,13 +209,8 @@ def paasta_remote_run(args):
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
-    if args.dry_run > 0:
-        cmd_parts.append('--dry-run')
-
-    paasta_print('Running on master: %s' % ' '.join(cmd_parts))
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        dry=args.dry_run > 1,
         graceful_exit=args.action == 'start' and not args.detach)
 
     # Status results are streamed. This print is for possible error messages.
