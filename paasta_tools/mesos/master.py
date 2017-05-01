@@ -69,7 +69,7 @@ class MesosMaster(object):
         return "{}://{}".format(self.config["scheme"], self.resolve(self.config["master"]))
 
     @log.duration
-    def request(self, url, method=requests.get, **kwargs):
+    def _request(self, url, method=requests.get, **kwargs):
         try:
             return method(
                 urljoin(self.host, url),
@@ -79,10 +79,10 @@ class MesosMaster(object):
             raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
 
     def fetch(self, url, **kwargs):
-        return self.request(url, **kwargs)
+        return self._request(url, **kwargs)
 
     def post(self, url, **kwargs):
-        return self.request(url, method=requests.post, **kwargs)
+        return self._request(url, method=requests.post, **kwargs)
 
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
