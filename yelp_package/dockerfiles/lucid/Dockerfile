@@ -15,10 +15,11 @@
 FROM docker-dev.yelpcorp.com/lucid_pkgbuild
 MAINTAINER Kyle Anderson <kwa@yelp.com>
 
+ENV DEBIAN_FRONTEND=noninteractive
 # Make sure we get a package suitable for building this package correctly.
 # Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
 # Which at this time is in this package
-RUN apt-get update && apt-get -y install dpkg-dev python-pip python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git
+RUN apt-get update > /dev/null && apt-get -y install dpkg-dev python-pip python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git > /dev/null
 
 RUN pip install -U virtualenv==15.1.0 tox==2.6.0
 
