@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 import datetime
 import socket
+import time
 
 from paasta_tools import remote_git
 from paasta_tools import utils
@@ -205,6 +206,7 @@ def paasta_start_or_stop(args, desired_state):
     try:
         with Timeout(seconds=git_timeout):
             try:
+                time.sleep(15)
                 remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
             except remote_git.LSRemoteException as e:
                 msg = (
