@@ -340,6 +340,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.instance = 'fake_instance'
     args.healthcheck = False
     args.healthcheck_only = False
+    args.user_port = None
     args.interactive = False
     args.dry_run_json_dict = False
 
@@ -364,6 +365,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         command=mock_get_instance_config.return_value.get_cmd.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
+        user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
@@ -392,6 +394,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.service = fake_service
     args.healthcheck = False
     args.healthcheck_only = False
+    args.user_port = None
     args.instance = 'fake_instance'
     args.interactive = True
     args.dry_run_json_dict = False
@@ -417,6 +420,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
+        user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
@@ -450,6 +454,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.instance = 'fake_instance'
     args.healthcheck = False
     args.healthcheck_only = False
+    args.user_port = None
     args.interactive = True
     args.dry_run_json_dict = False
 
@@ -476,6 +481,7 @@ def test_configure_and_run_pulls_image_when_asked(
         command='bash',
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
+        user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
@@ -504,6 +510,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
         args.service = 'fake_service'
         args.healthcheck = False
         args.healthcheck_only = False
+        args.user_port = None
         args.interactive = False
         args.dry_run_json_dict = False
 
@@ -530,6 +537,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             command='bash',
             healthcheck=args.healthcheck,
             healthcheck_only=args.healthcheck_only,
+            user_port=args.user_port,
             instance_config=mock_config,
             soa_dir=args.yelpsoa_config_root,
             dry_run=False,
@@ -592,7 +600,7 @@ def test_run_cook_image_fails(
 
 def test_get_docker_run_cmd_without_additional_args():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -601,7 +609,7 @@ def test_get_docker_run_cmd_without_additional_args():
     command = None
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
@@ -611,7 +619,7 @@ def test_get_docker_run_cmd_without_additional_args():
 
 def test_get_docker_run_cmd_with_env_vars():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {'foo': 'bar', 'baz': 'qux', 'x': ' with spaces'}
@@ -620,7 +628,7 @@ def test_get_docker_run_cmd_with_env_vars():
     command = None
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     assert "--env='foo=bar'" in actual
     assert "--env='baz=qux'" in actual
@@ -628,7 +636,7 @@ def test_get_docker_run_cmd_with_env_vars():
 
 def test_get_docker_run_cmd_interactive_false():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -637,11 +645,11 @@ def test_get_docker_run_cmd_interactive_false():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--memory=%dm' % memory in actual
-    assert any(['--publish=%s' % random_port in arg for arg in actual])
+    assert any(['--publish=%s' % chosen_port in arg for arg in actual])
     assert '--name=%s' % container_name in actual
     assert all(['--volume=%s' % volume in actual for volume in volumes])
     assert '--detach=true' in actual
@@ -653,7 +661,7 @@ def test_get_docker_run_cmd_interactive_false():
 
 def test_get_docker_run_cmd_interactive_true():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -662,7 +670,7 @@ def test_get_docker_run_cmd_interactive_true():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--interactive=true' in actual
@@ -671,7 +679,7 @@ def test_get_docker_run_cmd_interactive_true():
 
 def test_get_docker_run_docker_params():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -682,7 +690,7 @@ def test_get_docker_run_docker_params():
     docker_params = [{'key': 'memory-swap', 'value': '%sm' % memory},
                      {'key': 'cpu-period', 'value': '200000'},
                      {'key': 'cpu-quota', 'value': '150000'}]
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
     assert '--memory-swap=555m' in actual
     assert '--cpu-period=200000' in actual
@@ -691,7 +699,7 @@ def test_get_docker_run_docker_params():
 
 def test_get_docker_run_cmd_host_networking():
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -700,7 +708,7 @@ def test_get_docker_run_cmd_host_networking():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert '--net=host' in actual
@@ -709,7 +717,7 @@ def test_get_docker_run_cmd_host_networking():
 def test_get_docker_run_cmd_quote_cmd():
     # Regression test to ensure we properly quote multiword custom commands
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -718,7 +726,7 @@ def test_get_docker_run_cmd_quote_cmd():
     command = 'make test'
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert actual[-3:] == ['sh', '-c', 'make test']
@@ -727,7 +735,7 @@ def test_get_docker_run_cmd_quote_cmd():
 def test_get_docker_run_cmd_quote_list():
     # Regression test to ensure we properly quote array custom commands
     memory = 555
-    random_port = 666
+    chosen_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
@@ -736,7 +744,7 @@ def test_get_docker_run_cmd_quote_list():
     command = ['zsh', '-c', 'make test']
     net = 'host'
     docker_params = []
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+    actual = get_docker_run_cmd(memory, chosen_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
 
     assert actual[-3:] == ['zsh', '-c', 'make test']
@@ -807,6 +815,7 @@ def test_run_docker_container_non_interactive(
         command='fake_command',
         healthcheck=False,
         healthcheck_only=False,
+        user_port=None,
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
@@ -855,6 +864,7 @@ def test_run_docker_container_interactive(
         command='fake_command',
         healthcheck=False,
         healthcheck_only=False,
+        user_port=None,
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
@@ -907,6 +917,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
         command='fake_command',
         healthcheck=False,
         healthcheck_only=False,
+        user_port=None,
         instance_config=mock_service_manifest,
     )
     assert mock_docker_client.stop.call_count == 1
@@ -951,6 +962,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             command='fake_command',
             healthcheck=False,
             healthcheck_only=False,
+            user_port=None,
             instance_config=mock_service_manifest,
         )
     # Cleanup wont' be necessary and the function should bail out early.
@@ -995,6 +1007,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             command='fake_command',
             healthcheck=False,
             healthcheck_only=True,
+            user_port=None,
             instance_config=mock_service_manifest,
             soa_dir='fake_soa_dir',
         )
@@ -1047,6 +1060,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             command='fake_command',
             healthcheck=True,
             healthcheck_only=True,
+            user_port=None,
             instance_config=mock_service_manifest,
         )
     assert mock_docker_client.stop.call_count == 1
@@ -1098,6 +1112,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
             command='fake_command',
             healthcheck=True,
             healthcheck_only=True,
+            user_port=None,
             instance_config=mock_service_manifest,
         )
     assert mock_docker_client.stop.call_count == 1
@@ -1105,6 +1120,44 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert excinfo.value.code == 1
     assert ATTACH_OUTPUT in capfd.readouterr()[0]
 
+
+@mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
+            autospec=True,
+            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+            )
+def test_run_docker_container_with_user_specified_port(
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlp,
+    mock_pick_random_port,
+):
+    mock_pick_random_port.return_value = 666 # we dont want it running on this port
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest.get_net.return_value = 'bridge'
+    mock_service_manifest.get_env_dictionary.return_value = {}
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service='fake_service',
+        instance='fake_instance',
+        docker_hash='fake_hash',
+        volumes=[],
+        interactive=False,
+        command='fake_command',
+        healthcheck=False,
+        healthcheck_only=False,
+        user_port=1234,
+        instance_config=mock_service_manifest,
+    )
+    mock_service_manifest.get_mem.assert_called_once_with()
+    mock_pick_random_port.assert_not_called() # Don't pick a random port, use the user chosen one
+    docker_run_args = mock_run.call_args[0][0]
+    assert "--publish=1234:8888" in docker_run_args
 
 @mock.patch('time.sleep', autospec=True)
 def test_simulate_healthcheck_on_service_disabled(mock_sleep):
