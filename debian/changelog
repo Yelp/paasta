@@ -1,3 +1,11 @@
+paasta-tools (0.62.0) xenial; urgency=medium
+
+  * 0.62.0 tagged with 'make release'
+    Commit: Merge pull request #1177 from Yelp/remote-run-sudo  sudo
+    remote-run on mesos master
+
+ -- robj <robj@robj-MacBookPro>  Tue, 02 May 2017 12:07:41 -0700
+
 paasta-tools (0.61.0) xenial; urgency=medium
 
   * 0.61.0 tagged with 'make release'
