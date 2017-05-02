@@ -209,9 +209,10 @@ def paasta_remote_run(args):
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
+    graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        graceful_exit=args.action == 'start' and not args.detach)
+        graceful_exit=graceful_exit)
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:

@@ -582,8 +582,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, shell=False, err_code=-1,
-                  graceful_exit=True, stdin=None):
+                  timeout=None, err_code=-1, graceful_exit=False, stdin=None):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -594,7 +593,6 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     :param cmd_parts: passed into paasta_tools.utils._run as command along with
         ssh bits
     :param timeout: see paasta_tools.utils._run documentation (default: None)
-    :param shell: prepend :cmd_parts: with 'sh -c' (default: False)
     :param err_code: code to return along with error message when something goes
         wrong (default: -1)
     :param graceful_exit: wrap command in a bash script that waits for input and
@@ -606,18 +604,24 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         return (err_code, str(e))
 
     if graceful_exit:
-        cmd_parts.append("; kill $$ & read; kill $!; wait")
+        # signals don't travel over ssh, kill process when anything lands on stdin instead
+        cmd_parts.append(
+            # send process to background and capture it's pid
+            '& p=$!; ' +
+            # wait for stdin with timeout in a loop, exit when original process finished
+            'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
+            # kill original process if loop finished (something on stdin)
+            'kill $p'
+        )
         stdin = subprocess.PIPE
         stdin_interrupt = True
         popen_kwargs = {'preexec_fn': os.setsid}
     else:
         stdin_interrupt = False
         popen_kwargs = {}
+        cmd = ' '.join(cmd_parts)
 
-    cmd_parts = [
-        'ssh', '-q', '-t', '-t', '-A',
-        master, "/bin/bash", "-c", quote(' '.join(cmd_parts))
-    ]
+    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "/bin/bash -c %s" % quote(cmd)]
 
     log.debug("Running %s" % ' '.join(cmd_parts))
 

@@ -187,7 +187,11 @@ def remote_run_stop(args):
         paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
         os._exit(1)
 
-    frameworks = get_all_frameworks(active_only=True)
+    frameworks = [
+        f
+        for f in get_all_frameworks(active_only=True)
+        if re.search('^paasta-remote %s.%s' % (service, instance), f.name)
+    ]
     framework_id = args.framework_id
     if framework_id is None:
         if re.match('\s', args.run_id):
@@ -202,11 +206,11 @@ def remote_run_stop(args):
             os._exit(1)
     else:
         found = [f for f in frameworks if f.id == framework_id]
-        if len(found) > 0 and re.search('^paasta-remote %s.%s ' % (service, instance), found[0].name) is None:
+        if len(found) == 0:
             paasta_print(
                 PaastaColors.red(
-                    "Framework name %s does not match remote-run service instance %s.%s" %
-                    (found[0].name, service, instance)))
+                    "Framework id %s does not match any %s.%s remote-run. Check status to find the correct id." %
+                    (framework_id, service, instance)))
             os._exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
