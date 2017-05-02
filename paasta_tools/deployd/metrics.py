@@ -1,9 +1,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
 import time
 
 from paasta_tools.deployd.common import PaastaThread
+
+log = logging.getLogger(__name__)
 
 try:
     import yelp_meteorite
@@ -29,24 +32,30 @@ def get_metrics_interface(name):
 
 @register_metrics_interface(None)
 class NoMetrics(object):
-    def create_timer(self, *args, **kwargs):
-        return Timer()
+    def create_timer(self, name, **kwargs):
+        return Timer(name)
 
-    def create_gauge(self, *args, **kwargs):
-        return Gauge()
+    def create_gauge(self, name, **kwargs):
+        return Gauge(name)
 
 
 class Timer(object):
+    def __init__(self, name):
+        self.name = name
+
     def start(self):
-        pass
+        log.debug("gauge {} start".format(self.name))
 
     def stop(self):
-        pass
+        log.debug("gauge {} start".format(self.name))
 
 
 class Gauge(object):
+    def __init__(self, name):
+        self.name = name
+
     def set(self, value):
-        pass
+        log.debug("gauge {} set to {}".format(self.name, value))
 
 
 @register_metrics_interface('meteorite')
@@ -63,17 +72,20 @@ class MeteoriteMetrics(object):
 
 
 class QueueMetrics(PaastaThread):
-    def __init__(self, inbox_q, bounce_q, metrics_provider):
+    def __init__(self, inbox, bounce_q, metrics_provider):
         super(QueueMetrics, self).__init__()
         self.daemon = True
-        self.inbox_q = inbox_q
+        self.inbox_q = inbox.inbox_q
+        self.inbox = inbox.to_bounce
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
         self.inbox_q_gauge = self.metrics.create_gauge("inbox_queue")
+        self.inbox_gauge = self.metrics.create_gauge("inbox")
         self.bounce_q_gauge = self.metrics.create_gauge("bounce_queue")
 
     def run(self):
         while True:
             self.inbox_q_gauge.set(self.inbox_q.qsize())
+            self.inbox_gauge.set(len(self.inbox.keys()))
             self.bounce_q_gauge.set(self.bounce_q.qsize())
             time.sleep(20)
