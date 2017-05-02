@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 import time
+from functools import reduce
 
 import pyinotify
 
