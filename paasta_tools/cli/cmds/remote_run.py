@@ -35,7 +35,32 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_remote_run_args(parser):
+def add_start_args_to_parser(parser):
+    parser.add_argument(
+        '-C', '--cmd',
+        help=('Run Docker container with particular command, '
+              'for example: "bash". By default will use the command or args specified by the '
+              'soa-configs or what was specified in the Dockerfile'),
+        required=False,
+        default=None,
+    )
+    parser.add_argument(
+        '-D', '--detach',
+        help='Launch in background',
+        action='store_true',
+        required=False,
+        default=False,
+    )
+    parser.add_argument(
+        '-t', '--staging-timeout',
+        help='A timeout for the task to be launching before killed',
+        required=False,
+        default=60,
+        type=float,
+    )
+
+
+def add_common_args_to_parser(parser):
     parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect',
@@ -52,31 +77,18 @@ def add_remote_run_args(parser):
         default=DEFAULT_SOA_DIR,
     )
     parser.add_argument(
-        '--json-dict',
-        help='When running dry run, output the arguments as a json dict',
-        action='store_true',
-        dest='dry_run_json_dict',
-    )
-    parser.add_argument(
-        '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
-        required=False,
-        default=None,
-    )
-    parser.add_argument(
-        '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
-        required=False,
-        default=None,
-    ).completer = lazy_choices_completer(list_instances)
-    parser.add_argument(
         '-v', '--verbose',
         help='Show Docker commands output',
         action='store_true',
         required=False,
-        default=True,
+        default=False,
+    )
+    parser.add_argument(
+        '-R', '--run-id',
+        help='Identifier to assign/refer to individual task runs',
+        action='store',
+        required=False,
+        default=None,
     )
     parser.add_argument(
         '-d', '--dry-run',
@@ -86,16 +98,15 @@ def add_remote_run_args(parser):
         default=False,
     )
     parser.add_argument(
-        '-t', '--staging-timeout',
-        help='A timeout for the task to be launching before killed',
+        '-i', '--instance',
+        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
         required=False,
-        default=60,
-        type=float,
-    )
+        default=None,
+    ).completer = lazy_choices_completer(list_instances)
 
 
 def add_subparser(subparsers):
-    list_parser = subparsers.add_parser(
+    main_parser = subparsers.add_parser(
         'remote-run',
         help="Schedule Mesos to run adhoc command in context of a service",
         description=(
@@ -107,15 +118,16 @@ def add_subparser(subparsers):
             "Note: 'paasta remote-run' Mesos API that may require authentication."
         ),
     )
-    add_remote_run_args(list_parser)
-    list_parser.add_argument(
-        '-D', '--very-dry-run',
-        help='Don\'t ssh into mesos-master',
-        action='store_true',
-        required=False,
-        default=False,
+
+    main_subs = main_parser.add_subparsers(dest='action', help='Subcommands of remote-run')
+
+    start_parser = main_subs.add_parser(
+        'start',
+        help="Start task subcommand"
     )
-    list_parser.add_argument(
+    add_start_args_to_parser(start_parser)
+    add_common_args_to_parser(start_parser)
+    start_parser.add_argument(
         '-X', '--constraint',
         help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
         'the following: EQUALS matches attribute value exactly, LIKE and '
@@ -125,7 +137,26 @@ def add_subparser(subparsers):
         action='append',
         default=[]
     )
-    list_parser.set_defaults(command=paasta_remote_run)
+
+    stop_parser = main_subs.add_parser(
+        'stop',
+        help="Stop task subcommand"
+    )
+    add_common_args_to_parser(stop_parser)
+    stop_parser.add_argument(
+        '-F', '--framework-id',
+        help='ID of framework to stop. Must belong to remote-run of selected service instance.',
+        required=False,
+        default=None
+    )
+
+    list_parser = main_subs.add_parser(
+        'list',
+        help="Stop task subcommand"
+    )
+    add_common_args_to_parser(list_parser)
+
+    main_parser.set_defaults(command=paasta_remote_run)
 
 
 def paasta_remote_run(args):
@@ -142,17 +173,19 @@ def paasta_remote_run(args):
         )
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
-    cmd_parts = ['/usr/bin/paasta_remote_run']
+    cmd_parts = ['/usr/bin/paasta_remote_run', args.action]
     args_vars = vars(args)
     args_keys = {
         'service': None,
         'cluster': None,
         'yelpsoa_config_root': DEFAULT_SOA_DIR,
-        'json_dict': False,
         'cmd': None,
         'verbose': True,
         'dry_run': False,
         'staging_timeout': None,
+        'detach': False,
+        'run_id': None,
+        'framework_id': None,
     }
     for key in args_vars:
         # skip args we don't know about
@@ -176,10 +209,10 @@ def paasta_remote_run(args):
     if len(constraints) > 0:
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
-    paasta_print('Running on master: %s' % ' '.join(cmd_parts))
+    graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        dry=args.very_dry_run)
+        graceful_exit=graceful_exit)
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:

@@ -51,7 +51,7 @@ class AdhocScheduler(NativeScheduler):
                     tasks_and_state_for_offer(driver, offer, state)
                 paasta_print("Would have launched: ", tasks)
             driver.stop()
-            return None, state
+            return [], state
 
         return super(AdhocScheduler, self). \
             tasks_and_state_for_offer(driver, offer, state)

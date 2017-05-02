@@ -163,7 +163,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                     tasks, new_state = self.tasks_and_state_for_offer(
                         driver, offer, self.constraint_state)
 
-                    if len(tasks) > 0:
+                    if tasks is not None and len(tasks) > 0:
                         operation = mesos_pb2.Offer.Operation()
                         operation.type = mesos_pb2.Offer.Operation.LAUNCH
                         operation.launch.task_infos.extend(tasks)
