@@ -124,21 +124,21 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=True) == 'instance2'
+    assert instances_out.get(block=False) == 'instance2'
 
     cluster_data.instances_queue = Queue()
     cluster_data.instances_queue.put('instance3')
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=True) == 'instance3'
+    assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
     cluster_data.instances_queue.put('instance4')
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=True) == 'instance4'
+    assert instances_out.get(block=False) == 'instance4'
 
     cluster_data.instances_queue = Queue()
     cluster_data.instances_queue.put('instance5')
