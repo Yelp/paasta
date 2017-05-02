@@ -323,12 +323,41 @@ class ClusterAutoscaler(ResourceLogMixin):
         self.log.debug("IPs in AWS resources: {}".format(ips))
         slaves = [slave for slave in slaves_list if slave_pid_to_ip(slave['task_counts'].slave['pid']) in ips]
         slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
-        instance_descriptions = self.describe_instances([], region=self.resource['region'],
-                                                        instance_filters=[{'Name': 'private-ip-address',
-                                                                           'Values': slave_ips}])
+        instance_descriptions = self.describe_instances(
+            instances=[],
+            region=self.resource['region'],
+            instance_filters=[
+                {
+                    'Name': 'private-ip-address',
+                    'Values': slave_ips
+                }
+            ]
+        )
         instance_type_weights = self.get_instance_type_weights()
-        slave_instances = [PaastaAwsSlave(slave, instance_descriptions, instance_type_weights) for slave in slaves]
-        return slave_instances
+        paasta_aws_slaves = []
+        for slave in slaves:
+            matching_descriptions = [
+                i for i in instance_descriptions
+                if slave_pid_to_ip(slave['task_counts'].slave['pid'])
+                == i['PrivateIpAddress']
+            ]
+            if matching_descriptions:
+                if len(matching_descriptions) > 1:
+                    log.error("Found more than one instance with the same private IP {0}. "
+                              "This should never happen")
+                    raise ClusterAutoscalingError
+            else:
+                description=None
+
+            paasta_aws_slaves.append(
+                PaastaAwsSlave(
+                    slave=slave,
+                    instance_description=description,
+                    instance_type_weights=instance_type_weights
+                )
+            )
+
+        return paasta_aws_slaves
 
     def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
@@ -664,24 +693,20 @@ class PaastaAwsSlave(object):
     object from mesos state and some properties from AWS
     """
 
-    def __init__(self, slave, instance_descriptions, instance_type_weights=None):
+    def __init__(self, slave, instance_description, instance_type_weights=None):
         self.wrapped_slave = slave
-        self.instance_descriptions = instance_descriptions
+        self.instance_description = instance_description
         self.instance_type_weights = instance_type_weights
         self.task_counts = slave['task_counts']
         self.slave = self.task_counts.slave
         self.ip = slave_pid_to_ip(self.slave['pid'])
-        self.instances = get_instances_from_ip(self.ip, self.instance_descriptions)
+        self.instances = instance_description
 
     @property
     def instance(self):
         if not self.instances:
             log.warning("Couldn't find instance for ip {}".format(self.ip))
             return None
-        if len(self.instances) > 1:
-            log.error("Found more than one instance with the same private IP {0}. "
-                      "This should never happen")
-            raise ClusterAutoscalingError
         return self.instances[0]
 
     @property
@@ -698,9 +723,7 @@ class PaastaAwsSlave(object):
 
     @property
     def instance_type(self):
-        instance_description = [instance_description for instance_description in self.instance_descriptions
-                                if instance_description['InstanceId'] == self.instance_id][0]
-        return instance_description['InstanceType']
+        return self.instance_description['InstanceType']
 
     @property
     def instance_weight(self):
