@@ -38,6 +38,7 @@ from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -97,10 +98,13 @@ def get_service_instances_that_need_bouncing(marathon_client, soa_dir):
     apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
     apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id in apps_that_need_bouncing}
 
+    draining_hosts = get_draining_hosts()
+
     for app_id, app in current_apps.items():
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
-            if app.instances != desired_marathon_configs[app_id]['instances'] or get_num_at_risk_tasks(app) != 0:
+            if (app.instances != desired_marathon_configs[app_id]['instances'] or
+                    get_num_at_risk_tasks(app, draining_hosts) != 0):
                 apps_that_need_bouncing.add(short_app_id)
 
     return (app_id.replace('--', '_') for app_id in apps_that_need_bouncing)

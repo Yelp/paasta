@@ -999,7 +999,7 @@ def is_old_task_missing_healthchecks(task, marathon_client):
     return False
 
 
-def get_num_at_risk_tasks(app):
+def get_num_at_risk_tasks(app, draining_hosts=None):
     """Determine how many of an application's tasks are running on
     at-risk (Mesos Maintenance Draining) hosts.
 
@@ -1007,7 +1007,8 @@ def get_num_at_risk_tasks(app):
     :returns: An integer representing the number of tasks running on at-risk hosts
     """
     hosts_tasks_running_on = [task.host for task in app.tasks]
-    draining_hosts = get_draining_hosts()
+    if draining_hosts is None:
+        draining_hosts = get_draining_hosts()
     num_at_risk_tasks = 0
     for host in hosts_tasks_running_on:
         if host in draining_hosts:
