@@ -619,9 +619,8 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     else:
         stdin_interrupt = False
         popen_kwargs = {}
-        cmd = ' '.join(cmd_parts)
 
-    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "/bin/bash -c %s" % quote(cmd)]
+    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "/bin/bash -c %s" % quote(' '.join(cmd_parts))]
 
     log.debug("Running %s" % ' '.join(cmd_parts))
 
