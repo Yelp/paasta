@@ -611,7 +611,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
             # wait for stdin with timeout in a loop, exit when original process finished
             'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
             # kill original process if loop finished (something on stdin)
-            'kill $p'
+            'kill $p; wait'
         )
         stdin = subprocess.PIPE
         stdin_interrupt = True
@@ -620,7 +620,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         stdin_interrupt = False
         popen_kwargs = {}
 
-    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "/bin/bash -c %s" % quote(' '.join(cmd_parts))]
+    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "sudo /bin/bash -c %s" % quote(' '.join(cmd_parts))]
 
     log.debug("Running %s" % ' '.join(cmd_parts))
 
