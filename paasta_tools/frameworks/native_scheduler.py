@@ -116,6 +116,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         # Gets set when registered() is called
         self.framework_id = None
 
+        self.blacklisted_slaves = set()
+        self.blacklisted_slaves_lock = threading.Lock()
+        self.blacklist_timeout = 3600
+
         if service_config is not None:
             self.service_config = service_config
             self.service_config.config_dict.update(self.service_config_overrides)
@@ -150,6 +154,16 @@ class NativeScheduler(mesos.interface.Scheduler):
             for offer in offers:
                 driver.declineOffer(offer.id)
         else:
+            for idx, offer in enumerate(offers):
+                if offer.slave_id.value in self.blacklisted_slaves:
+                    log.critical("Ignoring offer %s from blacklisted slave %s" %
+                                 (offer.id.value, offer.slave_id.value))
+                    driver.declineOffer(offer.id)
+                    del offers[idx]
+
+            if len(offers) == 0:
+                return
+
             self.launch_tasks_for_offers(driver, offers)
 
     def launch_tasks_for_offers(self, driver, offers):
@@ -241,12 +255,13 @@ class NativeScheduler(mesos.interface.Scheduler):
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
-    def log_and_kill(self, driver, taskId):
+    def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
-        self.kill_task(driver, taskId)
+        self.blacklist_slave(self.tasks_with_flags[task_id].offer.slave_id.value)
+        self.kill_task(driver, task_id)
 
-    def staging_timer_for_task(self, timeout_value, driver, taskId):
-        return Timer(timeout_value, lambda: self.log_and_kill(driver, taskId))
+    def staging_timer_for_task(self, timeout_value, driver, task_id):
+        return Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -493,6 +508,23 @@ class NativeScheduler(mesos.interface.Scheduler):
 
     def reload_constraints(self):
         self.constraints = self.service_config.get_constraints() or []
+
+    def blacklist_slave(self, slave_id):
+        if slave_id in self.blacklisted_slaves:
+            return
+
+        log.debug("Blacklisting slave: %s" % slave_id)
+        with self.blacklisted_slaves_lock:
+            self.blacklisted_slaves.add(slave_id)
+            Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(slave_id)).start()
+
+    def unblacklist_slave(self, slave_id):
+        if slave_id not in self.blacklisted_slaves:
+            return
+
+        log.debug("Unblacklisting slave: %s" % slave_id)
+        with self.blacklisted_slaves_lock:
+            self.blacklisted_slaves.discard(slave_id)
 
 
 class DrainTask(object):
