@@ -1,3 +1,12 @@
+paasta-tools (0.62.1) xenial; urgency=medium
+
+  * 0.62.1 tagged with 'make release'
+    Commit: Merge pull request #1183 from Yelp/better_autoscaler  A new
+    autoscaling policy that scales number of containers proportionally,
+    and can be extended to incorporate load predictions.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 May 2017 13:39:26 -0700
+
 paasta-tools (0.62.0) xenial; urgency=medium
 
   * 0.62.0 tagged with 'make release'
