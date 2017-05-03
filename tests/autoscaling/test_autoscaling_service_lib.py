@@ -1229,6 +1229,15 @@ def test_serialize_and_deserialize_historical_load():
     assert autoscaling_service_lib.deserialize_historical_load(serialized) == fake_data
 
 
+def test_serialize_historical_load_trims_oldest_data():
+    fake_data_long = list(zip(range(0, 63000, 1), range(63000, 0, -1)))
+    serialized_long = autoscaling_service_lib.serialize_historical_load(fake_data_long)
+    assert len(serialized_long) == 1000000
+    deserialized_long = autoscaling_service_lib.deserialize_historical_load(serialized_long)
+    assert deserialized_long[0] == (500, 62500)
+    assert deserialized_long[-1] == (62999, 1)
+
+
 @mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
 @mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', autospec=True, return_value=[])
 def test_proportional_decision_policy(mock_save_historical_load, mock_fetch_historical_load):
