@@ -508,6 +508,7 @@ def check_if_port_free(port):
             PaastaColors.red(
                 "The chosen port is already in use!\n"
                 "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
+                "%s" % str(e)
             ),
             file=sys.stderr,
         )
