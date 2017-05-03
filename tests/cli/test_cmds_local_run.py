@@ -1141,7 +1141,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     mock_service_manifest.get_net.return_value = 'bridge'
     mock_service_manifest.get_env_dictionary.return_value = {}
-    return_code = run_docker_container(
+    run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
