@@ -35,7 +35,6 @@ from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
@@ -999,16 +998,16 @@ def is_old_task_missing_healthchecks(task, marathon_client):
     return False
 
 
-def get_num_at_risk_tasks(app, draining_hosts=None):
+def get_num_at_risk_tasks(app, draining_hosts):
     """Determine how many of an application's tasks are running on
     at-risk (Mesos Maintenance Draining) hosts.
 
     :param app: A marathon application
+    :param draining_hosts: A list of hostnames that are marked as draining.
+                           See paasta_tools.mesos_maintenance.get_draining_hosts
     :returns: An integer representing the number of tasks running on at-risk hosts
     """
     hosts_tasks_running_on = [task.host for task in app.tasks]
-    if draining_hosts is None:
-        draining_hosts = get_draining_hosts()
     num_at_risk_tasks = 0
     for host in hosts_tasks_running_on:
         if host in draining_hosts:

@@ -775,7 +775,7 @@ class TestSetupMarathonJob:
         ) as mock_get_drain_method, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -832,7 +832,7 @@ class TestSetupMarathonJob:
         ) as mock_get_drain_method, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ) as mock_get_draining_hosts, mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ) as mock_mt_get_draining_hosts:
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -901,7 +901,7 @@ class TestSetupMarathonJob:
         ) as mock_do_bounce, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -965,7 +965,7 @@ class TestSetupMarathonJob:
         ) as mock_do_bounce, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_stop_draining = mock.MagicMock()
 

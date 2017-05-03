@@ -477,7 +477,7 @@ def deploy_service(
     )
 
     if new_app_running:
-        num_at_risk_tasks = get_num_at_risk_tasks(new_app)
+        num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=get_draining_hosts())
         if new_app.instances < config['instances'] + num_at_risk_tasks:
             log.info("Scaling %s from %d to %d instances." %
                      (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
