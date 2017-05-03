@@ -58,6 +58,13 @@ def add_start_args_to_parser(parser):
         default=60,
         type=float,
     )
+    parser.add_argument(
+        '-j', '--instances',
+        help='Number of copies of the task to launch',
+        required=False,
+        default=None,
+        type=int,
+    )
 
 
 def add_common_args_to_parser(parser):
@@ -186,6 +193,7 @@ def paasta_remote_run(args):
         'detach': False,
         'run_id': None,
         'framework_id': None,
+        'instances': None,
     }
     for key in args_vars:
         # skip args we don't know about

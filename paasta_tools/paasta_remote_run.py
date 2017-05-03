@@ -111,8 +111,6 @@ def extract_args(args):
 
 def remote_run_start(args):
     system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
-    dry_run = args.dry_run
-    command = args.cmd
 
     overrides_dict = {}
 
@@ -126,8 +124,11 @@ def remote_run_start(args):
         if constraints:
             overrides_dict['constraints'] = constraints
 
-    if command:
-        overrides_dict['cmd'] = command
+    if args.cmd:
+        overrides_dict['cmd'] = args.cmd
+
+    if args.instances:
+        overrides_dict['instances'] = args.instances
 
     run_id = args.run_id
     if run_id is None:
@@ -154,7 +155,7 @@ def remote_run_start(args):
         system_paasta_config=system_paasta_config,
         soa_dir=soa_dir,
         reconcile_backoff=0,
-        dry_run=dry_run,
+        dry_run=args.dry_run,
         staging_timeout=args.staging_timeout,
         service_config_overrides=overrides_dict,
     )

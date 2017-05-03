@@ -26,7 +26,7 @@ class AdhocScheduler(NativeScheduler):
 
         if kwargs.get('service_config_overrides') is None:
             kwargs['service_config_overrides'] = {}
-        kwargs['service_config_overrides']['instances'] = 1
+        kwargs['service_config_overrides'].setdefault('instances', 1)
 
         super(AdhocScheduler, self).__init__(*args, **kwargs)
 
