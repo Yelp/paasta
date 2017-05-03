@@ -263,7 +263,7 @@ def fetch_historical_load(zk_path_prefix):
 def deserialize_historical_load(historical_load_bytes):
     historical_load = []
 
-    for pos in xrange(0, len(historical_load_bytes), SIZE_PER_HISTORICAL_LOAD_RECORD):
+    for pos in range(0, len(historical_load_bytes), SIZE_PER_HISTORICAL_LOAD_RECORD):
         historical_load.append(
             struct.unpack(
                 # unfortunately struct.unpack doesn't like kwargs.

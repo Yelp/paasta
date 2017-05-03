@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import itertools
 from datetime import datetime
 from datetime import timedelta
 
@@ -1221,7 +1220,7 @@ def test_get_autoscaling_info():
 
 
 def test_serialize_and_deserialize_historical_load():
-    fake_data = list(itertools.izip(range(0, 50, 1), range(50, 0, -1)))
+    fake_data = list(zip(range(0, 50, 1), range(50, 0, -1)))
     assert len(fake_data) == 50
     assert len(fake_data[0]) == 2
 
