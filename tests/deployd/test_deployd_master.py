@@ -8,8 +8,6 @@ import mock
 from pytest import raises
 from six.moves.queue import Empty
 
-from paasta_tools.deployd.common import ServiceInstance
-
 
 class FakePyinotify(object):  # pragma: no cover
     class ProcessEvent():
@@ -36,7 +34,6 @@ sys.modules['pyinotify'] = FakePyinotify
 
 from paasta_tools.deployd.master import Inbox  # noqa
 from paasta_tools.deployd.master import DeployDaemon  # noqa
-from paasta_tools.deployd.master import rate_limit_instances  # noqa
 from paasta_tools.deployd.master import main  # noqa
 
 
@@ -242,27 +239,6 @@ class TestDeployDaemon(unittest.TestCase):
             mock_sleep.side_effect = LoopBreak
             with raises(LoopBreak):
                 self.deployd.start_watchers()
-
-
-def test_rate_limit_instances():
-    with mock.patch(
-        'time.time', autospec=True
-    ) as mock_time:
-        mock_time.return_value = 1
-        mock_si_1 = ('universe', 'c137')
-        mock_si_2 = ('universe', 'c138')
-        ret = rate_limit_instances([mock_si_1, mock_si_2], 2, "Custos")
-        expected = [ServiceInstance(service='universe',
-                                    instance='c137',
-                                    watcher='Custos',
-                                    bounce_by=1,
-                                    bounce_timers=None),
-                    ServiceInstance(service='universe',
-                                    instance='c138',
-                                    watcher='Custos',
-                                    bounce_by=31,
-                                    bounce_timers=None)]
-        assert ret == expected
 
 
 def test_main():
