@@ -1136,7 +1136,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_execlp,
     mock_pick_random_port,
 ):
-    mock_pick_random_port.return_value = 666 # we dont want it running on this port
+    mock_pick_random_port.return_value = 666  # we dont want it running on this port
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     mock_service_manifest.get_net.return_value = 'bridge'
@@ -1155,9 +1155,10 @@ def test_run_docker_container_with_user_specified_port(
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
-    mock_pick_random_port.assert_not_called() # Don't pick a random port, use the user chosen one
+    mock_pick_random_port.assert_not_called()  # Don't pick a random port, use the user chosen one
     docker_run_args = mock_run.call_args[0][0]
     assert "--publish=1234:8888" in docker_run_args
+
 
 @mock.patch('time.sleep', autospec=True)
 def test_simulate_healthcheck_on_service_disabled(mock_sleep):

@@ -499,6 +499,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['mesos_task_id'] = 'ct:simulated-task-id'
     return env
 
+
 def check_if_port_free(port):
     temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -515,6 +516,7 @@ def check_if_port_free(port):
         sys.exit(1)
     temp_socket.close()
     return port
+
 
 def run_docker_container(
     docker_client,
