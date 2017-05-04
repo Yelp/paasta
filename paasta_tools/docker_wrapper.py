@@ -15,6 +15,7 @@ container to. If the system is NUMA enabled, docker will be called with the
 arguments cpuset-cpus and cpuset-mems.
 """
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -23,10 +24,10 @@ import re
 import socket
 import sys
 
-from paasta_tools import firewall
+from paasta_tools import macaddress
 
 
-LOCK_DIRECTORY = '/var/run/paasta/mac-address'  # TODO
+LOCK_DIRECTORY = '/var/run/paasta/mac-address'
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
@@ -56,6 +57,9 @@ def parse_env_args(args):
 
 def can_add_hostname(args):
     # return False if --hostname is already specified or if --network=host
+    if is_network_host(args):
+        return False
+
     for index, arg in enumerate(args):
 
         # Check for --hostname and variants
@@ -69,14 +73,32 @@ def can_add_hostname(args):
             if 'h' in arg:
                 return False
 
+    return True
+
+
+def is_network_host(args):
+    for index, arg in enumerate(args):
         # Check for --network=host and variants
         if arg in ('--net=host', '--network=host'):
-            return False
+            return True
         try:
             if arg in ('--net', '--network') and args[index + 1] == 'host':
-                return False
+                return True
         except IndexError:
             pass
+
+    return False
+
+
+def can_add_mac_address(args):
+    # return False if --mac-address is already specified or if --network=host
+    if is_network_host(args):
+        return False
+
+    for index, arg in enumerate(args):
+        # Check for --mac-address
+        if arg.startswith('--mac-address'):
+            return False
 
     return True
 
@@ -231,8 +253,12 @@ def main(argv=None):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
         argv = add_argument(argv, '--hostname={}'.format(hostname))
 
-    # TODO: ensure LOCK_DIRECTORY exists
-    mac_address, lockfile = firewall.reserve_unique_mac_address(LOCK_DIRECTORY)
-    argv = add_argument(argv, '--mac-address={}'.format(mac_address))
+    if can_add_mac_address(argv):
+        try:
+            mac_address, lockfile = macaddress.reserve_unique_mac_address(LOCK_DIRECTORY)
+        except Exception as e:
+            print('Unable to add mac address: {}'.format(e), file=sys.stderr)
+        else:
+            argv = add_argument(argv, '--mac-address={}'.format(mac_address))
 
     os.execlp('docker', 'docker', *argv[1:])

@@ -10,6 +10,10 @@ import random
 MAC_ADDRESS_PREFIX = ('02', '52')
 
 
+class MacAddressException(Exception):
+    pass
+
+
 def reserve_unique_mac_address(lock_directory):
     """ Pick and reserve a unique mac address for a container
     returns (mac_address, lockfile)
@@ -32,7 +36,7 @@ def reserve_unique_mac_address(lock_directory):
         if lock_file is not None:
             return (mac_address, lock_file)
 
-    return None  # TODO
+    raise MacAddressException('Unable to pick unique MAC address')
 
 
 def obtain_lock(lock_filepath):
