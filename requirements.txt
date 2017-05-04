@@ -8,7 +8,6 @@ choice==0.1
 chronos-python==0.37.0
 cookiecutter==1.4.0
 croniter==0.3.14
-cryptography==1.7
 docker-py==1.2.3
 dulwich==0.16.3
 ephemeral-port-reserve==1.0.1
