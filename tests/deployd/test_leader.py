@@ -31,11 +31,11 @@ class TestPaastaLeaderElection(unittest.TestCase):
 
     def test_connection_listener(self):
         with mock.patch(
-            'paasta_tools.deployd.leader.PaastaLeaderElection.reconnection_listener', autospec=True
-        ) as mock_reconnection_listener:
+            'paasta_tools.deployd.leader.PaastaThread', autospec=True
+        ) as mock_paasta_thread:
             self.election.connection_listener(KazooState.CONNECTED)
             self.election.connection_listener(KazooState.SUSPENDED)
-            assert mock_reconnection_listener.called
+            mock_paasta_thread.assert_called_with(target=self.election.reconnection_listener)
             assert self.election.waiting_for_reconnect
             self.election.connection_listener(KazooState.LOST)
             self.mock_control.put.assert_called_with("ABORT")
