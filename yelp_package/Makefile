@@ -52,6 +52,7 @@ package_%: build_$$*_docker
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_VERSION_SUFFIX)
+	cat ../extra-linux-requirements.txt >> ../requirements.txt
 
 	$(DOCKER_RUN) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
