@@ -35,7 +35,6 @@ class Inbox(PaastaThread):
     def run(self):
         while True:
             self.process_inbox()
-        pass
 
     def process_inbox(self):
         try:
@@ -87,7 +86,8 @@ class DeployDaemon(PaastaThread):
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
         self.config = load_system_paasta_config()
-        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()))
+        log_format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
+        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()), format=log_format)
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
