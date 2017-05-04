@@ -171,4 +171,7 @@ done
 "$(dirname "$0")/tab_complete.sh"
 
 
+# Check that mesos.native is installed in the virtualenv
+/opt/venvs/paasta-tools/bin/python -c 'import mesos.native'
+
 echo "Everything worked!"
