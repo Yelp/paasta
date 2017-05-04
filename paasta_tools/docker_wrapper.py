@@ -23,6 +23,10 @@ import re
 import socket
 import sys
 
+from paasta_tools import firewall
+
+
+LOCK_DIRECTORY = '/var/run/paasta/mac-address'  # TODO
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
@@ -226,5 +230,9 @@ def main(argv=None):
     if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
         argv = add_argument(argv, '--hostname={}'.format(hostname))
+
+    # TODO: ensure LOCK_DIRECTORY exists
+    mac_address, lockfile = firewall.reserve_unique_mac_address(LOCK_DIRECTORY)
+    argv = add_argument(argv, '--mac-address={}'.format(mac_address))
 
     os.execlp('docker', 'docker', *argv[1:])
