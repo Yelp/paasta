@@ -72,16 +72,16 @@ class MeteoriteMetrics(object):
 
 
 class QueueMetrics(PaastaThread):
-    def __init__(self, inbox, bounce_q, metrics_provider):
+    def __init__(self, inbox, bounce_q, cluster, metrics_provider):
         super(QueueMetrics, self).__init__()
         self.daemon = True
         self.inbox_q = inbox.inbox_q
         self.inbox = inbox.to_bounce
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
-        self.inbox_q_gauge = self.metrics.create_gauge("inbox_queue")
-        self.inbox_gauge = self.metrics.create_gauge("inbox")
-        self.bounce_q_gauge = self.metrics.create_gauge("bounce_queue")
+        self.inbox_q_gauge = self.metrics.create_gauge("inbox_queue", paasta_cluster=cluster)
+        self.inbox_gauge = self.metrics.create_gauge("inbox", paasta_cluster=cluster)
+        self.bounce_q_gauge = self.metrics.create_gauge("bounce_queue", paasta_cluster=cluster)
 
     def run(self):
         while True:
