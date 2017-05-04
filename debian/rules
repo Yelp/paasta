@@ -23,4 +23,4 @@ override_dh_auto_test:
 	true
 
 override_dh_virtualenv:
-	dh_virtualenv $EXTRA_PYPI --python=/usr/bin/python2.7 --preinstall no-manylinux1 --preinstall pip-custom-platform --pip-tool pip-custom-platform
+	dh_virtualenv $EXTRA_PYPI --python=/usr/bin/python2.7 --preinstall no-manylinux1 --preinstall pip-custom-platform --preinstall /root/mesos.executor-1.0.1-cp27-none-linux_x86_64.whl --preinstall /root/mesos.scheduler-1.0.1-cp27-none-linux_x86_64.whl --preinstall /root/mesos.native-1.0.1-cp27-none-linux_x86_64.whl --pip-tool pip-custom-platform
