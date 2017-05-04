@@ -253,7 +253,8 @@ def main(argv=None):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
         argv = add_argument(argv, '--hostname={}'.format(hostname))
 
-    if can_add_mac_address(argv):
+    paasta_firewall = env_args.get('PAASTA_FIREWALL')
+    if paasta_firewall and can_add_mac_address(argv):
         try:
             mac_address, lockfile = macaddress.reserve_unique_mac_address(LOCK_DIRECTORY)
         except Exception as e:
