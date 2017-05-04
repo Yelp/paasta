@@ -158,11 +158,10 @@ class NativeScheduler(mesos.interface.Scheduler):
                 if offer.slave_id.value in self.blacklisted_slaves:
                     log.critical("Ignoring offer %s from blacklisted slave %s" %
                                  (offer.id.value, offer.slave_id.value))
-                    driver.declineOffer(offer.id)
+                    filters = mesos_pb2.Filters()
+                    filters.refuse_seconds = self.blacklist_timeout
+                    driver.declineOffer(offer.id, filters)
                     del offers[idx]
-
-            if len(offers) == 0:
-                return
 
             self.launch_tasks_for_offers(driver, offers)
 
@@ -261,7 +260,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.kill_task(driver, task_id)
 
     def staging_timer_for_task(self, timeout_value, driver, task_id):
-        return Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
+        timer = Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
+        timer.daemon = True
+        return timer
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -516,7 +517,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         log.debug("Blacklisting slave: %s" % slave_id)
         with self.blacklisted_slaves_lock:
             self.blacklisted_slaves.add(slave_id)
-            Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(slave_id)).start()
+            t = Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(slave_id))
+            t.daemon = True
+            t.start()
 
     def unblacklist_slave(self, slave_id):
         if slave_id not in self.blacklisted_slaves:

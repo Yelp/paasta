@@ -308,3 +308,43 @@ class TestNativeServiceConfig(object):
                 raise AssertionError('Unreachable: {}'.format(resource.name))
 
         assert task.name.startswith("service_name.instance_name.gitbusybox.config")
+
+    def test_resource_offers_ignores_blacklisted_slaves(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_configs = [
+            native_scheduler.NativeServiceConfig(
+                service=service_name,
+                instance=instance_name,
+                cluster=cluster,
+                config_dict={
+                    "cpus": 0.1,
+                    "mem": 50,
+                    "instances": 3,
+                    "cmd": 'sleep 50',
+                    "drain_method": "test"
+                },
+                branch_dict={
+                    'docker_image': 'busybox',
+                    'desired_state': 'start',
+                },
+            )
+        ]
+
+        scheduler = native_scheduler.NativeScheduler(
+            service_name=service_name,
+            instance_name=instance_name,
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            service_config=service_configs[0],
+            staging_timeout=1,
+        )
+
+        fake_driver = mock.Mock()
+
+        scheduler.blacklist_slave('super big slave')
+        assert len(scheduler.blacklisted_slaves) == 1
+        scheduler.resourceOffers(fake_driver, [make_fake_offer()])
+        assert len(scheduler.tasks_with_flags) == 0
