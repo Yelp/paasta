@@ -65,10 +65,16 @@ class Inbox(PaastaThread):
         return True
 
     def process_to_bounce(self):
+        bounced = []
         for service_instance_key in self.to_bounce.keys():
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
-                service_instance = self.to_bounce.pop(service_instance_key)
+                service_instance = self.to_bounce[service_instance_key]
+                bounced.append(service_instance_key)
                 self.bounce_q.put(service_instance)
+        for service_instance_key in bounced:
+            self.to_bounce.pop(service_instance_key)
+        # TODO: if the bounceq is empty we could probably start adding SIs from
+        # self.to_bounce to make sure the workers always have something to do.
 
 
 class DeployDaemon(PaastaThread):
