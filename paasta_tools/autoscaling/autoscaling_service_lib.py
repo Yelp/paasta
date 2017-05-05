@@ -230,6 +230,24 @@ def current_value_forecast_policy(historical_load, **kwargs):
     return historical_load[-1][1]
 
 
+@register_autoscaling_component('moving_average', FORECAST_POLICY_KEY)
+def moving_average_forecast_policy(historical_load, moving_average_window_seconds, **kwargs):
+    """Does a simple average of all historical load data points within the moving average window. Weights all data
+    points within the window equally."""
+
+    window_end, _ = historical_load[-1]
+    window_begin = window_end - moving_average_window_seconds
+
+    count = 0
+    total = 0
+    for timestamp, value in historical_load:
+        if timestamp >= window_begin and timestamp <= window_end:
+            count += 1
+            total += value
+
+    return total / count
+
+
 HISTORICAL_LOAD_SERIALIZATION_FORMAT = 'dd'
 SIZE_PER_HISTORICAL_LOAD_RECORD = struct.calcsize(HISTORICAL_LOAD_SERIALIZATION_FORMAT)
 

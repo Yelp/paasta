@@ -1354,3 +1354,20 @@ def test_proportional_decision_policy_nonzero_offset(mock_save_historical_load, 
         utilization=0.35,
         **common_kwargs
     )
+
+
+def test_moving_average_forecast_policy():
+    historical_load = [
+        (1, 100),
+        (2, 120),
+        (3, 140),
+        (4, 160),
+        (5, 180),
+        (6, 200),
+        (7, 220),
+    ]
+
+    assert 170 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
+                                                                         moving_average_window_seconds=5)
+    assert 220 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
+                                                                         moving_average_window_seconds=0.5)
