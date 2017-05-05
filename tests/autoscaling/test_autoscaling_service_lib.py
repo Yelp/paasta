@@ -1354,3 +1354,50 @@ def test_proportional_decision_policy_nonzero_offset(mock_save_historical_load, 
         utilization=0.35,
         **common_kwargs
     )
+
+
+@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
+@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', autospec=True, return_value=[])
+def test_proportional_decision_policy_good_enough(mock_save_historical_load, mock_fetch_historical_load):
+    assert 0 == autoscaling_service_lib.proportional_decision_policy(
+        zookeeper_path='/test',
+        current_instances=100,
+        num_healthy_instances=100,
+        min_instances=50,
+        max_instances=150,
+        forecast_policy='current',
+        offset=0.0,
+        setpoint=0.50,
+        utilization=0.54,
+        good_enough_window=(0.45, 0.55),
+    )
+
+    assert 0 == autoscaling_service_lib.proportional_decision_policy(
+        zookeeper_path='/test',
+        current_instances=100,
+        num_healthy_instances=100,
+        min_instances=50,
+        max_instances=150,
+        forecast_policy='current',
+        offset=0.0,
+        setpoint=0.50,
+        utilization=0.46,
+        good_enough_window=(0.45, 0.55),
+    )
+
+
+def test_moving_average_forecast_policy():
+    historical_load = [
+        (1, 100),
+        (2, 120),
+        (3, 140),
+        (4, 160),
+        (5, 180),
+        (6, 200),
+        (7, 220),
+    ]
+
+    assert 170 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
+                                                                         moving_average_window_seconds=5)
+    assert 220 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
+                                                                         moving_average_window_seconds=0.5)
