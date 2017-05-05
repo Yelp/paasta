@@ -316,7 +316,7 @@ class TestNativeServiceConfig(object):
         cluster = "cluster"
 
         service_configs = [
-            native_scheduler.NativeServiceConfig(
+            NativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
                 cluster=cluster,
