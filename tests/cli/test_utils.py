@@ -65,6 +65,23 @@ def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
     assert actual == expected
 
 
+@patch('random.shuffle', autospec=True)
+@patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
+def test_connectable_master_random(mock_calculate_remote_masters, mock_find_connectable_master, mock_shuffle):
+    masters = [
+        '192.0.2.1',
+        '192.0.2.2',
+        '192.0.2.3',
+    ]
+    mock_calculate_remote_masters.return_value = (masters, None)
+    mock_find_connectable_master.return_value = (masters[0], None)
+    mock_shuffle.return_value = None
+
+    utils.connectable_master("fake_cluster", SystemPaastaConfig({}, '/fake/config'), random_master=True)
+    mock_shuffle.assert_called_once_with(masters)
+
+
 @patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
     masters = [

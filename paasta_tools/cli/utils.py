@@ -19,6 +19,7 @@ import fnmatch
 import logging
 import os
 import pkgutil
+import random
 import re
 import subprocess
 import sys
@@ -419,10 +420,13 @@ class NoMasterError(Exception):
     pass
 
 
-def connectable_master(cluster, system_paasta_config):
+def connectable_master(cluster, system_paasta_config, random_master=False):
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
+
+    if random_master and len(masters) > 1:
+        random.shuffle(masters)
 
     master, output = find_connectable_master(masters)
     if not master:
@@ -582,7 +586,8 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, err_code=-1, graceful_exit=False, stdin=None):
+                  timeout=None, err_code=-1, graceful_exit=False, stdin=None,
+                  random_master=False):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -599,7 +604,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         kills the original command; trap SIGINT and send newline into stdin
     """
     try:
-        master = connectable_master(cluster, system_paasta_config)
+        master = connectable_master(cluster, system_paasta_config, random_master=random_master)
     except NoMasterError as e:
         return (err_code, str(e))
 
