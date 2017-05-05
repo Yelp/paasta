@@ -1,3 +1,11 @@
+paasta-tools (0.62.3) xenial; urgency=medium
+
+  * 0.62.3 tagged with 'make release'
+    Commit: Merge pull request #1195 from Yelp/better_better_autoscaler
+    Make proportional autoscaler a little less touchy.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 04 May 2017 18:47:30 -0700
+
 paasta-tools (0.62.2) xenial; urgency=medium
 
   * 0.62.2 tagged with 'make release'
