@@ -100,7 +100,13 @@ class TestCanAddHostname(object):
 
 class TestCanAddMacAddress(object):
     def test_empty(self):
-        assert docker_wrapper.can_add_mac_address(['docker']) is True
+        assert docker_wrapper.can_add_mac_address(['docker']) is False
+
+    def test_run(self):
+        assert docker_wrapper.can_add_mac_address(['docker', 'run']) is True
+
+    def test_not_run(self):
+        assert docker_wrapper.can_add_mac_address(['docker', 'inspect']) is False
 
     @pytest.mark.parametrize('args', [
         ['docker', '--mac-address', 'foo'],
@@ -643,6 +649,22 @@ class TestMain(object):
             '--env=PAASTA_FIREWALL=1',
         )]
 
+    def test_mac_address_not_run(self, mock_mac_address, mock_execlp):
+        argv = [
+            'docker',
+            'inspect',
+            '--env=PAASTA_FIREWALL=1',
+        ]
+        docker_wrapper.main(argv)
+
+        assert mock_mac_address.call_count == 0
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'inspect',
+            '--env=PAASTA_FIREWALL=1',
+        )]
+
     def test_mac_address_already_set(self, mock_mac_address, mock_execlp):
         argv = [
             'docker',
@@ -652,6 +674,7 @@ class TestMain(object):
         ]
         docker_wrapper.main(argv)
 
+        assert mock_mac_address.call_count == 0
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',

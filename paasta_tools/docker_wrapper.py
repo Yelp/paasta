@@ -90,9 +90,17 @@ def is_network_host(args):
     return False
 
 
+def is_run(args):
+    try:
+        list(args).index('run')
+        return True
+    except ValueError:
+        return False
+
+
 def can_add_mac_address(args):
     # return False if --mac-address is already specified or if --network=host
-    if is_network_host(args):
+    if is_network_host(args) or not is_run(args):
         return False
 
     for index, arg in enumerate(args):
