@@ -181,7 +181,8 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
 
 @register_autoscaling_component('proportional', DECISION_POLICY_KEY)
 def proportional_decision_policy(zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
-                                 num_healthy_instances, noop=False, offset=0.0, forecast_policy='current', **kwargs):
+                                 num_healthy_instances, noop=False, offset=0.0, forecast_policy='current',
+                                 good_enough_window=None, **kwargs):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
     the setpoint, scales up by 10%. Includes correction for an offset, if your containers have a baseline utilization
     independent of the number of containers.
@@ -196,9 +197,15 @@ def proportional_decision_policy(zookeeper_path, current_instances, min_instance
                    e.g. if the metric you're using is CPU, then how much CPU an idle container would use.
                    This should never be more than your setpoint. (If it takes 50% cpu to run an idle container, we can't
                    get your utilization below 50% no matter how many containers we run.)
-    :param forecast_policy: The method for forecasting future load values. Currently, only one forecaster exists:
-                            "current", which assumes that the load will remain the same as the current value for the
+    :param forecast_policy: The method for forecasting future load values. Currently, only two forecasters exist:
+                            - "current", which assumes that the load will remain the same as the current value for the
                             near future.
+                            - "moving_average", which assumes that total load will remain near the average of data
+                            points within a window.
+    :param good_enough_window: A tuple/array of two utilization values, (low, high). If the utilization per container at
+                               the forecasted total load is within this window with the current number of instances,
+                               leave the number of instances alone. This can reduce churn. Setpoint should lie within
+                               this window.
     """
 
     forecast_policy_func = get_forecast_policy(forecast_policy)
@@ -210,6 +217,12 @@ def proportional_decision_policy(zookeeper_path, current_instances, min_instance
     save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
+
+    if good_enough_window:
+        low, high = good_enough_window
+        predicted_load_per_instance_with_current_instances = predicted_load / current_instances + offset
+        if low <= predicted_load_per_instance_with_current_instances <= high:
+            return 0
 
     desired_number_instances = int(round(predicted_load / (setpoint - offset)))
 
