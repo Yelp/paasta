@@ -621,9 +621,9 @@ class TestMain(object):
     @pytest.yield_fixture
     def mock_mac_address(self):
         with mock.patch.object(
-                docker_wrapper.macaddress,
+                docker_wrapper.paasta_tools.mac_address,
                 'reserve_unique_mac_address',
-                return_value=('00:00:00:00:00:00', None)
+                return_value=('00:00:00:00:00:00', None),
         ) as mock_mac_address:
             yield mock_mac_address
 

@@ -24,7 +24,7 @@ import re
 import socket
 import sys
 
-from paasta_tools import macaddress
+import paasta_tools.mac_address
 
 
 LOCK_DIRECTORY = '/var/run/paasta/mac-address'
@@ -256,7 +256,7 @@ def main(argv=None):
     paasta_firewall = env_args.get('PAASTA_FIREWALL')
     if paasta_firewall and can_add_mac_address(argv):
         try:
-            mac_address, lockfile = macaddress.reserve_unique_mac_address(LOCK_DIRECTORY)
+            mac_address, lockfile = paasta_tools.mac_address.reserve_unique_mac_address(LOCK_DIRECTORY)
         except Exception as e:
             print('Unable to add mac address: {}'.format(e), file=sys.stderr)
         else:

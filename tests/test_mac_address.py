@@ -3,16 +3,17 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import contextlib
+import itertools
 import subprocess
 
 import mock
 import pytest
 
-from paasta_tools import macaddress
+from paasta_tools import mac_address
 
 
 def test_simple(tmpdir):
-    mac, lock_file = macaddress.reserve_unique_mac_address(str(tmpdir))
+    mac, lock_file = mac_address.reserve_unique_mac_address(str(tmpdir))
     with contextlib.closing(lock_file):
         assert lock_file is not None
         assert mac == '02:52:00:00:00:00'
@@ -21,12 +22,12 @@ def test_simple(tmpdir):
 
 def test_dir_not_exist(tmpdir):
     with pytest.raises(IOError):
-        macaddress.reserve_unique_mac_address(str(tmpdir.join('nonexistent')))
+        mac_address.reserve_unique_mac_address(str(tmpdir.join('nonexistent')))
 
 
 def test_file_exists_no_flock(tmpdir):
     tmpdir.join('02:52:00:00:00:00').ensure()
-    mac, lock_file = macaddress.reserve_unique_mac_address(str(tmpdir))
+    mac, lock_file = mac_address.reserve_unique_mac_address(str(tmpdir))
     with contextlib.closing(lock_file):
         assert lock_file is not None
         assert mac == '02:52:00:00:00:00'
@@ -46,7 +47,7 @@ def test_file_exists_flock(tmpdir):
     # it doesn't count if this process has the flock, so we need to spawn a different one to hold it
     flock_process = _flock_process(str(tmpdir.join('02:52:00:00:00:00')))
     try:
-        mac, lock_file = macaddress.reserve_unique_mac_address(str(tmpdir))
+        mac, lock_file = mac_address.reserve_unique_mac_address(str(tmpdir))
         with contextlib.closing(lock_file):
             assert lock_file is not None
             assert mac == '02:52:00:00:00:01'
@@ -61,8 +62,8 @@ def test_file_exists_exhaustion(tmpdir):
             flock_process = _flock_process(str(tmpdir.join('02:52:00:00:00:{:02x}'.format(x))))
             flock_processes.append(flock_process)
 
-        with pytest.raises(macaddress.MacAddressException):
-            macaddress.reserve_unique_mac_address(str(tmpdir))
+        with pytest.raises(mac_address.MacAddressException):
+            mac_address.reserve_unique_mac_address(str(tmpdir))
     finally:
         [p.kill() for p in flock_processes]
 
@@ -70,11 +71,9 @@ def test_file_exists_exhaustion(tmpdir):
 @pytest.yield_fixture(autouse=True)
 def mock_randbits():
     # make getrandbits() reliably return an incrementing counter starting at 0
-    class counter(object):
-        x = -1
-
+    class counter(itertools.count):
         def __call__(self, _):
-            self.x += 1
-            return self.x
-    with mock.patch.object(macaddress.random, 'getrandbits', side_effect=counter()):
+            return self.next()
+
+    with mock.patch.object(mac_address.random, 'getrandbits', side_effect=counter()):
         yield
