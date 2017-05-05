@@ -1,3 +1,11 @@
+paasta-tools (0.62.2) xenial; urgency=medium
+
+  * 0.62.2 tagged with 'make release'
+    Commit: Merge pull request #1190 from Yelp/mesos_native_in_package
+    Make sure mesos.native is installed in dh-virtualenv packages.
+
+ -- robj <robj@robj-MacBookPro>  Thu, 04 May 2017 17:11:50 -0700
+
 paasta-tools (0.62.1) xenial; urgency=medium
 
   * 0.62.1 tagged with 'make release'
