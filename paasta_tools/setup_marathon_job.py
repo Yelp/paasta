@@ -60,6 +60,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_maintenance import reserve_all_resources
 from paasta_tools.utils import _log
@@ -703,7 +704,7 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config,
                 sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
                 send_event(service, instance, soa_dir, sensu_status, output)
                 return 0, bounce_again_in_seconds
-            except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
+            except (KeyError, TypeError, AttributeError, InvalidInstanceConfig, NoSlavesAvailableError):
                 error_str = traceback.format_exc()
                 log.error(error_str)
                 send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
