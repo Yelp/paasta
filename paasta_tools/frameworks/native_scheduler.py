@@ -635,6 +635,9 @@ def load_paasta_native_job_config(
     )
     service_config.service_namespace_config = service_namespace_config
 
+    if service_config.get_cmd() is None:
+        raise UnknownNativeServiceError("missing cmd in service config")
+
     return service_config
 
 
