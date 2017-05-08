@@ -12,7 +12,7 @@ from six.moves.queue import Empty
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
-from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
@@ -161,23 +161,6 @@ class DeployDaemon(PaastaThread):
         while not all([watcher.is_ready for watcher in watcher_threads]):
             self.log.debug("Sleeping and waiting for watchers to all start")
             time.sleep(1)
-
-
-def rate_limit_instances(instances, number_per_minute, watcher_name):
-    service_instances = []
-    if not instances:
-        return []
-    time_now = int(time.time())
-    time_step = int(60 / number_per_minute)
-    bounce_time = time_now
-    for service, instance in instances:
-        service_instances.append(ServiceInstance(service=service,
-                                                 instance=instance,
-                                                 watcher=watcher_name,
-                                                 bounce_by=bounce_time,
-                                                 bounce_timers=None))
-        bounce_time += time_step
-    return service_instances
 
 
 def main():
