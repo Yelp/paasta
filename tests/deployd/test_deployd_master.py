@@ -136,7 +136,8 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_config_getter:
             mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
                                     get_deployd_number_workers=mock.Mock(return_value=5),
-                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10))
+                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10),
+                                    get_cluster=mock.Mock(return_value='westeros-prod'))
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
 
@@ -178,6 +179,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(self.deployd.inbox,
                                               self.deployd.bounce_q,
+                                              'westeros-prod',
                                               mock_get_metrics_interface.return_value)
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called

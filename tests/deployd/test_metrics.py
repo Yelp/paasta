@@ -58,12 +58,12 @@ class TestQueueMetrics(unittest.TestCase):
         self.mock_bounce_q = mock.Mock()
         mock_create_gauge = mock.Mock(return_value=self.mock_gauge)
         mock_metrics_provider.create_gauge = mock_create_gauge
-        self.q_metrics = metrics.QueueMetrics(self.mock_inbox, self.mock_bounce_q, mock_metrics_provider)
+        self.metrics = metrics.QueueMetrics(self.mock_inbox, self.mock_bounce_q, "mock-cluster", mock_metrics_provider)
 
     def test_run(self):
         with mock.patch('time.sleep', autospec=True, side_effect=LoopBreak):
             with raises(LoopBreak):
-                self.q_metrics.run()
+                self.metrics.run()
             assert self.mock_gauge.set.call_count == 3
 
 
