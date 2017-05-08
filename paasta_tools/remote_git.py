@@ -14,8 +14,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import time
+
 import dulwich.client
 import dulwich.errors
+
+from paasta_tools.utils import timeout
 
 
 def _make_determine_wants_func(ref_mutator):
@@ -76,8 +80,10 @@ class LSRemoteException(Exception):
     pass
 
 
+@timeout()
 def list_remote_refs(git_url):
     """Get the refs from a remote git repo as a dictionary of name->hash."""
+    time.sleep(15)
     client, path = dulwich.client.get_transport_and_path(git_url)
     try:
         refs = client.fetch_pack(path, lambda refs: [], None, lambda data: None)
