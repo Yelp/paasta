@@ -125,6 +125,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             self.service_config.config_dict.update(self.service_config_overrides)
             self.recreate_drain_method()
             self.reload_constraints()
+            self.validate_config()
         else:
             self.load_config()
 
@@ -496,6 +497,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         )
         self.recreate_drain_method()
         self.reload_constraints()
+        self.validate_config()
+
+    def validate_config(self):
+        pass
 
     def recreate_drain_method(self):
         """Re-instantiate self.drain_method. Should be called after self.service_config changes."""
@@ -634,9 +639,6 @@ def load_paasta_native_job_config(
         soa_dir=soa_dir
     )
     service_config.service_namespace_config = service_namespace_config
-
-    if service_config.get_cmd() is None:
-        raise UnknownNativeServiceError("missing cmd in service config")
 
     return service_config
 
