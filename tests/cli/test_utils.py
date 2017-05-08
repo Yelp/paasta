@@ -131,7 +131,7 @@ def test_find_connectable_master_all_failures(mock_check_ssh_and_sudo_on_master)
 def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
     master = 'fake_master'
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
+    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo /bin/true' % master
 
     actual = utils.check_ssh_and_sudo_on_master(master)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
