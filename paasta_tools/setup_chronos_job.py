@@ -50,6 +50,7 @@ import pysensu_yelp
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -239,6 +240,20 @@ def main():
     except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
+            "Error was: %s" % str(e))
+        send_event(
+            service=service,
+            instance=instance,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
+        log.error(error_msg)
+        sys.exit(0)
+    except NoSlavesAvailableError as e:
+        error_msg = (
+            "There are no PaaSTA slaves that can run %s in cluster %s\n" % (args.service_instance, cluster) +
+            "Double check the cluster and the configured constratints/pool/whitelist.\n"
             "Error was: %s" % str(e))
         send_event(
             service=service,
