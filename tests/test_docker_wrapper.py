@@ -7,7 +7,6 @@ from contextlib import contextmanager
 
 import mock
 import pytest
-import six
 
 from paasta_tools import docker_wrapper
 
@@ -683,8 +682,7 @@ class TestMain(object):
             '--env=PAASTA_FIREWALL=1',
         )]
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO, autospec=None)
-    def test_mac_address_no_lockdir(self, mock_stderr, mock_execlp, tmpdir):
+    def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir):
         nonexistent = tmpdir.join('nonexistent')
         with mock.patch.object(docker_wrapper, 'LOCK_DIRECTORY', str(nonexistent)):
             argv = [
@@ -700,4 +698,5 @@ class TestMain(object):
                 'run',
                 '--env=PAASTA_FIREWALL=1',
             )]
-            assert mock_stderr.getvalue().startswith('Unable to add mac address: [Errno 2] No such file or directory')
+            _, err = capsys.readouterr()
+            assert err.startswith('Unable to add mac address: [Errno 2] No such file or directory')
