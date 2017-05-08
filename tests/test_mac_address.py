@@ -8,6 +8,7 @@ import subprocess
 
 import mock
 import pytest
+import six
 
 from paasta_tools import mac_address
 
@@ -39,7 +40,7 @@ def _flock_process(path):
         ['flock', path, 'bash', '-c', 'echo -n ok && sleep infinity'],
         stdout=subprocess.PIPE)
     # wait for something to be printed so we know the flock has occurred
-    assert proc.stdout.read(2) == 'ok'
+    assert proc.stdout.read(2) == b'ok'
     return proc
 
 
@@ -73,7 +74,7 @@ def mock_randbits():
     # make getrandbits() reliably return an incrementing counter starting at 0
     class counter(itertools.count):
         def __call__(self, _):
-            return self.next()
+            return six.next(self)
 
     with mock.patch.object(mac_address.random, 'getrandbits', side_effect=counter()):
         yield
