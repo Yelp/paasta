@@ -442,7 +442,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo /bin/true' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
