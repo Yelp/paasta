@@ -11,12 +11,10 @@ croniter==0.3.14
 docker-py==1.2.3
 dulwich==0.16.3
 ephemeral-port-reserve==1.0.1
-future>=0.15.2
 futures==3.0.1
 gevent==1.1.1
 git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 git+git://github.com/thefactory/marathon-python@e70307e
-git+git://github.com/Yelp/yelp_clog@v2.6.0
 httplib2==0.9
 humanize==0.5.1
 isodate==0.5.1
@@ -51,4 +49,5 @@ six>=1.9.0
 thriftpy==0.1.15
 ujson==1.35
 websocket-client==0.32.0
+yelp-clog==2.7.2
 zope.interface==4.1.2
