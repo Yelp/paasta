@@ -585,8 +585,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, err_code=-1, graceful_exit=False, stdin=None,
-                  random_master=False):
+                  timeout=None, err_code=-1, graceful_exit=False, stdin=None):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
