@@ -502,9 +502,6 @@ class ExecutionFramework(mesos.interface.Scheduler):
         # update tasks
         task_id = update.task_id.value
         state = update.state
-        paasta_print("Task %s is in state %s" %
-                     (task_id, mesos_pb2.TaskState.Name(state)))
-
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
         task_params.mesos_task_state = state
 
