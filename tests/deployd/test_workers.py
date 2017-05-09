@@ -20,7 +20,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.workers.PaastaDeployWorker.setup', autospec=True
         ):
-            self.worker = PaastaDeployWorker(1, self.mock_inbox_q, self.mock_bounce_q, self.mock_metrics)
+            self.worker = PaastaDeployWorker(1,
+                                             self.mock_inbox_q,
+                                             self.mock_bounce_q,
+                                             "westeros-prod",
+                                             self.mock_metrics)
 
     def test_setup(self):
         with mock.patch(
@@ -37,13 +41,16 @@ class TestPaastaDeployWorker(unittest.TestCase):
         ret = self.worker.setup_timers(mock_si)
         calls = [mock.call('bounce_length_timer',
                            service='universe',
+                           paasta_cluster='westeros-prod',
                            instance='c137'),
                  mock.call().start(),
                  mock.call('processed_by_worker',
                            service='universe',
+                           paasta_cluster='westeros-prod',
                            instance='c137'),
                  mock.call('setup_marathon_timer',
                            service='universe',
+                           paasta_cluster='westeros-prod',
                            instance='c137')]
         self.mock_metrics.create_timer.assert_has_calls(calls)
         assert ret == BounceTimers(processed_by_worker=self.mock_metrics.create_timer.return_value,

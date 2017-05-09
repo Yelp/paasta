@@ -13,13 +13,14 @@ from paasta_tools.setup_marathon_job import deploy_marathon_service
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, inbox_q, bounce_q, metrics_provider):
+    def __init__(self, worker_number, inbox_q, bounce_q, cluster, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
         self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
+        self.cluster = cluster
         self.setup()
 
     def setup(self):
@@ -36,14 +37,17 @@ class PaastaDeployWorker(PaastaThread):
         else:
             bounce_length_timer = self.metrics.create_timer('bounce_length_timer',
                                                             service=service_instance.service,
-                                                            instance=service_instance.instance)
+                                                            instance=service_instance.instance,
+                                                            paasta_cluster=self.cluster)
             bounce_length_timer.start()
         processed_by_worker_timer = self.metrics.create_timer('processed_by_worker',
                                                               service=service_instance.service,
-                                                              instance=service_instance.instance)
+                                                              instance=service_instance.instance,
+                                                              paasta_cluster=self.cluster)
         setup_marathon_timer = self.metrics.create_timer('setup_marathon_timer',
                                                          service=service_instance.service,
-                                                         instance=service_instance.instance)
+                                                         instance=service_instance.instance,
+                                                         paasta_cluster=self.cluster)
         return BounceTimers(processed_by_worker=processed_by_worker_timer,
                             setup_marathon=setup_marathon_timer,
                             bounce_length=bounce_length_timer)
