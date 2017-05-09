@@ -91,6 +91,13 @@ class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
         """ Stop the instance of the task """
         pass
 
+    def subscribe(self, queue):
+        """Subscribe to TaskProcessingEvent updates.
+
+        :param queue: a threading.Queue object, onto which events will be pushed
+        """
+        self.subscribe_queue = queue
+
     def status(self, task_id=None):
         """ Get the status of this instance of the task.
             What return type here?? we do not know yet

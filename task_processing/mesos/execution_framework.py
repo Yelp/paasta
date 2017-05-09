@@ -75,7 +75,8 @@ class ExecutionFramework(mesos.interface.Scheduler):
                  system_paasta_config, staging_timeout, soa_dir=DEFAULT_SOA_DIR,
                  service_config=None, reconcile_backoff=30,
                  instance_type='paasta_native', service_config_overrides=None,
-                 reconcile_start_time=float('inf')):
+                 reconcile_start_time=float('inf'), event_processor=None):
+        self.event_processor = event_processor
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -525,6 +526,8 @@ class ExecutionFramework(mesos.interface.Scheduler):
             self.launch_tasks_for_offers(driver, offers)
 
     def statusUpdate(self, driver, update):
+        if self.event_processor:
+            self.event_processor.publish_event(update)
         if self.frozen:
             return
 
