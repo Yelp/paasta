@@ -65,5 +65,5 @@ class Asyncable(object):
 class Subscribable(object):
 
     @abc.abstractmethod
-    def subscribable(self, task_config, success=None, failure=None, status=None):
+    def subscribe(self, queue):
         pass
