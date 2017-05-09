@@ -506,7 +506,8 @@ def check_if_port_free(port):
         temp_socket.bind(("127.0.0.1", port))
     except socket.error:
         return False
-    temp_socket.close()
+    finally:
+        temp_socket.close()
     return True
 
 
