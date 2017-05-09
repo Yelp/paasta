@@ -19,6 +19,7 @@ import fnmatch
 import logging
 import os
 import pkgutil
+import random
 import re
 import subprocess
 import sys
@@ -407,7 +408,7 @@ def find_connectable_master(masters):
 
     connectable_master = None
     for master in masters:
-        rc, output = check_ssh_and_sudo_on_master(master, timeout=timeout)
+        rc, output = check_ssh_on_master(master, timeout=timeout)
         if rc is True:
             connectable_master = master
             output = None
@@ -424,6 +425,8 @@ def connectable_master(cluster, system_paasta_config):
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
 
+    random.shuffle(masters)
+
     master, output = find_connectable_master(masters)
     if not master:
         raise NoMasterError(
@@ -433,12 +436,12 @@ def connectable_master(cluster, system_paasta_config):
     return master
 
 
-def check_ssh_and_sudo_on_master(master, timeout=10):
+def check_ssh_on_master(master, timeout=10):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s /bin/true' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
