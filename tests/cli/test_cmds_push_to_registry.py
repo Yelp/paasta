@@ -192,6 +192,22 @@ def test_is_docker_image_already_in_registry_404_no_such_service_yet(
 @patch('paasta_tools.cli.cmds.push_to_registry.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.requests.Session.get', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.read_docker_registy_creds', autospec=True)
+def test_is_docker_image_already_in_registry_tags_are_null(
+        mock_read_docker_registy_creds,
+        mock_request_get,
+        mock_load_system_paasta_config,
+):
+    mock_read_docker_registy_creds.return_value = (None, None)
+    mock_load_system_paasta_config.get_docker_registry = MagicMock(return_value='fake_registry')
+    mock_request_get.return_value = MagicMock(status_code=200,
+                                              json=MagicMock(return_value={'tags': None}))
+    assert not is_docker_image_already_in_registry('fake_service', 'fake_sha')
+    assert mock_load_system_paasta_config.called
+
+
+@patch('paasta_tools.cli.cmds.push_to_registry.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.requests.Session.get', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.read_docker_registy_creds', autospec=True)
 def test_is_docker_image_already_in_registry_401_unauthorized(
         mock_read_docker_registy_creds,
         mock_request_get,
