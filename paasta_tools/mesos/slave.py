@@ -96,9 +96,8 @@ class MesosSlave(object):
         return list(filter(lambda x: x["executor_id"]))
 
     def task_stats(self, _id):
-        eid = self.task_executor(_id)["id"]
         stats = list(filter(
-            lambda x: x["executor_id"] == eid,
+            lambda x: x["executor_id"] == _id,
             self.stats
         ))
 
