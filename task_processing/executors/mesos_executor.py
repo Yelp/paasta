@@ -6,16 +6,15 @@ import threading
 import mesos.native
 from mesos.interface import mesos_pb2
 
-from task_processing.executors.task_executor import Asyncable
-from task_processing.executors.task_executor import Promiseable
-from task_processing.executors.task_executor import Subscribable
+from task_processing.events.event_processor import mesos_status_to_event
 from task_processing.executors.task_executor import TaskExecutor
 from task_processing.mesos.execution_framework import ExecutionFramework
 
 
-class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
-
-    def __init__(self, credentials, *args, **kwargs):
+class MesosExecutor(TaskExecutor):
+    def __init__(self,
+                 credentials=None,
+                 translator=mesos_status_to_event):
         """
         Constructs the instance of a task execution, encapsulating all state
         required to run, monitor and stop the job.
@@ -31,6 +30,7 @@ class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
         self.execution_framework = ExecutionFramework(
             name="test",
             staging_timeout=10,
+            translator=translator,
         )
 
         # TODO: Get mesos master ips from smartstack
@@ -47,72 +47,10 @@ class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
         self.driver_thread.start()
 
     def run(self, task_config):
-        """ Schedule task for execution and wait until it's finished. Return
-            task id and exit status.
-        """
-        task_id = self.execution_framework.enqueue(task_config)
-        status = self.execution_framework.wait_for(task_id)
-        return task_id, status
+        self.execution_framework.enqueue(task_config)
 
-    def run_promise(self, task_config):
-        """ Schedule task for execution and return it's id and a function that
-            blocks until the task is finished. Promise returns task's exit
-            status.
-        """
-        task_id = self.execution_framework.enqueue(task_config)
+    def kill(self, task_id):
+        print("Killing")
 
-        def promise(): return self.execution_framework.wait_for(task_id)
-        return task_id, promise
-
-    def run_async(self, task_config, success=None, failure=None, status=None):
-        """ Schedule task for execution and return it's id. Optionally
-            subscribe for status updates for this task:
-
-            success: run when task finished successfully
-            failure: run when task failed
-            status: run on every status update (status object is passed to the
-              callback)
-        """
-        task_id = self.execution_framework.enqueue(task_config)
-
-        if success is not None:
-            self.execution_framework.on_success(task_id, success)
-
-        if failure is not None:
-            self.execution_framework.on_failure(task_id, failure)
-
-        if status is not None:
-            self.execution_framework.on_status(task_id, status)
-
-        return task_id
-
-    def kill(self, task_id=None):
-        """ Stop the instance of the task """
-        pass
-
-    def subscribe(self, queue):
-        """Subscribe to TaskProcessingEvent updates.
-
-        :param queue: a threading.Queue object, onto which events will be pushed
-        """
-        self.subscribe_queue = queue
-
-    def status(self, task_id=None):
-        """ Get the status of this instance of the task.
-            What return type here?? we do not know yet
-        """
-        pass
-
-    def cleanup(self):
-        """ Cleanup any state before shutting down, can internally call kill """
-        pass
-
-    def supported_extra_methods(self):
-        """
-        :return [list of strings] of extensions that this executor provides
-
-        For example, if this implementation supports stdout or stdin
-        """
-
-    def wait_until_done(self):
-        self.driver_thread.join()
+    def get_event_queue(self):
+        return self.execution_framework.queue

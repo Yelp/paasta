@@ -12,8 +12,8 @@ import mesos.interface
 import mesos.native
 from mesos.interface import mesos_pb2
 
-from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.utils import paasta_print
+from task_processing.events.event_processor import mesos_status_to_event
 
 try:
     from Queue import Queue
@@ -71,11 +71,12 @@ class ExecutionFramework(mesos.interface.Scheduler):
         staging_timeout,
         reconcile_backoff=1,
         reconcile_start_time=float('inf'),
-        event_processor=None,
-        dry_run=False
+        dry_run=False,
+        translator=mesos_status_to_event,
     ):
+        self.translator = translator
+        self.queue = Queue(10)
         self.name = name
-        self.event_processor = event_processor
         self.tasks_with_flags = {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
@@ -89,7 +90,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
         self.reconcile_start_time = reconcile_start_time
 
         # wait this long after starting a reconcile before accepting offers.
-        self.reconcile_backoff = 10
+        self.reconcile_backoff = 1
 
         # wait this long for a task to launch.
         self.staging_timeout = staging_timeout
@@ -493,8 +494,8 @@ class ExecutionFramework(mesos.interface.Scheduler):
             self.launch_tasks_for_offers(driver, offers)
 
     def statusUpdate(self, driver, update):
-        if self.event_processor:
-            self.event_processor.publish_event(update)
+        if self.queue:
+            self.queue.put(self.translator(update))
         if self.frozen:
             return
 
@@ -516,11 +517,11 @@ class ExecutionFramework(mesos.interface.Scheduler):
                 self.tasks_with_flags[task_id].staging_timer.cancel()
                 self.tasks_with_flags[task_id].staging_timer = None
 
-        if task_params.mesos_task_state not in LIVE_TASK_STATES:
-            task_params.marked_for_gc = True
-            with self.constraint_state_lock:
-                update_constraint_state(task_params.offer, self.constraints,
-                                        self.constraint_state, step=-1)
+        # if task_params.mesos_task_state not in LIVE_TASK_STATES:
+            # task_params.marked_for_gc = True
+            # with self.constraint_state_lock:
+                # update_constraint_state(task_params.offer, self.constraints,
+                # self.constraint_state, step=-1)
 
         driver.acknowledgeStatusUpdate(update)
         # self.kill_tasks_if_necessary(driver)
