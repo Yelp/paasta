@@ -1,21 +1,19 @@
-# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import threading
-from collections import namedtuple
 
 import mesos.native
-from execution_framework import ExecutionFramework
 from mesos.interface import mesos_pb2
-TaskConfig = namedtuple(
-    'TaskConfig',
-    ['image', 'cmd', 'cpus', 'mem', 'disk', 'volumes', 'ports'],
-)
+
+from task_processing.executors.task_executor import Asyncable
+from task_processing.executors.task_executor import Promiseable
+from task_processing.executors.task_executor import Subscribable
+from task_processing.executors.task_executor import TaskExecutor
+from task_processing.task_processing.execution_framework import ExecutionFramework
 
 
-class TaskExecutor(object):
-    """ Interface for task execution."""
+class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
 
     def __init__(self, credentials, *args, **kwargs):
         """
