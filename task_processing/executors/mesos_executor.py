@@ -10,7 +10,7 @@ from task_processing.executors.task_executor import Asyncable
 from task_processing.executors.task_executor import Promiseable
 from task_processing.executors.task_executor import Subscribable
 from task_processing.executors.task_executor import TaskExecutor
-from task_processing.task_processing.execution_framework import ExecutionFramework
+from task_processing.mesos.execution_framework import ExecutionFramework
 
 
 class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
@@ -25,21 +25,20 @@ class MesosExecutor(TaskExecutor, Promiseable, Asyncable, Subscribable):
 
         # Get creds for mesos
         credential = mesos_pb2.Credential()
-        credential.principal = credentials["principal"]
-        credential.secret = credentials["secret"]
+        credential.principal = "foo"
+        credential.secret = ""
 
         self.execution_framework = ExecutionFramework(
-            # framework-specific options go here: parallelization,
-            # retry policy, etc
+            name="test",
+            staging_timeout=10,
         )
 
         # TODO: Get mesos master ips from smartstack
         self.driver = mesos.native.MesosSchedulerDriver(
             self.execution_framework,
             self.execution_framework.framework_info,
-            "10.40.1.17:5050",
+            "127.0.0.1:5050",
             False,
-            credential
         )
 
         # start driver thread immediately

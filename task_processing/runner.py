@@ -3,16 +3,16 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from task_processing.task_config import TaskConfig
-from task_processing.task_executor import TaskExecutor
+from task_processing.executors.mesos_executor import MesosExecutor
+from task_processing.executors.task_executor import TaskConfig
 
 
 def main():
     credentials = {'principal': 'mesos', 'secret': 'very'}
 
-    task_executor = TaskExecutor(
+    task_executor = MesosExecutor(
         credentials=credentials,
-        parallelization=5,
+        max_tasks=5,
     )
 
     # task blueprint
@@ -22,30 +22,30 @@ def main():
         cpus=1,
         mem=32,
         disk=1000,
-        volumes={
-            "RO": [("/nail/etc/", "/nail/etc")],
-            "RW": [("/tmp", "/nail/tmp")]
-        },
-        ports=[]
+        volumes={},
+        ports=[],
+        cap_add=[],
+        ulimit=[],
+        docker_parameters=[]
     )
 
     # run and wait for result
-    status = task_executor.run(task_config)
+    task_id, status = task_executor.run(task_config)
     if status.is_success:
         print("success")
     else:
         print("failure")
 
-    promise = task_executor.run_promise(task_config)
-    # do stuff ...
-    status = promise()
+    # promise = task_executor.run_promise(task_config)
+    # # do stuff ...
+    # status = promise()
 
-    # run and provide callbacks
-    task_executor.run_async(
-        task_config,
-        success=lambda: print("success"),
-        failure=lambda: print("failure")
-    )
+    # # run and provide callbacks
+    # task_executor.run_async(
+        # task_config,
+        # success=lambda: print("success"),
+        # failure=lambda: print("failure")
+    # )
 
     # run until completion of pending tasks
     task_executor.wait_until_done()

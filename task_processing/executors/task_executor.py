@@ -9,7 +9,7 @@ import six
 
 TaskConfig = namedtuple(
     'TaskConfig',
-    ['image', 'cmd', 'cpus', 'mem', 'disk', 'volumes', 'ports', 'executor'],
+    ['image', 'cmd', 'cpus', 'mem', 'disk', 'volumes', 'ports', 'cap_add', 'ulimit', 'docker_parameters'],
 )
 
 
