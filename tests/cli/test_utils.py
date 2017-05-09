@@ -48,20 +48,20 @@ def test_ok_remote_masters(mock_get_by_hostname):
     assert ips == ['1.2.3.4', '1.2.3.5']
 
 
-@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
-def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
+@patch('paasta_tools.cli.utils.check_ssh_on_master', autospec=True)
+def test_find_connectable_master_happy_path(mock_check_ssh_on_master):
     masters = [
         '192.0.2.1',
         '192.0.2.2',
         '192.0.2.3',
     ]
     timeout = 6.0
-    mock_check_ssh_and_sudo_on_master.return_value = (True, None)
+    mock_check_ssh_on_master.return_value = (True, None)
 
     actual = utils.find_connectable_master(masters)
     expected = (masters[0], None)
-    assert mock_check_ssh_and_sudo_on_master.call_count == 1
-    mock_check_ssh_and_sudo_on_master.assert_called_once_with(masters[0], timeout=timeout)
+    assert mock_check_ssh_on_master.call_count == 1
+    mock_check_ssh_on_master.assert_called_once_with(masters[0], timeout=timeout)
     assert actual == expected
 
 
@@ -82,8 +82,8 @@ def test_connectable_master_random(mock_calculate_remote_masters, mock_find_conn
     mock_shuffle.assert_called_once_with(masters)
 
 
-@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
-def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
+@patch('paasta_tools.cli.utils.check_ssh_on_master', autospec=True)
+def test_find_connectable_master_one_failure(mock_check_ssh_on_master):
     masters = [
         '192.0.2.1',
         '192.0.2.2',
@@ -98,63 +98,63 @@ def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
         (True, 'unused'),
         (True, 'unused'),
     ])
-    mock_check_ssh_and_sudo_on_master.side_effect = create_connection_side_effects
-    mock_check_ssh_and_sudo_on_master.return_value = True
+    mock_check_ssh_on_master.side_effect = create_connection_side_effects
+    mock_check_ssh_on_master.return_value = True
 
     actual = utils.find_connectable_master(masters)
-    assert mock_check_ssh_and_sudo_on_master.call_count == 2
-    mock_check_ssh_and_sudo_on_master.assert_any_call(masters[0], timeout=timeout)
-    mock_check_ssh_and_sudo_on_master.assert_any_call(masters[1], timeout=timeout)
+    assert mock_check_ssh_on_master.call_count == 2
+    mock_check_ssh_on_master.assert_any_call(masters[0], timeout=timeout)
+    mock_check_ssh_on_master.assert_any_call(masters[1], timeout=timeout)
     assert actual == ('192.0.2.2', None)
 
 
-@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
-def test_find_connectable_master_all_failures(mock_check_ssh_and_sudo_on_master):
+@patch('paasta_tools.cli.utils.check_ssh_on_master', autospec=True)
+def test_find_connectable_master_all_failures(mock_check_ssh_on_master):
     masters = [
         '192.0.2.1',
         '192.0.2.2',
         '192.0.2.3',
     ]
     timeout = 6.0
-    mock_check_ssh_and_sudo_on_master.return_value = (255, "timeout")
+    mock_check_ssh_on_master.return_value = (255, "timeout")
 
     actual = utils.find_connectable_master(masters)
-    assert mock_check_ssh_and_sudo_on_master.call_count == 3
-    mock_check_ssh_and_sudo_on_master.assert_any_call((masters[0]), timeout=timeout)
-    mock_check_ssh_and_sudo_on_master.assert_any_call((masters[1]), timeout=timeout)
-    mock_check_ssh_and_sudo_on_master.assert_any_call((masters[2]), timeout=timeout)
+    assert mock_check_ssh_on_master.call_count == 3
+    mock_check_ssh_on_master.assert_any_call((masters[0]), timeout=timeout)
+    mock_check_ssh_on_master.assert_any_call((masters[1]), timeout=timeout)
+    mock_check_ssh_on_master.assert_any_call((masters[2]), timeout=timeout)
     assert actual[0] is None
     assert 'timeout' in actual[1]
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)
-def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
+def test_check_ssh_on_master_check_successful(mock_run):
     master = 'fake_master'
     mock_run.return_value = (0, 'fake_output')
-    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo /bin/true' % master
+    expected_command = 'ssh -A -n -o StrictHostKeyChecking=no %s /bin/true' % master
 
-    actual = utils.check_ssh_and_sudo_on_master(master)
+    actual = utils.check_ssh_on_master(master)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == (True, None)
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)
-def test_check_ssh_and_sudo_on_master_check_ssh_failure(mock_run):
+def test_check_ssh_on_master_check_ssh_failure(mock_run):
     master = 'fake_master'
     mock_run.return_value = (255, 'fake_output')
 
-    actual = utils.check_ssh_and_sudo_on_master(master)
+    actual = utils.check_ssh_on_master(master)
     assert actual[0] is False
     assert 'fake_output' in actual[1]
     assert '255' in actual[1]
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)
-def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
+def test_check_ssh_on_master_check_sudo_failure(mock_run):
     master = 'fake_master'
     mock_run.return_value = (1, 'fake_output')
 
-    actual = utils.check_ssh_and_sudo_on_master(master)
+    actual = utils.check_ssh_on_master(master)
     assert actual[0] is False
     assert '1' in actual[1]
     assert 'fake_output' in actual[1]
@@ -314,11 +314,11 @@ def test_run_paasta_serviceinit_scaling(mock_run):
 
 @patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_on_master', autospec=True)
 @patch('paasta_tools.cli.utils.run_paasta_serviceinit', autospec=True)
 def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     mock_run_paasta_serviceinit,
-    mock_check_ssh_and_sudo_on_master,
+    mock_check_ssh_on_master,
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
@@ -331,7 +331,7 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
 
     return_code, actual = utils.execute_paasta_serviceinit_on_remote_master(
         'status', cluster, service, instancename, fake_system_paasta_config)
-    assert mock_check_ssh_and_sudo_on_master.call_count == 0
+    assert mock_check_ssh_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert return_code == 255
     assert "fake_err_msg" in actual
@@ -368,11 +368,11 @@ def test_execute_paasta_metastatus_on_remote_master(
 
 @patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_on_master', autospec=True)
 @patch('paasta_tools.cli.utils.run_paasta_metastatus', autospec=True)
 def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     mock_run_paasta_metastatus,
-    mock_check_ssh_and_sudo_on_master,
+    mock_check_ssh_on_master,
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
@@ -383,7 +383,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
 
     return_code, actual = utils.execute_paasta_metastatus_on_remote_master(
         cluster, fake_system_paasta_config, False, [], 0)
-    assert mock_check_ssh_and_sudo_on_master.call_count == 0
+    assert mock_check_ssh_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert return_code == 255
     assert "fake_err_msg" in actual
