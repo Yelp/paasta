@@ -116,6 +116,7 @@ class NativeScheduler(mesos.interface.Scheduler):
             self.service_config.config_dict.update(self.service_config_overrides)
             self.recreate_drain_method()
             self.reload_constraints()
+            self.validate_config()
         else:
             self.load_config()
 
@@ -487,6 +488,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         )
         self.recreate_drain_method()
         self.reload_constraints()
+        self.validate_config()
+
+    def validate_config(self):
+        pass
 
     def recreate_drain_method(self):
         """Re-instantiate self.drain_method. Should be called after self.service_config changes."""

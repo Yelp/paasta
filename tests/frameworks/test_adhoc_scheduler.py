@@ -46,6 +46,41 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
 
 
 class TestAdhocScheduler(object):
+    def test_raise_error_when_cmd_missing(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_configs = [
+            native_scheduler.NativeServiceConfig(
+                service=service_name,
+                instance=instance_name,
+                cluster=cluster,
+                config_dict={
+                    "cpus": 0.1,
+                    "mem": 50,
+                    "instances": 3,
+                    "drain_method": "test"
+                },
+                branch_dict={
+                    'docker_image': 'busybox',
+                    'desired_state': 'start',
+                },
+            )
+        ]
+
+        with pytest.raises(native_scheduler.UnknownNativeServiceError):
+            adhoc_scheduler.AdhocScheduler(
+                service_name=service_name,
+                instance_name=instance_name,
+                cluster=cluster,
+                system_paasta_config=system_paasta_config,
+                service_config=service_configs[0],
+                dry_run=False,
+                reconcile_start_time=0,
+                staging_timeout=30,
+            )
+
     def test_can_only_launch_task_once(self, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
