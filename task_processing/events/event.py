@@ -12,6 +12,21 @@ class TaskRunningEvent(TaskProcessingEvent):
         super(TaskRunningEvent, self).__init__(*args, **kwargs)
 
 
+class TaskFinishedEvent(TaskProcessingEvent):
+    def __init__(self, *args, **kwargs):
+        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+
+
+class TaskFailedEvent(TaskProcessingEvent):
+    def __init__(self, *args, **kwargs):
+        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+
+
+class TaskKilledEvent(TaskProcessingEvent):
+    def __init__(self, *args, **kwargs):
+        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+
+
 def mesos_status_to_event(mesos_status):
     # DRIVER_NOT_STARTED = 1
     # DRIVER_RUNNING = 2
@@ -25,7 +40,10 @@ def mesos_status_to_event(mesos_status):
     # TASK_KILLED = 4
     # TASK_LOST = 5
     translation = {
-        1: TaskRunningEvent
+        1: TaskRunningEvent,
+        2: TaskFinishedEvent,
+        3: TaskFailedEvent,
+        4: TaskKilledEvent
     }
     match = translation.get(mesos_status.state, TaskProcessingEvent)
     return match(original_event=mesos_status)
