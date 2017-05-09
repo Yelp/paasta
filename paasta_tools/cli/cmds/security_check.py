@@ -15,6 +15,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import pysensu_yelp
+
+from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
+from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _run
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -48,5 +52,9 @@ def perform_security_check(args):
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
     paasta_print("{} exited with code {}".format(security_check_command, ret_code))
-    # The security-check should not block the pipeline in case of a failure
-    return 0
+
+    sensu_status = pysensu_yelp.Status.CRITICAL if ret_code else pysensu_yelp.Status.OK
+    send_event(service=args.service, check_name='%s.security_check' % args.service, overrides={'page': False},
+               status=sensu_status, output=output, soa_dir=DEFAULT_SOA_DIR)
+
+    return ret_code
