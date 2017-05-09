@@ -78,7 +78,7 @@ def test_connectable_master_random(mock_calculate_remote_masters, mock_find_conn
     mock_find_connectable_master.return_value = (masters[0], None)
     mock_shuffle.return_value = None
 
-    utils.connectable_master("fake_cluster", SystemPaastaConfig({}, '/fake/config'), random_master=True)
+    utils.connectable_master("fake_cluster", SystemPaastaConfig({}, '/fake/config'))
     mock_shuffle.assert_called_once_with(masters)
 
 
@@ -264,11 +264,11 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     cluster = 'fake_cluster_name'
     service = 'fake_service'
     instancename = 'fake_instance'
-    remote_masters = (
+    remote_masters = [
         'fake_master1',
         'fake_master2',
         'fake_master3',
-    )
+    ]
     mock_run_paasta_serviceinit.return_value = (
         mock.sentinel.paasta_serviceinit_return_code, mock.sentinel.paasta_serviceinit_output)
     mock_calculate_remote_masters.return_value = (remote_masters, None)
@@ -346,11 +346,11 @@ def test_execute_paasta_metastatus_on_remote_master(
     mock_calculate_remote_masters,
 ):
     cluster = 'fake_cluster_name'
-    remote_masters = (
+    remote_masters = [
         'fake_master1',
         'fake_master2',
         'fake_master3',
-    )
+    ]
     mock_run_paasta_metastatus.return_value = (
         mock.sentinel.paasta_metastatus_return_code, mock.sentinel.paasta_metastatus_output)
     mock_calculate_remote_masters.return_value = (remote_masters, None)

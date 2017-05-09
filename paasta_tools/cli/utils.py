@@ -420,13 +420,12 @@ class NoMasterError(Exception):
     pass
 
 
-def connectable_master(cluster, system_paasta_config, random_master=False):
+def connectable_master(cluster, system_paasta_config):
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
 
-    if random_master and len(masters) > 1:
-        random.shuffle(masters)
+    random.shuffle(masters)
 
     master, output = find_connectable_master(masters)
     if not master:
@@ -604,7 +603,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
         kills the original command; trap SIGINT and send newline into stdin
     """
     try:
-        master = connectable_master(cluster, system_paasta_config, random_master=random_master)
+        master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
         return (err_code, str(e))
 

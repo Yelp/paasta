@@ -220,7 +220,7 @@ def paasta_remote_run(args):
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        graceful_exit=graceful_exit, random_master=True)
+        graceful_exit=graceful_exit)
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
