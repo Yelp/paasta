@@ -9,6 +9,7 @@ from paasta_tools import utils
 from paasta_tools.frameworks import adhoc_scheduler
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
+from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
 
 
 @pytest.fixture
@@ -52,7 +53,7 @@ class TestAdhocScheduler(object):
         cluster = "cluster"
 
         service_configs = [
-            native_scheduler.NativeServiceConfig(
+            NativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
                 cluster=cluster,
@@ -69,7 +70,7 @@ class TestAdhocScheduler(object):
             )
         ]
 
-        with pytest.raises(native_scheduler.UnknownNativeServiceError):
+        with pytest.raises(UnknownNativeServiceError):
             adhoc_scheduler.AdhocScheduler(
                 service_name=service_name,
                 instance_name=instance_name,
