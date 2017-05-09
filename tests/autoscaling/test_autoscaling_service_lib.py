@@ -1224,18 +1224,110 @@ def test_serialize_and_deserialize_historical_load():
     assert len(fake_data) == 50
     assert len(fake_data[0]) == 2
 
-    serialized = autoscaling_service_lib.serialize_historical_load(fake_data)
-    assert len(serialized) == 50 * autoscaling_service_lib.SIZE_PER_HISTORICAL_LOAD_RECORD
-    assert autoscaling_service_lib.deserialize_historical_load(serialized) == fake_data
+    for version in (0, 1):
+        serialized = autoscaling_service_lib.serialize_historical_load(fake_data, version=version)
+        if version == 0:
+            assert len(serialized) == 50 * autoscaling_service_lib.SIZE_PER_HISTORICAL_LOAD_RECORD_v0
+        assert autoscaling_service_lib.deserialize_historical_load(serialized, version=version) == fake_data
 
 
-def test_serialize_historical_load_trims_oldest_data():
+def test_serialize_historical_load_v0_trims_oldest_data():
     fake_data_long = list(zip(range(0, 63000, 1), range(63000, 0, -1)))
-    serialized_long = autoscaling_service_lib.serialize_historical_load(fake_data_long)
+    serialized_long = autoscaling_service_lib.serialize_historical_load_v0(fake_data_long)
     assert len(serialized_long) == 1000000
-    deserialized_long = autoscaling_service_lib.deserialize_historical_load(serialized_long)
+    deserialized_long = autoscaling_service_lib.deserialize_historical_load_v0(serialized_long)
     assert deserialized_long[0] == (500, 62500)
     assert deserialized_long[-1] == (62999, 1)
+
+
+def test_serialize_historical_load_v1_trims_oldest_data():
+    fake_data_long = list(zip(range(0, 100000, 1), range(100000, 0, -1)))
+    serialized_long = autoscaling_service_lib.serialize_historical_load_v1(fake_data_long)
+    assert len(serialized_long) <= 1000000
+    deserialized_long = autoscaling_service_lib.deserialize_historical_load_v1(serialized_long)
+    assert deserialized_long[0] == (32593.0, 67407.0)
+    assert deserialized_long[-1] == (99999.0, 1.0)
+
+    # trim shorter
+    serialized_long = autoscaling_service_lib.serialize_historical_load_v1(fake_data_long, max_size=30)
+    assert serialized_long == b'99998 2.00\n99999 1.00'
+
+
+def test_fetch_historical_load():
+    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.ZookeeperPool', autospec=True) as mock_zk_pool:
+        fake_zk = mock_zk_pool().__enter__()
+
+        # smoke test, empty data.
+        fake_zk.get.side_effect = lambda x: {
+            "/blurp/durp/historical_load": ("", mock.Mock()),
+            "/blurp/durp/historical_load_v1": ("", mock.Mock()),
+        }[x]
+        ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
+        assert 2 == fake_zk.get.call_count
+        fake_zk.get.assert_has_calls([
+            mock.call("/blurp/durp/historical_load"),
+            mock.call("/blurp/durp/historical_load_v1"),
+        ])
+        assert ret == []
+
+        # smoke test, no node for old version
+        def fake_get(path):
+            if path == "/blurp/durp/historical_load_v1":
+                return ("", mock.Mock())
+            else:
+                raise NoNodeError()
+
+        fake_zk.get.side_effect = fake_get
+        fake_zk.get.reset_mock()
+
+        ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
+        assert 2 == fake_zk.get.call_count
+        fake_zk.get.assert_has_calls([
+            mock.call("/blurp/durp/historical_load"),
+            mock.call("/blurp/durp/historical_load_v1"),
+        ])
+        assert ret == []
+
+        # data for just old version
+        def fake_get(path):
+            if path == "/blurp/durp/historical_load":
+                return (b'\x00\x00\xc0\xa1ID\xd6AH\xe1z\x14\xae\xf9\x80@', mock.Mock())
+            else:
+                raise NoNodeError()
+
+        fake_zk.get.side_effect = fake_get
+        fake_zk.get.reset_mock()
+
+        ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
+        assert ret == [(1494296199.0, 543.21)]
+
+        # data for just new version
+        def fake_get_2(path):
+            if path == "/blurp/durp/historical_load_v1":
+                return ("1494296163 1234.56", mock.Mock())
+            else:
+                raise NoNodeError()
+
+        fake_zk.get.side_effect = fake_get_2
+        fake_zk.get.reset_mock()
+
+        ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
+        assert ret == [(1494296163.0, 1234.56)]
+
+        # data for both versions
+        def fake_get_3(path):
+            if path == "/blurp/durp/historical_load":
+                return (b'\x00\x00\xc0\xa1ID\xd6AH\xe1z\x14\xae\xf9\x80@', mock.Mock())
+            elif path == "/blurp/durp/historical_load_v1":
+                return ("1494296163 1234.56", mock.Mock())
+            else:
+                raise NoNodeError()
+
+        fake_zk.get.side_effect = fake_get_3
+        fake_zk.get.reset_mock()
+
+        ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
+        assert ret == [(1494296163.0, 1234.56), (1494296199.0, 543.21)]
 
 
 @mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
