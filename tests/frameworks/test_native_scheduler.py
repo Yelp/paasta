@@ -9,6 +9,7 @@ from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
+from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 
 
 @pytest.fixture
@@ -53,7 +54,7 @@ class TestNativeScheduler(object):
 
         service_configs = []
         for force_bounce in range(2):
-            service_configs.append(native_scheduler.NativeServiceConfig(
+            service_configs.append(NativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
                 cluster=cluster,
@@ -163,7 +164,7 @@ class TestNativeScheduler(object):
         cluster = "cluster"
 
         service_configs = []
-        service_configs.append(native_scheduler.NativeServiceConfig(
+        service_configs.append(NativeServiceConfig(
             service=service_name,
             instance=instance_name,
             cluster=cluster,
@@ -209,7 +210,7 @@ class TestNativeScheduler(object):
         instance_name = "instance_name"
         cluster = "cluster"
 
-        service_config = native_scheduler.NativeServiceConfig(
+        service_config = NativeServiceConfig(
             service=service_name,
             instance=instance_name,
             cluster=cluster,
@@ -249,7 +250,7 @@ class TestNativeServiceConfig(object):
         instance_name = "instance_name"
         cluster = "cluster"
 
-        service_config = native_scheduler.NativeServiceConfig(
+        service_config = NativeServiceConfig(
             service=service_name,
             instance=instance_name,
             cluster=cluster,
@@ -315,7 +316,7 @@ class TestNativeServiceConfig(object):
         cluster = "cluster"
 
         service_configs = [
-            native_scheduler.NativeServiceConfig(
+            NativeServiceConfig(
                 service=service_name,
                 instance=instance_name,
                 cluster=cluster,

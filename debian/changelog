@@ -1,3 +1,11 @@
+paasta-tools (0.63.0) xenial; urgency=medium
+
+  * 0.63.0 tagged with 'make release'
+    Commit: Merge pull request #1196 from bchess/macaddress  docker
+    wrapper can choose, flock, and apply random mac address
+
+ --  <bchess@yelp.com>  Mon, 08 May 2017 18:43:31 +0000
+
 paasta-tools (0.62.3) xenial; urgency=medium
 
   * 0.62.3 tagged with 'make release'
