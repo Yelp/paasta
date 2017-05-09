@@ -21,7 +21,6 @@ from __future__ import unicode_literals
 import argparse
 import logging
 import os
-import sys
 
 import requests_cache
 import service_configuration_lib
@@ -29,6 +28,7 @@ from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
 from pyramid.scripts.pserve import watch_file
 
+import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
@@ -58,7 +58,7 @@ def parse_paasta_api_args():
 
 
 def make_app(global_config=None):
-    paasta_api_path = os.path.dirname(sys.modules['paasta_tools.api'].__file__)
+    paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
     watch_file(os.path.join(paasta_api_path, 'api_docs/swagger.json'))
 
@@ -117,7 +117,7 @@ def main(argv=None):
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        sys.exit(0)
+        exit(0)
 
 
 if __name__ == '__main__':
