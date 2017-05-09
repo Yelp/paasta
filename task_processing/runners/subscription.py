@@ -23,3 +23,6 @@ class Subscription(Runner):
 
     def run(self, task_config):
         return self.executor.run(task_config)
+
+    def kill(self, task_id):
+        return self.executor.kill(task_id)
