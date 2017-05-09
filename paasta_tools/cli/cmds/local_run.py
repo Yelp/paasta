@@ -504,18 +504,10 @@ def check_if_port_free(port):
     temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         temp_socket.bind(("127.0.0.1", port))
-    except socket.error as e:
-        paasta_print(
-            PaastaColors.red(
-                "The chosen port is already in use!\n"
-                "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
-                "%s" % str(e)
-            ),
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    except socket.error:
+        return False
     temp_socket.close()
-    return port
+    return True
 
 
 def run_docker_container(
@@ -543,7 +535,17 @@ def run_docker_container(
     remove it (with docker-py).
     """
     if user_port:
-        chosen_port = check_if_port_free(user_port)
+        if check_if_port_free(user_port):
+            chosen_port = user_port
+        else:
+            paasta_print(
+                PaastaColors.red(
+                    "The chosen port is already in use!\n"
+                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
     else:
         chosen_port = pick_random_port()
     environment = instance_config.get_env_dictionary()
