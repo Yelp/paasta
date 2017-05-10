@@ -62,6 +62,11 @@ def mock_status_instance_side_effect(service, instance):  # pragma: no cover (ge
         mock_mstatus = Mock(app_count=1, deploy_status='Deploying',
                             expected_instance_count=2,
                             running_instance_count=2)
+    if instance == 'instance4.1':
+        # still Deploying
+        mock_mstatus = Mock(app_count=1, deploy_status='Waiting',
+                            expected_instance_count=2,
+                            running_instance_count=2)
     if instance == 'instance5':
         # not a marathon instance
         mock_mstatus = None
@@ -138,7 +143,14 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=False) == 'instance4'
+    assert instances_out.empty()
+
+    cluster_data.instances_queue = Queue()
+    cluster_data.instances_queue.put('instance4.1')
+    instances_out = Queue()
+    f(cluster_data, instances_out, e)
+    assert cluster_data.instances_queue.empty()
+    assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
     cluster_data.instances_queue.put('instance5')
