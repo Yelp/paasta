@@ -75,14 +75,14 @@ class ExecutionFramework(mesos.interface.Scheduler):
         translator=mesos_status_to_event,
     ):
         self.translator = translator
-        self.queue = Queue(10)
+        self.queue = Queue(1000)
         self.name = name
         self.tasks_with_flags = {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
         self.frozen = False
         self.framework_info = self.build_framework_info()
-        self.tasks_waiting = Queue(10)
+        self.tasks_waiting = Queue(1000)
         self.blacklisted_slaves = []
         self.dry_run = dry_run
 
@@ -98,8 +98,9 @@ class ExecutionFramework(mesos.interface.Scheduler):
         # Gets set when registered() is called
         self.framework_id = None
 
-    def need_to_stop(self):
-        return False
+        self.blacklisted_slaves = set()
+        self.blacklisted_slaves_lock = threading.Lock()
+        self.blacklist_timeout = 3600
 
     def shutdown(self, driver):
         # TODO: this is naive, as it does nothing to stop on-going calls
@@ -382,82 +383,6 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
         return False
 
-    def create_new_docker_task(self, offer, task_id, task_config):
-        task = mesos_pb2.TaskInfo()
-
-        container = mesos_pb2.ContainerInfo()
-        container.type = 1  # mesos_pb2.ContainerInfo.Type.DOCKER
-
-        command = mesos_pb2.CommandInfo()
-        command.value = self.task_config.cmd
-
-        task.command.MergeFrom(command)
-        task.task_id.value = str(task_id)
-        task.slave_id.value = offer.slave_id.value
-        # TODO: We can add action names here
-        task.name = "executor-{id}".format(id=task_id)
-
-        # CPUs
-        cpus = task.resources.add()
-        cpus.name = "cpus"
-        cpus.type = mesos_pb2.Value.SCALAR
-        cpus.scalar.value = self.task_config.cpus
-
-        # mem
-        mem = task.resources.add()
-        mem.name = "mem"
-        mem.type = mesos_pb2.Value.SCALAR
-        mem.scalar.value = self.task_config.mem
-
-        # disk
-        disk = task.resources.add()
-        disk.name = "disk"
-        disk.type = mesos_pb2.Value.SCALAR
-        disk.scalar.value = self.task_config.disk
-
-        # Volumes
-        for mode in self.task_config.volumes:
-            for container_path, host_path in self.task_config.volumes[mode]:
-                volume = container.volumes.add()
-                volume.container_path = container_path
-                volume.host_path = host_path
-                """
-                volume.mode = 1 # mesos_pb2.Volume.Mode.RW
-                volume.mode = 2 # mesos_pb2.Volume.Mode.RO
-                """
-                volume.mode = 1 if mode == "RW" else 2
-
-        # Container info
-        docker = mesos_pb2.ContainerInfo.DockerInfo()
-        docker.image = self.task_config.image
-        docker.network = 2  # mesos_pb2.ContainerInfo.DockerInfo.Network.BRIDGE
-        docker.force_pull_image = True
-
-        available_ports = []
-        for resource in offer.resources:
-            if resource.name == "ports":
-                available_ports = self.get_available_ports(resource)
-
-        port_to_use = available_ports[0]
-
-        mesos_ports = task.resources.add()
-        mesos_ports.name = "ports"
-        mesos_ports.type = mesos_pb2.Value.RANGES
-        port_range = mesos_ports.ranges.range.add()
-
-        port_range.begin = port_to_use
-        port_range.end = port_to_use
-        docker_port = docker.port_mappings.add()
-        docker_port.host_port = port_to_use
-        docker_port.container_port = 8888
-
-        # Set docker info in container.docker
-        container.docker.MergeFrom(docker)
-        # Set docker container in task.container
-        task.container.MergeFrom(container)
-
-        return task
-
     ####################################################################
     #                   Mesos driver hooks go here                     #
     ####################################################################
@@ -529,7 +454,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
 def mesos_task_for_task_config(task_config):
     task = mesos_pb2.TaskInfo()
-    task.container.type = mesos_pb2.ContainerInfo.DOCKER
+    task.container.type = mesos_pb2.ContainerInfo.MESOS
     task.container.docker.image = task_config.image
 
     for param in task_config.docker_parameters:
