@@ -14,17 +14,17 @@ class TaskRunningEvent(TaskProcessingEvent):
 
 class TaskFinishedEvent(TaskProcessingEvent):
     def __init__(self, *args, **kwargs):
-        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+        super(TaskFinishedEvent, self).__init__(*args, **kwargs)
 
 
 class TaskFailedEvent(TaskProcessingEvent):
     def __init__(self, *args, **kwargs):
-        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+        super(TaskFailedEvent, self).__init__(*args, **kwargs)
 
 
 class TaskKilledEvent(TaskProcessingEvent):
     def __init__(self, *args, **kwargs):
-        super(TaskRunningEvent, self).__init__(*args, **kwargs)
+        super(TaskKilledEvent, self).__init__(*args, **kwargs)
 
 
 def mesos_status_to_event(mesos_status):
