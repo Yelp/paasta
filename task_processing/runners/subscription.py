@@ -19,7 +19,7 @@ class Subscription(Runner):
     def event_producer(self):
         event_queue = self.executor.get_event_queue()
         while True:
-            self.queue.put(event_queue.get())
+            self.queue.put(event_queue.get(), False)
 
     def run(self, task_config):
         return self.executor.run(task_config)
