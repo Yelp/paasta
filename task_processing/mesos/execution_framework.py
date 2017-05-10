@@ -347,7 +347,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
                 break
         return ports
 
-    def is_offer_valid(self, offer):
+    def is_offer_valid(self, offer, task_config):
         offer_cpus = 0
         offer_mem = 0
         offer_disk = 0
@@ -370,9 +370,9 @@ class ExecutionFramework(mesos.interface.Scheduler):
             )
         )
 
-        if ((offer_cpus >= self.task_config.cpus and
-             offer_mem >= self.task_config.mem and
-             offer_disk >= self.task_config.disk)):
+        if ((offer_cpus >= task_config.cpus and
+             offer_mem >= task_config.mem and
+             offer_disk >= task_config.disk)):
             return True
 
         return False
@@ -384,7 +384,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
         container.type = 1  # mesos_pb2.ContainerInfo.Type.DOCKER
 
         command = mesos_pb2.CommandInfo()
-        command.value = self.task_config.cmd
+        command.value = task_config.cmd
 
         task.command.MergeFrom(command)
         task.task_id.value = task_config.task_id
@@ -395,23 +395,23 @@ class ExecutionFramework(mesos.interface.Scheduler):
         cpus = task.resources.add()
         cpus.name = "cpus"
         cpus.type = mesos_pb2.Value.SCALAR
-        cpus.scalar.value = self.task_config.cpus
+        cpus.scalar.value = task_config.cpus
 
         # mem
         mem = task.resources.add()
         mem.name = "mem"
         mem.type = mesos_pb2.Value.SCALAR
-        mem.scalar.value = self.task_config.mem
+        mem.scalar.value = task_config.mem
 
         # disk
         disk = task.resources.add()
         disk.name = "disk"
         disk.type = mesos_pb2.Value.SCALAR
-        disk.scalar.value = self.task_config.disk
+        disk.scalar.value = task_config.disk
 
         # Volumes
-        for mode in self.task_config.volumes:
-            for container_path, host_path in self.task_config.volumes[mode]:
+        for mode in task_config.volumes:
+            for container_path, host_path in task_config.volumes[mode]:
                 volume = container.volumes.add()
                 volume.container_path = container_path
                 volume.host_path = host_path
@@ -423,7 +423,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
         # Container info
         docker = mesos_pb2.ContainerInfo.DockerInfo()
-        docker.image = self.task_config.image
+        docker.image = task_config.image
         docker.network = 2  # mesos_pb2.ContainerInfo.DockerInfo.Network.BRIDGE
         docker.force_pull_image = True
 
