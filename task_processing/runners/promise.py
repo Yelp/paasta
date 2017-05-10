@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from task_processing.runners.runner import Runner
+from task_processing.interfaces.runner import Runner
 
 
 class Promise(Runner):

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from six.moves.queue import Queue
 
-from task_processing.runners.runner import Runner
+from task_processing.interfaces.runner import Runner
 
 
 class Sync(Runner):

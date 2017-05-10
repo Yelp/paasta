@@ -34,18 +34,3 @@ class EventLost(EventBase):
 
 class EventStaging(EventBase):
     pass
-
-
-translation = {
-    0: EventStarting,
-    1: EventRunning,
-    2: EventFinished,
-    3: EventFailed,
-    4: EventKilled,
-    5: EventLost,
-    6: EventStaging,
-}
-
-
-def mesos_status_to_event(mesos_status):
-    return translation[mesos_status.state](mesos_status)

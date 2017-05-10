@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from threading import Thread
 
-from task_processing.runners.runner import Runner
+from task_processing.interfaces.runner import Runner
 
 
 class AsyncError(Exception):
@@ -25,6 +25,9 @@ class Async(Runner):
 
     def run(self, task_config):
         return self.executor.run(task_config)
+
+    def kill(self, task_config):
+        print('kill')
 
     def _callback_loop(self):
         event_queue = self.executor.get_event_queue()

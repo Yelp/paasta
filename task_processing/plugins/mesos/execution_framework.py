@@ -13,7 +13,7 @@ import mesos.native
 from mesos.interface import mesos_pb2
 
 from paasta_tools.utils import paasta_print
-from task_processing.events.event_processor import mesos_status_to_event
+from task_processing.plugins.mesos.translator import mesos_status_to_event
 
 try:
     from Queue import Queue

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from threading import Thread
 
-from task_processing.runners.runner import Runner
+from task_processing.interfaces.runner import Runner
 
 
 class Subscription(Runner):

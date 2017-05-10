@@ -7,8 +7,8 @@ import logging
 
 from six.moves.queue import Queue
 
-from task_processing.executors.mesos_executor import MesosExecutor
-from task_processing.executors.task_executor import make_task_config
+from task_processing.interfaces.task_executor import make_task_config
+from task_processing.plugins.mesos.mesos_executor import MesosExecutor
 from task_processing.runners.subscription import Subscription
 logging.basicConfig()
 

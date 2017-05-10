@@ -4,8 +4,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from task_processing.events.event import EventBase
-from task_processing.executors.mesos_executor import MesosExecutor
-from task_processing.executors.task_executor import make_task_config
+from task_processing.interfaces.task_executor import make_task_config
+from task_processing.plugins.mesos.mesos_executor import MesosExecutor
 from task_processing.runners.async import Async
 
 

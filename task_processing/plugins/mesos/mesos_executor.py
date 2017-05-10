@@ -6,9 +6,9 @@ import threading
 import mesos.native
 from mesos.interface import mesos_pb2
 
-from task_processing.events.event_processor import mesos_status_to_event
-from task_processing.executors.task_executor import TaskExecutor
-from task_processing.mesos.execution_framework import ExecutionFramework
+from task_processing.interfaces.task_executor import TaskExecutor
+from task_processing.plugins.mesos.execution_framework import ExecutionFramework
+from task_processing.plugins.mesos.translator import mesos_status_to_event
 
 
 class MesosExecutor(TaskExecutor):
