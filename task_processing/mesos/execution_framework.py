@@ -112,6 +112,9 @@ class ExecutionFramework(mesos.interface.Scheduler):
             if parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
+    def need_to_stop(self):
+        return False
+
     def launch_tasks_for_offers(self, driver, offers):
         """For each offer tries to launch all tasks that can fit in there.
         Declines offer if no fitting tasks found."""
@@ -382,6 +385,82 @@ class ExecutionFramework(mesos.interface.Scheduler):
             return True
 
         return False
+
+    def create_new_docker_task(self, offer, task_id, task_config):
+        task = mesos_pb2.TaskInfo()
+
+        container = mesos_pb2.ContainerInfo()
+        container.type = 1  # mesos_pb2.ContainerInfo.Type.DOCKER
+
+        command = mesos_pb2.CommandInfo()
+        command.value = self.task_config.cmd
+
+        task.command.MergeFrom(command)
+        task.task_id.value = str(task_id)
+        task.slave_id.value = offer.slave_id.value
+        # TODO: We can add action names here
+        task.name = "executor-{id}".format(id=task_id)
+
+        # CPUs
+        cpus = task.resources.add()
+        cpus.name = "cpus"
+        cpus.type = mesos_pb2.Value.SCALAR
+        cpus.scalar.value = self.task_config.cpus
+
+        # mem
+        mem = task.resources.add()
+        mem.name = "mem"
+        mem.type = mesos_pb2.Value.SCALAR
+        mem.scalar.value = self.task_config.mem
+
+        # disk
+        disk = task.resources.add()
+        disk.name = "disk"
+        disk.type = mesos_pb2.Value.SCALAR
+        disk.scalar.value = self.task_config.disk
+
+        # Volumes
+        for mode in self.task_config.volumes:
+            for container_path, host_path in self.task_config.volumes[mode]:
+                volume = container.volumes.add()
+                volume.container_path = container_path
+                volume.host_path = host_path
+                """
+                volume.mode = 1 # mesos_pb2.Volume.Mode.RW
+                volume.mode = 2 # mesos_pb2.Volume.Mode.RO
+                """
+                volume.mode = 1 if mode == "RW" else 2
+
+        # Container info
+        docker = mesos_pb2.ContainerInfo.DockerInfo()
+        docker.image = self.task_config.image
+        docker.network = 2  # mesos_pb2.ContainerInfo.DockerInfo.Network.BRIDGE
+        docker.force_pull_image = True
+
+        available_ports = []
+        for resource in offer.resources:
+            if resource.name == "ports":
+                available_ports = self.get_available_ports(resource)
+
+        port_to_use = available_ports[0]
+
+        mesos_ports = task.resources.add()
+        mesos_ports.name = "ports"
+        mesos_ports.type = mesos_pb2.Value.RANGES
+        port_range = mesos_ports.ranges.range.add()
+
+        port_range.begin = port_to_use
+        port_range.end = port_to_use
+        docker_port = docker.port_mappings.add()
+        docker_port.host_port = port_to_use
+        docker_port.container_port = 8888
+
+        # Set docker info in container.docker
+        container.docker.MergeFrom(docker)
+        # Set docker container in task.container
+        task.container.MergeFrom(container)
+
+        return task
 
     ####################################################################
     #                   Mesos driver hooks go here                     #
