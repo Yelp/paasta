@@ -1,3 +1,11 @@
+paasta-tools (0.63.1) xenial; urgency=low
+
+  * 0.63.1 tagged with 'make release'
+    Commit: Merge pull request #1186 from Yelp/deployd-logging-fix  Make
+    logging better for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 10 May 2017 03:42:24 -0700
+
 paasta-tools (0.63.0) xenial; urgency=medium
 
   * 0.63.0 tagged with 'make release'
