@@ -383,9 +383,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     status for status in instance_statuses
                     if status['InstanceId'] == description['InstanceId']
                 ]
-                assert len(status) == 1, "There should be only one InstanceStatus per instance"
-                if not status:
-                    status = None
+                assert len(matching_status) == 1, "There should be only one InstanceStatus per instance"
             else:
                 description = None
 
