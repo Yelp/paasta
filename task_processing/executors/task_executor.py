@@ -15,7 +15,7 @@ TaskConfig = namedtuple(
 
 
 def make_task_config(image="ubuntu:xenial", cmd="/bin/true", cpus=0.1,
-                     mem=32, disk=1000, volumes=None, ports=[], cap_add=[],
+                     mem=32, disk=10, volumes=None, ports=[], cap_add=[],
                      ulimit=[], docker_parameters=[]):
     if volumes is None:
         volumes = {}
