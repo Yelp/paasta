@@ -14,10 +14,13 @@
 
 FROM ubuntu:trusty
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         debhelper \
         dpkg-dev \
         gcc \
@@ -36,8 +39,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
         python-yaml \
         wget \
         zip \
-        zsh \
-    && apt-get clean
+        zsh > /dev/null \
+    && apt-get clean > /dev/null
 
 RUN cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
@@ -49,12 +52,12 @@ RUN cd /tmp && \
 # Conveniently, the .so's included in this wheel seem to be self-contained and don't link against the system libmesos.
 # So that we know if this changes, we remove the mesos system package after creating the .whl, so itests run without
 # a system mesos package.
-RUN apt-get install -yq mesos=1.0.1-2.0.93.ubuntu1404 && \
+RUN apt-get install -y mesos=1.0.1-2.0.93.ubuntu1404 > /dev/null && \
     cd /usr/lib/python2.7/site-packages && \
 	zip -r /root/mesos.native-1.0.1-cp27-none-linux_x86_64.whl mesos/native mesos.native-1.0.1.dist-info && \
 	zip -r /root/mesos.executor-1.0.1-cp27-none-linux_x86_64.whl mesos/executor mesos.executor-1.0.1.dist-info && \
 	zip -r /root/mesos.scheduler-1.0.1-cp27-none-linux_x86_64.whl mesos/scheduler mesos.scheduler-1.0.1.dist-info && \
-	apt-get remove -yq mesos
+	apt-get remove -y mesos
 
 RUN pip install --upgrade virtualenv==15.1.0
 

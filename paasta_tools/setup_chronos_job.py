@@ -42,6 +42,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import copy
 import logging
 import sys
 
@@ -49,6 +50,7 @@ import pysensu_yelp
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -161,6 +163,44 @@ def setup_job(service, instance, complete_job_config, client, cluster):
     )
 
 
+def config_with_historical_stats(chronos_client, service, instance, job_config):
+    """
+    Given a complete_job_config, return a new chronos_job_config
+    to be posted with the historical 'stats' for the job are merged
+    into the new config to be posted. If the job is 'new', that is,
+    there is no job currently deployed to Chronos for the service+instance
+    in soa-configs, these values are left empty.
+
+    :param chrons_client: a chronos-python client object
+    :param service: the service for the job
+    :param instance: the instance for the job
+    :param job_config: the job config to be modified
+    :returns: a modified job config, with the historcal stats set
+    """
+    existing_matching_jobs = chronos_tools.lookup_chronos_jobs(
+        client=chronos_client,
+        service=service,
+        instance=instance,
+        include_disabled=True,
+        include_temporary=False,
+    )
+    if existing_matching_jobs:
+        # assume there is only one of them
+        existing_job = existing_matching_jobs[0]
+        # these keys should always exist, but I guess it's good to be
+        # defensive
+        historical_state = {
+            'lastSuccess': existing_job.get('lastSuccess', ''),
+            'lastError': existing_job.get('lastError', ''),
+            'successCount': existing_job.get('successCount', 0),
+            'errorCount': existing_job.get('errorCount', 0),
+        }
+        copied = copy.deepcopy(job_config)
+        copied.update(historical_state)
+        return copied
+    return job_config
+
+
 def main():
     args = parse_args()
     soa_dir = args.soa_dir
@@ -210,17 +250,39 @@ def main():
         )
         log.error(error_msg)
         sys.exit(0)
+    except NoSlavesAvailableError as e:
+        error_msg = (
+            "There are no PaaSTA slaves that can run %s in cluster %s\n" % (args.service_instance, cluster) +
+            "Double check the cluster and the configured constratints/pool/whitelist.\n"
+            "Error was: %s" % str(e))
+        send_event(
+            service=service,
+            instance=instance,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
+        log.error(error_msg)
+        sys.exit(0)
     except chronos_tools.InvalidParentError:
         log.warn("Skipping %s.%s: Parent job could not be found" % (service, instance))
         sys.exit(0)
+
+    modified_config = config_with_historical_stats(
+        chronos_client=client,
+        service=service,
+        instance=instance,
+        job_config=complete_job_config
+    )
 
     status, output = setup_job(
         service=service,
         instance=instance,
         cluster=cluster,
-        complete_job_config=complete_job_config,
+        complete_job_config=modified_config,
         client=client,
     )
+
     sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
     send_event(
         service=service,

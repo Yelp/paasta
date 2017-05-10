@@ -70,6 +70,57 @@ class TestSetupChronosJob:
         verbose=False,
     )
 
+    def test_config_with_historical_stats(self):
+        with mock.patch(
+            'paasta_tools.setup_chronos_job.chronos_tools.lookup_chronos_jobs',
+            autospec=True,
+        ) as mock_lookup_chronos_jobs:
+            ret = [{
+                'lastSuccess': '2017-04-01T00:00:00Z',
+                'lastError': '2017-04-02T00:00:00Z',
+                'successCount': 1,
+                'errorCount': 1,
+            }]
+            mock_lookup_chronos_jobs.return_value = ret
+            init_config = {
+                'name': 'foo bar'
+            }
+            expected_merge = {
+                'name': 'foo bar',
+                'lastSuccess': '2017-04-01T00:00:00Z',
+                'lastError': '2017-04-02T00:00:00Z',
+                'successCount': 1,
+                'errorCount': 1,
+            }
+            actual = setup_chronos_job.config_with_historical_stats(
+                chronos_client=mock.Mock(),
+                service='foo',
+                instance='bar',
+                job_config=init_config,
+            )
+            assert actual == expected_merge
+
+    def test_config_with_historical_stats_no_existing(self):
+        with mock.patch(
+            'paasta_tools.setup_chronos_job.chronos_tools.lookup_chronos_jobs',
+            autospec=True,
+        ) as mock_lookup_chronos_jobs:
+            ret = []
+            mock_lookup_chronos_jobs.return_value = ret
+            init_config = {
+                'name': 'foo bar'
+            }
+            expected_merge = {
+                'name': 'foo bar',
+            }
+            actual = setup_chronos_job.config_with_historical_stats(
+                chronos_client=mock.Mock(),
+                service='foo',
+                instance='bar',
+                job_config=init_config,
+            )
+            assert actual == expected_merge
+
     def test_main_success(self):
         expected_status = 0
         expected_output = 'it_is_finished'

@@ -20,7 +20,6 @@ import fcntl
 import logging
 import math
 import os
-import signal
 import time
 from contextlib import contextmanager
 
@@ -32,6 +31,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import timeout
 
 
 log = logging.getLogger(__name__)
@@ -42,11 +42,6 @@ ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
 WAIT_CREATE_S = 3
 WAIT_DELETE_S = 5
-
-
-class TimeoutException(Exception):
-
-    """An exception type used by time_limit."""
 
 
 _bounce_method_funcs = {}
@@ -115,42 +110,6 @@ def bounce_lock_zookeeper(name):
         zk.stop()
 
 
-@contextmanager
-def create_app_lock():
-    """Acquire a lock in zookeeper for creating a marathon app. This is
-    due to marathon's extreme lack of resilience with creating multiple
-    apps at once, so we use this to not do that and only deploy
-    one app at a time."""
-    zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
-    zk.start()
-    lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, 'create_marathon_app_lock'))
-    try:
-        lock.acquire(timeout=30)  # timeout=0 throws some other strange exception
-        yield
-    except LockTimeout:
-        raise LockHeldException("Failed to acquire lock for creating marathon app!")
-    else:
-        lock.release()
-    finally:
-        zk.stop()
-
-
-@contextmanager
-def time_limit(minutes):
-    """A contextmanager to raise a TimeoutException whenever a specified
-    number of minutes has passed.
-
-    :param minutes: The number of minutes until an exception is raised"""
-    def signal_handler(signum, frame):
-        raise TimeoutException("Time limit expired")
-    signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(minutes * 60)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
-
-
 def wait_for_create(app_id, client):
     """Wait for the specified app_id to be listed in marathon.
     Waits WAIT_CREATE_S seconds between calls to list_apps.
@@ -162,15 +121,15 @@ def wait_for_create(app_id, client):
         time.sleep(WAIT_CREATE_S)
 
 
+@timeout(60, use_signals=False)
 def create_marathon_app(app_id, config, client):
     """Create a new marathon application with a given
     config and marathon client object.
 
     :param config: The marathon configuration to be deployed
     :param client: A MarathonClient object"""
-    with create_app_lock(), time_limit(1):
-        client.create_app(app_id, MarathonApp(**config))
-        wait_for_create(app_id, client)
+    client.create_app(app_id, MarathonApp(**config))
+    wait_for_create(app_id, client)
 
 
 def wait_for_delete(app_id, client):
@@ -184,19 +143,19 @@ def wait_for_delete(app_id, client):
         time.sleep(WAIT_DELETE_S)
 
 
+@timeout(60, use_signals=False)
 def delete_marathon_app(app_id, client):
     """Delete a new marathon application with a given
     app_id and marathon client object.
 
     :param app_id: The marathon app id to be deleted
     :param client: A MarathonClient object"""
-    with create_app_lock(), time_limit(1):
-        # Scale app to 0 first to work around
-        # https://github.com/mesosphere/marathon/issues/725
-        client.scale_app(app_id, instances=0, force=True)
-        time.sleep(1)
-        client.delete_app(app_id, force=True)
-        wait_for_delete(app_id, client)
+    # Scale app to 0 first to work around
+    # https://github.com/mesosphere/marathon/issues/725
+    client.scale_app(app_id, instances=0, force=True)
+    time.sleep(1)
+    client.delete_app(app_id, force=True)
+    wait_for_delete(app_id, client)
 
 
 def kill_old_ids(old_ids, client):

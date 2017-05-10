@@ -14,7 +14,10 @@
 
 FROM ubuntu:trusty
 
-RUN apt-get update && apt-get -y install git python2.7 python2.7-dev libyaml-dev python-virtualenv python-pkg-resources
+ENV DEBIAN_FRONTEND=noninteractive
+
+
+RUN apt-get update > /dev/null && apt-get -y install git python2.7 python2.7-dev libyaml-dev python-virtualenv python-pkg-resources > /dev/null
 
 RUN git clone --branch=yelp git://github.com/Yelp/hacheck
 WORKDIR /hacheck

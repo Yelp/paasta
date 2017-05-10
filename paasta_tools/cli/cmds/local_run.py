@@ -357,6 +357,14 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-o', '--port',
+        help='Specify a port number to use. If not set, a random non-conflicting port will be found.',
+        dest='user_port',
+        action='store_true',
+        required=False,
+        default=False,
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -364,7 +372,7 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_port, container_name, volumes, env, interactive,
+def get_docker_run_cmd(memory, chosen_port, container_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
@@ -373,7 +381,7 @@ def get_docker_run_cmd(memory, random_port, container_port, container_name, volu
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
     if net == 'bridge' and container_port is not None:
-        cmd.append('--publish=%d:%d' % (random_port, container_port))
+        cmd.append('--publish=%d:%d' % (chosen_port, container_port))
     elif net == 'host':
         cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
@@ -491,6 +499,17 @@ def get_local_run_environment_vars(instance_config, port0, framework):
     return env
 
 
+def check_if_port_free(port):
+    temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        temp_socket.bind(("127.0.0.1", port))
+    except socket.error:
+        return False
+    finally:
+        temp_socket.close()
+    return True
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -501,6 +520,7 @@ def run_docker_container(
     command,
     healthcheck,
     healthcheck_only,
+    user_port,
     instance_config,
     soa_dir=DEFAULT_SOA_DIR,
     dry_run=False,
@@ -514,11 +534,24 @@ def run_docker_container(
     In non-interactive mode when the run is complete, stop the container and
     remove it (with docker-py).
     """
-    random_port = pick_random_port()
+    if user_port:
+        if check_if_port_free(user_port):
+            chosen_port = user_port
+        else:
+            paasta_print(
+                PaastaColors.red(
+                    "The chosen port is already in use!\n"
+                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        chosen_port = pick_random_port()
     environment = instance_config.get_env_dictionary()
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config,
-        port0=random_port,
+        port0=chosen_port,
         framework=framework,
     )
     environment.update(local_run_environment)
@@ -534,7 +567,7 @@ def run_docker_container(
 
     docker_run_args = dict(
         memory=memory,
-        random_port=random_port,
+        chosen_port=chosen_port,
         container_port=container_port,
         container_name=container_name,
         volumes=volumes,
@@ -548,7 +581,7 @@ def run_docker_container(
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     joined_docker_run_cmd = ' '.join(docker_run_cmd)
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
-        service, instance, instance_config, random_port, soa_dir=soa_dir)
+        service, instance, instance_config, chosen_port, soa_dir=soa_dir)
 
     if dry_run:
         if json_dict:
@@ -784,6 +817,7 @@ def configure_and_run_docker_container(
         command=command,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
+        user_port=args.user_port,
         instance_config=instance_config,
         soa_dir=args.yelpsoa_config_root,
         dry_run=dry_run,

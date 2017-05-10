@@ -131,8 +131,7 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         'backoff_factor': 1,
         'constraints': constraints,
     }
-    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
+    bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
 
 
 @when('there are exactly {num:d} {which} {state} tasks')
@@ -149,8 +148,8 @@ def there_are_num_which_tasks(context, num, which, state, exact):
     context.max_tasks = num
     app_id = which_id(context, which)
 
-    # 120 * 0.5 = 60 seconds
-    for _ in range(120):
+    # 180 * 0.5 = 90 seconds
+    for _ in range(180):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)
@@ -185,8 +184,6 @@ def when_setup_service_initiated(context):
     ), mock.patch(
         'paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True,
     ), mock.patch(
-        'paasta_tools.bounce_lib.create_app_lock', autospec=True,
-    ), mock.patch(
         'paasta_tools.bounce_lib.time.sleep', autospec=True,
     ), mock.patch(
         'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
@@ -211,7 +208,7 @@ def when_setup_service_initiated(context):
         for _ in range(120):
             try:
                 marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
-                (code, message) = setup_marathon_job.setup_service(
+                (code, message, bounce_again) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
                     client=context.marathon_client,

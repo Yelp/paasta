@@ -21,7 +21,8 @@ import humanize
 import isodate
 
 from paasta_tools import chronos_tools
-from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import _log
 from paasta_tools.utils import calculate_tail_lines
@@ -236,16 +237,6 @@ def _format_command(job):
     return command
 
 
-def _format_mesos_status(running_tasks):
-    mesos_status = PaastaColors.red("UNKNOWN")
-    num_tasks = len(running_tasks)
-    if num_tasks == 0:
-        mesos_status = PaastaColors.grey("Not running")
-    else:
-        mesos_status = PaastaColors.yellow("Running")
-    return mesos_status
-
-
 def modify_string_for_rerun_status(string, launched_by_rerun):
     """Appends information to include a note about
     being launched by paasta rerun. If the param launched_by_rerun
@@ -260,13 +251,12 @@ def modify_string_for_rerun_status(string, launched_by_rerun):
         return string
 
 
-def format_chronos_job_status(client, job, running_tasks, verbose=0):
+def format_chronos_job_status(client, job, running_task_count, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
     :param job: dictionary of the job status
-    :param running_tasks: a list of Mesos tasks associated with ``job``, e.g. the
-                          result of ``mesos_tools.get_running_tasks_from_frameworks()``.
+    :param running_task_count: the number of Mesos tasks associated with ``job``
     :param verbose: int verbosity level
     """
     job_name = _format_job_name(job)
@@ -284,7 +274,7 @@ def format_chronos_job_status(client, job, running_tasks, verbose=0):
     schedule_value = schedule_formatter(job)
 
     command = _format_command(job)
-    mesos_status = _format_mesos_status(running_tasks)
+    mesos_status = PaastaColors.yellow("Running") if running_task_count else PaastaColors.grey("Not running")
     if verbose > 0:
         tail_lines = calculate_tail_lines(verbose_level=verbose)
         mesos_status_verbose = status_mesos_tasks_verbose(
@@ -330,22 +320,26 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         desired_state = job_config.get_desired_state_human()
         output.append("Desired:    %s" % desired_state)
         for job in jobs:
-            running_tasks = get_running_tasks_from_frameworks(job["name"])
-            output.append(format_chronos_job_status(client, job, running_tasks, verbose))
+            running_task_count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(),
+                                                        job["name"]))
+            output.append(format_chronos_job_status(client, job, running_task_count, verbose))
         return "\n".join(output)
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir):
+def perform_command(command, service, instance, cluster, verbose, soa_dir, client=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status or scale
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
     :param verbose: int verbosity level
+    :param client: ChronosClient or CachingChronosClient
     :returns: A unix-style return code
     """
-    chronos_config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(chronos_config)
+    if client is None:
+        chronos_config = chronos_tools.load_chronos_config()
+        client = chronos_tools.get_chronos_client(chronos_config)
+
     job_config = chronos_tools.load_chronos_job_config(
         service=service,
         instance=instance,

@@ -1,3 +1,124 @@
+paasta-tools (0.63.1) xenial; urgency=low
+
+  * 0.63.1 tagged with 'make release'
+    Commit: Merge pull request #1186 from Yelp/deployd-logging-fix  Make
+    logging better for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 10 May 2017 03:42:24 -0700
+
+paasta-tools (0.63.0) xenial; urgency=medium
+
+  * 0.63.0 tagged with 'make release'
+    Commit: Merge pull request #1196 from bchess/macaddress  docker
+    wrapper can choose, flock, and apply random mac address
+
+ --  <bchess@yelp.com>  Mon, 08 May 2017 18:43:31 +0000
+
+paasta-tools (0.62.3) xenial; urgency=medium
+
+  * 0.62.3 tagged with 'make release'
+    Commit: Merge pull request #1195 from Yelp/better_better_autoscaler
+    Make proportional autoscaler a little less touchy.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 04 May 2017 18:47:30 -0700
+
+paasta-tools (0.62.2) xenial; urgency=medium
+
+  * 0.62.2 tagged with 'make release'
+    Commit: Merge pull request #1190 from Yelp/mesos_native_in_package
+    Make sure mesos.native is installed in dh-virtualenv packages.
+
+ -- robj <robj@robj-MacBookPro>  Thu, 04 May 2017 17:11:50 -0700
+
+paasta-tools (0.62.1) xenial; urgency=medium
+
+  * 0.62.1 tagged with 'make release'
+    Commit: Merge pull request #1183 from Yelp/better_autoscaler  A new
+    autoscaling policy that scales number of containers proportionally,
+    and can be extended to incorporate load predictions.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 May 2017 13:39:26 -0700
+
+paasta-tools (0.62.0) xenial; urgency=medium
+
+  * 0.62.0 tagged with 'make release'
+    Commit: Merge pull request #1177 from Yelp/remote-run-sudo  sudo
+    remote-run on mesos master
+
+ -- robj <robj@robj-MacBookPro>  Tue, 02 May 2017 12:07:41 -0700
+
+paasta-tools (0.61.0) xenial; urgency=medium
+
+  * 0.61.0 tagged with 'make release'
+    Commit: Merge pull request #1171 from Yelp/remove-create-app-lock
+    Remove create_app_lock when creating marathon apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 28 Apr 2017 10:34:16 -0700
+
+paasta-tools (0.60.4) xenial; urgency=low
+
+  * 0.60.4 tagged with 'make release'
+    Commit: Merge pull request #1170 from Yelp/deployd-config-options
+    Add some basic config options for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 28 Apr 2017 05:02:21 -0700
+
+paasta-tools (0.60.3) xenial; urgency=low
+
+  * 0.60.3 tagged with 'make release'
+    Commit: Merge pull request #1156 from Yelp/fix/autoscaling-stall
+    Ensure we always scale up if task data missing
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 26 Apr 2017 03:06:40 -0700
+
+paasta-tools (0.60.2) xenial; urgency=low
+
+  * 0.60.2 tagged with 'make release'
+    Commit: Merge pull request #1157 from
+    Yelp/fix/setup_marathon_timeout  Fix threaded timeout decorator
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 25 Apr 2017 04:01:36 -0700
+
+paasta-tools (0.60.1) xenial; urgency=medium
+
+  * 0.60.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    native_smartstack
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Apr 2017 10:11:51 -0700
+
+paasta-tools (0.60.0) xenial; urgency=low
+
+  * 0.60.0 tagged with 'make release'
+    Commit: Merge pull request #1061 from Yelp/autoscaling-service-info
+    Add service autoscaling info to status
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 20 Apr 2017 08:42:15 -0700
+
+paasta-tools (0.59.2) xenial; urgency=low
+
+  * 0.59.2 tagged with 'make release'
+    Commit: Merge pull request #1134 from Yelp/security_check_v1
+    Security check v1
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 13 Apr 2017 02:26:59 -0700
+
+paasta-tools (0.59.1) xenial; urgency=medium
+
+  * 0.59.1 tagged with 'make release'
+    Commit: Merge pull request #1131 from Yelp/PAASTa-9932  Make paasta
+    draining tolerant of connection errors. PAASTA-9932
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:56:19 -0700
+
+paasta-tools (0.59.0) xenial; urgency=medium
+
+  * 0.59.0 tagged with 'make release'
+    Commit: Merge pull request #1129 from Yelp/nothing-to-see-here
+    "Fix" the itests
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 12 Apr 2017 13:45:57 -0700
+
 paasta-tools (0.58.10) xenial; urgency=low
 
   * 0.58.10 tagged with 'make release'

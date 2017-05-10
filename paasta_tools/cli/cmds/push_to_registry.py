@@ -18,13 +18,23 @@ image to a registry.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import base64
+import os
+
+import requests
+import simplejson as json
+from requests.exceptions import RequestException
+
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -62,6 +72,12 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    list_parser.add_argument(
+        '-f', '--force',
+        help=('Do not check if the image is already in the PaaSTA docker registry. '
+              'Push it anyway.'),
+        action='store_true',
+    )
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 
@@ -82,6 +98,18 @@ def paasta_push_to_registry(args):
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service, args.soa_dir)
+
+    if not args.force:
+        try:
+            if is_docker_image_already_in_registry(service, args.commit):
+                paasta_print("The docker image is already in the PaaSTA docker registry. "
+                             "I'm NOT overriding the existing image. "
+                             "Add --force to override the image in the registry if you are sure what you are doing.")
+                return 0
+        except RequestException as e:
+            paasta_print("Can not connect to the PaaSTA docker registry to verify if this image exists.\n"
+                         "%s" % str(e))
+            return 1
 
     cmd = build_command(service, args.commit)
     loglines = []
@@ -108,3 +136,47 @@ def paasta_push_to_registry(args):
             level='event',
         )
     return returncode
+
+
+def read_docker_registy_creds(registry_uri):
+    dockercfg_path = os.path.expanduser('~/.dockercfg')
+    try:
+        with open(dockercfg_path) as f:
+            dockercfg = json.load(f)
+            auth = base64.b64decode(dockercfg[registry_uri]['auth'])
+            first_colon = auth.find(':')
+            if first_colon != -1:
+                return (auth[:first_colon], auth[first_colon + 1:-2])
+    except IOError:  # Can't open ~/.dockercfg
+        pass
+    except json.scanner.JSONDecodeError:  # JSON decoder error
+        pass
+    except TypeError:  # base64 decode error
+        pass
+    return (None, None)
+
+
+def is_docker_image_already_in_registry(service, sha):
+    """Verifies that docker image exists in the paasta registry.
+
+    :param service: name of the service
+    :param sha: git sha
+    :returns: True, False or raises requests.exceptions.RequestException
+    """
+    registry_uri = load_system_paasta_config().get_docker_registry()
+    repository, tag = build_docker_image_name(service, sha).split(':')
+    url = 'https://%s/v2/%s/tags/list' % (registry_uri, repository)
+
+    creds = read_docker_registy_creds(registry_uri)
+
+    with requests.Session() as s:
+        r = s.get(url, timeout=30) if creds[0] is None else s.get(url, auth=creds, timeout=30)
+        if r.status_code == 200:
+            tags_resp = r.json()
+            if tags_resp['tags']:
+                return tag in tags_resp['tags']
+            else:
+                return False
+        elif r.status_code == 404:
+            return False  # No Such Repository Error
+        r.raise_for_status()

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.58.10
+RELEASE=0.63.1
 
 SHELL=/bin/bash
 
@@ -52,6 +52,7 @@ package_%: build_$$*_docker
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_VERSION_SUFFIX)
+	cat ../extra-linux-requirements.txt >> ../requirements.txt
 
 	$(DOCKER_RUN) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
@@ -75,9 +76,7 @@ clean:
 
 
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
-# This sed isn't really right but at least it doesn't crash (and I couldn't get
-# \' or ''' or \\' to work :( )
-LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
 # github_changelog_generator comes from
 # https://github.com/skywinder/github-changelog-generator
 # Follow the instructions to generate a github api token

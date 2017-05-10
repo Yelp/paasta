@@ -176,11 +176,19 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-def job_is_stuck(last_run_iso_time, interval_in_seconds):
+def job_is_stuck(last_run_iso_time, interval_in_seconds, acceptable_delay=0):
+    """Considers that the job is stuck when it hasn't run in 15 minutes after it is scheduled
+
+    :param last_run_iso_time: ISO date and time of the last job run as a string
+    :param interval_in_seconds: the job interval in seconds
+    :param acceptable_delay: chronos tasks might be delayed and not running at their intended time slot.
+                             This define how long do we wait in seconds before deciding the job is stuck.
+    :returns: True or False
+    """
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
     last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
+    return last_run_datatime + timedelta(seconds=acceptable_delay + interval_in_seconds) < datetime.now(pytz.utc)
 
 
 def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds, schedule):
@@ -216,9 +224,10 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
+            acceptable_delay = 15 * 60
             last_run_time, state = chronos_tools.get_status_last_run(chronos_job)
-            interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
-            if job_is_stuck(last_run_time, interval_in_seconds):
+            interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds(seconds_ago=acceptable_delay)
+            if job_is_stuck(last_run_time, interval_in_seconds, acceptable_delay):
                 sensu_status = pysensu_yelp.Status.CRITICAL
                 output = message_for_stuck_job(
                     service=service,

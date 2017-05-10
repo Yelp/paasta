@@ -41,7 +41,9 @@ def test_get_service_instances_that_need_bouncing():
         'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
     ) as mock_get_desired_marathon_configs, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
-    ) as mock_get_num_at_risk_tasks:
+    ) as mock_get_num_at_risk_tasks, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
+    ):
         mock_get_desired_marathon_configs.return_value = {
             'fake--service.fake--instance.sha.config': {'instances': 5},
             'fake--service2.fake--instance.sha.config': {'instances': 5},
@@ -61,7 +63,9 @@ def test_get_service_instances_that_need_bouncing_two_existing_services():
         'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
     ) as mock_get_desired_marathon_configs, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
-    ) as mock_get_num_at_risk_tasks:
+    ) as mock_get_num_at_risk_tasks, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
+    ):
         mock_get_desired_marathon_configs.return_value = {
             'fake--service.fake--instance.sha.config': {'instances': 5},
         }
@@ -80,7 +84,9 @@ def test_get_service_instances_that_need_bouncing_no_difference():
         'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
     ) as mock_get_desired_marathon_configs, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
-    ) as mock_get_num_at_risk_tasks:
+    ) as mock_get_num_at_risk_tasks, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
+    ):
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
@@ -94,7 +100,9 @@ def test_get_service_instances_that_need_bouncing_instances_difference():
         'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
     ) as mock_get_desired_marathon_configs, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
-    ) as mock_get_num_at_risk_tasks:
+    ) as mock_get_num_at_risk_tasks, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
+    ):
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=4, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
@@ -108,7 +116,9 @@ def test_get_service_instances_that_need_bouncing_at_risk():
         'paasta_tools.list_marathon_service_instances.get_desired_marathon_configs', autospec=True,
     ) as mock_get_desired_marathon_configs, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_num_at_risk_tasks', autospec=True,
-    ) as mock_get_num_at_risk_tasks:
+    ) as mock_get_num_at_risk_tasks, mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
+    ):
         mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))

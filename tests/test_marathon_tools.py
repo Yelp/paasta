@@ -108,7 +108,7 @@ class TestMarathonTools:
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
     def test_load_marathon_service_config_bails_with_no_config(self):
-        fake_name = 'jazz'
+        fake_name = 'folk'
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
@@ -536,11 +536,11 @@ class TestMarathonTools:
         assert actual == compose_job_id(name, instance)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
 
-    @mock.patch('paasta_tools.marathon_tools.get_local_slave_state', autospec=True)
+    @mock.patch('paasta_tools.mesos_tools.get_local_slave_state', autospec=True)
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr.someuuid'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94.someuuid'
-        id_3 = 'dota.axe.cleave.482u9jyoi4wed.someuuid'
+        id_3 = 'something--with--double--hyphens.axe.cleave.482u9jyoi4wed.someuuid'
         id_4 = 'mesos.deployment.is.hard.someuuid'
         id_5 = 'how.to.fake.data.someuuid'
         ports_1 = '[111-111]'
@@ -581,10 +581,10 @@ class TestMarathonTools:
         }
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
-                    ('dota', 'axe', 333),
+                    ('something_with_double_hyphens', 'axe', 333),
                     ('mesos', 'deployment', 444)]
         actual = marathon_tools.marathon_services_running_here()
-        mock_get_local_slave_state.assert_called_once_with()
+        mock_get_local_slave_state.assert_called_once_with(hostname=None)
         assert expected == actual
 
     def test_get_marathon_services_running_here_for_nerve(self):
@@ -812,32 +812,6 @@ class TestMarathonTools:
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
                 ('a.foo', {}), ('b.foo', {})
             ]
-
-    def test_get_services_running_here_for_nerve(self):
-        cluster = 'plentea'
-        soa_dir = 'boba'
-        fake_marathon_services = [('never', 'again'), ('will', 'he')]
-        fake_classic_services = [('walk', 'on'), ('his', 'feet')]
-        fake_puppet_services = [('a', 'b'), ('c', 'd')]
-        expected = fake_marathon_services + fake_classic_services + fake_puppet_services
-        with mock.patch(
-            'paasta_tools.marathon_tools.get_marathon_services_running_here_for_nerve',
-            autospec=True,
-            return_value=fake_marathon_services,
-        ) as marathon_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_classic_services_running_here_for_nerve',
-            autospec=True,
-            return_value=fake_classic_services,
-        ) as classic_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_puppet_services_running_here_for_nerve',
-            autospec=True,
-            return_value=fake_puppet_services,
-        ) as puppet_patch:
-            actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
-            assert expected == actual
-            marathon_patch.assert_called_once_with(cluster, soa_dir)
-            classic_patch.assert_called_once_with(soa_dir)
-            puppet_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
         fake_url = 'dockervania_from_konami'
@@ -1431,12 +1405,6 @@ class TestMarathonTools:
         fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}, {}]))
         marathon_tools.app_has_tasks(fake_client, 'fake_app', 4)
         assert fake_client.list_tasks.called_with('/fake_app')
-
-    def test_get_code_sha_from_dockerurl(self):
-        fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
-        actual = marathon_tools.get_code_sha_from_dockerurl(fake_docker_url)
-        assert actual == 'git93340779'
-        assert len(actual) == 11
 
     def test_get_config_hash(self):
         test_input = {'foo': 'bar'}

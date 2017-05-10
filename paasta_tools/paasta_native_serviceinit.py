@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from paasta_tools import native_mesos_scheduler
+from paasta_tools.frameworks.native_scheduler import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
@@ -16,7 +16,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
-    task_id_prefix = "%s%s" % (compose_job_id(service, instance), native_mesos_scheduler.MESOS_TASK_SPACER)
+    task_id_prefix = "%s%s" % (compose_job_id(service, instance), MESOS_TASK_SPACER)
 
     if command == 'status':
         paasta_print(status_mesos_tasks_verbose(

@@ -60,6 +60,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_maintenance import reserve_all_resources
 from paasta_tools.utils import _log
@@ -241,7 +242,7 @@ def do_bounce(
                 if e.status_code == 409:
                     log.warning("Failed to create, app %s already exists. This means another bounce beat us to it."
                                 " Skipping the rest of the bounce for this run" % marathon_jobid)
-                    return
+                    return 60
                 raise
 
     tasks_to_kill = drain_tasks_and_find_tasks_to_kill(
@@ -295,7 +296,7 @@ def do_bounce(
         (apps_to_kill or tasks_to_kill),
         apps_to_kill == list(old_app_live_happy_tasks),
         tasks_to_kill == all_old_tasks,
-    ]):
+    ]) or (not all_old_tasks) and new_app_running:
         log_bounce_action(
             line='%s bounce on %s finishing. Now running %s' %
             (
@@ -305,10 +306,13 @@ def do_bounce(
             ),
             level='event',
         )
+        return None
+    else:
+        return 60
 
 
 def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
-                               system_paasta_config):
+                               system_paasta_config, log_deploy_error):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
@@ -319,22 +323,31 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
     happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
     draining_hosts = get_draining_hosts()
     for task in app.tasks:
-        if drain_method.is_draining(task):
-            state = 'draining'
-        elif task in happy_tasks:
-            if task.host in draining_hosts:
-                state = 'at_risk'
-            else:
-                state = 'happy'
-        else:
+        try:
+            is_draining = drain_method.is_draining(task)
+        except Exception as e:
+            log_deploy_error(
+                "Ignoring exception during is_draining of task %s:"
+                " %s. Treating task as 'unhappy'." % (task, e)
+            )
             state = 'unhappy'
+        else:
+            if is_draining is True:
+                state = 'draining'
+            elif task in happy_tasks:
+                if task.host in draining_hosts:
+                    state = 'at_risk'
+                else:
+                    state = 'happy'
+            else:
+                state = 'unhappy'
         tasks_by_state[state].add(task)
 
     return tasks_by_state
 
 
 def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_health_params,
-                       system_paasta_config):
+                       system_paasta_config, log_deploy_error):
     """Split tasks from old apps into 4 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -350,7 +363,14 @@ def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_healt
     for app in other_apps:
 
         tasks_by_state = get_tasks_by_state_for_app(
-            app, drain_method, service, nerve_ns, bounce_health_params, system_paasta_config)
+            app=app,
+            drain_method=drain_method,
+            service=service,
+            nerve_ns=nerve_ns,
+            bounce_health_params=bounce_health_params,
+            system_paasta_config=system_paasta_config,
+            log_deploy_error=log_deploy_error,
+        )
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -399,7 +419,7 @@ def deploy_service(
     :param nerve_ns: The nerve namespace to look in.
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :param bounce_margin_factor: the multiplication factor used to calculate the number of instances to be drained
-    :returns: A tuple of (status, output) to be used with send_sensu_event"""
+    :returns: A tuple of (status, output, bounce_in_seconds) to be used with send_sensu_event"""
 
     def log_deploy_error(errormsg, level='event'):
         return _log(
@@ -441,23 +461,24 @@ def deploy_service(
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
             (drain_method_name, ', '.join(drain_lib.list_drain_methods()))
         log_deploy_error(errormsg)
-        return (1, errormsg)
+        return (1, errormsg, None)
 
     (old_app_live_happy_tasks,
      old_app_live_unhappy_tasks,
      old_app_draining_tasks,
      old_app_at_risk_tasks,
      ) = get_tasks_by_state(
-        other_apps,
-        drain_method,
-        service,
-        nerve_ns,
-        bounce_health_params,
-        system_paasta_config,
+        other_apps=other_apps,
+        drain_method=drain_method,
+        service=service,
+        nerve_ns=nerve_ns,
+        bounce_health_params=bounce_health_params,
+        system_paasta_config=system_paasta_config,
+        log_deploy_error=log_deploy_error,
     )
 
     if new_app_running:
-        num_at_risk_tasks = get_num_at_risk_tasks(new_app)
+        num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=get_draining_hosts())
         if new_app.instances < config['instances'] + num_at_risk_tasks:
             log.info("Scaling %s from %d to %d instances." %
                      (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
@@ -467,12 +488,13 @@ def deploy_service(
         elif new_app.instances > config['instances']:
             num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
             task_dict = get_tasks_by_state_for_app(
-                new_app,
-                drain_method,
-                service,
-                nerve_ns,
-                bounce_health_params,
-                system_paasta_config,
+                app=new_app,
+                drain_method=drain_method,
+                service=service,
+                nerve_ns=nerve_ns,
+                bounce_health_params=bounce_health_params,
+                system_paasta_config=system_paasta_config,
+                log_deploy_error=log_deploy_error,
             )
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])
@@ -511,9 +533,9 @@ def deploy_service(
             errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
                 (bounce_method, ', '.join(bounce_lib.list_bounce_methods()))
             log_deploy_error(errormsg)
-            return (1, errormsg)
+            return (1, errormsg, None)
 
-        do_bounce(
+        bounce_again_in_seconds = do_bounce(
             bounce_func=bounce_func,
             drain_method=drain_method,
             config=config,
@@ -536,13 +558,13 @@ def deploy_service(
     except bounce_lib.LockHeldException:
         logline = 'Failed to get lock to create marathon app for %s.%s' % (service, instance)
         log_deploy_error(logline, level='debug')
-        return (0, "Couldn't get marathon lock, skipping until next time")
+        return (0, "Couldn't get marathon lock, skipping until next time", None)
     except Exception:
         logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
         log_deploy_error(logline, level='debug')
         raise
 
-    return (0, 'Service deployed.')
+    return (0, 'Service deployed.', bounce_again_in_seconds)
 
 
 def setup_service(service, instance, client, service_marathon_config, marathon_apps, soa_dir):
@@ -554,7 +576,7 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
     :param instance: The instance of the service to setup
     :param client: A MarathonClient object
     :param service_marathon_config: The service instance's configuration dict
-    :returns: A tuple of (status, output) to be used with send_sensu_event"""
+    :returns: A tuple of (status, output, bounce_in_seconds) to be used with send_sensu_event"""
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
@@ -567,7 +589,7 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
             instance,
         )
         log.error(error_msg)
-        return (1, error_msg)
+        return (1, error_msg, None)
 
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(
@@ -627,7 +649,7 @@ def main():
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
             num_failed_deployments = num_failed_deployments + 1
         else:
-            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
+            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps)[0]:
                 num_failed_deployments = num_failed_deployments + 1
 
     requests_cache.uninstall_cache()
@@ -639,6 +661,19 @@ def main():
 
 
 def deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
+    """deploy the service instance given and proccess return code
+    if there was an error we send a sensu alert.
+
+    :param service: The service name to setup
+    :param instance: The instance of the service to setup
+    :param client: A MarathonClient object
+    :param soa_dir: Path to yelpsoa configs
+    :param marathon_config: The service instance's configuration dict
+    :param marathon_apps: A list of all marathon app objects
+    :returns: A tuple of (status, bounce_in_seconds) to be used by paasta-deployd
+        bounce_in_seconds instructs how long until the deployd should try another bounce
+        None means that it is in a steady state and doesn't need to bounce again
+    """
     short_id = marathon_tools.format_job_id(service, instance)
     try:
         with bounce_lib.bounce_lock_zookeeper(short_id):
@@ -652,31 +687,31 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config,
             except NoDeploymentsAvailable:
                 log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
                           (service, instance, load_system_paasta_config().get_cluster()))
-                return 0
+                return 0, None
             except NoConfigurationForServiceError:
                 error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
                             (service, instance, load_system_paasta_config().get_cluster())
                 log.error(error_msg)
-                return 1
+                return 1, None
 
             try:
-                status, output = setup_service(service,
-                                               instance,
-                                               client,
-                                               service_instance_config,
-                                               marathon_apps,
-                                               soa_dir)
+                status, output, bounce_again_in_seconds = setup_service(service,
+                                                                        instance,
+                                                                        client,
+                                                                        service_instance_config,
+                                                                        marathon_apps,
+                                                                        soa_dir)
                 sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
                 send_event(service, instance, soa_dir, sensu_status, output)
-                return 0
-            except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
+                return 0, bounce_again_in_seconds
+            except (KeyError, TypeError, AttributeError, InvalidInstanceConfig, NoSlavesAvailableError):
                 error_str = traceback.format_exc()
                 log.error(error_str)
                 send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-                return 1
+                return 1, None
     except bounce_lib.LockHeldException:
         log.error("Instance %s already being bounced. Exiting", short_id)
-        return 0
+        return 0, None
 
 
 if __name__ == "__main__":

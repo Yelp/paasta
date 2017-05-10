@@ -86,7 +86,7 @@ class TestSetupMarathonJob:
             autospec=True,
         ) as read_service_conf_patch, mock.patch(
             'paasta_tools.setup_marathon_job.setup_service',
-            return_value=(0, 'it_is_finished'),
+            return_value=(0, 'it_is_finished', None),
             autospec=True,
         ) as setup_service_patch, mock.patch(
             'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
@@ -148,7 +148,7 @@ class TestSetupMarathonJob:
             autospec=True,
         ) as read_service_conf_patch, mock.patch(
             'paasta_tools.setup_marathon_job.setup_service',
-            return_value=(1, 'NEVER'),
+            return_value=(1, 'NEVER', None),
             autospec=True,
         ) as setup_service_patch, mock.patch(
             'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
@@ -681,7 +681,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 soa_dir='fake_soa_dir',
             )
-            assert mock_log.call_count == 0
+            assert mock_log.call_count == 1
             assert mock_create_marathon_app.call_count == 0
             assert fake_drain_method.drain.call_count == 0
             assert mock_kill_old_ids.call_count == 0
@@ -775,7 +775,7 @@ class TestSetupMarathonJob:
         ) as mock_get_drain_method, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -832,7 +832,7 @@ class TestSetupMarathonJob:
         ) as mock_get_drain_method, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ) as mock_get_draining_hosts, mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ) as mock_mt_get_draining_hosts:
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -901,7 +901,7 @@ class TestSetupMarathonJob:
         ) as mock_do_bounce, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
                 get_cluster=mock.Mock(return_value='fake_cluster'))
@@ -965,7 +965,7 @@ class TestSetupMarathonJob:
         ) as mock_do_bounce, mock.patch(
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_draining_hosts', autospec=True,
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_stop_draining = mock.MagicMock()
 
@@ -1146,7 +1146,7 @@ class TestSetupMarathonJob:
             'format_marathon_app_dict',
             side_effect=NoDockerImageError,
         ):
-            status, output = setup_marathon_job.setup_service(
+            status, output, bounce_again = setup_marathon_job.setup_service(
                 service=fake_name,
                 instance=fake_instance,
                 client=None,
@@ -1157,6 +1157,7 @@ class TestSetupMarathonJob:
             assert status == 1
             expected = 'Docker image for test_service.test_instance not in'
             assert expected in output
+            assert bounce_again is None
 
     def test_setup_service_nerve_ns(self):
         fake_service = 'fake_service'
@@ -1215,7 +1216,7 @@ class TestSetupMarathonJob:
         fake_config = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: drain_method not recognized: doesntexist. Must be one of (exists1, exists2)'
-        expected = (1, errormsg)
+        expected = (1, errormsg, None)
 
         with mock.patch(
             'paasta_tools.setup_marathon_job._log', autospec=True,
@@ -1258,7 +1259,7 @@ class TestSetupMarathonJob:
 
         errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
             (fake_bounce, ', '.join(list_bounce_methods()))
-        expected = (1, errormsg)
+        expected = (1, errormsg, None)
 
         with mock.patch(
             'paasta_tools.setup_marathon_job._log', autospec=True,
@@ -1497,7 +1498,7 @@ class TestSetupMarathonJob:
                                                              mock_marathon_config,
                                                              mock_marathon_apps)
             assert not mock_setup_service.called
-            assert ret == 0
+            assert ret == (0, None)
 
 
 class TestGetOldHappyUnhappyDrainingTasks(object):
@@ -1544,12 +1545,13 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ):
             actual = setup_marathon_job.get_tasks_by_state(
-                fake_apps,
-                self.fake_drain_method(),
+                other_apps=fake_apps,
+                drain_method=self.fake_drain_method(),
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
+                log_deploy_error=None,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
@@ -1606,12 +1608,13 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
         ):
             actual = setup_marathon_job.get_tasks_by_state(
-                fake_apps,
-                self.fake_drain_method(),
+                other_apps=fake_apps,
+                drain_method=self.fake_drain_method(),
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
+                log_deploy_error=None,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks

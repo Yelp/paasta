@@ -19,7 +19,9 @@ import fnmatch
 import logging
 import os
 import pkgutil
+import random
 import re
+import subprocess
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -406,7 +408,7 @@ def find_connectable_master(masters):
 
     connectable_master = None
     for master in masters:
-        rc, output = check_ssh_and_sudo_on_master(master, timeout=timeout)
+        rc, output = check_ssh_on_master(master, timeout=timeout)
         if rc is True:
             connectable_master = master
             output = None
@@ -423,6 +425,8 @@ def connectable_master(cluster, system_paasta_config):
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
 
+    random.shuffle(masters)
+
     master, output = find_connectable_master(masters)
     if not master:
         raise NoMasterError(
@@ -432,12 +436,12 @@ def connectable_master(cluster, system_paasta_config):
     return master
 
 
-def check_ssh_and_sudo_on_master(master, timeout=10):
+def check_ssh_on_master(master, timeout=10):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s /bin/true' % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
@@ -581,7 +585,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
 
 
 def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, shell=False, dry=False, err_code=-1):
+                  timeout=None, err_code=-1, graceful_exit=False, stdin=None):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -592,26 +596,40 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
     :param cmd_parts: passed into paasta_tools.utils._run as command along with
         ssh bits
     :param timeout: see paasta_tools.utils._run documentation (default: None)
-    :param shell: prepend :cmd_parts: with 'sh -c' (default: False)
     :param err_code: code to return along with error message when something goes
         wrong (default: -1)
+    :param graceful_exit: wrap command in a bash script that waits for input and
+        kills the original command; trap SIGINT and send newline into stdin
     """
     try:
         master = connectable_master(cluster, system_paasta_config)
     except NoMasterError as e:
         return (err_code, str(e))
 
-    ssh_parts = ['ssh', '-A', '-n', master]
-
-    if shell:
-        ssh_parts.extend('sh -c "%s"' % quote(' '.join(cmd_parts)))
+    if graceful_exit:
+        # signals don't travel over ssh, kill process when anything lands on stdin instead
+        cmd_parts.append(
+            # send process to background and capture it's pid
+            '& p=$!; ' +
+            # wait for stdin with timeout in a loop, exit when original process finished
+            'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
+            # kill original process if loop finished (something on stdin)
+            'kill $p; wait'
+        )
+        stdin = subprocess.PIPE
+        stdin_interrupt = True
+        popen_kwargs = {'preexec_fn': os.setsid}
     else:
-        ssh_parts.append(' '.join(cmd_parts))
+        stdin_interrupt = False
+        popen_kwargs = {}
 
-    if dry:
-        return (0, "Would have run: %s" % ' '.join(ssh_parts))
-    else:
-        return _run(ssh_parts, timeout=timeout)
+    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "sudo /bin/bash -c %s" % quote(' '.join(cmd_parts))]
+
+    log.debug("Running %s" % ' '.join(cmd_parts))
+
+    return _run(cmd_parts, timeout=timeout, stream=True,
+                stdin=stdin, stdin_interrupt=stdin_interrupt,
+                popen_kwargs=popen_kwargs)
 
 
 def lazy_choices_completer(list_func):

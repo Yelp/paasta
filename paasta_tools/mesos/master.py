@@ -69,14 +69,20 @@ class MesosMaster(object):
         return "{}://{}".format(self.config["scheme"], self.resolve(self.config["master"]))
 
     @log.duration
-    def fetch(self, url, **kwargs):
+    def _request(self, url, method=requests.get, **kwargs):
         try:
-            return requests.get(
+            return method(
                 urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
                 **kwargs)
         except requests.exceptions.ConnectionError:
             raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
+
+    def fetch(self, url, **kwargs):
+        return self._request(url, **kwargs)
+
+    def post(self, url, **kwargs):
+        return self._request(url, method=requests.post, **kwargs)
 
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
@@ -217,6 +223,9 @@ class MesosMaster(object):
 
     def frameworks(self, active_only=False):
         return [framework.Framework(f) for f in self._framework_list(active_only)]
+
+    def teardown(self, framework_id):
+        return self.post("/master/teardown", data="frameworkId=%s" % framework_id)
 
     def metrics_snapshot(self):
         return self.fetch("/metrics/snapshot").json()

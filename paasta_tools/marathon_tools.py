@@ -23,7 +23,6 @@ import datetime
 import json
 import logging
 import os
-import re
 from math import ceil
 
 import requests
@@ -36,11 +35,10 @@ from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
-from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -56,6 +54,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import time_cache
 
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
@@ -114,6 +113,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
+@time_cache(ttl=5)
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
@@ -397,13 +397,24 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         code_sha = get_code_sha_from_dockerurl(docker_url)
 
         config_hash = get_config_hash(
-            {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
+            self.sanitize_for_config_hash(complete_config),
             force_bounce=self.get_force_bounce(),
         )
         complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
 
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
+
+    def sanitize_for_config_hash(self, config):
+        """Removes some data from complete_config to make it suitable for
+        calculation of config hash.
+
+        :param config: complete_config hash to sanitize
+        :returns: sanitized copy of complete_config hash
+        """
+        ahash = {key: value for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
+        return ahash
 
     def get_healthchecks(self, service_namespace_config):
         """Returns a list of healthchecks per `the Marathon docs`_.
@@ -538,19 +549,30 @@ def get_marathon_app_deploy_status(client, app_id):
     return deploy_status
 
 
-def get_marathon_client(url, user, passwd):
+class CachedMarathonClient(MarathonClient):
+
+    @time_cache(ttl=20)
+    def list_apps(self, *args, **kwargs):
+        return super(CachedMarathonClient, self).list_apps(*args, **kwargs)
+
+
+def get_marathon_client(url, user, passwd, cached=False):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
     :param url: The url to connect to marathon at
     :param user: The username to connect with
     :param passwd: The password to connect with
+    :param cached: If true, return CachedMarathonClient
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
 
     session = requests.Session()
     session.headers.update({'User-Agent': get_user_agent()})
 
-    return MarathonClient(url, user, passwd, timeout=30, session=session)
+    if cached:
+        return CachedMarathonClient(url, user, passwd, timeout=30, session=session)
+    else:
+        return MarathonClient(url, user, passwd, timeout=30, session=session)
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):
@@ -678,20 +700,20 @@ def get_app_id_and_task_uuid_from_executor_id(executor_id):
     return executor_id.rsplit('.', 1)
 
 
+def parse_service_instance_from_executor_id(task_id):
+    app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(task_id)
+    (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
+    return srv_name, srv_instance
+
+
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service, instance, port)"""
-    slave_state = get_local_slave_state()
-    frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
-    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
-    srv_list = []
-    for executor in executors:
-        app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
-        (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
-        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
-        srv_list.append((srv_name, srv_instance, srv_port))
-    return srv_list
+
+    return mesos_services_running_here(
+        framework_filter=lambda fw: fw['name'].startswith('marathon'),
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+    )
 
 
 def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
@@ -779,27 +801,6 @@ def get_classic_services_running_here_for_nerve(soa_dir):
     return classic_services
 
 
-def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get a list of ALL services running on this box, with returned information
-    needed for nerve.
-
-    ALL services means services that have a service.yaml with an entry for this host in
-    runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
-
-    conf_dict is a dictionary possibly containing the same keys returned by
-    load_service_namespace_config (in fact, that's what this calls).
-    Some or none of those keys may not be present on a per-service basis.
-
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of the form (service.namespace, service_config)
-              AND (service, service_config) for legacy SOA services"""
-    # All Legacy yelpsoa services are also announced
-    return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
-        get_classic_services_running_here_for_nerve(soa_dir) + \
-        get_puppet_services_running_here_for_nerve(soa_dir)
-
-
 def list_all_marathon_app_ids(client):
     """List all marathon app_ids, regardless of state
 
@@ -811,9 +812,7 @@ def list_all_marathon_app_ids(client):
     in the original form, without leading "/"'s.
 
     returns: List of app ids in the same format they are POSTed."""
-    all_app_ids = [app.id for app in client.list_apps()]
-    stripped_app_ids = [app_id.lstrip('/') for app_id in all_app_ids]
-    return stripped_app_ids
+    return [app.id.lstrip('/') for app in get_all_marathon_apps(client)]
 
 
 def is_app_id_running(app_id, client):
@@ -998,15 +997,16 @@ def is_old_task_missing_healthchecks(task, marathon_client):
     return False
 
 
-def get_num_at_risk_tasks(app):
+def get_num_at_risk_tasks(app, draining_hosts):
     """Determine how many of an application's tasks are running on
     at-risk (Mesos Maintenance Draining) hosts.
 
     :param app: A marathon application
+    :param draining_hosts: A list of hostnames that are marked as draining.
+                           See paasta_tools.mesos_maintenance.get_draining_hosts
     :returns: An integer representing the number of tasks running on at-risk hosts
     """
     hosts_tasks_running_on = [task.host for task in app.tasks]
-    draining_hosts = get_draining_hosts()
     num_at_risk_tasks = 0
     for host in hosts_tasks_running_on:
         if host in draining_hosts:

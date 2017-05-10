@@ -39,7 +39,6 @@ setup(
         'choice == 0.1',
         'chronos-python == 0.37.0',
         'cookiecutter == 1.4.0',
-        'cryptography == 1.4',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
@@ -54,7 +53,6 @@ setup(
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
         'mesos.interface == 1.1.0',
-        'ordereddict >= 1.1',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid == 1.7',
@@ -71,7 +69,7 @@ setup(
         # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.10.1',
         'ujson == 1.35',
-        'yelp_clog >= 2.2.0',
+        'yelp-clog >= 2.7.2',
     ],
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',
@@ -103,6 +101,7 @@ setup(
         'console_scripts': [
             'paasta=paasta_tools.cli.cli:main',
             'paasta-api=paasta_tools.api.api:main',
+            'paasta-deployd=paasta_tools.deployd.master:main',
             'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
             'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
             'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',

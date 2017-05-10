@@ -36,6 +36,7 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -158,6 +159,52 @@ def get_all_running_tasks():
     framework_tasks += mesos_master.orphan_tasks()
     running_tasks = filter_running_tasks(framework_tasks)
     return running_tasks
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_all_current_tasks():
+    """Returns a cached list of all mesos tasks.
+
+    This function is used by 'paasta status' and 'paasta_serviceinit status'
+    to avoid re-quering mesos master and re-parsing json to get mesos.Task objects.
+
+
+    The time_cache decorator caches the list for 600 seconds.
+    ttl doesn't really matter for this function because when we run 'paasta status'
+    the corresponding HTTP request to mesos master is cached by requests_cache.
+
+    :return tasks: a list of mesos.Task
+    """
+    return get_current_tasks('')
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_running_tasks_from_frameworks():
+    """Retruns a cached list of all running mesos tasks.
+    See the docstring for get_cached_list_of_all_current_tasks().
+
+    :return tasks: a list of mesos.Task
+    """
+    return [task for task in filter_running_tasks(get_cached_list_of_all_current_tasks())]
+
+
+@time_cache(ttl=600)
+def get_cached_list_of_not_running_tasks_from_frameworks():
+    """Retruns a cached list of mesos tasks that are NOT running.
+    See the docstring for get_cached_list_of_all_current_tasks().
+
+    :return tasks: a list of mesos.Task"""
+    return [task for task in filter_not_running_tasks(get_cached_list_of_all_current_tasks())]
+
+
+def select_tasks_by_id(tasks, job_id=''):
+    """Retruns a list of the tasks with a given job_id.
+
+    :param tasks: a list of mesos.Task.
+    :param job_id: the job id.
+    :return tasks: a list of mesos.Task.
+    """
+    return [task for task in tasks if job_id in task['id']]
 
 
 def get_non_running_tasks_from_frameworks(job_id=''):
@@ -373,7 +420,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
                        report.
     """
     output = []
-    running_and_active_tasks = get_running_tasks_from_frameworks(job_id)
+    running_and_active_tasks = select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), job_id)
     list_title = "Running Tasks:"
     table_header = [
         "Mesos Task ID",
@@ -392,7 +439,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
         tail_lines=tail_lines,
     ))
 
-    non_running_tasks = get_non_running_tasks_from_frameworks(job_id)
+    non_running_tasks = select_tasks_by_id(get_cached_list_of_not_running_tasks_from_frameworks(), job_id)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
@@ -417,9 +464,12 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
     return "\n".join(output)
 
 
-def get_local_slave_state():
-    """Fetches mesos slave state and returns it as a dict."""
-    hostname = socket.getfqdn()
+def get_local_slave_state(hostname=None):
+    """Fetches mesos slave state and returns it as a dict.
+
+    :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine."""
+    if hostname is None:
+        hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
     try:
         headers = {'User-Agent': get_user_agent()}
@@ -460,8 +510,8 @@ def get_master_flags():
 
 
 def get_zookeeper_host_path():
-    flags = get_master_flags()
-    parsed = urlparse(flags['flags']['zk'])
+    zk_url = load_system_paasta_config()['zookeeper']
+    parsed = urlparse(zk_url)
     return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
 
 
@@ -715,3 +765,24 @@ class TaskNotFound(Exception):
 
 class TooManyTasks(Exception):
     pass
+
+
+def mesos_services_running_here(framework_filter, parse_service_instance_from_executor_id, hostname=None):
+    """See what paasta_native services are being run by a mesos-slave on this host.
+
+    :param framework_filter: a function that returns true if we should consider a given framework.
+    :param parse_service_instance_from_executor_id: A function that returns a tuple of (service, instance) from the
+                                                    executor ID.
+    :param hostname: Hostname to fetch mesos slave state from. See get_local_slave_state.
+
+    :returns: A list of triples of (service, instance, port)"""
+    slave_state = get_local_slave_state(hostname=hostname)
+    frameworks = [fw for fw in slave_state.get('frameworks', []) if framework_filter(fw)]
+    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
+                 if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
+    srv_list = []
+    for executor in executors:
+        srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        srv_list.append((srv_name, srv_instance, srv_port))
+    return srv_list

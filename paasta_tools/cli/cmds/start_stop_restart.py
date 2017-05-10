@@ -21,10 +21,12 @@ import socket
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.cli.cmds.status import paasta_args_mixer
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_all_instances_for_service
+from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
@@ -60,6 +62,11 @@ def add_subparser(subparsers):
             help='A comma-separated list of instances of the service that you '
                  'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower
         ).completer = lazy_choices_completer(list_instances)
+        status_parser.add_argument(
+            '-l', '--deploy-group',
+            help=('Name of the deploy group which you want to get status for. '
+                  'If specified together with --instances and/or --clusters, will %s common instances only.' % lower),
+        ).completer = lazy_choices_completer(list_deploy_groups)
         status_parser.add_argument(
             '-c', '--clusters',
             help="A comma-separated list of clusters to view. "
@@ -160,8 +167,12 @@ def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
-    instances = args.instances.split(",") if args.instances else None
 
+    pargs = paasta_args_mixer(args, service)
+    if pargs is None:
+        return 1
+
+    instances = pargs.instance_whitelist if pargs.instance_whitelist else None
     # assert that each of the clusters that the user specifies are 'valid'
     # for the instance list provided; that is, assert that at least one of the instances
     # provided in the -i argument is deployed there.
@@ -170,13 +181,13 @@ def paasta_start_or_stop(args, desired_state):
     # If args.clusters is falsey, then default to *all* clusters that a service is deployed to,
     # and we figure out which ones are needed for each service later.
     if instances:
-        instance_clusters = [list_clusters(service, soa_dir, instance) for instance in args.instances]
+        instance_clusters = [list_clusters(service, soa_dir, instance) for instance in instances]
         valid_clusters = sorted(list({cluster for cluster_list in instance_clusters for cluster in cluster_list}))
     else:
         valid_clusters = list_clusters(service, soa_dir)
 
-    if args.clusters:
-        clusters = args.clusters.split(",")
+    if pargs.cluster_whitelist:
+        clusters = pargs.cluster_whitelist
         invalid_clusters = [cluster for cluster in clusters if cluster not in valid_clusters]
         if invalid_clusters:
             paasta_print(

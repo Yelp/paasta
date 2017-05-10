@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import binascii
 import copy
 import logging
 import random
@@ -16,6 +15,7 @@ import mesos.interface
 import service_configuration_lib
 from mesos.interface import mesos_pb2
 
+from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
 from paasta_tools.utils import paasta_print
 try:
     from mesos.native import MesosSchedulerDriver
@@ -28,17 +28,8 @@ except ImportError:
 from paasta_tools import mesos_tools
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import get_code_sha_from_dockerurl
-from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.constraints import check_offer_constraints
@@ -88,8 +79,8 @@ class MesosTaskParameters(object):
 
 class NativeScheduler(mesos.interface.Scheduler):
     def __init__(self, service_name, instance_name, cluster,
-                 system_paasta_config, staging_timeout, soa_dir=DEFAULT_SOA_DIR,
-                 service_config=None, reconcile_backoff=30,
+                 system_paasta_config, staging_timeout,
+                 soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
                  instance_type='paasta_native', service_config_overrides=None,
                  reconcile_start_time=float('inf')):
         self.service_name = service_name
@@ -102,6 +93,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
+        self.frozen = False
 
         # don't accept resources until we reconcile.
         self.reconcile_start_time = reconcile_start_time
@@ -115,13 +107,28 @@ class NativeScheduler(mesos.interface.Scheduler):
         # Gets set when registered() is called
         self.framework_id = None
 
+        self.blacklisted_slaves = set()
+        self.blacklisted_slaves_lock = threading.Lock()
+        self.blacklist_timeout = 3600
+
         if service_config is not None:
             self.service_config = service_config
             self.service_config.config_dict.update(self.service_config_overrides)
             self.recreate_drain_method()
             self.reload_constraints()
+            self.validate_config()
         else:
             self.load_config()
+
+    def shutdown(self, driver):
+        # TODO: this is naive, as it does nothing to stop on-going calls
+        #       to statusUpdate or resourceOffers.
+        paasta_print("Freezing the scheduler. Further status updates and resource offers are ignored.")
+        self.frozen = True
+        paasta_print("Killing any remaining live tasks.")
+        for task, parameters in self.tasks_with_flags.items():
+            if parameters.mesos_task_state in LIVE_TASK_STATES:
+                self.kill_task(driver, task)
 
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
@@ -131,11 +138,23 @@ class NativeScheduler(mesos.interface.Scheduler):
         driver.reconcileTasks([])
 
     def resourceOffers(self, driver, offers):
+        if self.frozen:
+            return
+
         if self.within_reconcile_backoff():
             paasta_print("Declining all offers since we started reconciliation too recently")
             for offer in offers:
                 driver.declineOffer(offer.id)
         else:
+            for idx, offer in enumerate(offers):
+                if offer.slave_id.value in self.blacklisted_slaves:
+                    log.critical("Ignoring offer %s from blacklisted slave %s" %
+                                 (offer.id.value, offer.slave_id.value))
+                    filters = mesos_pb2.Filters()
+                    filters.refuse_seconds = self.blacklist_timeout
+                    driver.declineOffer(offer.id, filters)
+                    del offers[idx]
+
             self.launch_tasks_for_offers(driver, offers)
 
     def launch_tasks_for_offers(self, driver, offers):
@@ -149,7 +168,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                     tasks, new_state = self.tasks_and_state_for_offer(
                         driver, offer, self.constraint_state)
 
-                    if len(tasks) > 0:
+                    if tasks is not None and len(tasks) > 0:
                         operation = mesos_pb2.Offer.Operation()
                         operation.type = mesos_pb2.Offer.Operation.LAUNCH
                         operation.launch.task_infos.extend(tasks)
@@ -227,12 +246,15 @@ class NativeScheduler(mesos.interface.Scheduler):
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
-    def log_and_kill(self, driver, taskId):
+    def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
-        self.kill_task(driver, taskId)
+        self.blacklist_slave(self.tasks_with_flags[task_id].offer.slave_id.value)
+        self.kill_task(driver, task_id)
 
-    def staging_timer_for_task(self, timeout_value, driver, taskId):
-        return Timer(timeout_value, lambda: self.log_and_kill(driver, taskId))
+    def staging_timer_for_task(self, timeout_value, driver, task_id):
+        timer = Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
+        timer.daemon = True
+        return timer
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -315,6 +337,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         return time.time() - self.reconcile_backoff < self.reconcile_start_time
 
     def periodic(self, driver):
+        if self.frozen:
+            return
+
         self.periodic_was_called = True  # Used for testing.
         if not self.within_reconcile_backoff():
             driver.reviveOffers()
@@ -323,6 +348,9 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.kill_tasks_if_necessary(driver)
 
     def statusUpdate(self, driver, update):
+        if self.frozen:
+            return
+
         # update tasks
         task_id = update.task_id.value
         state = update.state
@@ -460,6 +488,10 @@ class NativeScheduler(mesos.interface.Scheduler):
         )
         self.recreate_drain_method()
         self.reload_constraints()
+        self.validate_config()
+
+    def validate_config(self):
+        pass
 
     def recreate_drain_method(self):
         """Re-instantiate self.drain_method. Should be called after self.service_config changes."""
@@ -473,6 +505,25 @@ class NativeScheduler(mesos.interface.Scheduler):
 
     def reload_constraints(self):
         self.constraints = self.service_config.get_constraints() or []
+
+    def blacklist_slave(self, slave_id):
+        if slave_id in self.blacklisted_slaves:
+            return
+
+        log.debug("Blacklisting slave: %s" % slave_id)
+        with self.blacklisted_slaves_lock:
+            self.blacklisted_slaves.add(slave_id)
+            t = Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(slave_id))
+            t.daemon = True
+            t.start()
+
+    def unblacklist_slave(self, slave_id):
+        if slave_id not in self.blacklisted_slaves:
+            return
+
+        log.debug("Unblacklisting slave: %s" % slave_id)
+        with self.blacklisted_slaves_lock:
+            self.blacklisted_slaves.discard(slave_id)
 
 
 class DrainTask(object):
@@ -515,169 +566,6 @@ def create_driver(
         credential
     )
     return driver
-
-
-class UnknownNativeServiceError(Exception):
-    pass
-
-
-def read_service_config(service, instance, instance_type, cluster, soa_dir=DEFAULT_SOA_DIR):
-    conf_file = '%s-%s' % (instance_type, cluster)
-    full_path = '%s/%s/%s.yaml' % (soa_dir, service, conf_file)
-    paasta_print("Reading paasta-remote configuration file: %s" % full_path)
-
-    config = service_configuration_lib.read_extra_service_information(
-        service,
-        conf_file,
-        soa_dir=soa_dir
-    )
-
-    if instance not in config:
-        raise UnknownNativeServiceError(
-            'No job named "%s" in config file %s: \n%s' % (
-                instance, full_path, open(full_path).read())
-        )
-
-    return config
-
-
-def load_paasta_native_job_config(
-    service,
-    instance,
-    cluster,
-    load_deployments=True,
-    soa_dir=DEFAULT_SOA_DIR,
-    instance_type='paasta_native',
-    config_overrides=None
-):
-    service_paasta_native_jobs = read_service_config(
-        service=service,
-        instance=instance,
-        instance_type=instance_type,
-        cluster=cluster,
-        soa_dir=soa_dir
-    )
-    branch_dict = {}
-    if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        branch_dict = deployments_json.get_branch_dict(service, branch)
-
-    instance_config_dict = service_paasta_native_jobs[instance].copy()
-    instance_config_dict.update(config_overrides or {})
-    service_config = NativeServiceConfig(
-        service=service,
-        cluster=cluster,
-        instance=instance,
-        config_dict=instance_config_dict,
-        branch_dict=branch_dict,
-    )
-
-    service_namespace_config = load_service_namespace_config(
-        service=service,
-        namespace=service_config.get_nerve_namespace(),
-        soa_dir=soa_dir
-    )
-    service_config.service_namespace_config = service_namespace_config
-
-    return service_config
-
-
-class NativeServiceConfig(LongRunningServiceConfig):
-    def __init__(self, service, instance, cluster, config_dict, branch_dict,
-                 service_namespace_config=None):
-        super(NativeServiceConfig, self).__init__(
-            cluster=cluster,
-            instance=instance,
-            service=service,
-            config_dict=config_dict,
-            branch_dict=branch_dict,
-        )
-        # service_namespace_config may be omitted/set to None at first, then set
-        # after initializing. e.g. we do this in load_paasta_native_job_config
-        # so we can call get_nerve_namespace() to figure out what SNC to read.
-        # It may also be set to None if this service is not in nerve.
-        if service_namespace_config is not None:
-            self.service_namespace_config = service_namespace_config
-        else:
-            self.service_namespace_config = ServiceNamespaceConfig()
-
-    def task_name(self, base_task):
-        code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)
-
-        filled_in_task = mesos_pb2.TaskInfo()
-        filled_in_task.MergeFrom(base_task)
-        filled_in_task.name = ""
-        filled_in_task.task_id.value = ""
-        filled_in_task.slave_id.value = ""
-
-        config_hash = get_config_hash(
-            binascii.b2a_base64(filled_in_task.SerializeToString()).decode(),
-            force_bounce=self.get_force_bounce(),
-        )
-
-        return compose_job_id(
-            self.service,
-            self.instance,
-            git_hash=code_sha,
-            config_hash=config_hash,
-            spacer=MESOS_TASK_SPACER,
-        )
-
-    def base_task(self, system_paasta_config, portMappings=True):
-        """Return a TaskInfo protobuf with all the fields corresponding to the configuration filled in. Does not
-        include task.slave_id or a task.id; those need to be computed separately."""
-        task = mesos_pb2.TaskInfo()
-        task.container.type = mesos_pb2.ContainerInfo.DOCKER
-        task.container.docker.image = get_docker_url(system_paasta_config.get_docker_registry(),
-                                                     self.get_docker_image())
-
-        for param in self.format_docker_parameters():
-            p = task.container.docker.parameters.add()
-            p.key = param['key']
-            p.value = param['value']
-
-        task.container.docker.network = self.get_mesos_network_mode()
-
-        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
-        for volume in docker_volumes:
-            v = task.container.volumes.add()
-            v.mode = getattr(mesos_pb2.Volume, volume['mode'].upper())
-            v.container_path = volume['containerPath']
-            v.host_path = volume['hostPath']
-
-        task.command.value = self.get_cmd()
-        cpus = task.resources.add()
-        cpus.name = "cpus"
-        cpus.type = mesos_pb2.Value.SCALAR
-        cpus.scalar.value = self.get_cpus()
-        mem = task.resources.add()
-        mem.name = "mem"
-        mem.type = mesos_pb2.Value.SCALAR
-        mem.scalar.value = self.get_mem()
-
-        if portMappings:
-            pm = task.container.docker.port_mappings.add()
-            pm.container_port = self.get_container_port()
-            pm.host_port = 0  # will be filled in by tasks_and_state_for_offer()
-            pm.protocol = "tcp"
-
-            port = task.resources.add()
-            port.name = "ports"
-            port.type = mesos_pb2.Value.RANGES
-            port.ranges.range.add()
-            port.ranges.range[0].begin = 0  # will be filled in by tasks_and_state_for_offer().
-            port.ranges.range[0].end = 0  # will be filled in by tasks_and_state_for_offer().
-
-        task.name = self.task_name(task)
-
-        return task
-
-    def get_mesos_network_mode(self):
-        return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
-
-    def get_constraints(self):
-        return self.config_dict.get('constraints', None)
 
 
 def get_paasta_native_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):

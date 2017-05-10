@@ -504,10 +504,13 @@ Available Options
 Basic HTTP and TCP options
 ``````````````````````````
 
- * ``proxy_port``: integer-valued port on which HAProxy listens for requests.
-   This must be unique across all environments where PaaSTA (or synapse) runs.
-   At Yelp, we pick from the range [20000, 21000]. Feel free to pick the next
-   available value -- paasta fsm will do this for you automatically!
+ * ``proxy_port``: integer-valued (or ``null``) port on which HAProxy listens
+   for requests. If ``null`` this service will be "discovery only" meaning that
+   it will generate synapse discovery files on every host, but no listening
+   port will be allocated. This must be unique across all environments where
+   PaaSTA (or synapse) runs. At Yelp, we pick from the range [20000, 21000].
+   Feel free to pick the next available value -- paasta fsm will do this for
+   you automatically!
 
  * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service
    is an HTTP or TCP service respectively.  Defaults to ``http``.

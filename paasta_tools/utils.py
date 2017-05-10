@@ -34,6 +34,7 @@ import signal
 import sys
 import tempfile
 import threading
+import time
 from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import wraps
@@ -51,7 +52,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 
-import paasta_tools
+import paasta_tools.cli.fsm
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -83,6 +84,27 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
+
+
+class time_cache:
+    def __init__(self, ttl=0):
+        self.configs = {}
+        self.ttl = ttl
+
+    def __call__(self, f):
+        def cache(*args, **kwargs):
+            if 'ttl' in kwargs:
+                ttl = kwargs['ttl']
+                del kwargs['ttl']
+            else:
+                ttl = self.ttl
+            key = args
+            for item in kwargs.items():
+                key += item
+            if (not ttl) or (key not in self.configs) or (time.time() - self.configs[key]['fetch_time'] > ttl):
+                self.configs[key] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
+            return self.configs[key]['data']
+        return cache
 
 
 def sort_dicts(dcts):
@@ -210,15 +232,23 @@ class InstanceConfig(dict):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self):
+    def format_docker_parameters(self, with_labels=True):
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
+        :param with_labels: Whether to build docker parameters with or without labels
         :returns: A list of parameters to be added to docker run"""
-        parameters = [{"key": "memory-swap", "value": self.get_mem_swap()},
-                      {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                      {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
+        parameters = [
+            {"key": "memory-swap", "value": self.get_mem_swap()},
+            {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+            {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
+        ]
+        if with_labels:
+            parameters.extend([
+                {"key": "label", "value": "paasta_service=%s" % self.service},
+                {"key": "label", "value": "paasta_instance=%s" % self.instance},
+            ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
@@ -894,7 +924,7 @@ class SystemPaastaConfig(dict):
         return self['api_endpoints']
 
     def get_fsm_template(self):
-        fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
+        fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
         template_path = os.path.join(fsm_path, "template")
         return self.get('fsm_template', template_path)
 
@@ -917,6 +947,13 @@ class SystemPaastaConfig(dict):
             return self['log_reader']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
+
+    def get_deployd_metrics_provider(self):
+        """Get the metrics_provider configuration out of global paasta config
+
+        :returns: A string identifying the metrics_provider
+        """
+        return self.get('deployd_metrics_provider')
 
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
@@ -1020,8 +1057,38 @@ class SystemPaastaConfig(dict):
         calculating the default routing constraints."""
         return self.get('expected_slave_attributes')
 
+    def get_security_check_command(self):
+        """Get the script to be executed during the security-check build step
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
+        :return: The name of the file
+        """
+        return self.get("security_check_command", None)
+
+    def get_deployd_number_workers(self):
+        """Get the number of workers to consume deployment q
+
+        :return: integer
+        """
+        return self.get("deployd_number_workers", 4)
+
+    def get_deployd_big_bounce_rate(self):
+        """Get the number of deploys to do per minute when deployd starts
+        or determines it needs to bounce all services
+
+        :return: integer
+        """
+        return self.get("deployd_big_bounce_rate", 2)
+
+    def get_deployd_log_level(self):
+        """Get the log level for paasta-deployd
+
+        :return: string name of python logging level, e.g. INFO, DEBUG etc.
+        """
+        return self.get("deployd_log_level", 'INFO')
+
+
+def _run(command, env=os.environ, timeout=None, log=False, stream=False,
+         stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1045,7 +1112,20 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
     try:
         if not isinstance(command, list):
             command = shlex.split(command)
-        process = Popen(command, stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
+        popen_kwargs['stdout'] = PIPE
+        popen_kwargs['stderr'] = STDOUT
+        popen_kwargs['stdin'] = stdin
+        popen_kwargs['env'] = env
+        process = Popen(command, **popen_kwargs)
+
+        if stdin_interrupt:
+            def signal_handler(signum, frame):
+                process.stdin.write("\n")
+                process.stdin.flush()
+                process.wait()
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+
         process.name = command
         # start the timer if we specified a timeout
         if timeout:
@@ -1075,7 +1155,8 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
                     instance=instance,
                 )
         # when finished, get the exit code
-        returncode = process.wait()
+        process.wait()
+        returncode = process.returncode
     except OSError as e:
         if log:
             _log(
@@ -1296,6 +1377,7 @@ def list_all_instances_for_service(service, clusters=None, instance_type=None, s
     return instances
 
 
+@time_cache(ttl=5)
 def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
@@ -1370,25 +1452,6 @@ def get_running_mesos_docker_containers():
 
 class TimeoutError(Exception):
     pass
-
-
-def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
-    def decorator(func):
-        def _handle_timeout(signum, frame):
-            raise TimeoutError(error_message)
-
-        def wrapper(*args, **kwargs):
-            signal.signal(signal.SIGALRM, _handle_timeout)
-            signal.alarm(seconds)
-            try:
-                result = func(*args, **kwargs)
-            finally:
-                signal.alarm(0)
-            return result
-
-        return wraps(func)(wrapper)
-
-    return decorator
 
 
 class Timeout:
@@ -1543,7 +1606,8 @@ def get_code_sha_from_dockerurl(docker_url):
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha
     """
-    parts = docker_url.split('-')
+    parts = docker_url.split('/')
+    parts = parts[-1].split('-')
     return "git%s" % parts[-1][:8]
 
 
@@ -1773,3 +1837,63 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):
+    if use_signals:
+        def decorate(func):
+            def _handle_timeout(signum, frame):
+                raise TimeoutError(error_message)
+
+            def wrapper(*args, **kwargs):
+                signal.signal(signal.SIGALRM, _handle_timeout)
+                signal.alarm(seconds)
+                try:
+                    result = func(*args, **kwargs)
+                finally:
+                    signal.alarm(0)
+                return result
+
+            return wraps(func)(wrapper)
+    else:
+        def decorate(function):
+            return _Timeout(function, seconds, error_message)
+    return decorate
+
+
+class _Timeout(object):
+    def __init__(self, function, seconds, error_message):
+        self.seconds = seconds
+        self.control = six.moves.queue.Queue()
+        self.function = function
+        self.error_message = error_message
+
+    def run(self, *args, **kwargs):
+        # Try and put the result of the function into the q
+        # if an exception occurrs then we put the exc_info instead
+        # so that it can be raised in the main thread.
+        try:
+            self.control.put((True, self.function(*args, **kwargs)))
+        except Exception:
+            self.control.put((False, sys.exc_info()))
+
+    def __call__(self, *args, **kwargs):
+        self.func_thread = threading.Thread(target=self.run,
+                                            args=args,
+                                            kwargs=kwargs)
+        self.func_thread.daemon = True
+        self.timeout = self.seconds + time.time()
+        self.func_thread.start()
+        return self.get_and_raise()
+
+    def get_and_raise(self):
+        while not self.timeout < time.time():
+            time.sleep(0.01)
+            if not self.func_thread.is_alive():
+                ret = self.control.get()
+                if ret[0]:
+                    return ret[1]
+                else:
+                    exc_info = ret[1]
+                    six.reraise(*exc_info)
+        raise TimeoutError(self.error_message)

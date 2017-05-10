@@ -22,9 +22,12 @@ import humanize
 import isodate
 
 from paasta_tools import marathon_tools
+from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
+from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
+from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
@@ -149,15 +152,22 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
                                      running_instances, normal_instance_count)
 
 
-def get_verbose_status_of_marathon_app(app):
+def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("    Tasks:")
 
+    autoscaling_info = get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir)
+    if autoscaling_info:
+        output.append("    Autoscaling Info:")
+        headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
+        table = [headers, autoscaling_info]
+        output.append('\n'.join(["      %s" % line for line in format_table(table)]))
+
+    output.append("    Tasks:")
     rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
@@ -187,7 +197,7 @@ def get_verbose_status_of_marathon_app(app):
     return app.tasks, "\n".join(output)
 
 
-def status_marathon_job_verbose(service, instance, client):
+def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
     """Returns detailed information about a marathon apps for a service
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
@@ -200,7 +210,14 @@ def status_marathon_job_verbose(service, instance, client):
     for app_id in marathon_tools.get_matching_appids(service, instance, client):
         if marathon_tools.is_app_id_running(app_id, client):
             app = client.get_app(app_id)
-            tasks, output = get_verbose_status_of_marathon_app(app)
+            tasks, output = get_verbose_status_of_marathon_app(
+                marathon_client=client,
+                app=app,
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir
+            )
             all_tasks.extend(tasks)
             all_output.append(output)
         else:
@@ -371,8 +388,7 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
-    running_and_active_tasks = get_running_tasks_from_frameworks(filter_string)
-    count = len(running_and_active_tasks)
+    count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
@@ -386,18 +402,18 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None):
+def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, client=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
     :param verbose: int verbosity level
+    :param client: MarathonClient or CachingMarathonClient
     :returns: A unix-style return code
     """
     system_config = load_system_paasta_config()
 
-    marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     if not app_id:
         try:
@@ -408,17 +424,20 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
             return 1
 
     normal_instance_count = job_config.get_instances()
-    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
-    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                                marathon_config.get_password())
+    if client is None:
+        marathon_config = marathon_tools.load_marathon_config()
+        client = marathon_tools.get_marathon_client(marathon_config.get_url(),
+                                                    marathon_config.get_username(),
+                                                    marathon_config.get_password())
+
     if command == 'restart':
         restart_marathon_job(service, instance, app_id, client, cluster)
     elif command == 'status':
         paasta_print(status_desired_state(service, instance, client, job_config))
         paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, client))
-        tasks, out = status_marathon_job_verbose(service, instance, client)
+        tasks, out = status_marathon_job_verbose(service, instance, client, cluster, soa_dir)
         if verbose > 0:
             paasta_print(out)
         paasta_print(status_mesos_tasks(service, instance, normal_instance_count))
@@ -430,6 +449,9 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 tail_lines=tail_lines,
             ))
         if proxy_port is not None:
+            normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service,
+                                                                                               instance,
+                                                                                               cluster)
             paasta_print(status_smartstack_backends(
                 service=service,
                 instance=instance,

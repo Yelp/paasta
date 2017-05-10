@@ -24,6 +24,7 @@ opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cleanup_ch
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/deploy_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chronos_jobs
+opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
 opt/venvs/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/list_chronos_jobs
