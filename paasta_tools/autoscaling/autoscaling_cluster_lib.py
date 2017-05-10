@@ -374,10 +374,12 @@ class ClusterAutoscaler(ResourceLogMixin):
                 == i['PrivateIpAddress']
             ]
             if matching_descriptions:
-                if len(matching_descriptions) > 1:
-                    log.error("Found more than one instance with the same private IP {0}. "
-                              "This should never happen")
-                    raise ClusterAutoscalingError
+                assert len(matching_descriptions) == 1, (
+                    "There should be only one instance with the same IP."
+                    "Found instances %s with the same ip %d"
+                    % (",".join([x['InstanceId'] for x in matching_descriptions]), i["PrivateIpAddress"]
+                       )
+                )
                 description = matching_descriptions[0]
                 matching_status = [
                     status for status in instance_statuses
