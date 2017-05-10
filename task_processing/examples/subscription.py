@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
 import os
 
 from six.moves.queue import Queue
@@ -10,6 +11,8 @@ from six.moves.queue import Queue
 from task_processing.interfaces.task_executor import make_task_config
 from task_processing.plugins.mesos.mesos_executor import MesosExecutor
 from task_processing.runners.subscription import Subscription
+
+logging.basicConfig()
 
 
 def main():

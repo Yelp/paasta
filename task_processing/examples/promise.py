@@ -3,11 +3,15 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
 import os
 
 from task_processing.executors.mesos_executor import MesosExecutor
 from task_processing.executors.task_executor import make_task_config
 from task_processing.runners.promise import Promise
+
+
+logging.basicConfig()
 
 
 def main():
