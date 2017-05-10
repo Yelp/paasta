@@ -3,11 +3,14 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
+
 from six.moves.queue import Queue
 
 from task_processing.executors.mesos_executor import MesosExecutor
 from task_processing.executors.task_executor import TaskConfig
 from task_processing.runners.subscription import Subscription
+logging.basicConfig()
 
 
 def main():
@@ -19,7 +22,7 @@ def main():
         cmd="/bin/sleep 10",
         cpus=0.1,
         mem=32,
-        disk=1000,
+        disk=10,
         volumes={},
         ports=[],
         cap_add=[],
@@ -27,7 +30,7 @@ def main():
         docker_parameters=[]
     )
 
-    queue = Queue(10)
+    queue = Queue(100)
     executor = MesosExecutor(credentials=credentials)  # (framework, driver, translator)
     runner = Subscription(executor, queue)
 
@@ -37,6 +40,7 @@ def main():
 
     while True:
         event = queue.get()
+        queue.task_done()
         print(event)
 
 
