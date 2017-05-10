@@ -24,7 +24,8 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
     """A service group.
 
     :param service: the name of a service
-    :param dependency_group: the name of a dependency group
+    :param dependency_group: the name of a set of dependencies
+                             (the key in dependencies.yaml)
     :param mode: either 'monitor' or 'block'
     """
 

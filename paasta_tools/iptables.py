@@ -12,6 +12,9 @@ import shlex
 import subprocess
 
 
+CHAIN_REGEX = re.compile('-N ([^ ]+)$')
+
+
 class ChainDoesNotExist(Exception):
     pass
 
@@ -20,16 +23,15 @@ def all_chains():
     output = subprocess.check_output(
         ('iptables', '-t', 'filter', '--list-rules'),
     )
-    chain_regex = re.compile('-N ([^ ]+)$')
     chains = set()
     for line in output.splitlines():
-        m = chain_regex.match(line)
+        m = CHAIN_REGEX.match(line)
         if m:
             chains.add(m.group(1))
     return chains
 
 
-def ensure_chain(chain, rules=None):
+def ensure_chain(chain, rules):
     """Idempotently ensure a chain exists and has an exact set of rules.
 
     This function creates or updates an existing chain to match the rules
@@ -44,23 +46,26 @@ def ensure_chain(chain, rules=None):
         create_chain(chain)
         current_rules = set()
 
-    if rules is not None:
-        for rule in rules:
-            if rule not in current_rules:
-                add_rule(chain, rule)
+    for rule in rules:
+        if rule not in current_rules:
+            insert_rule(chain, rule)
 
-        for rule in current_rules:
-            if rule not in rules:
-                delete_rule(chain, rule)
+    # The insertion stage needs "rules" to be ordered since insertion order
+    # matters, but the deletion phase doesn't, so we turn it into a set to
+    # speed up this loop.
+    rules = set(rules)
+    for rule in current_rules:
+        if rule not in rules:
+            delete_rule(chain, rule)
 
 
 def ensure_rule(chain, rule):
     rules = list_chain(chain)
     if rule not in rules:
-        add_rule(chain, rule)
+        insert_rule(chain, rule)
 
 
-def add_rule(chain, rule):
+def insert_rule(chain, rule):
     print('adding rule to {}: {}'.format(chain, rule))
     subprocess.check_call(['iptables', '-t', 'filter', '-I', chain] + shlex.split(rule))
 
