@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 import inspect
 import logging
+import logging.handlers
+import os
 import socket
 import time
 
@@ -35,7 +37,6 @@ class Inbox(PaastaThread):
     def run(self):
         while True:
             self.process_inbox()
-        pass
 
     def process_inbox(self):
         try:
@@ -82,12 +83,19 @@ class DeployDaemon(PaastaThread):
         super(DeployDaemon, self).__init__()
         self.started = False
         self.daemon = True
+        self.config = load_system_paasta_config()
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))
+        log_handlers = [logging.StreamHandler()]
+        if os.path.exists('/dev/log'):
+            log_handlers.append(logging.handlers.SysLogHandler('/dev/log'))
+        for handler in log_handlers:
+            root_logger.addHandler(handler)
+            handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
         self.bounce_q = PaastaQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
-        self.config = load_system_paasta_config()
-        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
