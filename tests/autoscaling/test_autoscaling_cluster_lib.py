@@ -943,6 +943,16 @@ class TestClusterAutoscaler(unittest.TestCase):
             )
             assert mock_gracefully_terminate_slave.call_count == 3
 
+    def test_filter_instance_description_for_ip(self):
+        fake_description = [{'PrivateIpAddress': '10.1.1.1'}, {'PrivateIpAddress': '10.1.1.2'}]
+        actual = self.autoscaler.filter_instance_description_for_ip('10.1.1.1', fake_description)
+        assert actual == [fake_description[0]]
+
+    def test_filter_instance_status_for_instance_id(self):
+        fake_status = [{'InstanceId': 'foo'}, {'InstanceId': 'bar'}]
+        actual = self.autoscaler.filter_instance_status_for_instance_id('foo', fake_status)
+        assert actual == [fake_status[0]]
+
     def test_gracefully_terminate_slave(self):
         with mock.patch(
             'time.time', autospec=True,

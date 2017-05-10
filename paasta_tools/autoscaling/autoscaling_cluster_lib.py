@@ -345,60 +345,76 @@ class ClusterAutoscaler(ResourceLogMixin):
             if slave_pid_to_ip(slave['task_counts'].slave['pid']) in ips
         ]
         slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
-        instance_descriptions = self.describe_instances(
-            instance_ids=[],
-            region=self.resource['region'],
-            instance_filters=[
-                {
-                    'Name': 'private-ip-address',
-                    'Values': slave_ips
-                }
-            ]
-        )
-        instance_statuses = self.describe_instance_status(
-            instance_ids=[],
-            region=self.resource['region'],
-            instance_filters=[
-                {
-                    'Name': 'private-ip-address',
-                    'Values': slave_ips
-                }
-            ]
-        )
         instance_type_weights = self.get_instance_type_weights()
+        instance_statuses = self.instance_status_for_ips(slave_ips)
+        instance_descriptions = self.instance_descriptions_for_ips(slave_ips)
+
         paasta_aws_slaves = []
         for slave in slaves:
-            matching_descriptions = [
-                i for i in instance_descriptions
-                if slave_pid_to_ip(slave['task_counts'].slave['pid'])
-                == i['PrivateIpAddress']
-            ]
+            slave_ip = slave_pid_to_ip(slave['task_counts'].slave['pid'])
+            matching_descriptions = self.filter_instance_description_for_ip(slave_ip, instance_descriptions)
             if matching_descriptions:
                 assert len(matching_descriptions) == 1, (
                     "There should be only one instance with the same IP."
                     "Found instances %s with the same ip %d"
-                    % (",".join([x['InstanceId'] for x in matching_descriptions]), i["PrivateIpAddress"]
+                    % (",".join(
+                        [x['InstanceId'] for x in matching_descriptions]),
+                        slave_ip
                        )
                 )
                 description = matching_descriptions[0]
-                matching_status = [
-                    status for status in instance_statuses
-                    if status['InstanceId'] == description['InstanceId']
-                ]
+                matching_status = self.filter_instance_status_for_instance_id(
+                    instance_id=description['InstanceId'],
+                    instance_statuses=instance_statuses
+                )
                 assert len(matching_status) == 1, "There should be only one InstanceStatus per instance"
             else:
                 description = None
 
-            paasta_aws_slaves.append(
-                PaastaAwsSlave(
-                    slave=slave,
-                    instance_status=matching_status[0],
-                    instance_description=description,
-                    instance_type_weights=instance_type_weights
-                )
-            )
+            paasta_aws_slaves.append(PaastaAwsSlave(
+                slave=slave,
+                instance_status=matching_status[0],
+                instance_description=description,
+                instance_type_weights=instance_type_weights
+            ))
 
         return paasta_aws_slaves
+
+    def instance_status_for_ips(self, ips):
+        return self.describe_instance_status(
+            instance_ids=[],
+            region=self.resource['region'],
+            instance_filters=[
+                {
+                    'Name': 'private-ip-address',
+                    'Values': ips
+                }
+            ]
+        )
+
+    def instance_descriptions_for_ips(self, ips):
+        return self.describe_instances(
+            instance_ids=[],
+            region=self.resource['region'],
+            instance_filters=[
+                {
+                    'Name': 'private-ip-address',
+                    'Values': ips
+                }
+            ]
+        )
+
+    def filter_instance_description_for_ip(self, ip, instance_descriptions):
+        return [
+            i for i in instance_descriptions
+            if ip == i['PrivateIpAddress']
+        ]
+
+    def filter_instance_status_for_instance_id(self, instance_id, instance_statuses):
+        return [
+            status for status in instance_statuses
+            if status['InstanceId'] == instance_id
+        ]
 
     def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
