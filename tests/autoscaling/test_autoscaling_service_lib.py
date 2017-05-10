@@ -299,7 +299,7 @@ def test_mesos_cpu_metrics_provider():
         assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_marathon_tasks,
-            (fake_mesos_task, fake_mesos_task_2, fake_mesos_task_3),
+            (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
             log_utilization_data=log_utilization_data,
         )
         mock_zk_client.return_value.set.assert_has_calls([
