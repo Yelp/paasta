@@ -69,7 +69,7 @@ setup(
         # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.10.1',
         'ujson == 1.35',
-        'yelp_clog >= 2.2.0',
+        'yelp-clog >= 2.7.2',
     ],
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',
