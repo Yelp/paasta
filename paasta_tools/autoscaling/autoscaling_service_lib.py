@@ -449,14 +449,15 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
 
     monkey.patch_socket()
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
-    gevent.joinall(jobs, timeout=10)
+    gevent.joinall(jobs, timeout=60)
     mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
     mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
-        'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in mesos_tasks.items()}
+        'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1)
+        for task_id, stats in mesos_tasks.items() if stats is not None}
 
     if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu data from Mesos")
