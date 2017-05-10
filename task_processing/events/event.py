@@ -8,6 +8,10 @@ class EventBase(object):
         self.task_id = original_event.task_id.value
 
 
+class EventTerminal(EventBase):
+    pass
+
+
 class EventStarting(EventBase):
     pass
 
@@ -16,19 +20,19 @@ class EventRunning(EventBase):
     pass
 
 
-class EventFinished(EventBase):
+class EventFinished(EventTerminal):
     pass
 
 
-class EventFailed(EventBase):
+class EventFailed(EventTerminal):
     pass
 
 
-class EventKilled(EventBase):
+class EventKilled(EventTerminal):
     pass
 
 
-class EventLost(EventBase):
+class EventLost(EventTerminal):
     pass
 
 
