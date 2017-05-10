@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import logging
 import threading
 import time
-import uuid
 from threading import Timer
 
 import mesos.interface
@@ -13,7 +12,7 @@ import mesos.native
 from mesos.interface import mesos_pb2
 
 from paasta_tools.utils import paasta_print
-from task_processing.events.event_processor import mesos_status_to_event
+from task_processing.events.event import mesos_status_to_event
 
 try:
     from Queue import Queue
@@ -27,7 +26,6 @@ TASK_STAGING = mesos_pb2.TASK_STAGING
 TASK_STARTING = mesos_pb2.TASK_STARTING
 TASK_RUNNING = mesos_pb2.TASK_RUNNING
 
-TASK_KILLING = mesos_pb2.TASK_KILLING
 TASK_FINISHED = mesos_pb2.TASK_FINISHED
 TASK_FAILED = mesos_pb2.TASK_FAILED
 TASK_KILLED = mesos_pb2.TASK_KILLED
@@ -123,13 +121,12 @@ class ExecutionFramework(mesos.interface.Scheduler):
         for offer in offers:
             with self.constraint_state_lock:
                 try:
-                    if self.dry_run or self.need_to_stop():
-                        if self.dry_run:
-                            tasks, new_state = self.tasks_and_state_for_offer(
-                                driver, offer, self.constraint_state)
-                            tasks, _ = self.tasks_and_state_for_offer(driver, offer, self.constraint_state)
-                            print("Would have launched: ", tasks)
-                            self.driver.stop()
+                    if self.dry_run:
+                        tasks, new_state = self.tasks_and_state_for_offer(
+                            driver, offer, self.constraint_state)
+                        tasks, _ = self.tasks_and_state_for_offer(driver, offer, self.constraint_state)
+                        print("Would have launched: ", tasks)
+                        self.driver.stop()
                     else:
                         tasks, new_state = self.tasks_and_state_for_offer(
                             driver=driver,
@@ -231,17 +228,17 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
         # don't mutate existing state
         # new_constraint_state = copy.deepcopy(state)
-        total = 0
-        failed_constraints = 0
+        # total = 0
+        # failed_constraints = 0
         while not self.tasks_waiting.empty():
-            task = self.tasks_waiting.get()
-            base_task = mesos_task_for_task_config(task)
-            base_task.slave_id.value = offer.slave_id.value
+            task_config = self.tasks_waiting.get()
+            mesos_task = self.create_new_docker_task(offer, task_config)
+            mesos_task.slave_id.value = offer.slave_id.value
 
-            total += 1
+            # total += 1
 
-            if not(remainingCpus >= task.cpus and
-                   remainingMem >= task.mem and
+            if not(remainingCpus >= task_config.cpus and
+                   remainingMem >= task_config.mem and
                    self.offer_matches_pool(offer) and
                    len(remainingPorts) >= 1):
                 break
@@ -253,28 +250,23 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
             # task_port = random.choice(list(remainingPorts))
 
-            t = mesos_pb2.TaskInfo()
-            t.MergeFrom(base_task)
-            tid = "%s.%s" % (t.name, uuid.uuid4().hex)
-            t.task_id.value = tid
-
             # t.container.docker.port_mappings[0].host_port = task_port
             # for resource in t.resources:
             # if resource.name == "ports":
             # resource.ranges.range[0].begin = task_port
             # resource.ranges.range[0].end = task_port
 
-            tasks.append(t)
+            tasks.append(mesos_task)
 
-            remainingCpus -= task.cpus
-            remainingMem -= task.mem
+            remainingCpus -= task_config.cpus
+            remainingMem -= task_config.mem
             # remainingPorts -= {task_port}
 
             # update_constraint_state(offer, self.constraints, new_constraint_state)
 
         # raise constraint error but only if no other tasks fit/fail the offer
-        if total > 0 and failed_constraints == total:
-            raise ConstraintFailAllTasksError
+        # if total > 0 and failed_constraints == total:
+        #     raise ConstraintFailAllTasksError
 
         return tasks, state
 
@@ -293,7 +285,6 @@ class ExecutionFramework(mesos.interface.Scheduler):
         tid = mesos_pb2.TaskID()
         tid.value = task
         driver.killTask(tid)
-        self.tasks_with_flags[task].mesos_task_state = TASK_KILLING
 
     def blacklist_slave(self, slave_id):
         if slave_id in self.blacklisted_slaves:
@@ -386,7 +377,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
         return False
 
-    def create_new_docker_task(self, offer, task_id, task_config):
+    def create_new_docker_task(self, offer, task_config):
         task = mesos_pb2.TaskInfo()
 
         container = mesos_pb2.ContainerInfo()
@@ -396,10 +387,9 @@ class ExecutionFramework(mesos.interface.Scheduler):
         command.value = self.task_config.cmd
 
         task.command.MergeFrom(command)
-        task.task_id.value = str(task_id)
+        task.task_id.value = task_config.task_id
         task.slave_id.value = offer.slave_id.value
-        # TODO: We can add action names here
-        task.name = "executor-{id}".format(id=task_id)
+        task.name = task_config.name
 
         # CPUs
         cpus = task.resources.add()
@@ -461,6 +451,9 @@ class ExecutionFramework(mesos.interface.Scheduler):
         task.container.MergeFrom(container)
 
         return task
+
+    def stop(self):
+        pass
 
     ####################################################################
     #                   Mesos driver hooks go here                     #
@@ -525,10 +518,6 @@ class ExecutionFramework(mesos.interface.Scheduler):
                 # self.constraint_state, step=-1)
 
         driver.acknowledgeStatusUpdate(update)
-        # self.kill_tasks_if_necessary(driver)
-        # Stop if task ran and finished
-        if self.need_to_stop():
-            driver.stop()
 
 
 def mesos_task_for_task_config(task_config):
@@ -560,5 +549,6 @@ def mesos_task_for_task_config(task_config):
     mem.type = mesos_pb2.Value.SCALAR
     mem.scalar.value = task_config.mem
 
-    task.name = 'foo'
+    task.task_id.value = task_config.task_id
+    task.name = task_config.name
     return task

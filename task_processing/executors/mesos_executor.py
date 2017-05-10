@@ -6,7 +6,7 @@ import threading
 import mesos.native
 from mesos.interface import mesos_pb2
 
-from task_processing.events.event_processor import mesos_status_to_event
+from task_processing.events.event import mesos_status_to_event
 from task_processing.executors.task_executor import TaskExecutor
 from task_processing.mesos.execution_framework import ExecutionFramework
 
@@ -14,6 +14,7 @@ from task_processing.mesos.execution_framework import ExecutionFramework
 class MesosExecutor(TaskExecutor):
     def __init__(self,
                  credentials=None,
+                 mesos_address='127.0.0.1:5050',
                  translator=mesos_status_to_event):
         """
         Constructs the instance of a task execution, encapsulating all state
@@ -37,7 +38,7 @@ class MesosExecutor(TaskExecutor):
         self.driver = mesos.native.MesosSchedulerDriver(
             self.execution_framework,
             self.execution_framework.framework_info,
-            "127.0.0.1:5050",
+            mesos_address,
             False,
         )
 
@@ -51,6 +52,11 @@ class MesosExecutor(TaskExecutor):
 
     def kill(self, task_id):
         print("Killing")
+
+    def stop(self):
+        self.execution_framework.stop()
+        self.driver.stop()
+        self.driver.join()
 
     def get_event_queue(self):
         return self.execution_framework.queue
