@@ -286,7 +286,7 @@ def serialize_historical_load_v0(historical_load):
 
 
 def serialize_historical_load_v1(historical_load, max_size=1000000):
-    historical_load_bytes = b'\n'.join(["%d %.2f" % x for x in historical_load])
+    historical_load_bytes = b'\n'.join([b"%d %.2f" % x for x in historical_load])
 
     # trim to max size
     historical_load_bytes_trimmed = (b'\n' + historical_load_bytes)[-(max_size + 1):]
