@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from task_processing.events.event import EventBase
 from task_processing.events.event import EventFailed
 from task_processing.events.event import EventFinished
 from task_processing.events.event import EventKilled
@@ -21,4 +22,4 @@ MESOS_STATUS_TO_EVENT = {
 
 
 def mesos_status_to_event(mesos_status):
-    return MESOS_STATUS_TO_EVENT[mesos_status.state](mesos_status)
+    return MESOS_STATUS_TO_EVENT.get(mesos_status.state, EventBase)(mesos_status)
