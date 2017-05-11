@@ -218,13 +218,13 @@ def proportional_decision_policy(zookeeper_path, current_instances, min_instance
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
+    desired_number_instances = int(round(predicted_load / (setpoint - offset)))
+
     if good_enough_window:
         low, high = good_enough_window
         predicted_load_per_instance_with_current_instances = predicted_load / current_instances + offset
         if low <= predicted_load_per_instance_with_current_instances <= high:
-            return 0
-
-    desired_number_instances = int(round(predicted_load / (setpoint - offset)))
+            desired_number_instances = current_instances
 
     if desired_number_instances < min_instances:
         desired_number_instances = min_instances

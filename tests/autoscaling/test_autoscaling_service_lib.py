@@ -1405,6 +1405,20 @@ def test_proportional_decision_policy_good_enough(mock_save_historical_load, moc
         good_enough_window=(0.45, 0.55),
     )
 
+    # current_instances < min_instances, so scale up.
+    assert 25 == autoscaling_service_lib.proportional_decision_policy(
+        zookeeper_path='/test',
+        current_instances=25,
+        num_healthy_instances=25,
+        min_instances=50,
+        max_instances=150,
+        forecast_policy='current',
+        offset=0.0,
+        setpoint=0.50,
+        utilization=0.46,
+        good_enough_window=(0.45, 0.55),
+    )
+
 
 def test_moving_average_forecast_policy():
     historical_load = [
