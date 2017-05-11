@@ -22,6 +22,7 @@ import re
 
 from service_configuration_lib import read_service_configuration
 
+from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
@@ -202,44 +203,34 @@ def yaml_check(service_path):
         paasta_print(PaastaCheckMessages.YAML_MISSING)
 
 
-def get_chronos_steps(service, soa_dir):
-    """This is a kind of funny function that gets all the chronos instances
-    for a service and massages it into a form that matches up with what
+def get_framework_steps(framework, service, soa_dir):
+    """This is a kind of funny function that gets all the instances for specified
+    service and framework, and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
-    with what deploy.yaml has for linting."""
+    with what deploy.yaml has for linting.
+
+    :param framework: one of 'marathon', 'chronos', 'adhoc'
+    :param service: the service name
+    :param soa_dir: The SOA configuration directory to read from
+
+    :returns: a list of deploy group names used by the service.
+    """
+
+    load_config_func = {
+        'marathon': load_marathon_service_config,
+        'chronos': load_chronos_job_config,
+        'adhoc': load_adhoc_job_config,
+    }
+
     steps = []
     for cluster in list_clusters(service, soa_dir):
         for _, instance in get_service_instance_list(
                 service=service,
                 cluster=cluster,
-                instance_type='chronos',
+                instance_type=framework,
                 soa_dir=soa_dir,
         ):
-            config = load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-            steps.append(config.get_deploy_group())
-    return steps
-
-
-def get_marathon_steps(service, soa_dir):
-    """This is a kind of funny function that gets all the marathon instances
-    for a service and massages it into a form that matches up with what
-    deploy.yaml's steps look like. This is only so we can compare it 1-1
-    with what deploy.yaml has for linting."""
-    steps = []
-    for cluster in list_clusters(service, soa_dir):
-        for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='marathon',
-                soa_dir=soa_dir,
-        ):
-            config = load_marathon_service_config(
+            config = load_config_func[framework](
                 service=service,
                 instance=instance,
                 cluster=cluster,
@@ -256,8 +247,8 @@ def deployments_check(service, soa_dir):
     pipeline_deployments = get_pipeline_config(service, soa_dir)
     pipeline_steps = [step['step'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
-    marathon_steps = get_marathon_steps(service, soa_dir)
-    chronos_steps = get_chronos_steps(service, soa_dir)
+    marathon_steps = get_framework_steps('marathon', service, soa_dir)
+    chronos_steps = get_framework_steps('chronos', service, soa_dir)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
     in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
