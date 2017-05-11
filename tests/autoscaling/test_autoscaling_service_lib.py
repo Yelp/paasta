@@ -1259,8 +1259,8 @@ def test_fetch_historical_load():
 
         # smoke test, empty data.
         fake_zk.get.side_effect = lambda x: {
-            "/blurp/durp/historical_load": ("", mock.Mock()),
-            "/blurp/durp/historical_load_v1": ("", mock.Mock()),
+            "/blurp/durp/historical_load": (b"", mock.Mock()),
+            "/blurp/durp/historical_load_v1": (b"", mock.Mock()),
         }[x]
         ret = autoscaling_service_lib.fetch_historical_load("/blurp/durp")
         assert 2 == fake_zk.get.call_count
@@ -1273,7 +1273,7 @@ def test_fetch_historical_load():
         # smoke test, no node for old version
         def fake_get(path):
             if path == "/blurp/durp/historical_load_v1":
-                return ("", mock.Mock())
+                return (b"", mock.Mock())
             else:
                 raise NoNodeError()
 
@@ -1304,7 +1304,7 @@ def test_fetch_historical_load():
         # data for just new version
         def fake_get_2(path):
             if path == "/blurp/durp/historical_load_v1":
-                return ("1494296163 1234.56", mock.Mock())
+                return (b"1494296163 1234.56", mock.Mock())
             else:
                 raise NoNodeError()
 
@@ -1319,7 +1319,7 @@ def test_fetch_historical_load():
             if path == "/blurp/durp/historical_load":
                 return (b'\x00\x00\xc0\xa1ID\xd6AH\xe1z\x14\xae\xf9\x80@', mock.Mock())
             elif path == "/blurp/durp/historical_load_v1":
-                return ("1494296163 1234.56", mock.Mock())
+                return (b"1494296163 1234.56", mock.Mock())
             else:
                 raise NoNodeError()
 

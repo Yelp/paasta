@@ -290,7 +290,7 @@ def serialize_historical_load_v1(historical_load, max_size=1000000):
 
     # trim to max size
     historical_load_bytes_trimmed = (b'\n' + historical_load_bytes)[-(max_size + 1):]
-    first_newline = historical_load_bytes_trimmed.find('\n')
+    first_newline = historical_load_bytes_trimmed.find(b'\n')
     if first_newline == -1:
         return b''
     else:
@@ -328,7 +328,7 @@ def deserialize_historical_load_v1(historical_load_bytes):
     historical_load = []
     for line in historical_load_bytes.split(b'\n'):
         if line:
-            timestamp_bytes, value_bytes = line.split(' ')
+            timestamp_bytes, value_bytes = line.split(b' ')
             timestamp = float(timestamp_bytes)
             value = float(value_bytes)
             historical_load.append((timestamp, value))
