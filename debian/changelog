@@ -1,3 +1,13 @@
+paasta-tools (0.63.2) xenial; urgency=medium
+
+  * 0.63.2 tagged with 'make release'
+    Commit: Merge pull request #1212 from
+    Yelp/oops_clamp_min_max_even_if_load_good_enough  proportional
+    decision policy: clamp to min/max instances even if load is good
+    enough.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 May 2017 17:36:12 -0700
+
 paasta-tools (0.63.1) xenial; urgency=low
 
   * 0.63.1 tagged with 'make release'
