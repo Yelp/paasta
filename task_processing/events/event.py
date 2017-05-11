@@ -38,3 +38,31 @@ class EventLost(EventTerminal):
 
 class EventStaging(EventBase):
     pass
+
+
+class EventError(EventTerminal):
+    pass
+
+
+class EventKilling(EventBase):
+    pass
+
+
+class EventDropped(EventTerminal):
+    pass
+
+
+class EventUnreachable(EventBase):
+    pass
+
+
+class EventGone(EventTerminal):
+    pass
+
+
+class EventGoneByOperator(EventTerminal):
+    pass
+
+
+class EventUnknown(EventBase):
+    pass

@@ -34,7 +34,9 @@ TASK_ERROR = mesos_pb2.TASK_ERROR
 
 LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
 
-
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s - %(message)s'
+LEVEL = logging.DEBUG
+logging.basicConfig(format=FORMAT, level=LEVEL)
 log = logging.getLogger(__name__)
 
 
@@ -81,7 +83,6 @@ class ExecutionFramework(mesos.interface.Scheduler):
         self.frozen = False
         self.framework_info = self.build_framework_info()
         self.tasks_waiting = Queue(1000)
-        self.blacklisted_slaves = []
         self.dry_run = dry_run
 
         # don't accept resources until we reconcile.
@@ -98,7 +99,7 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
         self.blacklisted_slaves = set()
         self.blacklisted_slaves_lock = threading.Lock()
-        self.blacklist_timeout = 3600
+        self.blacklist_timeout = 10
 
     def shutdown(self, driver):
         # TODO: this is naive, as it does nothing to stop on-going calls
@@ -201,11 +202,18 @@ class ExecutionFramework(mesos.interface.Scheduler):
 
     def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
+
+        lost_state = mesos_pb2.TaskStatus()
+        lost_state.task_id.value = task_id
+        lost_state.state = TASK_LOST
+        lost_state.data = 'startup timer expired'.encode('ascii', 'ignore')
+        self.statusUpdate(driver, lost_state)
+
         self.blacklist_slave(self.tasks_with_flags[task_id].offer.slave_id.value)
         self.kill_task(driver, task_id)
 
-    def staging_timer_for_task(self, timeout_value, driver, taskId):
-        return Timer(timeout_value, lambda: self.log_and_kill(driver, taskId))
+    def staging_timer_for_task(self, timeout_value, driver, task_id):
+        return Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -241,6 +249,8 @@ class ExecutionFramework(mesos.interface.Scheduler):
                    remainingMem >= task_config.mem and
                    self.offer_matches_pool(offer) and
                    len(remainingPorts) >= 1):
+                # re-queue the config we've just pulled
+                self.tasks_waiting.put(task_config)
                 break
 
             # if not(check_offer_constraints(offer, task.constraints,
@@ -427,23 +437,23 @@ class ExecutionFramework(mesos.interface.Scheduler):
         docker.network = 2  # mesos_pb2.ContainerInfo.DockerInfo.Network.BRIDGE
         docker.force_pull_image = True
 
-        available_ports = []
-        for resource in offer.resources:
-            if resource.name == "ports":
-                available_ports = self.get_available_ports(resource)
+        # available_ports = []
+        # for resource in offer.resources:
+        #     if resource.name == "ports":
+        #         available_ports = self.get_available_ports(resource)
 
-        port_to_use = available_ports[0]
+        # port_to_use = available_ports[0]
 
-        mesos_ports = task.resources.add()
-        mesos_ports.name = "ports"
-        mesos_ports.type = mesos_pb2.Value.RANGES
-        port_range = mesos_ports.ranges.range.add()
+        # mesos_ports = task.resources.add()
+        # mesos_ports.name = "ports"
+        # mesos_ports.type = mesos_pb2.Value.RANGES
+        # port_range = mesos_ports.ranges.range.add()
 
-        port_range.begin = port_to_use
-        port_range.end = port_to_use
-        docker_port = docker.port_mappings.add()
-        docker_port.host_port = port_to_use
-        docker_port.container_port = 8888
+        # port_range.begin = port_to_use
+        # port_range.end = port_to_use
+        # docker_port = docker.port_mappings.add()
+        # docker_port.host_port = port_to_use
+        # docker_port.container_port = 8888
 
         # Set docker info in container.docker
         container.docker.MergeFrom(docker)

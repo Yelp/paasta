@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
 import threading
 
 import mesos.native
@@ -9,6 +10,10 @@ from mesos.interface import mesos_pb2
 from task_processing.interfaces.task_executor import TaskExecutor
 from task_processing.plugins.mesos.execution_framework import ExecutionFramework
 from task_processing.plugins.mesos.translator import mesos_status_to_event
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s - %(message)s'
+LEVEL = logging.DEBUG
+logging.basicConfig(format=FORMAT, level=LEVEL)
+log = logging.getLogger(__name__)
 
 
 class MesosExecutor(TaskExecutor):
@@ -55,8 +60,11 @@ class MesosExecutor(TaskExecutor):
 
     def stop(self):
         self.execution_framework.stop()
+        log.debug("stopped the framework")
         self.driver.stop()
+        log.debug("asked driver to stop")
         self.driver.join()
+        log.debug("stopped the driver")
 
     def get_event_queue(self):
         return self.execution_framework.queue

@@ -6,8 +6,10 @@ from __future__ import unicode_literals
 import logging
 import os
 
+from six.moves.queue import Empty
 from six.moves.queue import Queue
 
+from task_processing.events.event import EventTerminal
 from task_processing.interfaces.task_executor import make_task_config
 from task_processing.plugins.mesos.mesos_executor import MesosExecutor
 from task_processing.runners.subscription import Subscription
@@ -20,18 +22,30 @@ def main():
     mesos_address = os.environ['MESOS']
     executor = MesosExecutor(credentials=credentials,
                              mesos_address=mesos_address)
-    task_config = make_task_config(image="ubuntu:14.04", cmd="/bin/sleep 10")
     queue = Queue(100)
     runner = Subscription(executor, queue)
 
-    configs = [task_config] * 100
-    for config in configs:
-        runner.run(config)
+    tasks = set()
+    for _ in range(1, 100):
+        task_config = make_task_config(image="ubuntu:14.04", cmd="/bin/sleep 10")
+        tasks.add(task_config.task_id)
+        runner.run(task_config)
 
-    while True:
-        event = queue.get()
-        queue.task_done()
-        print(event)
+    print("Running {} tasks: {}".format(len(tasks), tasks))
+    while len(tasks) > 0:
+        try:
+            event = queue.get(True, 10)
+        except Empty:
+            event = None
+
+        if event is None:
+            print("Timeout on subscription queue, still waiting for {}".format(tasks))
+        else:
+            print("{} {}".format(event.task_id, type(event)))
+            if isinstance(event, EventTerminal):
+                tasks.discard(event.task_id)
+
+    runner.stop()
 
 
 if __name__ == "__main__":
