@@ -42,6 +42,7 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
@@ -222,6 +223,9 @@ def get_framework_steps(framework, service, soa_dir):
         'adhoc': load_adhoc_job_config,
     }
 
+    if framework not in load_config_func:
+        return []
+
     steps = []
     for cluster in list_clusters(service, soa_dir):
         for _, instance in get_service_instance_list(
@@ -248,10 +252,9 @@ def deployments_check(service, soa_dir):
     pipeline_steps = [step['step'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
 
-    frameworks = ['marathon', 'chronos', 'adhoc']
     framework_steps = {}
     in_deploy_not_frameworks = set(pipeline_steps)
-    for fr in frameworks:
+    for fr in INSTANCE_TYPES:
         framework_steps[fr] = get_framework_steps(fr, service, soa_dir)
         in_framework_not_deploy = set(framework_steps[fr]) - set(pipeline_steps)
         in_deploy_not_frameworks -= set(framework_steps[fr])
@@ -272,7 +275,7 @@ def deployments_check(service, soa_dir):
 
     if the_return is True:
         paasta_print(success("All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"))
-        for fr in frameworks:
+        for fr in INSTANCE_TYPES:
             if len(framework_steps[fr]) > 0:
                 paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % fr))
     return the_return
