@@ -1,3 +1,12 @@
+paasta-tools (0.63.3) xenial; urgency=medium
+
+  * 0.63.3 tagged with 'make release'
+    Commit: security-check returns the test results (#1161)  * security-
+    check returns the test results  * removing misleading security-check
+    comment
+
+ -- Alina Radu <alinar@yelp.com>  Thu, 11 May 2017 10:21:56 -0700
+
 paasta-tools (0.63.2) xenial; urgency=medium
 
   * 0.63.2 tagged with 'make release'
