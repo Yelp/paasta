@@ -78,7 +78,9 @@ class LSRemoteException(Exception):
     pass
 
 
-@timeout(error_message="Timed out connecting to git server, is it reachable from where you are?", use_signals=False)
+@timeout(seconds=20,
+         error_message="Timed out connecting to git server, is it reachable from where you are?",
+         use_signals=False)
 def list_remote_refs(git_url):
     """Get the refs from a remote git repo as a dictionary of name->hash."""
     client, path = dulwich.client.get_transport_and_path(git_url)
