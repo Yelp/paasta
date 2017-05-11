@@ -34,6 +34,6 @@ setup(
     install_requires=[],
     extras_require={
         # We can add the mesos specific dependencies here
-        'mesos_executor':  [],
+        'mesos_executor': [],
     }
 )
