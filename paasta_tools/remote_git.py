@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import time
-
 import dulwich.client
 import dulwich.errors
 
@@ -80,10 +78,9 @@ class LSRemoteException(Exception):
     pass
 
 
-@timeout()
+@timeout(error_message="Timed out connecting to git server, is it reachable from where you are?", use_signals=False)
 def list_remote_refs(git_url):
     """Get the refs from a remote git repo as a dictionary of name->hash."""
-    time.sleep(15)
     client, path = dulwich.client.get_transport_and_path(git_url)
     try:
         refs = client.fetch_pack(path, lambda refs: [], None, lambda data: None)
