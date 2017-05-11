@@ -295,7 +295,7 @@ def do_bounce(
         (apps_to_kill or tasks_to_kill),
         apps_to_kill == list(old_app_live_happy_tasks),
         tasks_to_kill == all_old_tasks,
-    ]) or (not all_old_tasks) and new_app_running:
+    ]):
         log_bounce_action(
             line='%s bounce on %s finishing. Now running %s' %
             (
@@ -305,6 +305,8 @@ def do_bounce(
             ),
             level='event',
         )
+        return None
+    elif (not all_old_tasks) and new_app_running:
         return None
     else:
         return 60
