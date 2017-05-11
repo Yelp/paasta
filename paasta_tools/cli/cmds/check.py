@@ -247,37 +247,34 @@ def deployments_check(service, soa_dir):
     pipeline_deployments = get_pipeline_config(service, soa_dir)
     pipeline_steps = [step['step'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
-    marathon_steps = get_framework_steps('marathon', service, soa_dir)
-    chronos_steps = get_framework_steps('chronos', service, soa_dir)
-    in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
-    in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
-    if len(in_marathon_not_deploy) > 0:
-        paasta_print("%s There are some instance(s) you have asked to run in marathon that" % x_mark())
-        paasta_print("  do not have a corresponding entry in deploy.yaml:")
-        paasta_print("  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy)))
-        paasta_print("  You should probably configure these to use a 'deploy_group' or")
-        paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
-        the_return = False
-    if len(in_chronos_not_deploy) > 0:
-        paasta_print("%s There are some instance(s) you have asked to run in chronos that" % x_mark())
-        paasta_print("  do not have a corresponding entry in deploy.yaml:")
-        paasta_print("  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy)))
-        paasta_print("  You should probably configure these to use a 'deploy_group' or")
-        paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
-        the_return = False
-    in_deploy_not_marathon_chronos = set(pipeline_steps) - set(marathon_steps) - set(chronos_steps)
-    if len(in_deploy_not_marathon_chronos) > 0:
+
+    frameworks = ['marathon', 'chronos', 'adhoc']
+    framework_steps = {}
+    in_deploy_not_frameworks = set(pipeline_steps)
+    for fr in frameworks:
+        framework_steps[fr] = get_framework_steps(fr, service, soa_dir)
+        in_framework_not_deploy = set(framework_steps[fr]) - set(pipeline_steps)
+        in_deploy_not_frameworks -= set(framework_steps[fr])
+        if len(in_framework_not_deploy) > 0:
+            paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), fr))
+            paasta_print("  do not have a corresponding entry in deploy.yaml:")
+            paasta_print("  %s" % PaastaColors.bold(", ".join(in_framework_not_deploy)))
+            paasta_print("  You should probably configure these to use a 'deploy_group' or")
+            paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
+            the_return = False
+
+    if len(in_deploy_not_frameworks) > 0:
         paasta_print("%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark())
-        paasta_print("  by any marathon or chronos instance:")
-        paasta_print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon_chronos))))
+        paasta_print("  by any marathon, chronos or adhoc instance:")
+        paasta_print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_frameworks))))
         paasta_print("  You should probably delete these deploy.yaml entries if they are unused.")
         the_return = False
+
     if the_return is True:
-        paasta_print(success("All entries in deploy.yaml correspond to a marathon or chronos entry"))
-        if len(marathon_steps) > 0:
-            paasta_print(success("All marathon instances have a corresponding deploy.yaml entry"))
-        if len(chronos_steps) > 0:
-            paasta_print(success("All chronos instances have a corresponding deploy.yaml entry"))
+        paasta_print(success("All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"))
+        for fr in frameworks:
+            if len(framework_steps[fr]) > 0:
+                paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % fr))
     return the_return
 
 
