@@ -3,6 +3,12 @@ branches:
     - master
     - /^v[0-9.]+$/
 language: python
+addons:
+  apt:
+    sources:
+      - deadsnakes
+    packages:
+      - python3.6
 cache: pip
 env:
   - TOXENV=py27
