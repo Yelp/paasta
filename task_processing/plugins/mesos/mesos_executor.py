@@ -69,11 +69,8 @@ class MesosExecutor(TaskExecutor):
 
     def stop(self):
         self.execution_framework.stop()
-        log.debug("stopped the framework")
         self.driver.stop()
-        log.debug("asked driver to stop")
         self.driver.join()
-        log.debug("stopped the driver")
 
     def get_event_queue(self):
         return self.execution_framework.queue

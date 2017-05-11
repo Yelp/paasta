@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+# TODO: organize and explain these
+
 
 class EventBase(object):
     def __init__(self, original_event):

@@ -14,6 +14,8 @@ TaskConfig = namedtuple(
      'ulimit', 'docker_parameters'],
 )
 
+# TODO: reimplement TaskConfig using attrs or precord
+
 
 def make_task_config(image="ubuntu:xenial", cmd="/bin/true", cpus=0.1,
                      mem=32, disk=10, volumes=None, ports=[], cap_add=[],

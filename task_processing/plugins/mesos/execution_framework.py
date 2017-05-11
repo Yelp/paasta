@@ -437,6 +437,8 @@ class ExecutionFramework(mesos.interface.Scheduler):
         docker.network = 2  # mesos_pb2.ContainerInfo.DockerInfo.Network.BRIDGE
         docker.force_pull_image = True
 
+        # TODO: who wants to implement support for ports?
+
         # available_ports = []
         # for resource in offer.resources:
         #     if resource.name == "ports":
