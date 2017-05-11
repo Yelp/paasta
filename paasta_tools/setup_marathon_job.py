@@ -290,26 +290,26 @@ def do_bounce(
     all_old_tasks = set.union(all_old_tasks, *old_app_draining_tasks.values())
     all_old_tasks = set.union(all_old_tasks, *old_app_at_risk_tasks.values())
 
-    # log if we appear to be finished
-    if all([
-        (apps_to_kill or tasks_to_kill),
-        apps_to_kill == list(old_app_live_happy_tasks),
-        tasks_to_kill == all_old_tasks,
-    ]):
-        log_bounce_action(
-            line='%s bounce on %s finishing. Now running %s' %
-            (
-                bounce_method,
-                serviceinstance,
-                marathon_jobid
-            ),
-            level='event',
-        )
-        return None
-    elif (not all_old_tasks) and new_app_running:
-        return None
-    else:
+    if all_old_tasks or (not new_app_running):
+        # Still have work more work to do, try again in 60 seconds
         return 60
+    else:
+        # log if we appear to be finished
+        if all([
+            (apps_to_kill or tasks_to_kill),
+            apps_to_kill == list(old_app_live_happy_tasks),
+            tasks_to_kill == all_old_tasks,
+        ]):
+            log_bounce_action(
+                line='%s bounce on %s finishing. Now running %s' %
+                (
+                    bounce_method,
+                    serviceinstance,
+                    marathon_jobid
+                ),
+                level='event',
+            )
+        return None
 
 
 def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
