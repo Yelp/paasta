@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
+import os
 import threading
 
 import mesos.native
@@ -13,7 +15,8 @@ from task_processing.plugins.mesos.translator import mesos_status_to_event
 
 class MesosExecutor(TaskExecutor):
     def __init__(self,
-                 credentials=None,
+                 authentication_principal='taskproc',
+                 credential_secret_file=None,
                  mesos_address='127.0.0.1:5050',
                  translator=mesos_status_to_event):
         """
@@ -23,10 +26,16 @@ class MesosExecutor(TaskExecutor):
         :param dict credentials: Mesos principal and secret.
         """
 
-        # Get creds for mesos
+        self.logger = logging.getLogger(__name__)
+
         credential = mesos_pb2.Credential()
-        credential.principal = "foo"
-        credential.secret = ""
+        credential.principal = authentication_principal
+        if credential_secret_file:
+            if not os.path.exists(credential_secret_file):
+                self.logger.fatal("credential secret file does not exist")
+            else:
+                with open(credential_secret_file) as f:
+                    credential.secret = f.read().strip()
 
         self.execution_framework = ExecutionFramework(
             name="test",
@@ -40,6 +49,7 @@ class MesosExecutor(TaskExecutor):
             self.execution_framework.framework_info,
             mesos_address,
             False,
+            credential
         )
 
         # start driver thread immediately

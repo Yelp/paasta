@@ -3,7 +3,7 @@ FROM ubuntu:trusty
 RUN apt-get update -q && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         debhelper dpkg-dev gcc gdebi-core git help2man libffi-dev \
-        libssl-dev libyaml-dev pyflakes python-dev python-pip python-pytest \
+        libssl-dev libsasl2-modules libyaml-dev pyflakes python-dev python-pip python-pytest \
         python-setuptools python-tox python-yaml wget zip zsh \
         openssh-server docker.io curl vim jq libsvn-dev \
     && apt-get clean
