@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 from threading import Thread
 
+from six.moves.queue import Empty
+
 from task_processing.interfaces.runner import Runner
 
 
@@ -18,8 +20,9 @@ class Async(Runner):
 
         self.callbacks = callbacks
         self.executor = executor
+        self.stopping = False
 
-        callback_t = Thread(target=self._callback_loop)
+        callback_t = Thread(target=self.callback_loop)
         callback_t.daemon = True
         callback_t.start()
 
@@ -27,12 +30,25 @@ class Async(Runner):
         return self.executor.run(task_config)
 
     def kill(self, task_config):
-        print('kill')
+        pass
 
-    def _callback_loop(self):
+    def callback_loop(self):
         event_queue = self.executor.get_event_queue()
+
         while True:
-            event = event_queue.get()
-            for (cl, fn) in self.callbacks:
-                if isinstance(event, cl):
-                    fn(event)
+            if self.stopping:
+                return
+
+            try:
+                event = event_queue.get(True, 10)
+
+                for (cl, fn) in self.callbacks:
+                    if isinstance(event, cl):
+                        fn(event)
+            except Empty:
+                pass
+
+    def stop(self):
+        self.executor.stop()
+        self.stopping = True
+        self.callback_t.join()
