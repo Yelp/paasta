@@ -219,8 +219,8 @@ class ChronosJobConfig(InstanceConfig):
             branch_dict=branch_dict,
         )
 
-    def get_service(self):
-        return self.service
+    def instance_type(self):
+        return "chronos"
 
     def get_job_name(self):
         return self.instance

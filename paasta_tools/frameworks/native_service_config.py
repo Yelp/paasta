@@ -42,6 +42,9 @@ class NativeServiceConfig(LongRunningServiceConfig):
         else:
             self.service_namespace_config = ServiceNamespaceConfig()
 
+    def instance_type(self):
+        return "paasta_native"
+
     def task_name(self, base_task):
         code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)
 
@@ -115,9 +118,6 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
     def get_mesos_network_mode(self):
         return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
-
-    def get_constraints(self):
-        return self.config_dict.get('constraints', None)
 
 
 def load_paasta_native_job_config(

@@ -18,10 +18,10 @@ import logging
 
 import service_configuration_lib
 
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -67,7 +67,7 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
     )
 
 
-class AdhocJobConfig(LongRunningServiceConfig):
+class AdhocJobConfig(InstanceConfig):
 
     def __init__(self, service, instance, cluster, config_dict, branch_dict):
         super(AdhocJobConfig, self).__init__(
@@ -77,6 +77,9 @@ class AdhocJobConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+    def instance_type(self):
+        return "adhoc"
 
 
 def get_default_interactive_config(service, cluster, soa_dir, load_deployments=False):

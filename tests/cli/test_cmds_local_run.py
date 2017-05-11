@@ -40,7 +40,6 @@ from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
@@ -48,18 +47,16 @@ from paasta_tools.utils import TimeoutError
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
 def test_dry_run(
     mock_get_instance_config,
-    mock_validate_service_instance,
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     capfd
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
-    mock_validate_service_instance.return_value = 'marathon'
+    mock_get_instance_config.return_value.instance_type.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
@@ -80,17 +77,16 @@ def test_dry_run(
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
 def test_dry_run_json_dict(
     mock_get_instance_config,
-    mock_validate_service_instance,
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     capfd
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
+    mock_get_instance_config.return_value.instance_type.return_value = 'marathon'
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
     mock_get_instance_config.return_value.get_env_dictionary.return_value = {}
     mock_get_instance_config.return_value.get_mem.return_value = 123
@@ -98,7 +94,6 @@ def test_dry_run_json_dict(
     mock_get_instance_config.return_value.get_cpu.return_value = 123
     mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
     mock_get_instance_config.return_value.get_docker_image.return_value = 'fake_docker_image'
-    mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
@@ -319,13 +314,10 @@ def test_get_container_name(mock_get_username, mock_randint):
 
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
 def test_configure_and_run_command_uses_cmd_from_config(
-    mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
 ):
-    mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_run_docker_container.return_value = 0
@@ -343,6 +335,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.user_port = None
     args.interactive = False
     args.dry_run_json_dict = False
+    mock_get_instance_config.return_value.instance_type.return_value = 'marathon'
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -375,13 +368,10 @@ def test_configure_and_run_command_uses_cmd_from_config(
 
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
 def test_configure_and_run_uses_bash_by_default_when_interactive(
-    mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
 ):
-    mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_run_docker_container.return_value = 0
 
@@ -413,7 +403,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         docker_client=mock_docker_client,
         service=fake_service,
         instance=args.instance,
-        framework='marathon',
+        framework=mock.ANY,
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
@@ -431,14 +421,11 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
 @mock.patch('paasta_tools.cli.cmds.local_run.docker_pull_image', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
 def test_configure_and_run_pulls_image_when_asked(
-    mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
     mock_docker_pull_image,
 ):
-    mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_run_docker_container.return_value = 0
 
@@ -474,7 +461,7 @@ def test_configure_and_run_pulls_image_when_asked(
         docker_client=mock_docker_client,
         service=fake_service,
         instance=args.instance,
-        framework='marathon',
+        framework=mock.ANY,
         docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
@@ -493,14 +480,11 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True,
     ) as mock_stdin, mock.patch(
-        'paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True,
-    ) as mock_validate_service_instance, mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0,
     ) as mock_run_docker_container, mock.patch(
         'paasta_tools.cli.cmds.local_run.get_default_interactive_config', autospec=True,
     ) as mock_get_default_interactive_config:
         mock_stdin.isatty.return_value = True
-        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
 
         mock_system_paasta_config = SystemPaastaConfig(
@@ -530,7 +514,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             docker_client=mock_docker_client,
             service='fake_service',
             instance='interactive',
-            framework='adhoc',
+            framework=mock.ANY,
             docker_hash='fake_hash',
             volumes=[],
             interactive=True,
@@ -548,20 +532,17 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client, autospec=None)
-@mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)
 def test_run_success(
     mock_run,
     mock_makefile_responds_to,
-    mock_validate_service_name,
     mock_Client,
     mock_run_docker_container,
     mock_figure_out_service_name,
 ):
     mock_run.return_value = (0, 'Output')
     mock_makefile_responds_to.return_value = True
-    mock_validate_service_name.return_value = True
     mock_Client.return_value = None
     mock_run_docker_container.return_value = None
     mock_figure_out_service_name.return_value = 'fake_service'

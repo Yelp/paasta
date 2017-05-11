@@ -179,6 +179,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
+    def instance_type(self):
+        return "marathon"
+
     def __repr__(self):
         return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (
             self.service,

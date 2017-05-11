@@ -59,7 +59,6 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
-from paasta_tools.utils import validate_service_instance
 
 
 pick_random_port = functools.partial(ephemeral_port_reserve.reserve, '0.0.0.0')
@@ -727,7 +726,6 @@ def configure_and_run_docker_container(
 
     try:
         if instance is None:
-            instance_type = 'adhoc'
             instance = 'interactive'
             instance_config = get_default_interactive_config(
                 service=service,
@@ -737,7 +735,6 @@ def configure_and_run_docker_container(
             )
             interactive = True
         else:
-            instance_type = validate_service_instance(service, instance, cluster, soa_dir)
             instance_config = get_instance_config(
                 service=service,
                 instance=instance,
@@ -796,7 +793,7 @@ def configure_and_run_docker_container(
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command_modifier = command_function_for_framework(instance_type)
+            command_modifier = command_function_for_framework(instance_config.instance_type())
             command = command_modifier(command_from_config)
         else:
             command = instance_config.get_args()
@@ -816,7 +813,7 @@ def configure_and_run_docker_container(
         soa_dir=args.yelpsoa_config_root,
         dry_run=dry_run,
         json_dict=args.dry_run_json_dict,
-        framework=instance_type,
+        framework=instance_config.instance_type(),
     )
 
 
