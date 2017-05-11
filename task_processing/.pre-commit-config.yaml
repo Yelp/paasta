@@ -1,4 +1,4 @@
--   repo: git@git.yelpcorp.com:mirrors/pre-commit/pre-commit-hooks
+-   repo: https://github.com/pre-commit/pre-commit-hooks.git
     sha: v0.7.1
     hooks:
     -   id: trailing-whitespace
@@ -28,29 +28,7 @@
     -   id: fix-encoding-pragma
         language_version: python3.6
         args: [--remove]
--   repo: git@git.yelpcorp.com:mirrors/pre-commit/mirrors-scss-lint
-    sha: v0.52.0
-    hooks:
-    -   id: scss-lint
-        language_version: 2.1.5
-        exclude: assets/scss/_pygments_style.scss
--   repo: git@git.yelpcorp.com:mirrors/pre-commit/mirrors-jshint
-    sha: v2.9.4
-    hooks:
-    -   id: jshint
-        language_version: 4.2.1
--   repo: git@git.yelpcorp.com:yelp_pre_commit_hooks
-    sha: ba1594282239c527c3dd376a7a21b964cd535113
-    hooks:
-    -   id: stop-dollar-html
--   repo: git@git.yelpcorp.com:mirrors/asottile/cheetah_lint
-    sha: v0.3.4
-    hooks:
-    -   id: cheetah-reorder-imports
-        language_version: python3.6
-    -   id: cheetah-flake
-        language_version: python3.6
--   repo: git@git.yelpcorp.com:mirrors/asottile/reorder_python_imports
+-   repo: https://github.com/asottile/reorder_python_imports.git
     sha: v0.3.1
     hooks:
     -   id: reorder-python-imports
