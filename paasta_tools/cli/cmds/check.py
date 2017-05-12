@@ -22,11 +22,10 @@ import re
 
 from service_configuration_lib import read_service_configuration
 
-from paasta_tools.adhoc_tools import load_adhoc_job_config
-from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import is_file_in_dir
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
@@ -36,7 +35,6 @@ from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -204,44 +202,39 @@ def yaml_check(service_path):
         paasta_print(PaastaCheckMessages.YAML_MISSING)
 
 
-def get_deploy_groups_used_by_framework(framework, service, soa_dir):
+def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
     """This is a kind of funny function that gets all the instances for specified
     service and framework, and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting.
 
-    :param framework: one of 'marathon', 'chronos', 'adhoc'
+    :param instance_type: one of 'marathon', 'chronos', 'adhoc'
     :param service: the service name
     :param soa_dir: The SOA configuration directory to read from
 
     :returns: a list of deploy group names used by the service.
     """
 
-    load_config_func = {
-        'marathon': load_marathon_service_config,
-        'chronos': load_chronos_job_config,
-        'adhoc': load_adhoc_job_config,
-    }
-
-    if framework not in load_config_func:
-        return []
-
     steps = []
     for cluster in list_clusters(service, soa_dir):
         for _, instance in get_service_instance_list(
                 service=service,
                 cluster=cluster,
-                instance_type=framework,
+                instance_type=instance_type,
                 soa_dir=soa_dir,
         ):
-            config = load_config_func[framework](
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-            steps.append(config.get_deploy_group())
+            try:
+                config = get_instance_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                    instance_type=instance_type,
+                )
+                steps.append(config.get_deploy_group())
+            except NotImplementedError:
+                pass
     return steps
 
 
@@ -253,12 +246,12 @@ def deployments_check(service, soa_dir):
 
     framework_deploy_groups = {}
     in_deploy_not_frameworks = set(pipeline_deploy_groups)
-    for fr in INSTANCE_TYPES:
-        framework_deploy_groups[fr] = get_deploy_groups_used_by_framework(fr, service, soa_dir)
-        in_framework_not_deploy = set(framework_deploy_groups[fr]) - set(pipeline_deploy_groups)
-        in_deploy_not_frameworks -= set(framework_deploy_groups[fr])
+    for it in INSTANCE_TYPES:
+        framework_deploy_groups[it] = get_deploy_groups_used_by_framework(it, service, soa_dir)
+        in_framework_not_deploy = set(framework_deploy_groups[it]) - set(pipeline_deploy_groups)
+        in_deploy_not_frameworks -= set(framework_deploy_groups[it])
         if len(in_framework_not_deploy) > 0:
-            paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), fr))
+            paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), it))
             paasta_print("  do not have a corresponding entry in deploy.yaml:")
             paasta_print("  %s" % PaastaColors.bold(", ".join(in_framework_not_deploy)))
             paasta_print("  You should probably configure these to use a 'deploy_group' or")
@@ -274,9 +267,9 @@ def deployments_check(service, soa_dir):
 
     if the_return is True:
         paasta_print(success("All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"))
-        for fr in INSTANCE_TYPES:
-            if len(framework_deploy_groups[fr]) > 0:
-                paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % fr))
+        for it in INSTANCE_TYPES:
+            if len(framework_deploy_groups[it]) > 0:
+                paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % it))
     return the_return
 
 

@@ -437,17 +437,18 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, capfd):
     assert actual is True
 
 
-@patch('paasta_tools.cli.cmds.check.load_marathon_service_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_instance_config', autospec=True)
 @patch('paasta_tools.cli.cmds.check.list_clusters', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_service_instance_list', autospec=True)
 def test_get_deploy_groups_used_by_framework(
     mock_get_service_instance_list,
     mock_list_clusters,
-    mock_load_marathon_service_config,
+    mock_get_instance_config,
 ):
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
-    mock_load_marathon_service_config.side_effect = lambda service, instance, cluster, soa_dir, load_deployments: \
+    mock_get_instance_config.side_effect = lambda service, instance, cluster, \
+        soa_dir, load_deployments, instance_type: \
         MarathonServiceConfig(
             service=service,
             instance=instance,

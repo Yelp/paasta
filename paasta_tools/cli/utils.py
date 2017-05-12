@@ -660,15 +660,17 @@ def get_jenkins_build_output_url():
     return build_output
 
 
-def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False):
+def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False, instance_type=None):
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
-    instance_type = validate_service_instance(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-    )
+    if instance_type is None:
+        instance_type = validate_service_instance(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+
     if instance_type == 'marathon':
         instance_config_load_function = load_marathon_service_config
     elif instance_type == 'chronos':
