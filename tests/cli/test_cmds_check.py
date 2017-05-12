@@ -172,8 +172,9 @@ def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
-                                    PaastaCheckMessages.CHRONOS_YAML_FOUND)
+    expected_output = "%s\n%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
+                                        PaastaCheckMessages.CHRONOS_YAML_FOUND,
+                                        PaastaCheckMessages.ADHOC_YAML_FOUND)
 
     yaml_check('path')
 

@@ -180,9 +180,11 @@ class PaastaCheckMessages:
 
     CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
 
+    ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
+
     YAML_MISSING = failure(
         "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[superregion].yaml or chronos-[superregion].yaml "
+        "Push a marathon-[superregion].yaml, chronos-[superregion].yaml or adhoc-[superregion].yaml "
         "and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 

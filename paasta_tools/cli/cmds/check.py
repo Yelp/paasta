@@ -185,7 +185,7 @@ def git_repo_check(service, soa_dir):
 
 
 def yaml_check(service_path):
-    """Check whether a marathon/chronos yaml file exists in service directory, and
+    """Check whether a marathon/chronos/adhoc yaml file exists in service directory, and
     print success/failure message(s).
 
     :param service_path: path to a directory containing the marathon/chronos yaml
@@ -197,6 +197,9 @@ def yaml_check(service_path):
         found_yaml = True
     if is_file_in_dir('chronos*.yaml', service_path):
         paasta_print(PaastaCheckMessages.CHRONOS_YAML_FOUND)
+        found_yaml = True
+    if is_file_in_dir('adhoc*.yaml', service_path):
+        paasta_print(PaastaCheckMessages.ADHOC_YAML_FOUND)
         found_yaml = True
     if not found_yaml:
         paasta_print(PaastaCheckMessages.YAML_MISSING)
@@ -215,7 +218,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
     :returns: a list of deploy group names used by the service.
     """
 
-    steps = []
+    deploy_groups = []
     for cluster in list_clusters(service, soa_dir):
         for _, instance in get_service_instance_list(
                 service=service,
@@ -232,10 +235,10 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
                     load_deployments=False,
                     instance_type=instance_type,
                 )
-                steps.append(config.get_deploy_group())
+                deploy_groups.append(config.get_deploy_group())
             except NotImplementedError:
                 pass
-    return steps
+    return deploy_groups
 
 
 def deployments_check(service, soa_dir):
