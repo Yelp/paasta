@@ -19,15 +19,12 @@ RUN mkdir /var/run/sshd
 RUN pip install --upgrade pip==9.0.1
 RUN pip install --upgrade virtualenv==15.1.0
 
-COPY ./requirements.txt /tmp/
-COPY ./requirements-dev.txt /tmp/
 COPY ./task_processing/examples/cluster/mesos-0.27.0-py2-none-any.whl /tmp/
 COPY ./task_processing/examples/cluster/mesos.cli-0.27.0-py2-none-any.whl /tmp/
 COPY ./task_processing/examples/cluster/mesos.interface-0.27.0-py2-none-any.whl /tmp/
 COPY ./task_processing/examples/cluster/mesos.native-0.27.0-cp27-none-linux_x86_64.whl /tmp/
 
-RUN pip install -r /tmp/requirements.txt
-RUN pip install -r /tmp/requirements-dev.txt
+RUN pip install protobuf==2.6.1 google-common
 RUN pip install -i \
       /tmp/mesos-0.27.0-py2-none-any.whl /tmp/mesos.cli-0.27.0-py2-none-any.whl \
       /tmp/mesos.interface-0.27.0-py2-none-any.whl /tmp/mesos.native-0.27.0-cp27-none-linux_x86_64.whl
