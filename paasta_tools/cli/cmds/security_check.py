@@ -51,10 +51,10 @@ def perform_security_check(args):
         return 0
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
-    paasta_print("{} exited with code {}".format(security_check_command, ret_code))
+    paasta_print("{} exited with code {}:{}".format(security_check_command, ret_code, output))
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code else pysensu_yelp.Status.OK
-    send_event(service=args.service, check_name='%s.security_check' % args.service, overrides={'page': False},
-               status=sensu_status, output=output, soa_dir=DEFAULT_SOA_DIR)
+    send_event(service=args.service, check_name='%s.security_check' % args.service,
+               overrides={'page': False, 'ticket': True}, status=sensu_status, output=output, soa_dir=DEFAULT_SOA_DIR)
 
     return ret_code
