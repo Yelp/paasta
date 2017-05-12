@@ -204,7 +204,7 @@ def yaml_check(service_path):
         paasta_print(PaastaCheckMessages.YAML_MISSING)
 
 
-def get_framework_steps(framework, service, soa_dir):
+def get_deploy_groups_used_by_framework(framework, service, soa_dir):
     """This is a kind of funny function that gets all the instances for specified
     service and framework, and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
@@ -248,16 +248,15 @@ def get_framework_steps(framework, service, soa_dir):
 def deployments_check(service, soa_dir):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
-    pipeline_deployments = get_pipeline_config(service, soa_dir)
-    pipeline_steps = [step['step'] for step in pipeline_deployments]
-    pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
+    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
+    pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
 
-    framework_steps = {}
-    in_deploy_not_frameworks = set(pipeline_steps)
+    framework_deploy_groups = {}
+    in_deploy_not_frameworks = set(pipeline_deploy_groups)
     for fr in INSTANCE_TYPES:
-        framework_steps[fr] = get_framework_steps(fr, service, soa_dir)
-        in_framework_not_deploy = set(framework_steps[fr]) - set(pipeline_steps)
-        in_deploy_not_frameworks -= set(framework_steps[fr])
+        framework_deploy_groups[fr] = get_deploy_groups_used_by_framework(fr, service, soa_dir)
+        in_framework_not_deploy = set(framework_deploy_groups[fr]) - set(pipeline_deploy_groups)
+        in_deploy_not_frameworks -= set(framework_deploy_groups[fr])
         if len(in_framework_not_deploy) > 0:
             paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), fr))
             paasta_print("  do not have a corresponding entry in deploy.yaml:")
@@ -276,7 +275,7 @@ def deployments_check(service, soa_dir):
     if the_return is True:
         paasta_print(success("All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"))
         for fr in INSTANCE_TYPES:
-            if len(framework_steps[fr]) > 0:
+            if len(framework_deploy_groups[fr]) > 0:
                 paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % fr))
     return the_return
 
