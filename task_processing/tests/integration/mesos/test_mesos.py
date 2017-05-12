@@ -1,12 +1,12 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import re
 from subprocess import call
 from subprocess import PIPE
 from subprocess import Popen
 
 from pytest_bdd import given
+from pytest_bdd import parsers
 from pytest_bdd import then
 from pytest_bdd import when
 
@@ -39,8 +39,9 @@ def mesos_master():
     )
 
 
-@given(re.compile('(?P<n>) mesos slave(s?)'))
-def mesos_slave(n):
+@given(parsers.re(r'(?P<num_slaves>\d+) mesos slave(s?)'),
+       converters=dict(n=int))
+def mesos_slaves(num_slaves):
     return [
         Popen(
             ['docker-compose', 'run', '--rm',
@@ -50,13 +51,17 @@ def mesos_slave(n):
             stdout=PIPE,
             stderr=PIPE
         )
-        for i in range(n)
+        for i in range(num_slaves)
     ]
 
 
-@given('mesos platform')
-def mesos_platform(mesos_zookeeper, mesos_master):
-    return {'zookeeper': mesos_zookeeper, 'mesosmaster': mesos_master}
+@given(
+    parsers.re(r'working mesos platform (with (?P<num_slaves>\d+) slave(s?))'),
+    converters=dict(num_slaves=int))
+def mesos_platform(mesos_zookeeper, mesos_master, mesos_slaves, num_slaves):
+    return {'zookeeper': mesos_zookeeper,
+            'master': mesos_master,
+            'slaves': mesos_slaves}
 
 
 @given('mesos executor with {runner} runner')

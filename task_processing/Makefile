@@ -7,7 +7,13 @@ test: .taskproc/bin/activate
 	.taskproc/bin/tox
 
 itest:
-	.taskproc/bin/tox -e integration
+	cd tests/integration && \
+	docker-compose -f cluster/docker-compose.yaml down && \
+	docker-compose -f cluster/docker-compose.yaml pull && \
+	docker-compose -f cluster/docker-compose.yaml build && \
+	docker-compose -f cluster/docker-compose.yaml up -d zookeeper mesosmaster mesosslave && \
+	docker-compose -f cluster/docker-compose.yaml scale mesosslave=2 && \
+	docker-compose -f cluster/docker-compose.yaml run playground /src/itest.sh
 
 .taskproc/bin/activate:
 	test -d .taskproc/bin/activate || virtualenv -p python3.6 .taskproc

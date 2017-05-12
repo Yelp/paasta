@@ -1,8 +1,7 @@
 Feature: Mesos Sync runner
 
 Scenario: Running single task
-  Given mesos platform
-  And 1 mesos slave
+  Given working mesos platform
   And mesos executor with sync runner
   When I launch a task
   Then it should block until finished
