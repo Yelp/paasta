@@ -52,7 +52,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 
-import paasta_tools
+import paasta_tools.cli.fsm
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -924,7 +924,7 @@ class SystemPaastaConfig(dict):
         return self['api_endpoints']
 
     def get_fsm_template(self):
-        fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
+        fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
         template_path = os.path.join(fsm_path, "template")
         return self.get('fsm_template', template_path)
 

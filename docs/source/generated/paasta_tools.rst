@@ -45,6 +45,7 @@ Submodules
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
    paasta_tools.long_running_service_tools
+   paasta_tools.mac_address
    paasta_tools.marathon_serviceinit
    paasta_tools.marathon_tools
    paasta_tools.mesos_maintenance

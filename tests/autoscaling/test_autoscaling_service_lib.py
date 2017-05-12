@@ -253,16 +253,34 @@ def test_mesos_cpu_metrics_provider():
             'cpus_user_time_secs': 240,
         })
     )
+    fake_mesos_task_2 = mock.MagicMock(
+        stats_callable=lambda: None,
+    )
+    fake_mesos_task_3 = mock.MagicMock(
+        stats_callable=lambda: {},
+    )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
+    fake_mesos_task_2.__getitem__.return_value = 'fake-service.fake-instance2'
+    fake_mesos_task_3.__getitem__.return_value = 'fake-service.fake-instance3'
 
-    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
+    fake_marathon_tasks = [
+        mock.Mock(id='fake-service.fake-instance'),
+        mock.Mock(id='fake-service.fake-instance2'),
+        mock.Mock(id='fake-service.fake-instance3'),
+    ]
 
     current_time = datetime.now()
     last_time = (current_time - timedelta(seconds=600)).strftime('%s')
 
+    fake_old_utilization_data = ','.join([
+        '0:fake-service.fake-instance',
+        '300:fake-service.fake-instance2',
+        '123456:fake-service.fake-instance3',
+    ])
+
     zookeeper_get_payload = {
         'cpu_last_time': last_time,
-        'cpu_data': '0:fake-service.fake-instance',
+        'cpu_data': fake_old_utilization_data,
     }
 
     with mock.patch(
@@ -278,26 +296,28 @@ def test_mesos_cpu_metrics_provider():
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert autoscaling_service_lib.mesos_cpu_metrics_provider(
+        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_marathon_tasks,
-            (fake_mesos_task,),
-            log_utilization_data=log_utilization_data) == 0.8
+            (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
+            log_utilization_data=log_utilization_data,
+        )
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/cpu_last_time', current_time.strftime('%s')),
             mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
         ], any_order=True)
-        assert log_utilization_data == {last_time: '0:fake-service.fake-instance',
+        assert log_utilization_data == {last_time: fake_old_utilization_data,
                                         current_time.strftime('%s'): '480.0:fake-service.fake-instance'}
 
         # test noop mode
         mock_zk_client.return_value.set.reset_mock()
-        assert autoscaling_service_lib.mesos_cpu_metrics_provider(
+        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_marathon_tasks,
             (fake_mesos_task,),
             log_utilization_data=log_utilization_data,
-            noop=True) == 0.8
+            noop=True,
+        )
         assert not mock_zk_client.return_value.set.called
 
 
@@ -1376,6 +1396,20 @@ def test_proportional_decision_policy_good_enough(mock_save_historical_load, moc
         zookeeper_path='/test',
         current_instances=100,
         num_healthy_instances=100,
+        min_instances=50,
+        max_instances=150,
+        forecast_policy='current',
+        offset=0.0,
+        setpoint=0.50,
+        utilization=0.46,
+        good_enough_window=(0.45, 0.55),
+    )
+
+    # current_instances < min_instances, so scale up.
+    assert 25 == autoscaling_service_lib.proportional_decision_policy(
+        zookeeper_path='/test',
+        current_instances=25,
+        num_healthy_instances=25,
         min_instances=50,
         max_instances=150,
         forecast_policy='current',

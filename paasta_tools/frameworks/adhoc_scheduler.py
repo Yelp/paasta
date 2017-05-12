@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
+from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
 from paasta_tools.utils import paasta_print
 
 
@@ -60,3 +61,7 @@ class AdhocScheduler(NativeScheduler):
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
         return
+
+    def validate_config(self):
+        if self.service_config.get_cmd() is None:
+            raise UnknownNativeServiceError("missing cmd in service config")

@@ -8,8 +8,6 @@ import mock
 from pytest import raises
 from six.moves.queue import Empty
 
-from paasta_tools.deployd.common import ServiceInstance
-
 
 class FakePyinotify(object):  # pragma: no cover
     class ProcessEvent():
@@ -36,7 +34,6 @@ sys.modules['pyinotify'] = FakePyinotify
 
 from paasta_tools.deployd.master import Inbox  # noqa
 from paasta_tools.deployd.master import DeployDaemon  # noqa
-from paasta_tools.deployd.master import rate_limit_instances  # noqa
 from paasta_tools.deployd.master import main  # noqa
 
 
@@ -136,7 +133,8 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_config_getter:
             mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
                                     get_deployd_number_workers=mock.Mock(return_value=5),
-                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10))
+                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10),
+                                    get_cluster=mock.Mock(return_value='westeros-prod'))
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
 
@@ -178,6 +176,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(self.deployd.inbox,
                                               self.deployd.bounce_q,
+                                              'westeros-prod',
                                               mock_get_metrics_interface.return_value)
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
@@ -242,27 +241,6 @@ class TestDeployDaemon(unittest.TestCase):
             mock_sleep.side_effect = LoopBreak
             with raises(LoopBreak):
                 self.deployd.start_watchers()
-
-
-def test_rate_limit_instances():
-    with mock.patch(
-        'time.time', autospec=True
-    ) as mock_time:
-        mock_time.return_value = 1
-        mock_si_1 = ('universe', 'c137')
-        mock_si_2 = ('universe', 'c138')
-        ret = rate_limit_instances([mock_si_1, mock_si_2], 2, "Custos")
-        expected = [ServiceInstance(service='universe',
-                                    instance='c137',
-                                    watcher='Custos',
-                                    bounce_by=1,
-                                    bounce_timers=None),
-                    ServiceInstance(service='universe',
-                                    instance='c138',
-                                    watcher='Custos',
-                                    bounce_by=31,
-                                    bounce_timers=None)]
-        assert ret == expected
 
 
 def test_main():

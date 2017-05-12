@@ -1,0 +1,55 @@
+version: "2"
+
+services:
+  zookeeper:
+    image: zookeeper
+    environment:
+      ZK_CONFIG: tickTime=2000,initLimit=10,syncLimit=5,maxClientCnxns=128,forceSync=no,clientPort=2181
+      ZK_ID: 1
+    ports:
+      - '2181:2181'
+  mesosmaster:
+    build:
+      context: .
+      dockerfile: Dockerfile.mesos-master
+    environment:
+      MESOS_ZK: zk://zookeeper:2181/mesos
+      MESOS_QUORUM: 1
+      MESOS_CLUSTER: docker-compose
+      MESOS_REGISTRY: in_memory
+      MESOS_CREDENTIALS: /etc/mesos-secrets
+    ports:
+      - '5050:5050'
+      - '5054:5054'
+    depends_on:
+      - zookeeper
+  mesosslave:
+    image: mesosphere/mesos-slave:1.2.0
+    pid: host
+    environment:
+      MESOS_MASTER: zk://zookeeper:2181/mesos
+      MESOS_CONTAINERIZERS: docker
+      MESOS_PORT: 5051
+      MESOS_RESOURCES: ports(*):[11000-11999]
+      MESOS_WORK_DIR: /tmp/mesos
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '5051:5051'
+    depends_on:
+      - zookeeper
+  playground:
+    build:
+      context: ../../..
+      dockerfile: ./task_processing/examples/cluster/playground/Dockerfile
+    environment:
+      MESOS: mesosmaster:5050
+    depends_on:
+      - zookeeper
+      - mesosmaster
+      - mesosslave
+    volumes:
+      - ../../..:/src
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 22

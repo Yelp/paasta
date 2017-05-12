@@ -1,3 +1,38 @@
+paasta-tools (0.63.3) xenial; urgency=medium
+
+  * 0.63.3 tagged with 'make release'
+    Commit: security-check returns the test results (#1161)  * security-
+    check returns the test results  * removing misleading security-check
+    comment
+
+ -- Alina Radu <alinar@yelp.com>  Thu, 11 May 2017 10:21:56 -0700
+
+paasta-tools (0.63.2) xenial; urgency=medium
+
+  * 0.63.2 tagged with 'make release'
+    Commit: Merge pull request #1212 from
+    Yelp/oops_clamp_min_max_even_if_load_good_enough  proportional
+    decision policy: clamp to min/max instances even if load is good
+    enough.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 May 2017 17:36:12 -0700
+
+paasta-tools (0.63.1) xenial; urgency=low
+
+  * 0.63.1 tagged with 'make release'
+    Commit: Merge pull request #1186 from Yelp/deployd-logging-fix  Make
+    logging better for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 10 May 2017 03:42:24 -0700
+
+paasta-tools (0.63.0) xenial; urgency=medium
+
+  * 0.63.0 tagged with 'make release'
+    Commit: Merge pull request #1196 from bchess/macaddress  docker
+    wrapper can choose, flock, and apply random mac address
+
+ --  <bchess@yelp.com>  Mon, 08 May 2017 18:43:31 +0000
+
 paasta-tools (0.62.3) xenial; urgency=medium
 
   * 0.62.3 tagged with 'make release'

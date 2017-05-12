@@ -21,11 +21,11 @@ from __future__ import unicode_literals
 import json
 import logging
 import os
-import sys
 
 from bravado.client import SwaggerClient
 from six.moves.urllib_parse import urlparse
 
+import paasta_tools.api
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -52,7 +52,7 @@ def get_paasta_api_client(cluster=None, system_paasta_config=None):
     api_server = parsed.netloc
 
     # Get swagger spec from file system instead of the api server
-    paasta_api_path = os.path.dirname(sys.modules['paasta_tools.api'].__file__)
+    paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     swagger_file = os.path.join(paasta_api_path, 'api_docs/swagger.json')
     if not os.path.isfile(swagger_file):
         log.error('paasta-api swagger spec %s does not exist', swagger_file)

@@ -31,7 +31,7 @@ setup(
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
     description='Tools for Yelps SOA infrastructure',
-    packages=find_packages(exclude=("tests*", "scripts*")),
+    packages=find_packages(exclude=("tests*", "scripts*", "task_processing")),
     include_package_data=True,
     install_requires=[
         'argcomplete >= 0.8.1',
@@ -53,7 +53,6 @@ setup(
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
         'mesos.interface == 1.1.0',
-        'ordereddict >= 1.1',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid == 1.7',
@@ -70,7 +69,7 @@ setup(
         # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.10.1',
         'ujson == 1.35',
-        'yelp_clog >= 2.2.0',
+        'yelp-clog >= 2.7.2',
     ],
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',

@@ -172,7 +172,11 @@ def is_docker_image_already_in_registry(service, sha):
     with requests.Session() as s:
         r = s.get(url, timeout=30) if creds[0] is None else s.get(url, auth=creds, timeout=30)
         if r.status_code == 200:
-            return tag in r.json()['tags']
+            tags_resp = r.json()
+            if tags_resp['tags']:
+                return tag in tags_resp['tags']
+            else:
+                return False
         elif r.status_code == 404:
             return False  # No Such Repository Error
         r.raise_for_status()

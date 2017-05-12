@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 import inspect
 import logging
+import logging.handlers
+import os
 import socket
 import time
 
@@ -12,7 +14,7 @@ from six.moves.queue import Empty
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
-from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
@@ -35,7 +37,6 @@ class Inbox(PaastaThread):
     def run(self):
         while True:
             self.process_inbox()
-        pass
 
     def process_inbox(self):
         try:
@@ -82,12 +83,19 @@ class DeployDaemon(PaastaThread):
         super(DeployDaemon, self).__init__()
         self.started = False
         self.daemon = True
+        self.config = load_system_paasta_config()
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))
+        log_handlers = [logging.StreamHandler()]
+        if os.path.exists('/dev/log'):
+            log_handlers.append(logging.handlers.SysLogHandler('/dev/log'))
+        for handler in log_handlers:
+            root_logger.addHandler(handler)
+            handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
         self.bounce_q = PaastaQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
-        self.config = load_system_paasta_config()
-        logging.basicConfig(level=getattr(logging, self.config.get_deployd_log_level()))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
@@ -107,7 +115,7 @@ class DeployDaemon(PaastaThread):
         self.is_leader = True
         self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
         self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
-        QueueMetrics(self.inbox, self.bounce_q, self.metrics).start()
+        QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -133,7 +141,7 @@ class DeployDaemon(PaastaThread):
 
     def start_workers(self):
         for i in range(self.config.get_deployd_number_workers()):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.metrics)
+            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
             worker.start()
 
     def add_all_services(self):
@@ -161,23 +169,6 @@ class DeployDaemon(PaastaThread):
         while not all([watcher.is_ready for watcher in watcher_threads]):
             self.log.debug("Sleeping and waiting for watchers to all start")
             time.sleep(1)
-
-
-def rate_limit_instances(instances, number_per_minute, watcher_name):
-    service_instances = []
-    if not instances:
-        return []
-    time_now = int(time.time())
-    time_step = int(60 / number_per_minute)
-    bounce_time = time_now
-    for service, instance in instances:
-        service_instances.append(ServiceInstance(service=service,
-                                                 instance=instance,
-                                                 watcher=watcher_name,
-                                                 bounce_by=bounce_time,
-                                                 bounce_timers=None))
-        bounce_time += time_step
-    return service_instances
 
 
 def main():

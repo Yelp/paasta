@@ -386,7 +386,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
-            if status.marathon.deploy_status != 'Running':
+            if status.marathon.deploy_status not in ['Running', 'Deploying', 'Waiting']:
                 paasta_print("  {}.{} on {} isn't running yet: {}"
                              .format(cluster_data.service, instance,
                                      cluster_data.cluster,
