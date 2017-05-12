@@ -17,6 +17,8 @@ from __future__ import unicode_literals
 import dulwich.client
 import dulwich.errors
 
+from paasta_tools.utils import timeout
+
 
 def _make_determine_wants_func(ref_mutator):
     """Returns a safer version of ref_mutator, suitable for passing as the
@@ -76,6 +78,9 @@ class LSRemoteException(Exception):
     pass
 
 
+@timeout(seconds=20,
+         error_message="Timed out connecting to git server, is it reachable from where you are?",
+         use_signals=False)
 def list_remote_refs(git_url):
     """Get the refs from a remote git repo as a dictionary of name->hash."""
     client, path = dulwich.client.get_transport_and_path(git_url)
