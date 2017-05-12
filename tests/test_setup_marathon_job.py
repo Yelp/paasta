@@ -681,7 +681,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 soa_dir='fake_soa_dir',
             )
-            assert mock_log.call_count == 1
+            assert mock_log.call_count == 0
             assert mock_create_marathon_app.call_count == 0
             assert fake_drain_method.drain.call_count == 0
             assert mock_kill_old_ids.call_count == 0
