@@ -19,6 +19,8 @@ import csv
 import datetime
 import logging
 import re
+from collections import defaultdict
+from collections import deque
 from time import sleep
 
 import chronos
@@ -28,6 +30,8 @@ import pytz
 import service_configuration_lib
 from croniter import croniter
 from crontab import CronSlices
+from six import iteritems
+from six import iterkeys
 from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
@@ -181,6 +185,7 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
+@time_cache(ttl=30)
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
@@ -319,7 +324,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_parents(self):
-        parents = self.config_dict.get('parents', None)
+        parents = self.config_dict.get('parents', [])
         if parents is not None and not isinstance(parents, list):
             return [parents]
         else:
@@ -978,4 +983,148 @@ def chronos_services_running_here():
     return mesos_services_running_here(
         framework_filter=lambda fw: fw['name'].startswith('chronos'),
         parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3])
+    )
+
+
+ENTERED, ENTERED_AND_EXITED = range(0, 2)
+
+
+def dfs(node, get_adjacent_nodes, add_visited, node_status=None, ignore_cycles=False, callback_on_node_enter=None):
+    if node_status is None:
+        node_status = {}
+
+    if node_status.get(node, ENTERED) == ENTERED_AND_EXITED:
+        return
+
+    node_status[node] = ENTERED
+    for current_node in get_adjacent_nodes(node):
+        current_node_state = node_status.get(current_node, None)
+        if current_node_state == ENTERED:
+            if ignore_cycles:
+                continue
+            else:
+                raise ValueError("cycle")
+        if current_node_state == ENTERED_AND_EXITED:
+            continue
+
+        if callback_on_node_enter:
+            callback_on_node_enter(current_node)
+
+        dfs(
+            node=current_node,
+            get_adjacent_nodes=get_adjacent_nodes,
+            add_visited=add_visited,
+            node_status=node_status,
+            ignore_cycles=ignore_cycles,
+        )
+    add_visited(node)
+    node_status[node] = ENTERED_AND_EXITED
+
+
+@time_cache(ttl=30)
+def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
+    """
+    For all the Chronos jobs defined in cluster, extract the list of topologically sorted related Chronos.
+    Two individual jobs are considered related each other if exists a dependency relationship between them.
+
+    :param cluster: cluster from which extracting the jobs
+    :return: tuple(related jobs mapping, jobs configuration)
+    """
+    chronos_configs = {
+        (service, instance): load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+        for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir)
+        for instance in iterkeys(read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir))
+    }
+
+    adjacency_list = defaultdict(set)  # List of adjacency used by dfs algorithm
+    for instance, config in iteritems(chronos_configs):
+        for parent in config.get_parents():
+            parent = decompose_job_id(paasta_to_chronos_job_name(parent))
+            # Map the graph a undirected graph to simplify identification of connected components
+            adjacency_list[parent].add(instance)
+            adjacency_list[instance].add(parent)
+
+    def cached_dfs(known_dfs_results, get_dfs_result, node, **kwargs):
+        for known_dfs_result in known_dfs_results:
+            if node in known_dfs_result:
+                return known_dfs_result
+
+        dfs(node=node, **kwargs)
+        known_dfs_results.append(get_dfs_result)
+
+    # Build connected components
+    known_connected_components = []
+    for instance in iterkeys(chronos_configs):
+        visited = set()
+        cached_dfs(  # Using cached version of DFS to avoid all algorithm execution if the result it already know
+            known_dfs_results=known_connected_components,
+            get_dfs_result=visited,
+            node=instance,
+            ignore_cycles=True,  # Operating on an undirected graph to simplify identification of connected components
+            get_adjacent_nodes=lambda node: adjacency_list[node],
+            add_visited=visited.add,
+        )
+
+    connected_components = {}
+    for connected_component in known_connected_components:
+        for node in connected_component:
+            connected_components[node] = connected_component
+
+    return connected_components, chronos_configs
+
+
+def get_related_jobs_configs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR, use_cache=True):
+    """
+    Extract chronos configurations of all Chronos jobs related to the (cluster, service, instance)
+
+    :return: job-config mapping. Job identifier is a tuple (service, instance)
+    """
+    kwargs = {}
+    if not use_cache:
+        kwargs['ttl'] = -1  # Disable usage of time_cached value
+
+    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir, **kwargs)
+    related_jobs = connected_components[(service, instance)]
+    return {
+        job: config
+        for job, config in iteritems(chronos_configs)
+        if job in related_jobs
+    }
+
+
+def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR):
+    """
+    Extract the topological order of all the jobs related to the specified instance.
+    :return: sorted list of related jobs.
+            The list is ordered such that job with index `i` could be executed in respect of its dependencies
+            if all jobs with index smaller than `i` have terminated.
+    """
+    def decompose_parent_job(parent_job):
+        return decompose_job_id(paasta_to_chronos_job_name(parent_job))
+
+    def _sort(nodes, get_adjacent_nodes):
+        order, enter, node_status = deque(), {n for n in nodes}, {}
+        while enter:
+            dfs(
+                node=enter.pop(),
+                get_adjacent_nodes=get_adjacent_nodes,
+                add_visited=order.append,
+                node_status=node_status,
+                callback_on_node_enter=lambda node: enter.discard(node),
+                ignore_cycles=False,
+            )
+
+        return order
+
+    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir)
+    related_jobs = connected_components[(service, instance)]
+
+    return _sort(
+        nodes=related_jobs,
+        get_adjacent_nodes=lambda node: map(decompose_parent_job, chronos_configs[node].get_parents())
     )
