@@ -45,6 +45,8 @@ def parse_args():
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=chronos_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
+    parser.add_argument('-a', '--run-all-related-jobs', action='store_true', dest='run_all_related_jobs',
+                        default=False, help='Run all the parent-dependent related jobs')
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('execution_date',
                         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .")
@@ -84,24 +86,34 @@ def set_default_schedule(chronos_job):
     return chronos_job
 
 
-def set_tmp_naming_scheme(chronos_job):
+def get_tmp_naming_scheme_prefix(timestamp=None):
+    timestamp = timestamp if timestamp else datetime.datetime.utcnow().isoformat()
+    timestamp = timestamp.replace(':', '')
+    timestamp = timestamp.replace('.', '')
+
+    return '%s-%s' % (
+        chronos_tools.TMP_JOB_IDENTIFIER,
+        timestamp,
+    )
+
+
+def set_tmp_naming_scheme(chronos_job, timestamp=None):
     """
     Given a chronos job, return a new job identical to the first, but with the
     name set to one which makes it identifiable as a temporary job.
 
-    :param chronos_jobs: a chronos job suitable for POSTing to Chronos
+    :param chronos_job: a chronos job suitable for POSTing to Chronos
+    :param timestamp: timestamp to use for the generation of the tmp job name
     :returns: the chronos_job parameter, with the name of the job modified to
         allow it to be idenitified as a temporary job.
     """
     current_name = chronos_job['name']
-    timestamp = datetime.datetime.utcnow().isoformat()
-    timestamp = timestamp.replace(':', '')
-    timestamp = timestamp.replace('.', '')
 
-    chronos_job['name'] = '%s-%s%s%s' % (chronos_tools.TMP_JOB_IDENTIFIER,
-                                         timestamp,
-                                         chronos_tools.SPACER,
-                                         current_name)
+    chronos_job['name'] = '%s%s%s' % (
+        get_tmp_naming_scheme_prefix(timestamp),
+        chronos_tools.SPACER,
+        current_name,
+    )
 
     return chronos_job
 
@@ -119,13 +131,14 @@ def remove_parents(chronos_job):
     return chronos_job
 
 
-def clone_job(chronos_job, date):
+def clone_job(chronos_job, date, timestamp=None):
     """
-    Given a chronos job, create a 'rerun' clone, that is due to run once and
-    only once, and as soon as possible.
+    Given a chronos job, create a 'rerun' clone that respects the parents relations.
+    If the job has his own schedule it will be executed once and only once, and as soon as possible.
 
     :param chronos_job: a chronos job suitable for POSTing to Chronos
     :param date: the date for which the job is to be run.
+    :param timestamp: timestamp to use for the generation of the tmp job name
     :returns: the chronos_job parameter, modified to be submitted as a
         temporary clone used to rerun a job in the context of a given date.
     """
@@ -133,22 +146,24 @@ def clone_job(chronos_job, date):
     job_type = chronos_tools.get_job_type(clone)
 
     # modify the name of the job
-    clone = set_tmp_naming_scheme(clone)
+    clone = set_tmp_naming_scheme(clone, timestamp)
 
-    # give the job a schedule for it to run now
-    clone = set_default_schedule(clone)
-
-    # if the job is a dependent job
-    # then convert it to be a scheduled job
-    # that should run now
+    # If the jobs is a dependent job rename the parents dependencies
+    # in order to make this job dependent from the temporary clone of the parents
     if job_type == chronos_tools.JobType.Dependent:
-        clone = remove_parents(clone)
+        chronos_job['parents'] = [
+            '{}{}{}'.format(
+                get_tmp_naming_scheme_prefix(timestamp),
+                chronos_tools.INTERNAL_SPACER,
+                parent,
+            )
+            for parent in chronos_job['parents']
+        ]
+    else:
+        # If the job is a scheduled one update the schedule to start it NOW
+        clone = set_default_schedule(clone)
 
-    # set the job to run now
-    clone = set_default_schedule(clone)
-
-    # modify the command to run commands
-    # for a given date
+    # modify the command to run commands for a given date
     clone = modify_command_for_date(clone, date)
     return clone
 
@@ -156,47 +171,93 @@ def clone_job(chronos_job, date):
 def main():
     args = parse_args()
 
-    cluster = load_system_paasta_config().get_cluster()
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
 
     service, instance = chronos_tools.decompose_job_id(args.service_instance)
 
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
-    system_paasta_config = load_system_paasta_config()
 
-    chronos_job_config = chronos_tools.load_chronos_job_config(
-        service, instance, system_paasta_config.get_cluster(), soa_dir=args.soa_dir)
-
-    try:
-        complete_job_config = chronos_tools.create_complete_config(
-            service=service,
-            job_name=instance,
-            soa_dir=args.soa_dir,
-        )
-
-    except (NoDeploymentsAvailable, NoDockerImageError) as e:
+    related_jobs = chronos_tools.get_related_jobs_configs(cluster, service, instance, soa_dir=args.soa_dir)
+    if not related_jobs:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
             args.service_instance, cluster)
         paasta_print(error_msg)
-        raise e
-    except NoConfigurationForServiceError as e:
-        error_msg = (
-            "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
-            "Error was: %s" % str(e))
-        paasta_print(error_msg)
-        raise e
-    except chronos_tools.InvalidParentError as e:
-        raise e
+        raise NoDeploymentsAvailable
 
-    # complete_job_config is a formatted version
-    # of the job, so the command is fornatted in the context
-    # of 'now'
-    # replace it with the 'original' cmd so it can be
-    # re rendered
-    original_command = chronos_job_config.get_cmd()
-    complete_job_config['command'] = original_command
-    clone = clone_job(complete_job_config, datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"))
-    client.add(clone)
+    if not args.run_all_related_jobs:
+        # Strip all the configuration for the related services
+        # those information will not be used by the rest of the flow
+        related_jobs = {
+            (service, instance): related_jobs[(service, instance)]
+        }
+
+    complete_job_configs = {}
+    for (srv, inst) in related_jobs:
+        try:
+            complete_job_configs.update(
+                {
+                    (srv, inst): chronos_tools.create_complete_config(
+                        service=srv,
+                        job_name=inst,
+                        soa_dir=args.soa_dir,
+                    ),
+                },
+            )
+        except (NoDeploymentsAvailable, NoDockerImageError) as e:
+            error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
+                chronos_tools.compose_job_id(srv, inst), cluster,
+            )
+            paasta_print(error_msg)
+            raise e
+        except NoConfigurationForServiceError as e:
+            error_msg = (
+                "Could not read chronos configuration file for %s in cluster %s\nError was: %s" % (
+                    chronos_tools.compose_job_id(srv, inst), cluster, str(e),
+                )
+            )
+            paasta_print(error_msg)
+            raise e
+        except chronos_tools.InvalidParentError as e:
+            raise e
+
+    if not args.run_all_related_jobs:
+        sorted_jobs = [(service, instance)]
+    else:
+        sorted_jobs = chronos_tools.topological_sort_related_jobs(cluster, service, instance, soa_dir=args.soa_dir)
+
+    timestamp = datetime.datetime.utcnow().isoformat()
+
+    chronos_to_add = []
+    for (service, instance) in sorted_jobs:
+        # complete_job_config is a formatted version of the job,
+        # so the command is formatted in the context of 'now'
+        # replace it with the 'original' cmd so it can be re rendered
+        chronos_job_config = chronos_tools.load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=args.soa_dir,
+        )
+        original_command = chronos_job_config.get_cmd()
+        complete_job_config = complete_job_configs[(service, instance)]
+        complete_job_config['command'] = original_command
+        clone = clone_job(
+            chronos_job=complete_job_config,
+            date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
+            timestamp=timestamp,
+        )
+
+        if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:
+            # If the job is a dependent job and we want to re-run only the specific instance
+            # remove the parents and update the schedule to start the job as soon as possible
+            clone = set_default_schedule(remove_parents(clone))
+
+        chronos_to_add.append(clone)
+
+    for job_to_add in chronos_to_add:
+        client.add(job_to_add)
 
 
 if __name__ == "__main__":

@@ -188,21 +188,17 @@ def paasta_rerun(args):
             )
             return
 
-        if args.rerun_type in ('instance', None):
-            rc, output = execute_chronos_rerun_on_remote_master(
-                service=service,
-                instancename=args.instance,
-                cluster=cluster,
-                verbose=args.verbose,
-                execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
-                system_paasta_config=system_paasta_config,
-            )
-            if rc == 0:
-                paasta_print(PaastaColors.green('  successfully created job'))
-            else:
-                paasta_print(PaastaColors.red('  error'))
-                paasta_print(output)
-        elif args.rerun_type == 'graph':
-            # TODO: implement this section
-            paasta_print(PaastaColors.red('  not implemented yet'))
-            pass
+        rc, output = execute_chronos_rerun_on_remote_master(
+            service=service,
+            instancename=args.instance,
+            cluster=cluster,
+            verbose=args.verbose,
+            execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
+            system_paasta_config=system_paasta_config,
+            run_all_related_jobs=args.rerun_type == 'graph',
+        )
+        if rc == 0:
+            paasta_print(PaastaColors.green('  successfully created job'))
+        else:
+            paasta_print(PaastaColors.red('  error'))
+            paasta_print(output)

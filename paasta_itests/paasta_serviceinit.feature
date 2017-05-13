@@ -73,7 +73,7 @@ Feature: paasta_serviceinit
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
-     When we run chronos_rerun for service_instance testservice testinstance
+     When we run chronos_rerun for service_instance "testservice testinstance"
      Then we should get exit code 0
       And there is a temporary job for the service testservice and instance testinstance
      When we store the name of the rerun job for the service testservice and instance testinstance as rerunjob
