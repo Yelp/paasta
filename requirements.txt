@@ -17,6 +17,7 @@ git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 git+git://github.com/thefactory/marathon-python@e70307e
 httplib2==0.9
 humanize==0.5.1
+inotify==0.2.8
 isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.2
@@ -43,7 +44,7 @@ PyYAML==3.11
 requests==2.6.2
 requests-cache==0.4.10
 retry==0.9.2
-service-configuration-lib==0.10.1
+service-configuration-lib==0.12.0
 simplejson==3.10.0
 six>=1.9.0
 thriftpy==0.1.15

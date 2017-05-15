@@ -48,6 +48,7 @@ setup(
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
         'httplib2 >= 0.9,<= 1.0',
+        'inotify >= 0.2.8',
         'isodate >= 0.5.0',
         'jsonschema[format]',
         'kazoo >= 2.0.0',
@@ -67,7 +68,7 @@ setup(
         'requests-cache >= 0.4.10,<= 0.5.0',
         # We install this from git
         # 'sensu-plugin >= 0.2.0',
-        'service-configuration-lib >= 0.10.1',
+        'service-configuration-lib >= 0.12.0',
         'ujson == 1.35',
         'yelp-clog >= 2.7.2',
     ],
@@ -110,6 +111,7 @@ setup(
             'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
             'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
             'paasta_docker_wrapper=paasta_tools.docker_wrapper:main',
+            'paasta_firewall_update=paasta_tools.firewall_update:main',
         ],
         'paste.app_factory': [
             'paasta-api-config=paasta_tools.api.api:make_app'

@@ -783,6 +783,9 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
     srv_list = []
     for executor in executors:
         srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
-        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        if 'ports' in executor['resources']:
+            srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        else:
+            srv_port = None
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
