@@ -2234,7 +2234,7 @@ def test_marathon_service_config_copy():
     )
     fake_marathon_service_config_2 = fake_marathon_service_config.copy()
     assert fake_marathon_service_config is not fake_marathon_service_config_2
-    assert fake_marathon_service_config == fake_marathon_service_config_2
+    assert fake_marathon_service_config.config_dict == fake_marathon_service_config_2.config_dict
 
 
 def test_marathon_service_config_get_healthchecks_invalid_type():
