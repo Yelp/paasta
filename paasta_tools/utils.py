@@ -131,6 +131,9 @@ class InstanceConfig(object):
             if key in self.config_dict:
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)
 
+    def instance_type(self):
+        raise NotImplementedError("Unknown instance type")
+
     def __get_interpolation_facts(self):
         return {
             'cluster': self.cluster,

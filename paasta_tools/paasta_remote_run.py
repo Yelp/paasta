@@ -29,6 +29,7 @@ from datetime import datetime
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
 from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
 from paasta_tools.mesos_tools import get_all_frameworks
@@ -39,7 +40,6 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import validate_service_instance
 
 
 def parse_args(argv):
@@ -104,7 +104,8 @@ def extract_args(args):
         instance_type = 'adhoc'
         instance = 'remote'
     else:
-        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+        instance_config = get_instance_config(service, instance, cluster, soa_dir)
+        instance_type = instance_config.instance_type()
 
     return (system_paasta_config, service, cluster, soa_dir, instance, instance_type)
 
