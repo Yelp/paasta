@@ -68,37 +68,91 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
-    marathon_config = None
-    chronos_config = None
-    args = parse_args(argv)
+def print_version():
+    """Prints the paasta_tools version number"""
+    paasta_print("Master paasta_tools version: {}".format(__version__))
 
-    master = get_mesos_master()
-    try:
-        mesos_state = master.state
-    except MasterNotAvailableException as e:
-        # if we can't connect to master at all,
-        # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
-        sys.exit(2)
 
-    mesos_state_status = metastatus_lib.get_mesos_state_status(
-        mesos_state=mesos_state,
+def print_autoscaling():
+    """Print the status of the cluster autoscaler"""
+    print_with_indent("Autoscaling resources:", 2)
+    headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
+    table = reduce(
+        lambda x, y: x + [(y)],
+        get_autoscaling_info_for_all_resources(),
+        [headers]
     )
 
-    metrics = master.metrics_snapshot()
-    mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(mesos_metrics=metrics,
-                                                                                mesos_state=mesos_state)
-    framework_metrics_healthchecks = metastatus_lib.get_framework_metrics_status(metrics=metrics)
+    for line in format_table(table):
+        print_with_indent(line, 4)
 
-    all_mesos_results = mesos_state_status + mesos_metrics_status + framework_metrics_healthchecks
 
+def print_per_slave_utilization():
+    """Print per slave utilization information"""
+    print_with_indent('Per Slave Utilization', 2)
+    slave_resource_dict = metastatus_lib.get_resource_utilization_by_grouping(lambda slave: slave['hostname'],
+                                                                              mesos_state)
+    all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)']]
+
+    # print info about slaves here. Note that we don't make modifications to
+    # the healthy_exit variable here, because we don't care about a single slave
+    # having high usage.
+    for attribute_value, resource_info_dict in slave_resource_dict.items():
+        table_rows = []
+        resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
+            total=resource_info_dict['total'],
+            free=resource_info_dict['free'],
+        )
+        healthcheck_utilization_pairs = [
+            metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization,
+                                                                                                 args.threshold)
+            for utilization in resource_utilizations
+        ]
+        table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
+            attribute_value,
+            healthcheck_utilization_pairs,
+            args.humanize
+        ))
+        table_rows = sorted(table_rows, key=lambda x: x[0])
+        all_rows.extend(table_rows)
+    for line in format_table(all_rows):
+        print_with_indent(line, 4)
+
+
+def print_resources_grouped_by(groupings, mesos_state, threshold, humanize):
+    for grouping in groupings:
+        print_with_indent('Resources Grouped by %s' % grouping, 2)
+        grouping_function = metastatus_lib.key_func_for_attribute(grouping)
+        resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(grouping_function,
+                                                                                 mesos_state)
+        all_rows = [[grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)']]
+        table_rows = []
+        for attribute_value, resource_info_dict in resource_info_dict.items():
+            resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
+                total=resource_info_dict['total'],
+                free=resource_info_dict['free'],
+            )
+            healthcheck_utilization_pairs = [
+                metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization,
+                                                                                                     threshold)
+                for utilization in resource_utilizations
+            ]
+            healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
+            table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
+                attribute_value,
+                healthcheck_utilization_pairs,
+                humanize
+            ))
+        table_rows = sorted(table_rows, key=lambda x: x[0])
+        all_rows.extend(table_rows)
+        for line in format_table(all_rows):
+            print_with_indent(line, 4)
+    return healthy_exit
+
+
+def get_marathon_results():
     # Check to see if Marathon should be running here by checking for config
     marathon_config = marathon_tools.load_marathon_config()
-
-    # Check to see if Chronos should be running here by checking for config
-    chronos_config = load_chronos_config()
-
     if marathon_config:
         marathon_client = metastatus_lib.get_marathon_client(marathon_config)
         try:
@@ -111,6 +165,12 @@ def main(argv=None):
     else:
         marathon_results = [metastatus_lib.HealthCheckResult(message='Marathon is not configured to run here',
                                                              healthy=True)]
+    return marathon_results
+
+
+def get_chronos_results():
+    # Check to see if Chronos should be running here by checking for config
+    chronos_config = load_chronos_config()
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config)
@@ -122,6 +182,38 @@ def main(argv=None):
     else:
         chronos_results = [metastatus_lib.HealthCheckResult(message='Chronos is not configured to run here',
                                                             healthy=True)]
+    return chronos_results
+
+
+def get_mesos_state(master):
+    try:
+        mesos_state = master.state
+    except MasterNotAvailableException as e:
+        # if we can't connect to master at all,
+        # then bomb out early
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        sys.exit(2)
+    return mesos_state
+
+
+def main(argv=None):
+    args = parse_args(argv)
+
+    master = get_mesos_master()
+    mesos_state = get_mesos_state(master)
+    mesos_state_status = metastatus_lib.get_mesos_state_status(
+        mesos_state=mesos_state,
+    )
+
+    metrics = master.metrics_snapshot()
+    mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(mesos_metrics=metrics,
+                                                                                mesos_state=mesos_state)
+    framework_metrics_healthchecks = metastatus_lib.get_framework_metrics_status(metrics=metrics)
+
+    all_mesos_results = mesos_state_status + mesos_metrics_status + framework_metrics_healthchecks
+
+    marathon_results = get_marathon_results()
+    chronos_results = get_chronos_results()
 
     mesos_ok = all(metastatus_lib.status_for_results(all_mesos_results))
     marathon_ok = all(metastatus_lib.status_for_results(marathon_results))
@@ -133,78 +225,21 @@ def main(argv=None):
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    paasta_print("Master paasta_tools version: {}".format(__version__))
+    print_version()
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1:
-        for grouping in args.groupings:
-            print_with_indent('Resources Grouped by %s' % grouping, 2)
-            grouping_function = metastatus_lib.key_func_for_attribute(grouping)
-            resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(grouping_function,
-                                                                                     mesos_state)
-            all_rows = [[grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)']]
-            table_rows = []
-            for attribute_value, resource_info_dict in resource_info_dict.items():
-                resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
-                    total=resource_info_dict['total'],
-                    free=resource_info_dict['free'],
-                )
-                healthcheck_utilization_pairs = [
-                    metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization,
-                                                                                                         args.threshold)
-                    for utilization in resource_utilizations
-                ]
-                healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
-                table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
-                    attribute_value,
-                    healthcheck_utilization_pairs,
-                    args.humanize
-                ))
-            table_rows = sorted(table_rows, key=lambda x: x[0])
-            all_rows.extend(table_rows)
-            for line in format_table(all_rows):
-                print_with_indent(line, 4)
+        healthy_exit = print_resources_grouped_by(
+            groupings=args.groupings,
+            mesos_state=mesos_state,
+            threshold=args.threshold,
+            humanize=humanize
+        )
 
         if args.autoscaling_info:
-            print_with_indent("Autoscaling resources:", 2)
-            headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
-            table = reduce(
-                lambda x, y: x + [(y)],
-                get_autoscaling_info_for_all_resources(),
-                [headers]
-            )
-
-            for line in format_table(table):
-                print_with_indent(line, 4)
+            print_autoscaling()
 
         if args.verbose == 3:
-            print_with_indent('Per Slave Utilization', 2)
-            slave_resource_dict = metastatus_lib.get_resource_utilization_by_grouping(lambda slave: slave['hostname'],
-                                                                                      mesos_state)
-            all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)']]
-
-            # print info about slaves here. Note that we don't make modifications to
-            # the healthy_exit variable here, because we don't care about a single slave
-            # having high usage.
-            for attribute_value, resource_info_dict in slave_resource_dict.items():
-                table_rows = []
-                resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
-                    total=resource_info_dict['total'],
-                    free=resource_info_dict['free'],
-                )
-                healthcheck_utilization_pairs = [
-                    metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization,
-                                                                                                         args.threshold)
-                    for utilization in resource_utilizations
-                ]
-                table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
-                    attribute_value,
-                    healthcheck_utilization_pairs,
-                    args.humanize
-                ))
-                table_rows = sorted(table_rows, key=lambda x: x[0])
-                all_rows.extend(table_rows)
-            for line in format_table(all_rows):
-                print_with_indent(line, 4)
+            print_per_slave_utilization()
     metastatus_lib.print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     metastatus_lib.print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 

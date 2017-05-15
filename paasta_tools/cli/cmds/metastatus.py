@@ -85,9 +85,20 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0, autoscaling_info=False):
-    """With a given cluster and verboseness, returns the status of the cluster
-    output is printed directly to provide dashbaords even if the cluster is unavailable"""
+def print_cluster(cluster):
+    """Prints the name of the cluster"""
+    paasta_print("Cluster: %s" % cluster)
+
+
+def print_dashboards(cluster):
+    """Prints links to the various cluster dashboards. This is done locally to
+    make sure these links get printed even if the cluster is unavailable."""
+    dashboards = get_cluster_dashboards(cluster)
+    paasta_print(dashboards)
+
+
+def print_metastatus(cluster, system_paasta_config, humanize, groupings, verbose=0, autoscaling_info=False):
+    """With a given cluster and verboseness, returns the status of the cluster"""
     return_code, output = execute_paasta_metastatus_on_remote_master(
         cluster=cluster,
         system_paasta_config=system_paasta_config,
@@ -96,10 +107,17 @@ def print_cluster_status(cluster, system_paasta_config, humanize, groupings, ver
         verbose=verbose,
         autoscaling_info=autoscaling_info
     )
-
-    paasta_print("Cluster: %s" % cluster)
-    paasta_print(get_cluster_dashboards(cluster))
     paasta_print(output)
+
+    return return_code
+
+
+def print_cluster_status(cluster, system_paasta_config, humanize, groupings, verbose=0, autoscaling_info=False):
+    """Prints out a human-friendly overview of the health of the cluster"""
+
+    print_cluster(cluster)
+    print_dashboards(cluster)
+    return_code = print_metastatus(cluster, system_paasta_config, humanize, groupings, verbose, autoscaling_info)
     paasta_print()
 
     return return_code
