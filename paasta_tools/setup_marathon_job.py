@@ -291,24 +291,26 @@ def do_bounce(
     all_old_tasks = set.union(all_old_tasks, *old_app_draining_tasks.values())
     all_old_tasks = set.union(all_old_tasks, *old_app_at_risk_tasks.values())
 
-    # log if we appear to be finished
-    if all([
-        (apps_to_kill or tasks_to_kill),
-        apps_to_kill == list(old_app_live_happy_tasks),
-        tasks_to_kill == all_old_tasks,
-    ]) or (not all_old_tasks) and new_app_running:
-        log_bounce_action(
-            line='%s bounce on %s finishing. Now running %s' %
-            (
-                bounce_method,
-                serviceinstance,
-                marathon_jobid
-            ),
-            level='event',
-        )
-        return None
-    else:
+    if all_old_tasks or (not new_app_running):
+        # Still have work more work to do, try again in 60 seconds
         return 60
+    else:
+        # log if we appear to be finished
+        if all([
+            (apps_to_kill or tasks_to_kill),
+            apps_to_kill == list(old_app_live_happy_tasks),
+            tasks_to_kill == all_old_tasks,
+        ]):
+            log_bounce_action(
+                line='%s bounce on %s finishing. Now running %s' %
+                (
+                    bounce_method,
+                    serviceinstance,
+                    marathon_jobid
+                ),
+                level='event',
+            )
+        return None
 
 
 def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
@@ -477,6 +479,7 @@ def deploy_service(
         log_deploy_error=log_deploy_error,
     )
 
+    num_at_risk_tasks = 0
     if new_app_running:
         num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=get_draining_hosts())
         if new_app.instances < config['instances'] + num_at_risk_tasks:
@@ -563,7 +566,8 @@ def deploy_service(
         logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
         log_deploy_error(logline, level='debug')
         raise
-
+    if num_at_risk_tasks:
+        bounce_again_in_seconds = 60
     return (0, 'Service deployed.', bounce_again_in_seconds)
 
 

@@ -20,6 +20,8 @@ DEFAULT_CONTAINER_PORT = 8888
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
+AUTOSCALING_ZK_ROOT = '/autoscaling'
+
 
 class LongRunningServiceConfig(InstanceConfig):
     def __init__(self, service, cluster, instance, config_dict, branch_dict):
@@ -325,7 +327,7 @@ def get_instances_from_zookeeper(service, instance):
 
 
 def compose_autoscaling_zookeeper_root(service, instance):
-    return '/autoscaling/%s/%s' % (service, instance)
+    return '%s/%s/%s' % (AUTOSCALING_ZK_ROOT, service, instance)
 
 
 def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
