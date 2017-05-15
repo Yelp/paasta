@@ -117,7 +117,7 @@ class InvalidInstanceConfig(Exception):
     pass
 
 
-class InstanceConfig(dict):
+class InstanceConfig(object):
 
     def __init__(self, cluster, instance, service, config_dict, branch_dict):
         self.config_dict = config_dict

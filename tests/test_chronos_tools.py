@@ -190,7 +190,7 @@ class TestChronosTools:
             mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
-            assert actual == self.fake_chronos_job_config
+            assert actual.config_dict == self.fake_chronos_job_config.config_dict
 
     def test_load_chronos_job_config_can_ignore_deployments(self):
         fake_soa_dir = '/tmp/'
@@ -209,7 +209,7 @@ class TestChronosTools:
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert not mock_load_deployments_json.called
-            assert dict(actual) == dict(self.fake_chronos_job_config)
+            assert actual.config_dict == self.fake_chronos_job_config.config_dict
 
     def test_load_chronos_job_config_unknown_job(self):
         with mock.patch(
