@@ -98,7 +98,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
         if portMappings:
             pm = task.container.docker.port_mappings.add()
-            pm.container_port = 8888
+            pm.container_port = self.get_container_port()
             pm.host_port = 0  # will be filled in by tasks_and_state_for_offer()
             pm.protocol = "tcp"
 
