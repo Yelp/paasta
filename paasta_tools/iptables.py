@@ -7,12 +7,58 @@ iptables a little bit easier.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import collections
 import re
-import shlex
-import subprocess
+
+import iptc
 
 
 CHAIN_REGEX = re.compile('-N ([^ ]+)$')
+
+
+class Rule(collections.namedtuple('Rule', (
+    'protocol',
+    'src',
+    'dst',
+    'target',
+    'matches',
+))):
+    """Rule representation.
+
+    Working with iptc's rule classes directly doesn't work well, since rules
+    represent actual existing iptables rules, and changes are applied
+    immediately. They're also difficult to compare.
+    """
+
+    @classmethod
+    def from_iptc(cls, rule):
+        fields = {
+            'protocol': rule.protocol,
+            'src': rule.src,
+            'dst': rule.dst,
+            'target': rule.target.name,
+            'matches': (),
+        }
+
+        for match in rule.matches:
+            fields['matches'] += ((
+                match.name,
+                tuple((param, value) for param, value in match.parameters.items())
+            ),)
+
+        return cls(**fields)
+
+    def to_iptc(self):
+        rule = iptc.Rule()
+        rule.protocol = self.protocol
+        rule.src = self.src
+        rule.dst = self.dst
+        rule.create_target(self.target)
+        for name, params in self.matches:
+            match = rule.create_match(name)
+            for key, value in params:
+                setattr(match, key, value)
+        return rule
 
 
 class ChainDoesNotExist(Exception):
@@ -20,15 +66,7 @@ class ChainDoesNotExist(Exception):
 
 
 def all_chains():
-    output = subprocess.check_output(
-        ('iptables', '-t', 'filter', '--list-rules'),
-    )
-    chains = set()
-    for line in output.splitlines():
-        m = CHAIN_REGEX.match(line)
-        if m:
-            chains.add(m.group(1))
-    return chains
+    return {chain.name for chain in iptc.Table(iptc.Table.FILTER).chains}
 
 
 def ensure_chain(chain, rules):
@@ -65,54 +103,43 @@ def ensure_rule(chain, rule):
         insert_rule(chain, rule)
 
 
-def insert_rule(chain, rule):
-    print('adding rule to {}: {}'.format(chain, rule))
-    subprocess.check_call(['iptables', '-t', 'filter', '-I', chain] + shlex.split(rule))
+def insert_rule(chain_name, rule):
+    print('adding rule to {}: {}'.format(chain_name, rule))
+    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
+    chain.insert_rule(rule.to_iptc())
 
 
-def delete_rule(chain, rule):
-    print('deleting rule from {}: {}'.format(chain, rule))
-    subprocess.check_call(['iptables', '-t', 'filter', '-D', chain] + shlex.split(rule))
+def delete_rule(chain_name, rule):
+    print('deleting rule from {}: {}'.format(chain_name, rule))
+    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
+    for potential_rule in chain.rules:
+        if Rule.from_iptc(potential_rule) == rule:
+            chain.delete_rule(potential_rule)
 
 
-def create_chain(chain):
-    print('creating chain: {}'.format(chain))
-    subprocess.check_call(('iptables', '-t', 'filter', '-N', chain))
+def create_chain(chain_name):
+    print('creating chain: {}'.format(chain_name))
+    iptc.Table(iptc.Table.FILTER).create_chain(chain_name)
 
 
-def delete_chain(chain):
-    print('deleting chain: {}'.format(chain))
-    # remove rules from the chain
-    subprocess.check_call(('iptables', '-t', 'filter', '-F', chain))
-    # delete the chain
-    subprocess.check_call(('iptables', '-t', 'filter', '-X', chain))
+def delete_chain(chain_name):
+    print('deleting chain: {}'.format(chain_name))
+    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
+    chain.flush()
+    chain.delete()
 
 
-def list_chain(chain):
+def list_chain(chain_name):
     """List rules in a chain.
 
     Returns a list of iptables rules, or raises ChainDoesNotExist.
     """
-    cmd = ('iptables', '-t', 'filter', '--list-rules', chain)
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    out, err = proc.communicate()
-    if proc.returncode != 0:
-        if b'No chain/target/match by that name.\n' in err:
-            raise ChainDoesNotExist(chain)
-        else:
-            raise subprocess.CalledProcessError(proc.returncode, cmd, output=(out, err))
-
-    # Parse rules into something usable
-    rule_regex = re.compile(b'-A {chain} (.+)$'.format(chain=re.escape(chain)))
-    rules = out.splitlines()
-    parsed = set()
-    for rule in rules:
-        m = rule_regex.match(rule)
-        if m:
-            parsed.add(m.group(1))
-
-    return parsed
+    table = iptc.Table(iptc.Table.FILTER)
+    chain = iptc.Chain(table, chain_name)
+    # TODO: is there any way to do this without listing all chains? (probably slow)
+    # If the chain doesn't exist, chain.rules will be an empty list, so we need
+    # to make sure the chain actually _does_ exist.
+    if chain in table.chains:
+        return [Rule.from_iptc(rule) for rule in chain.rules]
+    else:
+        raise ChainDoesNotExist(chain_name)

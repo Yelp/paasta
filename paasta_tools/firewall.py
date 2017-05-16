@@ -8,11 +8,11 @@ from paasta_tools import iptables
 
 
 PRIVATE_IP_RANGES = (
-    '127.0.0.0/8',
-    '10.0.0.0/8',
-    '172.16.0.0/12',
-    '192.168.0.0/16',
-    '169.254.0.0/16',
+    '127.0.0.0/255.0.0.0',
+    '10.0.0.0/255.0.0.0',
+    '172.16.0.0/255.240.0.0',
+    '192.168.0.0/255.255.0.0',
+    '169.254.0.0/255.255.0.0',
 )
 
 
@@ -48,8 +48,22 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
     def rules(self):
         # TODO: actually read these from somewhere
         return (
-            '-j REJECT --reject-with icmp-port-unreachable',
-            '-d 169.254.255.254/32 -p tcp -m tcp --dport 20666 -j ACCEPT',
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='REJECT',
+                matches=(),
+            ),
+            iptables.Rule(
+                protocol='tcp',
+                src='0.0.0.0/0.0.0.0',
+                dst='169.254.255.254/255.255.255.255',
+                target='ACCEPT',
+                matches=(
+                    ('tcp', (('dport', '20668'),)),
+                )
+            ),
         )
 
     def update_rules(self):
@@ -81,9 +95,21 @@ def general_update():
     iptables.ensure_chain(
         'PAASTA-INTERNET',
         (
-            '-j ACCEPT',
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='ACCEPT',
+                matches=(),
+            ),
         ) + tuple(
-            '-d {} -j RETURN'.format(ip_range)
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst=ip_range,
+                target='RETURN',
+                matches=(),
+            )
             for ip_range in PRIVATE_IP_RANGES
         )
     )
@@ -95,14 +121,27 @@ def general_update():
         service.update_rules()
         active_chains.add(service.chain_name)
         for mac in macs:
-            paasta_rules.append('-m mac --mac-source {} -j {}'.format(
-                mac.upper(), service.chain_name,
+            paasta_rules.append(iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target=service.chain_name,
+                matches=(
+                    ('mac', (('mac_source', mac.upper()),)),
+                ),
             ))
 
     # Create/update the PAASTA dispatch chain.
     iptables.ensure_chain('PAASTA', paasta_rules)
-    iptables.ensure_rule('INPUT', '-j PAASTA')
-    iptables.ensure_rule('FORWARD', '-j PAASTA')
+    jump_to_paasta = iptables.Rule(
+        protocol='ip',
+        src='0.0.0.0/0.0.0.0',
+        dst='0.0.0.0/0.0.0.0',
+        target='PAASTA',
+        matches=(),
+    )
+    iptables.ensure_rule('INPUT', jump_to_paasta)
+    iptables.ensure_rule('FORWARD', jump_to_paasta)
 
     # Garbage collect any no-longer-needed service group chains.
     paasta_chains = {
