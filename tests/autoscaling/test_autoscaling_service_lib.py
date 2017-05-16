@@ -1418,20 +1418,3 @@ def test_proportional_decision_policy_good_enough(mock_save_historical_load, moc
         utilization=0.46,
         good_enough_window=(0.45, 0.55),
     )
-
-
-def test_moving_average_forecast_policy():
-    historical_load = [
-        (1, 100),
-        (2, 120),
-        (3, 140),
-        (4, 160),
-        (5, 180),
-        (6, 200),
-        (7, 220),
-    ]
-
-    assert 170 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
-                                                                         moving_average_window_seconds=5)
-    assert 220 == autoscaling_service_lib.moving_average_forecast_policy(historical_load,
-                                                                         moving_average_window_seconds=0.5)
