@@ -174,8 +174,8 @@ def makefile_check():
         paasta_print(PaastaCheckMessages.MAKEFILE_MISSING)
 
 
-def git_repo_check(service):
-    git_url = get_git_url(service)
+def git_repo_check(service, soa_dir):
+    git_url = get_git_url(service, soa_dir)
     cmd = 'git ls-remote %s' % git_url
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
@@ -351,7 +351,7 @@ def paasta_check(args):
     deploy_check(service_path)
     deploy_has_security_check(service, soa_dir)
     deploy_has_performance_check(service, soa_dir)
-    git_repo_check(service)
+    git_repo_check(service, soa_dir)
     docker_check()
     makefile_check()
     yaml_check(service_path)
