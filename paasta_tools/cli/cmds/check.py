@@ -22,10 +22,10 @@ import re
 
 from service_configuration_lib import read_service_configuration
 
-from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import is_file_in_dir
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
@@ -35,12 +35,12 @@ from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
@@ -174,8 +174,8 @@ def makefile_check():
         paasta_print(PaastaCheckMessages.MAKEFILE_MISSING)
 
 
-def git_repo_check(service):
-    git_url = get_git_url(service)
+def git_repo_check(service, soa_dir):
+    git_url = get_git_url(service, soa_dir)
     cmd = 'git ls-remote %s' % git_url
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
@@ -185,7 +185,7 @@ def git_repo_check(service):
 
 
 def yaml_check(service_path):
-    """Check whether a marathon/chronos yaml file exists in service directory, and
+    """Check whether a marathon/chronos/adhoc yaml file exists in service directory, and
     print success/failure message(s).
 
     :param service_path: path to a directory containing the marathon/chronos yaml
@@ -198,95 +198,81 @@ def yaml_check(service_path):
     if is_file_in_dir('chronos*.yaml', service_path):
         paasta_print(PaastaCheckMessages.CHRONOS_YAML_FOUND)
         found_yaml = True
+    if is_file_in_dir('adhoc*.yaml', service_path):
+        paasta_print(PaastaCheckMessages.ADHOC_YAML_FOUND)
+        found_yaml = True
     if not found_yaml:
         paasta_print(PaastaCheckMessages.YAML_MISSING)
 
 
-def get_chronos_steps(service, soa_dir):
-    """This is a kind of funny function that gets all the chronos instances
-    for a service and massages it into a form that matches up with what
+def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
+    """This is a kind of funny function that gets all the instances for specified
+    service and framework, and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
-    with what deploy.yaml has for linting."""
-    steps = []
+    with what deploy.yaml has for linting.
+
+    :param instance_type: one of 'marathon', 'chronos', 'adhoc'
+    :param service: the service name
+    :param soa_dir: The SOA configuration directory to read from
+
+    :returns: a list of deploy group names used by the service.
+    """
+
+    deploy_groups = []
     for cluster in list_clusters(service, soa_dir):
         for _, instance in get_service_instance_list(
                 service=service,
                 cluster=cluster,
-                instance_type='chronos',
+                instance_type=instance_type,
                 soa_dir=soa_dir,
         ):
-            config = load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-            steps.append(config.get_deploy_group())
-    return steps
-
-
-def get_marathon_steps(service, soa_dir):
-    """This is a kind of funny function that gets all the marathon instances
-    for a service and massages it into a form that matches up with what
-    deploy.yaml's steps look like. This is only so we can compare it 1-1
-    with what deploy.yaml has for linting."""
-    steps = []
-    for cluster in list_clusters(service, soa_dir):
-        for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='marathon',
-                soa_dir=soa_dir,
-        ):
-            config = load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-            steps.append(config.get_deploy_group())
-    return steps
+            try:
+                config = get_instance_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                    instance_type=instance_type,
+                )
+                deploy_groups.append(config.get_deploy_group())
+            except NotImplementedError:
+                pass
+    return deploy_groups
 
 
 def deployments_check(service, soa_dir):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
-    pipeline_deployments = get_pipeline_config(service, soa_dir)
-    pipeline_steps = [step['step'] for step in pipeline_deployments]
-    pipeline_steps = [step for step in pipeline_steps if is_deploy_step(step)]
-    marathon_steps = get_marathon_steps(service, soa_dir)
-    chronos_steps = get_chronos_steps(service, soa_dir)
-    in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
-    in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
-    if len(in_marathon_not_deploy) > 0:
-        paasta_print("%s There are some instance(s) you have asked to run in marathon that" % x_mark())
-        paasta_print("  do not have a corresponding entry in deploy.yaml:")
-        paasta_print("  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy)))
-        paasta_print("  You should probably configure these to use a 'deploy_group' or")
-        paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
-        the_return = False
-    if len(in_chronos_not_deploy) > 0:
-        paasta_print("%s There are some instance(s) you have asked to run in chronos that" % x_mark())
-        paasta_print("  do not have a corresponding entry in deploy.yaml:")
-        paasta_print("  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy)))
-        paasta_print("  You should probably configure these to use a 'deploy_group' or")
-        paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
-        the_return = False
-    in_deploy_not_marathon_chronos = set(pipeline_steps) - set(marathon_steps) - set(chronos_steps)
-    if len(in_deploy_not_marathon_chronos) > 0:
+    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
+    pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
+
+    framework_deploy_groups = {}
+    in_deploy_not_frameworks = set(pipeline_deploy_groups)
+    for it in INSTANCE_TYPES:
+        framework_deploy_groups[it] = get_deploy_groups_used_by_framework(it, service, soa_dir)
+        in_framework_not_deploy = set(framework_deploy_groups[it]) - set(pipeline_deploy_groups)
+        in_deploy_not_frameworks -= set(framework_deploy_groups[it])
+        if len(in_framework_not_deploy) > 0:
+            paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), it))
+            paasta_print("  do not have a corresponding entry in deploy.yaml:")
+            paasta_print("  %s" % PaastaColors.bold(", ".join(in_framework_not_deploy)))
+            paasta_print("  You should probably configure these to use a 'deploy_group' or")
+            paasta_print("  add entries to deploy.yaml for them so they are deployed to those clusters.")
+            the_return = False
+
+    if len(in_deploy_not_frameworks) > 0:
         paasta_print("%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark())
-        paasta_print("  by any marathon or chronos instance:")
-        paasta_print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon_chronos))))
+        paasta_print("  by any marathon, chronos or adhoc instance:")
+        paasta_print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_frameworks))))
         paasta_print("  You should probably delete these deploy.yaml entries if they are unused.")
         the_return = False
+
     if the_return is True:
-        paasta_print(success("All entries in deploy.yaml correspond to a marathon or chronos entry"))
-        if len(marathon_steps) > 0:
-            paasta_print(success("All marathon instances have a corresponding deploy.yaml entry"))
-        if len(chronos_steps) > 0:
-            paasta_print(success("All chronos instances have a corresponding deploy.yaml entry"))
+        paasta_print(success("All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"))
+        for it in INSTANCE_TYPES:
+            if len(framework_deploy_groups[it]) > 0:
+                paasta_print(success("All %s instances have a corresponding deploy.yaml entry" % it))
     return the_return
 
 
@@ -351,7 +337,7 @@ def paasta_check(args):
     deploy_check(service_path)
     deploy_has_security_check(service, soa_dir)
     deploy_has_performance_check(service, soa_dir)
-    git_repo_check(service)
+    git_repo_check(service, soa_dir)
     docker_check()
     makefile_check()
     yaml_check(service_path)

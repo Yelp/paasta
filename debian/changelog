@@ -1,3 +1,11 @@
+paasta-tools (0.63.4) xenial; urgency=medium
+
+  * 0.63.4 tagged with 'make release'
+    Commit: Merge pull request #1222 from Yelp/fewer-list-task-api-calls
+    reduce v2/tasks call in check marathon replication
+
+ -- robj <robj@robj-MacBookPro>  Tue, 16 May 2017 15:05:35 +0100
+
 paasta-tools (0.63.3) xenial; urgency=medium
 
   * 0.63.3 tagged with 'make release'
