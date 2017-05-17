@@ -50,7 +50,7 @@ class Inbox(PaastaThread):
             self.process_service_instance(service_instance)
         if self.inbox_q.empty() and self.to_bounce:
             self.process_to_bounce()
-        time.sleep(1)
+        time.sleep(0.1)
 
     def process_service_instance(self, service_instance):
         service_instance_key = "{}.{}".format(service_instance.service, service_instance.instance)
