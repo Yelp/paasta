@@ -311,49 +311,93 @@ def linreg_forecast_policy(historical_load, linreg_window_seconds, linreg_extrap
     return max(forecasted_values)
 
 
-HISTORICAL_LOAD_SERIALIZATION_FORMAT = 'dd'
-SIZE_PER_HISTORICAL_LOAD_RECORD = struct.calcsize(HISTORICAL_LOAD_SERIALIZATION_FORMAT)
+HISTORICAL_LOAD_SERIALIZATION_FORMAT_v0 = 'dd'
+SIZE_PER_HISTORICAL_LOAD_RECORD_v0 = struct.calcsize(HISTORICAL_LOAD_SERIALIZATION_FORMAT_v0)
 
 
-def zk_historical_load_path(zk_path_prefix):
-    return "%s/historical_load" % zk_path_prefix
+def zk_historical_load_path(zk_path_prefix, version=1):
+    if version:
+        return "%s/historical_load_v%d" % (zk_path_prefix, version)
+    else:
+        return "%s/historical_load" % zk_path_prefix
 
 
-def save_historical_load(historical_load, zk_path_prefix):
+def save_historical_load(historical_load, zk_path_prefix, version=1):
     with ZookeeperPool() as zk:
-        historical_load_bytes = serialize_historical_load(historical_load)
-        zk.ensure_path(zk_historical_load_path(zk_path_prefix))
-        zk.set(zk_historical_load_path(zk_path_prefix), historical_load_bytes)
+        historical_load_bytes = serialize_historical_load(historical_load, version=version)
+        zk.ensure_path(zk_historical_load_path(zk_path_prefix, version=version))
+        zk.set(zk_historical_load_path(zk_path_prefix, version=version), historical_load_bytes)
 
 
-def serialize_historical_load(historical_load):
-    max_records = 1000000 // SIZE_PER_HISTORICAL_LOAD_RECORD
+def serialize_historical_load_v0(historical_load):
+    max_records = 1000000 // SIZE_PER_HISTORICAL_LOAD_RECORD_v0
     historical_load = historical_load[-max_records:]
-    return b''.join([struct.pack(HISTORICAL_LOAD_SERIALIZATION_FORMAT, *x) for x in historical_load])
+    return b''.join([struct.pack(HISTORICAL_LOAD_SERIALIZATION_FORMAT_v0, *x) for x in historical_load])
 
 
-def fetch_historical_load(zk_path_prefix):
+def serialize_historical_load_v1(historical_load, max_size=1000000):
+    historical_load_bytes = b'\n'.join([b"%d %.2f" % x for x in historical_load])
+
+    # trim to max size
+    historical_load_bytes_trimmed = (b'\n' + historical_load_bytes)[-(max_size + 1):]
+    first_newline = historical_load_bytes_trimmed.find(b'\n')
+    if first_newline == -1:
+        return b''
+    else:
+        return historical_load_bytes_trimmed[first_newline + 1:]
+
+
+def fetch_historical_load(zk_path_prefix, versions=(0, 1)):
     with ZookeeperPool() as zk:
-        try:
-            historical_load_bytes, _ = zk.get(zk_historical_load_path(zk_path_prefix))
-            return deserialize_historical_load(historical_load_bytes)
-        except NoNodeError:
-            return []
+        historical_load = []
+        for version in versions:
+            try:
+                historical_load_bytes, _ = zk.get(zk_historical_load_path(zk_path_prefix, version=version))
+                historical_load.extend(deserialize_historical_load(historical_load_bytes, version=version))
+            except NoNodeError:
+                pass
+        return sorted(historical_load)
 
 
-def deserialize_historical_load(historical_load_bytes):
+def deserialize_historical_load_v0(historical_load_bytes):
     historical_load = []
 
-    for pos in range(0, len(historical_load_bytes), SIZE_PER_HISTORICAL_LOAD_RECORD):
+    for pos in range(0, len(historical_load_bytes), SIZE_PER_HISTORICAL_LOAD_RECORD_v0):
         historical_load.append(
             struct.unpack(
                 # unfortunately struct.unpack doesn't like kwargs.
-                HISTORICAL_LOAD_SERIALIZATION_FORMAT,
-                historical_load_bytes[pos:pos + SIZE_PER_HISTORICAL_LOAD_RECORD],
+                HISTORICAL_LOAD_SERIALIZATION_FORMAT_v0,
+                historical_load_bytes[pos:pos + SIZE_PER_HISTORICAL_LOAD_RECORD_v0],
             )
         )
 
     return historical_load
+
+
+def deserialize_historical_load_v1(historical_load_bytes):
+    historical_load = []
+    for line in historical_load_bytes.split(b'\n'):
+        if line:
+            timestamp_bytes, value_bytes = line.split(b' ')
+            timestamp = float(timestamp_bytes)
+            value = float(value_bytes)
+            historical_load.append((timestamp, value))
+
+    return historical_load
+
+
+def deserialize_historical_load(historical_load_bytes, version=0):
+    return [
+        deserialize_historical_load_v0,
+        deserialize_historical_load_v1,
+    ][version](historical_load_bytes)
+
+
+def serialize_historical_load(historical_load, version=0):
+    return [
+        serialize_historical_load_v0,
+        serialize_historical_load_v1,
+    ][version](historical_load)
 
 
 def get_json_body_from_service(host, port, endpoint, timeout=2):
