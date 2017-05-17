@@ -151,7 +151,3 @@ def general_update():
     }
     for chain in paasta_chains - active_chains:
         iptables.delete_chain(chain)
-
-
-# TODO: remove this
-general_update()

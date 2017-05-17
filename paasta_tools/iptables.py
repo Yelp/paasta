@@ -66,18 +66,21 @@ class Rule(collections.namedtuple('Rule', (
 def iptables_txn(table):
     """Temporarily disable autocommit and commit at the end.
 
+    If an exception occurs, changes are rolled back.
+
     By default, changes to iptables rules are applied immediately. In some
     cases, we want to avoid that.
 
     https://github.com/ldx/python-iptables#autocommit
     """
+    assert table.autocommit is True, table.autocommit
     try:
         table.autocommit = False
         yield
-    finally:
-        table.autocommit = True
         table.commit()
+    finally:
         table.refresh()
+        table.autocommit = True
 
 
 class ChainDoesNotExist(Exception):
@@ -107,7 +110,9 @@ def ensure_chain(chain, rules):
         if rule not in current_rules:
             insert_rule(chain, rule)
 
-    delete_rules(chain, current_rules - set(rules))
+    extra_rules = current_rules - set(rules)
+    if extra_rules:
+        delete_rules(chain, extra_rules)
 
 
 def ensure_rule(chain, rule):
