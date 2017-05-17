@@ -1,3 +1,11 @@
+paasta-tools (0.63.5) xenial; urgency=medium
+
+  * 0.63.5 tagged with 'make release'
+    Commit: Merge pull request #1235 from Yelp/fix/sleep-deployd  Speed
+    up processing inbox loop
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 17 May 2017 04:36:18 -0700
+
 paasta-tools (0.63.4) xenial; urgency=medium
 
   * 0.63.4 tagged with 'make release'
