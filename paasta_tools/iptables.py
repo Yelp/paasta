@@ -7,6 +7,7 @@ iptables a little bit easier.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import contextlib
 import collections
 import re
 
@@ -61,6 +62,27 @@ class Rule(collections.namedtuple('Rule', (
         return rule
 
 
+@contextlib.contextmanager
+def iptables_txn(table):
+    """Temporarily disable autocommit and commit at the end.
+
+    By default, changes to iptables rules are applied immediately. In some
+    cases, we want to avoid that.
+
+    https://github.com/ldx/python-iptables#autocommit
+    """
+    try:
+        table.autocommit = False
+        yield
+    except:
+        raise
+    else:
+        table.commit()
+        table.refresh()
+    finally:
+        table.autocommit = True
+
+
 class ChainDoesNotExist(Exception):
     pass
 
@@ -111,10 +133,12 @@ def insert_rule(chain_name, rule):
 
 def delete_rule(chain_name, rule):
     print('deleting rule from {}: {}'.format(chain_name, rule))
-    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
-    for potential_rule in chain.rules:
-        if Rule.from_iptc(potential_rule) == rule:
-            chain.delete_rule(potential_rule)
+    table = iptc.Table(iptc.Table.FILTER)
+    with iptables_txn(table):
+        chain = iptc.Chain(table, chain_name)
+        for potential_rule in chain.rules:
+            if Rule.from_iptc(potential_rule) == rule:
+                chain.delete_rule(potential_rule)
 
 
 def create_chain(chain_name):
