@@ -7,8 +7,8 @@ iptables a little bit easier.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
 import collections
+import contextlib
 import re
 
 import iptc
@@ -74,13 +74,10 @@ def iptables_txn(table):
     try:
         table.autocommit = False
         yield
-    except:
-        raise
-    else:
-        table.commit()
-        table.refresh()
     finally:
         table.autocommit = True
+        table.commit()
+        table.refresh()
 
 
 class ChainDoesNotExist(Exception):
@@ -110,13 +107,7 @@ def ensure_chain(chain, rules):
         if rule not in current_rules:
             insert_rule(chain, rule)
 
-    # The insertion stage needs "rules" to be ordered since insertion order
-    # matters, but the deletion phase doesn't, so we turn it into a set to
-    # speed up this loop.
-    rules = set(rules)
-    for rule in current_rules:
-        if rule not in rules:
-            delete_rule(chain, rule)
+    delete_rules(chain, current_rules - set(rules))
 
 
 def ensure_rule(chain, rule):
@@ -131,13 +122,14 @@ def insert_rule(chain_name, rule):
     chain.insert_rule(rule.to_iptc())
 
 
-def delete_rule(chain_name, rule):
-    print('deleting rule from {}: {}'.format(chain_name, rule))
+def delete_rules(chain_name, rules):
+    for rule in rules:
+        print('deleting rule from {}: {}'.format(chain_name, rule))
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):
         chain = iptc.Chain(table, chain_name)
         for potential_rule in chain.rules:
-            if Rule.from_iptc(potential_rule) == rule:
+            if Rule.from_iptc(potential_rule) in rules:
                 chain.delete_rule(potential_rule)
 
 
@@ -164,6 +156,6 @@ def list_chain(chain_name):
     # If the chain doesn't exist, chain.rules will be an empty list, so we need
     # to make sure the chain actually _does_ exist.
     if chain in table.chains:
-        return [Rule.from_iptc(rule) for rule in chain.rules]
+        return {Rule.from_iptc(rule) for rule in chain.rules}
     else:
         raise ChainDoesNotExist(chain_name)
