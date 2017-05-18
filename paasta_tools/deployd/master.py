@@ -149,7 +149,7 @@ class DeployDaemon(PaastaThread):
                                              instance_type='marathon',
                                              soa_dir=DEFAULT_SOA_DIR)
         instances_to_add = rate_limit_instances(instances=instances,
-                                                number_per_minute=self.config.get_deployd_big_bounce_rate(),
+                                                number_per_minute=self.config.get_deployd_startup_bounce_rate(),
                                                 watcher_name='daemon_start')
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
