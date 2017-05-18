@@ -9,6 +9,7 @@ import os
 import socket
 import time
 
+import service_configuration_lib
 from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
@@ -83,6 +84,7 @@ class DeployDaemon(PaastaThread):
         super(DeployDaemon, self).__init__()
         self.started = False
         self.daemon = True
+        service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))

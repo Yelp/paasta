@@ -18,6 +18,7 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos_maintenance import get_draining_hosts
@@ -134,17 +135,18 @@ class PublicConfigFileWatcher(PaastaWatcher):
         self.is_ready = True
 
 
-def get_marathon_apps():
+def get_marathon_client_from_config():
     marathon_config = load_marathon_config()
     marathon_client = get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                           marathon_config.get_password())
-    return get_all_marathon_apps(marathon_client, embed_failures=True)
+    return marathon_client
 
 
 class MaintenanceWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, **kwargs):
         super(MaintenanceWatcher, self).__init__(inbox_q, cluster)
         self.draining = []
+        self.marathon_client = get_marathon_client_from_config()
 
     def run(self):
         self.is_ready = True
@@ -161,7 +163,7 @@ class MaintenanceWatcher(PaastaWatcher):
             time.sleep(20)
 
     def get_at_risk_service_instances(self, draining_hosts):
-        marathon_apps = get_marathon_apps()
+        marathon_apps = get_all_marathon_apps(self.marathon_client, embed_failures=True)
         at_risk_tasks = [task for app in marathon_apps for task in app.tasks if task.host in draining_hosts]
         self.log.info("At risk tasks: {}".format(at_risk_tasks))
         service_instances = []
@@ -185,6 +187,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
         self.public_config = load_system_paasta_config()
+        self.marathon_client = get_marathon_client_from_config()
 
     @property
     def log(self):
@@ -214,7 +217,12 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             if new_config != self.public_config:
                 self.log.info("Public config has changed, now checking if it affects any services config shas")
                 self.public_config = new_config
-                service_instances = self.get_service_instances_with_changed_id()
+                all_service_instances = get_services_for_cluster(cluster=self.public_config.get_cluster(),
+                                                                 instance_type='marathon',
+                                                                 soa_dir=DEFAULT_SOA_DIR)
+                service_instances = get_service_instances_with_changed_id(self.marathon_client,
+                                                                          all_service_instances,
+                                                                          self.public_config.get_cluster())
             if service_instances:
                 self.log.info("Found config change affecting {} service instances, "
                               "now doing a staggered bounce".format(len(service_instances)))
@@ -225,26 +233,25 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             for service_instance in service_instances:
                 self.filewatcher.inbox_q.put(service_instance)
 
-    def get_service_instances_with_changed_id(self):
-        marathon_app_ids = [app.id.lstrip('/') for app in get_marathon_apps()]
-        instances = get_services_for_cluster(cluster=self.public_config.get_cluster(),
-                                             instance_type='marathon',
-                                             soa_dir=DEFAULT_SOA_DIR)
-        service_instances = []
-        for service, instance in instances:
-            config = load_marathon_service_config(service=service,
-                                                  instance=instance,
-                                                  cluster=self.public_config.get_cluster(),
-                                                  soa_dir=DEFAULT_SOA_DIR)
-            if config.format_marathon_app_dict()['id'] not in marathon_app_ids:
-                service_instances.append((service, instance))
-        return service_instances
+
+def get_service_instances_with_changed_id(marathon_client, instances, cluster):
+    marathon_app_ids = list_all_marathon_app_ids(marathon_client)
+    service_instances = []
+    for service, instance in instances:
+        config = load_marathon_service_config(service=service,
+                                              instance=instance,
+                                              cluster=cluster,
+                                              soa_dir=DEFAULT_SOA_DIR)
+        if config.format_marathon_app_dict()['id'] not in marathon_app_ids:
+            service_instances.append((service, instance))
+    return service_instances
 
 
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
 
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
+        self.marathon_client = get_marathon_client_from_config()
 
     @property
     def log(self):
@@ -265,19 +272,24 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         self.watch_new_folder(event)
         event = self.filter_event(event)
         if event:
-            self.log.debug("Change of {} in {}".format(event.name, event.path))
+            self.log.info("Change of {} in {}".format(event.name, event.path))
             service_name = event.path.split('/')[-1]
-            self.log.debug("Adding all instances for service {} to the bounce inbox "
-                           "with immediate priority".format(service_name))
+            self.log.info("Checking if any instances for {} need bouncing".format(service_name))
             instances = list_all_instances_for_service(service=service_name,
                                                        clusters=[self.filewatcher.cluster],
                                                        instance_type='marathon')
             self.log.debug(instances)
-            service_instances = [ServiceInstance(service=service_name,
+            service_instances = [(service_name, instance) for instance in instances]
+            service_instances = get_service_instances_with_changed_id(self.marathon_client,
+                                                                      service_instances,
+                                                                      self.filewatcher.cluster)
+            for service, instance in service_instances:
+                self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
+            service_instances = [ServiceInstance(service=service,
                                                  instance=instance,
                                                  bounce_by=int(time.time()),
                                                  watcher=self.__class__.__name__,
                                                  bounce_timers=None)
-                                 for instance in instances]
+                                 for service, instance in service_instances]
             for service_instance in service_instances:
                 self.filewatcher.inbox_q.put(service_instance)
