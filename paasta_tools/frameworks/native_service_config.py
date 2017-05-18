@@ -111,6 +111,10 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
         task.name = self.task_name(task)
 
+        docker_cfg_uri = task.command.uris.add()
+        docker_cfg_uri.value = system_paasta_config.get_dockercfg_location()
+        docker_cfg_uri.extract = False
+
         return task
 
     def get_mesos_network_mode(self):
