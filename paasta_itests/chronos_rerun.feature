@@ -44,7 +44,7 @@ Feature: chronos_rerun can rerun old jobs
 
     Given we have yelpsoa-configs for the service "testservice" with enabled dependent chronos instance "dependentjob" and parent "testservice.testinstance"
       And we have a deployments.json for the service "testservice" with enabled chronos instance "dependentjob,testinstance"
-     When we run chronos_rerun for service_instance "testservice dependentjob" with --run-all-related-jobs
+     When we run chronos_rerun for service_instance "testservice dependentjob" with args --run-all-related-jobs
      Then we should get exit code 0
      And there is a temporary job for the service testservice and instance testinstance
      And there is a temporary job for the service testservice and instance dependentjob

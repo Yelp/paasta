@@ -33,12 +33,12 @@ def run_chronos_rerun(context, service_instance):
     context.exit_code, context.output = exit_code, output
 
 
-@when('we run chronos_rerun for service_instance "{service_instance}" with --run-all-related-jobs')
-def run_chronos_rerun_all_related_jobs(context, service_instance):
+@when('we run chronos_rerun for service_instance "{service_instance}" with args {cli_args}')
+def run_chronos_rerun_all_related_jobs(context, service_instance, cli_args):
     cmd = (
-        "python ../paasta_tools/chronos_rerun.py -d %s --run-all-related-jobs '%s' "
+        "python ../paasta_tools/chronos_rerun.py -d %s %s '%s' "
         "2016-03-13T04:50:31"
-    ) % (context.soa_dir, service_instance)
+    ) % (context.soa_dir, cli_args, service_instance)
     exit_code, output = _run(cmd)
     context.exit_code, context.output = exit_code, output
 

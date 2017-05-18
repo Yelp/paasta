@@ -94,14 +94,15 @@ def add_subparser(subparsers):
         choices=['instance', 'graph'],
         help="Specify how to rerun jobs that have parent-dependencies.\n"
              "  - instance: rerun, as soon as possible, the required instance ONLY\n"
-             "  - graph: will rerun, as soon as possible, ALL the instances related to the required instance.\n"
-             "    NOTE: it could be expensive in terms of resources and of time. Use it carefully.\n"
+             "  - graph: will rerun, as soon as possible, ALL the instances related to the required instance\n"
+             "    NOTE: the jobs rerun will respect the parents dependencies (topological order).\n"
+             "    WARNING: it could be expensive in terms of resources and of time. Use it carefully.\n"
              "\n"
              "Example: Assume that we have 4 jobs (j1, j2, j3 and j4) with the following relations\n"
              "    j1 -> j2, j1 -> j3, j2 -> j3, j2 -> j4\n"
              "\n"
              "    Rerunning j2 wih --rerun-type=instance will rerun ONLY j2, j3 and j4 will not be re-ran\n"
-             "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4\n"
+             "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4 respecting the dependency order\n",
     )
     rerun_parser.set_defaults(command=paasta_rerun)
 

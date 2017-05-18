@@ -267,7 +267,7 @@ def call_load_paasta_native_job_config(context):
 
 
 @given('we have a deployments.json for the service "{service}" with {disabled} instance '
-       '"{csv_instancs}" image "{image}"')
+       '"{csv_instances}" image "{image}"')
 def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
     if disabled == 'disabled':
         desired_state = 'stop'
