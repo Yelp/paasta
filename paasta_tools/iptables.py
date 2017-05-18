@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """iptables helper functions.
 
 Unlike the `firewall` module, these functions know nothing about PaaSTA and

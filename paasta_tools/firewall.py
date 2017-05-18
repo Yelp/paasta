@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import collections
 import hashlib
+import itertools
 
 from paasta_tools import iptables
 
@@ -89,9 +91,7 @@ def active_service_groups():
     }
 
 
-def general_update():
-    """Update iptables to match the current PaaSTA state."""
-    # Create the "internet" special chain.
+def ensure_internet_chain():
     iptables.ensure_chain(
         'PAASTA-INTERNET',
         (
@@ -114,25 +114,39 @@ def general_update():
         )
     )
 
-    # Create/update service group chains.
-    paasta_rules = []
-    active_chains = set()
+
+def ensure_service_chains():
+    """Ensure service chains exist and have the right rules.
+
+    Returns dictionary {[service chain] => [list of mac addresses]}.
+    """
+    chains = {}
     for service, macs in active_service_groups().items():
         service.update_rules()
-        active_chains.add(service.chain_name)
-        for mac in macs:
-            paasta_rules.append(iptables.Rule(
+        chains[service.chain_name] = macs
+    return chains
+
+
+def ensure_dispatch_chains(service_chains):
+    paasta_rules = set(itertools.chain.from_iterable(
+        (
+            iptables.Rule(
                 protocol='ip',
                 src='0.0.0.0/0.0.0.0',
                 dst='0.0.0.0/0.0.0.0',
-                target=service.chain_name,
+                target=chain,
                 matches=(
                     ('mac', (('mac_source', mac.upper()),)),
                 ),
-            ))
 
-    # Create/update the PAASTA dispatch chain.
+            )
+            for mac in macs
+        )
+        for chain, macs in service_chains.items()
+
+    ))
     iptables.ensure_chain('PAASTA', paasta_rules)
+
     jump_to_paasta = iptables.Rule(
         protocol='ip',
         src='0.0.0.0/0.0.0.0',
@@ -143,11 +157,20 @@ def general_update():
     iptables.ensure_rule('INPUT', jump_to_paasta)
     iptables.ensure_rule('FORWARD', jump_to_paasta)
 
-    # Garbage collect any no-longer-needed service group chains.
-    paasta_chains = {
+
+def garbage_collect_old_service_chains(desired_chains):
+    current_paasta_chains = {
         chain
         for chain in iptables.all_chains()
         if chain.startswith('PAASTA.')
     }
-    for chain in paasta_chains - active_chains:
+    for chain in current_paasta_chains - set(desired_chains):
         iptables.delete_chain(chain)
+
+
+def general_update():
+    """Update iptables to match the current PaaSTA state."""
+    ensure_internet_chain()
+    service_chains = ensure_service_chains()
+    ensure_dispatch_chains(service_chains)
+    garbage_collect_old_service_chains(service_chains)
