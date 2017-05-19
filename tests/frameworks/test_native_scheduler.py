@@ -17,6 +17,7 @@ def system_paasta_config():
     return utils.SystemPaastaConfig({
         "docker_registry": "fake",
         "volumes": [],
+        "dockercfg_location": "/foo/bar",
     }, "/fake/system/configs")
 
 
@@ -309,6 +310,8 @@ class TestNativeServiceConfig(object):
                 raise AssertionError('Unreachable: {}'.format(resource.name))
 
         assert task.name.startswith("service_name.instance_name.gitbusybox.config")
+
+        assert task.command.uris[0].value == system_paasta_config.get_dockercfg_location()
 
     def test_resource_offers_ignores_blacklisted_slaves(self, system_paasta_config):
         service_name = "service_name"
