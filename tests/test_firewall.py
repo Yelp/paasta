@@ -21,7 +21,7 @@ EMPTY_RULE = iptables.Rule(
 @pytest.fixture
 def service_group():
     return firewall.ServiceGroup(
-        service='my-cool-service',
+        service='my_cool_service',
         dependency_group='web',
         mode='block',
     )
@@ -29,7 +29,7 @@ def service_group():
 
 def test_service_group_chain_name(service_group):
     """The chain name must be stable, unique, and short."""
-    assert service_group.chain_name == 'PAASTA.my-cool-se.40e30b4600'
+    assert service_group.chain_name == 'PAASTA.my_cool_se.7693eadc05'
     assert len(service_group.chain_name) <= 28
 
 
@@ -71,15 +71,15 @@ def test_ensure_internet_chain():
 @pytest.yield_fixture
 def mock_active_service_groups():
     groups = {
-        firewall.ServiceGroup('cool-service', 'main', 'block'): {
+        firewall.ServiceGroup('cool_service', 'main', 'block'): {
             '02:42:a9:fe:00:02',
             'fe:a3:a3:da:2d:51',
             'fe:a3:a3:da:2d:50',
         },
-        firewall.ServiceGroup('cool-service', 'main', 'monitor'): {
+        firewall.ServiceGroup('cool_service', 'main', 'monitor'): {
             'fe:a3:a3:da:2d:40',
         },
-        firewall.ServiceGroup('dumb-service', 'other', 'block'): {
+        firewall.ServiceGroup('dumb_service', 'other', 'block'): {
             'fe:a3:a3:da:2d:30',
             'fe:a3:a3:da:2d:31',
         },
@@ -95,23 +95,23 @@ def mock_active_service_groups():
 def test_ensure_service_chains(mock_active_service_groups):
     with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
         assert firewall.ensure_service_chains() == {
-            'PAASTA.cool-servi.003bae64d2': {
+            'PAASTA.cool_servi.130d5afc9f': {
                 '02:42:a9:fe:00:02',
                 'fe:a3:a3:da:2d:51',
                 'fe:a3:a3:da:2d:50',
             },
-            'PAASTA.cool-servi.ccd68729b4': {
+            'PAASTA.cool_servi.0d2d779529': {
                 'fe:a3:a3:da:2d:40',
             },
-            'PAASTA.dumb-servi.bcc6a6f4b1': {
+            'PAASTA.dumb_servi.06f185ab16': {
                 'fe:a3:a3:da:2d:30',
                 'fe:a3:a3:da:2d:31',
             },
         }
     assert len(m.mock_calls) == 3
-    assert mock.call('PAASTA.cool-servi.003bae64d2', mock.ANY) in m.mock_calls
-    assert mock.call('PAASTA.cool-servi.ccd68729b4', mock.ANY) in m.mock_calls
-    assert mock.call('PAASTA.dumb-servi.bcc6a6f4b1', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.cool_servi.130d5afc9f', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.cool_servi.0d2d779529', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.dumb_servi.06f185ab16', mock.ANY) in m.mock_calls
 
 
 def test_ensure_dispatch_chains():

@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import collections
 import hashlib
 import itertools
+import json
 
 from paasta_tools import iptables
 
@@ -42,7 +43,9 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         we append a hash to the end.
         """
         chain = 'PAASTA.{}'.format(self.service[:10])
-        chain += '.' + hashlib.sha256(str(tuple(self))).hexdigest()[:10]
+        chain += '.' + hashlib.sha256(
+            json.dumps(self).encode('utf8'),
+        ).hexdigest()[:10]
         assert len(chain) <= 28, len(chain)
         return chain
 
@@ -76,15 +79,15 @@ def active_service_groups():
     """Return active service groups."""
     # TODO: actually read these from somewhere
     return {
-        ServiceGroup('cool-service', 'main', 'block'): {
+        ServiceGroup('cool_service', 'main', 'block'): {
             '02:42:a9:fe:00:02',
             'fe:a3:a3:da:2d:51',
             'fe:a3:a3:da:2d:50',
         },
-        ServiceGroup('cool-service', 'main', 'monitor'): {
+        ServiceGroup('cool_service', 'main', 'monitor'): {
             'fe:a3:a3:da:2d:40',
         },
-        ServiceGroup('dumb-service', 'other', 'block'): {
+        ServiceGroup('dumb_service', 'other', 'block'): {
             'fe:a3:a3:da:2d:30',
             'fe:a3:a3:da:2d:31',
         },
