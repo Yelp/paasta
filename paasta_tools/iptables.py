@@ -10,12 +10,8 @@ from __future__ import unicode_literals
 
 import collections
 import contextlib
-import re
 
 import iptc
-
-
-CHAIN_REGEX = re.compile('-N ([^ ]+)$')
 
 
 class Rule(collections.namedtuple('Rule', (
@@ -129,8 +125,7 @@ def insert_rule(chain_name, rule):
 
 
 def delete_rules(chain_name, rules):
-    for rule in rules:
-        print('deleting rule from {}: {}'.format(chain_name, rule))
+    print('deleting rules from {}: {}'.format(chain_name, rules))
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):
         chain = iptc.Chain(table, chain_name)
