@@ -46,6 +46,13 @@ class TestChronosTools:
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
         'monitoring': fake_monitoring_info,
+        'data': {},
+        'dependencies': {},
+        'deploy': {},
+        'lb_extras': {},
+        'port': None,
+        'smartstack': {},
+        'vip': None,
     }
     fake_branch_dict = {
         'desired_state': 'start',
@@ -1817,3 +1824,34 @@ class TestChronosTools:
         fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
         fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf %(shortdate)s'
         assert chronos_tools.uses_time_variables(fake_chronos_job_config)
+
+    @mock.patch('paasta_tools.mesos_tools.get_local_slave_state', autospec=True)
+    def test_chronos_services_running_here(self, mock_get_local_slave_state):
+        id_1 = "ct:1494968280000:0:my-test-service my_test_date_interpolation:"
+        id_2 = "ct:1494968700000:0:my-test-service my_fail_occasionally:"
+        id_3 = "ct:1494957600000:0:my-test-service my_long_running:"
+        mock_get_local_slave_state.return_value = {
+            'frameworks': [
+                {
+                    'name': 'chronos',
+                    'executors': [
+                        {'id': id_1, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
+                        {'id': id_2, 'resources': {}, 'tasks': [{'state': 'TASK_STAGED'}]},
+                        {'id': id_3, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
+                    ]
+                },
+                {
+                    'name': 'marathon-1111111',
+                    'executors': [
+                        {'id': 'marathon.service', 'resources': {'ports': '[111-111]'},
+                            'tasks': [{'state': 'TASK_RUNNING'}]},
+                    ]
+                },
+            ]
+        }
+        expected = [('my-test-service', 'my_test_date_interpolation', None),
+                    ('my-test-service', 'my_long_running', None),
+                    ]
+        actual = chronos_tools.chronos_services_running_here()
+        mock_get_local_slave_state.assert_called_once_with(hostname=None)
+        assert expected == actual

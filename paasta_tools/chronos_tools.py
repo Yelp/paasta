@@ -32,7 +32,9 @@ from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
+from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.tron import tron_command_context
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -182,7 +184,6 @@ class InvalidChronosConfigError(Exception):
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
-
     return service_configuration_lib.read_extra_service_information(
         service,
         chronos_conf_file,
@@ -191,6 +192,12 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+    log.info("Reading general configuration file: service.yaml")
+    general_config = service_configuration_lib.read_service_configuration(
+        service,
+        soa_dir=soa_dir,
+    )
+
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
@@ -199,11 +206,14 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
         branch_dict = deployments_json.get_branch_dict(service, branch)
+
+    general_config = deep_merge_dictionaries(overrides=service_chronos_jobs[instance], defaults=general_config)
+
     return ChronosJobConfig(
         service=service,
         cluster=cluster,
         instance=instance,
-        config_dict=service_chronos_jobs[instance],
+        config_dict=general_config,
         branch_dict=branch_dict,
     )
 
@@ -447,6 +457,8 @@ class ChronosJobConfig(InstanceConfig):
             'disk': self.check_disk,
             'schedule': self.check_schedule,
             'scheduleTimeZone': self.check_schedule_time_zone,
+            'security': self.check_security,
+            'dependencies_reference': self.check_dependencies_reference,
             'parents': self.check_parents,
             'cmd': self.check_cmd,
         }
@@ -505,7 +517,8 @@ class ChronosJobConfig(InstanceConfig):
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
         for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk',
-                      'schedule', 'scheduleTimeZone', 'parents', 'cmd']:
+                      'schedule', 'scheduleTimeZone', 'parents', 'cmd',
+                      'security', 'dependencies_reference']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
@@ -956,3 +969,13 @@ def is_temporary_job(job):
     :returns: a boolean indicating if a job is a temporary job
     """
     return job['name'].startswith(TMP_JOB_IDENTIFIER)
+
+
+def chronos_services_running_here():
+    """See what chronos services are being run by a mesos-slave on this host.
+    :returns: A list of triples of (service, instance, port)"""
+
+    return mesos_services_running_here(
+        framework_filter=lambda fw: fw['name'].startswith('chronos'),
+        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3])
+    )
