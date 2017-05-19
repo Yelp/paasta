@@ -8,6 +8,7 @@ Submodules
 
    paasta_tools.autoscaling.autoscaling_cluster_lib
    paasta_tools.autoscaling.autoscaling_service_lib
+   paasta_tools.autoscaling.forecasting
    paasta_tools.autoscaling.utils
 
 Module contents
