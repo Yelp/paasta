@@ -39,7 +39,8 @@ from paasta_tools.deployd.watchers import YelpSoaEventHandler  # noqa
 from paasta_tools.deployd.watchers import AutoscalerWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigFileWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigEventHandler  # noqa
-from paasta_tools.deployd.watchers import get_marathon_apps  # noqa
+from paasta_tools.deployd.watchers import get_service_instances_with_changed_id  # noqa
+from paasta_tools.deployd.watchers import get_marathon_client_from_config  # noqa
 from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 
 
@@ -244,21 +245,23 @@ class TestPublicConfigWatcher(unittest.TestCase):
         assert self.watcher.is_ready
 
 
-def test_get_marathon_apps():
+def test_get_marathon_client_from_config():
     with mock.patch(
         'paasta_tools.deployd.watchers.load_marathon_config', autospec=True
     ), mock.patch(
         'paasta_tools.deployd.watchers.get_marathon_client', autospec=True
-    ), mock.patch(
-        'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True
-    ) as mock_get_all_marathon_apps:
-        assert get_marathon_apps() == mock_get_all_marathon_apps.return_value
+    ) as mock_marathon_client:
+        assert get_marathon_client_from_config() == mock_marathon_client.return_value
 
 
 class TestMaintenanceWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_inbox_q = mock.Mock()
-        self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod")
+        self.mock_marathon_client = mock.Mock()
+        with mock.patch(
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
+        ):
+            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod")
 
     def test_run(self):
         with mock.patch(
@@ -290,7 +293,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_apps', autospec=True
+            'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True
         ) as mock_get_marathon_apps, mock.patch(
             'time.time', autospec=True, return_value=1
         ):
@@ -321,9 +324,11 @@ class TestPublicConfigEventHandler(unittest.TestCase):
     def setUp(self):
         self.handler = PublicConfigEventHandler()
         self.mock_filewatcher = mock.Mock()
-        self.mock_config = {'some': 'thing'}
+        self.mock_config = mock.Mock(get_cluster=mock.Mock())
         with mock.patch(
             'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True, return_value=self.mock_config
+        ), mock.patch(
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
         ):
             self.handler.my_init(self.mock_filewatcher)
 
@@ -354,26 +359,30 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         ) as mock_filter_event, mock.patch(
             'paasta_tools.deployd.watchers.PublicConfigEventHandler.watch_new_folder', autospec=True
         ), mock.patch(
+            'paasta_tools.deployd.watchers.get_services_for_cluster', autospec=True
+        ) as mock_get_services_for_cluster, mock.patch(
             'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True,
         ) as mock_load_system_config, mock.patch(
-            'paasta_tools.deployd.watchers.PublicConfigEventHandler.get_service_instances_with_changed_id',
+            'paasta_tools.deployd.watchers.get_service_instances_with_changed_id',
             autospec=True
         ) as mock_get_service_instances_with_changed_id, mock.patch(
             'paasta_tools.deployd.watchers.rate_limit_instances', autospec=True
         ) as mock_rate_limit_instances:
             mock_event = mock.Mock()
             mock_filter_event.return_value = mock_event
-            mock_load_system_config.return_value = {'some': 'thing'}
+            mock_load_system_config.return_value = self.mock_config
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
+            assert not mock_get_services_for_cluster.called
             assert not mock_get_service_instances_with_changed_id.called
             assert not mock_rate_limit_instances.called
             assert not self.mock_filewatcher.inbox_q.put.called
 
-            mock_load_system_config.return_value = {'some': 'other_thing'}
+            mock_load_system_config.return_value = mock.Mock(get_cluster=mock.Mock())
             mock_get_service_instances_with_changed_id.return_value = []
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
+            assert mock_get_services_for_cluster.called
             assert mock_get_service_instances_with_changed_id.called
             assert not mock_rate_limit_instances.called
             assert not self.mock_filewatcher.inbox_q.put.called
@@ -384,46 +393,46 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             mock_rate_limit_instances.return_value = [mock_si]
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
+            assert mock_get_services_for_cluster.called
             assert mock_get_service_instances_with_changed_id.called
             assert mock_rate_limit_instances.called
             self.mock_filewatcher.inbox_q.put.assert_called_with(mock_si)
 
-    def test_get_service_instances_with_changed_id(self):
-        with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_apps', autospec=True
-        ) as mock_get_marathon_apps, mock.patch(
-            'paasta_tools.deployd.watchers.get_services_for_cluster', autospec=True
-        ) as mock_get_services_for_cluster, mock.patch(
-            'paasta_tools.deployd.watchers.load_marathon_service_config', autospec=True
-        ) as mock_load_marathon_service_config:
-            mock_public_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
-            self.handler.public_config = mock_public_config
-            mock_get_marathon_apps.return_value = [mock.Mock(id='/universe.c137.c1.g1'),
-                                                   mock.Mock(id='/universe.c138.c1.g1')]
-            mock_get_services_for_cluster.return_value = [('universe', 'c137'), ('universe', 'c138')]
-            mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c137.c1.g1'})),
-                            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2'}))]
-            mock_load_marathon_service_config.side_effect = mock_configs
-            ret = self.handler.get_service_instances_with_changed_id()
-            assert mock_get_marathon_apps.called
-            assert mock_get_services_for_cluster.called
-            calls = [mock.call(service='universe',
-                               instance='c137',
-                               cluster='westeros-prod',
-                               soa_dir=DEFAULT_SOA_DIR),
-                     mock.call(service='universe',
-                               instance='c138',
-                               cluster='westeros-prod',
-                               soa_dir=DEFAULT_SOA_DIR)]
-            mock_load_marathon_service_config.assert_has_calls(calls)
-            assert ret == [('universe', 'c138')]
+
+def test_get_service_instances_with_changed_id():
+    with mock.patch(
+        'paasta_tools.deployd.watchers.list_all_marathon_app_ids', autospec=True
+    ) as mock_get_marathon_apps, mock.patch(
+        'paasta_tools.deployd.watchers.load_marathon_service_config', autospec=True
+    ) as mock_load_marathon_service_config:
+        mock_get_marathon_apps.return_value = ['universe.c137.c1.g1',
+                                               'universe.c138.c1.g1']
+        mock_service_instances = [('universe', 'c137'), ('universe', 'c138')]
+        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c137.c1.g1'})),
+                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2'}))]
+        mock_load_marathon_service_config.side_effect = mock_configs
+        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
+        assert mock_get_marathon_apps.called
+        calls = [mock.call(service='universe',
+                           instance='c137',
+                           cluster='westeros-prod',
+                           soa_dir=DEFAULT_SOA_DIR),
+                 mock.call(service='universe',
+                           instance='c138',
+                           cluster='westeros-prod',
+                           soa_dir=DEFAULT_SOA_DIR)]
+        mock_load_marathon_service_config.assert_has_calls(calls)
+        assert ret == [('universe', 'c138')]
 
 
 class TestYelpSoaEventHandler(unittest.TestCase):
     def setUp(self):
         self.handler = YelpSoaEventHandler()
         self.mock_filewatcher = mock.Mock()
-        self.handler.my_init(self.mock_filewatcher)
+        with mock.patch(
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
+        ):
+            self.handler.my_init(self.mock_filewatcher)
 
     def test_log(self):
         self.handler.log.info('WHAAAAAT')
@@ -453,16 +462,24 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True
         ) as mock_list_instances, mock.patch(
+            'paasta_tools.deployd.watchers.get_service_instances_with_changed_id', autospec=True
+        ) as mock_get_service_instances_with_changed_id, mock.patch(
             'time.time', autospec=True, return_value=1
         ):
-            mock_list_instances.return_value = ['c137']
+            mock_list_instances.return_value = ['c137', 'c138']
+            mock_get_service_instances_with_changed_id.return_value = [('universe', 'c137')]
             self.handler.process_default(mock_event)
             mock_list_instances.assert_called_with(service='universe',
                                                    clusters=[self.handler.filewatcher.cluster],
                                                    instance_type='marathon')
+            mock_get_service_instances_with_changed_id.assert_called_with(self.handler.marathon_client,
+                                                                          [('universe', 'c137'),
+                                                                           ('universe', 'c138')],
+                                                                          self.handler.filewatcher.cluster)
             expected_si = ServiceInstance(service='universe',
                                           instance='c137',
                                           bounce_by=1,
                                           watcher='YelpSoaEventHandler',
                                           bounce_timers=None)
             self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
+            assert self.mock_filewatcher.inbox_q.put.call_count == 1
