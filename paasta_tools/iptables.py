@@ -10,8 +10,11 @@ from __future__ import unicode_literals
 
 import collections
 import contextlib
+import logging
 
 import iptc
+
+log = logging.getLogger(__name__)
 
 
 class Rule(collections.namedtuple('Rule', (
@@ -119,13 +122,13 @@ def ensure_rule(chain, rule):
 
 
 def insert_rule(chain_name, rule):
-    print('adding rule to {}: {}'.format(chain_name, rule))
+    log.debug('adding rule to {}: {}'.format(chain_name, rule))
     chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
     chain.insert_rule(rule.to_iptc())
 
 
 def delete_rules(chain_name, rules):
-    print('deleting rules from {}: {}'.format(chain_name, rules))
+    log.debug('deleting rules from {}: {}'.format(chain_name, rules))
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):
         chain = iptc.Chain(table, chain_name)
@@ -135,12 +138,12 @@ def delete_rules(chain_name, rules):
 
 
 def create_chain(chain_name):
-    print('creating chain: {}'.format(chain_name))
+    log.debug('creating chain: {}'.format(chain_name))
     iptc.Table(iptc.Table.FILTER).create_chain(chain_name)
 
 
 def delete_chain(chain_name):
-    print('deleting chain: {}'.format(chain_name))
+    log.debug('deleting chain: {}'.format(chain_name))
     chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
     chain.flush()
     chain.delete()
