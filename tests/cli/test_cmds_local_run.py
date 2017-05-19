@@ -633,8 +633,8 @@ def test_get_docker_run_cmd_with_env_vars():
     docker_params = []
     actual = get_docker_run_cmd(memory, chosen_port, container_port, container_name, volumes, env,
                                 interactive, docker_hash, command, net, docker_params)
-    assert "--env='foo=bar'" in actual
-    assert "--env='baz=qux'" in actual
+    assert actual[actual.index('foo=bar') - 1] == '--env'
+    assert actual[actual.index('baz=qux') - 1] == '--env'
 
 
 def test_get_docker_run_cmd_interactive_false():
