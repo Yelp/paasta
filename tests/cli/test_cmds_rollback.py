@@ -29,7 +29,9 @@ from paasta_tools.cli.cmds.rollback import validate_given_deploy_groups
 @patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_shas_for_service', autospec=True)
 def test_paasta_rollback_mark_for_deployment_simple_invocation(
+    mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
     mock_figure_out_service_name,
@@ -40,6 +42,10 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         deploy_groups='fake_deploy_groups',
         commit='123456'
     )
+
+    mock_get_git_shas_for_service.return_value = {
+        'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
+        'fake_sha2': ('20161006T025416', 'fake_deploy_group2')}
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
@@ -63,7 +69,9 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
 @patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_shas_for_service', autospec=True)
 def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
+    mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
     mock_figure_out_service_name,
@@ -74,6 +82,10 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
         commit='123456',
         deploy_groups='',
     )
+
+    mock_get_git_shas_for_service.return_value = {
+        'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
+        'fake_sha2': ('20161006T025416', 'fake_deploy_group2')}
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
@@ -133,7 +145,9 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
 @patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
 @patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
-def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
+@patch('paasta_tools.cli.cmds.rollback.get_git_shas_for_service', autospec=True)
+def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
+    mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
     mock_figure_out_service_name,
@@ -144,6 +158,10 @@ def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
         deploy_groups='cluster.instance1,cluster.instance2',
         commit='123456',
     )
+
+    mock_get_git_shas_for_service.return_value = {
+        'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
+        'fake_sha2': ('20161006T025416', 'fake_deploy_group2')}
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'

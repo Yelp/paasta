@@ -84,7 +84,7 @@ def list_previously_deployed_shas(parsed_args, **kwargs):
     service = parsed_args.service
     soa_dir = parsed_args.soa_dir
     deploy_groups = {deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group}
-    return (sha for sha, _ in get_git_shas_for_service(service, deploy_groups, soa_dir))
+    return (sha for sha in get_git_shas_for_service(service, deploy_groups, soa_dir))
 
 
 def get_git_shas_for_service(service, deploy_groups, soa_dir):
@@ -109,15 +109,15 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
             # note that all strings are greater than ''
             if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
                 previously_deployed_shas[sha] = (tstamp, deploy_group)
-    return previously_deployed_shas.items()
+    return previously_deployed_shas
 
 
-def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_dir):
+def list_previous_commits(service, deploy_groups, any_given_deploy_groups, git_shas):
     def format_timestamp(tstamp):
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
     paasta_print("Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:")
-    git_shas = sorted(get_git_shas_for_service(service, deploy_groups, soa_dir), key=lambda x: x[1], reverse=True)[:10]
+    git_shas = sorted(git_shas.items(), key=lambda x: x[1], reverse=True)[:10]
     rows = [('Timestamp -- UTC', 'Human time', 'deploy_group', 'Git SHA')]
     for sha, (timestamp, deploy_group) in git_shas:
         paasta_print(timestamp)
@@ -159,9 +159,10 @@ def paasta_rollback(args):
         paasta_print(PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service)))
         return 1
 
+    git_shas = get_git_shas_for_service(service, deploy_groups, soa_dir)
     commit = args.commit
     if not commit:
-        list_previous_commits(service, deploy_groups, bool(given_deploy_groups), soa_dir)
+        list_previous_commits(service, deploy_groups, bool(given_deploy_groups), git_shas)
         return 1
 
     returncode = 0
