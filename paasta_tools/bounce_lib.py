@@ -185,7 +185,7 @@ def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
         )
         return task in registered_tasks
     except ConnectionError:
-        log.warning("Failed to connect to %s smartstack, assuming task is unhealthy" % task.host)
+        log.warning("Failed to connect to smartstack on %s, assuming task %s is unhealthy" % (task.host, task))
         return False
 
 
