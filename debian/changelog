@@ -1,3 +1,11 @@
+paasta-tools (0.63.7) xenial; urgency=medium
+
+  * 0.63.7 tagged with 'make release'
+    Commit: Merge pull request #1244 from chriskuehl/firewall-update-add-
+    cron  Add cron option to paasta_firewall_update
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 22 May 2017 10:55:37 -0700
+
 paasta-tools (0.63.6) xenial; urgency=medium
 
   * 0.63.6 tagged with 'make release'

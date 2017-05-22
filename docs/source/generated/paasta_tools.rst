@@ -37,11 +37,14 @@ Submodules
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
    paasta_tools.drain_lib
+   paasta_tools.firewall
+   paasta_tools.firewall_update
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
    paasta_tools.get_mesos_leader
    paasta_tools.graceful_app_drain
+   paasta_tools.iptables
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
    paasta_tools.long_running_service_tools
