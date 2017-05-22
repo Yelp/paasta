@@ -1,3 +1,12 @@
+paasta-tools (0.63.8) xenial; urgency=medium
+
+  * 0.63.8 tagged with 'make release'
+    Commit: Merge pull request #1246 from chriskuehl/add-security-to-
+    schema  Add firewall-related keys to schema validation for Marathon
+    and Chronos
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 22 May 2017 14:27:26 -0700
+
 paasta-tools (0.63.7) xenial; urgency=medium
 
   * 0.63.7 tagged with 'make release'
