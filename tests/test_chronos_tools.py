@@ -82,7 +82,16 @@ class TestChronosTools:
         'disk': 'all of it',
         'schedule': 'forever/now/5 min',
         'schedule_time_zone': '+0200',
+        'lb_extras': {},
+        'monitoring': {},
+        'deploy': {},
+        'vip': None,
+        'smartstack': {},
+        'dependencies': {},
+        'data': {},
+        'port': None,
     }
+
     fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
                                                                      cluster=fake_cluster,
                                                                      instance=fake_job_name,

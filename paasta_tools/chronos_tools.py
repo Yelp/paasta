@@ -20,7 +20,6 @@ import datetime
 import logging
 import re
 from collections import defaultdict
-from collections import deque
 from time import sleep
 
 import chronos
@@ -81,6 +80,10 @@ log = logging.getLogger(__name__)
 # we never want to hear from this - this means
 # that callers don't have to worry about setting this
 logging.getLogger("crontab").setLevel(logging.CRITICAL)
+
+
+# Variable used by DFS algorithm
+_ENTERED, _ENTERED_AND_EXITED = range(0, 2)
 
 
 class LastRunState:
@@ -989,36 +992,56 @@ def chronos_services_running_here():
 ENTERED, ENTERED_AND_EXITED = range(0, 2)
 
 
-def dfs(node, get_adjacent_nodes, add_visited, node_status=None, ignore_cycles=False, callback_on_node_enter=None):
+def dfs(node, neighbours_mapping, ignore_cycles=False, node_status=None):
+    """
+    Execute Deep-First search on a graph starting from a specific `node`.
+
+    `neighbours_mapping` contains the graph links as adjacency list
+        neighbours_mapping[x] = [y, z] means that the node `x` as two outgoing edges/links directed to `y` and `z`
+
+    :param node: starting node for DFS execution
+    :param neighbours_mapping: graph adjacency list
+    :type neighbours_mapping: dict
+    :param ignore_cycles: raise an exception if a cycle is identified in the graph
+    :type ignore_cycles: bool
+    :param node_status: dictionary that keep tracks of the already visited nodes.
+        NOTE: this is meant for internal usage only, please do NOT set it during method call
+    :type node_status: dict
+
+    :return: list of visited nodes sorted by exit order
+    :type: list
+    """
+    visited_nodes = []
+
     if node_status is None:
         node_status = {}
 
-    if node_status.get(node, ENTERED) == ENTERED_AND_EXITED:
-        return
+    if node_status.get(node) == _ENTERED_AND_EXITED:
+        return []
 
-    node_status[node] = ENTERED
-    for current_node in get_adjacent_nodes(node):
+    node_status[node] = _ENTERED
+    for current_node in neighbours_mapping[node]:
         current_node_state = node_status.get(current_node, None)
-        if current_node_state == ENTERED:
+        if current_node_state == _ENTERED:
             if ignore_cycles:
                 continue
             else:
                 raise ValueError("cycle")
-        if current_node_state == ENTERED_AND_EXITED:
+        if current_node_state == _ENTERED_AND_EXITED:
             continue
 
-        if callback_on_node_enter:
-            callback_on_node_enter(current_node)
-
-        dfs(
-            node=current_node,
-            get_adjacent_nodes=get_adjacent_nodes,
-            add_visited=add_visited,
-            node_status=node_status,
-            ignore_cycles=ignore_cycles,
+        visited_nodes.extend(
+            dfs(
+                node=current_node,
+                neighbours_mapping=neighbours_mapping,
+                node_status=node_status,
+                ignore_cycles=ignore_cycles,
+            ),
         )
-    add_visited(node)
-    node_status[node] = ENTERED_AND_EXITED
+
+    visited_nodes.append(node)
+    node_status[node] = _ENTERED_AND_EXITED
+    return visited_nodes
 
 
 @time_cache(ttl=30)
@@ -1049,25 +1072,42 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
             adjacency_list[parent].add(instance)
             adjacency_list[instance].add(parent)
 
-    def cached_dfs(known_dfs_results, get_dfs_result, node, **kwargs):
+    def cached_dfs(known_dfs_results, node, neighbours_mapping, ignore_cycles=False):
+        """
+        Cached version of DFS algorithm (tuned for extraction of connected components).
+
+        :param known_dfs_results: previous results of DFS
+        :type known_dfs_results: list
+        :param node: starting node for DFS execution
+        :param neighbours_mapping: graph adjacency list
+        :type neighbours_mapping: dict
+        :param ignore_cycles: raise an exception if a cycle is identified in the graph
+        :type ignore_cycles: bool
+
+        :return: set of nodes part of the same connected component of `node`
+        :type: set
+        """
         for known_dfs_result in known_dfs_results:
             if node in known_dfs_result:
                 return known_dfs_result
 
-        dfs(node=node, **kwargs)
-        known_dfs_results.append(get_dfs_result)
+        visited_nodes = set(dfs(
+            node=node,
+            neighbours_mapping=neighbours_mapping,
+            ignore_cycles=ignore_cycles,
+        ))
+        known_dfs_results.append(visited_nodes)
+
+        return visited_nodes
 
     # Build connected components
     known_connected_components = []
     for instance in iterkeys(chronos_configs):
-        visited = set()
         cached_dfs(  # Using cached version of DFS to avoid all algorithm execution if the result it already know
             known_dfs_results=known_connected_components,
-            get_dfs_result=visited,
             node=instance,
             ignore_cycles=True,  # Operating on an undirected graph to simplify identification of connected components
-            get_adjacent_nodes=lambda node: adjacency_list[node],
-            add_visited=visited.add,
+            neighbours_mapping=adjacency_list,
         )
 
     connected_components = {}
@@ -1104,19 +1144,25 @@ def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SO
             The list is ordered such that job with index `i` could be executed in respect of its dependencies
             if all jobs with index smaller than `i` have terminated.
     """
-    def decompose_parent_job(parent_job):
-        return decompose_job_id(paasta_to_chronos_job_name(parent_job))
+    def _sort(nodes):
+        adjacency_list = {
+            node: [
+                decompose_job_id(paasta_to_chronos_job_name(parent_job))
+                for parent_job in chronos_configs[node].get_parents()
+            ]
+            for node in related_jobs
+        }
 
-    def _sort(nodes, get_adjacent_nodes):
-        order, enter, node_status = deque(), {n for n in nodes}, {}
+        order, enter, node_status = list(), {n for n in nodes}, {}
+
         while enter:
-            dfs(
-                node=enter.pop(),
-                get_adjacent_nodes=get_adjacent_nodes,
-                add_visited=order.append,
-                node_status=node_status,
-                callback_on_node_enter=lambda node: enter.discard(node),
-                ignore_cycles=False,
+            order.extend(
+                dfs(
+                    node=enter.pop(),
+                    neighbours_mapping=adjacency_list,
+                    node_status=node_status,
+                    ignore_cycles=False,
+                ),
             )
 
         return order
@@ -1126,5 +1172,4 @@ def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SO
 
     return _sort(
         nodes=related_jobs,
-        get_adjacent_nodes=lambda node: map(decompose_parent_job, chronos_configs[node].get_parents())
     )
