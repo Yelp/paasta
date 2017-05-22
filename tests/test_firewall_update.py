@@ -21,27 +21,49 @@ import mock
 import pytest
 import yaml
 
+from paasta_tools import firewall
 from paasta_tools import firewall_update
 
 
-def test_parse_args():
+def test_parse_args_daemon():
     args = firewall_update.parse_args([
-        '--synapse-service-dir', 'myservicedir',
         '-d', 'mysoadir',
+        '-v',
+        'daemon',
+        '--synapse-service-dir', 'myservicedir',
         '-u', '123',
-        '-v'
     ])
+    assert args.mode == 'daemon'
     assert args.synapse_service_dir == 'myservicedir'
     assert args.soa_dir == 'mysoadir'
     assert args.update_secs == 123
     assert args.verbose
 
 
-def test_parse_args_default():
-    args = firewall_update.parse_args([])
+def test_parse_args_default_daemon():
+    args = firewall_update.parse_args(['daemon'])
+    assert args.mode == 'daemon'
     assert args.synapse_service_dir == firewall_update.DEFAULT_SYNAPSE_SERVICE_DIR
     assert args.soa_dir == firewall_update.DEFAULT_SOA_DIR
     assert args.update_secs == firewall_update.DEFAULT_UPDATE_SECS
+    assert not args.verbose
+
+
+def test_parse_args_cron():
+    args = firewall_update.parse_args([
+        '-d', 'mysoadir',
+        '-v',
+        'cron',
+    ])
+    assert args.mode == 'cron'
+    assert args.soa_dir == 'mysoadir'
+    assert args.verbose
+
+
+def test_parse_args_default_cron():
+    args = firewall_update.parse_args(['cron'])
+    assert args.mode == 'cron'
+    assert args.soa_dir == firewall_update.DEFAULT_SOA_DIR
     assert not args.verbose
 
 
@@ -108,7 +130,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(
 
 @mock.patch.object(firewall_update, 'smartstack_dependencies_of_running_firewalled_services', autospec=True)
 @mock.patch.object(firewall_update, 'process_inotify_event', side_effect=StopIteration, autospec=True)
-def test_run(process_inotify_mock, smartstack_deps_mock, mock_args):
+def test_run_daemon(process_inotify_mock, smartstack_deps_mock, mock_daemon_args):
     class kill_after_too_long(object):
         def __init__(self):
             self.count = 0
@@ -119,12 +141,18 @@ def test_run(process_inotify_mock, smartstack_deps_mock, mock_args):
             return {}
 
     smartstack_deps_mock.side_effect = kill_after_too_long()
-    subprocess.Popen(['bash', '-c', 'sleep 2; echo > %s/mydep.depinstance.json' % mock_args.synapse_service_dir])
+    subprocess.Popen(['bash', '-c', 'sleep 2; echo > %s/mydep.depinstance.json' % mock_daemon_args.synapse_service_dir])
     with pytest.raises(StopIteration):
-        firewall_update.run(mock_args)
+        firewall_update.run_daemon(mock_daemon_args)
     assert smartstack_deps_mock.call_count > 0
     assert process_inotify_mock.call_args[0][0][3] == b'mydep.depinstance.json'
     assert process_inotify_mock.call_args[0][1] == {}
+
+
+def test_run_cron(mock_cron_args):
+    with mock.patch.object(firewall, 'general_update', autospec=True) as m:
+        firewall_update.run_cron(mock_cron_args)
+    assert m.called is True
 
 
 @mock.patch.object(firewall_update, 'log', autospec=True)
@@ -145,8 +173,17 @@ def test_process_inotify_event(log_mock):
 
 
 @pytest.fixture
-def mock_args(tmpdir):
+def mock_daemon_args(tmpdir):
     return firewall_update.parse_args([
-        '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
         '-d', str(tmpdir.mkdir('yelpsoa')),
+        'daemon',
+        '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
+    ])
+
+
+@pytest.fixture
+def mock_cron_args(tmpdir):
+    return firewall_update.parse_args([
+        '-d', str(tmpdir.mkdir('yelpsoa')),
+        'cron',
     ])
