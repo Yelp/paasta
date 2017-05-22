@@ -77,6 +77,11 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    list_parser.add_argument(
+        '-f', '--force',
+        help=('Do not check if Git SHA was marked for deployment previously.'),
+        action='store_true',
+    )
     list_parser.set_defaults(command=paasta_rollback)
 
 
@@ -116,19 +121,17 @@ def list_previous_commits(service, deploy_groups, any_given_deploy_groups, git_s
     def format_timestamp(tstamp):
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
-    paasta_print("Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:")
+    paasta_print('Below is a list of recent commits:')
     git_shas = sorted(git_shas.items(), key=lambda x: x[1], reverse=True)[:10]
     rows = [('Timestamp -- UTC', 'Human time', 'deploy_group', 'Git SHA')]
     for sha, (timestamp, deploy_group) in git_shas:
-        paasta_print(timestamp)
         rows.extend([(timestamp, format_timestamp(timestamp), deploy_group, sha)])
     for line in format_table(rows):
         paasta_print(line)
     if len(git_shas) >= 2:
-        paasta_print()
         sha, (timestamp, deploy_group) = git_shas[1]
         deploy_groups_arg_line = '-l %s ' % ','.join(deploy_groups) if any_given_deploy_groups else ''
-        paasta_print("For example, to use the second to last commit from %s used on %s, run:" % (
+        paasta_print("\nFor example, to use the second to last commit from %s used on %s, run:" % (
             format_timestamp(timestamp), PaastaColors.bold(deploy_group)))
         paasta_print(PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha)))
 
@@ -162,6 +165,12 @@ def paasta_rollback(args):
     git_shas = get_git_shas_for_service(service, deploy_groups, soa_dir)
     commit = args.commit
     if not commit:
+        paasta_print("Please specify a commit to mark for rollback (-k, --commit).")
+        list_previous_commits(service, deploy_groups, bool(given_deploy_groups), git_shas)
+        return 1
+    elif commit not in git_shas and not args.force:
+        paasta_print(PaastaColors.red("This Git SHA has never been deployed before."))
+        paasta_print("Please double check it or use --force to skip this verification.\n")
         list_previous_commits(service, deploy_groups, bool(given_deploy_groups), git_shas)
         return 1
 
