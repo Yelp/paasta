@@ -327,6 +327,38 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_marathon_validate_schema_security_good(
+    mock_get_file_contents, capfd,
+):
+    mock_get_file_contents.return_value = """
+main:
+    dependencies_reference: main
+    security:
+        outbound_firewall: block
+"""
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_marathon_validate_schema_security_bad(
+    mock_get_file_contents, capfd,
+):
+    mock_get_file_contents.return_value = """
+main:
+    dependencies_reference: main
+    security:
+        outbound_firewall: bblock
+"""
+    assert not validate_schema('unused_service_path.yaml', 'marathon')
+
+    output, _ = capfd.readouterr()
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
 def test_marathon_validate_invalid_key_bad(
     mock_get_file_contents, capfd,
 ):
@@ -376,6 +408,40 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
 }
 """
     assert not validate_schema('unused_service_path.json', 'chronos')
+
+    output, _ = capfd.readouterr()
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_chronos_validate_schema_security_good(
+    mock_get_file_contents, capfd,
+):
+    mock_get_file_contents.return_value = """
+some_batch:
+    schedule: foo
+    dependencies_reference: main
+    security:
+        outbound_firewall: block
+"""
+    assert validate_schema('unused_service_path.yaml', 'chronos')
+
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_chronos_validate_schema_security_bad(
+    mock_get_file_contents, capfd,
+):
+    mock_get_file_contents.return_value = """
+some_batch:
+    schedule: foo
+    dependencies_reference: main
+    security:
+        outbound_firewall: bblock
+"""
+    assert not validate_schema('unused_service_path.yaml', 'chronos')
 
     output, _ = capfd.readouterr()
     assert SCHEMA_INVALID in output

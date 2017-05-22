@@ -276,6 +276,17 @@
                     "minimum": 0,
                     "maximum": 65535,
                     "exclusiveMinimum": false
+                },
+                "dependencies_reference": {
+                    "type": "string"
+                },
+                "security": {
+                    "type": "object",
+                    "properties": {
+                        "outbound_firewall": {
+                            "enum": ["block", "monitor"]
+                        }
+                    }
                 }
             }
         }
