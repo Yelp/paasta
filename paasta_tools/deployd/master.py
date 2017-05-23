@@ -7,6 +7,7 @@ import logging
 import logging.handlers
 import os
 import socket
+import sys
 import time
 
 import service_configuration_lib
@@ -136,15 +137,39 @@ class DeployDaemon(PaastaThread):
                 message = None
             if message == "ABORT":
                 break
+            if not self.all_watchers_running():
+                self.log.error("One or more watcher died, committing suicide!")
+                sys.exit(1)
+            if self.all_workers_dead():
+                self.log.error("All workers have died, comitting suicide!")
+                sys.exit(1)
+            self.check_and_start_workers()
             time.sleep(0.1)
+
+    def all_watchers_running(self):
+        return all([watcher.is_alive() for watcher in self.watcher_threads])
+
+    def all_workers_dead(self):
+        return all([not worker.is_alive() for worker in self.workers])
+
+    def check_and_start_workers(self):
+        live_workers = len([worker for worker in self.workers if worker.is_alive()])
+        number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
+        for i in range(number_of_dead_workers):
+            worker_no = len(self.workers) + 1
+            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
+            worker.start()
+            self.workers.append(worker)
 
     def stop(self):
         self.control.put("ABORT")
 
     def start_workers(self):
+        self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
             worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
             worker.start()
+            self.workers.append(worker)
 
     def add_all_services(self):
         instances = get_services_for_cluster(cluster=self.config.get_cluster(),
@@ -160,15 +185,15 @@ class DeployDaemon(PaastaThread):
         """ should block until all threads happy"""
         watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
-        watcher_threads = [watcher(inbox_q=self.inbox_q,
-                                   cluster=self.config.get_cluster(),
-                                   zookeeper_client=self.zk)
-                           for watcher in watcher_classes]
-        self.log.info("Starting the following watchers {}".format(watcher_threads))
-        for watcher in watcher_threads:
+        self.watcher_threads = [watcher(inbox_q=self.inbox_q,
+                                        cluster=self.config.get_cluster(),
+                                        zookeeper_client=self.zk)
+                                for watcher in watcher_classes]
+        self.log.info("Starting the following watchers {}".format(self.watcher_threads))
+        for watcher in self.watcher_threads:
             watcher.start()
         self.log.info("Waiting for all watchers to start")
-        while not all([watcher.is_ready for watcher in watcher_threads]):
+        while not all([watcher.is_ready for watcher in self.watcher_threads]):
             self.log.debug("Sleeping and waiting for watchers to all start")
             time.sleep(1)
 
