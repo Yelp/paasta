@@ -19,6 +19,7 @@ make the PaaSTA stack work.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import copy
 import datetime
 import json
 import logging
@@ -412,7 +413,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :param config: complete_config hash to sanitize
         :returns: sanitized copy of complete_config hash
         """
-        ahash = {key: value for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
         ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
         return ahash
 
