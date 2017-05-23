@@ -1,3 +1,11 @@
+paasta-tools (0.63.9) xenial; urgency=medium
+
+  * 0.63.9 tagged with 'make release'
+    Commit: Merge pull request #1253 from bchess/preserve_labels  Fix
+    paasta labels from being removed from marathon config
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 23 May 2017 16:06:46 -0700
+
 paasta-tools (0.63.8) xenial; urgency=medium
 
   * 0.63.8 tagged with 'make release'
