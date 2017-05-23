@@ -9,6 +9,7 @@ from pytest import raises
 
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import NoDockerImageError
 
 
 class FakePyinotify(object):  # pragma: no cover
@@ -423,6 +424,12 @@ def test_get_service_instances_with_changed_id():
                            soa_dir=DEFAULT_SOA_DIR)]
         mock_load_marathon_service_config.assert_has_calls(calls)
         assert ret == [('universe', 'c138')]
+
+        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
+                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2'}))]
+        mock_load_marathon_service_config.side_effect = mock_configs
+        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
+        assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
 
 class TestYelpSoaEventHandler(unittest.TestCase):
