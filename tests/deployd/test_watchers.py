@@ -478,7 +478,8 @@ class TestYelpSoaEventHandler(unittest.TestCase):
             self.handler.process_default(mock_event)
             mock_list_instances.assert_called_with(service='universe',
                                                    clusters=[self.handler.filewatcher.cluster],
-                                                   instance_type='marathon')
+                                                   instance_type='marathon',
+                                                   cache=False)
             mock_get_service_instances_with_changed_id.assert_called_with(self.handler.marathon_client,
                                                                           [('universe', 'c137'),
                                                                            ('universe', 'c138')],

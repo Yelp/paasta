@@ -282,7 +282,8 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             self.log.info("Checking if any instances for {} need bouncing".format(service_name))
             instances = list_all_instances_for_service(service=service_name,
                                                        clusters=[self.filewatcher.cluster],
-                                                       instance_type='marathon')
+                                                       instance_type='marathon',
+                                                       cache=False)
             self.log.debug(instances)
             service_instances = [(service_name, instance) for instance in instances]
             service_instances = get_service_instances_with_changed_id(self.marathon_client,
