@@ -117,6 +117,18 @@ def write_etc_paasta(context, config, filename):
         f.write(json.dumps(config))
 
 
+@given('we add a new docker volume to the public config')
+def add_volume_public_config(context):
+    write_etc_paasta(context, {
+        'volumes': [
+            {'hostPath': '/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
+            {'hostPath': '/nail/tmp/noob', 'containerPath': '/nail/tmp/noob', 'mode': 'RO'},
+        ]
+    }, 'volumes.json')
+
+
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     return working_paasta_cluster_with_registry(context, 'docker.io')
