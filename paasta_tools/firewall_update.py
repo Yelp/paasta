@@ -14,9 +14,8 @@ from inotify.constants import IN_MODIFY
 from inotify.constants import IN_MOVED_TO
 
 from paasta_tools import firewall
-from paasta_tools.chronos_tools import chronos_services_running_here
-from paasta_tools.marathon_tools import marathon_services_running_here
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_running_mesos_docker_containers
 
 log = logging.getLogger(__name__)
 
@@ -92,12 +91,23 @@ def process_inotify_event(event, services_by_dependencies):
 
 
 def services_running_here(soa_dir):
-    # Generator helper that yields (service, instance, framework) of both marathon and chronos tasks
-    for service, instance, port in marathon_services_running_here():
-        yield service, instance, 'marathon'
+    # Generator helper that yields (service, instance, framework, mac address)
+    # of both marathon and chronos tasks
+    for container in get_running_mesos_docker_containers():
+        if container['HostConfig']['NetworkMode'] != 'bridge':
+            continue
 
-    for service, instance, port in chronos_services_running_here():
-        yield service, instance, 'chronos'
+        service = container['Labels'].get('paasta_service')
+        instance = container['Labels'].get('paasta_instance')
+
+        if service is None or instance is None:
+            continue
+
+        # TODO: this sucks and is untested, maybe we should add a label for framework?
+        framework = 'marathon' if container['Ports'] else 'chronos'
+
+        mac = container['NetworkSettings']['Networks']['bridge']['MacAddress']
+        yield service, instance, framework, mac
 
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):

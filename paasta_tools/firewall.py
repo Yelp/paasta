@@ -143,11 +143,8 @@ def active_service_groups(soa_dir):
     """Return active service groups."""
     from paasta_tools import firewall_update
     service_groups = collections.defaultdict(set)
-    for service, instance, framework in firewall_update.services_running_here(soa_dir):
-        service_groups[ServiceGroup(service, instance, framework, soa_dir)].add(
-            # TODO: how to get the mac address of this container?
-            '02:42:a9:fe:00:02',
-        )
+    for service, instance, framework, mac in firewall_update.services_running_here(soa_dir):
+        service_groups[ServiceGroup(service, instance, framework, soa_dir)].add(mac)
     return service_groups
 
 
