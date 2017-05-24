@@ -19,6 +19,7 @@ import datetime
 import marathon
 import mock
 from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
 
 from paasta_tools import bounce_lib
 from paasta_tools import utils
@@ -184,8 +185,10 @@ class TestBounceLib:
                                                             self.fake_system_paasta_config())
 
         with mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
-                        return_value=[ConnectionError]
+                        side_effect=[[fake_task], [ConnectionError], [RequestException]]
                         ):
+            assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
+            assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
             assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
 
     def test_get_happy_tasks_when_running_without_healthchecks_defined(self):

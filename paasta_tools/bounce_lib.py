@@ -27,6 +27,7 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
 from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
 
 from paasta_tools import marathon_tools
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
@@ -184,8 +185,8 @@ def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
             marathon_tasks=[task],
         )
         return task in registered_tasks
-    except ConnectionError:
-        log.warning("Failed to connect to smartstack on %s, assuming task %s is unhealthy" % (task.host, task))
+    except (ConnectionError, RequestException) as e:
+        log.warning("Failed to connect to smartstack on %s, assuming task %s is unhealthy: %s" % (task.host, task, e))
         return False
 
 
