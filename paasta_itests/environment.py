@@ -48,6 +48,16 @@ def after_all(context):
     cleanup_file(context.mesos_cli_config)
 
 
+def _stop_deployd(context):
+    if hasattr(context, 'daemon'):
+        paasta_print("Stopping deployd...")
+        try:
+            context.daemon.terminate()
+            context.daemon.wait()
+        except OSError:
+            pass
+
+
 def _clean_up_marathon_apps(context):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
     if hasattr(context, 'marathon_client'):
@@ -152,6 +162,7 @@ def _clean_up_maintenance(context):
 
 
 def after_scenario(context, scenario):
+    _stop_deployd(context)
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_maintenance(context)

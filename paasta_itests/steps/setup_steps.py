@@ -51,6 +51,7 @@ def setup_system_paasta_config():
     chronos_connection_string = _get_chronos_connection_string()
     system_paasta_config = utils.SystemPaastaConfig({
         'cluster': 'testcluster',
+        'deployd_log_level': 'DEBUG',
         'docker_volumes': [],
         'docker_registry': 'docker-dev.yelpcorp.com',
         'zookeeper': zk_connection_string,
