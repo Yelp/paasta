@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import difflib
 import os
 import sys
 from collections import namedtuple
@@ -39,6 +40,7 @@ from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
+from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -293,10 +295,51 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1
 
 
+def verify_instances(args_instances, service, clusters):
+    """Verify that a list of instances specified by user is correct for this service.
+
+    :param args_instances: a comma separated string containig a list of instances.
+    :param service: the service name
+    :param cluster: a list of clusters
+    :returns: a list of instances specified in args_instances without any exclusions.
+    """
+    unverified_instances = args_instances.split(",")
+    service_instances = list_all_instances_for_service(service, clusters=clusters)
+
+    misspelled_instances = [i for i in unverified_instances if i not in service_instances]
+
+    if misspelled_instances:
+        suggestions = []
+        for instance in misspelled_instances:
+            suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
+
+        if clusters:
+            message = ("%s doesn't have any instances matching %s on %s."
+                       % (service,
+                          ', '.join(sorted(misspelled_instances)),
+                          ', '.join(sorted(clusters)))
+                       )
+        else:
+            message = ("%s doesn't have any instances matching %s."
+                       % (service, ', '.join(sorted(misspelled_instances))))
+
+        paasta_print(PaastaColors.red(message))
+
+        if suggestions:
+            paasta_print("Did you mean any of these?")
+            for instance in sorted(suggestions):
+                paasta_print("  %s" % instance)
+
+    return unverified_instances
+
+
 def paasta_args_mixer(args, service):
     if args.deploy_group is None:
         cluster_whitelist = args.clusters.split(",") if args.clusters is not None else []
-        instance_whitelist = args.instances.split(",") if args.instances is not None else []
+        if args.instances is not None:
+            instance_whitelist = verify_instances(args.instances, service, cluster_whitelist)
+        else:
+            instance_whitelist = []
     else:
         clusters_instances = get_cluster_instance_map_for_service(soa_dir=args.soa_dir,
                                                                   service=service,
