@@ -404,7 +404,7 @@ def test_get_service_instances_with_changed_id():
     with mock.patch(
         'paasta_tools.deployd.watchers.list_all_marathon_app_ids', autospec=True
     ) as mock_get_marathon_apps, mock.patch(
-        'paasta_tools.deployd.watchers.load_marathon_service_config', autospec=True
+        'paasta_tools.deployd.watchers.load_marathon_service_config_no_cache', autospec=True
     ) as mock_load_marathon_service_config:
         mock_get_marathon_apps.return_value = ['universe.c137.c1.g1',
                                                'universe.c138.c1.g1']

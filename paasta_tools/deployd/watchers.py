@@ -20,7 +20,7 @@ from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_config
-from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
@@ -239,10 +239,10 @@ def get_service_instances_with_changed_id(marathon_client, instances, cluster):
     marathon_app_ids = list_all_marathon_app_ids(marathon_client)
     service_instances = []
     for service, instance in instances:
-        config = load_marathon_service_config(service=service,
-                                              instance=instance,
-                                              cluster=cluster,
-                                              soa_dir=DEFAULT_SOA_DIR)
+        config = load_marathon_service_config_no_cache(service=service,
+                                                       instance=instance,
+                                                       cluster=cluster,
+                                                       soa_dir=DEFAULT_SOA_DIR)
         try:
             config_app_id = config.format_marathon_app_dict()['id']
         except NoDockerImageError:

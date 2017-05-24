@@ -81,7 +81,7 @@ class TestSetupMarathonJob:
             return_value=fake_client,
             autospec=True,
         ) as get_client_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
+            'paasta_tools.marathon_tools.load_marathon_service_config_no_cache',
             return_value=self.fake_marathon_service_config,
             autospec=True,
         ) as read_service_conf_patch, mock.patch(
@@ -143,7 +143,7 @@ class TestSetupMarathonJob:
             return_value=fake_client,
             autospec=True,
         ) as get_client_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
+            'paasta_tools.marathon_tools.load_marathon_service_config_no_cache',
             return_value=self.fake_marathon_service_config,
             autospec=True,
         ) as read_service_conf_patch, mock.patch(
@@ -201,7 +201,7 @@ class TestSetupMarathonJob:
             return_value=fake_client,
             autospec=True,
         ) as get_client_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
+            'paasta_tools.marathon_tools.load_marathon_service_config_no_cache',
             side_effect=NoDeploymentsAvailable(),
             autospec=True,
         ) as read_service_conf_patch, mock.patch(

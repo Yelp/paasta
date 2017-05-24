@@ -682,7 +682,7 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config,
     try:
         with bounce_lib.bounce_lock_zookeeper(short_id):
             try:
-                service_instance_config = marathon_tools.load_marathon_service_config(
+                service_instance_config = marathon_tools.load_marathon_service_config_no_cache(
                     service,
                     instance,
                     load_system_paasta_config().get_cluster(),
