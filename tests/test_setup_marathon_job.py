@@ -931,6 +931,75 @@ class TestSetupMarathonJob:
             )
             assert mock_do_bounce.call_args[1]['old_app_live_happy_tasks']['/some_id'] < set(tasks)
             assert len(mock_do_bounce.call_args[1]['old_app_live_happy_tasks']['/some_id']) == 4
+            assert fake_client.scale_app.call_count == 0, fake_client.scale_app.calls
+
+    def test_deploy_service_scales_down_slack(self):
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_jobid = 'fake_jobid'
+        fake_config = {
+            'id': 'some_id',
+            'instances': 50,
+        }
+        fake_client = mock.MagicMock()
+        fake_bounce_method = 'bounce'
+        fake_drain_method_name = 'drain'
+        fake_drain_method_params = {}
+        fake_nerve_ns = 'nerve'
+        fake_bounce_health_params = {}
+        fake_soa_dir = '/soa/dir'
+        fake_marathon_apps = mock.Mock()
+        with mock.patch(
+            'paasta_tools.setup_marathon_job._log', autospec=True,
+        ), mock.patch(
+            'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
+        ) as mock_load_system_paasta_config, mock.patch(
+            'paasta_tools.setup_marathon_job.marathon_tools.get_matching_apps', autospec=True,
+        ) as mock_get_matching_apps, mock.patch(
+            'paasta_tools.setup_marathon_job.bounce_lib.get_happy_tasks', autospec=True,
+        ) as mock_get_happy_tasks, mock.patch(
+            'paasta_tools.setup_marathon_job.drain_lib.get_drain_method', autospec=True,
+        ) as mock_get_drain_method, mock.patch(
+            'paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func', autospec=True,
+        ), mock.patch(
+            'paasta_tools.setup_marathon_job.do_bounce', autospec=True,
+        ) as mock_do_bounce, mock.patch(
+            'paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True,
+        ), mock.patch(
+            'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
+        ):
+            mock_load_system_paasta_config.return_value = mock.MagicMock(
+                get_cluster=mock.Mock(return_value='fake_cluster'))
+            happy_tasks = [
+                mock.Mock(hostname='fake-host1'),
+                mock.Mock(hostname='fake-host2'),
+                mock.Mock(hostname='fake-host3'),
+                mock.Mock(hostname='fake-host4'),
+                mock.Mock(hostname='fake-host5'),
+            ]
+            mock_get_matching_apps.return_value = [mock.Mock(id='/some_id', instances=100, tasks=happy_tasks)]
+            mock_get_happy_tasks.return_value = happy_tasks
+            mock_get_drain_method.return_value = mock.Mock(is_draining=mock.Mock(return_value=False))
+            setup_marathon_job.deploy_service(
+                service=fake_service,
+                instance=fake_instance,
+                marathon_jobid=fake_jobid,
+                config=fake_config,
+                client=fake_client,
+                marathon_apps=fake_marathon_apps,
+                bounce_method=fake_bounce_method,
+                drain_method_name=fake_drain_method_name,
+                drain_method_params=fake_drain_method_params,
+                nerve_ns=fake_nerve_ns,
+                bounce_health_params=fake_bounce_health_params,
+                soa_dir=fake_soa_dir,
+            )
+            assert mock_do_bounce.call_args[1]['old_app_live_happy_tasks']['/some_id'] < set(happy_tasks)
+            fake_client.scale_app.assert_called_once_with(
+                app_id='/some_id',
+                instances=5,
+                force=True,
+            )
 
     def test_deploy_service_scale_down_doesnt_undrain_scaling_tasks(self):
         fake_service = 'fake_service'

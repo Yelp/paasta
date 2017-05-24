@@ -483,12 +483,12 @@ def deploy_service(
     if new_app_running:
         num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=get_draining_hosts())
         if new_app.instances < config['instances'] + num_at_risk_tasks:
-            log.info("Scaling %s from %d to %d instances." %
+            log.info("Scaling %s up from %d to %d instances." %
                      (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
             client.scale_app(app_id=new_app.id, instances=config['instances'] + num_at_risk_tasks, force=True)
         # If we have more than the specified number of instances running, we will want to drain some of them.
         # We will start by draining any tasks running on at-risk hosts.
-        elif new_app.instances > config['instances']:
+        elif new_app.instances > config['instances'] + num_at_risk_tasks:
             num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
             task_dict = get_tasks_by_state_for_app(
                 app=new_app,
@@ -519,6 +519,16 @@ def deploy_service(
             tasks_to_move_happy = min(len(scaling_app_happy_tasks), num_tasks_to_scale)
             old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
+
+            # slack represents remaining the extra remaining instances that are configured
+            # in marathon that don't have a launched task yet. When scaling down we want to
+            # reduce this slack so marathon doesn't get a chance to launch a new task in
+            # that space that we will then have to drain and kill again.
+            slack = max(new_app.instances - len(new_app.tasks), 0)
+            if slack > 0:
+                print("Scaling %s down from %d to %d instances to remove slack." %
+                      (new_app.id, new_app.instances, new_app.instances - slack))
+                client.scale_app(app_id=new_app.id, instances=(new_app.instances - slack), force=True)
 
         # TODO: don't take actions in deploy_service.
         undrain_tasks(
