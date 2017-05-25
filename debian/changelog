@@ -1,3 +1,11 @@
+paasta-tools (0.64.0) xenial; urgency=medium
+
+  * 0.64.0 tagged with 'make release'
+    Commit: Merge pull request #1251 from Yelp/fix/deployd-worker-
+    watcher-crashes  Deployd actions for dying threads
+
+ -- robj <robj@robj-MacBookPro>  Thu, 25 May 2017 12:52:59 +0100
+
 paasta-tools (0.63.9) xenial; urgency=medium
 
   * 0.63.9 tagged with 'make release'
