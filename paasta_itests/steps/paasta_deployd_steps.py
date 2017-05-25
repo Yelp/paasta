@@ -38,7 +38,7 @@ def start_deployd(context):
     while "Startup finished!" not in output:
         output = context.daemon.stderr.readline()
         print(output.rstrip('\n'))
-    time.sleep(1)
+    time.sleep(5)
 
 
 @then('paasta-deployd can be stopped')
