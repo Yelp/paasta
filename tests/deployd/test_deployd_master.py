@@ -187,16 +187,94 @@ class TestDeployDaemon(unittest.TestCase):
     def test_main_loop(self):
         with mock.patch(
             'time.sleep', autospec=True
-        ) as mock_sleep:
+        ) as mock_sleep, mock.patch(
+            'paasta_tools.deployd.master.DeployDaemon.all_watchers_running', autospec=True
+        ) as mock_all_watchers_running, mock.patch(
+            'paasta_tools.deployd.master.DeployDaemon.all_workers_dead', autospec=True
+        ) as mock_all_workers_dead, mock.patch(
+            'paasta_tools.deployd.master.DeployDaemon.check_and_start_workers', autospec=True
+        ) as mock_check_and_start_workers:
+            mock_all_workers_dead.return_value = False
+            mock_all_watchers_running.return_value = True
             self.deployd.control.get.return_value = "ABORT"
             self.deployd.main_loop()
             assert not mock_sleep.called
+            assert not mock_check_and_start_workers.called
 
+            mock_all_workers_dead.return_value = True
+            mock_all_watchers_running.return_value = True
+            self.deployd.control.get.return_value = None
+            with raises(SystemExit):
+                self.deployd.main_loop()
+            assert not mock_sleep.called
+            assert not mock_check_and_start_workers.called
+
+            mock_all_workers_dead.return_value = False
+            mock_all_watchers_running.return_value = False
+            self.deployd.control.get.return_value = None
+            with raises(SystemExit):
+                self.deployd.main_loop()
+            assert not mock_sleep.called
+            assert not mock_check_and_start_workers.called
+
+            mock_all_workers_dead.return_value = False
+            mock_all_watchers_running.return_value = True
             mock_sleep.side_effect = [None, LoopBreak]
             self.deployd.control.get.side_effect = Empty
             with raises(LoopBreak):
                 self.deployd.main_loop()
             assert mock_sleep.call_count == 2
+            assert mock_check_and_start_workers.call_count == 2
+
+    def test_all_watchers_running(self):
+        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
+                         mock.Mock(is_alive=mock.Mock(return_value=True))]
+        self.deployd.watcher_threads = mock_watchers
+        assert self.deployd.all_watchers_running()
+
+        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
+                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        self.deployd.watcher_threads = mock_watchers
+        assert not self.deployd.all_watchers_running()
+
+        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
+                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        self.deployd.watcher_threads = mock_watchers
+        assert not self.deployd.all_watchers_running()
+
+    def test_all_workers_dead(self):
+        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
+                        mock.Mock(is_alive=mock.Mock(return_value=True))]
+        self.deployd.workers = mock_workers
+        assert not self.deployd.all_workers_dead()
+
+        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
+                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        self.deployd.workers = mock_workers
+        assert not self.deployd.all_workers_dead()
+
+        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
+                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        self.deployd.workers = mock_workers
+        assert self.deployd.all_workers_dead()
+
+    def test_check_and_start_workers(self):
+        with mock.patch(
+            'paasta_tools.deployd.master.PaastaDeployWorker', autospec=True
+        ) as mock_paasta_worker:
+            mock_worker_instance = mock.Mock()
+            mock_paasta_worker.return_value = mock_worker_instance
+            self.deployd.metrics = None
+            mock_alive_worker = mock.Mock(is_alive=mock.Mock(return_value=True))
+            mock_dead_worker = mock.Mock(is_alive=mock.Mock(return_value=False))
+            self.deployd.workers = [mock_alive_worker] * 5
+            self.deployd.check_and_start_workers()
+            assert not mock_paasta_worker.called
+
+            self.deployd.workers = [mock_alive_worker] * 3 + [mock_dead_worker] * 2
+            self.deployd.check_and_start_workers()
+            assert mock_paasta_worker.call_count == 2
+            assert mock_worker_instance.start.call_count == 2
 
     def test_stop(self):
         self.deployd.stop()
