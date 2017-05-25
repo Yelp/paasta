@@ -25,6 +25,7 @@ from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
@@ -242,7 +243,11 @@ def get_service_instances_with_changed_id(marathon_client, instances, cluster):
                                               instance=instance,
                                               cluster=cluster,
                                               soa_dir=DEFAULT_SOA_DIR)
-        if config.format_marathon_app_dict()['id'] not in marathon_app_ids:
+        try:
+            config_app_id = config.format_marathon_app_dict()['id']
+        except NoDockerImageError:
+            config_app_id = None
+        if not config_app_id or (config_app_id not in marathon_app_ids):
             service_instances.append((service, instance))
     return service_instances
 
