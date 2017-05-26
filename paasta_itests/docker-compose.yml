@@ -38,11 +38,13 @@ services:
   paastatools:
     build: ../yelp_package/dockerfiles/trusty/
     environment:
-      MARATHON_PORT: 'http://marathon:8080'
-      MESOSMASTER_PORT: 'http://mesosmaster:5050'
-      HACHECK_PORT: 'http://hacheck:6666'
-      ZOOKEEPER_PORT: 'zk://zookeeper:2181'
-      CHRONOS_PORT: 'http://chronos:8081'
+      - MARATHON_PORT=http://marathon:8080
+      - MESOSMASTER_PORT=http://mesosmaster:5050
+      - HACHECK_PORT=http://hacheck:6666
+      - ZOOKEEPER_PORT=zk://zookeeper:2181
+      - CHRONOS_PORT=http://chronos:8081
+      - NGROK_TOKEN
+
     volumes:
     - ../:/work:rw
     depends_on:
