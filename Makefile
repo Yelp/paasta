@@ -15,18 +15,20 @@
 # Set ENV to 'YELP' if FQDN ends in '.yelpcorp.com'
 # Otherwise, set ENV to the FQDN
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
+	export PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 	PAASTA_ENV ?= YELP
 else
+	export PIP_INDEX_URL ?= https://pypi.python.org/simple
 	PAASTA_ENV ?= $(shell hostname -f)
 endif
 
 .PHONY: all docs test itest
 
 docs: .paasta/bin/activate
-	.paasta/bin/tox -e docs
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
 
 test: .paasta/bin/activate
-	.paasta/bin/tox
+	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python2.7 .paasta
@@ -37,7 +39,8 @@ test: .paasta/bin/activate
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate
-	./itest.sh
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e general_itests
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
