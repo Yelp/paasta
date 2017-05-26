@@ -11,44 +11,36 @@ import time
 import uuid
 from threading import Timer
 
-import mesos.interface
 import service_configuration_lib
-from mesos.interface import mesos_pb2
+from addict import Dict
+from pymesos import MesosSchedulerDriver
+from pymesos.interface import Scheduler
 
-from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
-from paasta_tools.utils import paasta_print
-try:
-    from mesos.native import MesosSchedulerDriver
-except ImportError:
-    # mesos.native is tricky to install - it's not available on pypi. When building the dh-virtualenv or running itests,
-    # we hack together a wheel from the mesos.native module installed by the mesos debian package.
-    # This try/except allows us to unit-test this module.
-    pass
-
-from paasta_tools import mesos_tools
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
+from paasta_tools import mesos_tools
+from paasta_tools.frameworks.constraints import check_offer_constraints
+from paasta_tools.frameworks.constraints import update_constraint_state
+from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-
-from paasta_tools.frameworks.constraints import update_constraint_state
-from paasta_tools.frameworks.constraints import check_offer_constraints
+from paasta_tools.utils import paasta_print
 
 log = logging.getLogger(__name__)
 
 MESOS_TASK_SPACER = '.'
 
 # Bring these into local scope for shorter lines of code.
-TASK_STAGING = mesos_pb2.TASK_STAGING
-TASK_STARTING = mesos_pb2.TASK_STARTING
-TASK_RUNNING = mesos_pb2.TASK_RUNNING
+TASK_STAGING = 'TASK_STAGING'
+TASK_STARTING = 'TASK_STARTING'
+TASK_RUNNING = 'TASK_RUNNING'
 
-TASK_KILLING = mesos_pb2.TASK_KILLING
-TASK_FINISHED = mesos_pb2.TASK_FINISHED
-TASK_FAILED = mesos_pb2.TASK_FAILED
-TASK_KILLED = mesos_pb2.TASK_KILLED
-TASK_LOST = mesos_pb2.TASK_LOST
-TASK_ERROR = mesos_pb2.TASK_ERROR
+TASK_KILLING = 'TASK_KILLING'
+TASK_FINISHED = 'TASK_FINISHED'
+TASK_FAILED = 'TASK_FAILED'
+TASK_KILLED = 'TASK_KILLED'
+TASK_LOST = 'TASK_LOST'
+TASK_ERROR = 'TASK_ERROR'
 
 LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
 
@@ -77,7 +69,7 @@ class MesosTaskParameters(object):
         self.staging_timer = staging_timer
 
 
-class NativeScheduler(mesos.interface.Scheduler):
+class NativeScheduler(Scheduler):
     def __init__(self, service_name, instance_name, cluster,
                  system_paasta_config, staging_timeout,
                  soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
@@ -150,8 +142,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                 if offer.slave_id.value in self.blacklisted_slaves:
                     log.critical("Ignoring offer %s from blacklisted slave %s" %
                                  (offer.id.value, offer.slave_id.value))
-                    filters = mesos_pb2.Filters()
-                    filters.refuse_seconds = self.blacklist_timeout
+                    filters = Dict(refuse_seconds=self.blacklist_timeout)
                     driver.declineOffer(offer.id, filters)
                     del offers[idx]
 
@@ -169,10 +160,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                         driver, offer, self.constraint_state)
 
                     if tasks is not None and len(tasks) > 0:
-                        operation = mesos_pb2.Offer.Operation()
-                        operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                        operation.launch.task_infos.extend(tasks)
-                        driver.acceptOffers([offer.id], [operation])
+                        driver.launchTasks([offer.id], tasks)
 
                         for task in tasks:
                             staging_timer = self.staging_timer_for_task(
@@ -195,8 +183,7 @@ class NativeScheduler(mesos.interface.Scheduler):
                         driver.declineOffer(offer.id)
                 except ConstraintFailAllTasksError:
                     paasta_print("Offer failed constraints for every task, rejecting 60s")
-                    filters = mesos_pb2.Filters()
-                    filters.refuse_seconds = 60
+                    filters = Dict(refuse_seconds=60)
                     driver.declineOffer(offer.id, filters)
         return launched_tasks
 
@@ -464,9 +451,7 @@ class NativeScheduler(mesos.interface.Scheduler):
         self.tasks_with_flags[task].is_draining = True
 
     def kill_task(self, driver, task):
-        tid = mesos_pb2.TaskID()
-        tid.value = task
-        driver.killTask(tid)
+        driver.killTask(Dict(value=task))
         self.tasks_with_flags[task].mesos_task_state = TASK_KILLING
 
     def group_tasks_by_version(self, task_ids):
