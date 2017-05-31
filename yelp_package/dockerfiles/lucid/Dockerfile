@@ -21,6 +21,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Which at this time is in this package
 RUN apt-get update > /dev/null && apt-get -y install dpkg-dev python-pip python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python2.7 python2.7-dev help2man zsh git > /dev/null
 
+# TODO(jlynch): as we port to pymesos get rid of mesos wheels entirely...
 # mesos.native is not available on pypi, so we can either build mesos from
 # source or do this, and building from source takes a long time.
 # Conveniently, the .so's included in this wheel seem to be self-contained and don't link against the system libmesos.
@@ -28,7 +29,6 @@ RUN apt-get update > /dev/null && apt-get -y install dpkg-dev python-pip python-
 # a system mesos package.
 RUN apt-get install -y mesos=1.0.1-yelp2 zip > /dev/null && \
     cd /usr/local/lib/python2.7/site-packages/ && \
-	zip -r /root/mesos.native-1.0.1-cp27-none-linux_x86_64.whl mesos/native mesos.native-1.0.1.dist-info && \
 	zip -r /root/mesos.executor-1.0.1-cp27-none-linux_x86_64.whl mesos/executor mesos.executor-1.0.1.dist-info && \
 	zip -r /root/mesos.scheduler-1.0.1-cp27-none-linux_x86_64.whl mesos/scheduler mesos.scheduler-1.0.1.dist-info && \
 	apt-get remove -y mesos
