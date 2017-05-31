@@ -38,7 +38,7 @@ instance MAY have:
     how this works, see the docs on `isolation <isolation.html>`_
 
   * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
-    disk is constrained to the specified limit, and tasks will recieve 'No space
+    disk is constrained to the specified limit, and tasks will receive 'No space
     left on device' errors if they attempt to exceed these limits, and then be
     unable to write any more data to disk.
 
@@ -70,7 +70,7 @@ instance MAY have:
   * ``registrations``: A list of SmartStack registrations (service.namespace)
     where instances of this PaaSTA service ought register in. In SmartStack,
     each service has difference pools of backend servers that are listening on
-    a particul port. In PaaSTA we call these "Registrations". By default, the
+    a particular port. In PaaSTA we call these "Registrations". By default, the
     Registration assigned to a particular instance in PaaSTA has the *same name*,
     so a service ``foo`` with a ``main`` instance will correspond to the
     ``foo.main`` Registration. This would correspond to the SmartStack
@@ -82,7 +82,7 @@ instance MAY have:
 
   * ``backoff_factor``: PaaSTA will automatically calculate the duration of an
     application's backoff period in case of a failed launch based on the number
-    of instances. For each consecutive failure that duration is multipled by
+    of instances. For each consecutive failure that duration is multiplied by
     ``backoff_factor`` and added to the previous value until it reaches
     ``max_launch_delay_seconds``. See `Marathon's API docs <https://mesosphere.github.io/marathon/docs/rest-api.html>`_
     for more information. Defaults to 2.
@@ -240,7 +240,7 @@ instance MAY have:
    implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
-    to. The ``step`` parameter in ``deploy.yaml`` refererences this value
+    to. The ``step`` parameter in ``deploy.yaml`` references this value
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
 
