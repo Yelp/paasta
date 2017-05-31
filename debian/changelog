@@ -1,3 +1,12 @@
+paasta-tools (0.65.1) xenial; urgency=medium
+
+  * 0.65.1 tagged with 'make release'
+    Commit: Merge pull request #1250 from chriskuehl/start-linking-
+    firewall-together  Start to hook up iptables rules with real world
+    state
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Wed, 31 May 2017 16:02:39 -0700
+
 paasta-tools (0.65.0) xenial; urgency=medium
 
   * 0.65.0 tagged with 'make release'
