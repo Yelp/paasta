@@ -12,6 +12,7 @@ from collections import defaultdict
 from inotify.adapters import Inotify
 from inotify.constants import IN_MODIFY
 from inotify.constants import IN_MOVED_TO
+from service_configuration_lib import read_service_configuration
 
 from paasta_tools import firewall
 from paasta_tools.chronos_tools import chronos_services_running_here
@@ -118,10 +119,19 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
 
         smartstack_dependencies = [d['smartstack'] for d in dependencies if d.get('smartstack')]
         for smartstack_dependency in smartstack_dependencies:
-            # TODO: filter down to only services that have no proxy_port
-            dependencies_to_services[smartstack_dependency].add((service, instance))
+            dependency_service, dependency_instance = smartstack_dependency.split('.', 1)
+
+            # filter down to only services that have no proxy_port
+            if service_proxy_port(dependency_service, soa_dir) is None:
+                dependencies_to_services[smartstack_dependency].add((service, instance))
 
     return dependencies_to_services
+
+
+def service_proxy_port(service_name, soa_dir):
+    config = read_service_configuration(service_name, soa_dir)
+    proxy_port = (config.get('smartstack') or {}).get('proxy_port')
+    return proxy_port
 
 
 def main(argv=None):

@@ -70,7 +70,9 @@ def test_parse_args_default_cron():
 @mock.patch.object(firewall_update, 'load_system_paasta_config', autospec=True)
 @mock.patch.object(firewall_update, 'marathon_services_running_here', autospec=True)
 @mock.patch.object(firewall_update, 'chronos_services_running_here', autospec=True)
+@mock.patch.object(firewall_update, 'service_proxy_port', autospec=True, return_value=None)
 def test_smartstack_dependencies_of_running_firewalled_services(
+        service_proxy_port_mock,
         chronos_services_running_mock,
         marathon_services_running_mock,
         paasta_config_mock,
@@ -126,6 +128,70 @@ def test_smartstack_dependencies_of_running_firewalled_services(
         'mydependency.depinstance': {('myservice', 'hassecurity'), ('myservice', 'chronoswithsecurity')},
         'another.one': {('myservice', 'hassecurity'), ('myservice', 'chronoswithsecurity')},
     }
+
+
+@mock.patch.object(firewall_update, 'load_system_paasta_config', autospec=True)
+@mock.patch.object(firewall_update, 'marathon_services_running_here', autospec=True)
+@mock.patch.object(firewall_update, 'chronos_services_running_here', autospec=True, return_value=[])
+def test_smartstack_dependencies_of_running_firewalled_services_proxy_port(
+        chronos_services_running_mock,
+        marathon_services_running_mock,
+        paasta_config_mock,
+        tmpdir):
+    # Ensure that smartstack_dependencies_of_running_firewalled_services
+    # only considers services with no proxy_port
+    paasta_config_mock.return_value.get_cluster.return_value = 'mycluster'
+    soa_dir = tmpdir.mkdir('yelpsoa')
+    myservice_dir = soa_dir.mkdir('myservice')
+
+    marathon_config = {
+        'hassecurity': {
+            'dependencies_reference': 'my_ref',
+            'security': {
+                'outbound_firewall': 'block'
+            }
+        },
+    }
+    myservice_dir.join('marathon-mycluster.yaml').write(yaml.safe_dump(marathon_config))
+
+    dependencies_config = {
+        'my_ref': [
+            {'smartstack': 'mydependency.depinstance'},
+            {'smartstack': 'anotherone.foo'},
+        ]
+    }
+    myservice_dir.join('dependencies.yaml').write(yaml.safe_dump(dependencies_config))
+
+    mydependency_dir = soa_dir.mkdir('mydependency')
+    mydependency_dir.join('smartstack.yaml').write(yaml.safe_dump({'proxy_port': 1234}))
+
+    anotherone_dir = soa_dir.mkdir('anotherone')
+    anotherone_dir.join('smartstack.yaml').write(yaml.safe_dump({'proxy_port': None}))
+
+    marathon_services_running_mock.return_value = [
+        ('myservice', 'hassecurity', 0),
+    ]
+
+    result = firewall_update.smartstack_dependencies_of_running_firewalled_services(soa_dir=str(soa_dir))
+    assert dict(result) == {
+        'anotherone.foo': {('myservice', 'hassecurity')},
+    }
+
+
+def test_service_proxy_port(tmpdir):
+    soa_dir = tmpdir.mkdir('yelpsoa')
+    myservice_dir = soa_dir.mkdir('myservice')
+
+    smartstack_config = {'proxy_port': 1234}
+    myservice_dir.join('smartstack.yaml').write(yaml.safe_dump(smartstack_config))
+    assert firewall_update.service_proxy_port('myservice', str(soa_dir)) == 1234
+
+
+def test_service_proxy_port_none(tmpdir):
+    soa_dir = tmpdir.mkdir('yelpsoa')
+    myservice_dir = soa_dir.mkdir('myservice')
+    myservice_dir.join('smartstack.yaml').write(yaml.safe_dump({}))
+    assert firewall_update.service_proxy_port('myservice', str(soa_dir)) is None
 
 
 @mock.patch.object(firewall_update, 'smartstack_dependencies_of_running_firewalled_services', autospec=True)
