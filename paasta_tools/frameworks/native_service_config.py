@@ -89,7 +89,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
                         self.get_docker_image()
                     ),
                     parameters=[
-                        {'key': param['key'], 'value': param['value']}
+                        Dict(key=param['key'], value=param['value'])
                         for param in self.format_docker_parameters()
                     ],
                     network=self.get_mesos_network_mode()
