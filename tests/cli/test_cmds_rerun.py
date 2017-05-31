@@ -18,9 +18,11 @@ import argparse
 import datetime
 
 from mock import MagicMock
+from mock import mock
 from mock import patch
 from pytest import mark
 
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import EXECUTION_DATE_FORMAT
 from paasta_tools.cli.cmds.rerun import add_subparser
 from paasta_tools.cli.cmds.rerun import paasta_rerun
@@ -29,65 +31,82 @@ from paasta_tools.utils import SystemPaastaConfig
 
 _user_supplied_execution_date = '2016-04-08T02:37:27'
 _list_clusters = ['cluster1', 'cluster2']
-_actual_deployments = {'cluster1.instance1': 'this_is_a_sha'}
+_actual_deployments = {
+    'cluster1.instance1': 'this_is_a_sha',
+    'cluster1.dependent_instance1': 'this_is_a_sha',
+    'cluster1.dependent_instance2': 'this_is_a_sha',
+}
 _planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
+_service_name = 'a_service'
 
 
 @mark.parametrize('test_case', [
     [
-        ['a_service', 'instance1', 'cluster1', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job',
+        'successfully created job', True,
     ],
     [
-        ['a_service', 'instance1', 'cluster1', None],
-        'a_service',
+        [_service_name, 'instance1', 'cluster1', None, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job',
+        'successfully created job', True,
     ],
     [
-        ['a_service', 'instance1', 'cluster1', None],
-        'a_service',
+        [_service_name, 'instance1', 'cluster1', None, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, True,
-        'please supply a `--execution_date` argument',  # job uses time variables interpolation
+        'please supply a `--execution_date` argument', False,  # job uses time variables interpolation
     ],
     [
-        ['a_service', 'instance1', 'cluster1,cluster2', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instance1', 'cluster1,cluster2', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job',
+        'successfully created job', True,
     ],
     [
-        ['a_service', 'instance1', None, _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instance1', None, _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'cluster: cluster1',  # success
+        'cluster: cluster1', True,  # success
     ],
     [
-        ['a_service', 'instance1', 'cluster3', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instance1', 'cluster3', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        '"cluster3" does not look like a valid cluster',
+        '"cluster3" does not look like a valid cluster', False,
     ],
     [
-        ['a_service', 'instance1', 'cluster2', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'service "a_service" has not been deployed to "cluster2" yet',
+        'service "{}" has not been deployed to "cluster2" yet'.format(_service_name), False,
     ],
     [
-        ['a_service', 'instanceX', 'cluster1', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        'instance "instanceX" is either invalid',
+        'instance "instanceX" is either invalid', False,
     ],
     [
-        ['a_service', 'instance2', 'cluster1', _user_supplied_execution_date],
-        'a_service',
+        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, None],
+        _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
-        ' or has not been deployed to "cluster1" yet',
-    ]
+        'Please specify the rerun policy via --rerun-type argument', False,
+    ],
+    [
+        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance'],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,
+    ],
+    [
+        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph'],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,  # TODO: make assertion more selective -> check started instances
+    ],
 ])
 def test_rerun_validations(test_case, capfd):
     with patch(
@@ -108,20 +127,41 @@ def test_rerun_validations(test_case, capfd):
         'paasta_tools.cli.cmds.rerun._get_default_execution_date', autospec=True,
     ) as mock_get_default_execution_date, patch(
         'paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True,
-    ) as mock_load_system_paasta_config:
+    ) as mock_load_system_paasta_config, patch(
+        'paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True,
+    ) as mock_read_chronos_jobs_for_service, patch(
+        'service_configuration_lib.read_services_configuration', autospec=True,
+    ) as mock_read_services_configuration:
         (rerun_args,
          mock_figure_out_service_name.return_value,
          mock_list_clusters.return_value,
          mock_get_actual_deployments.return_value,
          mock_get_planned_deployments.return_value,
          mock_uses_time_variables.return_value,
-         expected_output) = test_case
+         expected_output,
+         call_execute_rerun_remote) = test_case
 
-        mock_load_chronos_job_config.return_value = {}
+        def fake_load_chronos_jobs_config(service, instance, cluster, *args, **kwargs):
+            mock = MagicMock(spec=ChronosJobConfig)
+            if instance == 'dependent_instance2':
+                mock.get_parents.return_value = ['{}.{}'.format(_service_name, 'dependent_instance1')]
+            else:
+                mock.get_parents.return_value = []
+            return mock
+
+        mock_load_chronos_job_config.side_effect = fake_load_chronos_jobs_config
         default_date = datetime.datetime(2002, 2, 2, 2, 2, 2, 2)
         mock_get_default_execution_date.return_value = default_date
         mock_execute_rerun_remote.return_value = (0, '')
         mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, '/fake/config')
+
+        mock_read_chronos_jobs_for_service.return_value = {
+            'instance1': {},
+            'dependent_instance1': {},
+            'dependent_instance2': {'parents': ['{}.{}'.format(_service_name, 'dependent_instance1')]},
+        }
+
+        mock_read_services_configuration.return_value = [_service_name]
 
         args = MagicMock()
         args.service = rerun_args[0]
@@ -131,6 +171,7 @@ def test_rerun_validations(test_case, capfd):
             args.execution_date = datetime.datetime.strptime(rerun_args[3], EXECUTION_DATE_FORMAT)
         else:
             args.execution_date = None
+        args.rerun_type = rerun_args[4]
         args.verbose = 0
 
         paasta_rerun(args)
@@ -140,6 +181,18 @@ def test_rerun_validations(test_case, capfd):
         if args.execution_date is None and not mock_uses_time_variables.return_value:
             assert mock_execute_rerun_remote.call_args[1]['execution_date'] \
                 == default_date.strftime(EXECUTION_DATE_FORMAT)
+
+        if call_execute_rerun_remote:
+            execution_date = args.execution_date if args.execution_date else default_date
+            mock_execute_rerun_remote.assert_called_once_with(
+                service=args.service,
+                instancename=args.instance,
+                cluster=mock.ANY,
+                verbose=args.verbose,
+                execution_date=execution_date.strftime(EXECUTION_DATE_FORMAT),
+                run_all_related_jobs=bool(args.rerun_type and args.rerun_type == 'graph'),
+                system_paasta_config=mock_load_system_paasta_config.return_value,
+            )
 
         # The job does use time vars interpolation. Make sure the User supplied date was used.
         # TODO: this if statement is never true
@@ -152,11 +205,14 @@ def test_rerun_validations(test_case, capfd):
 
 @mark.parametrize('test_case', [
     [['rerun'], True],
-    [['rerun', '-s', 'a_service'], True],
-    [['rerun', '-s', 'a_service', '-i', 'an_instance'], False],
-    [['rerun', '-s', 'a_service', '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
-    [['rerun', '-s', 'a_service', '-i', 'an_instance', '-d', 'not_a_date'], True],
-    [['rerun', '-v', '-v', '-s', 'a_service', '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
+    [['rerun', '-s', _service_name], True],
+    [['rerun', '-s', _service_name, '-i', 'an_instance'], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', 'not_a_date'], True],
+    [['rerun', '-v', '-v', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'not_a_valid_type'], True],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'instance'], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph'], False],
 ])
 def test_rerun_argparse(test_case):
     argv, should_exit = test_case

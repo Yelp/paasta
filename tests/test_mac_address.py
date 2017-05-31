@@ -17,6 +17,9 @@ import six
 from paasta_tools import mac_address
 
 
+skip_if_osx = pytest.mark.skipif(sys.platform == 'darwin', reason='Flock is not present on OS X')
+
+
 def test_simple(tmpdir):
     mac, lock_file = mac_address.reserve_unique_mac_address(str(tmpdir))
     with contextlib.closing(lock_file):
@@ -58,6 +61,7 @@ def _flock_process(path):
     return child_pid
 
 
+@skip_if_osx
 def test_file_exists_flock(tmpdir):
     # it doesn't count if this process has the flock, so we need to spawn a different one to hold it
     flock_process = _flock_process(str(tmpdir.join('02:52:00:00:00:00')))
@@ -70,6 +74,7 @@ def test_file_exists_flock(tmpdir):
         os.kill(flock_process, signal.SIGKILL)
 
 
+@skip_if_osx
 def test_file_exists_exhaustion(tmpdir):
     flock_processes = []
     try:
