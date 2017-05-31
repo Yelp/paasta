@@ -27,7 +27,7 @@ RUN cd /usr/lib/python2.7/site-packages && \
 	zip -r /root/mesos.interface-1.2.0-cp27-none-linux_x86_64.whl mesos/interface mesos.interface-1.2.0.dist-info && \
   pip install /root/mesos.interface-1.2.0-cp27-none-linux_x86_64.whl &&\
   pip install /root/mesos.executor-1.2.0-cp27-none-linux_x86_64.whl &&\
-  pip install /root/mesos.scheduler-1.2.0-cp27-none-linux_x86_64.whl &&\
+  pip install /root/mesos.scheduler-1.2.0-cp27-none-linux_x86_64.whl
 
 RUN apt-get -y install docker-engine=1.10.3-0~trusty > /dev/null
 ADD mesos-secrets /etc/mesos-secrets
