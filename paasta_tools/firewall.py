@@ -10,9 +10,8 @@ import json
 import six
 
 from paasta_tools import iptables
-from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -28,17 +27,14 @@ PRIVATE_IP_RANGES = (
 class ServiceGroup(collections.namedtuple('ServiceGroup', (
     'service',
     'instance',
-    'framework',
     'soa_dir',
 ))):
     """A service group.
 
     :param service: service name
     :param instance: instance name
-    :param framework: Mesos framework (e.g. marathon or chronos)
     :param soa_dir: path to yelpsoa-configs
     """
-
     __slots__ = ()
 
     @property
@@ -58,11 +54,7 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
 
     @property
     def config(self):
-        load_fn = {
-            'chronos': load_chronos_job_config,
-            'marathon': load_marathon_service_config,
-        }[self.framework]
-        return load_fn(
+        return get_instance_config(
             self.service, self.instance,
             load_system_paasta_config().get_cluster(),
             load_deployments=False,
@@ -143,8 +135,8 @@ def active_service_groups(soa_dir):
     """Return active service groups."""
     from paasta_tools import firewall_update
     service_groups = collections.defaultdict(set)
-    for service, instance, framework, mac in firewall_update.services_running_here(soa_dir):
-        service_groups[ServiceGroup(service, instance, framework, soa_dir)].add(mac)
+    for service, instance, mac in firewall_update.services_running_here():
+        service_groups[ServiceGroup(service, instance, soa_dir)].add(mac)
     return service_groups
 
 

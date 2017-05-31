@@ -14,8 +14,10 @@ from inotify.constants import IN_MODIFY
 from inotify.constants import IN_MOVED_TO
 
 from paasta_tools import firewall
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_running_mesos_docker_containers
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -90,8 +92,8 @@ def process_inotify_event(event, services_by_dependencies):
         pass  # TODO: iptables added and removed here! :o)
 
 
-def services_running_here(soa_dir):
-    # Generator helper that yields (service, instance, framework, mac address)
+def services_running_here():
+    # Generator helper that yields (service, instance, mac address)
     # of both marathon and chronos tasks
     for container in get_running_mesos_docker_containers():
         if container['HostConfig']['NetworkMode'] != 'bridge':
@@ -103,16 +105,19 @@ def services_running_here(soa_dir):
         if service is None or instance is None:
             continue
 
-        # TODO: this sucks and is untested, maybe we should add a label for framework?
-        framework = 'marathon' if container['Ports'] else 'chronos'
-
         mac = container['NetworkSettings']['Networks']['bridge']['MacAddress']
-        yield service, instance, framework, mac
+        yield service, instance, mac
 
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):
     dependencies_to_services = defaultdict(set)
-    for service, instance, config in services_running_here(soa_dir):
+    for service, instance, _ in services_running_here():
+        config = get_instance_config(
+            service, instance,
+            load_system_paasta_config().get_cluster(),
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
         outbound_firewall = config.get_outbound_firewall()
         if not outbound_firewall:
             continue
