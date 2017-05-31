@@ -3,10 +3,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import binascii
+import copy
 
 import service_configuration_lib
-from mesos.interface import mesos_pb2
+from addict import Dict
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -43,16 +43,21 @@ class NativeServiceConfig(LongRunningServiceConfig):
             self.service_namespace_config = ServiceNamespaceConfig()
 
     def task_name(self, base_task):
-        code_sha = get_code_sha_from_dockerurl(base_task.container.docker.image)
+        code_sha = get_code_sha_from_dockerurl(
+            base_task.container.docker.image
+        )
 
-        filled_in_task = mesos_pb2.TaskInfo()
-        filled_in_task.MergeFrom(base_task)
-        filled_in_task.name = ""
-        filled_in_task.task_id.value = ""
-        filled_in_task.slave_id.value = ""
+        filled_in_task = copy.deepcopy(base_task)
+        filled_in_task.update(
+            Dict(
+                name='',
+                task_id=Dict(value=''),
+                slave_id=Dict(value=''),
+            )
+        )
 
         config_hash = get_config_hash(
-            binascii.b2a_base64(filled_in_task.SerializeToString()).decode(),
+            filled_in_task,
             force_bounce=self.get_force_bounce(),
         )
 
@@ -65,60 +70,88 @@ class NativeServiceConfig(LongRunningServiceConfig):
         )
 
     def base_task(self, system_paasta_config, portMappings=True):
-        """Return a TaskInfo protobuf with all the fields corresponding to the configuration filled in. Does not
-        include task.slave_id or a task.id; those need to be computed separately."""
-        task = mesos_pb2.TaskInfo()
-        task.container.type = mesos_pb2.ContainerInfo.DOCKER
-        task.container.docker.image = get_docker_url(system_paasta_config.get_docker_registry(),
-                                                     self.get_docker_image())
+        """Return a TaskInfo Dict with all the fields corresponding to the
+        configuration filled in.
 
-        for param in self.format_docker_parameters():
-            p = task.container.docker.parameters.add()
-            p.key = param['key']
-            p.value = param['value']
-
-        task.container.docker.network = self.get_mesos_network_mode()
-
-        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
-        for volume in docker_volumes:
-            v = task.container.volumes.add()
-            v.mode = getattr(mesos_pb2.Volume, volume['mode'].upper())
-            v.container_path = volume['containerPath']
-            v.host_path = volume['hostPath']
-
-        task.command.value = self.get_cmd()
-        cpus = task.resources.add()
-        cpus.name = "cpus"
-        cpus.type = mesos_pb2.Value.SCALAR
-        cpus.scalar.value = self.get_cpus()
-        mem = task.resources.add()
-        mem.name = "mem"
-        mem.type = mesos_pb2.Value.SCALAR
-        mem.scalar.value = self.get_mem()
+        Does not include task.slave_id or a task.id; those need to be
+        computed separately.
+        """
+        task = Dict()
+        docker_volumes = self.get_volumes(
+            system_volumes=system_paasta_config.get_volumes()
+        )
+        task = Dict(
+            container=Dict(
+                type='DOCKER',
+                docker=Dict(
+                    image=get_docker_url(
+                        system_paasta_config.get_docker_registry(),
+                        self.get_docker_image()
+                    ),
+                    parameters=[
+                        {'key': param['key'], 'value': param['value']}
+                        for param in self.format_docker_parameters()
+                    ],
+                    network=self.get_mesos_network_mode()
+                ),
+                volumes=[
+                    Dict(
+                        container_path=volume['containerPath'],
+                        host_path=volume['hostPath'],
+                        mode=volume['mode'].upper(),
+                    ) for volume in docker_volumes
+                ],
+            ),
+            command=Dict(
+                value=self.get_cmd(),
+                uris=[
+                    Dict(
+                        value=system_paasta_config.get_dockercfg_location(),
+                        extract=False
+                    )
+                ]
+            ),
+            resources=[
+                Dict(
+                    name='cpus',
+                    type='SCALAR',
+                    scalar=Dict(value=self.get_cpus())
+                ),
+                Dict(
+                    name='mem',
+                    type='SCALAR',
+                    scalar=Dict(value=self.get_mem())
+                )
+            ]
+        )
 
         if portMappings:
-            pm = task.container.docker.port_mappings.add()
-            pm.container_port = self.get_container_port()
-            pm.host_port = 0  # will be filled in by tasks_and_state_for_offer()
-            pm.protocol = "tcp"
+            task.container.docker.port_mappings = [
+                Dict(
+                    container_port=self.get_container_port(),
+                    # filled by tasks_and_state_for_offer()
+                    host_port=0,
+                    protocol='tcp'
+                )
+            ]
 
-            port = task.resources.add()
-            port.name = "ports"
-            port.type = mesos_pb2.Value.RANGES
-            port.ranges.range.add()
-            port.ranges.range[0].begin = 0  # will be filled in by tasks_and_state_for_offer().
-            port.ranges.range[0].end = 0  # will be filled in by tasks_and_state_for_offer().
+            task.resources.append(
+                Dict(
+                    name='ports',
+                    type='RANGES',
+                    ranges=Dict(
+                        # filled by tasks_and_state_for_offer
+                        range=[Dict(begin=0, end=0)]
+                    )
+                )
+            )
 
         task.name = self.task_name(task)
-
-        docker_cfg_uri = task.command.uris.add()
-        docker_cfg_uri.value = system_paasta_config.get_dockercfg_location()
-        docker_cfg_uri.extract = False
 
         return task
 
     def get_mesos_network_mode(self):
-        return getattr(mesos_pb2.ContainerInfo.DockerInfo, self.get_net().upper())
+        return self.get_net().upper()
 
     def get_constraints(self):
         return self.config_dict.get('constraints', None)

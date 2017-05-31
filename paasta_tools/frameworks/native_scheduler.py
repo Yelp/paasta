@@ -288,18 +288,18 @@ class NativeScheduler(Scheduler):
 
             task_port = random.choice(list(remainingPorts))
 
-            t = mesos_pb2.TaskInfo()
-            t.MergeFrom(base_task)
-            tid = "%s.%s" % (t.name, uuid.uuid4().hex)
-            t.task_id.value = tid
+            task = copy.deepcopy(base_task)
+            task.task_id = Dict(
+                value='{}.{}'.format(task.name, uuid.uuid4().hex)
+            )
 
-            t.container.docker.port_mappings[0].host_port = task_port
-            for resource in t.resources:
-                if resource.name == "ports":
+            task.container.docker.port_mappings[0].host_port = task_port
+            for resource in task.resources:
+                if resource.name == 'ports':
                     resource.ranges.range[0].begin = task_port
                     resource.ranges.range[0].end = task_port
 
-            tasks.append(t)
+            tasks.append(task)
 
             remainingCpus -= task_cpus
             remainingMem -= task_mem
@@ -340,12 +340,13 @@ class NativeScheduler(Scheduler):
 
         # update tasks
         task_id = update.task_id.value
-        state = update.state
-        paasta_print("Task %s is in state %s" %
-                     (task_id, mesos_pb2.TaskState.Name(state)))
+        paasta_print('Task {} is in state {}'.format(
+            (task_id, update.data),
+            update.state
+        ))
 
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
-        task_params.mesos_task_state = state
+        task_params.mesos_task_state = update.state
 
         for task, params in list(self.tasks_with_flags.items()):
             if params.marked_for_gc:
@@ -530,25 +531,26 @@ def create_driver(
     system_paasta_config,
     implicit_acks=False
 ):
-    framework = mesos_pb2.FrameworkInfo()
-    framework.user = ""  # Have Mesos fill in the current user.
-    framework.name = framework_name
-    framework.failover_timeout = 604800
-    framework.id.value = find_existing_id_if_exists_or_gen_new(framework.name)
-    framework.checkpoint = True
-
-    credential = mesos_pb2.Credential()
-    credential.principal = system_paasta_config.get_paasta_native_config()['principal']
-    credential.secret = system_paasta_config.get_paasta_native_config()['secret']
-
-    framework.principal = system_paasta_config.get_paasta_native_config()['principal']
+    master_uri = '{}:{}'.format(
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+    ),
+    framework = Dict(
+        user='',  # Have Mesos fill in the current user.
+        name=framework_name,
+        failover_timeout=604800,
+        id=Dict(value=find_existing_id_if_exists_or_gen_new(framework_name)),
+        checkpoint=True,
+        principal=system_paasta_config.get_paasta_native_config()['principal']
+    )
 
     driver = MesosSchedulerDriver(
-        scheduler,
-        framework,
-        '%s:%d' % (mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT),
-        implicit_acks,
-        credential
+        sched=scheduler,
+        framework=framework,
+        master_uri=master_uri,
+        use_addict=True,
+        implicit_acknowledgements=implicit_acks,
+        principal=system_paasta_config.get_paasta_native_config()['principal'],
+        secret=system_paasta_config.get_paasta_native_config()['secret'],
     )
     return driver
 
