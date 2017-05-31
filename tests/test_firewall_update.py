@@ -67,15 +67,20 @@ def test_parse_args_default_cron():
     assert not args.verbose
 
 
-@mock.patch.object(firewall_update, 'load_system_paasta_config', autospec=True)
-@mock.patch.object(firewall_update, 'marathon_services_running_here', autospec=True)
-@mock.patch.object(firewall_update, 'chronos_services_running_here', autospec=True)
-def test_smartstack_dependencies_of_running_firewalled_services(
-        chronos_services_running_mock,
-        marathon_services_running_mock,
-        paasta_config_mock,
-        tmpdir):
-    paasta_config_mock.return_value.get_cluster.return_value = 'mycluster'
+@mock.patch.object(
+    firewall_update, 'load_system_paasta_config', autospec=True,
+    return_value=mock.Mock(**{
+        'get_cluster.return_value': 'mycluster',
+    }),
+)
+@mock.patch.object(
+    firewall, 'services_running_here', autospec=True,
+    return_value=(
+        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a'),
+        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b'),
+    ),
+)
+def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
     soa_dir = tmpdir.mkdir('yelpsoa')
     myservice_dir = soa_dir.mkdir('myservice')
 
@@ -110,16 +115,6 @@ def test_smartstack_dependencies_of_running_firewalled_services(
         ]
     }
     myservice_dir.join('dependencies.yaml').write(yaml.safe_dump(dependencies_config))
-
-    marathon_services_running_mock.return_value = [
-        ('myservice', 'hassecurity', 0),
-        ('myservice', 'hassecurity', 0),
-        ('myservice', 'nosecurity', 0),
-    ]
-
-    chronos_services_running_mock.return_value = [
-        ('myservice', 'chronoswithsecurity', 0),
-    ]
 
     result = firewall_update.smartstack_dependencies_of_running_firewalled_services(soa_dir=str(soa_dir))
     assert dict(result) == {

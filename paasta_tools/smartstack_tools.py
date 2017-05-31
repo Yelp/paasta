@@ -182,7 +182,7 @@ def get_replication_for_services(synapse_host, synapse_port, synapse_haproxy_url
     This check is intended to be used with an haproxy load balancer, and
     relies on the implementation details of that choice.
 
-    :param synapse_host: The hose that this check should contact for replication information.
+    :param synapse_host: The host that this check should contact for replication information.
     :param synapse_port: The port number that this check should contact for replication information.
     :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :param services: A list of strings that are the service names

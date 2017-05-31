@@ -7,7 +7,13 @@ import hashlib
 import itertools
 import json
 
+import six
+
 from paasta_tools import iptables
+from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.utils import get_running_mesos_docker_containers
+from paasta_tools.utils import load_system_paasta_config
 
 
 PRIVATE_IP_RANGES = (
@@ -21,17 +27,15 @@ PRIVATE_IP_RANGES = (
 
 class ServiceGroup(collections.namedtuple('ServiceGroup', (
     'service',
-    'dependency_group',
-    'mode',
+    'instance',
+    'soa_dir',
 ))):
     """A service group.
 
-    :param service: the name of a service
-    :param dependency_group: the name of a set of dependencies
-                             (the key in dependencies.yaml)
-    :param mode: either 'monitor' or 'block'
+    :param service: service name
+    :param instance: instance name
+    :param soa_dir: path to yelpsoa-configs
     """
-
     __slots__ = ()
 
     @property
@@ -50,48 +54,108 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         return chain
 
     @property
-    def rules(self):
-        # TODO: actually read these from somewhere
-        return (
-            iptables.Rule(
-                protocol='ip',
-                src='0.0.0.0/0.0.0.0',
-                dst='0.0.0.0/0.0.0.0',
-                target='REJECT',
-                matches=(),
-            ),
-            iptables.Rule(
-                protocol='tcp',
-                src='0.0.0.0/0.0.0.0',
-                dst='169.254.255.254/255.255.255.255',
-                target='ACCEPT',
-                matches=(
-                    ('tcp', (('dport', '20668'),)),
-                )
-            ),
+    def config(self):
+        return get_instance_config(
+            self.service, self.instance,
+            load_system_paasta_config().get_cluster(),
+            load_deployments=False,
+            soa_dir=self.soa_dir,
         )
+
+    @property
+    def rules(self):
+        conf = self.config
+
+        rules = [_default_rule(conf)]
+        rules.extend(_well_known_rules(conf))
+        rules.extend(_smartstack_rules(conf, self.soa_dir))
+        return tuple(rules)
 
     def update_rules(self):
         iptables.ensure_chain(self.chain_name, self.rules)
 
 
-def active_service_groups():
+def _default_rule(conf):
+    policy = conf.get_outbound_firewall()
+    if policy == 'block':
+        return iptables.Rule(
+            protocol='ip',
+            src='0.0.0.0/0.0.0.0',
+            dst='0.0.0.0/0.0.0.0',
+            target='REJECT',
+            matches=(),
+        )
+    elif policy == 'monitor':
+        # TODO: log-prefix
+        return iptables.Rule(
+            protocol='ip',
+            src='0.0.0.0/0.0.0.0',
+            dst='0.0.0.0/0.0.0.0',
+            target='LOG',
+            matches=(),
+        )
+    else:
+        raise AssertionError(policy)
+
+
+def _well_known_rules(conf):
+    for resource in conf.get_dependencies().get('well-known', ()):
+        if resource == 'internet':
+            yield iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='PAASTA-INTERNET',
+                matches=(),
+            )
+        else:
+            # TODO: handle better
+            raise AssertionError(resource)
+
+
+def _smartstack_rules(conf, soa_dir):
+    for namespace in conf.get_dependencies().get('smartstack', ()):
+        # TODO: handle non-synapse-haproxy services
+        # TODO: support wildcards?
+        service, _ = namespace.split('.', 1)
+        service_namespaces = get_all_namespaces_for_service(service, soa_dir=soa_dir)
+        port = dict(service_namespaces)[namespace]['proxy_port']
+
+        yield iptables.Rule(
+            protocol='tcp',
+            src='0.0.0.0/0.0.0.0',
+            dst='169.254.255.254/255.255.255.255',
+            target='ACCEPT',
+            matches=(
+                ('tcp', (('dport', six.text_type(port)),)),
+            )
+        )
+
+
+def services_running_here():
+    """Generator helper that yields (service, instance, mac address) of both
+    marathon and chronos tasks.
+    """
+    for container in get_running_mesos_docker_containers():
+        if container['HostConfig']['NetworkMode'] != 'bridge':
+            continue
+
+        service = container['Labels'].get('paasta_service')
+        instance = container['Labels'].get('paasta_instance')
+
+        if service is None or instance is None:
+            continue
+
+        mac = container['NetworkSettings']['Networks']['bridge']['MacAddress']
+        yield service, instance, mac
+
+
+def active_service_groups(soa_dir):
     """Return active service groups."""
-    # TODO: actually read these from somewhere
-    return {
-        ServiceGroup('cool_service', 'main', 'block'): {
-            '02:42:a9:fe:00:02',
-            'fe:a3:a3:da:2d:51',
-            'fe:a3:a3:da:2d:50',
-        },
-        ServiceGroup('cool_service', 'main', 'monitor'): {
-            'fe:a3:a3:da:2d:40',
-        },
-        ServiceGroup('dumb_service', 'other', 'block'): {
-            'fe:a3:a3:da:2d:30',
-            'fe:a3:a3:da:2d:31',
-        },
-    }
+    service_groups = collections.defaultdict(set)
+    for service, instance, mac in services_running_here():
+        service_groups[ServiceGroup(service, instance, soa_dir)].add(mac)
+    return service_groups
 
 
 def ensure_internet_chain():
@@ -118,13 +182,13 @@ def ensure_internet_chain():
     )
 
 
-def ensure_service_chains():
+def ensure_service_chains(soa_dir):
     """Ensure service chains exist and have the right rules.
 
     Returns dictionary {[service chain] => [list of mac addresses]}.
     """
     chains = {}
-    for service, macs in active_service_groups().items():
+    for service, macs in active_service_groups(soa_dir).items():
         service.update_rules()
         chains[service.chain_name] = macs
     return chains
@@ -171,9 +235,9 @@ def garbage_collect_old_service_chains(desired_chains):
         iptables.delete_chain(chain)
 
 
-def general_update():
+def general_update(soa_dir):
     """Update iptables to match the current PaaSTA state."""
     ensure_internet_chain()
-    service_chains = ensure_service_chains()
+    service_chains = ensure_service_chains(soa_dir)
     ensure_dispatch_chains(service_chains)
     garbage_collect_old_service_chains(service_chains)
