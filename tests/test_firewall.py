@@ -6,7 +6,6 @@ import mock
 import pytest
 
 from paasta_tools import firewall
-from paasta_tools import firewall_update
 from paasta_tools import iptables
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -30,9 +29,64 @@ def service_group():
 
 
 @pytest.yield_fixture
+def mock_get_running_mesos_docker_containers():
+    with mock.patch.object(
+        firewall, 'get_running_mesos_docker_containers', autospec=True,
+        return_value=[
+            {
+                'HostConfig': {'NetworkMode': 'bridge'},
+                'Labels': {
+                    'paasta_service': 'myservice',
+                    'paasta_instance': 'hassecurity',
+                },
+                'NetworkSettings': {
+                    'Networks': {
+                        'bridge': {'MacAddress': '02:42:a9:fe:00:0a'},
+                    },
+                },
+            },
+            {
+                'HostConfig': {'NetworkMode': 'bridge'},
+                'Labels': {
+                    'paasta_service': 'myservice',
+                    'paasta_instance': 'chronoswithsecurity',
+                },
+                'NetworkSettings': {
+                    'Networks': {
+                        'bridge': {'MacAddress': '02:42:a9:fe:00:0b'},
+                    },
+                },
+            },
+            # host networking
+            {
+                'HostConfig': {'NetworkMode': 'host'},
+                'Labels': {
+                    'paasta_service': 'myservice',
+                    'paasta_instance': 'batch',
+                },
+            },
+            # no labels
+            {
+                'HostConfig': {'NetworkMode': 'bridge'},
+                'Labels': {},
+            },
+        ],
+    ):
+        yield
+
+
+@pytest.mark.usefixtures('mock_get_running_mesos_docker_containers')
+def test_services_running_here():
+    assert tuple(firewall.services_running_here()) == (
+        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a'),
+        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b'),
+    )
+
+
+@pytest.yield_fixture
 def mock_services_running_here():
     with mock.patch.object(
-        firewall_update, 'services_running_here', autospec=True,
+        firewall, 'services_running_here', autospec=True,
         side_effect=lambda: iter((
             ('example_happyhour', 'main', '02:42:a9:fe:00:00'),
             ('example_happyhour', 'main', '02:42:a9:fe:00:01'),

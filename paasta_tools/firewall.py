@@ -12,6 +12,7 @@ import six
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -109,7 +110,7 @@ def _well_known_rules(conf):
             )
         else:
             # TODO: handle better
-            raise KeyError(resource)
+            raise AssertionError(resource)
 
 
 def _smartstack_rules(conf, soa_dir):
@@ -131,11 +132,28 @@ def _smartstack_rules(conf, soa_dir):
         )
 
 
+def services_running_here():
+    """Generator helper that yields (service, instance, mac address) of both
+    marathon and chronos tasks.
+    """
+    for container in get_running_mesos_docker_containers():
+        if container['HostConfig']['NetworkMode'] != 'bridge':
+            continue
+
+        service = container['Labels'].get('paasta_service')
+        instance = container['Labels'].get('paasta_instance')
+
+        if service is None or instance is None:
+            continue
+
+        mac = container['NetworkSettings']['Networks']['bridge']['MacAddress']
+        yield service, instance, mac
+
+
 def active_service_groups(soa_dir):
     """Return active service groups."""
-    from paasta_tools import firewall_update
     service_groups = collections.defaultdict(set)
-    for service, instance, mac in firewall_update.services_running_here():
+    for service, instance, mac in services_running_here():
         service_groups[ServiceGroup(service, instance, soa_dir)].add(mac)
     return service_groups
 
