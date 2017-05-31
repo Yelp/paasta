@@ -57,6 +57,7 @@ setup(
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid == 1.7',
+        'pymesos >= 0.2.0',
         'pyramid-swagger == 2.2.3',
         'pysensu-yelp >= 0.2.2',
         'pytimeparse >= 1.1.0',
