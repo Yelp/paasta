@@ -11,6 +11,7 @@ from subprocess import Popen
 import service_configuration_lib
 from behave import given
 from behave import then
+from itest_utils import get_service_connection_string
 from kazoo.exceptions import NodeExistsError
 
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
@@ -31,6 +32,7 @@ def start_deployd(context):
             zk.create('/autoscaling')
         except NodeExistsError:
             pass
+    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
     context.soa_dir = '/nail/etc/services'
     if not hasattr(context, 'daemon'):
         context.daemon = Popen('paasta-deployd', stderr=PIPE)

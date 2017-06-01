@@ -48,6 +48,35 @@ Feature: paasta-deployd deploys apps
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
 
+  Scenario: deployd will scale up an app if the instance count changes in zk
+    Given a working paasta cluster
+      And paasta-deployd is running
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we set the "min_instances" field of the marathon config for service "test-service" and instance "main" to the integer 2
+      And we set the "max_instances" field of the marathon config for service "test-service" and instance "main" to the integer 4
+      And we set the "disk" field of the marathon config for service "test-service" and instance "main" to the integer 1
+      And we set the instance count in zookeeper for service "test-service" instance "main" to 3
+     Then we should see "test-service.main" listed in marathon after 45 seconds
+     Then we should see the number of instances become 3
+     When we set the instance count in zookeeper for service "test-service" instance "main" to 4
+     Then we should see the number of instances become 4
+
+  Scenario: deployd will scale down an app if the instance count changes in zk
+    Given a working paasta cluster
+      And paasta-deployd is running
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main" image "busybox"
+     When we set the "min_instances" field of the marathon config for service "test-service" and instance "main" to the integer 2
+      And we set the "cmd" field of the marathon config for service "test-service" and instance "main" to "sleep 300"
+      And we set the "disk" field of the marathon config for service "test-service" and instance "main" to the integer 1
+      And we set the "max_instances" field of the marathon config for service "test-service" and instance "main" to the integer 4
+      And we set the instance count in zookeeper for service "test-service" instance "main" to 3
+     Then we should see "test-service.main" listed in marathon after 45 seconds
+     Then we should see the number of instances become 3
+     When we set the instance count in zookeeper for service "test-service" instance "main" to 2
+     Then we should see the number of instances become 2
+
   Scenario: deployd starts and only one leader
     Given a working paasta cluster
       And paasta-deployd is running
