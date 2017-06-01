@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
 import time
 from functools import reduce
 
@@ -196,7 +197,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
         return logging.getLogger(name)
 
     def filter_event(self, event):
-        if event.name.endswith('.json'):
+        if event.name.endswith('.json') or event.maskname == 'IN_CREATE|IN_ISDIR':
             return event
 
     def watch_new_folder(self, event):
@@ -271,6 +272,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
     def watch_new_folder(self, event):
         if event.maskname == 'IN_CREATE|IN_ISDIR':
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
+            if any(['marathon-' in file_name for file_name in os.listdir(event.pathname)]):
+                self.log.info("New folder with marathon files: {}".format(event.name))
+                self.bounce_service(event.name)
 
     def process_default(self, event):
         self.log.debug(event)
@@ -279,23 +283,26 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         if event:
             self.log.info("Change of {} in {}".format(event.name, event.path))
             service_name = event.path.split('/')[-1]
-            self.log.info("Checking if any instances for {} need bouncing".format(service_name))
-            instances = list_all_instances_for_service(service=service_name,
-                                                       clusters=[self.filewatcher.cluster],
-                                                       instance_type='marathon',
-                                                       cache=False)
-            self.log.debug(instances)
-            service_instances = [(service_name, instance) for instance in instances]
-            service_instances = get_service_instances_with_changed_id(self.marathon_client,
-                                                                      service_instances,
-                                                                      self.filewatcher.cluster)
-            for service, instance in service_instances:
-                self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
-            service_instances = [ServiceInstance(service=service,
-                                                 instance=instance,
-                                                 bounce_by=int(time.time()),
-                                                 watcher=self.__class__.__name__,
-                                                 bounce_timers=None)
-                                 for service, instance in service_instances]
-            for service_instance in service_instances:
-                self.filewatcher.inbox_q.put(service_instance)
+            self.bounce_service(service_name)
+
+    def bounce_service(self, service_name):
+        self.log.info("Checking if any instances for {} need bouncing".format(service_name))
+        instances = list_all_instances_for_service(service=service_name,
+                                                   clusters=[self.filewatcher.cluster],
+                                                   instance_type='marathon',
+                                                   cache=False)
+        self.log.debug(instances)
+        service_instances = [(service_name, instance) for instance in instances]
+        service_instances = get_service_instances_with_changed_id(self.marathon_client,
+                                                                  service_instances,
+                                                                  self.filewatcher.cluster)
+        for service, instance in service_instances:
+            self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
+        service_instances = [ServiceInstance(service=service,
+                                             instance=instance,
+                                             bounce_by=int(time.time()),
+                                             watcher=self.__class__.__name__,
+                                             bounce_timers=None)
+                             for service, instance in service_instances]
+        for service_instance in service_instances:
+            self.filewatcher.inbox_q.put(service_instance)
