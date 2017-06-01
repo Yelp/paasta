@@ -34,10 +34,9 @@ services:
       MESOS_WORK_DIR: /tmp/mesos
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - '5051:5051'
     depends_on:
       - zookeeper
+      - mesosmaster
   playground:
     build:
       context: ../../..
