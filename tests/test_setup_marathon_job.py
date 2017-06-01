@@ -1552,6 +1552,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
                 log_deploy_error=None,
+                draining_hosts=[],
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
@@ -1615,6 +1616,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 bounce_health_params={},
                 system_paasta_config=fake_system_paasta_config,
                 log_deploy_error=None,
+                draining_hosts=[],
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
