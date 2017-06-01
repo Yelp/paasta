@@ -533,7 +533,8 @@ def create_driver(
 ):
     master_uri = '{}:{}'.format(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
-    ),
+    )
+
     framework = Dict(
         user='',  # Have Mesos fill in the current user.
         name=framework_name,
