@@ -1226,7 +1226,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                                            {'attributes': {'pool': 'default'}}]}
             mock_utilization = {'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
                                 'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
-            mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
+            mock_get_resource_utilization_by_grouping.return_value = {('default','westeros-1'): mock_utilization}
             self.autoscaler.pool_settings = {'target_utilization': 0.8}
 
             ret = self.autoscaler.get_mesos_utilization_error(

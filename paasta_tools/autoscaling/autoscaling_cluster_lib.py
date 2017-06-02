@@ -196,14 +196,14 @@ class ClusterAutoscaler(ResourceLogMixin):
                     current_instances, expected_instances, MISSING_SLAVE_PANIC_THRESHOLD)
                 raise ClusterAutoscalingError(error_message)
 
-        pool_utilization_dict = get_resource_utilization_by_grouping(
-            lambda slave: slave['attributes']['pool'],
+        region_pool_utilization_dict = get_resource_utilization_by_grouping(
+            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
             mesos_state
-        )[self.resource['pool']]
+        )[(self.resource['pool'], self.resource['region'],)]
 
-        self.log.debug(pool_utilization_dict)
-        free_pool_resources = pool_utilization_dict['free']
-        total_pool_resources = pool_utilization_dict['total']
+        self.log.debug(region_pool_utilization_dict)
+        free_pool_resources = region_pool_utilization_dict['free']
+        total_pool_resources = region_pool_utilization_dict['total']
         utilization = 1.0 - min([
             float(float(pair[0]) / float(pair[1]))
             for pair in zip(free_pool_resources, total_pool_resources)
