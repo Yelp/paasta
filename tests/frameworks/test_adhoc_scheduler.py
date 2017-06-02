@@ -22,7 +22,7 @@ def system_paasta_config():
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
     offer = mesos_pb2.Offer()
-    offer.slave_id.value = "super big slave"
+    offer.agent_id.value = "super big slave"
 
     cpus_resource = offer.resources.add()
     cpus_resource.name = "cpus"

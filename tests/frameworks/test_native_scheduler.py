@@ -23,7 +23,7 @@ def system_paasta_config():
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
     offer = Dict(
-        slave_id=Dict(value='super_big_slave'),
+        agent_id=Dict(value='super_big_slave'),
         resources=[
             Dict(
                 name='cpus',
