@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import copy
+import getpass
 import logging
 import random
 import threading
@@ -129,6 +130,9 @@ class NativeScheduler(Scheduler):
         self.reconcile_start_time = time.time()
         driver.reconcileTasks([])
 
+    def reregistered(self, driver, masterInfo):
+        self.registered(driver, Dict(value=driver.framework_id), masterInfo)
+
     def resourceOffers(self, driver, offers):
         if self.frozen:
             return
@@ -139,9 +143,9 @@ class NativeScheduler(Scheduler):
                 driver.declineOffer(offer.id)
         else:
             for idx, offer in enumerate(offers):
-                if offer.slave_id.value in self.blacklisted_slaves:
+                if offer.agent_id.value in self.blacklisted_slaves:
                     log.critical("Ignoring offer %s from blacklisted slave %s" %
-                                 (offer.id.value, offer.slave_id.value))
+                                 (offer.id.value, offer.agent_id.value))
                     filters = Dict(refuse_seconds=self.blacklist_timeout)
                     driver.declineOffer(offer.id, filters)
                     del offers[idx]
@@ -235,7 +239,7 @@ class NativeScheduler(Scheduler):
 
     def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
-        self.blacklist_slave(self.tasks_with_flags[task_id].offer.slave_id.value)
+        self.blacklist_slave(self.tasks_with_flags[task_id].offer.agent_id.value)
         self.kill_task(driver, task_id)
 
     def staging_timer_for_task(self, timeout_value, driver, task_id):
@@ -263,7 +267,7 @@ class NativeScheduler(Scheduler):
         remainingPorts = set(offerPorts)
 
         base_task = self.service_config.base_task(self.system_paasta_config)
-        base_task.slave_id.value = offer.slave_id.value
+        base_task.agent_id.value = offer.agent_id.value
 
         task_mem = self.service_config.get_mem()
         task_cpus = self.service_config.get_cpus()
@@ -341,8 +345,7 @@ class NativeScheduler(Scheduler):
         # update tasks
         task_id = update.task_id.value
         paasta_print('Task {} is in state {}'.format(
-            (task_id, update.data),
-            update.state
+            task_id, update.state
         ))
 
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
@@ -492,24 +495,24 @@ class NativeScheduler(Scheduler):
     def reload_constraints(self):
         self.constraints = self.service_config.get_constraints() or []
 
-    def blacklist_slave(self, slave_id):
-        if slave_id in self.blacklisted_slaves:
+    def blacklist_slave(self, agent_id):
+        if agent_id in self.blacklisted_slaves:
             return
 
-        log.debug("Blacklisting slave: %s" % slave_id)
+        log.debug("Blacklisting slave: %s" % agent_id)
         with self.blacklisted_slaves_lock:
-            self.blacklisted_slaves.add(slave_id)
-            t = Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(slave_id))
+            self.blacklisted_slaves.add(agent_id)
+            t = Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(agent_id))
             t.daemon = True
             t.start()
 
-    def unblacklist_slave(self, slave_id):
-        if slave_id not in self.blacklisted_slaves:
+    def unblacklist_slave(self, agent_id):
+        if agent_id not in self.blacklisted_slaves:
             return
 
-        log.debug("Unblacklisting slave: %s" % slave_id)
+        log.debug("Unblacklisting slave: %s" % agent_id)
         with self.blacklisted_slaves_lock:
-            self.blacklisted_slaves.discard(slave_id)
+            self.blacklisted_slaves.discard(agent_id)
 
 
 class DrainTask(object):
@@ -536,7 +539,7 @@ def create_driver(
     )
 
     framework = Dict(
-        user='',  # Have Mesos fill in the current user.
+        user=getpass.getuser(),
         name=framework_name,
         failover_timeout=604800,
         id=Dict(value=find_existing_id_if_exists_or_gen_new(framework_name)),

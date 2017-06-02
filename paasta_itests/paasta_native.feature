@@ -1,4 +1,5 @@
 Feature: Paasta native mesos framework
+  @wip
   Scenario: we can start a service
     Given a working paasta cluster, with docker registry docker.io
       And a new paasta_native config to be deployed, with 3 instances
