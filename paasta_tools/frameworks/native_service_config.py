@@ -76,54 +76,54 @@ class NativeServiceConfig(LongRunningServiceConfig):
         Does not include task.slave_id or a task.id; those need to be
         computed separately.
         """
-        task = Dict()
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
-        task = Dict(
-            container=Dict(
-                type='DOCKER',
-                docker=Dict(
-                    image=get_docker_url(
+        task = Dict({
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': get_docker_url(
                         system_paasta_config.get_docker_registry(),
                         self.get_docker_image()
                     ),
-                    parameters=[
+                    'parameters': [
                         Dict(key=param['key'], value=param['value'])
                         for param in self.format_docker_parameters()
                     ],
-                    network=self.get_mesos_network_mode()
-                ),
-                volumes=[
-                    Dict(
-                        container_path=volume['containerPath'],
-                        host_path=volume['hostPath'],
-                        mode=volume['mode'].upper(),
-                    ) for volume in docker_volumes
+                    'network': self.get_mesos_network_mode()
+                },
+                'volumes': [
+                    {
+                        'container_path': volume['containerPath'],
+                        'host_path': volume['hostPath'],
+                        'mode': volume['mode'].upper(),
+                    }
+                    for volume in docker_volumes
                 ],
-            ),
-            command=Dict(
-                value=self.get_cmd(),
-                uris=[
-                    Dict(
-                        value=system_paasta_config.get_dockercfg_location(),
-                        extract=False
-                    )
+            },
+            'command': {
+                'value': self.get_cmd(),
+                'uris': [
+                    {
+                        'value': system_paasta_config.get_dockercfg_location(),
+                        'extract': False
+                    }
                 ]
-            ),
-            resources=[
-                Dict(
-                    name='cpus',
-                    type='SCALAR',
-                    scalar=Dict(value=self.get_cpus())
-                ),
-                Dict(
-                    name='mem',
-                    type='SCALAR',
-                    scalar=Dict(value=self.get_mem())
-                )
-            ]
-        )
+            },
+            'resources': [
+                {
+                    'name': 'cpus',
+                    'type': 'SCALAR',
+                    'scalar': {'value': self.get_cpus()},
+                },
+                {
+                    'name': 'mem',
+                    'type': 'SCALAR',
+                    'scalar': {'value': self.get_mem()}
+                }
+            ],
+        })
 
         if portMappings:
             task.container.docker.port_mappings = [
@@ -148,7 +148,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
         task.name = self.task_name(task)
 
-        return task
+        return Dict(task)
 
     def get_mesos_network_mode(self):
         return self.get_net().upper()
