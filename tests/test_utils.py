@@ -18,6 +18,7 @@ import datetime
 import json
 import os
 import stat
+import sys
 import time
 
 import mock
@@ -1648,6 +1649,39 @@ class TestFileLogWriter:
 
             mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
             fake_file.write.assert_called_once_with("{}\n".format(fake_line).encode('UTF-8'))
+
+    def test_write_raises_IOError(self):
+        fake_file = mock.Mock()
+        fake_file.write.side_effect = IOError("hurp durp")
+
+        fake_contextmgr = mock.Mock(
+            __enter__=lambda _self: fake_file,
+            __exit__=lambda _self, t, v, tb: None
+        )
+
+        fake_line = "line"
+
+        with mock.patch(
+            "paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True,
+        ), mock.patch(
+            "paasta_tools.utils.paasta_print", autospec=True,
+        ) as mock_print, mock.patch(
+            "paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True,
+        ):
+            fw = utils.FileLogWriter("/dev/null", flock=False)
+            fw.log(
+                service="service",
+                line="line",
+                component="build",
+                level="level",
+                cluster="cluster",
+                instance="instance",
+            )
+
+        mock_print.assert_called_once_with(
+            "Could not log to /dev/null: IOError: hurp durp -- would have logged: line\n",
+            file=sys.stderr,
+        )
 
 
 def test_deep_merge_dictionaries():
