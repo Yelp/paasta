@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from mesos.interface import mesos_pb2
+from addict import Dict
 
 from paasta_tools import utils
 from paasta_tools.frameworks import adhoc_scheduler
@@ -21,27 +21,31 @@ def system_paasta_config():
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
-    offer = mesos_pb2.Offer()
-    offer.agent_id.value = "super big slave"
-
-    cpus_resource = offer.resources.add()
-    cpus_resource.name = "cpus"
-    cpus_resource.scalar.value = cpu
-
-    mem_resource = offer.resources.add()
-    mem_resource.name = "mem"
-    mem_resource.scalar.value = mem
-
-    ports_resource = offer.resources.add()
-    ports_resource.name = "ports"
-    ports_range = ports_resource.ranges.range.add()
-    ports_range.begin = port_begin
-    ports_range.end = port_end
+    offer = Dict(
+        agent_id=Dict(value='super_big_slave'),
+        resources=[
+            Dict(
+                name='cpus',
+                scalar=Dict(value=cpu)
+            ),
+            Dict(
+                name='mem',
+                scalar=Dict(value=mem)
+            ),
+            Dict(
+                name='ports',
+                ranges=Dict(
+                    range=[Dict(begin=port_begin, end=port_end)]
+                ),
+            ),
+        ],
+        attributes=[]
+    )
 
     if pool is not None:
-        pool_attribute = offer.attributes.add()
-        pool_attribute.name = "pool"
-        pool_attribute.text.value = pool
+        offer.attributes = [
+            Dict(name='pool', text=Dict(value=pool))
+        ]
 
     return offer
 
