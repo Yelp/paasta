@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import datetime
-from datetime import timedelta
 
 import pysensu_yelp
 import pytz
@@ -258,29 +257,46 @@ def test_message_for_status_unknown():
         'Last run of job service%sinstance Unknown' % utils.SPACER
 
 
-@patch('paasta_tools.check_chronos_jobs.job_is_stuck', autospec=True)
-def test_sensu_message_status_ok(mock_job_is_stuck):
-    mock_job_is_stuck.return_value = False
+def test_sensu_message_status_ok():
     fake_job = {'name': 'full_job_id',
                 'disabled': False,
-                'lastSuccess': '2016-07-26T22:02:00+00:00'}
+                'lastSuccess': '2017-06-05T02:02:00+00:00'}
+
+    chronos_job_config = Mock(
+        get_last_scheduled_run_datetime=Mock(
+            return_value=datetime(2017, 6, 5, 2, 0, 0, tzinfo=pytz.utc)),
+        get_schedule=Mock(return_value='0 * * * *'))
+
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job)
+        chronos_job_config,
+        'myservice',
+        'myinstance',
+        'cluster',
+        fake_job)
+
     expected_output = "Last run of job myservice.myinstance Succeded"
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
 
 
-@patch('paasta_tools.check_chronos_jobs.job_is_stuck', autospec=True)
 @patch('paasta_tools.check_chronos_jobs.message_for_status', autospec=True)
-def test_sensu_message_status_fail(mock_message_for_status, mock_job_is_stuck):
-    mock_job_is_stuck.return_value = False
+def test_sensu_message_status_fail(mock_message_for_status):
     mock_message_for_status.return_value = 'my failure message'
     fake_job = {'name': 'full_job_id',
                 'disabled': False,
-                'lastError': '2016-07-26T22:03:00+00:00'}
+                'lastError': '2017-06-05T02:03:00+00:00'}
+    chronos_job_config = Mock(
+        get_last_scheduled_run_datetime=Mock(
+            return_value=datetime(2017, 6, 5, 2, 0, 0, tzinfo=pytz.utc)),
+        get_schedule=Mock(return_value='0 * * * *'))
+
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'mycluster', fake_job)
+        chronos_job_config,
+        'myservice',
+        'myinstance',
+        'mycluster',
+        fake_job)
+
     assert output == 'my failure message'
     assert status == pysensu_yelp.Status.CRITICAL
 
@@ -325,13 +341,14 @@ def test_sensu_message_status_stuck():
     fake_job = {
         'name': 'fake_job_id',
         'disabled': False,
-        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=4)).isoformat(),
-        'schedule': '* * * * *'
+        'lastSuccess': '2017-06-05T01:10:00+00:00',
+        'schedule': '0 * * * *'
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         chronos_job_config=Mock(
-            get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3),
-            get_schedule=Mock(return_value='* * * * *')
+            get_last_scheduled_run_datetime=Mock(
+                return_value=datetime(2017, 6, 5, 2, 0, 0, tzinfo=pytz.utc)),
+            get_schedule=Mock(return_value='0 * * * *')
         ),
         service='myservice',
         instance='myinstance',
@@ -339,27 +356,28 @@ def test_sensu_message_status_stuck():
         chronos_job=fake_job
     )
     assert status == pysensu_yelp.Status.CRITICAL
-    assert "Job myservice.myinstance with schedule * * * * * hasn't run since " in output
+    assert "Job myservice.myinstance with schedule 0 * * * * hasn't run since " in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
-    assert "and is configured to run every 180.0 minutes." in output
+    assert "and was supposed to run at 2017-06-05T02:00:00" in output
 
 
-def test_job_is_stuck_when_no_interval():
-    assert not check_chronos_jobs.job_is_stuck('2016-07-26T22:03:00+00:00', None)
+def test_sensu_message_status_when_last_scheduled_run_is_None():
+    fake_job = {'name': 'full_job_id',
+                'disabled': False,
+                'lastSuccess': '2017-06-05T02:02:00+00:00'}
 
+    chronos_job_config = Mock(
+        get_last_scheduled_run_datetime=Mock(return_value=None),
+        get_schedule=Mock(return_value='0 * * * *'))
 
-def test_job_is_stuck_when_no_last_run():
-    assert not check_chronos_jobs.job_is_stuck(None, 2440)
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        chronos_job_config,
+        'myservice',
+        'myinstance',
+        'cluster',
+        fake_job)
 
-
-def test_job_is_stuck_when_not_stuck():
-    last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
-    assert not check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
-
-
-def test_job_is_stuck_when_stuck():
-    last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
-    assert check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
+    assert status == pysensu_yelp.Status.OK
 
 
 def test_guess_realert_every():
