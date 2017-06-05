@@ -52,7 +52,7 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
     if 'alert_after' not in monitoring_overrides:
-        monitoring_overrides['alert_after'] = '2m'
+        monitoring_overrides['alert_after'] = '15m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)

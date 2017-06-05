@@ -26,7 +26,7 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 480
@@ -66,7 +66,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 5
@@ -80,7 +80,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': -1,
@@ -95,7 +95,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 10

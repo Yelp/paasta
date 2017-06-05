@@ -723,7 +723,7 @@ Here is a list of options that PaaSTA will pass through:
 
  * ``alert_after``: Time string that represents how long a a check should be
    failing before an actual alert should be fired. Currently defaults to ``2m``
-   for the replication alert.
+   for the replication alert and ``15m`` for chronos jobs.
 
  * ``realert_every``: An integer (not a time unit) representing how many checks
    to execute between sending alerts. The default settings is ``-1``, which is
