@@ -318,10 +318,46 @@ class ChronosJobConfig(InstanceConfig):
             return c.get_next() - c.get_prev()
         else:
             try:
-                _, _, interval = self.get_schedule().split('/')
+                _, _, interval = schedule.split('/')
                 return int(float(isodate.parse_duration(interval).total_seconds()))
             except (isodate.ISO8601Error, ValueError):
                 return None
+
+    def get_last_scheduled_run_datetime(self, datetime_now=None):
+        schedule = self.get_schedule()
+        if schedule is None:
+            return None
+
+        try:
+            job_tz = pytz.timezone(self.get_schedule_time_zone())
+        except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
+            job_tz = pytz.utc
+
+        if datetime_now is None:
+            datetime_now = datetime.datetime.now(job_tz)
+
+        if CronSlices.is_valid(schedule):
+            c = croniter(schedule, datetime_now)
+            return datetime.datetime.fromtimestamp(c.get_prev(), job_tz)
+        elif '/' in schedule:
+            try:
+                repetition, start, interval = schedule.split('/')
+                count = int(repetition[1:]) if len(repetition) > 1 else -1
+                this_run_datetime = isodate.parse_datetime(start)
+                interval_timedelta = isodate.parse_duration(interval)
+            except (isodate.ISO8601Error, ValueError):
+                return None
+
+            last_run_datetime = None
+            i = abs(count)
+            while this_run_datetime <= datetime_now and i > 0:
+                last_run_datetime = this_run_datetime
+                this_run_datetime = this_run_datetime + interval_timedelta
+                if count > 0:
+                    i -= 1
+            return last_run_datetime
+        else:
+            return isodate.parse_datetime(schedule)
 
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
