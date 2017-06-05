@@ -1,3 +1,10 @@
+paasta-tools (0.65.2) xenial; urgency=medium
+
+  * 0.65.2 tagged with 'make release'
+    Commit: Merge branch "make-firewall-cronjob-match-daemon"
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 05 Jun 2017 07:13:45 -0700
+
 paasta-tools (0.65.1) xenial; urgency=medium
 
   * 0.65.1 tagged with 'make release'
