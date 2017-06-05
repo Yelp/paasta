@@ -31,7 +31,7 @@ setup(
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
     description='Tools for Yelps SOA infrastructure',
-    packages=find_packages(exclude=("tests*", "scripts*", "task_processing")),
+    packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
     install_requires=[
         'argcomplete >= 0.8.1',

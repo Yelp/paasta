@@ -18,7 +18,7 @@ PaaSTA and the related components. Currently all of the Puppet code is not
 open source, but we hope to eventually have a fully working example deployment.
 
 We do have an `example cluster <./example_cluster.html>`_ which uses docker-compose
-to create containers running the neccessary components of a PaaSTA cluster.
+to create containers running the necessary components of a PaaSTA cluster.
 However, it is **not** a recommended production configuration.
 
 paasta_tools
@@ -180,7 +180,7 @@ Hacheck provides several behaviors that are useful for Paasta:
     (This is implemented in the
     `HacheckDrainMethod <../generated/paasta_tools.drain_lib.html#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
 
-Packages for nerve-tools and synapse-tools are avalable in our `bintray repo <https://bintray.com/yelp/paasta>`_.
+Packages for nerve-tools and synapse-tools are available in our `bintray repo <https://bintray.com/yelp/paasta>`_.
 
 Sensu
 -----

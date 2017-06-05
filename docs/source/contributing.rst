@@ -11,7 +11,7 @@ Python 2.7 and tox are required for running the unit tests. You can simply run
 ``make test`` or ``tox`` to execute them.
 
 This will build a virtualenv with the required python packages, then run the tests
-writen in the ``tests`` directory
+written in the ``tests`` directory
 
 Integration Tests
 ^^^^^^^^^^^^^^^^^
@@ -25,8 +25,8 @@ There is a docker compose configuration based on our itest containers that you
 can use to run the paasta code against a semi-realistic cluster whilst you are
 developing. More instructions `here <./installation/example_cluster.html>`_
 
-Syste Package Building / itests
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+System Package Building / itests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA is distributed as a debian package. This package can be built and tested
 with ``make itest_trusty``. These tests make assertions about the

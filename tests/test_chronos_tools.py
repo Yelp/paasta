@@ -22,6 +22,9 @@ from mock import Mock
 from pytest import raises
 
 from paasta_tools import chronos_tools
+from paasta_tools.chronos_tools import _get_related_jobs_and_configs
+from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.chronos_tools import get_related_jobs_configs
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import sort_dicts
 from paasta_tools.utils import SystemPaastaConfig
@@ -67,6 +70,8 @@ class TestChronosTools:
         branch_dict=fake_branch_dict,
     )
 
+    fake_invalid_job_name = 'bad_job'
+
     fake_invalid_config_dict = {
         'bounce_method': 'crossover',
         'epsilon': 'nolispe',
@@ -77,7 +82,16 @@ class TestChronosTools:
         'disk': 'all of it',
         'schedule': 'forever/now/5 min',
         'schedule_time_zone': '+0200',
+        'lb_extras': {},
+        'monitoring': {},
+        'deploy': {},
+        'vip': None,
+        'smartstack': {},
+        'dependencies': {},
+        'data': {},
+        'port': None,
     }
+
     fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
                                                                      cluster=fake_cluster,
                                                                      instance=fake_job_name,
@@ -86,12 +100,13 @@ class TestChronosTools:
                                                                      )
     fake_config_file = {
         fake_job_name: fake_config_dict,
-        'bad_job': fake_invalid_config_dict,
+        fake_invalid_job_name: fake_invalid_config_dict,
     }
 
+    fake_dependent_job_name = 'test_dependent'
     fake_dependent_job_config_dict = copy.deepcopy(fake_config_dict)
     fake_dependent_job_config_dict.pop("schedule")
-    fake_dependent_job_config_dict["parents"] = ["test-service.parent1", "test-service.parent2"]
+    fake_dependent_job_config_dict["parents"] = ["{}.{}".format(fake_service, fake_job_name)]
     fake_dependent_chronos_job_config = chronos_tools.ChronosJobConfig(
         service=fake_service,
         cluster=fake_cluster,
@@ -1358,7 +1373,7 @@ class TestChronosTools:
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
-            assert actual["parents"] == ['test-service parent1', 'test-service parent2']
+            assert actual["parents"] == ["{} {}".format(self.fake_service, self.fake_job_name)]
             assert "schedule" not in actual
 
     def test_create_complete_config_considers_disabled(self):
@@ -1855,3 +1870,133 @@ class TestChronosTools:
         actual = chronos_tools.chronos_services_running_here()
         mock_get_local_slave_state.assert_called_once_with(hostname=None)
         assert expected == actual
+
+    @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    def test__get_related_jobs_and_configs_only_independent_jobs(
+        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+    ):
+        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
+        mock_read_services_configuration.return_value = [self.fake_service]
+        jobs, configs = _get_related_jobs_and_configs(cluster=self.fake_cluster, ttl=-1)  # ttl=-1 to disable cache
+
+        expected_jobs = {
+            (self.fake_service, self.fake_job_name): {(self.fake_service, self.fake_job_name)},
+            (self.fake_service, self.fake_invalid_job_name): {(self.fake_service, self.fake_invalid_job_name)},
+        }
+        expected_configs = {}
+        expected_configs[(self.fake_service, self.fake_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+        expected_configs[(self.fake_service, self.fake_invalid_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_invalid_job_name,
+            config_dict=self.fake_invalid_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+        assert jobs == expected_jobs
+        assert configs == expected_configs
+
+    @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    def test__get_related_jobs_and_configs_with_dependent_jobs(
+        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+    ):
+        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_read_chronos_jobs_for_service.return_value = {
+            self.fake_job_name: self.fake_config_dict,
+            self.fake_dependent_job_name: self.fake_dependent_job_config_dict,
+        }
+        mock_read_services_configuration.return_value = [self.fake_service]
+
+        jobs, configs = _get_related_jobs_and_configs(cluster=self.fake_cluster, ttl=-1)  # ttl=-1 to disable cache
+
+        related_jobs = {(self.fake_service, self.fake_job_name), (self.fake_service, self.fake_dependent_job_name)}
+        expected_jobs = {
+            (self.fake_service, self.fake_job_name): related_jobs,
+            (self.fake_service, self.fake_dependent_job_name): related_jobs,
+        }
+        expected_configs = {}
+        expected_configs[(self.fake_service, self.fake_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+        expected_configs[(self.fake_service, self.fake_dependent_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_dependent_job_name,
+            config_dict=self.fake_dependent_job_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+
+        assert jobs == expected_jobs
+        assert configs == expected_configs
+
+    @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    def test_get_related_jobs_configs_only_independent_jobs(
+        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+    ):
+        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
+        mock_read_services_configuration.return_value = [self.fake_service]
+        related_jobs_configs = get_related_jobs_configs(
+            cluster=self.fake_cluster, service=self.fake_service, instance=self.fake_job_name, use_cache=False,
+        )
+
+        expected_related_jobs_configs = {}
+        expected_related_jobs_configs[(self.fake_service, self.fake_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+
+        assert related_jobs_configs == expected_related_jobs_configs
+
+    @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    def test_get_related_jobs_configs_with_dependent_jobs(
+        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+    ):
+        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_read_chronos_jobs_for_service.return_value = {
+            self.fake_job_name: self.fake_config_dict,
+            self.fake_dependent_job_name: self.fake_dependent_job_config_dict,
+        }
+        mock_read_services_configuration.return_value = [self.fake_service]
+        related_jobs_configs = get_related_jobs_configs(
+            cluster=self.fake_cluster, service=self.fake_service, instance=self.fake_job_name, use_cache=False,
+        )
+
+        expected_related_jobs_configs = {}
+        expected_related_jobs_configs[(self.fake_service, self.fake_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+        expected_related_jobs_configs[(self.fake_service, self.fake_dependent_job_name)] = ChronosJobConfig(
+            service=self.fake_service,
+            cluster=self.fake_cluster,
+            instance=self.fake_dependent_job_name,
+            config_dict=self.fake_dependent_job_config_dict,
+            branch_dict=self.fake_branch_dict,
+        )
+
+        assert related_jobs_configs == expected_related_jobs_configs

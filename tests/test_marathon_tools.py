@@ -353,10 +353,12 @@ class TestMarathonTools:
         fake_retries = 9001
         fake_discover = 'myhabitat'
         fake_advertise = ['red', 'blue']
+        fake_body_expect = '"master\/elected":1'
         fake_info = {
             'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
+            'healthcheck_body_expect': fake_body_expect,
             'proxy_port': fake_port,
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,
@@ -392,6 +394,7 @@ class TestMarathonTools:
             'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
+            'healthcheck_body_expect': fake_body_expect,
             'proxy_port': fake_port,
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,

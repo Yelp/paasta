@@ -116,7 +116,7 @@ frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/s
 Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
 a thin wrapper around ``setup_marathon_job``.
 These scripts parse ``deployments.json`` and the current cluster state,
-then issue comands to Marathon to put the cluster into the right state
+then issue commands to Marathon to put the cluster into the right state
 -- cluster X should be running version Y of service Z.
 
 How PaaSTA Runs Docker Containers

@@ -507,6 +507,16 @@ class InstanceConfig(object):
             return None
         return security.get('outbound_firewall')
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.config_dict == other.config_dict and \
+                self.branch_dict == other.branch_dict and \
+                self.cluster == other.cluster and \
+                self.instance == other.instance and \
+                self.service == other.service
+        else:
+            return False
+
 
 def validate_service_instance(service, instance, cluster, soa_dir):
     for instance_type in INSTANCE_TYPES:
