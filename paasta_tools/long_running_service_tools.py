@@ -24,13 +24,14 @@ AUTOSCALING_ZK_ROOT = '/autoscaling'
 
 
 class LongRunningServiceConfig(InstanceConfig):
-    def __init__(self, service, cluster, instance, config_dict, branch_dict):
+    def __init__(self, service, cluster, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(LongRunningServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
     def get_drain_method(self, service_namespace_config):
