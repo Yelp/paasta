@@ -16,6 +16,7 @@ EMPTY_RULE = iptables.Rule(
     dst='0.0.0.0/0.0.0.0',
     target=None,
     matches=(),
+    target_parameters=(),
 )
 
 
@@ -118,12 +119,21 @@ def mock_service_config():
             {'smartstack': 'example_happyhour.main'},
         ]
         m.return_value.get_outbound_firewall.return_value = 'monitor'
+        m.return_value.log_prefix = 'my-log-prefix '
         yield
 
 
 def test_service_group_rules(mock_service_config, service_group):
     assert service_group.rules == (
-        EMPTY_RULE._replace(target='LOG'),
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                ('limit', (('limit', '1/sec'),)),
+            ),
+            target_parameters=(
+                ('log-prefix', ('my-log-prefix ',)),
+            ),
+        ),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',

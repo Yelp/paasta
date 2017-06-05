@@ -77,6 +77,13 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
     def update_rules(self):
         iptables.ensure_chain(self.chain_name, self.rules)
 
+    @property
+    def log_prefix(self):
+        # log-prefix is limited to 29 characters total
+        # space at the end is necessary to separate it from the rest of the line
+        # no restrictions on any particular characters afaict
+        return 'paasta.{}'.format(self.service)[:28] + ' '
+
 
 def _default_rule(conf):
     policy = conf.get_outbound_firewall()
@@ -87,15 +94,22 @@ def _default_rule(conf):
             dst='0.0.0.0/0.0.0.0',
             target='REJECT',
             matches=(),
+            target_parameters=(
+                (('reject-with', ('icmp-port-unreachable',))),
+            ),
         )
     elif policy == 'monitor':
-        # TODO: log-prefix
         return iptables.Rule(
             protocol='ip',
             src='0.0.0.0/0.0.0.0',
             dst='0.0.0.0/0.0.0.0',
             target='LOG',
-            matches=(),
+            target_parameters=(
+                ('log-prefix', ((conf.log_prefix),)),
+            ),
+            matches=(
+                ('limit', (('limit', '1/sec'),)),
+            )
         )
     else:
         raise AssertionError(policy)
@@ -111,6 +125,7 @@ def _well_known_rules(conf):
                 dst='0.0.0.0/0.0.0.0',
                 target='PAASTA-INTERNET',
                 matches=(),
+                target_parameters=(),
             )
         elif resource is not None:
             # TODO: handle better
@@ -136,7 +151,8 @@ def _smartstack_rules(conf, soa_dir):
             target='ACCEPT',
             matches=(
                 ('tcp', (('dport', six.text_type(port)),)),
-            )
+            ),
+            target_parameters=(),
         )
 
 
@@ -176,6 +192,7 @@ def ensure_internet_chain():
                 dst='0.0.0.0/0.0.0.0',
                 target='ACCEPT',
                 matches=(),
+                target_parameters=(),
             ),
         ) + tuple(
             iptables.Rule(
@@ -184,6 +201,7 @@ def ensure_internet_chain():
                 dst=ip_range,
                 target='RETURN',
                 matches=(),
+                target_parameters=(),
             )
             for ip_range in PRIVATE_IP_RANGES
         )
@@ -213,7 +231,7 @@ def ensure_dispatch_chains(service_chains):
                 matches=(
                     ('mac', (('mac_source', mac.upper()),)),
                 ),
-
+                target_parameters=(),
             )
             for mac in macs
         )
@@ -228,6 +246,7 @@ def ensure_dispatch_chains(service_chains):
         dst='0.0.0.0/0.0.0.0',
         target='PAASTA',
         matches=(),
+        target_parameters=(),
     )
     iptables.ensure_rule('INPUT', jump_to_paasta)
     iptables.ensure_rule('FORWARD', jump_to_paasta)
