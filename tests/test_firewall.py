@@ -113,12 +113,10 @@ def mock_service_config():
         return_value={'example_happyhour.main': {'proxy_port': '20000'}},
     ):
         m.return_value = mock.Mock()
-        m.return_value.get_dependencies.return_value = {
-            'well-known': ('internet',),
-            'smartstack': (
-                'example_happyhour.main',
-            ),
-        }
+        m.return_value.get_dependencies.return_value = [
+            {'well-known': 'internet'},
+            {'smartstack': 'example_happyhour.main'},
+        ]
         m.return_value.get_outbound_firewall.return_value = 'monitor'
         yield
 

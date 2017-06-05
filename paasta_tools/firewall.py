@@ -66,6 +66,9 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
     def rules(self):
         conf = self.config
 
+        if conf.get_dependencies() is None:
+            return ()
+
         rules = [_default_rule(conf)]
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, self.soa_dir))
@@ -99,7 +102,8 @@ def _default_rule(conf):
 
 
 def _well_known_rules(conf):
-    for resource in conf.get_dependencies().get('well-known', ()):
+    for dep in conf.get_dependencies():
+        resource = dep.get('well-known')
         if resource == 'internet':
             yield iptables.Rule(
                 protocol='ip',
@@ -108,13 +112,17 @@ def _well_known_rules(conf):
                 target='PAASTA-INTERNET',
                 matches=(),
             )
-        else:
+        elif resource is not None:
             # TODO: handle better
             raise AssertionError(resource)
 
 
 def _smartstack_rules(conf, soa_dir):
-    for namespace in conf.get_dependencies().get('smartstack', ()):
+    for dep in conf.get_dependencies():
+        namespace = dep.get('smartstack')
+        if namespace is None:
+            continue
+
         # TODO: handle non-synapse-haproxy services
         # TODO: support wildcards?
         service, _ = namespace.split('.', 1)
