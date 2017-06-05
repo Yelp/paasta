@@ -45,18 +45,6 @@ RUN cd /tmp && \
     gdebi -n dh-virtualenv*.deb && \
     rm dh-virtualenv_*.deb
 
-# mesos.native is not available on pypi, so we can either build mesos from
-# source or do this, and building from source takes a long time.
-# Conveniently, the .so's included in this wheel seem to be self-contained and don't link against the system libmesos.
-# So that we know if this changes, we remove the mesos system package after creating the .whl, so itests run without
-# a system mesos package.
-RUN apt-get install -y mesos=1.0.1-2.0.93.ubuntu1604 > /dev/null && \
-    cd /usr/lib/python2.7/site-packages && \
-	zip -r /root/mesos.native-1.0.1-cp27-none-linux_x86_64.whl mesos/native mesos.native-1.0.1.dist-info && \
-	zip -r /root/mesos.executor-1.0.1-cp27-none-linux_x86_64.whl mesos/executor mesos.executor-1.0.1.dist-info && \
-	zip -r /root/mesos.scheduler-1.0.1-cp27-none-linux_x86_64.whl mesos/scheduler mesos.scheduler-1.0.1.dist-info && \
-	apt-get remove -y mesos
-
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
 WORKDIR /work
