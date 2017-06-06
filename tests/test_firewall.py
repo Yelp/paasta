@@ -42,7 +42,10 @@ def mock_get_running_mesos_docker_containers():
                 },
                 'NetworkSettings': {
                     'Networks': {
-                        'bridge': {'MacAddress': '02:42:a9:fe:00:0a'},
+                        'bridge': {
+                            'MacAddress': '02:42:a9:fe:00:0a',
+                            'IPAddress': '1.1.1.1'
+                        },
                     },
                 },
             },
@@ -54,7 +57,10 @@ def mock_get_running_mesos_docker_containers():
                 },
                 'NetworkSettings': {
                     'Networks': {
-                        'bridge': {'MacAddress': '02:42:a9:fe:00:0b'},
+                        'bridge': {
+                            'MacAddress': '02:42:a9:fe:00:0b',
+                            'IPAddress': '2.2.2.2'
+                        },
                     },
                 },
             },
@@ -79,8 +85,8 @@ def mock_get_running_mesos_docker_containers():
 @pytest.mark.usefixtures('mock_get_running_mesos_docker_containers')
 def test_services_running_here():
     assert tuple(firewall.services_running_here()) == (
-        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a'),
-        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b'),
+        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a', '1.1.1.1'),
+        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b', '2.2.2.2'),
     )
 
 
@@ -89,11 +95,11 @@ def mock_services_running_here():
     with mock.patch.object(
         firewall, 'services_running_here', autospec=True,
         side_effect=lambda: iter((
-            ('example_happyhour', 'main', '02:42:a9:fe:00:00'),
-            ('example_happyhour', 'main', '02:42:a9:fe:00:01'),
-            ('example_happyhour', 'batch', '02:42:a9:fe:00:02'),
-            ('my_cool_service', 'web', '02:42:a9:fe:00:03'),
-            ('my_cool_service', 'web', '02:42:a9:fe:00:04'),
+            ('example_happyhour', 'main', '02:42:a9:fe:00:00', '1.1.1.1'),
+            ('example_happyhour', 'main', '02:42:a9:fe:00:01', '2.2.2.2'),
+            ('example_happyhour', 'batch', '02:42:a9:fe:00:02', '3.3.3.3'),
+            ('my_cool_service', 'web', '02:42:a9:fe:00:03', '4.4.4.4'),
+            ('my_cool_service', 'web', '02:42:a9:fe:00:04', '5.5.5.5'),
         )),
     ):
         yield

@@ -664,6 +664,10 @@ LOG_COMPONENTS = OrderedDict([
         'color': PaastaColors.yellow,
         'help': 'Stderr from the process spawned by Mesos.',
     }),
+    ('security', {
+        'color': PaastaColors.red,
+        'help': 'Logs from security-related services such as firewall monitoring',
+    }),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #

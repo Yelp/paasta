@@ -93,7 +93,7 @@ def process_inotify_event(event, services_by_dependencies):
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):
     dependencies_to_services = defaultdict(set)
-    for service, instance, _ in firewall.services_running_here():
+    for service, instance, _, _ in firewall.services_running_here():
         config = get_instance_config(
             service, instance,
             load_system_paasta_config().get_cluster(),

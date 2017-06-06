@@ -170,14 +170,17 @@ def services_running_here():
         if service is None or instance is None:
             continue
 
-        mac = container['NetworkSettings']['Networks']['bridge']['MacAddress']
-        yield service, instance, mac
+        network_info = container['NetworkSettings']['Networks']['bridge']
+
+        mac = network_info['MacAddress']
+        ip = network_info['IPAddress']
+        yield service, instance, mac, ip
 
 
 def active_service_groups(soa_dir):
     """Return active service groups."""
     service_groups = collections.defaultdict(set)
-    for service, instance, mac in services_running_here():
+    for service, instance, mac, ip in services_running_here():
         service_groups[ServiceGroup(service, instance, soa_dir)].add(mac)
     return service_groups
 
