@@ -158,6 +158,8 @@ def check_smartstack_replication_for_instance(
     else:
         expected_count_per_location = int(expected_count / len(smartstack_replication_info))
         output = ''
+        output_critical = ''
+        output_ok = ''
         under_replication_per_location = []
 
         for location, available_backends in sorted(smartstack_replication_info.items()):
@@ -165,12 +167,15 @@ def check_smartstack_replication_for_instance(
             under_replicated, ratio = is_under_replicated(
                 num_available_in_location, expected_count_per_location, crit_threshold)
             if under_replicated:
-                output += '- Service %s has %d out of %d expected instances in %s (CRITICAL: %d%%)\n' % (
+                output_critical += '- Service %s has %d out of %d expected instances in %s (CRITICAL: %d%%)\n' % (
                     full_name, num_available_in_location, expected_count_per_location, location, ratio)
             else:
-                output += '- Service %s has %d out of %d expected instances in %s (OK: %d%%)\n' % (
+                output_ok += '- Service %s has %d out of %d expected instances in %s (OK: %d%%)\n' % (
                     full_name, num_available_in_location, expected_count_per_location, location, ratio)
             under_replication_per_location.append(under_replicated)
+
+        output += output_critical
+        output += output_ok
 
         if any(under_replication_per_location):
             status = pysensu_yelp.Status.CRITICAL
