@@ -151,20 +151,33 @@ def test_run_cron(mock_cron_args):
 
 
 @mock.patch.object(firewall_update, 'log', autospec=True)
-def test_process_inotify_event(log_mock):
+@mock.patch.object(firewall_update.firewall, 'ensure_service_chains', autospec=True)
+def test_process_inotify_event(ensure_service_chains_mock, log_mock):
     # TODO: test something more meaningful than the log function once we have actual iptables
     services_by_dependencies = {
         'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
     }
-    firewall_update.process_inotify_event((None, None, None, 'mydep.depinstance.json'), services_by_dependencies)
+    soa_dir = mock.Mock()
+    firewall_update.process_inotify_event(
+        (None, None, None, 'mydep.depinstance.json'),
+        services_by_dependencies,
+        soa_dir)
     assert log_mock.debug.call_count == 2
-    log_mock.debug.assert_any_call('Update ', ('myservice', 'myinstance'))
-    log_mock.debug.assert_any_call('Update ', ('anotherservice', 'instance'))
+    log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
+    log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
+    assert ensure_service_chains_mock.mock_calls == [
+        mock.call(soa_dir, {('myservice', 'myinstance'), ('anotherservice', 'instance')})
+    ]
 
     # Verify that tmp writes do not apply
     log_mock.reset_mock()
-    firewall_update.process_inotify_event((None, None, None, 'mydep.depinstance.tmp'), services_by_dependencies)
+    ensure_service_chains_mock.reset_mock()
+    firewall_update.process_inotify_event(
+        (None, None, None, 'mydep.depinstance.tmp'),
+        services_by_dependencies,
+        soa_dir)
     assert log_mock.debug.call_count == 0
+    assert ensure_service_chains_mock.call_count == 0
 
 
 @pytest.fixture

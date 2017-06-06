@@ -219,6 +219,16 @@ def test_ensure_service_chains(mock_active_service_groups, mock_service_config):
     assert mock.call('PAASTA.dumb_servi.b3e0fd962a', mock.ANY) in m.mock_calls
 
 
+def test_ensure_service_chains_only_services(mock_active_service_groups, mock_service_config):
+    with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
+        assert firewall.ensure_service_chains(DEFAULT_SOA_DIR, only_services={('cool_service', 'main')}) == {
+            'PAASTA.cool_servi.771bae24b0': {
+                'fe:a3:a3:da:2d:40',
+            },
+        }
+    assert m.mock_calls == [mock.call('PAASTA.cool_servi.771bae24b0', mock.ANY)]
+
+
 def test_ensure_dispatch_chains():
     with mock.patch.object(
         iptables, 'ensure_rule', autospec=True,

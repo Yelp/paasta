@@ -190,13 +190,18 @@ def ensure_internet_chain():
     )
 
 
-def ensure_service_chains(soa_dir):
+def ensure_service_chains(soa_dir, only_services=None):
     """Ensure service chains exist and have the right rules.
+
+    only_services is either None or a set of (service,instance) tuples. If it's
+    set, only act on things in that set.
 
     Returns dictionary {[service chain] => [list of mac addresses]}.
     """
     chains = {}
     for service, macs in active_service_groups(soa_dir).items():
+        if only_services is not None and (service.service, service.instance) not in only_services:
+            continue
         service.update_rules()
         chains[service.chain_name] = macs
     return chains
