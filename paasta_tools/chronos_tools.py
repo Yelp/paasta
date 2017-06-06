@@ -324,6 +324,13 @@ class ChronosJobConfig(InstanceConfig):
                 return None
 
     def get_last_scheduled_run_datetime(self, datetime_now=None):
+        """Return a datetime object that represents last scheduled run time or None if the job
+        has't scheduled yet.
+
+        :param datetime_now: A datetime object. Used in tests because of
+        https://stackoverflow.com/questions/4481954/python-trying-to-mock-datetime-date-today-but-not-working
+        :returns: A datetime object with TZ offset or None
+        """
         schedule = self.get_schedule()
         if schedule is None:
             return None
