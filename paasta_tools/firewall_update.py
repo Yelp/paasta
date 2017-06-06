@@ -21,7 +21,6 @@ from paasta_tools.utils import load_system_paasta_config
 log = logging.getLogger(__name__)
 
 DEFAULT_UPDATE_SECS = 5
-DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
 
 
 def parse_args(argv):
@@ -29,6 +28,9 @@ def parse_args(argv):
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="soa_dir",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory (default %(default)s)")
+    parser.add_argument('--synapse-service-dir', dest="synapse_service_dir",
+                        default=firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
+                        help="Path to synapse service dir (default %(default)s)")
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true')
 
     subparsers = parser.add_subparsers(help='mode to run firewall update in', dest='mode')
@@ -37,9 +39,6 @@ def parse_args(argv):
     daemon_parser = subparsers.add_parser('daemon', description=(
         'Run a daemon which watches updates to synapse backends and updates iptables rules.'
     ))
-    daemon_parser.add_argument('--synapse-service-dir', dest="synapse_service_dir",
-                               default=DEFAULT_SYNAPSE_SERVICE_DIR,
-                               help="Path to synapse service dir (default %(default)s)")
     daemon_parser.add_argument('-u', '--update-secs', dest="update_secs",
                                default=DEFAULT_UPDATE_SECS, type=int,
                                help="Poll for new containers every N secs (default %(default)s)")
@@ -76,7 +75,7 @@ def run_daemon(args):
 
 
 def run_cron(args):
-    firewall.general_update(args.soa_dir)
+    firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
 def process_inotify_event(event, services_by_dependencies, soa_dir):

@@ -29,8 +29,8 @@ def test_parse_args_daemon():
     args = firewall_update.parse_args([
         '-d', 'mysoadir',
         '-v',
-        'daemon',
         '--synapse-service-dir', 'myservicedir',
+        'daemon',
         '-u', '123',
     ])
     assert args.mode == 'daemon'
@@ -43,7 +43,7 @@ def test_parse_args_daemon():
 def test_parse_args_default_daemon():
     args = firewall_update.parse_args(['daemon'])
     assert args.mode == 'daemon'
-    assert args.synapse_service_dir == firewall_update.DEFAULT_SYNAPSE_SERVICE_DIR
+    assert args.synapse_service_dir == firewall.DEFAULT_SYNAPSE_SERVICE_DIR
     assert args.soa_dir == firewall_update.DEFAULT_SOA_DIR
     assert args.update_secs == firewall_update.DEFAULT_UPDATE_SECS
     assert not args.verbose
@@ -184,8 +184,8 @@ def test_process_inotify_event(ensure_service_chains_mock, log_mock):
 def mock_daemon_args(tmpdir):
     return firewall_update.parse_args([
         '-d', str(tmpdir.mkdir('yelpsoa')),
-        'daemon',
         '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
+        'daemon',
     ])
 
 
@@ -193,5 +193,6 @@ def mock_daemon_args(tmpdir):
 def mock_cron_args(tmpdir):
     return firewall_update.parse_args([
         '-d', str(tmpdir.mkdir('yelpsoa')),
+        '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
         'cron',
     ])
