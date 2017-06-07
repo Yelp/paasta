@@ -6,6 +6,8 @@ import collections
 import hashlib
 import itertools
 import json
+import logging
+import os.path
 
 import six
 
@@ -23,18 +25,20 @@ PRIVATE_IP_RANGES = (
     '192.168.0.0/255.255.0.0',
     '169.254.0.0/255.255.0.0',
 )
+DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
+
+
+log = logging.getLogger(__name__)
 
 
 class ServiceGroup(collections.namedtuple('ServiceGroup', (
     'service',
     'instance',
-    'soa_dir',
 ))):
     """A service group.
 
     :param service: service name
     :param instance: instance name
-    :param soa_dir: path to yelpsoa-configs
     """
     __slots__ = ()
 
@@ -53,29 +57,24 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         assert len(chain) <= 28, len(chain)
         return chain
 
-    @property
-    def config(self):
-        return get_instance_config(
+    def get_rules(self, soa_dir, synapse_service_dir):
+        conf = get_instance_config(
             self.service, self.instance,
             load_system_paasta_config().get_cluster(),
             load_deployments=False,
-            soa_dir=self.soa_dir,
+            soa_dir=soa_dir,
         )
-
-    @property
-    def rules(self):
-        conf = self.config
 
         if conf.get_dependencies() is None:
             return ()
 
         rules = [_default_rule(conf)]
         rules.extend(_well_known_rules(conf))
-        rules.extend(_smartstack_rules(conf, self.soa_dir))
+        rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
         return tuple(rules)
 
-    def update_rules(self):
-        iptables.ensure_chain(self.chain_name, self.rules)
+    def update_rules(self, soa_dir, synapse_service_dir):
+        iptables.ensure_chain(self.chain_name, self.get_rules(soa_dir, synapse_service_dir))
 
 
 def _default_rule(conf):
@@ -117,14 +116,42 @@ def _well_known_rules(conf):
             raise AssertionError(resource)
 
 
-def _smartstack_rules(conf, soa_dir):
+def _synapse_backends(synapse_service_dir, namespace):
+    # Return the contents of the synapse JSON file for a particular service namespace
+    # e.g. /var/run/synapse/services/example_happyhour.main.json
+    with open(os.path.join(synapse_service_dir, namespace + '.json')) as synapse_backend_file:
+        synapse_backend_json = json.load(synapse_backend_file)
+        return synapse_backend_json
+
+
+def _smartstack_rules(conf, soa_dir, synapse_service_dir):
     for dep in conf.get_dependencies():
         namespace = dep.get('smartstack')
         if namespace is None:
             continue
 
-        # TODO: handle non-synapse-haproxy services
-        # TODO: support wildcards?
+        # TODO: support wildcards
+
+        # synapse backends
+        try:
+            backends = _synapse_backends(synapse_service_dir, namespace)
+        except (OSError, IOError, ValueError):
+            # Don't fatal if something goes wrong loading the synapse files
+            log.exception('Unable to load backend {}'.format(namespace))
+            backends = ()
+
+        for backend in backends:
+            yield iptables.Rule(
+                protocol='tcp',
+                src='0.0.0.0/0.0.0.0',
+                dst='{}/255.255.255.255'.format(backend['host']),
+                target='ACCEPT',
+                matches=(
+                    ('tcp', (('dport', six.text_type(backend['port'])),)),
+                )
+            )
+
+        # synapse-haproxy proxy_port
         service, _ = namespace.split('.', 1)
         service_namespaces = get_all_namespaces_for_service(service, soa_dir=soa_dir)
         port = dict(service_namespaces)[namespace]['proxy_port']
@@ -158,11 +185,11 @@ def services_running_here():
         yield service, instance, mac
 
 
-def active_service_groups(soa_dir):
+def active_service_groups():
     """Return active service groups."""
     service_groups = collections.defaultdict(set)
     for service, instance, mac in services_running_here():
-        service_groups[ServiceGroup(service, instance, soa_dir)].add(mac)
+        service_groups[ServiceGroup(service, instance)].add(mac)
     return service_groups
 
 
@@ -190,14 +217,19 @@ def ensure_internet_chain():
     )
 
 
-def ensure_service_chains(soa_dir):
+def ensure_service_chains(soa_dir, synapse_service_dir, only_services=None):
     """Ensure service chains exist and have the right rules.
+
+    only_services is either None or a set of (service,instance) tuples. If it's
+    set, only act on things in that set.
 
     Returns dictionary {[service chain] => [list of mac addresses]}.
     """
     chains = {}
-    for service, macs in active_service_groups(soa_dir).items():
-        service.update_rules()
+    for service, macs in active_service_groups().items():
+        if only_services is not None and (service.service, service.instance) not in only_services:
+            continue
+        service.update_rules(soa_dir, synapse_service_dir)
         chains[service.chain_name] = macs
     return chains
 
@@ -243,9 +275,9 @@ def garbage_collect_old_service_chains(desired_chains):
         iptables.delete_chain(chain)
 
 
-def general_update(soa_dir):
+def general_update(soa_dir, synapse_service_dir):
     """Update iptables to match the current PaaSTA state."""
     ensure_internet_chain()
-    service_chains = ensure_service_chains(soa_dir)
+    service_chains = ensure_service_chains(soa_dir, synapse_service_dir)
     ensure_dispatch_chains(service_chains)
     garbage_collect_old_service_chains(service_chains)

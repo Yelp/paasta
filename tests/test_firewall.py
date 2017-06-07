@@ -24,7 +24,6 @@ def service_group():
     return firewall.ServiceGroup(
         service='my_cool_service',
         instance='web',
-        soa_dir=DEFAULT_SOA_DIR,
     )
 
 
@@ -100,29 +99,73 @@ def mock_services_running_here():
 
 def test_service_group_chain_name(service_group):
     """The chain name must be stable, unique, and short."""
-    assert service_group.chain_name == 'PAASTA.my_cool_se.da964afae9'
+    assert service_group.chain_name == 'PAASTA.my_cool_se.f031797563'
     assert len(service_group.chain_name) <= 28
 
 
 @pytest.yield_fixture
 def mock_service_config():
     with mock.patch.object(
-        firewall.ServiceGroup, 'config', new_callable=mock.PropertyMock,
-    ) as m, mock.patch.object(
+        firewall, 'get_instance_config', autospec=True,
+    ) as mock_instance_config, mock.patch.object(
         firewall, 'get_all_namespaces_for_service', autospec=True,
         return_value={'example_happyhour.main': {'proxy_port': '20000'}},
-    ):
-        m.return_value = mock.Mock()
-        m.return_value.get_dependencies.return_value = [
+    ), mock.patch.object(
+        firewall, 'load_system_paasta_config', autospec=True
+    ) as mock_system_paasta_config, mock.patch.object(
+        firewall, '_synapse_backends', autospec=True
+    ) as mock_synapse_backends:
+
+        mock_system_paasta_config.return_value.get_cluster.return_value = 'mycluster'
+
+        mock_instance_config.return_value = mock.Mock()
+        mock_instance_config.return_value.get_dependencies.return_value = [
             {'well-known': 'internet'},
             {'smartstack': 'example_happyhour.main'},
         ]
-        m.return_value.get_outbound_firewall.return_value = 'monitor'
+        mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
+
+        mock_synapse_backends.return_value = [
+            {'host': '1.2.3.4', 'port': 123},
+            {'host': '5.6.7.8', 'port': 567}
+        ]
         yield
 
 
 def test_service_group_rules(mock_service_config, service_group):
-    assert service_group.rules == (
+    assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
+        EMPTY_RULE._replace(target='LOG'),
+        EMPTY_RULE._replace(target='PAASTA-INTERNET'),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='1.2.3.4/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', '123'),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='5.6.7.8/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', '567'),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='169.254.255.254/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', '20000'),)),
+            ),
+        ),
+    )
+
+
+def test_service_group_rules_synapse_backend_error(mock_service_config, service_group):
+    firewall._synapse_backends.side_effect = IOError('Error loading file')
+    assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(target='LOG'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
@@ -138,8 +181,8 @@ def test_service_group_rules(mock_service_config, service_group):
 
 def test_service_group_update_rules(service_group):
     with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
-        with mock.patch.object(type(service_group), 'rules', mock.sentinel.RULES):
-            service_group.update_rules()
+        with mock.patch.object(type(service_group), 'get_rules', return_value=mock.sentinel.RULES):
+            service_group.update_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR)
     m.assert_called_once_with(
         service_group.chain_name,
         mock.sentinel.RULES,
@@ -147,15 +190,15 @@ def test_service_group_update_rules(service_group):
 
 
 def test_active_service_groups(mock_service_config, mock_services_running_here):
-    assert firewall.active_service_groups(DEFAULT_SOA_DIR) == {
-        firewall.ServiceGroup('example_happyhour', 'main', DEFAULT_SOA_DIR): {
+    assert firewall.active_service_groups() == {
+        firewall.ServiceGroup('example_happyhour', 'main'): {
             '02:42:a9:fe:00:00',
             '02:42:a9:fe:00:01',
         },
-        firewall.ServiceGroup('example_happyhour', 'batch', DEFAULT_SOA_DIR): {
+        firewall.ServiceGroup('example_happyhour', 'batch'): {
             '02:42:a9:fe:00:02',
         },
-        firewall.ServiceGroup('my_cool_service', 'web', DEFAULT_SOA_DIR): {
+        firewall.ServiceGroup('my_cool_service', 'web'): {
             '02:42:a9:fe:00:03',
             '02:42:a9:fe:00:04',
         },
@@ -181,15 +224,15 @@ def test_ensure_internet_chain():
 @pytest.yield_fixture
 def mock_active_service_groups():
     groups = {
-        firewall.ServiceGroup('cool_service', 'main', DEFAULT_SOA_DIR): {
+        firewall.ServiceGroup('cool_service', 'main'): {
             '02:42:a9:fe:00:02',
             'fe:a3:a3:da:2d:51',
             'fe:a3:a3:da:2d:50',
         },
-        firewall.ServiceGroup('cool_service', 'main', DEFAULT_SOA_DIR): {
+        firewall.ServiceGroup('cool_service', 'main'): {
             'fe:a3:a3:da:2d:40',
         },
-        firewall.ServiceGroup('dumb_service', 'other', DEFAULT_SOA_DIR): {
+        firewall.ServiceGroup('dumb_service', 'other'): {
             'fe:a3:a3:da:2d:30',
             'fe:a3:a3:da:2d:31',
         },
@@ -205,18 +248,32 @@ def mock_active_service_groups():
 
 def test_ensure_service_chains(mock_active_service_groups, mock_service_config):
     with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
-        assert firewall.ensure_service_chains(DEFAULT_SOA_DIR) == {
-            'PAASTA.cool_servi.771bae24b0': {
+        assert firewall.ensure_service_chains(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == {
+            'PAASTA.cool_servi.397dba3c1f': {
                 'fe:a3:a3:da:2d:40',
             },
-            'PAASTA.dumb_servi.b3e0fd962a': {
+            'PAASTA.dumb_servi.8fb64b4f63': {
                 'fe:a3:a3:da:2d:30',
                 'fe:a3:a3:da:2d:31',
             },
         }
     assert len(m.mock_calls) == 2
-    assert mock.call('PAASTA.cool_servi.771bae24b0', mock.ANY) in m.mock_calls
-    assert mock.call('PAASTA.dumb_servi.b3e0fd962a', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.cool_servi.397dba3c1f', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.dumb_servi.8fb64b4f63', mock.ANY) in m.mock_calls
+
+
+def test_ensure_service_chains_only_services(mock_active_service_groups, mock_service_config):
+    with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
+        assert firewall.ensure_service_chains(
+            DEFAULT_SOA_DIR,
+            firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
+            only_services={('cool_service', 'main')}
+        ) == {
+            'PAASTA.cool_servi.397dba3c1f': {
+                'fe:a3:a3:da:2d:40',
+            },
+        }
+    assert m.mock_calls == [mock.call('PAASTA.cool_servi.397dba3c1f', mock.ANY)]
 
 
 def test_ensure_dispatch_chains():

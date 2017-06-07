@@ -21,7 +21,6 @@ from paasta_tools.utils import load_system_paasta_config
 log = logging.getLogger(__name__)
 
 DEFAULT_UPDATE_SECS = 5
-DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
 
 
 def parse_args(argv):
@@ -29,6 +28,9 @@ def parse_args(argv):
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="soa_dir",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory (default %(default)s)")
+    parser.add_argument('--synapse-service-dir', dest="synapse_service_dir",
+                        default=firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
+                        help="Path to synapse service dir (default %(default)s)")
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true')
 
     subparsers = parser.add_subparsers(help='mode to run firewall update in', dest='mode')
@@ -37,9 +39,6 @@ def parse_args(argv):
     daemon_parser = subparsers.add_parser('daemon', description=(
         'Run a daemon which watches updates to synapse backends and updates iptables rules.'
     ))
-    daemon_parser.add_argument('--synapse-service-dir', dest="synapse_service_dir",
-                               default=DEFAULT_SYNAPSE_SERVICE_DIR,
-                               help="Path to synapse service dir (default %(default)s)")
     daemon_parser.add_argument('-u', '--update-secs', dest="update_secs",
                                default=DEFAULT_UPDATE_SECS, type=int,
                                help="Poll for new containers every N secs (default %(default)s)")
@@ -72,23 +71,26 @@ def run_daemon(args):
         if event is None:
             continue
 
-        process_inotify_event(event, services_by_dependencies)
+        process_inotify_event(event, services_by_dependencies, args.soa_dir)
 
 
 def run_cron(args):
-    firewall.general_update(args.soa_dir)
+    firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
-def process_inotify_event(event, services_by_dependencies):
+def process_inotify_event(event, services_by_dependencies, soa_dir):
     filename = event[3]
     service_instance, suffix = os.path.splitext(filename)
     if suffix != '.json':
         return
 
     services_to_update = services_by_dependencies.get(service_instance, ())
+    if not services_to_update:
+        return
+
+    firewall.ensure_service_chains(soa_dir, services_to_update)
     for service_to_update in services_to_update:
-        log.debug('Update ', service_to_update)
-        pass  # TODO: iptables added and removed here! :o)
+        log.debug('Updated ', service_to_update)
 
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):

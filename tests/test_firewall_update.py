@@ -29,8 +29,8 @@ def test_parse_args_daemon():
     args = firewall_update.parse_args([
         '-d', 'mysoadir',
         '-v',
-        'daemon',
         '--synapse-service-dir', 'myservicedir',
+        'daemon',
         '-u', '123',
     ])
     assert args.mode == 'daemon'
@@ -43,7 +43,7 @@ def test_parse_args_daemon():
 def test_parse_args_default_daemon():
     args = firewall_update.parse_args(['daemon'])
     assert args.mode == 'daemon'
-    assert args.synapse_service_dir == firewall_update.DEFAULT_SYNAPSE_SERVICE_DIR
+    assert args.synapse_service_dir == firewall.DEFAULT_SYNAPSE_SERVICE_DIR
     assert args.soa_dir == firewall_update.DEFAULT_SOA_DIR
     assert args.update_secs == firewall_update.DEFAULT_UPDATE_SECS
     assert not args.verbose
@@ -151,28 +151,41 @@ def test_run_cron(mock_cron_args):
 
 
 @mock.patch.object(firewall_update, 'log', autospec=True)
-def test_process_inotify_event(log_mock):
+@mock.patch.object(firewall_update.firewall, 'ensure_service_chains', autospec=True)
+def test_process_inotify_event(ensure_service_chains_mock, log_mock):
     # TODO: test something more meaningful than the log function once we have actual iptables
     services_by_dependencies = {
         'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
     }
-    firewall_update.process_inotify_event((None, None, None, 'mydep.depinstance.json'), services_by_dependencies)
+    soa_dir = mock.Mock()
+    firewall_update.process_inotify_event(
+        (None, None, None, 'mydep.depinstance.json'),
+        services_by_dependencies,
+        soa_dir)
     assert log_mock.debug.call_count == 2
-    log_mock.debug.assert_any_call('Update ', ('myservice', 'myinstance'))
-    log_mock.debug.assert_any_call('Update ', ('anotherservice', 'instance'))
+    log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
+    log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
+    assert ensure_service_chains_mock.mock_calls == [
+        mock.call(soa_dir, {('myservice', 'myinstance'), ('anotherservice', 'instance')})
+    ]
 
     # Verify that tmp writes do not apply
     log_mock.reset_mock()
-    firewall_update.process_inotify_event((None, None, None, 'mydep.depinstance.tmp'), services_by_dependencies)
+    ensure_service_chains_mock.reset_mock()
+    firewall_update.process_inotify_event(
+        (None, None, None, 'mydep.depinstance.tmp'),
+        services_by_dependencies,
+        soa_dir)
     assert log_mock.debug.call_count == 0
+    assert ensure_service_chains_mock.call_count == 0
 
 
 @pytest.fixture
 def mock_daemon_args(tmpdir):
     return firewall_update.parse_args([
         '-d', str(tmpdir.mkdir('yelpsoa')),
-        'daemon',
         '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
+        'daemon',
     ])
 
 
@@ -180,5 +193,6 @@ def mock_daemon_args(tmpdir):
 def mock_cron_args(tmpdir):
     return firewall_update.parse_args([
         '-d', str(tmpdir.mkdir('yelpsoa')),
+        '--synapse-service-dir', str(tmpdir.mkdir('synapse')),
         'cron',
     ])
