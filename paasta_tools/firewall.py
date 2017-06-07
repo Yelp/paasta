@@ -209,6 +209,7 @@ def active_service_groups():
     """Return active service groups."""
     service_groups = collections.defaultdict(set)
     for service, instance, mac, ip in services_running_here():
+        # TODO: only include macs that start with MAC_ADDRESS_PREFIX?
         service_groups[ServiceGroup(service, instance)].add(mac)
     return service_groups
 
@@ -239,7 +240,7 @@ def ensure_internet_chain():
     )
 
 
-def ensure_service_chains(soa_dir, synapse_service_dir, only_services=None):
+def ensure_service_chains(service_groups, soa_dir, synapse_service_dir):
     """Ensure service chains exist and have the right rules.
 
     only_services is either None or a set of (service,instance) tuples. If it's
@@ -248,27 +249,29 @@ def ensure_service_chains(soa_dir, synapse_service_dir, only_services=None):
     Returns dictionary {[service chain] => [list of mac addresses]}.
     """
     chains = {}
-    for service, macs in active_service_groups().items():
-        if only_services is not None and (service.service, service.instance) not in only_services:
-            continue
+    for service, macs in service_groups.items():
         service.update_rules(soa_dir, synapse_service_dir)
         chains[service.chain_name] = macs
     return chains
 
 
+def dispatch_rule(chain, mac):
+    return iptables.Rule(
+        protocol='ip',
+        src='0.0.0.0/0.0.0.0',
+        dst='0.0.0.0/0.0.0.0',
+        target=chain,
+        matches=(
+            ('mac', (('mac_source', mac.upper()),)),
+        ),
+        target_parameters=(),
+    )
+
+
 def ensure_dispatch_chains(service_chains):
     paasta_rules = set(itertools.chain.from_iterable(
         (
-            iptables.Rule(
-                protocol='ip',
-                src='0.0.0.0/0.0.0.0',
-                dst='0.0.0.0/0.0.0.0',
-                target=chain,
-                matches=(
-                    ('mac', (('mac_source', mac.upper()),)),
-                ),
-                target_parameters=(),
-            )
+            dispatch_rule(chain, mac)
             for mac in macs
         )
         for chain, macs in service_chains.items()
@@ -301,6 +304,15 @@ def garbage_collect_old_service_chains(desired_chains):
 def general_update(soa_dir, synapse_service_dir):
     """Update iptables to match the current PaaSTA state."""
     ensure_internet_chain()
-    service_chains = ensure_service_chains(soa_dir, synapse_service_dir)
+    service_chains = ensure_service_chains(active_service_groups(), soa_dir, synapse_service_dir)
     ensure_dispatch_chains(service_chains)
     garbage_collect_old_service_chains(service_chains)
+
+
+def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
+    """Update iptables to include rules for a new (not yet running) MAC address
+    """
+    ensure_internet_chain()  # probably already set, but just to be safe
+    service_group = ServiceGroup(service, instance)
+    service_group.update_rules(soa_dir, synapse_service_dir)
+    iptables.insert_rule('PAASTA', dispatch_rule(service_group.chain_name, mac))
