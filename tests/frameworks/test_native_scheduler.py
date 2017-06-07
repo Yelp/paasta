@@ -71,6 +71,7 @@ class TestNativeScheduler(object):
                     'desired_state': 'start',
                     'force_bounce': str(force_bounce),
                 },
+                soa_dir='/nail/etc/services',
             ))
 
         scheduler = native_scheduler.NativeScheduler(
@@ -181,6 +182,7 @@ class TestNativeScheduler(object):
                 'desired_state': 'start',
                 'force_bounce': '0',
             },
+            soa_dir='/nail/etc/services',
         ))
 
         scheduler = native_scheduler.NativeScheduler(
@@ -228,7 +230,7 @@ class TestNativeScheduler(object):
                 'desired_state': 'start',
                 'force_bounce': '0',
             },
-
+            soa_dir='/nail/etc/services',
         )
 
         scheduler = native_scheduler.NativeScheduler(
@@ -268,6 +270,7 @@ class TestNativeServiceConfig(object):
                 'desired_state': 'start',
                 'force_bounce': '0',
             },
+            soa_dir='/nail/etc/services',
         )
 
         task = service_config.base_task(system_paasta_config)
@@ -334,6 +337,7 @@ class TestNativeServiceConfig(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
