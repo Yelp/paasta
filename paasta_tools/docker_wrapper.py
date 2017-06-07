@@ -28,30 +28,53 @@ import paasta_tools.mac_address
 
 
 LOCK_DIRECTORY = '/var/run/paasta/mac-address'
-ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
+ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
 
 def parse_env_args(args):
     result = {}
     in_env = False
+    in_file = False
     for arg in args:
         if not in_env:
             match = ENV_MATCH_RE.match(arg)
             if not match:
                 continue
-            arg = match.group(3) or ''
+            arg = match.group('arg') or ''
+            in_file = bool(match.group('file'))
             if not arg:
                 in_env = True
                 continue
 
         in_env = False
-        if '=' not in arg:
+
+        if in_file:
+            result.update(read_env_file(arg))
+            in_file = False
             continue
 
-        k, _, v = arg.partition('=')
+        try:
+            k, v = arg.split('=', 1)
+        except ValueError:
+            continue
+
         result[k] = v
 
+    return result
+
+
+def read_env_file(filename):
+    # Parse a file where each line is KEY=VALUE
+    # return contents in dictionary form
+    result = {}
+    with open(filename) as f:
+        for line in f:
+            try:
+                k, v = line.split('=', 1)
+            except ValueError:
+                continue
+            result[k] = v.strip()
     return result
 
 

@@ -59,6 +59,48 @@ class TestParseEnvArgs(object):
         env = docker_wrapper.parse_env_args(['docker', '-e', 'foo=', '--env=bar='])
         assert env == {'foo': '', 'bar': ''}
 
+    def test_file_equals(self, mock_env_file):
+        env = docker_wrapper.parse_env_args(['docker', '--env-file={}'.format(mock_env_file)])
+        assert env == {
+            'fileKeyA': 'fileValueA',
+            'fileKeyB': 'fileValueB'
+        }
+
+    def test_file(self, mock_env_file):
+        env = docker_wrapper.parse_env_args(['docker', '--env-file', mock_env_file])
+        assert env == {
+            'fileKeyA': 'fileValueA',
+            'fileKeyB': 'fileValueB'
+        }
+
+    def test_two_files(self, mock_env_file, mock_env_file2):
+        env = docker_wrapper.parse_env_args(['docker', '--env-file', mock_env_file, '--env-file', mock_env_file2])
+        assert env == {
+            'fileKeyA': 'fileValueA',
+            'fileKeyB': 'fileValueB',
+            'fileKeyC': 'fileValueC'
+        }
+
+    def test_file_and_short(self, mock_env_file):
+        env = docker_wrapper.parse_env_args(['docker', '--env-file', mock_env_file, '-e', 'foo=bar'])
+        assert env == {
+            'foo': 'bar',
+            'fileKeyA': 'fileValueA',
+            'fileKeyB': 'fileValueB'
+        }
+
+    @pytest.fixture
+    def mock_env_file(self, tmpdir):
+        env_file = tmpdir.join('env.txt')
+        env_file.write('fileKeyA=fileValueA\nfileKeyB=fileValueB\n')
+        return str(env_file)
+
+    @pytest.fixture
+    def mock_env_file2(self, tmpdir):
+        env_file = tmpdir.join('env2.txt')
+        env_file.write('fileKeyC=fileValueC\n')
+        return str(env_file)
+
 
 class TestCanAddHostname(object):
     def test_empty(self):
