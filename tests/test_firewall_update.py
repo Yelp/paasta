@@ -158,15 +158,17 @@ def test_process_inotify_event(ensure_service_chains_mock, log_mock):
         'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
     }
     soa_dir = mock.Mock()
+    synapse_service_dir = mock.Mock()
     firewall_update.process_inotify_event(
         (None, None, None, 'mydep.depinstance.json'),
         services_by_dependencies,
-        soa_dir)
+        soa_dir,
+        synapse_service_dir)
     assert log_mock.debug.call_count == 2
     log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
     log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
     assert ensure_service_chains_mock.mock_calls == [
-        mock.call(soa_dir, {('myservice', 'myinstance'), ('anotherservice', 'instance')})
+        mock.call(soa_dir, synapse_service_dir, {('myservice', 'myinstance'), ('anotherservice', 'instance')})
     ]
 
     # Verify that tmp writes do not apply
@@ -175,7 +177,8 @@ def test_process_inotify_event(ensure_service_chains_mock, log_mock):
     firewall_update.process_inotify_event(
         (None, None, None, 'mydep.depinstance.tmp'),
         services_by_dependencies,
-        soa_dir)
+        soa_dir,
+        synapse_service_dir)
     assert log_mock.debug.call_count == 0
     assert ensure_service_chains_mock.call_count == 0
 

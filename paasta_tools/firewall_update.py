@@ -71,14 +71,14 @@ def run_daemon(args):
         if event is None:
             continue
 
-        process_inotify_event(event, services_by_dependencies, args.soa_dir)
+        process_inotify_event(event, services_by_dependencies, args.soa_dir, args.synapse_service_dir)
 
 
 def run_cron(args):
     firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
-def process_inotify_event(event, services_by_dependencies, soa_dir):
+def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_service_dir):
     filename = event[3]
     service_instance, suffix = os.path.splitext(filename)
     if suffix != '.json':
@@ -88,7 +88,7 @@ def process_inotify_event(event, services_by_dependencies, soa_dir):
     if not services_to_update:
         return
 
-    firewall.ensure_service_chains(soa_dir, services_to_update)
+    firewall.ensure_service_chains(soa_dir, synapse_service_dir, services_to_update)
     for service_to_update in services_to_update:
         log.debug('Updated ', service_to_update)
 
