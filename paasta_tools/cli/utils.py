@@ -180,9 +180,11 @@ class PaastaCheckMessages:
 
     CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
 
+    ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
+
     YAML_MISSING = failure(
         "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[superregion].yaml or chronos-[superregion].yaml "
+        "Push a marathon-[superregion].yaml, chronos-[superregion].yaml or adhoc-[superregion].yaml "
         "and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
@@ -562,8 +564,10 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
-    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
+    run_all_related_jobs_flag = '--run-all-related-jobs' if kwargs.get('run_all_related_jobs', False) else ''
+    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s%s"%s %s" "%s"\'' % (
         master,
+        run_all_related_jobs_flag,
         verbose_flags,
         service,
         instancename,
@@ -660,15 +664,17 @@ def get_jenkins_build_output_url():
     return build_output
 
 
-def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False):
+def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False, instance_type=None):
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
-    instance_type = validate_service_instance(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-    )
+    if instance_type is None:
+        instance_type = validate_service_instance(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+
     if instance_type == 'marathon':
         instance_config_load_function = load_marathon_service_config
     elif instance_type == 'chronos':

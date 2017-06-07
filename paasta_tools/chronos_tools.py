@@ -19,6 +19,7 @@ import csv
 import datetime
 import logging
 import re
+from collections import defaultdict
 from time import sleep
 
 import chronos
@@ -28,11 +29,15 @@ import pytz
 import service_configuration_lib
 from croniter import croniter
 from crontab import CronSlices
+from six import iteritems
+from six import iterkeys
 from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
+from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.tron import tron_command_context
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -75,6 +80,10 @@ log = logging.getLogger(__name__)
 # we never want to hear from this - this means
 # that callers don't have to worry about setting this
 logging.getLogger("crontab").setLevel(logging.CRITICAL)
+
+
+# Variable used by DFS algorithm
+_ENTERED, _ENTERED_AND_EXITED = range(0, 2)
 
 
 class LastRunState:
@@ -179,10 +188,10 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
+@time_cache(ttl=30)
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
-
     return service_configuration_lib.read_extra_service_information(
         service,
         chronos_conf_file,
@@ -191,6 +200,12 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+    log.info("Reading general configuration file: service.yaml")
+    general_config = service_configuration_lib.read_service_configuration(
+        service,
+        soa_dir=soa_dir,
+    )
+
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
@@ -199,11 +214,14 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
         branch_dict = deployments_json.get_branch_dict(service, branch)
+
+    general_config = deep_merge_dictionaries(overrides=service_chronos_jobs[instance], defaults=general_config)
+
     return ChronosJobConfig(
         service=service,
         cluster=cluster,
         instance=instance,
-        config_dict=service_chronos_jobs[instance],
+        config_dict=general_config,
         branch_dict=branch_dict,
     )
 
@@ -309,7 +327,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_parents(self):
-        parents = self.config_dict.get('parents', None)
+        parents = self.config_dict.get('parents', [])
         if parents is not None and not isinstance(parents, list):
             return [parents]
         else:
@@ -447,6 +465,8 @@ class ChronosJobConfig(InstanceConfig):
             'disk': self.check_disk,
             'schedule': self.check_schedule,
             'scheduleTimeZone': self.check_schedule_time_zone,
+            'security': self.check_security,
+            'dependencies_reference': self.check_dependencies_reference,
             'parents': self.check_parents,
             'cmd': self.check_cmd,
         }
@@ -505,7 +525,8 @@ class ChronosJobConfig(InstanceConfig):
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
         for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk',
-                      'schedule', 'scheduleTimeZone', 'parents', 'cmd']:
+                      'schedule', 'scheduleTimeZone', 'parents', 'cmd',
+                      'security', 'dependencies_reference']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
@@ -956,3 +977,199 @@ def is_temporary_job(job):
     :returns: a boolean indicating if a job is a temporary job
     """
     return job['name'].startswith(TMP_JOB_IDENTIFIER)
+
+
+def chronos_services_running_here():
+    """See what chronos services are being run by a mesos-slave on this host.
+    :returns: A list of triples of (service, instance, port)"""
+
+    return mesos_services_running_here(
+        framework_filter=lambda fw: fw['name'].startswith('chronos'),
+        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3])
+    )
+
+
+ENTERED, ENTERED_AND_EXITED = range(0, 2)
+
+
+def dfs(node, neighbours_mapping, ignore_cycles=False, node_status=None):
+    """
+    Execute Deep-First search on a graph starting from a specific `node`.
+
+    `neighbours_mapping` contains the graph links as adjacency list
+        neighbours_mapping[x] = [y, z] means that the node `x` as two outgoing edges/links directed to `y` and `z`
+
+    :param node: starting node for DFS execution
+    :param neighbours_mapping: graph adjacency list
+    :type neighbours_mapping: dict
+    :param ignore_cycles: raise an exception if a cycle is identified in the graph
+    :type ignore_cycles: bool
+    :param node_status: dictionary that keep tracks of the already visited nodes.
+        NOTE: this is meant for internal usage only, please do NOT set it during method call
+    :type node_status: dict
+
+    :return: list of visited nodes sorted by exit order
+    :type: list
+    """
+    visited_nodes = []
+
+    if node_status is None:
+        node_status = {}
+
+    if node_status.get(node) == _ENTERED_AND_EXITED:
+        return []
+
+    node_status[node] = _ENTERED
+    for current_node in neighbours_mapping[node]:
+        current_node_state = node_status.get(current_node, None)
+        if current_node_state == _ENTERED:
+            if ignore_cycles:
+                continue
+            else:
+                raise ValueError("cycle")
+        if current_node_state == _ENTERED_AND_EXITED:
+            continue
+
+        visited_nodes.extend(
+            dfs(
+                node=current_node,
+                neighbours_mapping=neighbours_mapping,
+                node_status=node_status,
+                ignore_cycles=ignore_cycles,
+            ),
+        )
+
+    visited_nodes.append(node)
+    node_status[node] = _ENTERED_AND_EXITED
+    return visited_nodes
+
+
+@time_cache(ttl=30)
+def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
+    """
+    For all the Chronos jobs defined in cluster, extract the list of topologically sorted related Chronos.
+    Two individual jobs are considered related each other if exists a dependency relationship between them.
+
+    :param cluster: cluster from which extracting the jobs
+    :return: tuple(related jobs mapping, jobs configuration)
+    """
+    chronos_configs = {
+        (service, instance): load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+        for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir)
+        for instance in iterkeys(read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir))
+    }
+
+    adjacency_list = defaultdict(set)  # List of adjacency used by dfs algorithm
+    for instance, config in iteritems(chronos_configs):
+        for parent in config.get_parents():
+            parent = decompose_job_id(paasta_to_chronos_job_name(parent))
+            # Map the graph a undirected graph to simplify identification of connected components
+            adjacency_list[parent].add(instance)
+            adjacency_list[instance].add(parent)
+
+    def cached_dfs(known_dfs_results, node, neighbours_mapping, ignore_cycles=False):
+        """
+        Cached version of DFS algorithm (tuned for extraction of connected components).
+
+        :param known_dfs_results: previous results of DFS
+        :type known_dfs_results: list
+        :param node: starting node for DFS execution
+        :param neighbours_mapping: graph adjacency list
+        :type neighbours_mapping: dict
+        :param ignore_cycles: raise an exception if a cycle is identified in the graph
+        :type ignore_cycles: bool
+
+        :return: set of nodes part of the same connected component of `node`
+        :type: set
+        """
+        for known_dfs_result in known_dfs_results:
+            if node in known_dfs_result:
+                return known_dfs_result
+
+        visited_nodes = set(dfs(
+            node=node,
+            neighbours_mapping=neighbours_mapping,
+            ignore_cycles=ignore_cycles,
+        ))
+        known_dfs_results.append(visited_nodes)
+
+        return visited_nodes
+
+    # Build connected components
+    known_connected_components = []
+    for instance in iterkeys(chronos_configs):
+        cached_dfs(  # Using cached version of DFS to avoid all algorithm execution if the result it already know
+            known_dfs_results=known_connected_components,
+            node=instance,
+            ignore_cycles=True,  # Operating on an undirected graph to simplify identification of connected components
+            neighbours_mapping=adjacency_list,
+        )
+
+    connected_components = {}
+    for connected_component in known_connected_components:
+        for node in connected_component:
+            connected_components[node] = connected_component
+
+    return connected_components, chronos_configs
+
+
+def get_related_jobs_configs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR, use_cache=True):
+    """
+    Extract chronos configurations of all Chronos jobs related to the (cluster, service, instance)
+
+    :return: job-config mapping. Job identifier is a tuple (service, instance)
+    """
+    kwargs = {}
+    if not use_cache:
+        kwargs['ttl'] = -1  # Disable usage of time_cached value
+
+    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir, **kwargs)
+    related_jobs = connected_components[(service, instance)]
+    return {
+        job: config
+        for job, config in iteritems(chronos_configs)
+        if job in related_jobs
+    }
+
+
+def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR):
+    """
+    Extract the topological order of all the jobs related to the specified instance.
+    :return: sorted list of related jobs.
+            The list is ordered such that job with index `i` could be executed in respect of its dependencies
+            if all jobs with index smaller than `i` have terminated.
+    """
+    def _sort(nodes):
+        adjacency_list = {
+            node: [
+                decompose_job_id(paasta_to_chronos_job_name(parent_job))
+                for parent_job in chronos_configs[node].get_parents()
+            ]
+            for node in related_jobs
+        }
+
+        order, enter, node_status = list(), {n for n in nodes}, {}
+
+        while enter:
+            order.extend(
+                dfs(
+                    node=enter.pop(),
+                    neighbours_mapping=adjacency_list,
+                    node_status=node_status,
+                    ignore_cycles=False,
+                ),
+            )
+
+        return order
+
+    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir)
+    related_jobs = connected_components[(service, instance)]
+
+    return _sort(
+        nodes=related_jobs,
+    )

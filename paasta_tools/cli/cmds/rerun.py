@@ -16,8 +16,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import datetime
+from argparse import RawTextHelpFormatter
 
 from paasta_tools import chronos_tools
+from paasta_tools.chronos_tools import get_related_jobs_configs
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.cmds.status import get_planned_deployments
 from paasta_tools.cli.cmds.status import list_deployed_clusters
@@ -51,6 +53,7 @@ def add_subparser(subparsers):
             "Note: This command requires SSH and sudo privileges on the remote PaaSTA "
             "masters."
         ),
+        formatter_class=RawTextHelpFormatter,
     )
     rerun_parser.add_argument(
         '-v', '--verbose',
@@ -84,6 +87,22 @@ def add_subparser(subparsers):
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
+    )
+    rerun_parser.add_argument(
+        '-t', '--rerun-type',
+        dest="rerun_type",
+        choices=['instance', 'graph'],
+        help="Specify how to rerun jobs that have parent-dependencies.\n"
+             "  - instance: rerun, as soon as possible, the required instance ONLY\n"
+             "  - graph: will rerun, as soon as possible, ALL the instances related to the required instance\n"
+             "    NOTE: the jobs rerun will respect the parents dependencies (topological order).\n"
+             "    WARNING: it could be expensive in terms of resources and of time. Use it carefully.\n"
+             "\n"
+             "Example: Assume that we have 4 jobs (j1, j2, j3 and j4) with the following relations\n"
+             "    j1 -> j2, j1 -> j3, j2 -> j3, j2 -> j4\n"
+             "\n"
+             "    Rerunning j2 wih --rerun-type=instance will rerun ONLY j2, j3 and j4 will not be re-ran\n"
+             "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4 respecting the dependency order\n",
     )
     rerun_parser.set_defaults(command=paasta_rerun)
 
@@ -150,6 +169,26 @@ def paasta_rerun(args):
         if execution_date is None:
             execution_date = _get_default_execution_date()
 
+        related_job_configs = get_related_jobs_configs(cluster, service, args.instance)
+
+        if not args.rerun_type and len(related_job_configs) > 1:
+            instance_names = sorted([
+                '- {}{}{}'.format(srv, chronos_tools.INTERNAL_SPACER, inst)
+                for srv, inst in related_job_configs
+                if srv != service or inst != args.instance
+            ])
+            paasta_print(PaastaColors.red('  error'))
+            paasta_print(
+                'Instance {instance} has dependency relations with the following jobs:\n'
+                '{relations}\n'
+                '\n'
+                'Please specify the rerun policy via --rerun-type argument'.format(
+                    instance=args.instance,
+                    relations='\n'.join(instance_names),
+                ),
+            )
+            return
+
         rc, output = execute_chronos_rerun_on_remote_master(
             service=service,
             instancename=args.instance,
@@ -157,6 +196,7 @@ def paasta_rerun(args):
             verbose=args.verbose,
             execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
             system_paasta_config=system_paasta_config,
+            run_all_related_jobs=args.rerun_type == 'graph',
         )
         if rc == 0:
             paasta_print(PaastaColors.green('  successfully created job'))

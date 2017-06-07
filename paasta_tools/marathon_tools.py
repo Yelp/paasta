@@ -19,6 +19,7 @@ make the PaaSTA stack work.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import copy
 import datetime
 import json
 import logging
@@ -56,7 +57,6 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import time_cache
 
-CONTAINER_PORT = 8888
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
 # this spacer, i.e. you can't change it here and expect the world to change
@@ -376,7 +376,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         if net == 'BRIDGE':
             complete_config['container']['docker']['portMappings'] = [
                 {
-                    'containerPort': CONTAINER_PORT,
+                    'containerPort': self.get_container_port(),
                     'hostPort': self.get_host_port(),
                     'protocol': 'tcp',
                 },
@@ -413,7 +413,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :param config: complete_config hash to sanitize
         :returns: sanitized copy of complete_config hash
         """
-        ahash = {key: value for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
         ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
         return ahash
 

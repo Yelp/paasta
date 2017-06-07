@@ -1,4 +1,3 @@
 *
 !yelp_package/*
 !requirements*
-!task_processing/examples/cluster/mesos*whl

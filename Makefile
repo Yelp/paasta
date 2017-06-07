@@ -33,6 +33,7 @@ test: .paasta/bin/activate
 	.paasta/bin/pip install -U pip==9.0.1
 	.paasta/bin/pip install -U virtualenv==15.1.0
 	.paasta/bin/pip install -U tox==2.6.0
+	.paasta/bin/pip install -U tox-pip-extensions==1.0.1
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate

@@ -32,7 +32,8 @@ from gevent import pool
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
-from paasta_tools.autoscaling.utils import _autoscaling_components
+from paasta_tools.autoscaling.forecasting import get_forecast_policy
+from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
@@ -65,7 +66,6 @@ ServiceAutoscalingInfo = namedtuple('ServiceAutoscalingInfo', ['current_instance
 
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
-FORECAST_POLICY_KEY = 'forecast_policy'
 
 AUTOSCALING_DELAY = 300
 MAX_TASK_DELTA = 0.3
@@ -78,7 +78,7 @@ def get_service_metrics_provider(name):
     """
     Returns a service metrics provider matching the given name.
     """
-    return _autoscaling_components[SERVICE_METRICS_PROVIDER_KEY][name]
+    return get_autoscaling_component(name, SERVICE_METRICS_PROVIDER_KEY)
 
 
 def get_decision_policy(name):
@@ -90,15 +90,7 @@ def get_decision_policy(name):
     0:  don't autoscale
     1:  autoscale up
     """
-    return _autoscaling_components[DECISION_POLICY_KEY][name]
-
-
-def get_forecast_policy(name):
-    """
-    Returns a forecast policy matching the given name. Only used by decision policies that try to forecast load, like
-    the proportional decision policy.
-    """
-    return _autoscaling_components[FORECAST_POLICY_KEY][name]
+    return get_autoscaling_component(name, DECISION_POLICY_KEY)
 
 
 class MetricsProviderNoDataError(ValueError):
@@ -232,33 +224,6 @@ def proportional_decision_policy(zookeeper_path, current_instances, min_instance
         desired_number_instances = max_instances
 
     return desired_number_instances - current_instances  # The calling function wants a delta, not an absolute value.
-
-
-@register_autoscaling_component('current', FORECAST_POLICY_KEY)
-def current_value_forecast_policy(historical_load, **kwargs):
-    """A prediction policy that assumes that the value any time in the future will be the same as the current value.
-
-    :param historical_load: a list of (timestamp, value)s, where timestamp is a unix timestamp and value is load.
-    """
-    return historical_load[-1][1]
-
-
-@register_autoscaling_component('moving_average', FORECAST_POLICY_KEY)
-def moving_average_forecast_policy(historical_load, moving_average_window_seconds, **kwargs):
-    """Does a simple average of all historical load data points within the moving average window. Weights all data
-    points within the window equally."""
-
-    window_end, _ = historical_load[-1]
-    window_begin = window_end - moving_average_window_seconds
-
-    count = 0
-    total = 0
-    for timestamp, value in historical_load:
-        if timestamp >= window_begin and timestamp <= window_end:
-            count += 1
-            total += value
-
-    return total / count
 
 
 HISTORICAL_LOAD_SERIALIZATION_FORMAT = 'dd'

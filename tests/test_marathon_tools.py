@@ -353,10 +353,12 @@ class TestMarathonTools:
         fake_retries = 9001
         fake_discover = 'myhabitat'
         fake_advertise = ['red', 'blue']
+        fake_body_expect = '"master\/elected":1'
         fake_info = {
             'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
+            'healthcheck_body_expect': fake_body_expect,
             'proxy_port': fake_port,
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,
@@ -392,6 +394,7 @@ class TestMarathonTools:
             'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
+            'healthcheck_body_expect': fake_body_expect,
             'proxy_port': fake_port,
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,
@@ -869,7 +872,7 @@ class TestMarathonTools:
                     'network': 'BRIDGE',
                     'portMappings': [
                         {
-                            'containerPort': marathon_tools.CONTAINER_PORT,
+                            'containerPort': long_running_service_tools.DEFAULT_CONTAINER_PORT,
                             'hostPort': 0,
                             'protocol': 'tcp',
                         },
@@ -878,6 +881,8 @@ class TestMarathonTools:
                         {'key': 'memory-swap', 'value': "%sm" % int(fake_mem)},
                         {"key": "cpu-period", "value": "%s" % int(fake_period)},
                         {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
+                        {"key": "label", "value": "paasta_service=can_you_dig_it"},
+                        {"key": "label", "value": "paasta_instance=yes_i_can"},
                     ]
                 },
                 'type': 'DOCKER',
@@ -1946,6 +1951,8 @@ def test_format_marathon_app_dict_no_smartstack():
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
+                        {"key": "label", "value": 'paasta_service=service'},
+                        {"key": "label", "value": 'paasta_instance=instance'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2011,6 +2018,8 @@ def test_format_marathon_app_dict_with_smartstack():
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
+                        {"key": "label", "value": 'paasta_service=service'},
+                        {"key": "label", "value": 'paasta_instance=instance'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2138,6 +2147,8 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
+                        {"key": "label", "value": 'paasta_service=service'},
+                        {"key": "label", "value": 'paasta_instance=instance'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2234,7 +2245,7 @@ def test_marathon_service_config_copy():
     )
     fake_marathon_service_config_2 = fake_marathon_service_config.copy()
     assert fake_marathon_service_config is not fake_marathon_service_config_2
-    assert fake_marathon_service_config == fake_marathon_service_config_2
+    assert fake_marathon_service_config.config_dict == fake_marathon_service_config_2.config_dict
 
 
 def test_marathon_service_config_get_healthchecks_invalid_type():

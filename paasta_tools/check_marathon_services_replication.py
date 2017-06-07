@@ -213,14 +213,14 @@ def check_smartstack_replication_for_instance(
     send_event(service=service, namespace=instance, cluster=cluster, soa_dir=soa_dir, status=status, output=output)
 
 
-def get_healthy_marathon_instances_for_short_app_id(client, app_id):
-    tasks = client.list_tasks()
-    tasks_for_app = [task for task in tasks if task.app_id.startswith('/%s' % app_id)]
-
+def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
+    tasks_for_app = [task for task in all_tasks if task.app_id.startswith('/%s' % app_id)]
     one_minute_ago = datetime.now() - timedelta(minutes=1)
 
     healthy_tasks = []
     for task in tasks_for_app:
+        if task.started_at is not None:
+            print(datetime_from_utc_to_local(task.started_at))
         if marathon_tools.is_task_healthy(task, default_healthy=True) \
                 and task.started_at is not None \
                 and datetime_from_utc_to_local(task.started_at) < one_minute_ago:
@@ -228,11 +228,14 @@ def get_healthy_marathon_instances_for_short_app_id(client, app_id):
     return len(healthy_tasks)
 
 
-def check_healthy_marathon_tasks_for_service_instance(client, service, instance, cluster,
-                                                      soa_dir, expected_count):
+def check_healthy_marathon_tasks_for_service_instance(service, instance, cluster,
+                                                      soa_dir, expected_count, all_tasks):
     app_id = format_job_id(service, instance)
+    num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
+        all_tasks=all_tasks,
+        app_id=app_id
+    )
     log.info("Checking %s in marathon as it is not in smartstack" % app_id)
-    num_healthy_tasks = get_healthy_marathon_instances_for_short_app_id(client, app_id)
     send_event_if_under_replication(
         service=service,
         instance=instance,
@@ -295,7 +298,7 @@ def send_event_if_under_replication(
         output=output)
 
 
-def check_service_replication(client, service, instance, cluster, soa_dir, system_paasta_config):
+def check_service_replication(client, service, instance, all_tasks, cluster, soa_dir, system_paasta_config):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -326,12 +329,12 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
         )
     else:
         check_healthy_marathon_tasks_for_service_instance(
-            client=client,
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
             expected_count=expected_count,
+            all_tasks=all_tasks
         )
 
 
@@ -352,6 +355,7 @@ def main():
 
     config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
+    all_tasks = client.list_tasks()
     for service, instance in service_instances:
 
         check_service_replication(
@@ -359,6 +363,7 @@ def main():
             service=service,
             instance=instance,
             cluster=cluster,
+            all_tasks=all_tasks,
             soa_dir=soa_dir,
             system_paasta_config=system_paasta_config,
         )

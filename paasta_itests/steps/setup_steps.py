@@ -196,7 +196,14 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
+        (_, parent_instance, _, __) = decompose_job_id(parent)
         f.write(yaml.safe_dump({
+            parent_instance: {
+                'schedule': 'R0/2000-01-01T16:20:00Z/PT60S',  # R0 prevents the job from being scheduled automatically
+                'cmd': 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
+                'monitoring': {'team': 'fake_team'},
+                'disabled': desired_disabled,
+            },
             instance: {
                 'parents': [parent],
                 'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
@@ -223,7 +230,7 @@ def write_soa_dir_marathon_job(context, job_id):
     if hasattr(context, "cmd"):
         soa[instance]['cmd'] = context.cmd
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump(soa))
+        f.write(yaml.safe_dump(soa))
     context.soa_dir = soa_dir
 
 
@@ -237,7 +244,7 @@ def write_soa_dir_native_service(context, job_id):
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'paasta_native-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump({
+        f.write(yaml.safe_dump({
             "%s" % instance: {
                 'cpus': 0.1,
                 'mem': 100,
@@ -259,8 +266,9 @@ def call_load_paasta_native_job_config(context):
     )
 
 
-@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}" image "{image}"')
-def write_soa_dir_deployments(context, service, disabled, instance, image):
+@given('we have a deployments.json for the service "{service}" with {disabled} instance '
+       '"{csv_instances}" image "{image}"')
+def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
     if disabled == 'disabled':
         desired_state = 'stop'
     else:
@@ -275,13 +283,14 @@ def write_soa_dir_deployments(context, service, disabled, instance, image):
                     'docker_image': image,
                     'desired_state': desired_state,
                 }
+                for instance in csv_instances.split(',')
             }
         }))
 
 
-@given('we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
-def write_soa_dir_deployments_default_image(context, service, disabled, instance):
-    write_soa_dir_deployments(context, service, disabled, instance, 'test-image-foobar%d' % context.tag_version)
+@given('we have a deployments.json for the service "{service}" with {disabled} instance "{csv_instance}"')
+def write_soa_dir_deployments_default_image(context, service, disabled, csv_instance):
+    write_soa_dir_deployments(context, service, disabled, csv_instance, 'test-image-foobar%d' % context.tag_version)
 
 
 @when(('we set the "{field}" field of the {framework} config for service "{service}"'

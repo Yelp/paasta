@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 
 import time
 
-import service_configuration_lib
-
 from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
 from paasta_tools.deployd.common import PaastaThread
@@ -60,7 +58,6 @@ class PaastaDeployWorker(PaastaThread):
             self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
             marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_failures=True)
             bounce_timers.setup_marathon.start()
-            service_configuration_lib._yaml_cache = {}
             return_code, bounce_again_in_seconds = deploy_marathon_service(service=service_instance.service,
                                                                            instance=service_instance.instance,
                                                                            client=self.marathon_client,

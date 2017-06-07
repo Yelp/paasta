@@ -28,7 +28,7 @@ Deploy groups are specified in your soa configs. Let’s take a look in ``exampl
      trigger_next_step_manually: true
    - step: prod.non_canary
 
-You can see we have three deploy groups here: ``dev-stage.everything``, ``prod.canary`` and ``prod.non_canary``. There each refer to a number of instances that all share the same docker container, and will all be deployed at the same time.
+You can see we have three deploy groups here: ``dev-stage.everything``, ``prod.canary`` and ``prod.non_canary``. They each refer to a number of instances that all share the same docker container, and will all be deployed at the same time.
 
 Now let’s take a look at how instances are linked to a deploy group by taking a look in a sample config, ``marathon-norcal-devc.yaml``:
 
@@ -62,7 +62,7 @@ How to use deploy groups
 New service
 -----------
 
-When you run ``paasta fsm`` to generate the boilerplate configs for your paasta service, the default configs will have four deploy groups: ``dev.everything``, ``stage.everything``, ``prod.canary`` and ``prod.non_canary``. You can change these deploy groups around to suit your needs, and also change their deploy order by editing ``deploy.yaml``. Then, edit your soa configs and generate your pipline like normal.
+When you run ``paasta fsm`` to generate the boilerplate configs for your paasta service, the default configs will have four deploy groups: ``dev.everything``, ``stage.everything``, ``prod.canary`` and ``prod.non_canary``. You can change these deploy groups around to suit your needs, and also change their deploy order by editing ``deploy.yaml``. Then, edit your soa configs and generate your pipeline like normal.
 
 Existing service
 ----------------
@@ -90,7 +90,7 @@ Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` 
 String interpolation
 --------------------
 
-Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the varbiable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
+Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the variable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
 
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------

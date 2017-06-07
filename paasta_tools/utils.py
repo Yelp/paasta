@@ -117,7 +117,7 @@ class InvalidInstanceConfig(Exception):
     pass
 
 
-class InstanceConfig(dict):
+class InstanceConfig(object):
 
     def __init__(self, cluster, instance, service, config_dict, branch_dict):
         self.config_dict = config_dict
@@ -384,19 +384,54 @@ class InstanceConfig(dict):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
         return True, ''
 
+    def check_security(self):
+        security = self.config_dict.get('security')
+        if security is None:
+            return True, ''
+
+        outbound_firewall = security.get('outbound_firewall')
+        if outbound_firewall is None:
+            return True, ''
+
+        if outbound_firewall not in ('block', 'monitor'):
+            return False, 'Unrecognized outbound_firewall value "%s"' % outbound_firewall
+
+        unknown_keys = set(security.keys()) - {'outbound_firewall'}
+        if unknown_keys:
+            return False, 'Unrecognized items in security dict of service config: "%s"' % ','.join(unknown_keys)
+
+        return True, ''
+
+    def check_dependencies_reference(self):
+        dependencies_reference = self.config_dict.get('dependencies_reference')
+        if dependencies_reference is None:
+            return True, ''
+
+        dependencies = self.config_dict.get('dependencies')
+        if dependencies is None:
+            return False, 'dependencies_reference "%s" declared but no dependencies found' % dependencies_reference
+
+        if dependencies_reference not in dependencies:
+            return False, 'dependencies_reference "%s" not found in dependencies dictionary' % dependencies_reference
+
+        return True, ''
+
     def check(self, param):
         check_methods = {
             'cpus': self.check_cpus,
             'mem': self.check_mem,
+            'security': self.check_security,
+            'dependencies_reference': self.check_dependencies_reference,
         }
-        if param in check_methods:
-            return check_methods[param]()
+        check_method = check_methods.get(param)
+        if check_method is not None:
+            return check_method()
         else:
-            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
+            return False, 'Your service config specifies "%s", an unsupported parameter.' % param
 
     def validate(self):
         error_msgs = []
-        for param in ['cpus', 'mem']:
+        for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
@@ -441,6 +476,46 @@ class InstanceConfig(dict):
         volumes = system_volumes + self.get_extra_volumes()
         deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
         return sort_dicts(deduped)
+
+    def get_dependencies_reference(self):
+        """Get the reference to an entry in dependencies.yaml
+
+        Defaults to None if not specified in the config.
+
+        :returns: A string specified in the config, None if not specified"""
+        return self.config_dict.get('dependencies_reference')
+
+    def get_dependencies(self):
+        """Get the contents of the dependencies_dict pointed to by the dependency_reference
+
+        Defaults to None if not specified in the config.
+
+        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified"""
+        dependencies = self.config_dict.get('dependencies')
+        if not dependencies:
+            return None
+        return dependencies.get(self.get_dependencies_reference())
+
+    def get_outbound_firewall(self):
+        """Return 'block', 'monitor', or None as configured in security->outbound_firewall
+
+        Defaults to None if not specified in the config
+
+        :returns: A string specified in the config, None if not specified"""
+        security = self.config_dict.get('security')
+        if not security:
+            return None
+        return security.get('outbound_firewall')
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.config_dict == other.config_dict and \
+                self.branch_dict == other.branch_dict and \
+                self.cluster == other.cluster and \
+                self.instance == other.instance and \
+                self.service == other.service
+        else:
+            return False
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
@@ -1078,6 +1153,13 @@ class SystemPaastaConfig(dict):
         :return: integer
         """
         return self.get("deployd_big_bounce_rate", 2)
+
+    def get_deployd_startup_bounce_rate(self):
+        """Get the number of deploys to do per minute when deployd starts
+
+        :return: integer
+        """
+        return self.get("deployd_startup_bounce_rate", 5)
 
     def get_deployd_log_level(self):
         """Get the log level for paasta-deployd

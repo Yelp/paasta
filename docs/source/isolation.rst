@@ -90,8 +90,8 @@ detail of the task to be run, and the 'executor' used to run the task.
 By default, PaaSTA uses the 'Docker' executor everywhere. This means that *all*
 tasks launched by Marathon and Chronos are done so with a Docker container.
 
-How Tasks are isolated from eachother.
---------------------------------------
+How Tasks are isolated from each other.
+---------------------------------------
 
 Given that a slave may run multiple tasks, we need to ensure that tasks cannot
 'interfere' with one another. We do this on a file system level using Docker -

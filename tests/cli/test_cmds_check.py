@@ -25,7 +25,7 @@ from paasta_tools.cli.cmds.check import deploy_has_performance_check
 from paasta_tools.cli.cmds.check import deploy_has_security_check
 from paasta_tools.cli.cmds.check import deployments_check
 from paasta_tools.cli.cmds.check import docker_check
-from paasta_tools.cli.cmds.check import get_marathon_steps
+from paasta_tools.cli.cmds.check import get_deploy_groups_used_by_framework
 from paasta_tools.cli.cmds.check import makefile_check
 from paasta_tools.cli.cmds.check import makefile_has_a_tab
 from paasta_tools.cli.cmds.check import makefile_has_docker_tag
@@ -172,8 +172,9 @@ def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
-                                    PaastaCheckMessages.CHRONOS_YAML_FOUND)
+    expected_output = "%s\n%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
+                                        PaastaCheckMessages.CHRONOS_YAML_FOUND,
+                                        PaastaCheckMessages.ADHOC_YAML_FOUND)
 
     yaml_check('path')
 
@@ -437,17 +438,18 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, capfd):
     assert actual is True
 
 
-@patch('paasta_tools.cli.cmds.check.load_marathon_service_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_instance_config', autospec=True)
 @patch('paasta_tools.cli.cmds.check.list_clusters', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_service_instance_list', autospec=True)
-def test_get_marathon_steps(
+def test_get_deploy_groups_used_by_framework(
     mock_get_service_instance_list,
     mock_list_clusters,
-    mock_load_marathon_service_config,
+    mock_get_instance_config,
 ):
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
-    mock_load_marathon_service_config.side_effect = lambda service, instance, cluster, soa_dir, load_deployments: \
+    mock_get_instance_config.side_effect = lambda service, instance, cluster, \
+        soa_dir, load_deployments, instance_type: \
         MarathonServiceConfig(
             service=service,
             instance=instance,
@@ -456,14 +458,14 @@ def test_get_marathon_steps(
             branch_dict={},
         )
     expected = ['cluster1.instance1', 'cluster1.instance2']
-    actual = get_marathon_steps(service='unused', soa_dir='/fake/path')
+    actual = get_deploy_groups_used_by_framework('marathon', service='unused', soa_dir='/fake/path')
     assert actual == expected
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_check_good(
-    mock_get_marathon_steps,
+    mock_get_deploy_groups_used_by_framework,
     mock_get_pipeline_config,
     capfd,
 ):
@@ -474,7 +476,7 @@ def test_marathon_deployments_check_good(
         {'step': 'hab.canary', 'trigger_next_step_manually': True, },
         {'step': 'hab.main', },
     ]
-    mock_get_marathon_steps.return_value = [
+    mock_get_deploy_groups_used_by_framework.return_value = [
         'hab.canary',
         'hab.main',
     ]
@@ -483,9 +485,9 @@ def test_marathon_deployments_check_good(
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_deploy_but_not_marathon(
-    mock_get_marathon_steps,
+    mock_get_deploy_groups_used_by_framework,
     mock_get_pipeline_config,
     capfd,
 ):
@@ -497,7 +499,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
         {'step': 'hab.main', },
         {'step': 'hab.EXTRA', },
     ]
-    mock_get_marathon_steps.return_value = [
+    mock_get_deploy_groups_used_by_framework.return_value = [
         'hab.canary',
         'hab.main',
     ]
@@ -507,9 +509,9 @@ def test_marathon_deployments_deploy_but_not_marathon(
 
 
 @patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-@patch('paasta_tools.cli.cmds.check.get_marathon_steps', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_marathon_but_not_deploy(
-    mock_get_marathon_steps,
+    mock_get_deploy_groups_used_by_framework,
     mock_get_pipeline_config,
     capfd,
 ):
@@ -520,7 +522,7 @@ def test_marathon_deployments_marathon_but_not_deploy(
         {'step': 'hab.canary', 'trigger_next_step_manually': True, },
         {'step': 'hab.main', },
     ]
-    mock_get_marathon_steps.return_value = [
+    mock_get_deploy_groups_used_by_framework.return_value = [
         'hab.canary',
         'hab.main',
         'hab.BOGUS',

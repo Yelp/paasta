@@ -26,6 +26,8 @@ from contextlib import contextmanager
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
+from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
 
 from paasta_tools import marathon_tools
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
@@ -174,13 +176,18 @@ def kill_old_ids(old_ids, client):
 
 
 def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
-    return task in get_registered_marathon_tasks(
-        synapse_host=task.host,
-        synapse_port=system_paasta_config.get_synapse_port(),
-        synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-        service=compose_job_id(service, nerve_ns),
-        marathon_tasks=[task],
-    )
+    try:
+        registered_tasks = get_registered_marathon_tasks(
+            synapse_host=task.host,
+            synapse_port=system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+            service=compose_job_id(service, nerve_ns),
+            marathon_tasks=[task],
+        )
+        return task in registered_tasks
+    except (ConnectionError, RequestException) as e:
+        log.warning("Failed to connect to smartstack on %s, assuming task %s is unhealthy: %s" % (task.host, task, e))
+        return False
 
 
 def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):

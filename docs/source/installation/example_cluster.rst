@@ -37,7 +37,7 @@ the playground container:
     git clone root@git:dockercloud-hello-world
     cd dockercloud-hello-world
     paasta itest -s hello-world -c `git rev-parse HEAD`
-    paasta push-to-registry -s hello-world -c `git rev-parse HEAD`
+    paasta push-to-registry -s hello-world -c `git rev-parse HEAD` --force
     paasta mark-for-deployment --git-url root@git:dockercloud-hello-world --commit `git rev-parse HEAD` --clusterinstance testcluster.everything --service hello-world
 
 This mimics what jenkins would do to deploy a PaaSTA service. If you end

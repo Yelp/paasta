@@ -41,7 +41,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
-from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -373,16 +372,17 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, chosen_port, container_name, volumes, env, interactive,
+def get_docker_run_cmd(memory, chosen_port, container_port, container_name, volumes, env, interactive,
                        docker_hash, command, net, docker_params):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
-        cmd.append("--env='%s=%s'" % (k, v))
+        cmd.append('--env')
+        cmd.append('%s=%s' % (k, v))
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--%s=%s' % (i['key'], i['value']))
-    if net == 'bridge':
-        cmd.append('--publish=%d:%d' % (chosen_port, CONTAINER_PORT))
+    if net == 'bridge' and container_port is not None:
+        cmd.append('--publish=%d:%d' % (chosen_port, container_port))
     elif net == 'host':
         cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
@@ -479,7 +479,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['MARATHON_PORT'] = str(port0)
         env['MARATHON_PORT0'] = str(port0)
         env['MARATHON_PORTS'] = str(port0)
-        env['MARATHON_PORT_8888'] = str(port0)
+        env['MARATHON_PORT_%d' % instance_config.get_container_port()] = str(port0)
         env['MARATHON_APP_VERSION'] = 'simulated_marathon_app_version'
         env['MARATHON_APP_RESOURCE_CPUS'] = str(instance_config.get_cpus())
         env['MARATHON_APP_DOCKER_IMAGE'] = docker_image
@@ -560,9 +560,16 @@ def run_docker_container(
     memory = instance_config.get_mem()
     container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
+
+    try:
+        container_port = instance_config.get_container_port()
+    except AttributeError:
+        container_port = None
+
     docker_run_args = dict(
         memory=memory,
         chosen_port=chosen_port,
+        container_port=container_port,
         container_name=container_name,
         volumes=volumes,
         env=environment,

@@ -15,6 +15,8 @@ from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import ZookeeperPool
 
+DEFAULT_CONTAINER_PORT = 8888
+
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
@@ -164,6 +166,9 @@ class LongRunningServiceConfig(InstanceConfig):
             min(self.get_max_instances(), instances),
         )
 
+    def get_container_port(self):
+        return self.config_dict.get('container_port', DEFAULT_CONTAINER_PORT)
+
 
 class InvalidHealthcheckMode(Exception):
     pass
@@ -206,6 +211,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     - healthcheck_port: An alternate port to use for health checking
     - healthcheck_uri: URI target for healthchecking
     - healthcheck_timeout_s: healthcheck timeout in seconds
+    - healthcheck_body_expect: an expected string in healthcheck response body
     - updown_timeout_s: updown_service timeout in seconds
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
@@ -242,6 +248,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'healthcheck_uri',
         'healthcheck_port',
         'healthcheck_timeout_s',
+        'healthcheck_body_expect',
         'updown_timeout_s',
         'proxy_port',
         'timeout_connect_ms',

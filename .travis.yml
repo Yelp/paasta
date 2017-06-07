@@ -2,6 +2,7 @@ branches:
   only:
     - master
     - /^v[0-9.]+$/
+    - /^maci-.*$/
 language: python
 cache: pip
 env:
@@ -24,7 +25,7 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.13.1-0~ubuntu-trusty devscripts --force-yes
   - 'if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$DOCKER_USERNAME" != "" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi'
-install: pip install coveralls tox
+install: pip install coveralls tox tox-pip-extensions
 script: if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox; fi
 after_success:
   - coveralls

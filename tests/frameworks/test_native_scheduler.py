@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from mesos.interface import mesos_pb2
+from addict import Dict
 
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
@@ -17,31 +17,36 @@ def system_paasta_config():
     return utils.SystemPaastaConfig({
         "docker_registry": "fake",
         "volumes": [],
+        "dockercfg_location": "/foo/bar",
     }, "/fake/system/configs")
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
-    offer = mesos_pb2.Offer()
-    offer.slave_id.value = "super big slave"
-
-    cpus_resource = offer.resources.add()
-    cpus_resource.name = "cpus"
-    cpus_resource.scalar.value = cpu
-
-    mem_resource = offer.resources.add()
-    mem_resource.name = "mem"
-    mem_resource.scalar.value = mem
-
-    ports_resource = offer.resources.add()
-    ports_resource.name = "ports"
-    ports_range = ports_resource.ranges.range.add()
-    ports_range.begin = port_begin
-    ports_range.end = port_end
+    offer = Dict(
+        agent_id=Dict(value='super_big_slave'),
+        resources=[
+            Dict(
+                name='cpus',
+                scalar=Dict(value=cpu)
+            ),
+            Dict(
+                name='mem',
+                scalar=Dict(value=mem)
+            ),
+            Dict(
+                name='ports',
+                ranges=Dict(
+                    range=[Dict(begin=port_begin, end=port_end)]
+                ),
+            ),
+        ],
+        attributes=[]
+    )
 
     if pool is not None:
-        pool_attribute = offer.attributes.add()
-        pool_attribute.name = "pool"
-        pool_attribute.text.value = pool
+        offer.attributes = [
+            Dict(name='pool', text=Dict(value=pool))
+        ]
 
     return offer
 
@@ -271,7 +276,7 @@ class TestNativeServiceConfig(object):
 
         task = service_config.base_task(system_paasta_config)
 
-        assert task.container.type == mesos_pb2.ContainerInfo.DOCKER
+        assert task.container.type == 'DOCKER'
         assert task.container.docker.image == "fake/busybox"
         parameters = [(p.key, p.value) for p in task.container.docker.parameters]
         assert parameters == [
@@ -282,10 +287,10 @@ class TestNativeServiceConfig(object):
             ("label", mock.ANY),  # instance
         ]
 
-        assert task.container.docker.network == mesos_pb2.ContainerInfo.DockerInfo.BRIDGE
+        assert task.container.docker.network == 'BRIDGE'
 
         assert len(task.container.volumes) == 1
-        assert task.container.volumes[0].mode == mesos_pb2.Volume.RW
+        assert task.container.volumes[0].mode == 'RW'
         assert task.container.volumes[0].container_path == "/foo"
         assert task.container.volumes[0].host_path == "/bar"
 
@@ -309,6 +314,8 @@ class TestNativeServiceConfig(object):
                 raise AssertionError('Unreachable: {}'.format(resource.name))
 
         assert task.name.startswith("service_name.instance_name.gitbusybox.config")
+
+        assert task.command.uris[0].value == system_paasta_config.get_dockercfg_location()
 
     def test_resource_offers_ignores_blacklisted_slaves(self, system_paasta_config):
         service_name = "service_name"

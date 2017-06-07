@@ -1316,6 +1316,79 @@ class TestInstanceConfig:
             {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
         ]
 
+    @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
+        (None, None, None),
+        ('aaa', None, None),
+        ('aaa', {}, None),
+        ('aaa', {"aaa": [{"foo": "bar"}]}, {"foo": "bar"}),
+        ('aaa', {"bbb": [{"foo": "bar"}]}, None),
+    ])
+    def test_get_dependencies(self, dependencies_reference, dependencies, expected):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'dependencies_reference': dependencies_reference,
+                'dependencies': dependencies
+            },
+            branch_dict={},
+        )
+        fake_conf.get_dependencies() == expected
+
+    @pytest.mark.parametrize(('security', 'expected'), [
+        ({}, None),
+        (None, None),
+        ({"outbound_firewall": "monitor"}, 'monitor'),
+        ({"outbound_firewall": "foo"}, 'foo'),
+    ])
+    def test_get_outbound_firewall(self, security, expected):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'security': security},
+            branch_dict={},
+        )
+        fake_conf.get_outbound_firewall() == expected
+
+    @pytest.mark.parametrize(('security', 'expected'), [
+        ({}, (True, '')),
+        ({"outbound_firewall": "monitor"}, (True, '')),
+        ({"outbound_firewall": "block"}, (True, '')),
+        ({"outbound_firewall": "foo"}, (False, 'Unrecognized outbound_firewall value "foo"')),
+        ({"outbound_firewall": "monitor", "foo": 1},
+            (False, 'Unrecognized items in security dict of service config: "foo"')),
+    ])
+    def test_check_security(self, security, expected):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'security': security},
+            branch_dict={},
+        )
+        assert fake_conf.check_security() == expected
+
+    @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
+        (None, None, (True, '')),
+        ('aaa', {"aaa": []}, (True, '')),
+        ('aaa', None, (False, 'dependencies_reference "aaa" declared but no dependencies found')),
+        ('aaa', {"bbb": []}, (False, 'dependencies_reference "aaa" not found in dependencies dictionary')),
+    ])
+    def test_check_dependencies_reference(self, dependencies_reference, dependencies, expected):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'dependencies_reference': dependencies_reference,
+                'dependencies': dependencies
+            },
+            branch_dict={},
+        )
+        assert fake_conf.check_dependencies_reference() == expected
+
 
 def test_is_under_replicated_ok():
     num_available = 1

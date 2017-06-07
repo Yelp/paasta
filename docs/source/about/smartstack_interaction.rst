@@ -122,7 +122,7 @@ Marathon to balance tasks to each habitat. But what if it is unable to do that?
    :width: 700px
 
 In this case, there are no tasks in habitat F. This is a problem because
-``discover: habiat`` implies that any clients in habitat F will not
+``discover: habitat`` implies that any clients in habitat F will not
 be able to find the service. It is *down* in habitat F.
 
 To detect and alert on this, PaaSTA uses the ``discover`` setting to decide

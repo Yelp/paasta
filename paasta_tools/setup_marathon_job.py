@@ -53,6 +53,7 @@ import pysensu_yelp
 import requests_cache
 from marathon.exceptions import MarathonHttpError
 from requests.exceptions import HTTPError
+from requests.exceptions import ReadTimeout
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -291,28 +292,30 @@ def do_bounce(
     all_old_tasks = set.union(all_old_tasks, *old_app_draining_tasks.values())
     all_old_tasks = set.union(all_old_tasks, *old_app_at_risk_tasks.values())
 
-    # log if we appear to be finished
-    if all([
-        (apps_to_kill or tasks_to_kill),
-        apps_to_kill == list(old_app_live_happy_tasks),
-        tasks_to_kill == all_old_tasks,
-    ]) or (not all_old_tasks) and new_app_running:
-        log_bounce_action(
-            line='%s bounce on %s finishing. Now running %s' %
-            (
-                bounce_method,
-                serviceinstance,
-                marathon_jobid
-            ),
-            level='event',
-        )
-        return None
-    else:
+    if all_old_tasks or (not new_app_running):
+        # Still have work more work to do, try again in 60 seconds
         return 60
+    else:
+        # log if we appear to be finished
+        if all([
+            (apps_to_kill or tasks_to_kill),
+            apps_to_kill == list(old_app_live_happy_tasks),
+            tasks_to_kill == all_old_tasks,
+        ]):
+            log_bounce_action(
+                line='%s bounce on %s finishing. Now running %s' %
+                (
+                    bounce_method,
+                    serviceinstance,
+                    marathon_jobid
+                ),
+                level='event',
+            )
+        return None
 
 
 def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
-                               system_paasta_config, log_deploy_error):
+                               system_paasta_config, log_deploy_error, draining_hosts):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
@@ -321,7 +324,6 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
     }
 
     happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
-    draining_hosts = get_draining_hosts()
     for task in app.tasks:
         try:
             is_draining = drain_method.is_draining(task)
@@ -347,7 +349,7 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
 
 
 def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_health_params,
-                       system_paasta_config, log_deploy_error):
+                       system_paasta_config, log_deploy_error, draining_hosts):
     """Split tasks from old apps into 4 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -370,6 +372,7 @@ def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_healt
             bounce_health_params=bounce_health_params,
             system_paasta_config=system_paasta_config,
             log_deploy_error=log_deploy_error,
+            draining_hosts=draining_hosts,
         )
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
@@ -463,6 +466,12 @@ def deploy_service(
         log_deploy_error(errormsg)
         return (1, errormsg, None)
 
+    try:
+        draining_hosts = get_draining_hosts()
+    except ReadTimeout as e:
+        errormsg = "ReadTimeout encountered trying to get draining hosts: %s" % e
+        return (1, errormsg, 60)
+
     (old_app_live_happy_tasks,
      old_app_live_unhappy_tasks,
      old_app_draining_tasks,
@@ -475,11 +484,12 @@ def deploy_service(
         bounce_health_params=bounce_health_params,
         system_paasta_config=system_paasta_config,
         log_deploy_error=log_deploy_error,
+        draining_hosts=draining_hosts,
     )
 
     num_at_risk_tasks = 0
     if new_app_running:
-        num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=get_draining_hosts())
+        num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=draining_hosts)
         if new_app.instances < config['instances'] + num_at_risk_tasks:
             log.info("Scaling %s from %d to %d instances." %
                      (new_app.id, new_app.instances, config['instances'] + num_at_risk_tasks))
@@ -496,6 +506,7 @@ def deploy_service(
                 bounce_health_params=bounce_health_params,
                 system_paasta_config=system_paasta_config,
                 log_deploy_error=log_deploy_error,
+                draining_hosts=draining_hosts,
             )
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])

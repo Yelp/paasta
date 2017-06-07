@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 
 from collections import namedtuple
 
+from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
@@ -30,6 +31,7 @@ from paasta_tools.cli.cmds.status import paasta_args_mixer
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import report_status
+from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import PaastaColors
@@ -711,3 +713,44 @@ def test_paasta_args_mixer_clusters_return_none_when_instance_not_in_deploy_grou
                                               'cluster2': {'instances': ['instance3']}}
 
     assert paasta_args_mixer(args, 'fake_service') is None
+
+
+@patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
+def test_paasta_args_mixer_clusters_and_instances(mock_cluster_instance_map):
+    PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
+    args = PaastaArgs(soa_dir='/fake/soa/dir',
+                      deploy_group=None,
+                      clusters='cluster1',
+                      instances='instance1,instance3')
+    pargs = paasta_args_mixer(args, 'fake_service')
+    assert pargs.instance_whitelist == ['instance1', 'instance3']
+    assert pargs.cluster_whitelist == ['cluster1']
+    assert not mock_cluster_instance_map.called
+
+
+@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.paasta_print', autospec=True)
+def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
+
+    assert verify_instances('west,esst', 'fake_service', []) == ['west', 'esst']
+    assert mock_paasta_print.called
+    mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"),
+                                        call("Did you mean any of these?"),
+                                        call("  east"),
+                                        call("  west")])
+
+
+@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.paasta_print', autospec=True)
+def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
+
+    assert verify_instances('west,esst,fake', 'fake_service',
+                            ['fake_cluster1', 'fake_cluster2']) == ['west', 'esst', 'fake']
+    assert mock_paasta_print.called
+    mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst,"
+                                             " fake on fake_cluster1, fake_cluster2.\x1b[0m"),
+                                        call("Did you mean any of these?"),
+                                        call("  east"),
+                                        call("  west")])

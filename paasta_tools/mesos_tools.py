@@ -597,9 +597,14 @@ def slave_passes_blacklist(slave, blacklist):
     :returns: boolean, True if the slave gets passed the blacklist
     """
     attributes = slave['attributes']
-    for location_type, location in blacklist:
-        if attributes.get(location_type) == location:
-            return False
+    try:
+        for location_type, location in blacklist:
+            if attributes.get(location_type) == location:
+                return False
+    except ValueError as e:
+        log.error("Slave %s had errors processing the following blacklist: %s" % (slave, blacklist))
+        log.error("I will assume the slave does not pass\nError was: %s" % e)
+        return False
     return True
 
 
@@ -612,10 +617,15 @@ def slave_passes_whitelist(slave, whitelist):
     # No whitelist, so disable whitelisting behaviour.
     if len(whitelist) == 0:
         return True
-    attributes = slave["attributes"]
-    (location_type, locations) = whitelist
-    if attributes.get(location_type) in locations:
-        return True
+    try:
+        attributes = slave["attributes"]
+        (location_type, locations) = whitelist
+        if attributes.get(location_type) in locations:
+            return True
+    except ValueError as e:
+        log.error("Slave %s had errors processing the following whitelist: %s" % (slave, whitelist))
+        log.error("I will assume the slave does not pass\nError was: %s" % e)
+        return False
     return False
 
 
@@ -783,6 +793,9 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
     srv_list = []
     for executor in executors:
         srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
-        srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        if 'ports' in executor['resources']:
+            srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
+        else:
+            srv_port = None
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list

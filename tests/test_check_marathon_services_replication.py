@@ -542,6 +542,7 @@ def test_check_service_replication_for_normal_smartstack():
     instance = 'test_instance'
     cluster = 'fake_cluster'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+    all_tasks = []
     with mock.patch(
         'paasta_tools.marathon_tools.get_proxy_port_for_instance',
         autospec=True, return_value=666,
@@ -555,7 +556,7 @@ def test_check_service_replication_for_normal_smartstack():
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
             client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config)
+            system_paasta_config=fake_system_paasta_config, all_tasks=all_tasks)
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
             instance=instance,
@@ -582,16 +583,22 @@ def test_check_service_replication_for_non_smartstack():
     ) as mock_check_healthy_marathon_tasks:
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config)
+            client=mock_client,
+            all_tasks=[],
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=None,
+            system_paasta_config=fake_system_paasta_config
+        )
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
-            client=mock_client,
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=None,
             expected_count=100,
+            all_tasks=[]
         )
 
 
@@ -600,26 +607,23 @@ def _make_fake_task(app_id, **kwargs):
     return mock.Mock(app_id=app_id, **kwargs)
 
 
-def test_get_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
-    fake_client = mock.Mock()
+def test_filter_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
     fakes = []
     for i in range(0, 4):
         fake_task = _make_fake_task('/service.instance.foo%s.bar%s' % (i, i))
         mock_result = mock.Mock(alive=i % 2 == 0)
         fake_task.health_check_results = [mock_result]
         fakes.append(fake_task)
-    fake_client.list_tasks.return_value = fakes
-    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
-        fake_client,
-        'service.instance',
+    actual = check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id(
+        app_id='service.instance',
+        all_tasks=fakes
     )
     assert actual == 2
 
 
-def test_get_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not_healthy_yet():
-    fake_client = mock.Mock()
-    fakes = []
+def test_filter_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not_healthy_yet():
     one_minute = timedelta(minutes=1)
+    fakes = []
     for i in range(0, 4):
         fake_task = _make_fake_task(
             '/service.instance.foo%s.bar%s' % (i, i),
@@ -631,47 +635,41 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not
         mock_result = mock.Mock(alive=True)
         fake_task.health_check_results = [mock_result]
         fakes.append(fake_task)
-    fake_client.list_tasks.return_value = fakes
-    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
-        fake_client,
-        'service.instance',
+    actual = check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id(
+        all_tasks=fakes,
+        app_id='service.instance'
     )
     assert actual == 3
 
 
 def test_get_healthy_marathon_instances_for_short_app_id_considers_none_start_time_unhealthy():
-    fake_client = mock.Mock()
-
     fake_task = _make_fake_task('/service.instance.foo.bar', started_at=None)
     mock_result = mock.Mock(alive=True)
     fake_task.health_check_results = [mock_result]
-
     fakes = [fake_task]
-    fake_client.list_tasks.return_value = fakes
-    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
-        fake_client,
-        'service.instance',
+    actual = check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id(
+        all_tasks=fakes,
+        app_id='service.instance',
     )
     assert actual == 0
 
 
 @mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication', autospec=True)
-@mock.patch('paasta_tools.check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id', autospec=True)  # noqa
+@mock.patch('paasta_tools.check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id', autospec=True)  # noqa
 def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instances,
                                                            mock_send_event_if_under_replication):
     service = 'service'
     instance = 'instance'
     cluster = 'cluster'
     soa_dir = 'soa_dir'
-    client = mock.Mock()
     mock_healthy_instances.return_value = 2
     check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance(
-        client=client,
         service=service,
         instance=instance,
         cluster=cluster,
         soa_dir=soa_dir,
-        expected_count=10
+        expected_count=10,
+        all_tasks=mock.Mock(),
     )
     mock_send_event_if_under_replication.assert_called_once_with(
         service=service,
@@ -699,7 +697,7 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
             client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config)
+            system_paasta_config=fake_system_paasta_config, all_tasks=[])
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -825,7 +823,13 @@ def test_main():
     ) as mock_load_system_paasta_config, mock.patch(
         'paasta_tools.check_marathon_services_replication.marathon_tools.load_marathon_config',
         autospec=True,
-    ) as mock_load_marathon_config:
+    ) as mock_load_marathon_config, mock.patch(
+        'paasta_tools.check_marathon_services_replication.marathon_tools.get_marathon_client',
+        autospec=True,
+    ) as mock_get_marathon_client:
+        mock_client = mock.Mock()
+        mock_client.list_tasks.return_value = []
+        mock_get_marathon_client.return_value = mock_client
         mock_config = mock.Mock()
         mock_load_marathon_config.return_value = mock_config
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')

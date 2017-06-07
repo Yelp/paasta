@@ -1,3 +1,98 @@
+paasta-tools (0.65.3) xenial; urgency=medium
+
+  * 0.65.3 tagged with 'make release'
+    Commit: Merge pull request #1267 from Yelp/jlynch_port_to_http  Port
+    the native scheduler to use pymesos
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 05 Jun 2017 11:59:44 -0700
+
+paasta-tools (0.65.2) xenial; urgency=medium
+
+  * 0.65.2 tagged with 'make release'
+    Commit: Merge branch "make-firewall-cronjob-match-daemon"
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 05 Jun 2017 07:13:45 -0700
+
+paasta-tools (0.65.1) xenial; urgency=medium
+
+  * 0.65.1 tagged with 'make release'
+    Commit: Merge pull request #1250 from chriskuehl/start-linking-
+    firewall-together  Start to hook up iptables rules with real world
+    state
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Wed, 31 May 2017 16:02:39 -0700
+
+paasta-tools (0.65.0) xenial; urgency=medium
+
+  * 0.65.0 tagged with 'make release'
+    Commit: Merge branch "kill-unhealthy-instances-first"
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 30 May 2017 06:04:42 -0700
+
+paasta-tools (0.65.0) xenial; urgency=medium
+
+  * 0.65.0 tagged with 'make release'
+    Commit: Merge branch "kill-unhealthy-instances-first"
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 30 May 2017 05:43:44 -0700
+
+paasta-tools (0.64.0) xenial; urgency=medium
+
+  * 0.64.0 tagged with 'make release'
+    Commit: Merge pull request #1251 from Yelp/fix/deployd-worker-
+    watcher-crashes  Deployd actions for dying threads
+
+ -- robj <robj@robj-MacBookPro>  Thu, 25 May 2017 12:52:59 +0100
+
+paasta-tools (0.63.9) xenial; urgency=medium
+
+  * 0.63.9 tagged with 'make release'
+    Commit: Merge pull request #1253 from bchess/preserve_labels  Fix
+    paasta labels from being removed from marathon config
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 23 May 2017 16:06:46 -0700
+
+paasta-tools (0.63.8) xenial; urgency=medium
+
+  * 0.63.8 tagged with 'make release'
+    Commit: Merge pull request #1246 from chriskuehl/add-security-to-
+    schema  Add firewall-related keys to schema validation for Marathon
+    and Chronos
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 22 May 2017 14:27:26 -0700
+
+paasta-tools (0.63.7) xenial; urgency=medium
+
+  * 0.63.7 tagged with 'make release'
+    Commit: Merge pull request #1244 from chriskuehl/firewall-update-add-
+    cron  Add cron option to paasta_firewall_update
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 22 May 2017 10:55:37 -0700
+
+paasta-tools (0.63.6) xenial; urgency=medium
+
+  * 0.63.6 tagged with 'make release'
+    Commit: Merge pull request #1240 from Yelp/deployd-check-sha-first
+    Make deployd check marathon ID before bouncing
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 19 May 2017 05:21:31 -0700
+
+paasta-tools (0.63.5) xenial; urgency=medium
+
+  * 0.63.5 tagged with 'make release'
+    Commit: Merge pull request #1235 from Yelp/fix/sleep-deployd  Speed
+    up processing inbox loop
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 17 May 2017 04:36:18 -0700
+
+paasta-tools (0.63.4) xenial; urgency=medium
+
+  * 0.63.4 tagged with 'make release'
+    Commit: Merge pull request #1222 from Yelp/fewer-list-task-api-calls
+    reduce v2/tasks call in check marathon replication
+
+ -- robj <robj@robj-MacBookPro>  Tue, 16 May 2017 15:05:35 +0100
+
 paasta-tools (0.63.3) xenial; urgency=medium
 
   * 0.63.3 tagged with 'make release'
