@@ -485,6 +485,12 @@ class TestYelpSoaEventHandler(unittest.TestCase):
             assert self.mock_filewatcher.wm.add_watch.called
             mock_bounce_service.assert_called_with(self.handler, 'universe')
 
+            mock_os_list.side_effect = OSError
+            mock_bounce_service.reset_mock()
+            self.handler.watch_new_folder(mock_event)
+            assert self.mock_filewatcher.wm.add_watch.called
+            assert not mock_bounce_service.called
+
     def test_process_default(self):
         mock_event = mock.Mock(path='/folder/universe')
         with mock.patch(
