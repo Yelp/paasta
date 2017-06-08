@@ -76,21 +76,37 @@ def test_setup_logging(logging_mock):
     assert logging_mock.basicConfig.mock_calls == [mock.call(level=logging_mock.DEBUG)]
 
 
-@mock.patch.object(firewall_logging, 'socketserver')
-def test_run_server(socketserver_mock):
+@mock.patch.object(firewall_logging, 'MultiUDPServer')
+def test_run_server(udpserver_mock):
     firewall_logging.run_server('myhost', 1234)
-    assert socketserver_mock.UDPServer.mock_calls == [
+    assert udpserver_mock.mock_calls == [
         mock.call(('myhost', 1234), firewall_logging.SyslogUDPHandler),
         mock.call().serve_forever()
     ]
 
 
 @mock.patch.object(firewall_logging, 'logging')
-@mock.patch.object(firewall_logging, 'socketserver')
-def test_main(socketserver_mock, logging_mock):
-    firewall_logging.main([])
+@mock.patch.object(firewall_logging, 'MultiUDPServer')
+@mock.patch.object(firewall_logging, 'signal')
+def test_main_single_worker(signal_mock, udpserver_mock, logging_mock):
+    firewall_logging.main(['-w', '1'])
     assert logging_mock.basicConfig.mock_calls == [mock.call(level=logging_mock.WARNING)]
-    assert socketserver_mock.UDPServer.mock_calls == [
+    assert udpserver_mock.mock_calls == [
+        mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
+        mock.call().serve_forever()
+    ]
+
+
+@mock.patch.object(firewall_logging, 'logging')
+@mock.patch.object(firewall_logging, 'MultiUDPServer')
+@mock.patch.object(firewall_logging.os, 'fork', return_value=0)
+@mock.patch.object(firewall_logging, 'signal')
+def test_main_two_workers(signal_mock, fork_mock, udpserver_mock, logging_mock):
+    firewall_logging.main(['-w', '2'])
+    assert logging_mock.basicConfig.mock_calls == [mock.call(level=logging_mock.WARNING)]
+    assert udpserver_mock.mock_calls == [
+        mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
+        mock.call().serve_forever(),
         mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
         mock.call().serve_forever()
     ]

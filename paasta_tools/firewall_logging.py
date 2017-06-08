@@ -5,6 +5,10 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
+import os
+import signal
+import socket
+import sys
 
 import syslogmp
 from six.moves import socketserver
@@ -14,6 +18,7 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import load_system_paasta_config
 
+DEFAULT_NUM_WORKERS = 5
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +97,7 @@ def parse_args(argv=None):
                         dest="verbose", default=False)
     parser.add_argument('-l', '--listen-host', help='Default %(default)s', default='127.0.0.1')
     parser.add_argument('-p', '--listen-port', type=int, help='Default %(default)s', default=1516)
+    parser.add_argument('-w', '--num-workers', type=int, help='Default %(default)s', default=DEFAULT_NUM_WORKERS)
     args = parser.parse_args(argv)
     return args
 
@@ -103,12 +109,33 @@ def setup_logging(verbose):
         logging.basicConfig(level=logging.WARNING)
 
 
+class MultiUDPServer(socketserver.UDPServer):
+    # UDPServer with SO_REUSEPORT enabled so that incoming packets are
+    # load-balanced across listeners
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        # UDPServer is old-style class so can't use super
+        socketserver.UDPServer.server_bind(self)
+
+
 def run_server(listen_host, listen_port):
-    server = socketserver.UDPServer((listen_host, listen_port), SyslogUDPHandler)
+    server = MultiUDPServer((listen_host, listen_port), SyslogUDPHandler)
     server.serve_forever()
 
 
 def main(argv=None):
     args = parse_args(argv)
     setup_logging(args.verbose)
+
+    assert args.num_workers > 0
+
+    # start n-1 separate processes, then run_server() on this one
+    num_forks = args.num_workers - 1
+    for x in range(num_forks):
+        if os.fork() == 0:
+            run_server(args.listen_host, args.listen_port)
+
+    # propagate SIGTERM to all my children then exit
+    signal.signal(signal.SIGTERM, lambda signum, _: os.killpg(os.getpid(), signum) or sys.exit(1))
+
     run_server(args.listen_host, args.listen_port)
