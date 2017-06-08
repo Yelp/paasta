@@ -1,3 +1,11 @@
+paasta-tools (0.65.7) xenial; urgency=medium
+
+  * 0.65.7 tagged with 'make release'
+    Commit: Revert "Revert "default healthcheck type to MESOS_HTTP""
+    This reverts commit 99d178b4e1fb91580414e5d71537153f94d49b19.
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 08 Jun 2017 05:48:11 -0700
+
 paasta-tools (0.65.6) xenial; urgency=medium
 
   * 0.65.6 tagged with 'make release'
