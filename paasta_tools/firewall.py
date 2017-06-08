@@ -243,8 +243,7 @@ def ensure_internet_chain():
 def ensure_service_chains(service_groups, soa_dir, synapse_service_dir):
     """Ensure service chains exist and have the right rules.
 
-    only_services is either None or a set of (service,instance) tuples. If it's
-    set, only act on things in that set.
+    service_groups is a dict {ServiceGroup: set([mac_address..])}
 
     Returns dictionary {[service chain] => [list of mac addresses]}.
     """
