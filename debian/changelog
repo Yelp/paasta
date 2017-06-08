@@ -1,3 +1,11 @@
+paasta-tools (0.65.4) xenial; urgency=medium
+
+  * 0.65.4 tagged with 'make release'
+    Commit: Merge pull request #1278 from Yelp/fix-instance-statuses-
+    call  fix call to describe_instance_status
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 07 Jun 2017 23:38:40 -0700
+
 paasta-tools (0.65.3) xenial; urgency=medium
 
   * 0.65.3 tagged with 'make release'
