@@ -18,6 +18,7 @@ import copy
 import datetime
 
 import mock
+import pytz
 from mock import Mock
 from pytest import raises
 
@@ -553,6 +554,65 @@ class TestChronosTools:
             branch_dict={},
         )
         assert fake_conf.get_schedule_interval_in_seconds() is None
+
+    def test_get_last_scheduled_run_datetime_crontab(self):
+        job = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': '0 2 * * *'},
+            branch_dict={},
+        )
+        datetime_now = datetime.datetime(2017, 6, 5, 1, 0, 0, tzinfo=pytz.utc)
+        last_run = datetime.datetime(2017, 6, 4, 2, 0, 0, tzinfo=pytz.utc)
+        assert job.get_last_scheduled_run_datetime(datetime_now) == last_run
+
+    def test_get_last_scheduled_run_datetime_isodate(self):
+        job = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': 'R/2017-06-03T02:00:00Z/P1D'},
+            branch_dict={},
+        )
+        datetime_now = datetime.datetime(2017, 6, 5, 1, 0, 0, tzinfo=pytz.utc)
+        last_run = datetime.datetime(2017, 6, 4, 2, 0, 0, tzinfo=pytz.utc)
+        assert job.get_last_scheduled_run_datetime(datetime_now) == last_run
+
+    def test_get_last_scheduled_run_datetime_isodate_future_run(self):
+        job = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': 'R/2017-06-10T02:00:00Z/P1D'},
+            branch_dict={},
+        )
+        datetime_now = datetime.datetime(2017, 6, 5, 1, 0, 0, tzinfo=pytz.utc)
+        assert job.get_last_scheduled_run_datetime(datetime_now) is None
+
+    def test_get_last_scheduled_run_datetime_isodate_not_repeatable(self):
+        job = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': '2017-06-01T02:00:00Z'},
+            branch_dict={},
+        )
+        datetime_now = datetime.datetime(2017, 6, 5, 1, 0, 0, tzinfo=pytz.utc)
+        last_run = datetime.datetime(2017, 6, 1, 2, 0, 0, tzinfo=pytz.utc)
+        assert job.get_last_scheduled_run_datetime(datetime_now) == last_run
+
+    def test_get_last_scheduled_run_datetime_isodate_3_repetition(self):
+        job = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': 'R3/2017-06-01T02:00:00Z/P1D'},
+            branch_dict={},
+        )
+        datetime_now = datetime.datetime(2017, 6, 5, 1, 0, 0, tzinfo=pytz.utc)
+        last_run = datetime.datetime(2017, 6, 3, 2, 0, 0, tzinfo=pytz.utc)
+        assert job.get_last_scheduled_run_datetime(datetime_now) == last_run
 
     def test_get_schedule_time_zone(self):
         fake_schedule_time_zone = 'fake_schedule_time_zone'

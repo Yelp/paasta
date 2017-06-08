@@ -11,13 +11,10 @@ from __future__ import unicode_literals
 
 import argparse
 import sys
-from datetime import datetime
-from datetime import timedelta
 
 import chronos
 import isodate
 import pysensu_yelp
-import pytz
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -55,7 +52,7 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
     if 'alert_after' not in monitoring_overrides:
-        monitoring_overrides['alert_after'] = '2m'
+        monitoring_overrides['alert_after'] = '15m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
@@ -176,35 +173,18 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-def job_is_stuck(last_run_iso_time, interval_in_seconds, acceptable_delay=0):
-    """Considers that the job is stuck when it hasn't run in 15 minutes after it is scheduled
-
-    :param last_run_iso_time: ISO date and time of the last job run as a string
-    :param interval_in_seconds: the job interval in seconds
-    :param acceptable_delay: chronos tasks might be delayed and not running at their intended time slot.
-                             This define how long do we wait in seconds before deciding the job is stuck.
-    :returns: True or False
-    """
-    if last_run_iso_time is None or interval_in_seconds is None:
-        return False
-    last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=acceptable_delay + interval_in_seconds) < datetime.now(pytz.utc)
-
-
-def message_for_stuck_job(service, instance, cluster, last_run_iso_time, interval_in_seconds, schedule):
-    return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s "
-            "hasn't run since %(last_run)s, and is configured to run every "
-            "%(interval).1f minutes.\n\n"
-            "You can view the logs for the job with:\n"
-            "\n"
-            "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
-            "\n"
+def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
+                          last_scheduled_run_iso_time, schedule):
+    return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s hasn't run "
+            "since %(last_run)s, and was supposed to run at %(last_scheduled_run)s.\n\n"
+            "You can view the logs for the job with:\n\n"
+            "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n\n"
             ) % {'service': service,
                  'instance': instance,
                  'cluster': cluster,
                  'separator': utils.SPACER,
-                 'interval': interval_in_seconds / 60.0,
                  'last_run': last_run_iso_time,
+                 'last_scheduled_run': last_scheduled_run_iso_time,
                  'schedule': schedule}
 
 
@@ -224,19 +204,19 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
-            acceptable_delay = 15 * 60
-            last_run_time, state = chronos_tools.get_status_last_run(chronos_job)
-            interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds(seconds_ago=acceptable_delay)
-            if job_is_stuck(last_run_time, interval_in_seconds, acceptable_delay):
+            last_run, state = chronos_tools.get_status_last_run(chronos_job)
+            last_scheduled_run = chronos_job_config.get_last_scheduled_run_datetime()
+            if last_scheduled_run and isodate.parse_datetime(last_run) < last_scheduled_run:
                 sensu_status = pysensu_yelp.Status.CRITICAL
                 output = message_for_stuck_job(
                     service=service,
                     instance=instance,
                     cluster=cluster,
-                    last_run_iso_time=last_run_time,
-                    interval_in_seconds=interval_in_seconds,
+                    last_run_iso_time=last_run,
+                    last_scheduled_run_iso_time=last_scheduled_run.isoformat(),
                     schedule=chronos_job_config.get_schedule(),
                 )
+                print(output)
             else:
                 sensu_status = sensu_event_for_last_run_state(state)
                 output = message_for_status(sensu_status, service, instance, cluster)
