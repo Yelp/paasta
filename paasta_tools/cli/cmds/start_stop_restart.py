@@ -139,8 +139,9 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 def print_marathon_message(desired_state):
     if desired_state == "start":
         paasta_print(
-            "A 'start' command will signal to Marathon that the service should have the normal "
-            "instance count. A restart will cause new tasks to replace the old ones gracefully."
+            "A 'start' or 'restart' command will trigger a bounce, "
+            "gracefully replacing old instances according to the bounce method chosen in soa-configs. "
+            "It will also undo the effect of a previous 'stop' command."
         )
     elif desired_state == "stop":
         paasta_print(
