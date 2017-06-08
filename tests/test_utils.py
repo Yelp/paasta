@@ -287,19 +287,37 @@ def test_SystemPaastaConfig_get_zk_dne():
         fake_config.get_zk_hosts()
 
 
-def test_SystemPaastaConfig_get_registry():
-    fake_config = utils.SystemPaastaConfig({
-        'docker_registry': 'fake_registry'
+def test_get_service_registry():
+    fake_registry = 'fake_registry'
+    fake_service_config = {
+        "description": "This service is fake",
+        "external_link": "www.yelp.com",
+        "git_url": "git@mercurial-scm.org:fake-service",
+        "docker_registry": fake_registry,
+    }
+    with mock.patch('service_configuration_lib.read_service_configuration',
+                    return_value=fake_service_config, autospec=True):
+        actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
+        assert actual == fake_registry
+
+
+def test_get_service_registry_dne():
+    fake_registry = 'fake_registry'
+    fake_service_config = {
+        "description": "This service is fake",
+        "external_link": "www.yelp.com",
+        "git_url": "git@mercurial-scm.org:fake-service",
+        # no docker_registry configured for this service
+    }
+    fake_system_config = utils.SystemPaastaConfig({
+        "docker_registry": fake_registry,
     }, '/some/fake/dir')
-    expected = 'fake_registry'
-    actual = fake_config.get_docker_registry()
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_registry_dne():
-    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfiguredError):
-        fake_config.get_docker_registry()
+    with mock.patch('service_configuration_lib.read_service_configuration',
+                    return_value=fake_service_config, autospec=True):
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        return_value=fake_system_config, autospec=True):
+            actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
+            assert actual == fake_registry
 
 
 def test_SystemPaastaConfig_get_sensu_host_default():

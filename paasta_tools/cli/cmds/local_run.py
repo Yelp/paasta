@@ -773,7 +773,7 @@ def configure_and_run_docker_container(
     if docker_hash is None:
         try:
             docker_url = get_docker_url(
-                system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+                instance_config.get_docker_registry(), instance_config.get_docker_image())
         except NoDockerImageError:
             paasta_print(PaastaColors.red(
                 "Error: No sha has been marked for deployment for the %s deploy group.\n"

@@ -585,8 +585,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     chronos_job_config = load_chronos_job_config(
         service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
-    docker_url = get_docker_url(
-        system_paasta_config.get_docker_registry(), chronos_job_config.get_docker_image())
+    docker_url = get_docker_url(chronos_job_config.get_docker_registry(), chronos_job_config.get_docker_image())
     docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
     constraints = chronos_job_config.get_calculated_constraints(

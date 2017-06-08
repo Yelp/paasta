@@ -340,7 +340,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: A dict containing all of the keys listed above"""
 
         system_paasta_config = load_system_paasta_config()
-        docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
+        docker_url = get_docker_url(self.get_docker_registry(), self.get_docker_image())
         service_namespace_config = load_service_namespace_config(
             service=self.service,
             namespace=self.get_nerve_namespace(),

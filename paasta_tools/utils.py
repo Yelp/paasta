@@ -148,6 +148,9 @@ class InstanceConfig(object):
     def get_service(self):
         return self.service
 
+    def get_docker_registry(self):
+        return get_service_docker_registry(self.service, self.soa_dir)
+
     def get_branch(self):
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
 
@@ -721,6 +724,16 @@ def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
     return general_config.get('git_url', default_location)
 
 
+def get_service_docker_registry(service, soa_dir=DEFAULT_SOA_DIR, system_config=None):
+    service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
+    try:
+        return service_configuration['docker_registry']
+    except KeyError:
+        if not system_config:
+            system_config = load_system_paasta_config()
+        return system_config.get_system_docker_registry()
+
+
 class NoSuchLogLevel(Exception):
     pass
 
@@ -962,7 +975,7 @@ class SystemPaastaConfig(dict):
             return hosts[len('zk://'):]
         return hosts
 
-    def get_docker_registry(self):
+    def get_system_docker_registry(self):
         """Get the docker_registry defined in this host's cluster config file.
 
         :returns: The docker_registry specified in the paasta configuration
@@ -1355,7 +1368,7 @@ def build_docker_image_name(upstream_job_name):
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
     upstream_job_name is services-foo.
     """
-    docker_registry_url = load_system_paasta_config().get_docker_registry()
+    docker_registry_url = load_system_paasta_config().get_docker_registry()  # jgl TODO: fix, try service one first
     name = '%s/services-%s' % (docker_registry_url, upstream_job_name)
     return name
 
