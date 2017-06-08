@@ -38,6 +38,7 @@ Submodules
    paasta_tools.docker_wrapper
    paasta_tools.drain_lib
    paasta_tools.firewall
+   paasta_tools.firewall_logging
    paasta_tools.firewall_update
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
