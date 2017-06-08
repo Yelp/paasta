@@ -35,6 +35,10 @@ def test_syslog_to_paasta_log_no_container(mock_lookup_service_instance_by_ip, m
     assert mock_log.mock_calls == []
 
 
+def test_parse_syslog_undecodable():
+    assert firewall_logging.parse_syslog(b'<4>Jun  6 07:52:38 myhost \xba~\xa6r') is None
+
+
 @pytest.mark.parametrize('syslog_data', [
     '<4>Jun  6 07:52:38 myhost someothermessage: hello world',
     '<4>Jun  6 07:52:38 myhost kernel: hello world',

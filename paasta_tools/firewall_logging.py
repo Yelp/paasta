@@ -57,7 +57,10 @@ def syslog_to_paasta_log(data, cluster):
 
 def parse_syslog(data):
     parsed_data = syslogmp.parse(data)
-    full_message = parsed_data.message.decode()
+    try:
+        full_message = parsed_data.message.decode()
+    except UnicodeDecodeError:
+        return None
 
     if not full_message.startswith('kernel: ['):
         # Not a kernel message
