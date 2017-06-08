@@ -17,19 +17,39 @@ import iptc
 log = logging.getLogger(__name__)
 
 
-class Rule(collections.namedtuple('Rule', (
+_RuleBase = collections.namedtuple('Rule', (
     'protocol',
     'src',
     'dst',
     'target',
     'matches',
-))):
+    'target_parameters',
+))
+
+
+class Rule(_RuleBase):
     """Rule representation.
 
     Working with iptc's rule classes directly doesn't work well, since rules
     represent actual existing iptables rules, and changes are applied
     immediately. They're also difficult to compare.
     """
+
+    def __new__(cls, *args, **kwargs):
+        result = _RuleBase.__new__(cls, *args, **kwargs)
+        result.validate()
+        return result
+
+    def _replace(self, **kwargs):
+        result = super(Rule, self)._replace(**kwargs)
+        result.validate()
+        return result
+
+    def validate(self):
+        if self.target == 'REJECT':
+            assert any(
+                name == 'reject-with' for name, _ in self.target_parameters
+            ), 'REJECT rules must specify reject-with'
 
     @classmethod
     def from_iptc(cls, rule):
@@ -39,7 +59,11 @@ class Rule(collections.namedtuple('Rule', (
             'dst': rule.dst,
             'target': rule.target.name,
             'matches': (),
+            'target_parameters': (),
         }
+
+        for param_name, param_values in sorted(rule.target.get_all_parameters().items()):
+            fields['target_parameters'] += ((param_name, tuple(param_values)),)
 
         for match in rule.matches:
             fields['matches'] += ((
@@ -54,7 +78,9 @@ class Rule(collections.namedtuple('Rule', (
         rule.protocol = self.protocol
         rule.src = self.src
         rule.dst = self.dst
-        rule.create_target(self.target)
+        target = rule.create_target(self.target)
+        for param_name, param_value in self.target_parameters:
+            target.set_parameter(param_name, param_value)
         for name, params in self.matches:
             match = rule.create_match(name)
             for key, value in params:

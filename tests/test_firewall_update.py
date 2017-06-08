@@ -76,8 +76,8 @@ def test_parse_args_default_cron():
 @mock.patch.object(
     firewall, 'services_running_here', autospec=True,
     return_value=(
-        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a'),
-        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b'),
+        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a', '1.1.1.1'),
+        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b', '2.2.2.2'),
     ),
 )
 def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):

@@ -16,6 +16,7 @@ EMPTY_RULE = iptables.Rule(
     dst='0.0.0.0/0.0.0.0',
     target=None,
     matches=(),
+    target_parameters=(),
 )
 
 
@@ -40,7 +41,10 @@ def mock_get_running_mesos_docker_containers():
                 },
                 'NetworkSettings': {
                     'Networks': {
-                        'bridge': {'MacAddress': '02:42:a9:fe:00:0a'},
+                        'bridge': {
+                            'MacAddress': '02:42:a9:fe:00:0a',
+                            'IPAddress': '1.1.1.1'
+                        },
                     },
                 },
             },
@@ -52,7 +56,10 @@ def mock_get_running_mesos_docker_containers():
                 },
                 'NetworkSettings': {
                     'Networks': {
-                        'bridge': {'MacAddress': '02:42:a9:fe:00:0b'},
+                        'bridge': {
+                            'MacAddress': '02:42:a9:fe:00:0b',
+                            'IPAddress': '2.2.2.2'
+                        },
                     },
                 },
             },
@@ -77,8 +84,8 @@ def mock_get_running_mesos_docker_containers():
 @pytest.mark.usefixtures('mock_get_running_mesos_docker_containers')
 def test_services_running_here():
     assert tuple(firewall.services_running_here()) == (
-        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a'),
-        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b'),
+        ('myservice', 'hassecurity', '02:42:a9:fe:00:0a', '1.1.1.1'),
+        ('myservice', 'chronoswithsecurity', '02:42:a9:fe:00:0b', '2.2.2.2'),
     )
 
 
@@ -87,11 +94,11 @@ def mock_services_running_here():
     with mock.patch.object(
         firewall, 'services_running_here', autospec=True,
         side_effect=lambda: iter((
-            ('example_happyhour', 'main', '02:42:a9:fe:00:00'),
-            ('example_happyhour', 'main', '02:42:a9:fe:00:01'),
-            ('example_happyhour', 'batch', '02:42:a9:fe:00:02'),
-            ('my_cool_service', 'web', '02:42:a9:fe:00:03'),
-            ('my_cool_service', 'web', '02:42:a9:fe:00:04'),
+            ('example_happyhour', 'main', '02:42:a9:fe:00:00', '1.1.1.1'),
+            ('example_happyhour', 'main', '02:42:a9:fe:00:01', '2.2.2.2'),
+            ('example_happyhour', 'batch', '02:42:a9:fe:00:02', '3.3.3.3'),
+            ('my_cool_service', 'web', '02:42:a9:fe:00:03', '4.4.4.4'),
+            ('my_cool_service', 'web', '02:42:a9:fe:00:04', '5.5.5.5'),
         )),
     ):
         yield
@@ -124,6 +131,7 @@ def mock_service_config():
             {'smartstack': 'example_happyhour.main'},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
+        mock_instance_config.return_value.log_prefix = 'my-log-prefix '
 
         mock_synapse_backends.return_value = [
             {'host': '1.2.3.4', 'port': 123},
@@ -134,7 +142,15 @@ def mock_service_config():
 
 def test_service_group_rules(mock_service_config, service_group):
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
-        EMPTY_RULE._replace(target='LOG'),
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                ('limit', (('limit', '1/sec'),)),
+            ),
+            target_parameters=(
+                ('log-prefix', ('my-log-prefix ',)),
+            ),
+        ),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -166,7 +182,15 @@ def test_service_group_rules(mock_service_config, service_group):
 def test_service_group_rules_synapse_backend_error(mock_service_config, service_group):
     firewall._synapse_backends.side_effect = IOError('Error loading file')
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
-        EMPTY_RULE._replace(target='LOG'),
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                ('limit', (('limit', '1/sec'),)),
+            ),
+            target_parameters=(
+                ('log-prefix', ('my-log-prefix ',)),
+            ),
+        ),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',

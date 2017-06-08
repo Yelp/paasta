@@ -15,6 +15,7 @@ EMPTY_RULE = iptables.Rule(
     dst='0.0.0.0/0.0.0.0',
     target=None,
     matches=(),
+    target_parameters=(),
 )
 
 
@@ -59,6 +60,17 @@ def test_rule_from_iptc_mac_match():
                 ('mac_source', '20:C9:D0:2B:6F:F3'),
             )),
         ),
+    )
+
+
+def test_rule_from_iptc_target_parameters():
+    rule = iptc.Rule()
+    target = rule.create_target('LOG')
+    target.set_parameter('log-prefix', 'my-prefix ')
+
+    assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(
+        target='LOG',
+        target_parameters=(('log-prefix', ('my-prefix ',)),)
     )
 
 
@@ -223,11 +235,21 @@ def test_delete_rules(mock_Table, mock_Chain):
     mock_Chain.return_value.rules = (
         EMPTY_RULE._replace(target='DROP').to_iptc(),
         EMPTY_RULE._replace(target='ACCEPT').to_iptc(),
-        EMPTY_RULE._replace(target='REJECT').to_iptc(),
+        EMPTY_RULE._replace(
+            target='REJECT',
+            target_parameters=(
+                ('reject-with', ('icmp-port-unreachable',)),
+            )
+        ).to_iptc(),
     )
     iptables.delete_rules('PAASTA.service', (
         EMPTY_RULE._replace(target='ACCEPT'),
-        EMPTY_RULE._replace(target='REJECT'),
+        EMPTY_RULE._replace(
+            target='REJECT',
+            target_parameters=(
+                ('reject-with', ('icmp-port-unreachable',)),
+            )
+        )
     ))
     assert mock_Chain('filter', 'PAASTA.service').delete_rule.mock_calls == [
         mock.call(mock_Chain.return_value.rules[1]),
