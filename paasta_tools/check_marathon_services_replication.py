@@ -175,6 +175,9 @@ def check_smartstack_replication_for_instance(
             under_replication_per_location.append(under_replicated)
 
         output += output_critical
+        if output_critical and output_ok:
+            output += '\n\n'
+            output += 'The following locations are OK:\n'
         output += output_ok
 
         if any(under_replication_per_location):
