@@ -1449,18 +1449,21 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     return sorted(clusters)
 
 
-def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):
     instances = set()
     if not clusters:
         clusters = list_clusters(service, soa_dir=soa_dir)
     for cluster in clusters:
-        for service_instance in get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir):
+        if cache:
+            si_list = get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir)
+        else:
+            si_list = get_service_instance_list_no_cache(service, cluster, instance_type, soa_dir=soa_dir)
+        for service_instance in si_list:
             instances.add(service_instance[1])
     return instances
 
 
-@time_cache(ttl=5)
-def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list_no_cache(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
     :param service: The service name
@@ -1490,6 +1493,22 @@ def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir
 
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
+
+
+@time_cache(ttl=5)
+def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param service: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance) for each instance defined for the service name
+    """
+    return get_service_instance_list_no_cache(service=service,
+                                              cluster=cluster,
+                                              instance_type=instance_type,
+                                              soa_dir=soa_dir)
 
 
 def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
