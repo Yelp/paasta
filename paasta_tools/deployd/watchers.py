@@ -272,7 +272,11 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
     def watch_new_folder(self, event):
         if event.maskname == 'IN_CREATE|IN_ISDIR':
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
-            if any(['marathon-' in file_name for file_name in os.listdir(event.pathname)]):
+            try:
+                file_names = os.listdir(event.pathname)
+            except OSError:
+                return
+            if any(['marathon-' in file_name for file_name in file_names]):
                 self.log.info("New folder with marathon files: {}".format(event.name))
                 self.bounce_service(event.name)
 
