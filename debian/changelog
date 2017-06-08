@@ -1,3 +1,11 @@
+paasta-tools (0.65.8) xenial; urgency=medium
+
+  * 0.65.8 tagged with 'make release'
+    Commit: Merge pull request #1284 from Yelp/fix/deployd-watch-new-
+    folder  Catch OSError watching new folder
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 08 Jun 2017 06:28:14 -0700
+
 paasta-tools (0.65.7) xenial; urgency=medium
 
   * 0.65.7 tagged with 'make release'
