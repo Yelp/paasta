@@ -114,7 +114,7 @@ def test_push_to_registry_does_not_override_existing_image(
     args, _ = parse_args(['push-to-registry', '-s', 'foo', '-c', 'abcd' * 10])
     mock_run.return_value = (0, 'Success')
     mock_is_docker_image_already_in_registry.return_value = True
-    assert paasta_push_to_registry(args) == 0
+    assert paasta_push_to_registry(args) == 2
     assert not mock_build_command.called
     assert not mock_run.called
 
