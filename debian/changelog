@@ -1,3 +1,11 @@
+paasta-tools (0.65.14) xenial; urgency=medium
+
+  * 0.65.14 tagged with 'make release'
+    Commit: Revert "batch calls to describe_instance_status"  This
+    reverts commit c9579c4ceed707962f1dc23aa313ab63f235b989.
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 09 Jun 2017 10:26:29 -0700
+
 paasta-tools (0.65.12) xenial; urgency=medium
 
   * 0.65.12 tagged with 'make release'
