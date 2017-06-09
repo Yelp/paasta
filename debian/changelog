@@ -1,3 +1,19 @@
+paasta-tools (0.65.11) xenial; urgency=medium
+
+  * 0.65.11 tagged with 'make release'
+    Commit: Merge pull request #1289 from Yelp/revert-to-reg-healthcheck
+    Revert "Revert "Revert "default healthcheck type to MESOS_HTTP"""
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Jun 2017 06:32:57 -0700
+
+paasta-tools (0.65.11) xenial; urgency=medium
+
+  * 0.65.11 tagged with 'make release'
+    Commit: Merge pull request #1289 from Yelp/revert-to-reg-healthcheck
+    Revert "Revert "Revert "default healthcheck type to MESOS_HTTP"""
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Jun 2017 06:30:54 -0700
+
 paasta-tools (0.65.10) xenial; urgency=medium
 
   * 0.65.10 tagged with 'make release'
