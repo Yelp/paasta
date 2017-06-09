@@ -1,3 +1,12 @@
+paasta-tools (0.65.15) xenial; urgency=medium
+
+  * 0.65.15 tagged with 'make release'
+    Commit: Merge pull request #1274 from Yelp/u/jgl/PAASTA-
+    11402_soa_dir_refactor  Add soa_dir as field in InstanceConfig and
+    subclasses
+
+ -- Benjamin Chess <bchess@yelp.com>  Fri, 09 Jun 2017 11:37:29 -0700
+
 paasta-tools (0.65.14) xenial; urgency=medium
 
   * 0.65.14 tagged with 'make release'
