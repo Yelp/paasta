@@ -24,7 +24,7 @@ MESOS_TASK_SPACER = '.'
 
 
 class NativeServiceConfig(LongRunningServiceConfig):
-    def __init__(self, service, instance, cluster, config_dict, branch_dict,
+    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir,
                  service_namespace_config=None):
         super(NativeServiceConfig, self).__init__(
             cluster=cluster,
@@ -32,6 +32,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
         # service_namespace_config may be omitted/set to None at first, then set
         # after initializing. e.g. we do this in load_paasta_native_job_config
@@ -187,6 +188,7 @@ def load_paasta_native_job_config(
         instance=instance,
         config_dict=instance_config_dict,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
 
     service_namespace_config = load_service_namespace_config(

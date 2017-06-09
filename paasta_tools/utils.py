@@ -119,12 +119,13 @@ class InvalidInstanceConfig(Exception):
 
 class InstanceConfig(object):
 
-    def __init__(self, cluster, instance, service, config_dict, branch_dict):
+    def __init__(self, cluster, instance, service, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
         self.branch_dict = branch_dict
         self.cluster = cluster
         self.instance = instance
         self.service = service
+        self.soa_dir = soa_dir
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:

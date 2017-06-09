@@ -160,6 +160,7 @@ def load_marathon_service_config_no_cache(service, instance, cluster, load_deplo
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
 
 
@@ -190,22 +191,24 @@ class InvalidMarathonConfig(Exception):
 
 class MarathonServiceConfig(LongRunningServiceConfig):
 
-    def __init__(self, service, cluster, instance, config_dict, branch_dict):
+    def __init__(self, service, cluster, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(MarathonServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
     def __repr__(self):
-        return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (
+        return "MarathonServiceConfig(%r, %r, %r, %r, %r, %r)" % (
             self.service,
             self.cluster,
             self.instance,
             self.config_dict,
-            self.branch_dict
+            self.branch_dict,
+            self.soa_dir
         )
 
     def copy(self):
@@ -215,6 +218,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             cluster=self.cluster,
             config_dict=dict(self.config_dict),
             branch_dict=dict(self.branch_dict),
+            soa_dir=self.soa_dir
         )
 
     def get_autoscaling_params(self):

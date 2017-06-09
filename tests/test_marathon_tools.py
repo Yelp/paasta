@@ -1613,8 +1613,8 @@ class TestMarathonServiceConfig(object):
             str('foo'), str('bar'), str(''),
             {str('baz'): str('baz')}, {str('bubble'): str('gum')}
         ))
-        expected = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'})"""
-        assert actual == expected
+        expect = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}, '/nail/etc/services')"""
+        assert actual == expect
 
     def test_get_healthcheck_mode_default(self):
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})

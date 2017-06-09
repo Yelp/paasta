@@ -64,18 +64,20 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
 
 
 class AdhocJobConfig(LongRunningServiceConfig):
 
-    def __init__(self, service, instance, cluster, config_dict, branch_dict):
+    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(AdhocJobConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
 
@@ -95,6 +97,7 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
             cluster=cluster,
             config_dict={},
             branch_dict={},
+            soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
         job_config = load_adhoc_job_config(
