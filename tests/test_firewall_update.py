@@ -152,8 +152,14 @@ def test_run_cron(mock_cron_args):
 
 @mock.patch.object(firewall_update, 'log', autospec=True)
 @mock.patch.object(firewall_update.firewall, 'ensure_service_chains', autospec=True)
-def test_process_inotify_event(ensure_service_chains_mock, log_mock):
-    # TODO: test something more meaningful than the log function once we have actual iptables
+@mock.patch.object(firewall_update.firewall, 'active_service_groups', autospec=True)
+def test_process_inotify_event(active_service_groups_mock, ensure_service_chains_mock, log_mock):
+    active_service_groups_mock.return_value = {
+        firewall.ServiceGroup('myservice', 'myinstance'): {'00:00:00:00:00:00'},
+        firewall.ServiceGroup('anotherservice', 'instance'): {'11:11:11:11:11:11'},
+        firewall.ServiceGroup('thirdservice', 'instance'): {'22:22:22:22:22:22'},
+    }
+
     services_by_dependencies = {
         'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
     }
@@ -168,7 +174,14 @@ def test_process_inotify_event(ensure_service_chains_mock, log_mock):
     log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
     log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
     assert ensure_service_chains_mock.mock_calls == [
-        mock.call(soa_dir, synapse_service_dir, {('myservice', 'myinstance'), ('anotherservice', 'instance')})
+        mock.call(
+            {
+                firewall.ServiceGroup('myservice', 'myinstance'): {'00:00:00:00:00:00'},
+                firewall.ServiceGroup('anotherservice', 'instance'): {'11:11:11:11:11:11'},
+            },
+            soa_dir,
+            synapse_service_dir
+        )
     ]
 
     # Verify that tmp writes do not apply

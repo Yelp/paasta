@@ -668,18 +668,26 @@ class TestMain(object):
     @pytest.yield_fixture
     def mock_mac_address(self):
         with mock.patch.object(
-                docker_wrapper.paasta_tools.mac_address,
+                docker_wrapper,
                 'reserve_unique_mac_address',
                 return_value=('00:00:00:00:00:00', None),
         ) as mock_mac_address:
             yield mock_mac_address
 
-    def test_mac_address(self, mock_mac_address, mock_execlp):
+    @pytest.fixture
+    def mock_firewall_env_args(self):
+        return [
+            '--env=PAASTA_FIREWALL=1',
+            '--env=PAASTA_SERVICE=myservice',
+            '--env=PAASTA_INSTANCE=myinstance'
+        ]
+
+    @mock.patch.object(docker_wrapper, 'prepare_new_container', autospec=True)
+    def test_mac_address(self, mock_prepare_new_container, mock_mac_address, mock_execlp, mock_firewall_env_args):
         argv = [
             'docker',
             'run',
-            '--env=PAASTA_FIREWALL=1',
-        ]
+        ] + mock_firewall_env_args
         docker_wrapper.main(argv)
 
         assert mock_execlp.mock_calls == [mock.call(
@@ -687,15 +695,22 @@ class TestMain(object):
             'docker',
             'run',
             '--mac-address=00:00:00:00:00:00',
-            '--env=PAASTA_FIREWALL=1',
+            *mock_firewall_env_args
         )]
 
-    def test_mac_address_not_run(self, mock_mac_address, mock_execlp):
+        assert mock_prepare_new_container.mock_calls == [mock.call(
+            docker_wrapper.DEFAULT_SOA_DIR,
+            docker_wrapper.DEFAULT_SYNAPSE_SERVICE_DIR,
+            'myservice',
+            'myinstance',
+            '00:00:00:00:00:00'
+        )]
+
+    def test_mac_address_not_run(self, mock_mac_address, mock_execlp, mock_firewall_env_args):
         argv = [
             'docker',
             'inspect',
-            '--env=PAASTA_FIREWALL=1',
-        ]
+        ] + mock_firewall_env_args
         docker_wrapper.main(argv)
 
         assert mock_mac_address.call_count == 0
@@ -703,16 +718,15 @@ class TestMain(object):
             'docker',
             'docker',
             'inspect',
-            '--env=PAASTA_FIREWALL=1',
+            *mock_firewall_env_args
         )]
 
-    def test_mac_address_already_set(self, mock_mac_address, mock_execlp):
+    def test_mac_address_already_set(self, mock_mac_address, mock_execlp, mock_firewall_env_args):
         argv = [
             'docker',
             'run',
             '--mac-address=12:34:56:78:90:ab',
-            '--env=PAASTA_FIREWALL=1',
-        ]
+        ] + mock_firewall_env_args
         docker_wrapper.main(argv)
 
         assert mock_mac_address.call_count == 0
@@ -721,24 +735,23 @@ class TestMain(object):
             'docker',
             'run',
             '--mac-address=12:34:56:78:90:ab',
-            '--env=PAASTA_FIREWALL=1',
+            *mock_firewall_env_args
         )]
 
-    def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir):
+    def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir, mock_firewall_env_args):
         nonexistent = tmpdir.join('nonexistent')
         with mock.patch.object(docker_wrapper, 'LOCK_DIRECTORY', str(nonexistent)):
             argv = [
                 'docker',
                 'run',
-                '--env=PAASTA_FIREWALL=1',
-            ]
+            ] + mock_firewall_env_args
             docker_wrapper.main(argv)
 
             assert mock_execlp.mock_calls == [mock.call(
                 'docker',
                 'docker',
                 'run',
-                '--env=PAASTA_FIREWALL=1',
+                *mock_firewall_env_args
             )]
             _, err = capsys.readouterr()
             assert err.startswith('Unable to add mac address: [Errno 2] No such file or directory')
