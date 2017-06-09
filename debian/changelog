@@ -1,3 +1,11 @@
+paasta-tools (0.65.16) xenial; urgency=medium
+
+  * 0.65.16 tagged with 'make release'
+    Commit: Merge pull request #1293 from Yelp/PAASTA-11709-rollback-
+    check-chronos  Revert "Merge pull request #1257"
+
+ -- Alexander Dudko <adudko@yelp.com>  Fri, 09 Jun 2017 15:11:29 -0700
+
 paasta-tools (0.65.15) xenial; urgency=medium
 
   * 0.65.15 tagged with 'make release'
