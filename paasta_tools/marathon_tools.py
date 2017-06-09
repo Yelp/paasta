@@ -470,7 +470,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             http_path = self.get_healthcheck_uri(service_namespace_config)
             healthchecks = [
                 {
-                    "protocol": "MESOS_HTTP",
+                    "protocol": "HTTP",
                     "path": http_path,
                     "gracePeriodSeconds": graceperiodseconds,
                     "intervalSeconds": intervalseconds,
