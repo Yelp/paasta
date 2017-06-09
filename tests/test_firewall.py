@@ -131,7 +131,6 @@ def mock_service_config():
             {'smartstack': 'example_happyhour.main'},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
-        mock_instance_config.return_value.log_prefix = 'my-log-prefix '
 
         mock_synapse_backends.return_value = [
             {'host': '1.2.3.4', 'port': 123},
@@ -148,7 +147,7 @@ def test_service_group_rules(mock_service_config, service_group):
                 ('limit', (('limit', '1/sec'),)),
             ),
             target_parameters=(
-                ('log-prefix', ('my-log-prefix ',)),
+                ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
@@ -188,7 +187,7 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
                 ('limit', (('limit', '1/sec'),)),
             ),
             target_parameters=(
-                ('log-prefix', ('my-log-prefix ',)),
+                ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
