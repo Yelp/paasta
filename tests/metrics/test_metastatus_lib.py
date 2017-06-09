@@ -595,10 +595,9 @@ def test_get_resource_utilization_by_grouping(
         'free': metastatus_lib.ResourceInfo(cpus=10, mem=10, disk=10),
         'total': metastatus_lib.ResourceInfo(cpus=20, mem=20, disk=20)
     }
-    mock_get_all_tasks_from_state([Mock(), Mock()])
     state = {
         'frameworks': Mock(),
-        'slaves': [{}]
+        'slaves': [{'id': 'abcd'}]
     }
     actual = metastatus_lib.get_resource_utilization_by_grouping(
         grouping_func=mock.sentinel.grouping_func,
@@ -607,7 +606,6 @@ def test_get_resource_utilization_by_grouping(
     mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)
     assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
     for k, v in actual.items():
-        paasta_print(v)
         assert v['total'] == metastatus_lib.ResourceInfo(
             cpus=20,
             disk=20,
@@ -627,14 +625,16 @@ def test_get_resource_utilization_per_slave():
                 'cpus': 10,
                 'mem': 10,
                 'disk': 10
-            }
+            },
+            'state': 'TASK_RUNNING'
         },
         {
             'resources': {
                 'cpus': 10,
                 'mem': 10,
                 'disk': 10
-            }
+            },
+            'state': 'TASK_RUNNING'
         }
     ]
     slaves = [
@@ -687,6 +687,48 @@ def test_get_resource_utilization_per_slave():
         disk=430,
         mem=680
     )
+
+
+def test_calculate_resource_utilization_for_slaves():
+    fake_slaves = [
+        {
+            'id': 'somenametest-slave2',
+            'hostname': 'test2.somewhere.www',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            },
+            'reserved_resources': {},
+            'attributes': {
+                'habitat': 'somenametest-habitat-2',
+            },
+        },
+    ]
+    tasks = [
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            },
+            'state': 'TASK_RUNNING'
+        },
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            },
+            'state': 'TASK_RUNNING'
+        },
+    ]
+    assert metastatus_lib.calculate_resource_utilization_for_slaves(
+        slaves=fake_slaves,
+        tasks=tasks
+    )['free'].cpus == 480
+
+
 
 
 def test_healthcheck_result_for_resource_utilization_ok():

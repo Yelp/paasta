@@ -29,6 +29,7 @@ from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
+from paasta_tools.mesos_tools import is_task_terminal
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
@@ -392,11 +393,12 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state):
         raise ValueError("There are no slaves registered in the mesos state.")
 
     tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
-
+    non_terminal_tasks = [task for task in tasks if not is_task_terminal(task)]
+    tasks_for_slave = filter_tasks_for_slaves(slaves, non_terminal_tasks)
     slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
 
     return {
-        attribute_value: calculate_resource_utilization_for_slaves(slaves, filter_tasks_for_slaves(slaves, tasks))
+        attribute_value: calculate_resource_utilization_for_slaves(slaves, tasks_for_slave)
         for attribute_value, slaves in slave_groupings.items()
     }
 
