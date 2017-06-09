@@ -383,9 +383,22 @@ class ClusterAutoscaler(ResourceLogMixin):
         return paasta_aws_slaves
 
     def instance_status_for_instance_ids(self, instance_ids):
-        return self.describe_instance_status(
-            instance_ids=instance_ids,
-            region=self.resource['region'],
+        """
+        Return a list of instance statuses. Batch the API calls into
+        groups of 99, since AWS limit it.
+        """
+        partitions = [
+            instance_ids[partition: partition+99]
+            for partition in
+            range(0, len(instance_ids), 99)
+        ]
+        return reduce(
+            lambda x, y: x + y,
+            [self.describe_instance_status(
+                instance_ids=subgroup,
+                region=self.resource['region']
+            ) for subgroup in partitions],
+            []
         )
 
     def instance_descriptions_for_ips(self, ips):
