@@ -51,8 +51,9 @@ def perform_security_check(args):
         return 0
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
-    paasta_print("The security-check failed with {}. Please visit the security-check runbook "
-                 "to learn how to fix it.".format(output))
+    if ret_code != 0:
+        paasta_print("The security-check failed with {}. Please visit the security-check runbook "
+                     "to learn how to fix it.".format(output))
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
     send_event(service=args.service, check_name='%s.security_check' % args.service,
