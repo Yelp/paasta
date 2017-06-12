@@ -153,10 +153,10 @@ def clone_job(chronos_job, date, timestamp=None, force_disabled=False):
     # If the jobs is a dependent job rename the parents dependencies
     # in order to make this job dependent from the temporary clone of the parents
     if job_type == chronos_tools.JobType.Dependent:
-        chronos_job['parents'] = [
+        clone['parents'] = [
             '{}{}{}'.format(
                 get_tmp_naming_scheme_prefix(timestamp),
-                chronos_tools.INTERNAL_SPACER,
+                chronos_tools.SPACER,
                 parent,
             )
             for parent in chronos_job['parents']

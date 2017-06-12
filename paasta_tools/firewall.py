@@ -107,7 +107,12 @@ def _default_rule(conf, log_prefix):
                 ('log-prefix', ((log_prefix),)),
             ),
             matches=(
-                ('limit', (('limit', '1/sec'),)),
+                (
+                    'limit', (
+                        ('limit', '1/sec'),
+                        ('limit-burst', '1'),
+                    )
+                ),
             )
         )
     else:

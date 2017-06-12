@@ -20,6 +20,7 @@ from behave import then
 from behave import when
 
 from paasta_tools import chronos_tools
+from paasta_tools.chronos_tools import SPACER
 from paasta_tools.utils import _run
 
 
@@ -47,9 +48,25 @@ def rerun_job_is_disabled(context, service_instance, disabled):
     assert matching_jobs[0]['disabled'] == is_disabled
 
 
-@then('there is a temporary job for the service {service} and instance {instance}')
+@then('there is a temporary job for the service "{service}" and instance "{instance}"')
 def temporary_job_exists(context, service, instance):
     all_jobs = context.chronos_client.list()
     matching_jobs = [job for job in all_jobs if
                      re.match("%s-.* %s %s" % (chronos_tools.TMP_JOB_IDENTIFIER, service, instance), job['name'])]
     assert len(matching_jobs) == 1
+    return matching_jobs[0]
+
+
+@then('there is a temporary job for the service "{service}" and instance "{instance}" dependent on {parents_csv}')
+def temporary_job_exists_and_dependency_check(context, service, instance, parents_csv):
+    matching_job = temporary_job_exists(context, service, instance)
+
+    if parents_csv == 'None':
+        parents = []
+    else:
+        parents = parents_csv.split(',')
+    tmp_prefix, _, _ = matching_job['name'].split(SPACER)
+
+    job_parents = set(matching_job.get('parents', []))
+    expected_job_parents = {'{}{}{}'.format(tmp_prefix, SPACER, parent) for parent in parents}
+    assert job_parents == expected_job_parents
