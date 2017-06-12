@@ -1,3 +1,11 @@
+paasta-tools (0.65.19) xenial; urgency=medium
+
+  * 0.65.19 tagged with 'make release'
+    Commit: Merge pull request #1296 from Yelp/fix-metastatus-per-slave-
+    count  fix erroneous calculation of per-slave usage
+
+ -- Nathan Handler <nhandler@yelp.com>  Mon, 12 Jun 2017 14:04:35 -0700
+
 paasta-tools (0.65.18) xenial; urgency=medium
 
   * 0.65.18 tagged with 'make release'
