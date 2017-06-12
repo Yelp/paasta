@@ -1,3 +1,12 @@
+paasta-tools (0.65.17) xenial; urgency=medium
+
+  * 0.65.17 tagged with 'make release'
+    Commit: Merge pull request #1280 from Yelp/fix-rerun-command-space
+    Fix a potential problem when -v and --rerun-type=graph are passed to
+    paasta rerun
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 12 Jun 2017 03:01:36 -0700
+
 paasta-tools (0.65.16) xenial; urgency=medium
 
   * 0.65.16 tagged with 'make release'
