@@ -72,6 +72,7 @@ def new_paasta_native_config(context, num):
             'desired_state': 'start',
             'force_bounce': None,
         },
+        soa_dir='/fake/etc/services',
         service_namespace_config=None,
     )
 
