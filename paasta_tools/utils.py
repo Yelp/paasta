@@ -353,6 +353,17 @@ class InstanceConfig(object):
         a generated deployments.json file."""
         return self.branch_dict.get('docker_image', '')
 
+    def get_docker_url(self):
+        """Compose the docker url.
+        :returns: '<registry_uri>/<docker_image>'
+        """
+        registry_uri = self.get_docker_registry()
+        docker_image = self.get_docker_image()
+        if not docker_image:
+            raise NoDockerImageError('Docker url not available because there is no docker_image')
+        docker_url = '%s/%s' % (registry_uri, docker_image)
+        return docker_url
+
     def get_desired_state(self):
         """Get the desired state (either 'start' or 'stop') for a given service
         branch from a generated deployments.json file."""
@@ -1666,18 +1677,6 @@ def format_tag(tag):
 
 class NoDockerImageError(Exception):
     pass
-
-
-def get_docker_url(registry_uri, docker_image):
-    """Compose the docker url.
-    :param registry_uri: The URI of the docker registry
-    :param docker_image: The docker image name, with tag if desired
-    :returns: '<registry_uri>/<docker_image>'
-    """
-    if not docker_image:
-        raise NoDockerImageError('Docker url not available because there is no docker_image')
-    docker_url = '%s/%s' % (registry_uri, docker_image)
-    return docker_url
 
 
 def get_config_hash(config, force_bounce=None):

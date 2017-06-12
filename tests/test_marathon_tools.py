@@ -926,7 +926,7 @@ class TestMarathonTools:
             branch_dict={'desired_state': 'start'}
         )
         with mock.patch(
-            'paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value=fake_url,
+            'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
         ), mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
             return_value=fake_service_namespace_config,
@@ -1466,7 +1466,7 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.load_system_paasta_config',
             autospec=True, return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value=fake_url,
+            'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
         ), mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
             return_value=self.fake_service_namespace_config,

@@ -15,9 +15,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import get_service_docker_registry
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import paasta_print
 
@@ -71,11 +69,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
         include task.slave_id or a task.id; those need to be computed separately."""
         task = mesos_pb2.TaskInfo()
         task.container.type = mesos_pb2.ContainerInfo.DOCKER
-        task.container.docker.image = get_docker_url(get_service_docker_registry(self.service,
-                                                                                 self.soa_dir,
-                                                                                 system_paasta_config),  # should i pass
-                                                     # this ^^ thru? done to make test pass...
-                                                     self.get_docker_image())
+        task.container.docker.image = self.get_docker_url()
 
         for param in self.format_docker_parameters():
             p = task.container.docker.parameters.add()

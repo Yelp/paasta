@@ -273,7 +273,10 @@ class TestNativeServiceConfig(object):
             soa_dir='/nail/etc/services',
         )
 
-        task = service_config.base_task(system_paasta_config)
+        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                        return_value=system_paasta_config
+                        ):
+            task = service_config.base_task(system_paasta_config)
 
         assert task.container.type == mesos_pb2.ContainerInfo.DOCKER
         assert task.container.docker.image == "fake/busybox"

@@ -715,18 +715,6 @@ def test_DeploymentsJson_read():
         assert actual == fake_json['v1']
 
 
-def test_get_docker_url_no_error():
-    fake_registry = "im.a-real.vm"
-    fake_image = "and-i-can-run:1.0"
-    expected = "%s/%s" % (fake_registry, fake_image)
-    assert utils.get_docker_url(fake_registry, fake_image) == expected
-
-
-def test_get_docker_url_with_no_docker_image():
-    with raises(utils.NoDockerImageError):
-        utils.get_docker_url('fake_registry', None)
-
-
 def test_get_running_mesos_docker_containers():
 
     fake_container_data = [
@@ -1333,6 +1321,28 @@ class TestInstanceConfig:
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
         ]
+
+    def test_get_docker_url_no_error(self):
+        fake_registry = "im.a-real.vm"
+        fake_image = "and-i-can-run:1.0"
+
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
+
+        with mock.patch(
+            'paasta_tools.utils.InstanceConfig.get_docker_registry', autospec=True,
+            return_value=fake_registry
+        ), mock.patch(
+            'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
+            return_value=fake_image
+        ):
+            expected_url = "%s/%s" % (fake_registry, fake_image)
+            assert fake_conf.get_docker_url() == expected_url
 
     @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
         (None, None, None),
