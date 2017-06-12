@@ -23,6 +23,7 @@ import pytest
 
 from paasta_tools import chronos_rerun
 from paasta_tools import chronos_tools
+from paasta_tools.chronos_tools import SPACER
 
 
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.parse_time_variables', autospec=True)
@@ -108,7 +109,7 @@ def test_clone_job_dependent_jobs(
     expected_job_config = {
         'name': 'tmp-{} {}'.format(timestamp_chronos_name, fake_chronos_job_config['name']),
         'parents': [
-            'tmp-{}.{}'.format(timestamp_chronos_name, parent)
+            'tmp-{}{}{}'.format(timestamp_chronos_name, SPACER, parent)
             for parent in fake_chronos_job_config['parents']
         ],
     }
