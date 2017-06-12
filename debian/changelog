@@ -1,3 +1,10 @@
+paasta-tools (0.65.18) xenial; urgency=medium
+
+  * 0.65.18 tagged with 'make release'
+    Commit: add limit-burst for firewall logging. also add debian link
+
+ -- Benjamin Chess <bchess@yelp.com>  Mon, 12 Jun 2017 08:50:52 -0700
+
 paasta-tools (0.65.17) xenial; urgency=medium
 
   * 0.65.17 tagged with 'make release'
