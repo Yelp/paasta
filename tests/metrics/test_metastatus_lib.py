@@ -729,8 +729,6 @@ def test_calculate_resource_utilization_for_slaves():
     )['free'].cpus == 480
 
 
-
-
 def test_healthcheck_result_for_resource_utilization_ok():
     expected_message = 'cpus: 5.00/10.00(50.00%) used. Threshold (90.00%)'
     expected = metastatus_lib.HealthCheckResult(
