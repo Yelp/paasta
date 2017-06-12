@@ -1,3 +1,163 @@
+paasta-tools (0.65.19) xenial; urgency=medium
+
+  * 0.65.19 tagged with 'make release'
+    Commit: Merge pull request #1296 from Yelp/fix-metastatus-per-slave-
+    count  fix erroneous calculation of per-slave usage
+
+ -- Nathan Handler <nhandler@yelp.com>  Mon, 12 Jun 2017 14:04:35 -0700
+
+paasta-tools (0.65.18) xenial; urgency=medium
+
+  * 0.65.18 tagged with 'make release'
+    Commit: add limit-burst for firewall logging. also add debian link
+
+ -- Benjamin Chess <bchess@yelp.com>  Mon, 12 Jun 2017 08:50:52 -0700
+
+paasta-tools (0.65.17) xenial; urgency=medium
+
+  * 0.65.17 tagged with 'make release'
+    Commit: Merge pull request #1280 from Yelp/fix-rerun-command-space
+    Fix a potential problem when -v and --rerun-type=graph are passed to
+    paasta rerun
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 12 Jun 2017 03:01:36 -0700
+
+paasta-tools (0.65.16) xenial; urgency=medium
+
+  * 0.65.16 tagged with 'make release'
+    Commit: Merge pull request #1293 from Yelp/PAASTA-11709-rollback-
+    check-chronos  Revert "Merge pull request #1257"
+
+ -- Alexander Dudko <adudko@yelp.com>  Fri, 09 Jun 2017 15:11:29 -0700
+
+paasta-tools (0.65.15) xenial; urgency=medium
+
+  * 0.65.15 tagged with 'make release'
+    Commit: Merge pull request #1274 from Yelp/u/jgl/PAASTA-
+    11402_soa_dir_refactor  Add soa_dir as field in InstanceConfig and
+    subclasses
+
+ -- Benjamin Chess <bchess@yelp.com>  Fri, 09 Jun 2017 11:37:29 -0700
+
+paasta-tools (0.65.14) xenial; urgency=medium
+
+  * 0.65.14 tagged with 'make release'
+    Commit: Revert "batch calls to describe_instance_status"  This
+    reverts commit c9579c4ceed707962f1dc23aa313ab63f235b989.
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 09 Jun 2017 10:26:29 -0700
+
+paasta-tools (0.65.12) xenial; urgency=medium
+
+  * 0.65.12 tagged with 'make release'
+    Commit: Merge pull request #1286 from
+    bchess/docker_wrapper_iptables_set  docker_wrapper inserts firewall
+    rules in preparation of running
+
+ -- Benjamin Chess <bchess@yelp.com>  Fri, 09 Jun 2017 07:00:54 -0700
+
+paasta-tools (0.65.11) xenial; urgency=medium
+
+  * 0.65.11 tagged with 'make release'
+    Commit: Merge pull request #1289 from Yelp/revert-to-reg-healthcheck
+    Revert "Revert "Revert "default healthcheck type to MESOS_HTTP"""
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Jun 2017 06:32:57 -0700
+
+paasta-tools (0.65.11) xenial; urgency=medium
+
+  * 0.65.11 tagged with 'make release'
+    Commit: Merge pull request #1289 from Yelp/revert-to-reg-healthcheck
+    Revert "Revert "Revert "default healthcheck type to MESOS_HTTP"""
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Jun 2017 06:30:54 -0700
+
+paasta-tools (0.65.10) xenial; urgency=medium
+
+  * 0.65.10 tagged with 'make release'
+    Commit: Revert "Revert "default healthcheck type to MESOS_HTTP""
+    This reverts commit 419b2608b778c4ccdbf2a9fa6cde377555e10700.
+
+ -- Nathan Handler <nhandler@yelp.com>  Thu, 08 Jun 2017 13:32:42 -0700
+
+paasta-tools (0.65.9) xenial; urgency=medium
+
+  * 0.65.9 tagged with 'make release'
+    Commit: Merge pull request #1285 from Yelp/revert-mesos-http-
+    healthchecks  Revert "default healthcheck type to MESOS_HTTP"
+
+ -- Nathan Handler <nhandler@yelp.com>  Thu, 08 Jun 2017 12:27:34 -0700
+
+paasta-tools (0.65.9) xenial; urgency=medium
+
+  * 0.65.9 tagged with 'make release'
+    Commit: Merge pull request #1285 from Yelp/revert-mesos-http-
+    healthchecks  Revert "default healthcheck type to MESOS_HTTP"
+
+ -- Nathan Handler <nhandler@yelp.com>  Thu, 08 Jun 2017 12:22:26 -0700
+
+paasta-tools (0.65.9) xenial; urgency=medium
+
+  * 0.65.9 tagged with 'make release'
+    Commit: Merge pull request #1285 from Yelp/revert-mesos-http-
+    healthchecks  Revert "default healthcheck type to MESOS_HTTP"
+
+ -- Nathan Handler <nhandler@yelp.com>  Thu, 08 Jun 2017 12:20:06 -0700
+
+paasta-tools (0.65.8) xenial; urgency=medium
+
+  * 0.65.8 tagged with 'make release'
+    Commit: Merge pull request #1284 from Yelp/fix/deployd-watch-new-
+    folder  Catch OSError watching new folder
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 08 Jun 2017 06:28:14 -0700
+
+paasta-tools (0.65.7) xenial; urgency=medium
+
+  * 0.65.7 tagged with 'make release'
+    Commit: Revert "Revert "default healthcheck type to MESOS_HTTP""
+    This reverts commit 99d178b4e1fb91580414e5d71537153f94d49b19.
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 08 Jun 2017 05:48:11 -0700
+
+paasta-tools (0.65.6) xenial; urgency=medium
+
+  * 0.65.6 tagged with 'make release'
+    Commit: Skip some tests that flake on our jenkins
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 08 Jun 2017 04:52:37 -0700
+
+paasta-tools (0.65.5) xenial; urgency=medium
+
+  * 0.65.5 tagged with 'make release'
+    Commit: Merge pull request #1254 from Yelp/deployd-itest  Deployd
+    itest
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 08 Jun 2017 03:47:07 -0700
+
+paasta-tools (0.65.4) xenial; urgency=medium
+
+  * 0.65.4 tagged with 'make release'
+    Commit: Merge pull request #1278 from Yelp/fix-instance-statuses-
+    call  fix call to describe_instance_status
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 07 Jun 2017 23:38:40 -0700
+
+paasta-tools (0.65.3) xenial; urgency=medium
+
+  * 0.65.3 tagged with 'make release'
+    Commit: Merge pull request #1267 from Yelp/jlynch_port_to_http  Port
+    the native scheduler to use pymesos
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 05 Jun 2017 11:59:44 -0700
+
+paasta-tools (0.65.2) xenial; urgency=medium
+
+  * 0.65.2 tagged with 'make release'
+    Commit: Merge branch "make-firewall-cronjob-match-daemon"
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Mon, 05 Jun 2017 07:13:45 -0700
+
 paasta-tools (0.65.1) xenial; urgency=medium
 
   * 0.65.1 tagged with 'make release'

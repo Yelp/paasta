@@ -57,6 +57,7 @@ setup(
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid == 1.7',
+        'pymesos >= 0.2.0',
         'pyramid-swagger == 2.2.3',
         'pysensu-yelp >= 0.2.2',
         'pytimeparse >= 1.1.0',
@@ -70,6 +71,7 @@ setup(
         # We install this from git
         # 'sensu-plugin >= 0.2.0',
         'service-configuration-lib >= 0.12.0',
+        'syslogmp',
         'ujson == 1.35',
         'yelp-clog >= 2.7.2',
     ],
@@ -113,6 +115,7 @@ setup(
             'paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main',
             'paasta_docker_wrapper=paasta_tools.docker_wrapper:main',
             'paasta_firewall_update=paasta_tools.firewall_update:main',
+            'paasta_firewall_logging=paasta_tools.firewall_logging:main',
         ],
         'paste.app_factory': [
             'paasta-api-config=paasta_tools.api.api:make_app'

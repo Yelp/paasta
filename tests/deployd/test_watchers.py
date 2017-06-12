@@ -342,9 +342,15 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         type(mock_event).name = name
         assert mock_event == self.handler.filter_event(mock_event)
 
+        mock_event = mock.Mock(maskname='MAJORAS')
         name = mock.PropertyMock(return_value='another.file')
         type(mock_event).name = name
         assert self.handler.filter_event(mock_event) is None
+
+        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
+        name = mock.PropertyMock(return_value='another.file')
+        type(mock_event).name = name
+        assert mock_event == self.handler.filter_event(mock_event)
 
     def test_watch_new_folder(self):
         mock_event = mock.Mock(maskname='MAJORAS')
@@ -404,7 +410,7 @@ def test_get_service_instances_with_changed_id():
     with mock.patch(
         'paasta_tools.deployd.watchers.list_all_marathon_app_ids', autospec=True
     ) as mock_get_marathon_apps, mock.patch(
-        'paasta_tools.deployd.watchers.load_marathon_service_config', autospec=True
+        'paasta_tools.deployd.watchers.load_marathon_service_config_no_cache', autospec=True
     ) as mock_load_marathon_service_config:
         mock_get_marathon_apps.return_value = ['universe.c137.c1.g1',
                                                'universe.c138.c1.g1']
@@ -457,15 +463,50 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         assert self.handler.filter_event(mock_event) is None
 
     def test_watch_new_folder(self):
-        mock_event = mock.Mock(maskname='MAJORAS')
-        self.handler.watch_new_folder(mock_event)
-        assert not self.mock_filewatcher.wm.add_watch.called
-        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
-        self.handler.watch_new_folder(mock_event)
-        assert self.mock_filewatcher.wm.add_watch.called
+        with mock.patch(
+            'os.listdir', autospec=True
+        ) as mock_os_list, mock.patch(
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True
+        ) as mock_bounce_service:
+            mock_os_list.return_value = ["some.file", "some_other.file"]
+            mock_event = mock.Mock(maskname='MAJORAS', pathname='/some/path')
+            self.handler.watch_new_folder(mock_event)
+            assert not self.mock_filewatcher.wm.add_watch.called
+
+            mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
+            name = mock.PropertyMock(return_value='universe')
+            type(mock_event).name = name
+            self.handler.watch_new_folder(mock_event)
+            assert self.mock_filewatcher.wm.add_watch.called
+            assert not mock_bounce_service.called
+
+            mock_os_list.return_value = ["some.file", "marathon-cluster.yaml"]
+            self.handler.watch_new_folder(mock_event)
+            assert self.mock_filewatcher.wm.add_watch.called
+            mock_bounce_service.assert_called_with(self.handler, 'universe')
+
+            mock_os_list.side_effect = OSError
+            mock_bounce_service.reset_mock()
+            self.handler.watch_new_folder(mock_event)
+            assert self.mock_filewatcher.wm.add_watch.called
+            assert not mock_bounce_service.called
 
     def test_process_default(self):
         mock_event = mock.Mock(path='/folder/universe')
+        with mock.patch(
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True
+        ) as mock_bounce_service, mock.patch(
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.watch_new_folder', autospec=True
+        ) as mock_watch_folder, mock.patch(
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.filter_event', autospec=True
+        ) as mock_filter_event:
+            mock_filter_event.return_value = mock_event
+            self.handler.process_default(mock_event)
+            mock_watch_folder.assert_called_with(self.handler, mock_event)
+            mock_filter_event.assert_called_with(self.handler, mock_event)
+            mock_bounce_service.assert_called_with(self.handler, 'universe')
+
+    def test_bounce_service(self):
         with mock.patch(
             'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True
         ) as mock_list_instances, mock.patch(
@@ -475,10 +516,11 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         ):
             mock_list_instances.return_value = ['c137', 'c138']
             mock_get_service_instances_with_changed_id.return_value = [('universe', 'c137')]
-            self.handler.process_default(mock_event)
+            self.handler.bounce_service('universe')
             mock_list_instances.assert_called_with(service='universe',
                                                    clusters=[self.handler.filewatcher.cluster],
-                                                   instance_type='marathon')
+                                                   instance_type='marathon',
+                                                   cache=False)
             mock_get_service_instances_with_changed_id.assert_called_with(self.handler.marathon_client,
                                                                           [('universe', 'c137'),
                                                                            ('universe', 'c138')],
