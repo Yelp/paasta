@@ -47,6 +47,8 @@ def parse_args():
                         help="define a different soa config directory")
     parser.add_argument('-a', '--run-all-related-jobs', action='store_true', dest='run_all_related_jobs',
                         default=False, help='Run all the parent-dependent related jobs')
+    parser.add_argument('-f', '--force-disabled', action='store_true', dest='force_disabled',
+                        default=False, help='Run services that are configured to be disabled')
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('execution_date',
                         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .")
@@ -131,7 +133,7 @@ def remove_parents(chronos_job):
     return chronos_job
 
 
-def clone_job(chronos_job, date, timestamp=None):
+def clone_job(chronos_job, date, timestamp=None, force_disabled=False):
     """
     Given a chronos job, create a 'rerun' clone that respects the parents relations.
     If the job has his own schedule it will be executed once and only once, and as soon as possible.
@@ -162,6 +164,10 @@ def clone_job(chronos_job, date, timestamp=None):
     else:
         # If the job is a scheduled one update the schedule to start it NOW
         clone = set_default_schedule(clone)
+
+    # Set disabled to false if force_disabled is on
+    if force_disabled:
+        clone['disabled'] = False
 
     # modify the command to run commands for a given date
     clone = modify_command_for_date(clone, date)
@@ -247,6 +253,7 @@ def main():
             chronos_job=complete_job_config,
             date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
             timestamp=timestamp,
+            force_disabled=args.force_disabled,
         )
 
         if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:

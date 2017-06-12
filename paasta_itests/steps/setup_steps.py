@@ -196,6 +196,8 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
                 'cmd': 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
+                'mem': 50,
+                'disk': 10,
             }
         }))
     context.soa_dir = soa_dir

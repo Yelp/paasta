@@ -42,70 +42,94 @@ _service_name = 'a_service'
 
 @mark.parametrize('test_case', [
     [
-        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None],
+        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'successfully created job', True,
     ],
     [
-        [_service_name, 'instance1', 'cluster1', None, None],
+        [_service_name, 'instance1', 'cluster1', None, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'successfully created job', True,
     ],
     [
-        [_service_name, 'instance1', 'cluster1', None, None],
+        [_service_name, 'instance1', 'cluster1', None, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, True,
         'please supply a `--execution_date` argument', False,  # job uses time variables interpolation
     ],
     [
-        [_service_name, 'instance1', 'cluster1,cluster2', _user_supplied_execution_date, None],
+        [_service_name, 'instance1', 'cluster1,cluster2', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'successfully created job', True,
     ],
     [
-        [_service_name, 'instance1', None, _user_supplied_execution_date, None],
+        [_service_name, 'instance1', None, _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'cluster: cluster1', True,  # success
     ],
     [
-        [_service_name, 'instance1', 'cluster3', _user_supplied_execution_date, None],
+        [_service_name, 'instance1', 'cluster3', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         '"cluster3" does not look like a valid cluster', False,
     ],
     [
-        [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None],
+        [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'service "{}" has not been deployed to "cluster2" yet'.format(_service_name), False,
     ],
     [
-        [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None],
+        [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'instance "instanceX" is either invalid', False,
     ],
     [
-        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, None],
+        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, None, None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'Please specify the rerun policy via --rerun-type argument', False,
     ],
     [
-        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance'],
+        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'successfully created job', True,
     ],
     [
-        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph'],
+        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', None],
         _service_name,
         _list_clusters, _actual_deployments, _planned_deployments, False,
         'successfully created job', True,  # TODO: make assertion more selective -> check started instances
+    ],
+    [
+        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, True],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,
+    ],
+    [
+        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, False],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,
+    ],
+    [
+        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', True],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,
+    ],
+    [
+        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', True],
+        _service_name,
+        _list_clusters, _actual_deployments, _planned_deployments, False,
+        'successfully created job', True,
     ],
 ])
 def test_rerun_validations(test_case, capfd):
@@ -172,6 +196,7 @@ def test_rerun_validations(test_case, capfd):
         else:
             args.execution_date = None
         args.rerun_type = rerun_args[4]
+        args.force_disabled = rerun_args[5]
         args.verbose = 0
 
         paasta_rerun(args)
@@ -191,6 +216,7 @@ def test_rerun_validations(test_case, capfd):
                 verbose=args.verbose,
                 execution_date=execution_date.strftime(EXECUTION_DATE_FORMAT),
                 run_all_related_jobs=bool(args.rerun_type and args.rerun_type == 'graph'),
+                force_disabled=args.force_disabled,
                 system_paasta_config=mock_load_system_paasta_config.return_value,
             )
 
@@ -213,6 +239,8 @@ def test_rerun_validations(test_case, capfd):
     [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'not_a_valid_type'], True],
     [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'instance'], False],
     [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph'], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-f'], False],
+    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph', '-f'], False],
 ])
 def test_rerun_argparse(test_case):
     argv, should_exit = test_case
