@@ -388,7 +388,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         groups of 99, since AWS limit it.
         """
         partitions = [
-            instance_ids[partition: partition+99]
+            instance_ids[partition: partition + 99]
             for partition in
             range(0, len(instance_ids), 99)
         ]
