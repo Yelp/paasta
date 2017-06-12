@@ -616,6 +616,27 @@ def test_run_chronos_rerun(mock_run):
     assert actual == mock_run.return_value
 
 
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_chronos_rerun_graph(mock_run):
+    mock_run.return_value = (0, 'fake_output')
+    expected_command = (
+        'ssh -A -n -o StrictHostKeyChecking=no fake_master '
+        '\'sudo chronos_rerun --run-all-related-jobs -v -v "a_service an_instance" '
+        '"2016-04-08T02:37:27"\''
+    )
+
+    actual = utils.run_chronos_rerun(
+        'fake_master',
+        'a_service',
+        'an_instance',
+        verbose=2,
+        run_all_related_jobs=True,
+        execution_date='2016-04-08T02:37:27',
+    )
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value
+
+
 def test_get_subparser():
     mock_subparser = mock.Mock()
     mock_function = mock.Mock()
