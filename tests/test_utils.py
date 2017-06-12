@@ -491,6 +491,16 @@ def test_decompose_job_id_with_hashes():
     assert actual == expected
 
 
+def test_build_docker_image_name():
+    registry_url = "fake_registry"
+    upstream_job_name = "a_really_neat_service"
+    expected = "%s/services-%s" % (registry_url, upstream_job_name)
+    with mock.patch('paasta_tools.utils.get_service_docker_registry', autospec=True,
+                    return_value=registry_url):
+        actual = utils.build_docker_image_name(upstream_job_name)
+    assert actual == expected
+
+
 @mock.patch('paasta_tools.utils.build_docker_image_name', autospec=True)
 def test_build_docker_tag(mock_build_docker_image_name):
     upstream_job_name = 'foo'

@@ -1371,31 +1371,27 @@ def decompose_job_id(job_id, spacer=SPACER):
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def build_docker_image_name(upstream_job_name):
+def build_docker_image_name(service):
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
 
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
+    docker image name is docker_registry/services-foo.
     """
-    docker_registry_url = load_system_paasta_config().get_docker_registry()  # jgl TODO: fix, try service one first
-    name = '%s/services-%s' % (docker_registry_url, upstream_job_name)
+    docker_registry_url = get_service_docker_registry(service)
+    name = '%s/services-%s' % (docker_registry_url, service)
     return name
 
 
-def build_docker_tag(upstream_job_name, upstream_git_commit):
+def build_docker_tag(service, upstream_git_commit):
     """Builds the DOCKER_TAG string
-
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = '%s:paasta-%s' % (
-        build_docker_image_name(upstream_job_name),
+        build_docker_image_name(service),
         upstream_git_commit,
     )
     return tag
