@@ -71,6 +71,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
@@ -107,6 +108,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
@@ -173,6 +175,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 

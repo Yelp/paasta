@@ -71,14 +71,14 @@ def run_daemon(args):
         if event is None:
             continue
 
-        process_inotify_event(event, services_by_dependencies, args.soa_dir)
+        process_inotify_event(event, services_by_dependencies, args.soa_dir, args.synapse_service_dir)
 
 
 def run_cron(args):
     firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
-def process_inotify_event(event, services_by_dependencies, soa_dir):
+def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_service_dir):
     filename = event[3]
     service_instance, suffix = os.path.splitext(filename)
     if suffix != '.json':
@@ -88,14 +88,20 @@ def process_inotify_event(event, services_by_dependencies, soa_dir):
     if not services_to_update:
         return
 
-    firewall.ensure_service_chains(soa_dir, services_to_update)
+    # filter active_service_groups() down to just the names in services_to_update
+    service_groups = {
+        service_group: macs
+        for service_group, macs in firewall.active_service_groups().items()
+        if service_group in services_to_update
+    }
+    firewall.ensure_service_chains(service_groups, soa_dir, synapse_service_dir)
     for service_to_update in services_to_update:
         log.debug('Updated ', service_to_update)
 
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):
     dependencies_to_services = defaultdict(set)
-    for service, instance, _ in firewall.services_running_here():
+    for service, instance, _, _ in firewall.services_running_here():
         config = get_instance_config(
             service, instance,
             load_system_paasta_config().get_cluster(),
@@ -111,7 +117,7 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
         smartstack_dependencies = [d['smartstack'] for d in dependencies if d.get('smartstack')]
         for smartstack_dependency in smartstack_dependencies:
             # TODO: filter down to only services that have no proxy_port
-            dependencies_to_services[smartstack_dependency].add((service, instance))
+            dependencies_to_services[smartstack_dependency].add(firewall.ServiceGroup(service, instance))
 
     return dependencies_to_services
 

@@ -799,3 +799,15 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
             srv_port = None
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
+
+
+def is_task_terminal(task):
+    """Return whether a given mesos task is terminal.
+
+    Terminal states are documented in
+    http://mesos.apache.org/api/latest/java/org/apache/mesos/Protos.TaskState.html
+
+    :param task: the task to be inspected
+    :returns: a boolean indicating if the task is considered to be in a terminal state
+    """
+    return task['state'] in ['TASK_ERROR', 'TASK_KILLED', 'TASK_FAILED', 'TASK_FINISHED']

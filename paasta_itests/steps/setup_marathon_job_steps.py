@@ -150,6 +150,14 @@ def can_run_get_app(context):
 
 @then('we should see the number of instances become {number:d}')
 def assert_instances_equals(context, number):
+    attempts = 0
+    while attempts < 14:
+        try:
+            assert context.marathon_client.get_app(context.app_id).instances == number
+            return
+        except AssertionError:
+            attempts += 1
+            sleep(5)
     assert context.marathon_client.get_app(context.app_id).instances == number
 
 

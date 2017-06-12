@@ -346,7 +346,9 @@ class ClusterAutoscaler(ResourceLogMixin):
         ]
         slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
         instance_type_weights = self.get_instance_type_weights()
-        instance_statuses = self.instance_status_for_ips(slave_ips)
+        instance_statuses = self.instance_status_for_instance_ids(
+            instance_ids=[instance['InstanceId'] for instance in self.instances]
+        )
         instance_descriptions = self.instance_descriptions_for_ips(slave_ips)
 
         paasta_aws_slaves = []
@@ -380,16 +382,10 @@ class ClusterAutoscaler(ResourceLogMixin):
 
         return paasta_aws_slaves
 
-    def instance_status_for_ips(self, ips):
+    def instance_status_for_instance_ids(self, instance_ids):
         return self.describe_instance_status(
-            instance_ids=[],
+            instance_ids=instance_ids,
             region=self.resource['region'],
-            instance_filters=[
-                {
-                    'Name': 'private-ip-address',
-                    'Values': ips
-                }
-            ]
         )
 
     def instance_descriptions_for_ips(self, ips):
@@ -412,7 +408,7 @@ class ClusterAutoscaler(ResourceLogMixin):
 
     def filter_instance_status_for_instance_id(self, instance_id, instance_statuses):
         return [
-            status for status in instance_statuses
+            status for status in instance_statuses['InstanceStatuses']
             if status['InstanceId'] == instance_id
         ]
 
@@ -757,7 +753,9 @@ class PaastaAwsSlave(object):
 
     def __init__(self, slave, instance_description, instance_status=None, instance_type_weights=None):
         if instance_status is None:
-            instance_status = {}
+            self.instance_status = {}
+        else:
+            self.instance_status = instance_status
         self.wrapped_slave = slave
         self.instance_description = instance_description
         self.instance_type_weights = instance_type_weights

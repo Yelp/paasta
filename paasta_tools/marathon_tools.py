@@ -114,8 +114,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
-@time_cache(ttl=5)
-def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_marathon_service_config_no_cache(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
@@ -161,7 +160,29 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
+
+
+@time_cache(ttl=5)
+def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+    """Read a service instance's configuration for marathon.
+
+    If a branch isn't specified for a config, the 'branch' key defaults to
+    paasta-${cluster}.${instance}.
+
+    :param name: The service name
+    :param instance: The instance of the service to retrieve
+    :param cluster: The cluster to read the configuration for
+    :param load_deployments: A boolean indicating if the corresponding deployments.json for this service
+                             should also be loaded
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: A dictionary of whatever was in the config for the service instance"""
+    return load_marathon_service_config_no_cache(service=service,
+                                                 instance=instance,
+                                                 cluster=cluster,
+                                                 load_deployments=load_deployments,
+                                                 soa_dir=soa_dir)
 
 
 class InvalidMarathonConfig(Exception):
@@ -170,22 +191,24 @@ class InvalidMarathonConfig(Exception):
 
 class MarathonServiceConfig(LongRunningServiceConfig):
 
-    def __init__(self, service, cluster, instance, config_dict, branch_dict):
+    def __init__(self, service, cluster, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(MarathonServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
     def __repr__(self):
-        return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (
+        return "MarathonServiceConfig(%r, %r, %r, %r, %r, %r)" % (
             self.service,
             self.cluster,
             self.instance,
             self.config_dict,
-            self.branch_dict
+            self.branch_dict,
+            self.soa_dir
         )
 
     def copy(self):
@@ -195,6 +218,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             cluster=self.cluster,
             config_dict=dict(self.config_dict),
             branch_dict=dict(self.branch_dict),
+            soa_dir=self.soa_dir
         )
 
     def get_autoscaling_params(self):
