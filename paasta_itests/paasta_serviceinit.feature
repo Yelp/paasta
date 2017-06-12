@@ -75,7 +75,7 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
      When we run chronos_rerun for service_instance "testservice testinstance"
      Then we should get exit code 0
-      And there is a temporary job for the service testservice and instance testinstance
+      And there is a temporary job for the service "testservice" and instance "testinstance"
      When we store the name of the rerun job for the service testservice and instance testinstance as rerunjob
       And we paasta_serviceinit emergency-stop the service_instance "testservice.testinstance"
      Then the job stored as "rerunjob" is disabled in chronos

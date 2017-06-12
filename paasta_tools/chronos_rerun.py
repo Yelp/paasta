@@ -154,7 +154,7 @@ def clone_job(chronos_job, date, timestamp=None):
         clone['parents'] = [
             '{}{}{}'.format(
                 get_tmp_naming_scheme_prefix(timestamp),
-                chronos_tools.INTERNAL_SPACER,
+                chronos_tools.SPACER,
                 parent,
             )
             for parent in chronos_job['parents']
