@@ -394,11 +394,13 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state):
 
     tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
     non_terminal_tasks = [task for task in tasks if not is_task_terminal(task)]
-    tasks_for_slave = filter_tasks_for_slaves(slaves, non_terminal_tasks)
     slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
 
     return {
-        attribute_value: calculate_resource_utilization_for_slaves(slaves, tasks_for_slave)
+        attribute_value: calculate_resource_utilization_for_slaves(
+            slaves=slaves,
+            tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks)
+        )
         for attribute_value, slaves in slave_groupings.items()
     }
 

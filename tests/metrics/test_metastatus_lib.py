@@ -618,6 +618,49 @@ def test_get_resource_utilization_by_grouping(
         )
 
 
+def test_get_resource_utilization_by_grouping_correctly_groups():
+    fake_state = {
+        'slaves': [{
+            'id': 'foo',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'reserved_resources': []},
+            {
+            'id': 'bar',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'reserved_resources': []},
+        ],
+        'frameworks': [
+            {'tasks': [
+                {
+                    'state': 'TASK_RUNNING',
+                    'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
+                    'slave_id': 'foo'
+                },
+                {
+                    'state': 'TASK_RUNNING',
+                    'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
+                    'slave_id': 'bar'
+                },
+            ]}
+        ]
+    }
+
+    def grouping_func(x): return x['id']
+    free_cpus = metastatus_lib.get_resource_utilization_by_grouping(
+        mesos_state=fake_state,
+        grouping_func=grouping_func
+    )['foo']['free'].cpus
+    assert free_cpus == 9
+
+
 def test_get_resource_utilization_per_slave():
     tasks = [
         {
@@ -727,8 +770,6 @@ def test_calculate_resource_utilization_for_slaves():
         slaves=fake_slaves,
         tasks=tasks
     )['free'].cpus == 480
-
-
 
 
 def test_healthcheck_result_for_resource_utilization_ok():
