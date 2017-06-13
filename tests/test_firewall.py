@@ -136,11 +136,61 @@ def mock_service_config():
             {'host': '1.2.3.4', 'port': 123},
             {'host': '5.6.7.8', 'port': 567}
         ]
-        yield
+        yield mock_instance_config
 
 
-def test_service_group_rules(mock_service_config, service_group):
+def test_service_group_rules_monitor(mock_service_config, service_group):
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                ('limit', (
+                    ('limit', ('1/sec',)),
+                    ('limit-burst', ('1',)),
+                )),
+            ),
+            target_parameters=(
+                ('log-prefix', ('paasta.my_cool_service ',)),
+            ),
+        ),
+        EMPTY_RULE._replace(target='PAASTA-INTERNET'),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='1.2.3.4/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', ('123',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='5.6.7.8/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', ('567',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='169.254.255.254/255.255.255.255',
+            matches=(
+                ('tcp', (('dport', ('20000',)),)),
+            ),
+        ),
+    )
+
+
+def test_service_group_rules_block(mock_service_config, service_group):
+    mock_service_config.return_value.get_outbound_firewall.return_value = 'block'
+    assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
+        EMPTY_RULE._replace(
+            target='REJECT',
+            matches=(),
+            target_parameters=(
+                ('reject-with', ('icmp-port-unreachable',)),
+            ),
+        ),
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
