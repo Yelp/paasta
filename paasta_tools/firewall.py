@@ -75,6 +75,7 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
 
     def update_rules(self, soa_dir, synapse_service_dir):
         iptables.ensure_chain(self.chain_name, self.get_rules(soa_dir, synapse_service_dir))
+        iptables.reorder_chain(self.chain_name)
 
     @property
     def log_prefix(self):

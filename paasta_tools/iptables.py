@@ -17,6 +17,13 @@ import iptc
 log = logging.getLogger(__name__)
 
 
+RULE_TARGET_SORT_ORDER = {
+    # all else defaults to '0'
+    'LOG': 1,
+    'REJECT': 2.
+}
+
+
 _RuleBase = collections.namedtuple('Rule', (
     'protocol',
     'src',
@@ -136,7 +143,7 @@ def ensure_chain(chain, rules):
     inserted at the front of the chain.
     """
     try:
-        current_rules = list_chain(chain)
+        current_rules = set(list_chain(chain))
     except ChainDoesNotExist:
         create_chain(chain)
         current_rules = set()
@@ -148,6 +155,30 @@ def ensure_chain(chain, rules):
     extra_rules = current_rules - set(rules)
     if extra_rules:
         delete_rules(chain, extra_rules)
+
+
+def _rule_sort_key(rule_tuple):
+    old_index, rule = rule_tuple
+    target_name = rule.target.name
+    return (RULE_TARGET_SORT_ORDER.get(target_name, 0), old_index)
+
+
+def reorder_chain(chain_name):
+    """Ensure that any REJECT rules are last, and any LOG rules are second-to-last
+    """
+    table = iptc.Table(iptc.Table.FILTER)
+    with iptables_txn(table):
+        chain = iptc.Chain(table, chain_name)
+        rules = chain.rules
+
+        # sort the rules by rule_key, which uses (RULE_TARGET_SORT_ORDER, idx)
+        sorted_rules_with_indices = sorted(enumerate(rules), key=_rule_sort_key)
+
+        for new_index, (old_index, rule) in enumerate(sorted_rules_with_indices):
+            if new_index == old_index:
+                continue
+            log.debug('reordering rule {} to #{}'.format(rule, new_index))
+            chain.replace_rule(rule, new_index)
 
 
 def ensure_rule(chain, rule):
@@ -195,6 +226,6 @@ def list_chain(chain_name):
     # If the chain doesn't exist, chain.rules will be an empty list, so we need
     # to make sure the chain actually _does_ exist.
     if chain in table.chains:
-        return {Rule.from_iptc(rule) for rule in chain.rules}
+        return tuple(Rule.from_iptc(rule) for rule in chain.rules)
     else:
         raise ChainDoesNotExist(chain_name)

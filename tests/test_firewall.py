@@ -208,14 +208,16 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
     )
 
 
-def test_service_group_update_rules(service_group):
-    with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
-        with mock.patch.object(type(service_group), 'get_rules', return_value=mock.sentinel.RULES):
-            service_group.update_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR)
-    m.assert_called_once_with(
+@mock.patch.object(iptables, 'ensure_chain', autospec=True)
+@mock.patch.object(iptables, 'reorder_chain', autospec=True)
+def test_service_group_update_rules(reorder_mock, ensure_mock, service_group):
+    with mock.patch.object(type(service_group), 'get_rules', return_value=mock.sentinel.RULES):
+        service_group.update_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR)
+    ensure_mock.assert_called_once_with(
         service_group.chain_name,
         mock.sentinel.RULES,
     )
+    reorder_mock.assert_called_once_with(service_group.chain_name)
 
 
 def test_active_service_groups(mock_service_config, mock_services_running_here):
@@ -269,7 +271,8 @@ def mock_active_service_groups():
     return groups
 
 
-def test_ensure_service_chains(mock_active_service_groups, mock_service_config):
+@mock.patch.object(iptables, 'reorder_chain', autospec=True)
+def test_ensure_service_chains(mock_reorder_chain, mock_active_service_groups, mock_service_config):
     with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
         assert firewall.ensure_service_chains(
             mock_active_service_groups,
@@ -287,6 +290,8 @@ def test_ensure_service_chains(mock_active_service_groups, mock_service_config):
     assert len(m.mock_calls) == 2
     assert mock.call('PAASTA.cool_servi.397dba3c1f', mock.ANY) in m.mock_calls
     assert mock.call('PAASTA.dumb_servi.8fb64b4f63', mock.ANY) in m.mock_calls
+    assert mock.call('PAASTA.cool_servi.397dba3c1f') in mock_reorder_chain.mock_calls
+    assert mock.call('PAASTA.dumb_servi.8fb64b4f63') in mock_reorder_chain.mock_calls
 
 
 def test_ensure_dispatch_chains():
@@ -346,9 +351,10 @@ def test_garbage_collect_old_service_chains():
 
 
 @mock.patch.object(firewall.ServiceGroup, 'get_rules', return_value=mock.sentinel.RULES)
+@mock.patch.object(iptables, 'reorder_chain', autospec=True)
 @mock.patch.object(iptables, 'ensure_chain', autospec=True)
 @mock.patch.object(iptables, 'insert_rule', autospec=True)
-def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, get_rules_mock):
+def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chain_mock, get_rules_mock):
     firewall.prepare_new_container(
         DEFAULT_SOA_DIR,
         firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
@@ -359,6 +365,9 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, get_rules_mo
     assert ensure_chain_mock.mock_calls == [
         mock.call('PAASTA-INTERNET', mock.ANY),
         mock.call('PAASTA.myservice.7e8522249a', mock.sentinel.RULES)
+    ]
+    assert reorder_chain_mock.mock_calls == [
+        mock.call('PAASTA.myservice.7e8522249a'),
     ]
     assert insert_rule_mock.mock_calls == [
         mock.call(
