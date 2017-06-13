@@ -1,3 +1,11 @@
+paasta-tools (0.65.20) xenial; urgency=medium
+
+  * 0.65.20 tagged with 'make release'
+    Commit: Merge pull request #1298 from Yelp/rerun-disabled-jobs
+    Allow paasta rerun to rerun disabled chronos jobs
+
+ -- Matthew Bentley <bentley@yelp.com>  Tue, 13 Jun 2017 03:58:02 -0700
+
 paasta-tools (0.65.19) xenial; urgency=medium
 
   * 0.65.19 tagged with 'make release'
