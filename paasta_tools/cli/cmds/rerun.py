@@ -104,6 +104,15 @@ def add_subparser(subparsers):
              "    Rerunning j2 wih --rerun-type=instance will rerun ONLY j2, j3 and j4 will not be re-ran\n"
              "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4 respecting the dependency order\n",
     )
+    rerun_parser.add_argument(
+        '-f', '--force-disabled',
+        dest="force_disabled",
+        action="store_true",
+        default=False,
+        help="Ignore the 'disabled' configuration of the service.\n"
+             "If this is set, disabled services will still be run.\n"
+             "If specified with '--rerun-type=graph', will also rerun disabled dependencies.\n",
+    )
     rerun_parser.set_defaults(command=paasta_rerun)
 
 
@@ -197,6 +206,7 @@ def paasta_rerun(args):
             execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
             system_paasta_config=system_paasta_config,
             run_all_related_jobs=args.rerun_type == 'graph',
+            force_disabled=args.force_disabled,
         )
         if rc == 0:
             paasta_print(PaastaColors.green('  successfully created job'))
