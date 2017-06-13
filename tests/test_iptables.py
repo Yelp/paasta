@@ -57,7 +57,7 @@ def test_rule_from_iptc_mac_match():
         target='DROP',
         matches=(
             ('mac', (
-                ('mac_source', '20:C9:D0:2B:6F:F3'),
+                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
             )),
         ),
     )
@@ -80,7 +80,7 @@ def test_rule_tcp_to_iptc():
         target='ACCEPT',
         matches=(
             ('tcp', (
-                ('dport', '443'),
+                ('dport', ('443',)),
             )),
         ),
     ).to_iptc()
@@ -96,7 +96,7 @@ def test_mac_src_to_iptc():
         target='ACCEPT',
         matches=(
             ('mac', (
-                ('mac_source', '20:C9:D0:2B:6F:F3'),
+                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
             )),
         ),
     ).to_iptc()
