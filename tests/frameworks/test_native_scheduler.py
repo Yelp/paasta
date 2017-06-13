@@ -88,81 +88,84 @@ class TestNativeScheduler(object):
         )
         fake_driver = mock.Mock()
 
-        # First, start up 3 old tasks
-        old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 3
-        # and mark the old tasks as up
-        for task in old_tasks:
-            scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
-        assert len(scheduler.drain_method.downed_task_ids) == 0
+        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                        return_value=system_paasta_config
+                        ):
+            # First, start up 3 old tasks
+            old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            assert len(scheduler.tasks_with_flags) == 3
+            # and mark the old tasks as up
+            for task in old_tasks:
+                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
+            assert len(scheduler.drain_method.downed_task_ids) == 0
 
-        # Now, change force_bounce
-        scheduler.service_config = service_configs[1]
+            # Now, change force_bounce
+            scheduler.service_config = service_configs[1]
 
-        # and start 3 more tasks
-        new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 6
-        # It should not drain anything yet, since the new tasks aren't up.
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert len(scheduler.tasks_with_flags) == 6
-        assert len(scheduler.drain_method.downed_task_ids) == 0
+            # and start 3 more tasks
+            new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            assert len(scheduler.tasks_with_flags) == 6
+            # It should not drain anything yet, since the new tasks aren't up.
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert len(scheduler.tasks_with_flags) == 6
+            assert len(scheduler.drain_method.downed_task_ids) == 0
 
-        # Now we mark the new tasks as up.
-        for i, task in enumerate(new_tasks):
-            scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
-            # As each of these new tasks come up, we should drain an old one.
-            assert len(scheduler.drain_method.downed_task_ids) == i + 1
+            # Now we mark the new tasks as up.
+            for i, task in enumerate(new_tasks):
+                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
+                # As each of these new tasks come up, we should drain an old one.
+                assert len(scheduler.drain_method.downed_task_ids) == i + 1
 
-        # Now let's roll back and make sure it undrains the old ones and drains new.
-        scheduler.service_config = service_configs[0]
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == set()
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.downed_task_ids == {t.task_id.value for t in new_tasks}
+            # Now let's roll back and make sure it undrains the old ones and drains new.
+            scheduler.service_config = service_configs[0]
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert scheduler.drain_method.downed_task_ids == set()
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert scheduler.drain_method.downed_task_ids == {t.task_id.value for t in new_tasks}
 
-        # Once we drain the new tasks, it should kill them.
-        assert fake_driver.killTask.call_count == 0
+            # Once we drain the new tasks, it should kill them.
+            assert fake_driver.killTask.call_count == 0
 
-        # we issue duplicate kills for tasks until we get notified about TASK_KILLED, so we keep track of
-        # the unique IDs of tasks being killed.
-        killed_tasks = set()
+            # we issue duplicate kills for tasks until we get notified about TASK_KILLED, so we keep track of
+            # the unique IDs of tasks being killed.
+            killed_tasks = set()
 
-        def killTask_side_effect(task_id):
-            killed_tasks.add(task_id.value)
+            def killTask_side_effect(task_id):
+                killed_tasks.add(task_id.value)
 
-        fake_driver.killTask.side_effect = killTask_side_effect
+            fake_driver.killTask.side_effect = killTask_side_effect
 
-        scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert len(killed_tasks) == 1
-        scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert len(killed_tasks) == 2
-        scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert scheduler.drain_method.safe_to_kill_task_ids == {t.task_id.value for t in new_tasks}
-        assert len(killed_tasks) == 3
+            scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert len(killed_tasks) == 1
+            scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert len(killed_tasks) == 2
+            scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert scheduler.drain_method.safe_to_kill_task_ids == {t.task_id.value for t in new_tasks}
+            assert len(killed_tasks) == 3
 
-        for task in new_tasks:
-            fake_driver.killTask.assert_any_call(task.task_id)
+            for task in new_tasks:
+                fake_driver.killTask.assert_any_call(task.task_id)
 
-        # Now tell the scheduler those tasks have died.
-        for task in new_tasks:
-            scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_KILLED))
+            # Now tell the scheduler those tasks have died.
+            for task in new_tasks:
+                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_KILLED))
 
-        # Clean up the TestDrainMethod for the rest of this test.
-        assert not list(scheduler.drain_method.downed_task_ids)
+            # Clean up the TestDrainMethod for the rest of this test.
+            assert not list(scheduler.drain_method.downed_task_ids)
 
-        # Now scale down old app
-        scheduler.service_config.config_dict['instances'] = 2
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert len(scheduler.drain_method.downed_task_ids) == 1
+            # Now scale down old app
+            scheduler.service_config.config_dict['instances'] = 2
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert len(scheduler.drain_method.downed_task_ids) == 1
 
-        # mark it as drained and let the scheduler kill it.
-        scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
-        killed_tasks.clear()
-        scheduler.kill_tasks_if_necessary(fake_driver)
-        assert len(killed_tasks) == 1
+            # mark it as drained and let the scheduler kill it.
+            scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
+            killed_tasks.clear()
+            scheduler.kill_tasks_if_necessary(fake_driver)
+            assert len(killed_tasks) == 1
 
     def test_tasks_for_offer_chooses_port(self, system_paasta_config):
         service_name = "service_name"
@@ -199,8 +202,11 @@ class TestNativeScheduler(object):
             staging_timeout=1,
         )
 
-        tasks, _ = scheduler.tasks_and_state_for_offer(
-            mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
+        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                        return_value=system_paasta_config
+                        ):
+            tasks, _ = scheduler.tasks_and_state_for_offer(
+                mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
 
         assert len(tasks) == 1
         for task in tasks:

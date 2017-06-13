@@ -1385,6 +1385,8 @@ class TestChronosTools:
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
         ) as load_system_paasta_config_patch, mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        ), mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=self.fake_chronos_job_config,
         ) as load_chronos_job_config_patch, mock.patch(
