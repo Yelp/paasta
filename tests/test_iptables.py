@@ -289,25 +289,27 @@ def test_list_chain_does_not_exist(mock_Table, mock_Chain):
 
 
 class TestReorderChain(object):
-    class FakeRule(namedtuple('FakeRule', ('name', 'id'))):
-        @property
-        def target(self):
+    class FakeRule(namedtuple('FakeRule', ('target', 'id'))):
+        def to_iptc(self):
             return self
 
     @pytest.yield_fixture(autouse=True)
     def chain_mock(self):
         with mock.patch.object(
-                iptables, 'iptables_txn'
+                iptables, 'iptables_txn', autospec=True
             ), mock.patch.object(
-                iptables.iptc, 'Table'
+                iptables.iptc, 'Table', autospec=True
         ), mock.patch.object(
-                iptables.iptc, 'Chain'
-        ) as chain_mock:
+                iptables.iptc, 'Chain', autospec=True
+        ) as chain_mock, mock.patch.object(
+                iptables, 'list_chain', autospec=True
+        ) as list_chain_mock:
             self.chain_mock = chain_mock
+            self.list_chain_mock = list_chain_mock
             yield
 
     def test_reorder_chain_flip(self):
-        self.chain_mock.return_value.rules = [
+        self.list_chain_mock.return_value = [
             self.FakeRule('REJECT', 'a'),
             self.FakeRule('LOG', 'b'),
             self.FakeRule('ACCEPT', 'c'),
@@ -322,7 +324,7 @@ class TestReorderChain(object):
         ]
 
     def test_reorder_chain_log_first(self):
-        self.chain_mock.return_value.rules = [
+        self.list_chain_mock.return_value = [
             self.FakeRule('LOG', 'b'),
             self.FakeRule('ACCEPT', 'c'),
             self.FakeRule('ACCEPT', 'd'),
@@ -336,7 +338,7 @@ class TestReorderChain(object):
         ]
 
     def test_reorder_chain_empty(self):
-        self.chain_mock.return_value.rules = []
+        self.list_chain_mock.return_value = []
         iptables.reorder_chain('')
         assert self.chain_mock.return_value.replace_rule.mock_calls == []
 
@@ -351,7 +353,7 @@ class TestReorderChain(object):
         assert self.chain_mock.return_value.replace_rule.mock_calls == []
 
     def test_reorder_chain_log_at_bottom(self):
-        self.chain_mock.return_value.rules = [
+        self.list_chain_mock.return_value = [
             self.FakeRule('ACCEPT', 'c'),
             self.FakeRule('ACCEPT', 'd'),
             self.FakeRule('REJECT', 'a'),
@@ -364,7 +366,7 @@ class TestReorderChain(object):
         ]
 
     def test_reorder_chain_reject_in_middle(self):
-        self.chain_mock.return_value.rules = [
+        self.list_chain_mock.return_value = [
             self.FakeRule('ACCEPT', 'c'),
             self.FakeRule('REJECT', 'a'),
             self.FakeRule('ACCEPT', 'd'),
@@ -376,7 +378,7 @@ class TestReorderChain(object):
         ]
 
     def test_reorder_chain_other_target_names(self):
-        self.chain_mock.return_value.rules = [
+        self.list_chain_mock.return_value = [
             self.FakeRule('HELLOWORLD', 'c'),
             self.FakeRule('REJECT', 'a'),
             self.FakeRule('FOOBAR', 'd'),

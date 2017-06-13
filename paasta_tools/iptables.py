@@ -159,17 +159,18 @@ def ensure_chain(chain, rules):
 
 def _rule_sort_key(rule_tuple):
     old_index, rule = rule_tuple
-    target_name = rule.target.name
+    target_name = rule.target
     return (RULE_TARGET_SORT_ORDER.get(target_name, 0), old_index)
 
 
 def reorder_chain(chain_name):
     """Ensure that any REJECT rules are last, and any LOG rules are second-to-last
     """
+
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):
+        rules = list_chain(chain_name)
         chain = iptc.Chain(table, chain_name)
-        rules = chain.rules
 
         # sort the rules by rule_key, which uses (RULE_TARGET_SORT_ORDER, idx)
         sorted_rules_with_indices = sorted(enumerate(rules), key=_rule_sort_key)
@@ -177,8 +178,8 @@ def reorder_chain(chain_name):
         for new_index, (old_index, rule) in enumerate(sorted_rules_with_indices):
             if new_index == old_index:
                 continue
-            log.debug('reordering rule {} to #{}'.format(rule, new_index))
-            chain.replace_rule(rule, new_index)
+            log.debug('reordering chain {} rule {} to #{}'.format(chain_name, rule, new_index))
+            chain.replace_rule(rule.to_iptc(), new_index)
 
 
 def ensure_rule(chain, rule):
