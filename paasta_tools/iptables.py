@@ -74,11 +74,14 @@ class Rule(_RuleBase):
         for param_name, param_value in sorted(rule.target.get_all_parameters().items()):
             fields['target_parameters'] += ((param_name, tuple(param_value)),)
 
+        matches = []
         for match in rule.matches:
-            fields['matches'] += ((
+            matches.append((
                 match.name,
                 tuple((param, tuple(value)) for param, value in sorted(match.get_all_parameters().items()))
-            ),)
+            ))
+        # ensure that matches are sorted for consistency with matching
+        fields['matches'] = tuple(sorted(matches))
 
         return cls(**fields)
 

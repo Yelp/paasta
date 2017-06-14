@@ -159,6 +159,7 @@ def test_service_group_rules(mock_service_config, service_group):
             target='ACCEPT',
             dst='1.2.3.4/255.255.255.255',
             matches=(
+                ('comment', (('comment', ('backend example_happyhour.main',)),)),
                 ('tcp', (('dport', ('123',)),)),
             ),
         ),
@@ -167,6 +168,7 @@ def test_service_group_rules(mock_service_config, service_group):
             target='ACCEPT',
             dst='5.6.7.8/255.255.255.255',
             matches=(
+                ('comment', (('comment', ('backend example_happyhour.main',)),)),
                 ('tcp', (('dport', ('567',)),)),
             ),
         ),
@@ -175,6 +177,7 @@ def test_service_group_rules(mock_service_config, service_group):
             target='ACCEPT',
             dst='169.254.255.254/255.255.255.255',
             matches=(
+                ('comment', (('comment', ('proxy_port example_happyhour.main',)),)),
                 ('tcp', (('dport', ('20000',)),)),
             ),
         ),
@@ -202,6 +205,7 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
             target='ACCEPT',
             dst='169.254.255.254/255.255.255.255',
             matches=(
+                ('comment', (('comment', ('proxy_port example_happyhour.main',)),)),
                 ('tcp', (('dport', ('20000',)),)),
             ),
         ),

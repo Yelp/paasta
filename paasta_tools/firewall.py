@@ -168,6 +168,12 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                 target='ACCEPT',
                 matches=(
                     (
+                        'comment',
+                        (
+                            ('comment', ('backend ' + namespace,)),
+                        )
+                    ),
+                    (
                         'tcp',
                         (
                             ('dport', (six.text_type(backend['port']),)),
@@ -188,6 +194,12 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
             dst='169.254.255.254/255.255.255.255',
             target='ACCEPT',
             matches=(
+                (
+                    'comment',
+                    (
+                        ('comment', ('proxy_port ' + namespace,)),
+                    )
+                ),
                 (
                     'tcp',
                     (
