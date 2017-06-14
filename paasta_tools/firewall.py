@@ -94,7 +94,7 @@ def _default_rule(conf, log_prefix):
             target='REJECT',
             matches=(),
             target_parameters=(
-                (('reject-with', ('icmp-port-unreachable',))),
+                ('reject-with', ('icmp-port-unreachable',)),
             ),
         )
     elif policy == 'monitor':
@@ -104,13 +104,13 @@ def _default_rule(conf, log_prefix):
             dst='0.0.0.0/0.0.0.0',
             target='LOG',
             target_parameters=(
-                ('log-prefix', ((log_prefix),)),
+                ('log-prefix', (log_prefix,)),
             ),
             matches=(
                 (
                     'limit', (
-                        ('limit', '1/sec'),
-                        ('limit-burst', '1'),
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
                     )
                 ),
             )
@@ -167,7 +167,12 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                 dst='{}/255.255.255.255'.format(backend['host']),
                 target='ACCEPT',
                 matches=(
-                    ('tcp', (('dport', six.text_type(backend['port'])),)),
+                    (
+                        'tcp',
+                        (
+                            ('dport', (six.text_type(backend['port']),)),
+                        )
+                    ),
                 ),
                 target_parameters=(),
             )
@@ -183,7 +188,12 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
             dst='169.254.255.254/255.255.255.255',
             target='ACCEPT',
             matches=(
-                ('tcp', (('dport', six.text_type(port)),)),
+                (
+                    'tcp',
+                    (
+                        ('dport', (six.text_type(port),)),
+                    )
+                ),
             ),
             target_parameters=(),
         )
@@ -266,7 +276,7 @@ def dispatch_rule(chain, mac):
         dst='0.0.0.0/0.0.0.0',
         target=chain,
         matches=(
-            ('mac', (('mac_source', mac.upper()),)),
+            ('mac', (('mac-source', (mac.upper(),)),)),
         ),
         target_parameters=(),
     )

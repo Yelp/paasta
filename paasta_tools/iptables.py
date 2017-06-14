@@ -50,6 +50,15 @@ class Rule(_RuleBase):
             assert any(
                 name == 'reject-with' for name, _ in self.target_parameters
             ), 'REJECT rules must specify reject-with'
+        assert tuple(sorted(self.matches)) == self.matches, 'matches should be sorted'
+        for match_name, params in self.matches:
+            for param_name, param_value in params:
+                assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
+                assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
+        assert tuple(sorted(self.target_parameters)) == self.target_parameters, 'target_parameters should be sorted'
+        for param_name, param_value in self.target_parameters:
+            assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
+            assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
 
     @classmethod
     def from_iptc(cls, rule):
@@ -62,13 +71,13 @@ class Rule(_RuleBase):
             'target_parameters': (),
         }
 
-        for param_name, param_values in sorted(rule.target.get_all_parameters().items()):
-            fields['target_parameters'] += ((param_name, tuple(param_values)),)
+        for param_name, param_value in sorted(rule.target.get_all_parameters().items()):
+            fields['target_parameters'] += ((param_name, tuple(param_value)),)
 
         for match in rule.matches:
             fields['matches'] += ((
                 match.name,
-                tuple((param, value) for param, value in match.parameters.items())
+                tuple((param, tuple(value)) for param, value in sorted(match.get_all_parameters().items()))
             ),)
 
         return cls(**fields)
@@ -83,8 +92,8 @@ class Rule(_RuleBase):
             target.set_parameter(param_name, param_value)
         for name, params in self.matches:
             match = rule.create_match(name)
-            for key, value in params:
-                setattr(match, key, value)
+            for param_name, param_value in params:
+                match.set_parameter(param_name, param_value)
         return rule
 
 
