@@ -68,13 +68,14 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         if conf.get_dependencies() is None:
             return ()
 
-        rules = [_default_rule(conf, self.log_prefix)]
+        rules = list(_default_rules(conf, self.log_prefix))
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
         return tuple(rules)
 
     def update_rules(self, soa_dir, synapse_service_dir):
         iptables.ensure_chain(self.chain_name, self.get_rules(soa_dir, synapse_service_dir))
+        iptables.reorder_chain(self.chain_name)
 
     @property
     def log_prefix(self):
@@ -84,37 +85,42 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         return 'paasta.{}'.format(self.service)[:28] + ' '
 
 
-def _default_rule(conf, log_prefix):
+def _default_rules(conf, log_prefix):
+    log_rule = iptables.Rule(
+        protocol='ip',
+        src='0.0.0.0/0.0.0.0',
+        dst='0.0.0.0/0.0.0.0',
+        target='LOG',
+        target_parameters=(
+            ('log-prefix', (log_prefix,)),
+        ),
+        matches=(
+            (
+                'limit', (
+                    ('limit', ('1/sec',)),
+                    ('limit-burst', ('1',)),
+                )
+            ),
+        )
+    )
+
     policy = conf.get_outbound_firewall()
     if policy == 'block':
-        return iptables.Rule(
-            protocol='ip',
-            src='0.0.0.0/0.0.0.0',
-            dst='0.0.0.0/0.0.0.0',
-            target='REJECT',
-            matches=(),
-            target_parameters=(
-                ('reject-with', ('icmp-port-unreachable',)),
+        return (
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='REJECT',
+                matches=(),
+                target_parameters=(
+                    (('reject-with', ('icmp-port-unreachable',))),
+                ),
             ),
+            log_rule
         )
     elif policy == 'monitor':
-        return iptables.Rule(
-            protocol='ip',
-            src='0.0.0.0/0.0.0.0',
-            dst='0.0.0.0/0.0.0.0',
-            target='LOG',
-            target_parameters=(
-                ('log-prefix', (log_prefix,)),
-            ),
-            matches=(
-                (
-                    'limit', (
-                        ('limit', ('1/sec',)),
-                        ('limit-burst', ('1',)),
-                    )
-                ),
-            )
-        )
+        return (log_rule,)
     else:
         raise AssertionError(policy)
 
