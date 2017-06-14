@@ -4,10 +4,12 @@ from __future__ import unicode_literals
 
 import collections
 import hashlib
+import io
 import itertools
 import json
 import logging
 import os.path
+import re
 
 import six
 
@@ -26,6 +28,10 @@ PRIVATE_IP_RANGES = (
     '169.254.0.0/255.255.0.0',
 )
 DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
+
+RESOLV_CONF = '/etc/resolv.conf'
+# not exactly correct, but sufficient to filter out ipv6 or other weird things
+IPV4_REGEX = re.compile('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 
 
 log = logging.getLogger(__name__)
@@ -68,13 +74,14 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         if conf.get_dependencies() is None:
             return ()
 
-        rules = [_default_rule(conf, self.log_prefix)]
+        rules = list(_default_rules(conf, self.log_prefix))
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
         return tuple(rules)
 
     def update_rules(self, soa_dir, synapse_service_dir):
         iptables.ensure_chain(self.chain_name, self.get_rules(soa_dir, synapse_service_dir))
+        iptables.reorder_chain(self.chain_name)
 
     @property
     def log_prefix(self):
@@ -84,42 +91,57 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         return 'paasta.{}'.format(self.service)[:28] + ' '
 
 
-def _default_rule(conf, log_prefix):
+def _default_rules(conf, log_prefix):
+    log_rule = iptables.Rule(
+        protocol='ip',
+        src='0.0.0.0/0.0.0.0',
+        dst='0.0.0.0/0.0.0.0',
+        target='LOG',
+        target_parameters=(
+            ('log-prefix', (log_prefix,)),
+        ),
+        matches=(
+            (
+                'limit', (
+                    ('limit', ('1/sec',)),
+                    ('limit-burst', ('1',)),
+                )
+            ),
+        )
+    )
+
     policy = conf.get_outbound_firewall()
     if policy == 'block':
-        return iptables.Rule(
-            protocol='ip',
-            src='0.0.0.0/0.0.0.0',
-            dst='0.0.0.0/0.0.0.0',
-            target='REJECT',
-            matches=(),
-            target_parameters=(
-                (('reject-with', ('icmp-port-unreachable',))),
+        return (
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='REJECT',
+                matches=(),
+                target_parameters=(
+                    (('reject-with', ('icmp-port-unreachable',))),
+                ),
             ),
+            log_rule
         )
     elif policy == 'monitor':
-        return iptables.Rule(
-            protocol='ip',
-            src='0.0.0.0/0.0.0.0',
-            dst='0.0.0.0/0.0.0.0',
-            target='LOG',
-            target_parameters=(
-                ('log-prefix', ((log_prefix),)),
-            ),
-            matches=(
-                (
-                    'limit', (
-                        ('limit', '1/sec'),
-                        ('limit-burst', '1'),
-                    )
-                ),
-            )
-        )
+        return (log_rule,)
     else:
         raise AssertionError(policy)
 
 
 def _well_known_rules(conf):
+    # All services get DNS
+    yield iptables.Rule(
+        protocol='ip',
+        src='0.0.0.0/0.0.0.0',
+        dst='0.0.0.0/0.0.0.0',
+        target='PAASTA-DNS',
+        matches=(),
+        target_parameters=(),
+    )
+
     for dep in conf.get_dependencies():
         resource = dep.get('well-known')
         if resource == 'internet':
@@ -167,7 +189,18 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                 dst='{}/255.255.255.255'.format(backend['host']),
                 target='ACCEPT',
                 matches=(
-                    ('tcp', (('dport', six.text_type(backend['port'])),)),
+                    (
+                        'comment',
+                        (
+                            ('comment', ('backend ' + namespace,)),
+                        )
+                    ),
+                    (
+                        'tcp',
+                        (
+                            ('dport', (six.text_type(backend['port']),)),
+                        )
+                    ),
                 ),
                 target_parameters=(),
             )
@@ -183,7 +216,18 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
             dst='169.254.255.254/255.255.255.255',
             target='ACCEPT',
             matches=(
-                ('tcp', (('dport', six.text_type(port)),)),
+                (
+                    'comment',
+                    (
+                        ('comment', ('proxy_port ' + namespace,)),
+                    )
+                ),
+                (
+                    'tcp',
+                    (
+                        ('dport', (six.text_type(port),)),
+                    )
+                ),
             ),
             target_parameters=(),
         )
@@ -219,7 +263,56 @@ def active_service_groups():
     return service_groups
 
 
-def ensure_internet_chain():
+def _dns_servers():
+    with io.open(RESOLV_CONF) as f:
+        for line in f:
+            parts = line.split()
+            if (
+                    len(parts) == 2 and
+                    parts[0] == 'nameserver'
+                    and IPV4_REGEX.match(parts[1])
+            ):
+                yield parts[1]
+
+
+def ensure_common_chains():
+    _ensure_dns_chain()
+    _ensure_internet_chain()
+
+
+def _ensure_dns_chain():
+    iptables.ensure_chain(
+        'PAASTA-DNS',
+        tuple(itertools.chain.from_iterable(
+            (
+                iptables.Rule(
+                    protocol='udp',
+                    src='0.0.0.0/0.0.0.0',
+                    dst='{}/255.255.255.255'.format(dns_server),
+                    target='ACCEPT',
+                    matches=(
+                        ('udp', (('dport', ('53',)),)),
+                    ),
+                    target_parameters=(),
+                ),
+                # DNS goes over TCP sometimes, too!
+                iptables.Rule(
+                    protocol='tcp',
+                    src='0.0.0.0/0.0.0.0',
+                    dst='{}/255.255.255.255'.format(dns_server),
+                    target='ACCEPT',
+                    matches=(
+                        ('tcp', (('dport', ('53',)),)),
+                    ),
+                    target_parameters=(),
+                ),
+            )
+            for dns_server in _dns_servers()
+        ))
+    )
+
+
+def _ensure_internet_chain():
     iptables.ensure_chain(
         'PAASTA-INTERNET',
         (
@@ -266,7 +359,7 @@ def dispatch_rule(chain, mac):
         dst='0.0.0.0/0.0.0.0',
         target=chain,
         matches=(
-            ('mac', (('mac_source', mac.upper()),)),
+            ('mac', (('mac-source', (mac.upper(),)),)),
         ),
         target_parameters=(),
     )
@@ -307,7 +400,7 @@ def garbage_collect_old_service_chains(desired_chains):
 
 def general_update(soa_dir, synapse_service_dir):
     """Update iptables to match the current PaaSTA state."""
-    ensure_internet_chain()
+    ensure_common_chains()
     service_chains = ensure_service_chains(active_service_groups(), soa_dir, synapse_service_dir)
     ensure_dispatch_chains(service_chains)
     garbage_collect_old_service_chains(service_chains)
@@ -316,7 +409,7 @@ def general_update(soa_dir, synapse_service_dir):
 def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
     """Update iptables to include rules for a new (not yet running) MAC address
     """
-    ensure_internet_chain()  # probably already set, but just to be safe
+    ensure_common_chains()  # probably already set, but just to be safe
     service_group = ServiceGroup(service, instance)
     service_group.update_rules(soa_dir, synapse_service_dir)
     iptables.insert_rule('PAASTA', dispatch_rule(service_group.chain_name, mac))
