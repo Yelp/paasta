@@ -153,6 +153,7 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
+        EMPTY_RULE._replace(target='PAASTA-DNS'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -206,6 +207,7 @@ def test_service_group_rules_block(mock_service_config, service_group):
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
+        EMPTY_RULE._replace(target='PAASTA-DNS'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -252,6 +254,7 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
+        EMPTY_RULE._replace(target='PAASTA-DNS'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -295,7 +298,7 @@ def test_active_service_groups(mock_service_config, mock_services_running_here):
 
 def test_ensure_internet_chain():
     with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
-        firewall.ensure_internet_chain()
+        firewall._ensure_internet_chain()
     call, = m.call_args_list
     args, _ = call
     assert args[0] == 'PAASTA-INTERNET'
@@ -420,6 +423,7 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chai
         '00:00:00:00:00:00'
     )
     assert ensure_chain_mock.mock_calls == [
+        mock.call('PAASTA-DNS', mock.ANY),
         mock.call('PAASTA-INTERNET', mock.ANY),
         mock.call('PAASTA.myservice.7e8522249a', mock.sentinel.RULES)
     ]
@@ -435,3 +439,86 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chai
             ),
         )
     ]
+
+
+@pytest.mark.parametrize(
+    ('resolv_conf', 'expected'),
+    (
+        (
+            'nameserver         8.8.8.8\n'
+            'nameserver\t8.8.4.4\n'
+            'nameserver 169.254.255.254\n',
+            ('8.8.8.8', '8.8.4.4', '169.254.255.254'),
+        ),
+        (
+            '#nameserver 8.8.8.8\n'
+            'nameserver\n'
+            'nameserver 8.8.4.4\n'
+            'nameserver 2001:4860:4860::8888\n',
+            ('8.8.4.4',),
+        ),
+        (
+            'domain yelpcorp.com\n'
+            'nameserver 8.8.4.4\n'
+            'search a b c d\n',
+            ('8.8.4.4',),
+        ),
+    ),
+
+)
+def test_dns_servers(tmpdir, resolv_conf, expected):
+    path = tmpdir.join('resolv.conf')
+    path.write(resolv_conf)
+    with mock.patch.object(firewall, 'RESOLV_CONF', path.strpath):
+        assert tuple(firewall._dns_servers()) == expected
+
+
+def test_ensure_dns_chain(tmpdir):
+    path = tmpdir.join('resolv.conf')
+    path.write(
+        'nameserver 8.8.8.8\n'
+        'nameserver 8.8.4.4\n'
+    )
+    with mock.patch.object(
+        iptables, 'ensure_chain', autospec=True,
+    ) as m, mock.patch.object(
+        firewall, 'RESOLV_CONF', path.strpath,
+    ):
+        firewall._ensure_dns_chain()
+    call, = m.call_args_list
+    args, _ = call
+    assert args[0] == 'PAASTA-DNS'
+    assert args[1] == (
+        EMPTY_RULE._replace(
+            dst='8.8.8.8/255.255.255.255',
+            target='ACCEPT',
+            protocol='udp',
+            matches=(
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='8.8.8.8/255.255.255.255',
+            target='ACCEPT',
+            protocol='tcp',
+            matches=(
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='8.8.4.4/255.255.255.255',
+            target='ACCEPT',
+            protocol='udp',
+            matches=(
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='8.8.4.4/255.255.255.255',
+            target='ACCEPT',
+            protocol='tcp',
+            matches=(
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+    )
