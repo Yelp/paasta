@@ -27,7 +27,6 @@ from botocore.exceptions import ClientError
 from requests.exceptions import HTTPError
 
 from paasta_tools.autoscaling import ec2_fitness
-from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_master
@@ -251,9 +250,6 @@ class ClusterAutoscaler(ResourceLogMixin):
                         self.log.info("Instance {}: NOT ready to kill".format(instance_id))
                     self.log.debug("Waiting 5 seconds and then checking again")
                     time.sleep(5)
-        except SlaveDoesNotExist:
-            self.log.error("Tried to terminate slave {}, but it did not exist. Continuing.".format(slave))
-            pass
         except TimeoutError:
             self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(drain_timeout,
                                                                                                    slave.pid))

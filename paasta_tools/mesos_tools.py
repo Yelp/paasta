@@ -678,9 +678,13 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
     all_mesos_tasks = get_all_running_tasks()  # empty string = all app ids
-    slaves = {
-        slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
-    }
+    try:
+        slaves = {
+            slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+        }
+    except SlaveDoesNotExist:
+        log.debug("Tried to get mesos slaves for id {}, but none existed.".format(mesos_state.get('id'), ''))
+        return {}
     for task in all_mesos_tasks:
         if task.slave['id'] not in slaves:
             log.debug("Slave {} not found for task".format(task.slave['id']))
