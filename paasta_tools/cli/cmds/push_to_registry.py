@@ -50,7 +50,11 @@ def add_subparser(subparsers):
         ),
         epilog=(
             "Note: Uploading to a docker registry often requires access to the local "
-            "docker socket as well as credentials to the remote registry"
+            "docker socket as well as credentials to the remote registry. "
+            "Exit statuses: 0 if OK,"
+            " 1 if the docker registry cannot be reached,"
+            " 2 if the image already exists in the docker registry, "
+            " or exit status of 'docker push' if it wasn't 0."
         ),
     )
     list_parser.add_argument(
@@ -105,9 +109,9 @@ def paasta_push_to_registry(args):
                 paasta_print("The docker image is already in the PaaSTA docker registry. "
                              "I'm NOT overriding the existing image. "
                              "Add --force to override the image in the registry if you are sure what you are doing.")
-                return 0
+                return 2
         except RequestException as e:
-            paasta_print("Can not connect to the PaaSTA docker registry to verify if this image exists.\n"
+            paasta_print("Cannot connect to the PaaSTA docker registry to verify if this image exists.\n"
                          "%s" % str(e))
             return 1
 
