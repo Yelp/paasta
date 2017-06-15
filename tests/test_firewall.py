@@ -153,7 +153,7 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
-        EMPTY_RULE._replace(target='PAASTA-DNS'),
+        EMPTY_RULE._replace(target='PAASTA-COMMON'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -207,7 +207,7 @@ def test_service_group_rules_block(mock_service_config, service_group):
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
-        EMPTY_RULE._replace(target='PAASTA-DNS'),
+        EMPTY_RULE._replace(target='PAASTA-COMMON'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -254,7 +254,7 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
                 ('log-prefix', ('paasta.my_cool_service ',)),
             ),
         ),
-        EMPTY_RULE._replace(target='PAASTA-DNS'),
+        EMPTY_RULE._replace(target='PAASTA-COMMON'),
         EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
@@ -425,6 +425,7 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chai
     assert ensure_chain_mock.mock_calls == [
         mock.call('PAASTA-DNS', mock.ANY),
         mock.call('PAASTA-INTERNET', mock.ANY),
+        mock.call('PAASTA-COMMON', mock.ANY),
         mock.call('PAASTA.myservice.7e8522249a', mock.sentinel.RULES)
     ]
     assert reorder_chain_mock.mock_calls == [
@@ -521,4 +522,42 @@ def test_ensure_dns_chain(tmpdir):
                 ('tcp', (('dport', ('53',)),)),
             ),
         ),
+    )
+
+
+def test_ensure_common_chain():
+    with mock.patch.object(iptables, 'ensure_chain', autospec=True) as m:
+        firewall._ensure_common_chain()
+    call, = m.call_args_list
+    args, _ = call
+    assert args[0] == 'PAASTA-COMMON'
+    assert args[1] == (
+        EMPTY_RULE._replace(
+            dst='169.254.255.254/255.255.255.255',
+            target='ACCEPT',
+            protocol='tcp',
+            matches=(
+                ('comment', (('comment', ('scribed',)),)),
+                ('tcp', (('dport', ('1463',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='169.254.255.254/255.255.255.255',
+            target='ACCEPT',
+            protocol='udp',
+            matches=(
+                ('comment', (('comment', ('metrics-relay',)),)),
+                ('udp', (('dport', ('8125',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='169.254.255.254/255.255.255.255',
+            target='ACCEPT',
+            protocol='tcp',
+            matches=(
+                ('comment', (('comment', ('sensu',)),)),
+                ('tcp', (('dport', ('3030',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(target='PAASTA-DNS'),
     )

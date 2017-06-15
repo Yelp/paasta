@@ -132,12 +132,12 @@ def _default_rules(conf, log_prefix):
 
 
 def _well_known_rules(conf):
-    # All services get DNS
+    # Allow access to certain resources for all services by default.
     yield iptables.Rule(
         protocol='ip',
         src='0.0.0.0/0.0.0.0',
         dst='0.0.0.0/0.0.0.0',
-        target='PAASTA-DNS',
+        target='PAASTA-COMMON',
         matches=(),
         target_parameters=(),
     )
@@ -164,6 +164,31 @@ def _synapse_backends(synapse_service_dir, namespace):
     with open(os.path.join(synapse_service_dir, namespace + '.json')) as synapse_backend_file:
         synapse_backend_json = json.load(synapse_backend_file)
         return synapse_backend_json
+
+
+def _yocalhost_rule(port, comment, protocol='tcp'):
+    """Return an iptables rule allowing access to a yocalhost port."""
+    return iptables.Rule(
+        protocol=protocol,
+        src='0.0.0.0/0.0.0.0',
+        dst='169.254.255.254/255.255.255.255',
+        target='ACCEPT',
+        matches=(
+            (
+                'comment',
+                (
+                    ('comment', (comment,)),
+                )
+            ),
+            (
+                protocol,
+                (
+                    ('dport', (six.text_type(port),)),
+                )
+            ),
+        ),
+        target_parameters=(),
+    )
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
@@ -209,28 +234,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         service, _ = namespace.split('.', 1)
         service_namespaces = get_all_namespaces_for_service(service, soa_dir=soa_dir)
         port = dict(service_namespaces)[namespace]['proxy_port']
-
-        yield iptables.Rule(
-            protocol='tcp',
-            src='0.0.0.0/0.0.0.0',
-            dst='169.254.255.254/255.255.255.255',
-            target='ACCEPT',
-            matches=(
-                (
-                    'comment',
-                    (
-                        ('comment', ('proxy_port ' + namespace,)),
-                    )
-                ),
-                (
-                    'tcp',
-                    (
-                        ('dport', (six.text_type(port),)),
-                    )
-                ),
-            ),
-            target_parameters=(),
-        )
+        yield _yocalhost_rule(port, 'proxy_port ' + namespace)
 
 
 def services_running_here():
@@ -275,9 +279,30 @@ def _dns_servers():
                 yield parts[1]
 
 
-def ensure_common_chains():
+def ensure_shared_chains():
     _ensure_dns_chain()
     _ensure_internet_chain()
+    _ensure_common_chain()
+
+
+def _ensure_common_chain():
+    """The common chain allows access for all services to certain resources."""
+    iptables.ensure_chain(
+        'PAASTA-COMMON',
+        (
+            _yocalhost_rule(1463, 'scribed'),
+            _yocalhost_rule(8125, 'metrics-relay', protocol='udp'),
+            _yocalhost_rule(3030, 'sensu'),
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='PAASTA-DNS',
+                matches=(),
+                target_parameters=(),
+            ),
+        ),
+    )
 
 
 def _ensure_dns_chain():
@@ -400,7 +425,7 @@ def garbage_collect_old_service_chains(desired_chains):
 
 def general_update(soa_dir, synapse_service_dir):
     """Update iptables to match the current PaaSTA state."""
-    ensure_common_chains()
+    ensure_shared_chains()
     service_chains = ensure_service_chains(active_service_groups(), soa_dir, synapse_service_dir)
     ensure_dispatch_chains(service_chains)
     garbage_collect_old_service_chains(service_chains)
@@ -409,7 +434,7 @@ def general_update(soa_dir, synapse_service_dir):
 def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
     """Update iptables to include rules for a new (not yet running) MAC address
     """
-    ensure_common_chains()  # probably already set, but just to be safe
+    ensure_shared_chains()  # probably already set, but just to be safe
     service_group = ServiceGroup(service, instance)
     service_group.update_rules(soa_dir, synapse_service_dir)
     iptables.insert_rule('PAASTA', dispatch_rule(service_group.chain_name, mac))
