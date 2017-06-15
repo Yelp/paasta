@@ -268,7 +268,7 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
     )
 
 
-def test_service_group_rules_empty_when_invalid_instance_type(service_group):
+def test_service_group_rules_empty_when_invalid_instance_type(service_group, mock_service_config):
     with mock.patch.object(firewall, 'get_instance_config', side_effect=NotImplementedError()):
         assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == ()
 
