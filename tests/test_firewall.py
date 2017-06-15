@@ -533,6 +533,12 @@ def test_ensure_common_chain():
     assert args[0] == 'PAASTA-COMMON'
     assert args[1] == (
         EMPTY_RULE._replace(
+            target='ACCEPT',
+            matches=(
+                ('conntrack', (('ctstate', ('ESTABLISHED',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
             dst='169.254.255.254/255.255.255.255',
             target='ACCEPT',
             protocol='tcp',

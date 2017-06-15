@@ -290,6 +290,17 @@ def _ensure_common_chain():
     iptables.ensure_chain(
         'PAASTA-COMMON',
         (
+            # Allow return traffic for incoming connections
+            iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst='0.0.0.0/0.0.0.0',
+                target='ACCEPT',
+                matches=(
+                    ('conntrack', (('ctstate', ('ESTABLISHED',)),)),
+                ),
+                target_parameters=(),
+            ),
             _yocalhost_rule(1463, 'scribed'),
             _yocalhost_rule(8125, 'metrics-relay', protocol='udp'),
             _yocalhost_rule(3030, 'sensu'),
