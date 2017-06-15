@@ -448,7 +448,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         (/status currently)
 
         Otherwise these do *not* use the same thresholds as smartstack in order to not
-        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        produce a negative feedback loop, where mesos aggressively kills tasks because they
         are slow, which causes other things to be slow, etc.
 
         If the mode of the service is None, indicating that it was not specified in the service config

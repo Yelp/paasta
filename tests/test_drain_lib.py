@@ -139,4 +139,4 @@ class TestHTTPDrainMethod(object):
                 task=fake_task,
             )
 
-        mock_get.assert_called_once_with('http://localhost:654321/fake/fake_host', headers=mock.ANY)
+        mock_get.assert_called_once_with('http://localhost:654321/fake/fake_host', headers=mock.ANY, timeout=15)
