@@ -64,12 +64,17 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
         return chain
 
     def get_rules(self, soa_dir, synapse_service_dir):
-        conf = get_instance_config(
-            self.service, self.instance,
-            load_system_paasta_config().get_cluster(),
-            load_deployments=False,
-            soa_dir=soa_dir,
-        )
+        try:
+            conf = get_instance_config(
+                self.service, self.instance,
+                load_system_paasta_config().get_cluster(),
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+        except NotImplementedError:
+            # PAASTA-11414: new instance types may not provide this configuration information;
+            # we don't want to break all of the firewall infrastructure when that happens
+            return ()
 
         if conf.get_dependencies() is None:
             return ()
