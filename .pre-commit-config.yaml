@@ -2,37 +2,37 @@
     sha: v0.7.0
     hooks:
     -   id: trailing-whitespace
-        language_version: python2.7
+        language_version: python3
     -   id: end-of-file-fixer
-        language_version: python2.7
+        language_version: python3
     -   id: autopep8-wrapper
-        language_version: python2.7
+        language_version: python3
     -   id: check-docstring-first
-        language_version: python2.7
+        language_version: python3
     -   id: check-json
-        language_version: python2.7
+        language_version: python3
     -   id: check-yaml
         files: ^(?!.*template).*\.(yaml|yml|eyaml)$
-        language_version: python2.7
+        language_version: python3
     -   id: debug-statements
-        language_version: python2.7
+        language_version: python3
     -   id: name-tests-test
         args:
         - --django
         files: ^tests/.*\.py$
-        language_version: python2.7
+        language_version: python3
     -   id: requirements-txt-fixer
-        language_version: python2.7
+        language_version: python3
     -   id: flake8
         exclude: ^docs/source/conf.py$
-        language_version: python2.7
+        language_version: python3
     -   id: check-ast
         language_version: python3
 -   repo: https://github.com/asottile/reorder_python_imports.git
     sha: v0.3.1
     hooks:
     -   id: reorder-python-imports
-        language_version: python2.7
+        language_version: python3
         args:
         - --add-import
         - from __future__ import unicode_literals
