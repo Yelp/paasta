@@ -25,6 +25,7 @@ import socket
 import sys
 
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
+from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
 from paasta_tools.mac_address import reserve_unique_mac_address
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -296,11 +297,15 @@ def main(argv=None):
         else:
             argv = add_argument(argv, '--mac-address={}'.format(mac_address))
 
-            prepare_new_container(
-                DEFAULT_SOA_DIR,
-                DEFAULT_SYNAPSE_SERVICE_DIR,
-                env_args['PAASTA_SERVICE'],
-                env_args['PAASTA_INSTANCE'],
-                mac_address)
+            try:
+                with firewall_flock():
+                    prepare_new_container(
+                        DEFAULT_SOA_DIR,
+                        DEFAULT_SYNAPSE_SERVICE_DIR,
+                        env_args['PAASTA_SERVICE'],
+                        env_args['PAASTA_INSTANCE'],
+                        mac_address)
+            except Exception as e:
+                print('Unable to add firewall rules: {}'.format(e), file=sys.stderr)
 
     os.execlp('docker', 'docker', *argv[1:])

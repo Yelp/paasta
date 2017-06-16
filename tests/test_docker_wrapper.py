@@ -682,8 +682,16 @@ class TestMain(object):
             '--env=PAASTA_INSTANCE=myinstance'
         ]
 
+    @mock.patch.object(docker_wrapper, 'firewall_flock', autospec=True)
     @mock.patch.object(docker_wrapper, 'prepare_new_container', autospec=True)
-    def test_mac_address(self, mock_prepare_new_container, mock_mac_address, mock_execlp, mock_firewall_env_args):
+    def test_mac_address(
+        self,
+        mock_prepare_new_container,
+        mock_firewall_flock,
+        mock_mac_address,
+        mock_execlp,
+        mock_firewall_env_args
+    ):
         argv = [
             'docker',
             'run',
@@ -697,6 +705,8 @@ class TestMain(object):
             '--mac-address=00:00:00:00:00:00',
             *mock_firewall_env_args
         )]
+
+        assert mock_firewall_flock.return_value.__enter__.called is True
 
         assert mock_prepare_new_container.mock_calls == [mock.call(
             docker_wrapper.DEFAULT_SOA_DIR,
@@ -755,3 +765,30 @@ class TestMain(object):
             )]
             _, err = capsys.readouterr()
             assert err.startswith('Unable to add mac address: [Errno 2] No such file or directory')
+
+    @mock.patch.object(docker_wrapper, 'firewall_flock', autospec=True, side_effect=Exception("Oh noes"))
+    @mock.patch.object(docker_wrapper, 'prepare_new_container', autospec=True)
+    def test_prepare_new_container_error(
+        self,
+        mock_prepare_new_container,
+        firewall_flock_mock,
+        capsys,
+        mock_mac_address,
+        mock_execlp,
+        mock_firewall_env_args
+    ):
+        argv = [
+            'docker',
+            'run',
+        ] + mock_firewall_env_args
+        docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--mac-address=00:00:00:00:00:00',
+            *mock_firewall_env_args
+        )]
+        _, err = capsys.readouterr()
+        assert err.startswith('Unable to add firewall rules: Oh noes')
