@@ -27,7 +27,7 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 480
@@ -67,7 +67,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 5
@@ -81,7 +81,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': -1,
@@ -96,7 +96,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
         ),
         'soa_dir'
     ) == {
-        'alert_after': '2m',
+        'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
         'realert_every': 10
@@ -322,16 +322,18 @@ def test_sensu_message_status_disabled():
 
 
 def test_sensu_message_status_stuck():
+    fake_schedule = '* 1 * * *'
     fake_job = {
         'name': 'fake_job_id',
         'disabled': False,
-        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=4)).isoformat(),
-        'schedule': '* * * * *'
+        'lastSuccess': (datetime.now(pytz.utc) - timedelta(hours=25)).isoformat(),
+        'schedule': fake_schedule,
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         chronos_job_config=Mock(
-            get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3),
-            get_schedule=Mock(return_value='* * * * *')
+            get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 24),
+            get_schedule=Mock(return_value=fake_schedule),
+            get_schedule_time_zone=Mock(return_value='America/Los_Angeles'),
         ),
         service='myservice',
         instance='myinstance',
@@ -339,9 +341,10 @@ def test_sensu_message_status_stuck():
         chronos_job=fake_job
     )
     assert status == pysensu_yelp.Status.CRITICAL
-    assert "Job myservice.myinstance with schedule * * * * * hasn't run since " in output
+    assert ("Job myservice.myinstance with schedule {}"
+            " (America/Los_Angeles)").format(fake_schedule) in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
-    assert "and is configured to run every 180.0 minutes." in output
+    assert "and is configured to run every 24h." in output
 
 
 def test_job_is_stuck_when_no_interval():
