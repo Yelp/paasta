@@ -107,8 +107,9 @@ def paasta_push_to_registry(args):
                              "Add --force to override the image in the registry if you are sure what you are doing.")
                 return 0
         except RequestException as e:
-            paasta_print("Can not connect to the PaaSTA docker registry to verify if this image exists.\n"
-                         "%s" % str(e))
+            registry_uri = get_service_docker_registry(service, args.soa_dir)
+            paasta_print("Can not connect to the PaaSTA docker registry '%s' to verify if this image exists.\n"
+                         "%s" % (registry_uri, str(e)))
             return 1
 
     cmd = build_command(service, args.commit)
