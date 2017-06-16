@@ -220,16 +220,40 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
             'name': service + ' foo'
         }
     ] for service in services]
+    fake_jobs.append([
+        {
+            'name': 'tmp-2017-06-13T123738942755 service4 foo',
+            'lastError': latest_time,
+        },
+        {
+            'name': 'service4 foo',
+            'lastSuccess': '2016-07-26T22:02:00+00:00',
+        },
+        {
+            'name': 'service4 foo',
+        }
+    ])
     mock_lookup_chronos_jobs.side_effect = fake_jobs
-    mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for _ in range(0, 3)]
+    mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for _ in range(0, 4)]
 
-    fake_configured_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]
-    fake_client = Mock(list=Mock(return_value=[('service1', 'main'), ('service2', 'main'), ('service3', 'main')]))
+    fake_configured_jobs = [
+        ('service1', 'main'),
+        ('service2', 'main'),
+        ('service3', 'main'),
+        ('service4', 'main')
+    ]
+    fake_client = Mock(list=Mock(return_value=[
+        ('service1', 'main'),
+        ('service2', 'main'),
+        ('service3', 'main'),
+        ('service4', 'main')
+    ]))
 
     expected = {
         ('service1', 'main'): {'name': 'service1 foo', 'lastError': latest_time},
         ('service2', 'main'): {'name': 'service2 foo', 'lastError': latest_time},
-        ('service3', 'main'): {'name': 'service3 foo', 'lastError': latest_time}
+        ('service3', 'main'): {'name': 'service3 foo', 'lastError': latest_time},
+        ('service4', 'main'): {'name': 'tmp-2017-06-13T123738942755 service4 foo', 'lastError': latest_time},
     }
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == expected
 
@@ -263,6 +287,19 @@ def test_sensu_message_status_ok(mock_job_is_stuck):
     mock_job_is_stuck.return_value = False
     fake_job = {'name': 'full_job_id',
                 'disabled': False,
+                'lastSuccess': '2016-07-26T22:02:00+00:00'}
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job)
+    expected_output = "Last run of job myservice.myinstance Succeded"
+    assert output == expected_output
+    assert status == pysensu_yelp.Status.OK
+
+
+@patch('paasta_tools.check_chronos_jobs.job_is_stuck', autospec=True)
+def test_sensu_message_rerun_status_ok(mock_job_is_stuck):
+    mock_job_is_stuck.return_value = False
+    fake_job = {'name': 'tmp-2017-06-13T123738942755 full_job_id',
+                'disabled': True,
                 'lastSuccess': '2016-07-26T22:02:00+00:00'}
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job)
