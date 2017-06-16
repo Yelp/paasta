@@ -36,8 +36,8 @@ pyasn1==0.1.8
 pycrypto==2.6.1
 Pygments==2.0.2
 pymesos==0.2.13
-pyramid==1.7
-pyramid-swagger==2.2.3
+pyramid==1.8.4
+pyramid-swagger==2.4.1
 pysensu-yelp==0.3.3
 PyStaticConfiguration==0.10.3
 python-crontab==2.1.1
