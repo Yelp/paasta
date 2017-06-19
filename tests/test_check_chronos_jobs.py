@@ -370,3 +370,19 @@ def test_guess_realert_every():
         Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3))) == 60 * 3
     assert check_chronos_jobs.guess_realert_every(
         Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 48))) == 60 * 24
+
+
+def test_message_for_stuck_job_timezone_is_none():
+    fake_schedule = '* 1 * * *'
+    output = check_chronos_jobs.message_for_stuck_job(
+        'myservice',
+        'myinstance',
+        'mycluster',
+        (datetime.now(pytz.utc) - timedelta(hours=25)).isoformat(),
+        60 * 60 * 24,
+        fake_schedule,
+        None)
+    assert ("Job myservice.myinstance with schedule {}"
+            " (UTC)").format(fake_schedule) in output
+    assert "paasta logs -s myservice -i myinstance -c mycluster" in output
+    assert "and is configured to run every 24h." in output
