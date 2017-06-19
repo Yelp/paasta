@@ -107,10 +107,9 @@ def _generate_mesos_cli_config(zk_host_and_port):
 
 
 def write_mesos_cli_config(config):
-    mesos_cli_config_file = NamedTemporaryFile(delete=False)
-    mesos_cli_config_file.write(json.dumps(config))
-    mesos_cli_config_file.close()
-    return mesos_cli_config_file.name
+    with NamedTemporaryFile(mode='w', delete=False) as mesos_cli_config_file:
+        mesos_cli_config_file.write(json.dumps(config))
+        return mesos_cli_config_file.name
 
 
 def write_etc_paasta(context, config, filename):
