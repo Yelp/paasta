@@ -1,3 +1,11 @@
+paasta-tools (0.65.25) xenial; urgency=medium
+
+  * 0.65.25 tagged with 'make release'
+    Commit: Merge pull request #1255 from Yelp/PAASTA-10767  Make
+    setup_marathon_job take care of slack instance slots on scaledown
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 19 Jun 2017 12:03:18 -0700
+
 paasta-tools (0.65.24) xenial; urgency=medium
 
   * 0.65.24 tagged with 'make release'
