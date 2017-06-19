@@ -27,8 +27,9 @@ from paasta_tools.utils import paasta_print
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'security-check',
-        description='Performs a security check (alpha)',
-        help='Performs a security check (alpha)',
+        description='Performs a security check consisting in a few tests like shellshock vulnerability, the user '
+                    'that is running the docker container is not root or the latest packages installed',
+        help='Performs a security check',
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -45,6 +46,14 @@ def add_subparser(subparsers):
 
 
 def perform_security_check(args):
+    """It runs a few security-checks including:
+    - shellshock: is the version of bash running inside the container vulnerable to shellshock?
+    - docker container: is the container running as root?
+    - packages: does the container has the latest packages installed? If not, the output will contain the name of the
+    package that needs to be updated and to which version.
+    :param args: service - the name of the service; commit - upstream git commit.
+    :return: 0 if the security-check passed, non-zero if it failed.
+    """
     security_check_command = load_system_paasta_config().get_security_check_command()
     if not security_check_command:
         paasta_print("Nothing to be executed during the security-check step")
@@ -52,7 +61,7 @@ def perform_security_check(args):
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
     if ret_code != 0:
-        paasta_print("The security-check failed with {}. Please visit the security-check runbook "
+        paasta_print("The security-check failed with {}. Please visit y/security-check-runbook"
                      "to learn how to fix it.".format(output))
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
