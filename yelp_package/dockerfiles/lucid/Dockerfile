@@ -19,7 +19,26 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Make sure we get a package suitable for building this package correctly.
 # Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
 # Which at this time is in this package
-RUN apt-get update > /dev/null && apt-get -y install dpkg-dev python-pip python-setuptools python-dev libssl-dev libffi-dev debhelper dh-virtualenv python-yaml libyaml-dev python-pytest pyflakes python3.6 python3.6-dev help2man zsh git > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install \
+        dpkg-dev \
+        python-pip \
+        python-setuptools \
+        python-dev \
+        libssl-dev \
+        libffi-dev \
+        debhelper \
+        dh-virtualenv \
+        python-yaml \
+        libyaml-dev \
+        python-pytest \
+        pyflakes \
+        python3.6 \
+        python3.6-dev \
+        help2man \
+        zsh \
+        git > /dev/null \
+    && apt-get clean > /dev/null
+
 
 RUN pip install -U virtualenv==15.1.0 tox==2.6.0
 
