@@ -20,7 +20,7 @@ git+git://github.com/thefactory/marathon-python@e70307e
 # While task_processing is in rapid development mode, we install it from git
 git+git://github.com/Yelp/task_processing@4192ee8d#egg=task_processing[mesos_executor]
 http-parser==0.8.3
-httplib2==0.9
+httplib2==0.9.2
 humanize==0.5.1
 inotify==0.2.8
 isodate==0.5.1
