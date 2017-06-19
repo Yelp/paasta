@@ -119,6 +119,7 @@ def test_push_to_registry_does_not_override_existing_image(
     assert not mock_run.called
 
 
+@patch('paasta_tools.utils.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.build_command', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
@@ -130,6 +131,7 @@ def test_push_to_registry_does_not_override_when_cant_check_status(
     mock_validate_service_name,
     mock_build_command,
     mock_is_docker_image_already_in_registry,
+    mock_load_system_paasta_config,
 ):
     args, _ = parse_args(['push-to-registry', '-s', 'foo', '-c', 'abcd' * 10])
     mock_run.return_value = (0, 'Success')
