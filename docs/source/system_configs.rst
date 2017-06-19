@@ -29,7 +29,8 @@ These are the keys that may exist in system configs:
   * ``zookeeper``: A zookeeper connection url, used for discovering where the Mesos leader is, and some locks.
     Example: ``"zookeeper": "zk://zookeeper1:2181,zookeeper2:2181,zookeeper3:2181/mesos"``.
 
-  * ``docker_registry``: The name of the docker registry where paasta images will be stored.
+  * ``docker_registry``: The name of the docker registry where paasta images will be stored. This can optionally
+    be set on a per-service level as well, see `yelpsoa_configs <generated/yelpsoa_configs.html#service-yaml>`_
     Example: ``"docker_registry": "docker-paasta.yelpcorp.com:443"``
 
   * ``volumes``: The list of volumes that should be bind-mounted into application containers by default.

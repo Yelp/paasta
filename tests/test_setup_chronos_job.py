@@ -253,6 +253,8 @@ class TestSetupChronosJob:
             autospec=True,
             return_value=fake_existing_jobs,
         ), mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        ), mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
@@ -298,6 +300,8 @@ class TestSetupChronosJob:
             'paasta_tools.chronos_tools.sort_jobs',
             autospec=True,
             return_value=[fake_existing_job],
+        ), mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
         ) as load_system_paasta_config_patch, mock.patch(

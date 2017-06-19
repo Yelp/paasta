@@ -798,6 +798,7 @@ Various PaaSTA utilities look at the following keys from service.yaml
  * ``git_url``
  * ``description``
  * ``external_link``
+ * ``docker_registry`` This is optional. Set this to override the `system-wide docker registry <generated/system_configs.html#configuration-options>`_, and specify an alternate docker registry for your service.
 
 Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------

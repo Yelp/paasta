@@ -148,6 +148,9 @@ class InstanceConfig(object):
     def get_service(self):
         return self.service
 
+    def get_docker_registry(self):
+        return get_service_docker_registry(self.service, self.soa_dir)
+
     def get_branch(self):
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
 
@@ -349,6 +352,17 @@ class InstanceConfig(object):
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
         return self.branch_dict.get('docker_image', '')
+
+    def get_docker_url(self):
+        """Compose the docker url.
+        :returns: '<registry_uri>/<docker_image>'
+        """
+        registry_uri = self.get_docker_registry()
+        docker_image = self.get_docker_image()
+        if not docker_image:
+            raise NoDockerImageError('Docker url not available because there is no docker_image')
+        docker_url = '%s/%s' % (registry_uri, docker_image)
+        return docker_url
 
     def get_desired_state(self):
         """Get the desired state (either 'start' or 'stop') for a given service
@@ -725,6 +739,16 @@ def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
     return general_config.get('git_url', default_location)
 
 
+def get_service_docker_registry(service, soa_dir=DEFAULT_SOA_DIR, system_config=None):
+    service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
+    try:
+        return service_configuration['docker_registry']
+    except KeyError:
+        if not system_config:
+            system_config = load_system_paasta_config()
+        return system_config.get_system_docker_registry()
+
+
 class NoSuchLogLevel(Exception):
     pass
 
@@ -966,7 +990,7 @@ class SystemPaastaConfig(dict):
             return hosts[len('zk://'):]
         return hosts
 
-    def get_docker_registry(self):
+    def get_system_docker_registry(self):
         """Get the docker_registry defined in this host's cluster config file.
 
         :returns: The docker_registry specified in the paasta configuration
@@ -1351,31 +1375,27 @@ def decompose_job_id(job_id, spacer=SPACER):
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def build_docker_image_name(upstream_job_name):
+def build_docker_image_name(service):
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
 
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
+    docker image name is docker_registry/services-foo.
     """
-    docker_registry_url = load_system_paasta_config().get_docker_registry()
-    name = '%s/services-%s' % (docker_registry_url, upstream_job_name)
+    docker_registry_url = get_service_docker_registry(service)
+    name = '%s/services-%s' % (docker_registry_url, service)
     return name
 
 
-def build_docker_tag(upstream_job_name, upstream_git_commit):
+def build_docker_tag(service, upstream_git_commit):
     """Builds the DOCKER_TAG string
-
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = '%s:paasta-%s' % (
-        build_docker_image_name(upstream_job_name),
+        build_docker_image_name(service),
         upstream_git_commit,
     )
     return tag
@@ -1676,18 +1696,6 @@ def format_tag(tag):
 
 class NoDockerImageError(Exception):
     pass
-
-
-def get_docker_url(registry_uri, docker_image):
-    """Compose the docker url.
-    :param registry_uri: The URI of the docker registry
-    :param docker_image: The docker image name, with tag if desired
-    :returns: '<registry_uri>/<docker_image>'
-    """
-    if not docker_image:
-        raise NoDockerImageError('Docker url not available because there is no docker_image')
-    docker_url = '%s/%s' % (registry_uri, docker_image)
-    return docker_url
 
 
 def get_config_hash(config, force_bounce=None):

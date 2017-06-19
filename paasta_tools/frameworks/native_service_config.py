@@ -15,7 +15,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import paasta_print
@@ -84,10 +83,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
             'container': {
                 'type': 'DOCKER',
                 'docker': {
-                    'image': get_docker_url(
-                        system_paasta_config.get_docker_registry(),
-                        self.get_docker_image()
-                    ),
+                    'image': self.get_docker_url(),
                     'parameters': [
                         Dict(key=param['key'], value=param['value'])
                         for param in self.format_docker_parameters()

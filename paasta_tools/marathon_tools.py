@@ -46,7 +46,6 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
@@ -360,7 +359,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: A dict containing all of the keys listed above"""
 
         system_paasta_config = load_system_paasta_config()
-        docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
+        docker_url = self.get_docker_url()
         service_namespace_config = load_service_namespace_config(
             service=self.service,
             namespace=self.get_nerve_namespace(),

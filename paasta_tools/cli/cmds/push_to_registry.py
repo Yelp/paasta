@@ -33,7 +33,7 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import get_service_docker_registry
 from paasta_tools.utils import paasta_print
 
 
@@ -101,14 +101,15 @@ def paasta_push_to_registry(args):
 
     if not args.force:
         try:
-            if is_docker_image_already_in_registry(service, args.commit):
+            if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
                 paasta_print("The docker image is already in the PaaSTA docker registry. "
                              "I'm NOT overriding the existing image. "
                              "Add --force to override the image in the registry if you are sure what you are doing.")
                 return 0
         except RequestException as e:
-            paasta_print("Can not connect to the PaaSTA docker registry to verify if this image exists.\n"
-                         "%s" % str(e))
+            registry_uri = get_service_docker_registry(service, args.soa_dir)
+            paasta_print("Can not connect to the PaaSTA docker registry '%s' to verify if this image exists.\n"
+                         "%s" % (registry_uri, str(e)))
             return 1
 
     cmd = build_command(service, args.commit)
@@ -156,14 +157,14 @@ def read_docker_registy_creds(registry_uri):
     return (None, None)
 
 
-def is_docker_image_already_in_registry(service, sha):
+def is_docker_image_already_in_registry(service, soa_dir, sha):
     """Verifies that docker image exists in the paasta registry.
 
     :param service: name of the service
     :param sha: git sha
     :returns: True, False or raises requests.exceptions.RequestException
     """
-    registry_uri = load_system_paasta_config().get_docker_registry()
+    registry_uri = get_service_docker_registry(service, soa_dir)
     repository, tag = build_docker_image_name(service, sha).split(':')
     url = 'https://%s/v2/%s/tags/list' % (registry_uri, repository)
 
