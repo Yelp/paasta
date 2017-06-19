@@ -24,10 +24,13 @@ import re
 import socket
 import sys
 
+import pysensu_yelp
+
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
 from paasta_tools.mac_address import reserve_unique_mac_address
+from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
@@ -273,6 +276,44 @@ def append_cpuset_args(argv, env_args):
     return argv
 
 
+def add_firewall(argv, service, instance):
+    output = ''
+    sensu_status = pysensu_yelp.Status.OK
+
+    try:
+        mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
+    except Exception as e:
+        output = 'Unable to add mac address: {}'.format(e)
+        sensu_status = pysensu_yelp.Status.CRITICAL
+    else:
+        argv = add_argument(argv, '--mac-address={}'.format(mac_address))
+        try:
+
+            with firewall_flock():
+                prepare_new_container(
+                    DEFAULT_SOA_DIR,
+                    DEFAULT_SYNAPSE_SERVICE_DIR,
+                    service,
+                    instance,
+                    mac_address)
+        except Exception as e:
+            output = 'Unable to add firewall rules: {}'.format(e)
+            sensu_status = pysensu_yelp.Status.CRITICAL
+
+    if output:
+        print(output, file=sys.stderr)
+
+    send_event(
+        service=service,
+        check_name='apply_firewall',
+        overrides={},
+        status=sensu_status,
+        output=output,
+        soa_dir=DEFAULT_SOA_DIR
+    )
+    return argv
+
+
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
@@ -289,23 +330,12 @@ def main(argv=None):
         argv = add_argument(argv, '--hostname={}'.format(hostname))
 
     paasta_firewall = env_args.get('PAASTA_FIREWALL')
-    if paasta_firewall and can_add_mac_address(argv):
+    service = env_args.get('PAASTA_SERVICE')
+    instance = env_args.get('PAASTA_INSTANCE')
+    if paasta_firewall and service and instance and can_add_mac_address(argv):
         try:
-            mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
+            argv = add_firewall(argv, service, instance)
         except Exception as e:
-            print('Unable to add mac address: {}'.format(e), file=sys.stderr)
-        else:
-            argv = add_argument(argv, '--mac-address={}'.format(mac_address))
-
-            try:
-                with firewall_flock():
-                    prepare_new_container(
-                        DEFAULT_SOA_DIR,
-                        DEFAULT_SYNAPSE_SERVICE_DIR,
-                        env_args['PAASTA_SERVICE'],
-                        env_args['PAASTA_INSTANCE'],
-                        mac_address)
-            except Exception as e:
-                print('Unable to add firewall rules: {}'.format(e), file=sys.stderr)
+            print('Unhandled exception in add_firewall: {}'.format(e), file=sys.stderr)
 
     os.execlp('docker', 'docker', *argv[1:])
