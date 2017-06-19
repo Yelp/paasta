@@ -22,7 +22,7 @@ RUN apt-get update > /dev/null && apt-get -y install apt-transport-https > /dev/
 RUN echo "deb https://dl.bintray.com/yelp/paasta trusty main" > /etc/apt/sources.list.d/paasta.list
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN apt-get update > /dev/null && apt-get -y install libsasl2-modules mesos=1.2.0-2.0.2 > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install libsasl2-modules mesos=1.3.0-2.0.3 > /dev/null
 
 RUN apt-get install -y software-properties-common > /dev/null
 RUN add-apt-repository ppa:webupd8team/java
