@@ -682,14 +682,18 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
         slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
     }
     for task in all_mesos_tasks:
-        if task.slave['id'] not in slaves:
-            log.debug("Slave {} not found for task".format(task.slave['id']))
+        try:
+            if task.slave['id'] not in slaves:
+                log.debug("Slave {} not found for task".format(task.slave['id']))
+                continue
+            else:
+                slaves[task.slave['id']]['count'] += 1
+                log.debug("Task framework: {}".format(task.framework.name))
+                if task.framework.name == CHRONOS_FRAMEWORK_NAME:
+                    slaves[task.slave['id']]['chronos_count'] += 1
+        except SlaveDoesNotExist:
+            log.debug("Tried to get mesos slaves for task {}, but none existed.".format(task))
             continue
-        else:
-            slaves[task.slave['id']]['count'] += 1
-            log.debug("Task framework: {}".format(task.framework.name))
-            if task.framework.name == CHRONOS_FRAMEWORK_NAME:
-                slaves[task.slave['id']]['chronos_count'] += 1
     if slaves_list:
         for slave in slaves_list:
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
