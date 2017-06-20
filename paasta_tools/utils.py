@@ -119,12 +119,13 @@ class InvalidInstanceConfig(Exception):
 
 class InstanceConfig(object):
 
-    def __init__(self, cluster, instance, service, config_dict, branch_dict):
+    def __init__(self, cluster, instance, service, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
         self.branch_dict = branch_dict
         self.cluster = cluster
         self.instance = instance
         self.service = service
+        self.soa_dir = soa_dir
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
@@ -146,6 +147,9 @@ class InstanceConfig(object):
 
     def get_service(self):
         return self.service
+
+    def get_docker_registry(self):
+        return get_service_docker_registry(self.service, self.soa_dir)
 
     def get_branch(self):
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
@@ -348,6 +352,17 @@ class InstanceConfig(object):
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
         return self.branch_dict.get('docker_image', '')
+
+    def get_docker_url(self):
+        """Compose the docker url.
+        :returns: '<registry_uri>/<docker_image>'
+        """
+        registry_uri = self.get_docker_registry()
+        docker_image = self.get_docker_image()
+        if not docker_image:
+            raise NoDockerImageError('Docker url not available because there is no docker_image')
+        docker_url = '%s/%s' % (registry_uri, docker_image)
+        return docker_url
 
     def get_desired_state(self):
         """Get the desired state (either 'start' or 'stop') for a given service
@@ -664,6 +679,10 @@ LOG_COMPONENTS = OrderedDict([
         'color': PaastaColors.yellow,
         'help': 'Stderr from the process spawned by Mesos.',
     }),
+    ('security', {
+        'color': PaastaColors.red,
+        'help': 'Logs from security-related services such as firewall monitoring',
+    }),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
@@ -718,6 +737,16 @@ def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
     )
     default_location = 'git@git.yelpcorp.com:services/%s.git' % service
     return general_config.get('git_url', default_location)
+
+
+def get_service_docker_registry(service, soa_dir=DEFAULT_SOA_DIR, system_config=None):
+    service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
+    try:
+        return service_configuration['docker_registry']
+    except KeyError:
+        if not system_config:
+            system_config = load_system_paasta_config()
+        return system_config.get_system_docker_registry()
 
 
 class NoSuchLogLevel(Exception):
@@ -961,7 +990,7 @@ class SystemPaastaConfig(dict):
             return hosts[len('zk://'):]
         return hosts
 
-    def get_docker_registry(self):
+    def get_system_docker_registry(self):
         """Get the docker_registry defined in this host's cluster config file.
 
         :returns: The docker_registry specified in the paasta configuration
@@ -1352,31 +1381,27 @@ def decompose_job_id(job_id, spacer=SPACER):
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def build_docker_image_name(upstream_job_name):
+def build_docker_image_name(service):
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
 
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
+    docker image name is docker_registry/services-foo.
     """
-    docker_registry_url = load_system_paasta_config().get_docker_registry()
-    name = '%s/services-%s' % (docker_registry_url, upstream_job_name)
+    docker_registry_url = get_service_docker_registry(service)
+    name = '%s/services-%s' % (docker_registry_url, service)
     return name
 
 
-def build_docker_tag(upstream_job_name, upstream_git_commit):
+def build_docker_tag(service, upstream_git_commit):
     """Builds the DOCKER_TAG string
-
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = '%s:paasta-%s' % (
-        build_docker_image_name(upstream_job_name),
+        build_docker_image_name(service),
         upstream_git_commit,
     )
     return tag
@@ -1455,18 +1480,21 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     return sorted(clusters)
 
 
-def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):
     instances = set()
     if not clusters:
         clusters = list_clusters(service, soa_dir=soa_dir)
     for cluster in clusters:
-        for service_instance in get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir):
+        if cache:
+            si_list = get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir)
+        else:
+            si_list = get_service_instance_list_no_cache(service, cluster, instance_type, soa_dir=soa_dir)
+        for service_instance in si_list:
             instances.add(service_instance[1])
     return instances
 
 
-@time_cache(ttl=5)
-def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list_no_cache(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
     :param service: The service name
@@ -1496,6 +1524,22 @@ def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir
 
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
+
+
+@time_cache(ttl=5)
+def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param service: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance) for each instance defined for the service name
+    """
+    return get_service_instance_list_no_cache(service=service,
+                                              cluster=cluster,
+                                              instance_type=instance_type,
+                                              soa_dir=soa_dir)
 
 
 def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
@@ -1658,18 +1702,6 @@ def format_tag(tag):
 
 class NoDockerImageError(Exception):
     pass
-
-
-def get_docker_url(registry_uri, docker_image):
-    """Compose the docker url.
-    :param registry_uri: The URI of the docker registry
-    :param docker_image: The docker image name, with tag if desired
-    :returns: '<registry_uri>/<docker_image>'
-    """
-    if not docker_image:
-        raise NoDockerImageError('Docker url not available because there is no docker_image')
-    docker_url = '%s/%s' % (registry_uri, docker_image)
-    return docker_url
 
 
 def get_config_hash(config, force_bounce=None):

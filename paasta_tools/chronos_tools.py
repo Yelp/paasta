@@ -40,7 +40,6 @@ from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
@@ -223,18 +222,20 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
 
 
 class ChronosJobConfig(InstanceConfig):
 
-    def __init__(self, service, instance, cluster, config_dict, branch_dict):
+    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(ChronosJobConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
     def get_service(self):
@@ -583,8 +584,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     chronos_job_config = load_chronos_job_config(
         service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
-    docker_url = get_docker_url(
-        system_paasta_config.get_docker_registry(), chronos_job_config.get_docker_image())
+    docker_url = chronos_job_config.get_docker_url()
     docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
     constraints = chronos_job_config.get_calculated_constraints(

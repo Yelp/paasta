@@ -46,7 +46,6 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
@@ -114,8 +113,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
-@time_cache(ttl=5)
-def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_marathon_service_config_no_cache(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
@@ -161,7 +159,29 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
         instance=instance,
         config_dict=general_config,
         branch_dict=branch_dict,
+        soa_dir=soa_dir,
     )
+
+
+@time_cache(ttl=5)
+def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+    """Read a service instance's configuration for marathon.
+
+    If a branch isn't specified for a config, the 'branch' key defaults to
+    paasta-${cluster}.${instance}.
+
+    :param name: The service name
+    :param instance: The instance of the service to retrieve
+    :param cluster: The cluster to read the configuration for
+    :param load_deployments: A boolean indicating if the corresponding deployments.json for this service
+                             should also be loaded
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: A dictionary of whatever was in the config for the service instance"""
+    return load_marathon_service_config_no_cache(service=service,
+                                                 instance=instance,
+                                                 cluster=cluster,
+                                                 load_deployments=load_deployments,
+                                                 soa_dir=soa_dir)
 
 
 class InvalidMarathonConfig(Exception):
@@ -170,22 +190,24 @@ class InvalidMarathonConfig(Exception):
 
 class MarathonServiceConfig(LongRunningServiceConfig):
 
-    def __init__(self, service, cluster, instance, config_dict, branch_dict):
+    def __init__(self, service, cluster, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(MarathonServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
             branch_dict=branch_dict,
+            soa_dir=soa_dir,
         )
 
     def __repr__(self):
-        return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (
+        return "MarathonServiceConfig(%r, %r, %r, %r, %r, %r)" % (
             self.service,
             self.cluster,
             self.instance,
             self.config_dict,
-            self.branch_dict
+            self.branch_dict,
+            self.soa_dir
         )
 
     def copy(self):
@@ -195,6 +217,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             cluster=self.cluster,
             config_dict=dict(self.config_dict),
             branch_dict=dict(self.branch_dict),
+            soa_dir=self.soa_dir
         )
 
     def get_autoscaling_params(self):
@@ -336,7 +359,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: A dict containing all of the keys listed above"""
 
         system_paasta_config = load_system_paasta_config()
-        docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
+        docker_url = self.get_docker_url()
         service_namespace_config = load_service_namespace_config(
             service=self.service,
             namespace=self.get_nerve_namespace(),
@@ -424,7 +447,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         (/status currently)
 
         Otherwise these do *not* use the same thresholds as smartstack in order to not
-        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        produce a negative feedback loop, where mesos aggressively kills tasks because they
         are slow, which causes other things to be slow, etc.
 
         If the mode of the service is None, indicating that it was not specified in the service config

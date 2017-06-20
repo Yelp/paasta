@@ -45,7 +45,6 @@ from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -772,8 +771,7 @@ def configure_and_run_docker_container(
 
     if docker_hash is None:
         try:
-            docker_url = get_docker_url(
-                system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+            docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
             paasta_print(PaastaColors.red(
                 "Error: No sha has been marked for deployment for the %s deploy group.\n"

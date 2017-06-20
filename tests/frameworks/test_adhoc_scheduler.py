@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from mesos.interface import mesos_pb2
+from addict import Dict
 
 from paasta_tools import utils
 from paasta_tools.frameworks import adhoc_scheduler
@@ -21,27 +21,31 @@ def system_paasta_config():
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
-    offer = mesos_pb2.Offer()
-    offer.slave_id.value = "super big slave"
-
-    cpus_resource = offer.resources.add()
-    cpus_resource.name = "cpus"
-    cpus_resource.scalar.value = cpu
-
-    mem_resource = offer.resources.add()
-    mem_resource.name = "mem"
-    mem_resource.scalar.value = mem
-
-    ports_resource = offer.resources.add()
-    ports_resource.name = "ports"
-    ports_range = ports_resource.ranges.range.add()
-    ports_range.begin = port_begin
-    ports_range.end = port_end
+    offer = Dict(
+        agent_id=Dict(value='super_big_slave'),
+        resources=[
+            Dict(
+                name='cpus',
+                scalar=Dict(value=cpu)
+            ),
+            Dict(
+                name='mem',
+                scalar=Dict(value=mem)
+            ),
+            Dict(
+                name='ports',
+                ranges=Dict(
+                    range=[Dict(begin=port_begin, end=port_end)]
+                ),
+            ),
+        ],
+        attributes=[]
+    )
 
     if pool is not None:
-        pool_attribute = offer.attributes.add()
-        pool_attribute.name = "pool"
-        pool_attribute.text.value = pool
+        offer.attributes = [
+            Dict(name='pool', text=Dict(value=pool))
+        ]
 
     return offer
 
@@ -67,6 +71,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
@@ -103,6 +108,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
@@ -119,34 +125,37 @@ class TestAdhocScheduler(object):
 
         fake_driver = mock.Mock()
 
-        # Check that offers with invalid pool don't get accepted
-        tasks, _ = scheduler.tasks_and_state_for_offer(
-            fake_driver, make_fake_offer(pool='notdefault'), {})
-        assert len(tasks) == 0
+        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                        return_value=system_paasta_config
+                        ):
+            # Check that offers with invalid pool don't get accepted
+            tasks, _ = scheduler.tasks_and_state_for_offer(
+                fake_driver, make_fake_offer(pool='notdefault'), {})
+            assert len(tasks) == 0
 
-        tasks, _ = scheduler.tasks_and_state_for_offer(
-            fake_driver, make_fake_offer(pool=None), {})
-        assert len(tasks) == 0
+            tasks, _ = scheduler.tasks_and_state_for_offer(
+                fake_driver, make_fake_offer(pool=None), {})
+            assert len(tasks) == 0
 
-        tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        task_id = tasks[0].task_id.value
-        task_name = tasks[0].name
-        assert len(scheduler.tasks_with_flags) == 1
-        assert len(tasks) == 1
-        assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
-        assert scheduler.need_to_stop() is False
+            tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            task_id = tasks[0].task_id.value
+            task_name = tasks[0].name
+            assert len(scheduler.tasks_with_flags) == 1
+            assert len(tasks) == 1
+            assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
+            assert scheduler.need_to_stop() is False
 
-        no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 1
-        assert len(no_tasks) == 0
-        assert scheduler.need_to_stop() is False
+            no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            assert len(scheduler.tasks_with_flags) == 1
+            assert len(no_tasks) == 0
+            assert scheduler.need_to_stop() is False
 
-        scheduler.statusUpdate(
-            fake_driver,
-            mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
-        assert len(scheduler.tasks_with_flags) == 1
-        assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
-        assert scheduler.need_to_stop() is True
+            scheduler.statusUpdate(
+                fake_driver,
+                mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
+            assert len(scheduler.tasks_with_flags) == 1
+            assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
+            assert scheduler.need_to_stop() is True
 
     def test_can_run_multiple_copies(self, system_paasta_config):
         service_name = "service_name"
@@ -169,6 +178,7 @@ class TestAdhocScheduler(object):
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
+                soa_dir='/nail/etc/services',
             )
         ]
 
@@ -186,24 +196,27 @@ class TestAdhocScheduler(object):
 
         fake_driver = mock.Mock()
 
-        tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        task_name = tasks[0].name
-        task_ids = [t.task_id.value for t in tasks]
+        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                        return_value=system_paasta_config
+                        ):
+            tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            task_name = tasks[0].name
+            task_ids = [t.task_id.value for t in tasks]
 
-        assert len(scheduler.tasks_with_flags) == 5
-        assert len(tasks) == 5
-        assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
-        assert scheduler.need_to_stop() is False
+            assert len(scheduler.tasks_with_flags) == 5
+            assert len(tasks) == 5
+            assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
+            assert scheduler.need_to_stop() is False
 
-        no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 5
-        assert len(no_tasks) == 0
-        assert scheduler.need_to_stop() is False
+            no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
+            assert len(scheduler.tasks_with_flags) == 5
+            assert len(no_tasks) == 0
+            assert scheduler.need_to_stop() is False
 
-        for idx, task_id in enumerate(task_ids):
-            scheduler.statusUpdate(
-                fake_driver,
-                mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
-            assert len(scheduler.tasks_with_flags) == 5 - idx
-            assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
-            assert scheduler.need_to_stop() is (idx == 4)
+            for idx, task_id in enumerate(task_ids):
+                scheduler.statusUpdate(
+                    fake_driver,
+                    mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
+                assert len(scheduler.tasks_with_flags) == 5 - idx
+                assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
+                assert scheduler.need_to_stop() is (idx == 4)

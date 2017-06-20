@@ -287,19 +287,37 @@ def test_SystemPaastaConfig_get_zk_dne():
         fake_config.get_zk_hosts()
 
 
-def test_SystemPaastaConfig_get_registry():
-    fake_config = utils.SystemPaastaConfig({
-        'docker_registry': 'fake_registry'
+def test_get_service_registry():
+    fake_registry = 'fake_registry'
+    fake_service_config = {
+        "description": "This service is fake",
+        "external_link": "www.yelp.com",
+        "git_url": "git@mercurial-scm.org:fake-service",
+        "docker_registry": fake_registry,
+    }
+    with mock.patch('service_configuration_lib.read_service_configuration',
+                    return_value=fake_service_config, autospec=True):
+        actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
+        assert actual == fake_registry
+
+
+def test_get_service_registry_dne():
+    fake_registry = 'fake_registry'
+    fake_service_config = {
+        "description": "This service is fake",
+        "external_link": "www.yelp.com",
+        "git_url": "git@mercurial-scm.org:fake-service",
+        # no docker_registry configured for this service
+    }
+    fake_system_config = utils.SystemPaastaConfig({
+        "docker_registry": fake_registry,
     }, '/some/fake/dir')
-    expected = 'fake_registry'
-    actual = fake_config.get_docker_registry()
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_registry_dne():
-    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfiguredError):
-        fake_config.get_docker_registry()
+    with mock.patch('service_configuration_lib.read_service_configuration',
+                    return_value=fake_service_config, autospec=True):
+        with mock.patch('paasta_tools.utils.load_system_paasta_config',
+                        return_value=fake_system_config, autospec=True):
+            actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
+            assert actual == fake_registry
 
 
 def test_SystemPaastaConfig_get_sensu_host_default():
@@ -470,6 +488,16 @@ def test_decompose_job_id_with_hashes():
     fake_job_id = "my_cool_service.main.git123abc.config456def"
     expected = ("my_cool_service", "main", "git123abc", "config456def")
     actual = utils.decompose_job_id(fake_job_id)
+    assert actual == expected
+
+
+def test_build_docker_image_name():
+    registry_url = "fake_registry"
+    upstream_job_name = "a_really_neat_service"
+    expected = "%s/services-%s" % (registry_url, upstream_job_name)
+    with mock.patch('paasta_tools.utils.get_service_docker_registry', autospec=True,
+                    return_value=registry_url):
+        actual = utils.build_docker_image_name(upstream_job_name)
     assert actual == expected
 
 
@@ -695,18 +723,6 @@ def test_DeploymentsJson_read():
         open_patch.assert_called_once_with(fake_path)
         json_patch.assert_called_once_with(file_mock.return_value.__enter__.return_value)
         assert actual == fake_json['v1']
-
-
-def test_get_docker_url_no_error():
-    fake_registry = "im.a-real.vm"
-    fake_image = "and-i-can-run:1.0"
-    expected = "%s/%s" % (fake_registry, fake_image)
-    assert utils.get_docker_url(fake_registry, fake_image) == expected
-
-
-def test_get_docker_url_with_no_docker_image():
-    with raises(utils.NoDockerImageError):
-        utils.get_docker_url('fake_registry', None)
 
 
 def test_get_running_mesos_docker_containers():
@@ -1315,6 +1331,28 @@ class TestInstanceConfig:
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
         ]
+
+    def test_get_docker_url_no_error(self):
+        fake_registry = "im.a-real.vm"
+        fake_image = "and-i-can-run:1.0"
+
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
+
+        with mock.patch(
+            'paasta_tools.utils.InstanceConfig.get_docker_registry', autospec=True,
+            return_value=fake_registry
+        ), mock.patch(
+            'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
+            return_value=fake_image
+        ):
+            expected_url = "%s/%s" % (fake_registry, fake_image)
+            assert fake_conf.get_docker_url() == expected_url
 
     @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
         (None, None, None),

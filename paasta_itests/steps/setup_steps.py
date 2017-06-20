@@ -51,6 +51,7 @@ def setup_system_paasta_config():
     chronos_connection_string = _get_chronos_connection_string()
     system_paasta_config = utils.SystemPaastaConfig({
         'cluster': 'testcluster',
+        'deployd_log_level': 'DEBUG',
         'docker_volumes': [],
         'docker_registry': 'docker-dev.yelpcorp.com',
         'zookeeper': zk_connection_string,
@@ -114,6 +115,18 @@ def write_etc_paasta(context, config, filename):
         os.makedirs(context.etc_paasta)
     with open(os.path.join(context.etc_paasta, filename), 'w') as f:
         f.write(json.dumps(config))
+
+
+@given('we add a new docker volume to the public config')
+def add_volume_public_config(context):
+    write_etc_paasta(context, {
+        'volumes': [
+            {'hostPath': '/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
+            {'hostPath': '/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
+            {'hostPath': '/nail/tmp/noob', 'containerPath': '/nail/tmp/noob', 'mode': 'RO'},
+        ]
+    }, 'volumes.json')
 
 
 @given('a working paasta cluster')
@@ -183,6 +196,8 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
                 'cmd': 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
+                'mem': 50,
+                'disk': 10,
             }
         }))
     context.soa_dir = soa_dir

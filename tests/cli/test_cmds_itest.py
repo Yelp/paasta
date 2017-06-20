@@ -54,7 +54,6 @@ def test_itest_success(
     mock_build_docker_tag.return_value = 'fake-registry/services-foo:paasta-bar'
     mock_docker_image.return_value = True
     mock_run.return_value = (0, 'Yeeehaaa')
-
     args = MagicMock()
     assert paasta_itest(args) is 0
 

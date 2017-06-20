@@ -98,6 +98,7 @@ def test_dry_run_json_dict(
     mock_get_instance_config.return_value.get_cpu.return_value = 123
     mock_get_instance_config.return_value.get_net.return_value = 'fake_net'
     mock_get_instance_config.return_value.get_docker_image.return_value = 'fake_docker_image'
+    mock_get_instance_config.return_value.get_docker_url.return_value = 'fake_registry/fake_docker_image'
     mock_get_instance_config.return_value.get_container_port.return_value = 8888
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
@@ -446,7 +447,9 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_system_paasta_config = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
     fake_instance_config = mock.MagicMock(InstanceConfig)
+    fake_instance_config.get_docker_registry.return_value = 'fake_registry'
     fake_instance_config.get_docker_image.return_value = 'fake_image'
+    fake_instance_config.get_docker_url.return_value = 'fake_registry/fake_image'
     mock_get_instance_config.return_value = fake_instance_config
     fake_service = 'fake_service'
     args = mock.MagicMock()

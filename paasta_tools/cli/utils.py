@@ -564,10 +564,12 @@ def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, hu
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
-    run_all_related_jobs_flag = '--run-all-related-jobs' if kwargs.get('run_all_related_jobs', False) else ''
-    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s%s"%s %s" "%s"\'' % (
+    run_all_related_jobs_flag = '--run-all-related-jobs ' if kwargs.get('run_all_related_jobs', False) else ''
+    force_disabled_flag = '--force-disabled ' if kwargs.get('force_disabled', False) else ''
+    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s%s%s"%s %s" "%s"\'' % (
         master,
         run_all_related_jobs_flag,
+        force_disabled_flag,
         verbose_flags,
         service,
         instancename,

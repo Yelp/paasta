@@ -17,19 +17,55 @@ import iptc
 log = logging.getLogger(__name__)
 
 
-class Rule(collections.namedtuple('Rule', (
+RULE_TARGET_SORT_ORDER = {
+    # all else defaults to '0'
+    'LOG': 1,
+    'REJECT': 2.
+}
+
+
+_RuleBase = collections.namedtuple('Rule', (
     'protocol',
     'src',
     'dst',
     'target',
     'matches',
-))):
+    'target_parameters',
+))
+
+
+class Rule(_RuleBase):
     """Rule representation.
 
     Working with iptc's rule classes directly doesn't work well, since rules
     represent actual existing iptables rules, and changes are applied
     immediately. They're also difficult to compare.
     """
+
+    def __new__(cls, *args, **kwargs):
+        result = _RuleBase.__new__(cls, *args, **kwargs)
+        result.validate()
+        return result
+
+    def _replace(self, **kwargs):
+        result = super(Rule, self)._replace(**kwargs)
+        result.validate()
+        return result
+
+    def validate(self):
+        if self.target == 'REJECT':
+            assert any(
+                name == 'reject-with' for name, _ in self.target_parameters
+            ), 'REJECT rules must specify reject-with'
+        assert tuple(sorted(self.matches)) == self.matches, 'matches should be sorted'
+        for match_name, params in self.matches:
+            for param_name, param_value in params:
+                assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
+                assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
+        assert tuple(sorted(self.target_parameters)) == self.target_parameters, 'target_parameters should be sorted'
+        for param_name, param_value in self.target_parameters:
+            assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
+            assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
 
     @classmethod
     def from_iptc(cls, rule):
@@ -39,13 +75,20 @@ class Rule(collections.namedtuple('Rule', (
             'dst': rule.dst,
             'target': rule.target.name,
             'matches': (),
+            'target_parameters': (),
         }
 
+        for param_name, param_value in sorted(rule.target.get_all_parameters().items()):
+            fields['target_parameters'] += ((param_name, tuple(param_value)),)
+
+        matches = []
         for match in rule.matches:
-            fields['matches'] += ((
+            matches.append((
                 match.name,
-                tuple((param, value) for param, value in match.parameters.items())
-            ),)
+                tuple((param, tuple(value)) for param, value in sorted(match.get_all_parameters().items()))
+            ))
+        # ensure that matches are sorted for consistency with matching
+        fields['matches'] = tuple(sorted(matches))
 
         return cls(**fields)
 
@@ -54,11 +97,13 @@ class Rule(collections.namedtuple('Rule', (
         rule.protocol = self.protocol
         rule.src = self.src
         rule.dst = self.dst
-        rule.create_target(self.target)
+        target = rule.create_target(self.target)
+        for param_name, param_value in self.target_parameters:
+            target.set_parameter(param_name, param_value)
         for name, params in self.matches:
             match = rule.create_match(name)
-            for key, value in params:
-                setattr(match, key, value)
+            for param_name, param_value in params:
+                match.set_parameter(param_name, param_value)
         return rule
 
 
@@ -101,7 +146,7 @@ def ensure_chain(chain, rules):
     inserted at the front of the chain.
     """
     try:
-        current_rules = list_chain(chain)
+        current_rules = set(list_chain(chain))
     except ChainDoesNotExist:
         create_chain(chain)
         current_rules = set()
@@ -113,6 +158,31 @@ def ensure_chain(chain, rules):
     extra_rules = current_rules - set(rules)
     if extra_rules:
         delete_rules(chain, extra_rules)
+
+
+def _rule_sort_key(rule_tuple):
+    old_index, rule = rule_tuple
+    target_name = rule.target
+    return (RULE_TARGET_SORT_ORDER.get(target_name, 0), old_index)
+
+
+def reorder_chain(chain_name):
+    """Ensure that any REJECT rules are last, and any LOG rules are second-to-last
+    """
+
+    table = iptc.Table(iptc.Table.FILTER)
+    with iptables_txn(table):
+        rules = list_chain(chain_name)
+        chain = iptc.Chain(table, chain_name)
+
+        # sort the rules by rule_key, which uses (RULE_TARGET_SORT_ORDER, idx)
+        sorted_rules_with_indices = sorted(enumerate(rules), key=_rule_sort_key)
+
+        for new_index, (old_index, rule) in enumerate(sorted_rules_with_indices):
+            if new_index == old_index:
+                continue
+            log.debug('reordering chain {} rule {} to #{}'.format(chain_name, rule, new_index))
+            chain.replace_rule(rule.to_iptc(), new_index)
 
 
 def ensure_rule(chain, rule):
@@ -160,6 +230,6 @@ def list_chain(chain_name):
     # If the chain doesn't exist, chain.rules will be an empty list, so we need
     # to make sure the chain actually _does_ exist.
     if chain in table.chains:
-        return {Rule.from_iptc(rule) for rule in chain.rules}
+        return tuple(Rule.from_iptc(rule) for rule in chain.rules)
     else:
         raise ChainDoesNotExist(chain_name)

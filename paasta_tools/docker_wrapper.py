@@ -24,34 +24,60 @@ import re
 import socket
 import sys
 
-import paasta_tools.mac_address
+from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
+from paasta_tools.firewall import prepare_new_container
+from paasta_tools.mac_address import reserve_unique_mac_address
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 LOCK_DIRECTORY = '/var/run/paasta/mac-address'
-ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env)(=(\S.*))?$')
+ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
 
 def parse_env_args(args):
     result = {}
     in_env = False
+    in_file = False
     for arg in args:
         if not in_env:
             match = ENV_MATCH_RE.match(arg)
             if not match:
                 continue
-            arg = match.group(3) or ''
+            arg = match.group('arg') or ''
+            in_file = bool(match.group('file'))
             if not arg:
                 in_env = True
                 continue
 
         in_env = False
-        if '=' not in arg:
+
+        if in_file:
+            result.update(read_env_file(arg))
+            in_file = False
             continue
 
-        k, _, v = arg.partition('=')
+        try:
+            k, v = arg.split('=', 1)
+        except ValueError:
+            continue
+
         result[k] = v
 
+    return result
+
+
+def read_env_file(filename):
+    # Parse a file where each line is KEY=VALUE
+    # return contents in dictionary form
+    result = {}
+    with open(filename) as f:
+        for line in f:
+            try:
+                k, v = line.split('=', 1)
+            except ValueError:
+                continue
+            result[k] = v.strip()
     return result
 
 
@@ -264,10 +290,17 @@ def main(argv=None):
     paasta_firewall = env_args.get('PAASTA_FIREWALL')
     if paasta_firewall and can_add_mac_address(argv):
         try:
-            mac_address, lockfile = paasta_tools.mac_address.reserve_unique_mac_address(LOCK_DIRECTORY)
+            mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
         except Exception as e:
             print('Unable to add mac address: {}'.format(e), file=sys.stderr)
         else:
             argv = add_argument(argv, '--mac-address={}'.format(mac_address))
+
+            prepare_new_container(
+                DEFAULT_SOA_DIR,
+                DEFAULT_SYNAPSE_SERVICE_DIR,
+                env_args['PAASTA_SERVICE'],
+                env_args['PAASTA_INSTANCE'],
+                mac_address)
 
     os.execlp('docker', 'docker', *argv[1:])

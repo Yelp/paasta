@@ -2,6 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from collections import namedtuple
+
 import iptc
 import mock
 import pytest
@@ -15,6 +17,7 @@ EMPTY_RULE = iptables.Rule(
     dst='0.0.0.0/0.0.0.0',
     target=None,
     matches=(),
+    target_parameters=(),
 )
 
 
@@ -56,9 +59,20 @@ def test_rule_from_iptc_mac_match():
         target='DROP',
         matches=(
             ('mac', (
-                ('mac_source', '20:C9:D0:2B:6F:F3'),
+                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
             )),
         ),
+    )
+
+
+def test_rule_from_iptc_target_parameters():
+    rule = iptc.Rule()
+    target = rule.create_target('LOG')
+    target.set_parameter('log-prefix', 'my-prefix ')
+
+    assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(
+        target='LOG',
+        target_parameters=(('log-prefix', ('my-prefix ',)),)
     )
 
 
@@ -68,7 +82,7 @@ def test_rule_tcp_to_iptc():
         target='ACCEPT',
         matches=(
             ('tcp', (
-                ('dport', '443'),
+                ('dport', ('443',)),
             )),
         ),
     ).to_iptc()
@@ -84,7 +98,7 @@ def test_mac_src_to_iptc():
         target='ACCEPT',
         matches=(
             ('mac', (
-                ('mac_source', '20:C9:D0:2B:6F:F3'),
+                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
             )),
         ),
     ).to_iptc()
@@ -223,11 +237,21 @@ def test_delete_rules(mock_Table, mock_Chain):
     mock_Chain.return_value.rules = (
         EMPTY_RULE._replace(target='DROP').to_iptc(),
         EMPTY_RULE._replace(target='ACCEPT').to_iptc(),
-        EMPTY_RULE._replace(target='REJECT').to_iptc(),
+        EMPTY_RULE._replace(
+            target='REJECT',
+            target_parameters=(
+                ('reject-with', ('icmp-port-unreachable',)),
+            )
+        ).to_iptc(),
     )
     iptables.delete_rules('PAASTA.service', (
         EMPTY_RULE._replace(target='ACCEPT'),
-        EMPTY_RULE._replace(target='REJECT'),
+        EMPTY_RULE._replace(
+            target='REJECT',
+            target_parameters=(
+                ('reject-with', ('icmp-port-unreachable',)),
+            )
+        )
     ))
     assert mock_Chain('filter', 'PAASTA.service').delete_rule.mock_calls == [
         mock.call(mock_Chain.return_value.rules[1]),
@@ -253,12 +277,114 @@ def test_list_chain_simple(mock_Table, mock_Chain):
     rule.create_target('DROP')
     chain.rules = [rule]
     mock_Table.return_value.chains = [chain]
-    assert iptables.list_chain('PAASTA.internet') == {
+    assert iptables.list_chain('PAASTA.internet') == (
         EMPTY_RULE._replace(target='DROP'),
-    }
+    )
 
 
 def test_list_chain_does_not_exist(mock_Table, mock_Chain):
     mock_Table.return_value.chains = []
     with pytest.raises(iptables.ChainDoesNotExist):
         iptables.list_chain('PAASTA.internet')
+
+
+class TestReorderChain(object):
+    class FakeRule(namedtuple('FakeRule', ('target', 'id'))):
+        def to_iptc(self):
+            return self
+
+    @pytest.yield_fixture(autouse=True)
+    def chain_mock(self):
+        with mock.patch.object(
+                iptables, 'iptables_txn', autospec=True
+            ), mock.patch.object(
+                iptables.iptc, 'Table', autospec=True
+        ), mock.patch.object(
+                iptables.iptc, 'Chain', autospec=True
+        ) as chain_mock, mock.patch.object(
+                iptables, 'list_chain', autospec=True
+        ) as list_chain_mock:
+            self.chain_mock = chain_mock
+            self.list_chain_mock = list_chain_mock
+            yield
+
+    def test_reorder_chain_flip(self):
+        self.list_chain_mock.return_value = [
+            self.FakeRule('REJECT', 'a'),
+            self.FakeRule('LOG', 'b'),
+            self.FakeRule('ACCEPT', 'c'),
+            self.FakeRule('ACCEPT', 'd'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == [
+            mock.call(self.FakeRule('ACCEPT', 'c'), 0),
+            mock.call(self.FakeRule('ACCEPT', 'd'), 1),
+            mock.call(self.FakeRule('LOG', 'b'), 2),
+            mock.call(self.FakeRule('REJECT', 'a'), 3),
+        ]
+
+    def test_reorder_chain_log_first(self):
+        self.list_chain_mock.return_value = [
+            self.FakeRule('LOG', 'b'),
+            self.FakeRule('ACCEPT', 'c'),
+            self.FakeRule('ACCEPT', 'd'),
+            self.FakeRule('REJECT', 'a'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == [
+            mock.call(self.FakeRule('ACCEPT', 'c'), 0),
+            mock.call(self.FakeRule('ACCEPT', 'd'), 1),
+            mock.call(self.FakeRule('LOG', 'b'), 2),
+        ]
+
+    def test_reorder_chain_empty(self):
+        self.list_chain_mock.return_value = []
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == []
+
+    def test_reorder_chain_already_in_order(self):
+        self.chain_mock.return_value.rules = [
+            self.FakeRule('ACCEPT', 'c'),
+            self.FakeRule('ACCEPT', 'd'),
+            self.FakeRule('LOG', 'b'),
+            self.FakeRule('REJECT', 'a'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == []
+
+    def test_reorder_chain_log_at_bottom(self):
+        self.list_chain_mock.return_value = [
+            self.FakeRule('ACCEPT', 'c'),
+            self.FakeRule('ACCEPT', 'd'),
+            self.FakeRule('REJECT', 'a'),
+            self.FakeRule('LOG', 'b'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == [
+            mock.call(self.FakeRule('LOG', 'b'), 2),
+            mock.call(self.FakeRule('REJECT', 'a'), 3),
+        ]
+
+    def test_reorder_chain_reject_in_middle(self):
+        self.list_chain_mock.return_value = [
+            self.FakeRule('ACCEPT', 'c'),
+            self.FakeRule('REJECT', 'a'),
+            self.FakeRule('ACCEPT', 'd'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == [
+            mock.call(self.FakeRule('ACCEPT', 'd'), 1),
+            mock.call(self.FakeRule('REJECT', 'a'), 2),
+        ]
+
+    def test_reorder_chain_other_target_names(self):
+        self.list_chain_mock.return_value = [
+            self.FakeRule('HELLOWORLD', 'c'),
+            self.FakeRule('REJECT', 'a'),
+            self.FakeRule('FOOBAR', 'd'),
+        ]
+        iptables.reorder_chain('')
+        assert self.chain_mock.return_value.replace_rule.mock_calls == [
+            mock.call(self.FakeRule('FOOBAR', 'd'), 1),
+            mock.call(self.FakeRule('REJECT', 'a'), 2),
+        ]

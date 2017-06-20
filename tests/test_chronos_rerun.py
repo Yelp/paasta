@@ -23,6 +23,7 @@ import pytest
 
 from paasta_tools import chronos_rerun
 from paasta_tools import chronos_tools
+from paasta_tools.chronos_tools import SPACER
 
 
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.parse_time_variables', autospec=True)
@@ -59,7 +60,12 @@ def test_set_tmp_naming_scheme():
         'name': 'foo bar'
     }
     name_pattern = re.compile(r"%s-.* foo bar" % chronos_tools.TMP_JOB_IDENTIFIER)
-    assert name_pattern.match(chronos_rerun.set_tmp_naming_scheme(fake_chronos_job_config)['name']) is not None
+    assert name_pattern.match(
+        chronos_rerun.set_tmp_naming_scheme(
+            chronos_job=fake_chronos_job_config,
+            timestamp=mock.Mock(),
+        )['name']
+    ) is not None
 
 
 @mock.patch('paasta_tools.chronos_rerun.set_tmp_naming_scheme', autospec=True)
@@ -72,9 +78,43 @@ def test_clone_job(
         'parents': ['foo', 'bar']
     }
     mock_get_job_type.return_value = chronos_tools.JobType.Dependent
-    chronos_rerun.clone_job(fake_chronos_job_config, '2016-03-2016T04:40:31')
+    timestamp = datetime.datetime.utcnow().isoformat()
+    chronos_rerun.clone_job(fake_chronos_job_config, '2016-03-2016T04:40:31', timestamp=timestamp)
     assert mock_get_job_type.call_count == 1
     assert mock_set_tmp_naming_scheme.call_count == 1
+
+
+@mock.patch('paasta_tools.chronos_rerun.modify_command_for_date', autospec=True)
+@mock.patch('paasta_tools.chronos_rerun.chronos_tools.get_job_type', autospec=True)
+def test_clone_job_dependent_jobs(
+    mock_get_job_type,
+    mock_modify_command_for_date,
+):
+    fake_chronos_job_config = {
+        'name': 'child',
+        'parents': ['foo', 'bar']
+    }
+    timestamp = '2017-06-12T11:59:45.583867'
+    timestamp_chronos_name = '2017-06-12T115945583867'
+
+    mock_modify_command_for_date.side_effect = lambda job, date: job
+    mock_get_job_type.return_value = chronos_tools.JobType.Dependent
+
+    cloned_job = chronos_rerun.clone_job(
+        fake_chronos_job_config,
+        '2016-03-2016T04:40:31',
+        timestamp=timestamp,
+    )
+
+    expected_job_config = {
+        'name': 'tmp-{} {}'.format(timestamp_chronos_name, fake_chronos_job_config['name']),
+        'parents': [
+            'tmp-{}{}{}'.format(timestamp_chronos_name, SPACER, parent)
+            for parent in fake_chronos_job_config['parents']
+        ],
+    }
+
+    assert cloned_job == expected_job_config
 
 
 @pytest.mark.parametrize(

@@ -116,7 +116,7 @@ class DeployDaemon(PaastaThread):
 
     def startup(self):
         self.is_leader = True
-        self.log.debug("This node is elected as leader {}".format(socket.getfqdn()))
+        self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
         self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
         QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
         self.inbox.start()
@@ -127,6 +127,7 @@ class DeployDaemon(PaastaThread):
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True
+        self.log.info("Startup finished!")
         self.main_loop()
 
     def main_loop(self):

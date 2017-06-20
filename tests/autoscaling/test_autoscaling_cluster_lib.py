@@ -949,9 +949,12 @@ class TestClusterAutoscaler(unittest.TestCase):
         assert actual == [fake_description[0]]
 
     def test_filter_instance_status_for_instance_id(self):
-        fake_status = [{'InstanceId': 'foo'}, {'InstanceId': 'bar'}]
-        actual = self.autoscaler.filter_instance_status_for_instance_id('foo', fake_status)
-        assert actual == [fake_status[0]]
+        fake_status = {'InstanceStatuses': [{'InstanceId': 'foo'}, {'InstanceId': 'bar'}]}
+        actual = self.autoscaler.filter_instance_status_for_instance_id(
+            instance_id='foo',
+            instance_statuses=fake_status
+        )
+        assert actual == [fake_status['InstanceStatuses'][0]]
 
     def test_gracefully_terminate_slave(self):
         with mock.patch(
@@ -1104,11 +1107,13 @@ class TestClusterAutoscaler(unittest.TestCase):
             ]
             self.autoscaler.instances = mock_instances
             mock_describe_instances.return_value = mock_instances
-            mock_instance_status = [
-                {'InstanceId': 'i-1'},
-                {'InstanceId': 'i-2'},
-                {'InstanceId': 'i-3'}
-            ]
+            mock_instance_status = {
+                'InstanceStatuses': [
+                    {'InstanceId': 'i-1'},
+                    {'InstanceId': 'i-2'},
+                    {'InstanceId': 'i-3'}
+                ]
+            }
             mock_describe_instance_status.return_value = mock_instance_status
             mock_slave_1 = {
                 'task_counts': SlaveTaskCount(
@@ -1165,13 +1170,13 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_get_instance_type_weights.assert_called_with(self.autoscaler)
             mock_aws_slave_call_1 = mock.call(
                 slave=mock_slave_1,
-                instance_status=mock_instance_status[0],
+                instance_status=mock_instance_status['InstanceStatuses'][0],
                 instance_description=mock_instances[0],
                 instance_type_weights=mock_get_instance_type_weights.return_value
             )
             mock_aws_slave_call_2 = mock.call(
                 slave=mock_slave_3,
-                instance_status=mock_instance_status[1],
+                instance_status=mock_instance_status['InstanceStatuses'][1],
                 instance_description=mock_instances[1],
                 instance_type_weights=mock_get_instance_type_weights.return_value
             )
@@ -1226,7 +1231,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                                            {'attributes': {'pool': 'default'}}]}
             mock_utilization = {'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
                                 'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0)}
-            mock_get_resource_utilization_by_grouping.return_value = {'default': mock_utilization}
+            mock_get_resource_utilization_by_grouping.return_value = {('default', 'westeros-1'): mock_utilization}
             self.autoscaler.pool_settings = {'target_utilization': 0.8}
 
             ret = self.autoscaler.get_mesos_utilization_error(

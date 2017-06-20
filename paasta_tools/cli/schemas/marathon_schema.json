@@ -233,6 +233,10 @@
                     "type": "integer",
                     "default": 6
                 },
+                "healthcheck_uri": {
+                    "type": "string",
+                    "default": "/status"
+                },
                 "replication_threshold": {
                     "type": "integer",
                     "minimum": 0

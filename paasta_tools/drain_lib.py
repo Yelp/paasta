@@ -284,7 +284,11 @@ class HTTPDrainMethod(DrainMethod):
             'HEAD': requests.head,
         }[method]
 
-        resp = requests_func(url, headers={'User-Agent': get_user_agent()},)
+        resp = requests_func(
+            url,
+            headers={'User-Agent': get_user_agent()},
+            timeout=15,
+        )
         self.check_response_code(resp.status_code, url_spec['success_codes'])
 
     def drain(self, task):
