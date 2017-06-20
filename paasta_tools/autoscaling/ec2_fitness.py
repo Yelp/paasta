@@ -26,11 +26,11 @@ def sort_by_upcoming_events(instances):
 
 
 def sort_by_total_tasks(instances):
-    return sorted(instances, key=lambda i: i.task_counts.count)
+    return sorted(instances, key=lambda i: i.task_counts.count, reverse=True)
 
 
 def sort_by_running_batch_count(instances):
-    return sorted(instances, key=lambda i: i.task_counts.chronos_count)
+    return sorted(instances, key=lambda i: i.task_counts.chronos_count, reverse=True)
 
 
 def sort_by_ec2_fitness(instances):
@@ -44,9 +44,10 @@ def sort_by_ec2_fitness(instances):
           considered to be least healthy
         - next, instances are ranked according to whether they have events planned. an event
           planned marks against your fitness.
-        - next, instances are sorted according to the number of total tasks they have. those with
+        - next, instances are sorted according to the number of chronos tasks running on them.
+          we can't drain chronos tasks, so make an effort to avoid disrupting them.
+        - finally, instances are sorted according to the number of total tasks they have. those with
           the hightest total task are considered fittest, because it's painful to drain them.
-        - finally, instances are sorted according to the number of chronos tasks running on them.
     """
     return sort_by_system_instance_health(
         sort_by_upcoming_events(
