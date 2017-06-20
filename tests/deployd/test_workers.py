@@ -112,6 +112,27 @@ class TestPaastaDeployWorker(unittest.TestCase):
                                                                      bounce_timers=mock_setup_timers.return_value))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
+            mock_deploy_marathon_service.side_effect = Exception()
+            mock_setup_timers.return_value.bounce_length.stop.reset_mock()
+            with raises(LoopBreak):
+                self.worker.run()
+            mock_setup_timers.assert_called_with(self.worker, mock_si)
+            assert mock_setup_timers.return_value.setup_marathon.start.called
+            mock_deploy_marathon_service.assert_called_with(service='universe',
+                                                            instance='c137',
+                                                            client=self.worker.marathon_client,
+                                                            soa_dir=DEFAULT_SOA_DIR,
+                                                            marathon_config=self.worker.marathon_config,
+                                                            marathon_apps=mock_get_all_marathon_apps.return_value)
+            assert mock_setup_timers.return_value.setup_marathon.stop.called
+            assert mock_setup_timers.return_value.processed_by_worker.start.called
+            self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='universe',
+                                                                     instance='c137',
+                                                                     bounce_by=61,
+                                                                     watcher='Worker1',
+                                                                     bounce_timers=mock_setup_timers.return_value))
+            assert not mock_setup_timers.return_value.bounce_length.stop.called
+
 
 class LoopBreak(Exception):
     pass

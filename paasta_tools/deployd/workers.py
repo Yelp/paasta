@@ -58,12 +58,15 @@ class PaastaDeployWorker(PaastaThread):
             self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
             marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_failures=True)
             bounce_timers.setup_marathon.start()
-            return_code, bounce_again_in_seconds = deploy_marathon_service(service=service_instance.service,
-                                                                           instance=service_instance.instance,
-                                                                           client=self.marathon_client,
-                                                                           soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-                                                                           marathon_config=self.marathon_config,
-                                                                           marathon_apps=marathon_apps)
+            try:
+                return_code, bounce_again_in_seconds = deploy_marathon_service(service=service_instance.service,
+                                                                               instance=service_instance.instance,
+                                                                               client=self.marathon_client,
+                                                                               soa_dir=marathon_tools.DEFAULT_SOA_DIR,
+                                                                               marathon_config=self.marathon_config,
+                                                                               marathon_apps=marathon_apps)
+            except Exception:
+                return_code, bounce_again_in_seconds = -1, 60
             bounce_timers.setup_marathon.stop()
             self.log.info("setup marathon completed with exit code {} for {}.{}".format(return_code,
                                                                                         service_instance.service,
