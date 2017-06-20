@@ -27,8 +27,7 @@ from paasta_tools.utils import paasta_print
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'security-check',
-        description='Performs a security check consisting in a few tests like shellshock vulnerability, the user '
-                    'that is running the docker container is not root or the latest packages installed',
+        description='Performs a security check consisting of a few tests.',
         help='Performs a security check',
     )
     list_parser.add_argument(
@@ -46,11 +45,9 @@ def add_subparser(subparsers):
 
 
 def perform_security_check(args):
-    """It runs a few security-checks including:
-    - shellshock: is the version of bash running inside the container vulnerable to shellshock?
-    - docker container: is the container running as root?
-    - packages: does the container has the latest packages installed? If not, the output will contain the name of the
-    package that needs to be updated and to which version.
+    """It runs a few security tests and checks the return code.
+    If you are at Yelp, please visit https://confluence.yelpcorp.com/display/PAASTA/PaaSTA+security-check+explained
+    to learn more.
     :param args: service - the name of the service; commit - upstream git commit.
     :return: 0 if the security-check passed, non-zero if it failed.
     """
