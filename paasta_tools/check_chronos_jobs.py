@@ -196,7 +196,11 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds):
 def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
                           interval_in_seconds, schedule, schedule_timezone):
     last_run_utc = isodate.parse_datetime(last_run_iso_time)
-    last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
+    if schedule_timezone is None:
+        last_run_local = last_run_utc
+        schedule_timezone = 'UTC'
+    else:
+        last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
 
     return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s (%(timezone)s) "
             "hasn't run since %(last_run)s, and is configured to run every "
