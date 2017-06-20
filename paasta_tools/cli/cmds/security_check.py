@@ -45,7 +45,7 @@ def add_subparser(subparsers):
 
 
 def perform_security_check(args):
-    """It runs a few security tests and checks the return code.
+    """It runs a few security tests, checks the return code and prints output that should help in fixing failures.
     If you are at Yelp, please visit https://confluence.yelpcorp.com/display/PAASTA/PaaSTA+security-check+explained
     to learn more.
     :param args: service - the name of the service; commit - upstream git commit.
