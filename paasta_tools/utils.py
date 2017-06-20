@@ -1111,6 +1111,12 @@ class SystemPaastaConfig(dict):
         """
         return self.get("mesos_config", {})
 
+    def get_monitoring(self):
+        """Get the monitoring config
+
+        :returns: the monitoring config dictionary"""
+        return self.get('signalfx_api_key')
+
     def get_deploy_blacklist(self):
         """Get global blacklist. This applies to all services
         in the cluster
