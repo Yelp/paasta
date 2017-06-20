@@ -28,7 +28,7 @@ def test_sort_by_running_batch_count():
 
 def test_sort_by_health_system_instance_health_system_status_failed():
     mock_slave_1 = Mock(name='slave1')
-    mock_slave_1.task_counts=SlaveTaskCount(
+    mock_slave_1.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
         chronos_count=1,
@@ -50,12 +50,12 @@ def test_sort_by_health_system_instance_health_system_status_failed():
         }
     }
     mock_slave_2 = Mock(name='slave2')
-    mock_slave_2.task_counts=SlaveTaskCount(
+    mock_slave_2.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
         chronos_count=1,
     ),
-    mock_slave_2.instance_status={
+    mock_slave_2.instance_status = {
         'Events': [
             {
                 'Code': 'instance-reboot',
@@ -77,12 +77,12 @@ def test_sort_by_health_system_instance_health_system_status_failed():
 
 def test_sort_by_upcoming_events():
     mock_slave_1 = Mock()
-    mock_slave_1.task_counts=SlaveTaskCount(
-            count=3,
-            slave=Mock(),
-            chronos_count=1,
+    mock_slave_1.task_counts = SlaveTaskCount(
+        count=3,
+        slave=Mock(),
+        chronos_count=1,
     )
-    mock_slave_1.instance_status={
+    mock_slave_1.instance_status = {
         'Events': [],
         'SystemStatus': {
             'Status': 'ok',
@@ -92,12 +92,12 @@ def test_sort_by_upcoming_events():
         }
     }
     mock_slave_2 = Mock()
-    mock_slave_2. task_counts= SlaveTaskCount(
+    mock_slave_2. task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
         chronos_count=1,
     )
-    mock_slave_2.instance_status={
+    mock_slave_2.instance_status = {
         'Events': [
             {
                 'Code': 'instance-reboot',
@@ -141,23 +141,23 @@ def test_sort_by_fitness_calls_all_sorting_funcs():
 
 def test_sort_by_fitness():
     mock_slave_1 = Mock(name='slave1')
-    mock_slave_1.task_counts=SlaveTaskCount(
-            count=3,
-            slave=Mock(),
-            chronos_count=1,
-    )
-    mock_slave_1.instance_status={
-            'Events': [],
-            'SystemStatus': {'Status': 'impaired', },
-            'InstanceStatus': {'Status': 'ok', }
-    }
-    mock_slave_2 = Mock(name='slave2')
-    mock_slave_2.task_counts=SlaveTaskCount(
+    mock_slave_1.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
         chronos_count=1,
     )
-    mock_slave_2.instance_status={
+    mock_slave_1.instance_status = {
+        'Events': [],
+        'SystemStatus': {'Status': 'impaired', },
+        'InstanceStatus': {'Status': 'ok', }
+    }
+    mock_slave_2 = Mock(name='slave2')
+    mock_slave_2.task_counts = SlaveTaskCount(
+        count=3,
+        slave=Mock(),
+        chronos_count=1,
+    )
+    mock_slave_2.instance_status = {
         'Events': [
             {
                 'Code': 'instance-reboot',
@@ -170,34 +170,34 @@ def test_sort_by_fitness():
         'InstanceStatus': {'Status': 'ok', }
     }
     mock_slave_3 = Mock(name='slave3')
-    mock_slave_3.task_counts=SlaveTaskCount(
+    mock_slave_3.task_counts = SlaveTaskCount(
         count=2,
         slave=Mock(),
         chronos_count=3,
     )
-    mock_slave_3.instance_status={
+    mock_slave_3.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
         'InstanceStatus': {'Status': 'ok', }
     }
     mock_slave_4 = Mock(name='slave4')
-    mock_slave_4.task_counts=SlaveTaskCount(
+    mock_slave_4.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
         chronos_count=1,
     )
-    mock_slave_4.instance_status={
+    mock_slave_4.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
         'InstanceStatus': {'Status': 'ok', }
     }
     mock_slave_5 = Mock(name='slave5')
-    mock_slave_5.task_counts=SlaveTaskCount(
+    mock_slave_5.task_counts = SlaveTaskCount(
         count=1,
         slave=Mock(),
         chronos_count=1,
     )
-    mock_slave_5.instance_status={
+    mock_slave_5.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
         'InstanceStatus': {'Status': 'ok', }
