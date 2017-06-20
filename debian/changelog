@@ -1,3 +1,11 @@
+paasta-tools (0.65.26) xenial; urgency=medium
+
+  * 0.65.26 tagged with 'make release'
+    Commit: Merge pull request #1318 from Yelp/autoscaler-bug-fixes  fix
+    fitness evaluation of mesos slaves
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 20 Jun 2017 10:51:26 -0700
+
 paasta-tools (0.65.25) xenial; urgency=medium
 
   * 0.65.25 tagged with 'make release'
