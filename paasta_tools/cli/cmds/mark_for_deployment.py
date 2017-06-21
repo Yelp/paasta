@@ -347,8 +347,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                             .format(instance, cluster_data.service,
                                     cluster_data.cluster))
             else:
-                log.warning("Error getting service status from PaaSTA API: {}:"
-                            "{}".format(e.response.status_code,
+                log.warning("Error getting service status from PaaSTA API for {}: {}"
+                            "{}".format(cluster_data.cluster, e.response.status_code,
                                         e.response.text))
         except ConnectionError as e:
             log.warning("Error getting service status from PaaSTA API for {}:"
