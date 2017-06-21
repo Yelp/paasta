@@ -1,3 +1,11 @@
+paasta-tools (0.65.27) xenial; urgency=medium
+
+  * 0.65.27 tagged with 'make release'
+    Commit: Merge pull request #1321 from Yelp/deployd-scribe-stream
+    Add ScribeHandler to paasta-deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 21 Jun 2017 07:42:25 -0700
+
 paasta-tools (0.65.26) xenial; urgency=medium
 
   * 0.65.26 tagged with 'make release'
