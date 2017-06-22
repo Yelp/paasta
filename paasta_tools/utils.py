@@ -314,7 +314,7 @@ class InstanceConfig(object):
                 # TODO validation stuff like this should be moved into a check_* like in chronos tools
                 raise InvalidInstanceConfig('Instance configuration can specify cmd or args, but not both.')
 
-    def get_monitoring(self):
+    def get_monitoring_config(self):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
@@ -1144,7 +1144,7 @@ class SystemPaastaConfig(dict):
         """Get the monitoring config
 
         :returns: the monitoring config dictionary"""
-        return self.get('signalfx_api_key')
+        return self.get('monitoring_config', {})
 
     def get_deploy_blacklist(self):
         """Get global blacklist. This applies to all services
