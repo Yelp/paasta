@@ -24,13 +24,10 @@ import re
 import socket
 import sys
 
-import pysensu_yelp
-
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
 from paasta_tools.mac_address import reserve_unique_mac_address
-from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
@@ -278,13 +275,10 @@ def append_cpuset_args(argv, env_args):
 
 def add_firewall(argv, service, instance):
     output = ''
-    sensu_status = pysensu_yelp.Status.OK
-
     try:
         mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
     except Exception as e:
         output = 'Unable to add mac address: {}'.format(e)
-        sensu_status = pysensu_yelp.Status.CRITICAL
     else:
         argv = add_argument(argv, '--mac-address={}'.format(mac_address))
         try:
@@ -298,19 +292,10 @@ def add_firewall(argv, service, instance):
                     mac_address)
         except Exception as e:
             output = 'Unable to add firewall rules: {}'.format(e)
-            sensu_status = pysensu_yelp.Status.CRITICAL
 
     if output:
         print(output, file=sys.stderr)
 
-    send_event(
-        service=service,
-        check_name='apply_firewall',
-        overrides={},
-        status=sensu_status,
-        output=output,
-        soa_dir=DEFAULT_SOA_DIR
-    )
     return argv
 
 

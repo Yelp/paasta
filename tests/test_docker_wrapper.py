@@ -6,7 +6,6 @@ import socket
 from contextlib import contextmanager
 
 import mock
-import pysensu_yelp
 import pytest
 
 from paasta_tools import docker_wrapper
@@ -219,12 +218,6 @@ class TestMain(object):
         # always patch execlp so we don't actually exec
         with mock.patch.object(docker_wrapper.os, 'execlp', autospec=True) as mock_execlp:
             yield mock_execlp
-
-    @pytest.yield_fixture(autouse=True)
-    def mock_send_event(self):
-        # always patch send_event so we don't actually hit sensu
-        with mock.patch.object(docker_wrapper, 'send_event', autospec=True) as mock_send_event:
-            yield mock_send_event
 
     def test_marathon(self, mock_execlp):
         argv = [
@@ -697,8 +690,7 @@ class TestMain(object):
         mock_firewall_flock,
         mock_mac_address,
         mock_execlp,
-        mock_firewall_env_args,
-        mock_send_event,
+        mock_firewall_env_args
     ):
         argv = [
             'docker',
@@ -723,17 +715,6 @@ class TestMain(object):
             'myinstance',
             '00:00:00:00:00:00'
         )]
-
-        assert mock_send_event.mock_calls == [
-            mock.call(
-                service='myservice',
-                check_name='apply_firewall',
-                overrides={},
-                status=pysensu_yelp.Status.OK,
-                output='',
-                soa_dir=docker_wrapper.DEFAULT_SOA_DIR
-            )
-        ]
 
     def test_mac_address_not_run(self, mock_mac_address, mock_execlp, mock_firewall_env_args):
         argv = [
@@ -767,7 +748,7 @@ class TestMain(object):
             *mock_firewall_env_args
         )]
 
-    def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir, mock_firewall_env_args, mock_send_event):
+    def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir, mock_firewall_env_args):
         nonexistent = tmpdir.join('nonexistent')
         with mock.patch.object(docker_wrapper, 'LOCK_DIRECTORY', str(nonexistent)):
             argv = [
@@ -784,16 +765,6 @@ class TestMain(object):
             )]
             _, err = capsys.readouterr()
             assert err.startswith('Unable to add mac address: [Errno 2] No such file or directory')
-            assert mock_send_event.mock_calls == [
-                mock.call(
-                    service='myservice',
-                    check_name='apply_firewall',
-                    overrides={},
-                    status=pysensu_yelp.Status.CRITICAL,
-                    output=err.strip(),
-                    soa_dir=docker_wrapper.DEFAULT_SOA_DIR
-                )
-            ]
 
     @mock.patch.object(docker_wrapper, 'firewall_flock', autospec=True, side_effect=Exception("Oh noes"))
     @mock.patch.object(docker_wrapper, 'prepare_new_container', autospec=True)
@@ -804,8 +775,7 @@ class TestMain(object):
         capsys,
         mock_mac_address,
         mock_execlp,
-        mock_firewall_env_args,
-        mock_send_event
+        mock_firewall_env_args
     ):
         argv = [
             'docker',
@@ -822,14 +792,3 @@ class TestMain(object):
         )]
         _, err = capsys.readouterr()
         assert err.startswith('Unable to add firewall rules: Oh noes')
-
-        assert mock_send_event.mock_calls == [
-            mock.call(
-                service='myservice',
-                check_name='apply_firewall',
-                overrides={},
-                status=pysensu_yelp.Status.CRITICAL,
-                output='Unable to add firewall rules: Oh noes',
-                soa_dir=docker_wrapper.DEFAULT_SOA_DIR
-            )
-        ]
