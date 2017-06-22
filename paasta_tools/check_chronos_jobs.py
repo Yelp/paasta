@@ -139,6 +139,7 @@ def build_service_job_mapping(client, configured_jobs):
             instance=job[1],
             client=client,
             include_disabled=True,
+            include_temporary=True,
         )
         matching_jobs = chronos_tools.sort_jobs(matching_jobs)
         # Only consider the most recent one
@@ -232,7 +233,7 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
                       "which means it may not be deployed yet"
                       % (service, utils.SPACER, instance))
     else:
-        if chronos_job.get('disabled'):
+        if chronos_job.get('disabled') and not chronos_tools.is_temporary_job(chronos_job):
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
