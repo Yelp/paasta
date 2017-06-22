@@ -687,6 +687,9 @@ def test_git_sha_validation():
         '060ce8bc10efe0030c048a4711ad5dd85de5adac') == '060ce8bc10efe0030c048a4711ad5dd85de5adac'
     with raises(argparse.ArgumentTypeError):
         utils.validate_full_git_sha('BAD')
+    assert utils.validate_short_git_sha('060c') == '060c'
+    with raises(argparse.ArgumentTypeError):
+        utils.validate_short_git_sha('BAD')
 
 
 @patch('paasta_tools.cli.utils.get_instance_configs_for_service', autospec=True)
