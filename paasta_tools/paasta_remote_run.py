@@ -216,7 +216,9 @@ def remote_run_start(args):
     run_id = args.run_id
     if run_id is None:
         run_id = ''.join(
-            random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            random.choice(string.ascii_uppercase + string.digits)
+            for _ in range(8)
+        )
         paasta_print("Assigned random run-id: %s" % run_id)
 
     if args.detach:
@@ -253,7 +255,8 @@ def remote_run_start(args):
     runner = Sync(retrying_executor)
 
     def handle_interrupt(_signum, _frame):
-        paasta_print(PaastaColors.red("Signal received, shutting down scheduler."))
+        paasta_print(
+            PaastaColors.red("Signal received, shutting down scheduler."))
         runner.stop()
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
@@ -269,8 +272,15 @@ def remote_run_start(args):
             config_overrides=overrides_dict,
         )
     )
-    runner.run(task_config)
+    terminal_event = runner.run(task_config)
     runner.stop()
+    if terminal_event.success:
+        paasta_print("Task finished successfully")
+        sys.exit(0)
+    else:
+        paasta_print(
+            PaastaColors.red("Task failed: {}".format(terminal_event.raw)))
+        sys.exit(1)
 
 
 def remote_run_stop(args):
