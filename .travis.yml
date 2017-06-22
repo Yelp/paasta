@@ -23,6 +23,7 @@ before_install:
   # This probably ought to match the version in yelp_package/dockerfiles/itest/mesos/Dockerfile.
   # Having a recent enough version is important so that docker features like --cpu-shares work properly.
   - sudo apt-get update
+  - sudo apt-cache show docker-engine | grep Version | head
   - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.13.1-0~ubuntu-trusty devscripts --force-yes
   - 'if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$DOCKER_USERNAME" != "" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi'
 install: pip install coveralls tox tox-pip-extensions
