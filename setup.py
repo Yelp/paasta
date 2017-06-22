@@ -43,6 +43,7 @@ setup(
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich',
+        'enum34',
         'ephemeral-port-reserve >= 1.0.1',
         'futures',
         'gevent == 1.1.1',

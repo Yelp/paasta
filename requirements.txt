@@ -11,6 +11,7 @@ cookiecutter==1.4.0
 croniter==0.3.14
 docker-py==1.2.3
 dulwich==0.16.3
+enum34==1.1.6
 ephemeral-port-reserve==1.0.1
 futures==3.0.1
 gevent==1.1.1
