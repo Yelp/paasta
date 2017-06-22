@@ -156,7 +156,7 @@ def paasta_to_task_config_kwargs(
         }
         for volume in docker_volumes
     ]
-    cmd = native_job_config.get_cmd()[0]
+    cmd = native_job_config.get_cmd()
     uris = system_paasta_config.get_dockercfg_location()
     cpus = native_job_config.get_cpus()
     mem = native_job_config.get_mem()
