@@ -26,6 +26,7 @@ import sys
 from datetime import datetime
 
 from task_processing.plugins.mesos.mesos_executor import MesosExecutor
+from task_processing.plugins.mesos.retrying_executor import RetryingExecutor
 from task_processing.runners.sync import Sync
 
 from paasta_tools import mesos_tools
@@ -236,7 +237,7 @@ def remote_run_start(args):
 
     paasta_config = system_paasta_config.get_paasta_native_config()
     # TODO: implement DryRunExecutor?
-    executor = MesosExecutor(
+    mesos_executor = MesosExecutor(
         role='*',
         principal=paasta_config['principal'],
         secret=paasta_config['secret'],
@@ -248,7 +249,8 @@ def remote_run_start(args):
         ),
         framework_staging_timeout=args.staging_timeout
     )
-    runner = Sync(executor)
+    retrying_executor = RetryingExecutor(mesos_executor)
+    runner = Sync(retrying_executor)
 
     def handle_interrupt(_signum, _frame):
         paasta_print(PaastaColors.red("Signal received, shutting down scheduler."))
