@@ -1,3 +1,11 @@
+paasta-tools (0.65.28) xenial; urgency=medium
+
+  * 0.65.28 tagged with 'make release'
+    Commit: Merge pull request #1314 from bchess/firewall_flock  Adding
+    a timed flock to firewall operations
+
+ -- Benjamin Chess <bchess@yelp.com>  Thu, 22 Jun 2017 12:25:51 -0700
+
 paasta-tools (0.65.27) xenial; urgency=medium
 
   * 0.65.27 tagged with 'make release'
