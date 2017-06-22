@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # Copyright 2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import argparse
 import collections
 import datetime
@@ -24,10 +28,16 @@ import urllib
 
 import grequests
 
+from paasta_tools.utils import load_system_paasta_config
+
 MAX_ROWS_IN_SFX_RESULTS = 1000
 MAX_CONCURRENT_QUERIES = 10
 
 def sfx_token():
+    system_paasta_config = load_system_paasta_config()
+    token = system_paasta_config.get_monitoring_config()['signalfx_api_key']
+    if token:
+        return token
     try:
         return os.environ['SFX_TOKEN']
     except KeyError:
