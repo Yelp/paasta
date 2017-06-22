@@ -257,13 +257,13 @@ class InstanceConfig(object):
         parameters.extend(self.get_cap_add())
         return parameters
 
-    def get_disk(self):
+    def get_disk(self, default=1024):
         """Gets the  amount of disk space required from the service's configuration.
 
         Defaults to 1024 (1G) if no value is specified in the config.
 
         :returns: The amount of disk space specified by the config, 1024 if not specified"""
-        disk = self.config_dict.get('disk', 1024)
+        disk = self.config_dict.get('disk', default)
         return disk
 
     def get_cmd(self):
