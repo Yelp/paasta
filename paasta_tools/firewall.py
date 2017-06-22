@@ -10,6 +10,7 @@ import json
 import logging
 import os.path
 import re
+from contextlib import contextmanager
 
 import six
 
@@ -18,6 +19,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import timed_flock
 
 
 PRIVATE_IP_RANGES = (
@@ -28,6 +30,8 @@ PRIVATE_IP_RANGES = (
     '169.254.0.0/255.255.0.0',
 )
 DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
+DEFAULT_FIREWALL_FLOCK_PATH = '/var/run/paasta/firewall.flock'
+DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
 
 RESOLV_CONF = '/etc/resolv.conf'
 # not exactly correct, but sufficient to filter out ipv6 or other weird things
@@ -454,3 +458,12 @@ def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
     service_group = ServiceGroup(service, instance)
     service_group.update_rules(soa_dir, synapse_service_dir)
     iptables.insert_rule('PAASTA', dispatch_rule(service_group.chain_name, mac))
+
+
+@contextmanager
+def firewall_flock(flock_path=DEFAULT_FIREWALL_FLOCK_PATH):
+    """ Grab an exclusive flock to avoid concurrent iptables updates
+    """
+    with io.FileIO(flock_path, 'w') as f:
+        with timed_flock(f, seconds=DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS):
+            yield
