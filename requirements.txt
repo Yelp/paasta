@@ -18,7 +18,7 @@ gevent==1.1.1
 git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 git+git://github.com/thefactory/marathon-python@e70307e
 # While task_processing is in rapid development mode, we install it from git
-git+git://github.com/Yelp/task_processing@6c85f1c#egg=task_processing[mesos_executor]
+git+git://github.com/Yelp/task_processing@b24a5f45#egg=task_processing[mesos_executor]
 http-parser==0.8.3
 httplib2==0.9
 humanize==0.5.1
