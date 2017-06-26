@@ -956,6 +956,16 @@ class TestClusterAutoscaler(unittest.TestCase):
         )
         assert actual == [fake_status['InstanceStatuses'][0]]
 
+    def test_instance_status_for_instance_ids_batches_calls(self):
+        instance_ids = [{'foo': i} for i in range(0, 100)]
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instance_status',
+            autospec=True
+        ) as mock_describe_instance_status:
+            mock_describe_instance_status.return_value = {'InstanceStatuses': [{'foo': 'bar'}]}
+            res = self.autoscaler.instance_status_for_instance_ids(instance_ids=instance_ids)
+            assert len(res['InstanceStatuses']) == 2
+
     def test_gracefully_terminate_slave(self):
         with mock.patch(
             'time.time', autospec=True,

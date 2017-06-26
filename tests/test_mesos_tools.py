@@ -631,6 +631,24 @@ def test_get_mesos_task_count_by_slave():
                     {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
+        # test SlaveDoesNotExist exception handling
+        mock_task2.slave = mock.Mock()
+        mock_task2.slave.__getitem__ = mock.Mock()
+        mock_task2.slave.__getitem__.side_effect = mesos.exceptions.SlaveDoesNotExist
+        # we expect to handle this SlaveDoesNotExist exception gracefully, and continue on to handle other tasks
+        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
+        mock_get_all_running_tasks.return_value = mock_tasks
+        mock_slaves_list = [{'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
+                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
+                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state,
+                                                        slaves_list=mock_slaves_list)
+        # we expect mock_slave_2 to only count 2 tasks, as one of them returned a SlaveDoesNotExist exception
+        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
+
 
 def test_get_count_running_tasks_on_slave():
     with mock.patch(

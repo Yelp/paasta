@@ -1,3 +1,27 @@
+paasta-tools (0.65.28) xenial; urgency=medium
+
+  * 0.65.28 tagged with 'make release'
+    Commit: Merge pull request #1314 from bchess/firewall_flock  Adding
+    a timed flock to firewall operations
+
+ -- Benjamin Chess <bchess@yelp.com>  Thu, 22 Jun 2017 12:25:51 -0700
+
+paasta-tools (0.65.27) xenial; urgency=medium
+
+  * 0.65.27 tagged with 'make release'
+    Commit: Merge pull request #1321 from Yelp/deployd-scribe-stream
+    Add ScribeHandler to paasta-deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 21 Jun 2017 07:42:25 -0700
+
+paasta-tools (0.65.26) xenial; urgency=medium
+
+  * 0.65.26 tagged with 'make release'
+    Commit: Merge pull request #1318 from Yelp/autoscaler-bug-fixes  fix
+    fitness evaluation of mesos slaves
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 20 Jun 2017 10:51:26 -0700
+
 paasta-tools (0.65.25) xenial; urgency=medium
 
   * 0.65.25 tagged with 'make release'

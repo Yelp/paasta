@@ -43,6 +43,7 @@ setup(
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich',
+        'enum34',
         'ephemeral-port-reserve >= 1.0.1',
         'futures',
         'gevent == 1.1.1',
@@ -53,7 +54,6 @@ setup(
         'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.8.1',
-        'mesos.interface == 1.1.0',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid == 1.7',
@@ -100,7 +100,6 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={str(''): [str('cli/fsm/template/*/*'), str('cli/schemas/*.json'), str('api/api_docs/*.json')]},
     entry_points={
         'console_scripts': [
             'paasta=paasta_tools.cli.cli:main',

@@ -25,6 +25,7 @@ import socket
 import sys
 
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
+from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
 from paasta_tools.mac_address import reserve_unique_mac_address
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -272,6 +273,32 @@ def append_cpuset_args(argv, env_args):
     return argv
 
 
+def add_firewall(argv, service, instance):
+    output = ''
+    try:
+        mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
+    except Exception as e:
+        output = 'Unable to add mac address: {}'.format(e)
+    else:
+        argv = add_argument(argv, '--mac-address={}'.format(mac_address))
+        try:
+
+            with firewall_flock():
+                prepare_new_container(
+                    DEFAULT_SOA_DIR,
+                    DEFAULT_SYNAPSE_SERVICE_DIR,
+                    service,
+                    instance,
+                    mac_address)
+        except Exception as e:
+            output = 'Unable to add firewall rules: {}'.format(e)
+
+    if output:
+        print(output, file=sys.stderr)
+
+    return argv
+
+
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
@@ -288,19 +315,12 @@ def main(argv=None):
         argv = add_argument(argv, '--hostname={}'.format(hostname))
 
     paasta_firewall = env_args.get('PAASTA_FIREWALL')
-    if paasta_firewall and can_add_mac_address(argv):
+    service = env_args.get('PAASTA_SERVICE')
+    instance = env_args.get('PAASTA_INSTANCE')
+    if paasta_firewall and service and instance and can_add_mac_address(argv):
         try:
-            mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
+            argv = add_firewall(argv, service, instance)
         except Exception as e:
-            print('Unable to add mac address: {}'.format(e), file=sys.stderr)
-        else:
-            argv = add_argument(argv, '--mac-address={}'.format(mac_address))
-
-            prepare_new_container(
-                DEFAULT_SOA_DIR,
-                DEFAULT_SYNAPSE_SERVICE_DIR,
-                env_args['PAASTA_SERVICE'],
-                env_args['PAASTA_INSTANCE'],
-                mac_address)
+            print('Unhandled exception in add_firewall: {}'.format(e), file=sys.stderr)
 
     os.execlp('docker', 'docker', *argv[1:])

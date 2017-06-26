@@ -23,6 +23,7 @@ import yaml
 
 from paasta_tools import firewall
 from paasta_tools import firewall_update
+from paasta_tools.utils import TimeoutError
 
 
 def test_parse_args_daemon():
@@ -144,16 +145,26 @@ def test_run_daemon(process_inotify_mock, smartstack_deps_mock, mock_daemon_args
     assert process_inotify_mock.call_args[0][1] == {}
 
 
-def test_run_cron(mock_cron_args):
-    with mock.patch.object(firewall, 'general_update', autospec=True) as m:
+@mock.patch.object(firewall, 'firewall_flock', autospec=True)
+@mock.patch.object(firewall, 'general_update', autospec=True)
+def test_run_cron(mock_general_update, mock_firewall_flock, mock_cron_args):
+    firewall_update.run_cron(mock_cron_args)
+    assert mock_general_update.called is True
+    assert mock_firewall_flock.return_value.__enter__.called is True
+
+
+@mock.patch.object(firewall, 'firewall_flock', autospec=True, side_effect=TimeoutError('Oh noes'))
+@mock.patch.object(firewall, 'general_update', autospec=True)
+def test_run_cron_flock_error(mock_general_update, mock_firewall_flock, mock_cron_args):
+    with pytest.raises(TimeoutError):
         firewall_update.run_cron(mock_cron_args)
-    assert m.called is True
 
 
 @mock.patch.object(firewall_update, 'log', autospec=True)
 @mock.patch.object(firewall_update.firewall, 'ensure_service_chains', autospec=True)
 @mock.patch.object(firewall_update.firewall, 'active_service_groups', autospec=True)
-def test_process_inotify_event(active_service_groups_mock, ensure_service_chains_mock, log_mock):
+@mock.patch.object(firewall, 'firewall_flock', autospec=True)
+def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, ensure_service_chains_mock, log_mock):
     active_service_groups_mock.return_value = {
         firewall.ServiceGroup('myservice', 'myinstance'): {'00:00:00:00:00:00'},
         firewall.ServiceGroup('anotherservice', 'instance'): {'11:11:11:11:11:11'},
@@ -184,6 +195,8 @@ def test_process_inotify_event(active_service_groups_mock, ensure_service_chains
         )
     ]
 
+    assert firewall_flock_mock.return_value.__enter__.called is True
+
     # Verify that tmp writes do not apply
     log_mock.reset_mock()
     ensure_service_chains_mock.reset_mock()
@@ -194,6 +207,36 @@ def test_process_inotify_event(active_service_groups_mock, ensure_service_chains
         synapse_service_dir)
     assert log_mock.debug.call_count == 0
     assert ensure_service_chains_mock.call_count == 0
+
+
+@mock.patch.object(firewall_update, 'log', autospec=True)
+@mock.patch.object(firewall_update.firewall, 'ensure_service_chains', autospec=True)
+@mock.patch.object(firewall_update.firewall, 'active_service_groups', autospec=True)
+@mock.patch.object(firewall, 'firewall_flock', autospec=True, side_effect=TimeoutError('Oh noes'))
+def test_process_inotify_event_flock_error(
+    firewall_flock_mock,
+    active_service_groups_mock,
+    ensure_service_chains_mock,
+    log_mock
+):
+    active_service_groups_mock.return_value = {
+        firewall.ServiceGroup('myservice', 'myinstance'): {'00:00:00:00:00:00'},
+        firewall.ServiceGroup('anotherservice', 'instance'): {'11:11:11:11:11:11'},
+        firewall.ServiceGroup('thirdservice', 'instance'): {'22:22:22:22:22:22'},
+    }
+
+    services_by_dependencies = {
+        'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
+    }
+    soa_dir = mock.Mock()
+    synapse_service_dir = mock.Mock()
+    firewall_update.process_inotify_event(
+        (None, None, None, 'mydep.depinstance.json'),
+        services_by_dependencies,
+        soa_dir,
+        synapse_service_dir)
+    assert log_mock.debug.call_count == 0
+    assert log_mock.error.call_count == 1
 
 
 @pytest.fixture

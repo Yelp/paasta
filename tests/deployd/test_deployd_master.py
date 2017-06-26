@@ -134,7 +134,8 @@ class TestDeployDaemon(unittest.TestCase):
             mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
                                     get_deployd_number_workers=mock.Mock(return_value=5),
                                     get_deployd_big_bounce_rate=mock.Mock(return_value=10),
-                                    get_cluster=mock.Mock(return_value='westeros-prod'))
+                                    get_cluster=mock.Mock(return_value='westeros-prod'),
+                                    get_log_writer=mock.Mock(return_value={'driver': None}))
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
 

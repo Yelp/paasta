@@ -27,8 +27,8 @@ from paasta_tools.utils import paasta_print
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'security-check',
-        description='Performs a security check (alpha)',
-        help='Performs a security check (alpha)',
+        description='Performs a security check consisting of a few tests.',
+        help='Performs a security check',
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -45,6 +45,12 @@ def add_subparser(subparsers):
 
 
 def perform_security_check(args):
+    """It runs a few security tests, checks the return code and prints output that should help in fixing failures.
+    If you are at Yelp, please visit https://confluence.yelpcorp.com/display/PAASTA/PaaSTA+security-check+explained
+    to learn more.
+    :param args: service - the name of the service; commit - upstream git commit.
+    :return: 0 if the security-check passed, non-zero if it failed.
+    """
     security_check_command = load_system_paasta_config().get_security_check_command()
     if not security_check_command:
         paasta_print("Nothing to be executed during the security-check step")
@@ -52,8 +58,7 @@ def perform_security_check(args):
 
     ret_code, output = _run(security_check_command, timeout=300, stream=True)
     if ret_code != 0:
-        paasta_print("The security-check failed with {}. Please visit the security-check runbook "
-                     "to learn how to fix it.".format(output))
+        paasta_print("The security-check failed. Please visit y/security-check-runbook to learn how to fix it.")
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
     send_event(service=args.service, check_name='%s.security_check' % args.service,

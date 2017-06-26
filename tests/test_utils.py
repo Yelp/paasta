@@ -18,6 +18,7 @@ import datetime
 import json
 import os
 import stat
+import time
 
 import mock
 import pytest
@@ -1790,3 +1791,52 @@ def test_get_code_sha_from_dockerurl():
 
     # Useful mostly for integration tests, where we run busybox a lot.
     assert utils.get_code_sha_from_dockerurl('docker.io/busybox') == 'gitbusybox'
+
+
+@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
+def test_flock(mock_flock, tmpdir):
+    my_file = tmpdir.join('my-file')
+    with open(str(my_file), 'w') as f:
+        with utils.flock(f):
+            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.reset_mock()
+
+        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+
+
+@mock.patch("paasta_tools.utils.Timeout", autospec=True)
+@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
+def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
+    my_file = tmpdir.join('my-file')
+    with open(str(my_file), 'w') as f:
+        with utils.timed_flock(f, seconds=mock.sentinel.seconds):
+            mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
+            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.reset_mock()
+
+        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+
+
+@mock.patch("paasta_tools.utils.Timeout", autospec=True, side_effect=utils.TimeoutError('Oh noes'))
+@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
+def test_timed_flock_timeout(mock_flock, mock_timeout, tmpdir):
+    my_file = tmpdir.join('my-file')
+    with open(str(my_file), 'w') as f:
+        with pytest.raises(utils.TimeoutError):
+            with utils.timed_flock(f):
+                assert False  # pragma: no cover
+        assert mock_flock.mock_calls == []
+
+
+@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
+def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
+    # Doing something slow inside the 'with' context of timed_flock doesn't cause a timeout
+    # (the timeout should only apply to the flock operation itself)
+    my_file = tmpdir.join('my-file')
+    with open(str(my_file), 'w') as f:
+        with utils.timed_flock(f, seconds=1):
+            time.sleep(2)
+        assert mock_flock.mock_calls == [
+            mock.call(f, utils.fcntl.LOCK_EX),
+            mock.call(f, utils.fcntl.LOCK_UN),
+        ]

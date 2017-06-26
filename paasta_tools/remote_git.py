@@ -88,4 +88,4 @@ def list_remote_refs(git_url):
         refs = client.fetch_pack(path, lambda refs: [], None, lambda data: None)
         return {k.decode('UTF-8'): v.decode('UTF-8') for k, v in refs.items()}
     except dulwich.errors.HangupException as e:
-        raise LSRemoteException("Unable to fetch remote refs: %s" % e)
+        raise LSRemoteException("Unable to fetch remote refs from %s: %s" % (git_url, e))

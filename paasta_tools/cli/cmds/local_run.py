@@ -360,7 +360,6 @@ def add_subparser(subparsers):
         '-o', '--port',
         help='Specify a port number to use. If not set, a random non-conflicting port will be found.',
         dest='user_port',
-        action='store_true',
         required=False,
         default=False,
     )

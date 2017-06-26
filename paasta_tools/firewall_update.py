@@ -17,6 +17,7 @@ from paasta_tools import firewall
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import TimeoutError
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +76,8 @@ def run_daemon(args):
 
 
 def run_cron(args):
-    firewall.general_update(args.soa_dir, args.synapse_service_dir)
+    with firewall.firewall_flock():
+        firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
 def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_service_dir):
@@ -94,9 +96,18 @@ def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_serv
         for service_group, macs in firewall.active_service_groups().items()
         if service_group in services_to_update
     }
-    firewall.ensure_service_chains(service_groups, soa_dir, synapse_service_dir)
-    for service_to_update in services_to_update:
-        log.debug('Updated ', service_to_update)
+
+    try:
+        with firewall.firewall_flock():
+            firewall.ensure_service_chains(service_groups, soa_dir, synapse_service_dir)
+
+        for service_to_update in services_to_update:
+            log.debug('Updated ', service_to_update)
+    except TimeoutError as e:
+        log.error(
+            'Unable to update firewalls for {} because time-out obtaining flock: {}'.format(
+                service_groups.keys(), e)
+        )
 
 
 def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_DIR):

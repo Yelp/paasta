@@ -865,6 +865,9 @@ class NullLogWriter(LogWriter):
         pass
 
 
+_empty_context = contextlib.contextmanager(lambda: (yield))
+
+
 @register_log_writer('file')
 class FileLogWriter(LogWriter):
     def __init__(self, path_format, mode='a+', line_delimeter='\n', flock=False):
@@ -873,16 +876,11 @@ class FileLogWriter(LogWriter):
         self.flock = flock
         self.line_delimeter = line_delimeter
 
-    @contextlib.contextmanager
     def maybe_flock(self, fd):
         if self.flock:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX)
-                yield
-            finally:
-                fcntl.flock(fd, fcntl.LOCK_UN)
+            return flock(fd)
         else:
-            yield
+            return _empty_context()
 
     def format_path(self, service, component, level, cluster, instance):
         return self.path_format.format(
@@ -907,6 +905,30 @@ class FileLogWriter(LogWriter):
         with io.FileIO(path, mode=self.mode, closefd=True) as f:
             with self.maybe_flock(f):
                 f.write(to_write.encode('UTF-8'))
+
+
+@contextlib.contextmanager
+def flock(fd):
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def timed_flock(fd, seconds=1):
+    """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
+    raise a TimeoutError if `seconds` elapses before the flock can be obtained
+    """
+    # We don't want to wrap the user code in the timeout, just the flock grab
+    flock_context = flock(fd)
+    with Timeout(seconds=seconds):
+        flock_context.__enter__()
+    try:
+        yield
+    finally:
+        flock_context.__exit__(*sys.exc_info())
 
 
 def _timeout(process):

@@ -139,6 +139,7 @@ def build_service_job_mapping(client, configured_jobs):
             instance=job[1],
             client=client,
             include_disabled=True,
+            include_temporary=True,
         )
         matching_jobs = chronos_tools.sort_jobs(matching_jobs)
         # Only consider the most recent one
@@ -196,7 +197,11 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds):
 def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
                           interval_in_seconds, schedule, schedule_timezone):
     last_run_utc = isodate.parse_datetime(last_run_iso_time)
-    last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
+    if schedule_timezone is None:
+        last_run_local = last_run_utc
+        schedule_timezone = 'UTC'
+    else:
+        last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
 
     return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s (%(timezone)s) "
             "hasn't run since %(last_run)s, and is configured to run every "
@@ -228,7 +233,7 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
                       "which means it may not be deployed yet"
                       % (service, utils.SPACER, instance))
     else:
-        if chronos_job.get('disabled'):
+        if chronos_job.get('disabled') and not chronos_tools.is_temporary_job(chronos_job):
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
