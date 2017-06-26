@@ -53,7 +53,7 @@ setup(
         'isodate >= 0.5.0',
         'jsonschema[format]',
         'kazoo >= 2.0.0',
-        'marathon >= 0.8.1',
+        'marathon >= 0.9.0',
         'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid >= 1.7',
