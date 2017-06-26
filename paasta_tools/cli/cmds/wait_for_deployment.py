@@ -197,7 +197,10 @@ def paasta_wait_for_deployment(args):
         validate_full_git_sha(args.commit)
     except ArgumentTypeError:
         refs = remote_git.list_remote_refs(args.git_url)
-        args.commit = short_to_full_git_sha(short=args.commit, refs=refs)
+        commits = short_to_full_git_sha(short=args.commit, refs=refs)
+        if len(commits) != 1:
+            raise ValueError("%s matched %d git shas. Must match exactly 1." % (args.commit, len(commits)))
+        args.commit = commits[0]
 
     try:
         validate_service_name(service, soa_dir=args.soa_dir)

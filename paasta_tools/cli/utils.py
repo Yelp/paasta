@@ -738,10 +738,7 @@ def short_to_full_git_sha(short, refs):
     :param refs: A list of refs in the git repository
     :return: The full git sha or None if one can't be found
     """
-    for sha in list(set(refs.values())):
-        if sha.startswith(short):
-            return sha
-    return None
+    return [sha for sha in set(refs.values()) if sha.startswith(short)]
 
 
 def validate_short_git_sha(value):
