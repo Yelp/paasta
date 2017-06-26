@@ -312,6 +312,18 @@ def key_func_for_attribute(attribute):
     return key_func
 
 
+def key_func_for_attribute_multi(attributes):
+    """ Return a closure that given a slave, will return the value of a list of
+    attributes, compiled into a hashable frozenset
+
+    :param attributes: the attribues to inspect in the slave
+    :returns: a closure, which takes a slave and returns the value of those attributes
+    """
+    def key_func(slave):
+        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
+    return key_func
+
+
 def group_slaves_by_key_func(key_func, slaves):
     """ Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
@@ -377,18 +389,44 @@ def filter_tasks_for_slaves(slaves, tasks):
     return [task for task in tasks if task['slave_id'] in slave_ids]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state):
+def filter_slaves(slaves, filters):
+    """ Filter slaves by attributes
+
+    :param slaves: list of slaves to filter
+    :param filters: dict of attribute: [value1, value2, ...] to match on
+    :returns: list of slaves that match any value in all of the attributes
+    """
+    new_list = []
+    for slave in slaves:
+        add = True
+        for attribute, values in filters.items():
+            slave_value = slave['attributes'].get(attribute, None)
+            if slave_value is None:
+                continue
+            if slave_value not in values:
+                add = False
+                break
+        if add:
+            new_list.append(slave)
+
+    return new_list
+
+
+def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters={}):
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
     :grouping_func: a function that given a slave, will return the value of an
     attribtue to group by.
     :param mesos_state: the mesos state
+    :param filters: filters to apply to the slaves in the calculation, with
+    filtering preformed by filter_slaves
     :returns: a dict of {attribute_value: resource_usage}, where resource usage
     is the dict returned by ``calculate_resource_utilization_for_slaves`` for
     slaves grouped by attribute value.
     """
     slaves = mesos_state.get('slaves', [])
+    slaves = filter_slaves(slaves, filters)
     if not has_registered_slaves(mesos_state):
         raise ValueError("There are no slaves registered in the mesos state.")
 
