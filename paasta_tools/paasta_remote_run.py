@@ -183,7 +183,6 @@ def paasta_to_task_config_kwargs(
 
     kwargs['name'] = str(compose_job_id(
         service,
-        # TODO: where do we stick "remote-run"?
         instance,
         git_hash=get_code_sha_from_dockerurl(image),
         config_hash=config_hash,
@@ -237,12 +236,12 @@ def remote_run_start(args):
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
     )
 
-    paasta_config = system_paasta_config.get_paasta_native_config()
+    taskproc_config = system_paasta_config.get('taskproc')
     # TODO: implement DryRunExecutor?
     mesos_executor = MesosExecutor(
-        role='*',
-        principal=paasta_config['principal'],
-        secret=paasta_config['secret'],
+        role=taskproc_config['principal'],
+        principal=taskproc_config['principal'],
+        secret=taskproc_config['secret'],
         mesos_address=mesos_address,
         framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
