@@ -36,10 +36,15 @@ def start_deployd(context):
     context.soa_dir = '/nail/etc/services'
     if not hasattr(context, 'daemon'):
         context.daemon = Popen('paasta-deployd', stderr=PIPE)
-    output = context.daemon.stderr.readline().decode('ascii')
+    output = context.daemon.stderr.readline().decode('utf-8')
+    start = time.time()
+    timeout = start + 60
     while "Startup finished!" not in output:
-        output = context.daemon.stderr.readline().decode('ascii')
+        output = context.daemon.stderr.readline().decode('utf-8')
         print(output.rstrip('\n'))
+        time.sleep(1)
+        if time.time() > timeout:
+            raise "deployd never ran"
     time.sleep(5)
 
 
@@ -52,16 +57,15 @@ def stop_deployd(context):
 @then('a second deployd does not become leader')
 def start_second_deployd(context):
     context.daemon1 = Popen('paasta-deployd', stderr=PIPE)
-    output = context.daemon1.stderr.readline().decode('ascii')
+    output = context.daemon1.stderr.readline().decode('utf-8')
     fd = context.daemon1.stderr
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
     for i in range(0, 5):
         try:
-            while True:
-                output = context.daemon1.stderr.readline().decode('ascii')
-                print(output.rstrip('\n'))
-                assert 'This node is elected as leader' not in output
+            output = context.daemon1.stderr.readline().decode('utf-8')
+            print(output.rstrip('\n'))
+            assert 'This node is elected as leader' not in output
         except IOError:
             pass
         time.sleep(1)
@@ -70,16 +74,21 @@ def start_second_deployd(context):
 @then('a second deployd becomes leader')
 def second_deployd_is_leader(context):
     try:
-        output = context.daemon1.stderr.readline().decode('ascii')
+        output = context.daemon1.stderr.readline().decode('utf-8')
     except IOError:
         output = ''
+    start = time.time()
+    timeout = start + 60
     while "This node is elected as leader" not in output:
         try:
-            output = context.daemon1.stderr.readline().decode('ascii')
+            output = context.daemon1.stderr.readline().decode('utf-8')
         except IOError:
             output = ''
         if output:
             print(output.rstrip('\n'))
+        if time.time() > timeout:
+            raise "Timed out waiting for second deployd leader"
+        time.sleep(1)
     context.daemon1.terminate()
     context.daemon1.wait()
 
