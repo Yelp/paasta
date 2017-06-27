@@ -18,7 +18,8 @@ gevent==1.1.1
 git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 # We have git commit access to marathon-python but don't have pypi
 # so we pull from git
-git+git://github.com/thefactory/marathon-python@b52edbcd#egg=marathon
+#git+git://github.com/thefactory/marathon-python@b52edbcd#egg=marathon
+git+git://github.com/jolynch/marathon-python@a614abfd#egg=marathon
 # While task_processing is in rapid development mode, we install it from git
 git+git://github.com/Yelp/task_processing@4192ee8d#egg=task_processing[mesos_executor]
 http-parser==0.8.3
