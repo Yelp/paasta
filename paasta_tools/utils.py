@@ -843,9 +843,9 @@ class ScribeLogWriter(LogWriter):
         configured the log object. We'll just write things to it.
         """
         if level == 'event':
-            paasta_print(line, file=sys.stdout)
+            paasta_print("[service %s] %s" % (service, line), file=sys.stdout)
         elif level == 'debug':
-            paasta_print(line, file=sys.stderr)
+            paasta_print("[service %s] %s" % (service, line), file=sys.stderr)
         else:
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
