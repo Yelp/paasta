@@ -400,7 +400,7 @@ def filter_slaves(slaves, filters):
     return [s for s in slaves if all([f(s) for f in filters])]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters={}):
+def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[]):
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
