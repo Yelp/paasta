@@ -393,23 +393,11 @@ def filter_slaves(slaves, filters):
     """ Filter slaves by attributes
 
     :param slaves: list of slaves to filter
-    :param filters: dict of attribute: [value1, value2, ...] to match on
-    :returns: list of slaves that match any value in all of the attributes
+    :param filters: list of functions that take a slave and return whether the
+    slave should be included
+    :returns: list of slaves that return true for all the filters
     """
-    new_list = []
-    for slave in slaves:
-        add = True
-        for attribute, values in filters.items():
-            slave_value = slave['attributes'].get(attribute, None)
-            if slave_value is None:
-                continue
-            if slave_value not in values:
-                add = False
-                break
-        if add:
-            new_list.append(slave)
-
-    return new_list
+    return [s for s in slaves if all([f(s) for f in filters])]
 
 
 def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters={}):

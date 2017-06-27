@@ -36,17 +36,22 @@ def parse_filters(filters):
 
 
 @view_config(route_name='resources.utilization', request_method='GET', renderer='json')
-def resourses_utilization(request):
+def resources_utilization(request):
     master = get_mesos_master()
     mesos_state = master.state
 
     groupings = request.swagger_data.get('groupings', [])
     filters = request.swagger_data.get('filter', [])
     filters = parse_filters(filters)
+    filter_funcs = [
+        lambda slave: slave['attributes'].get(attr, None) in vals for attr, vals in filters.items()
+    ]
     grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
-    resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(grouping_function,
-                                                                             mesos_state,
-                                                                             filters)
+    resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(
+        grouping_func=grouping_function,
+        mesos_state=mesos_state,
+        filters=filter_funcs
+    )
 
     response_body = []
     for k, v in resource_info_dict.items():
