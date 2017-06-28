@@ -60,7 +60,7 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
     }
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body)
+    body = json.loads(resp.body.decode('utf-8'))
 
     assert(resp.status_int == 200)
     assert(len(body) == 1)
@@ -148,7 +148,7 @@ def test_resources_utilization_with_grouping(mock_get_mesos_master):
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body)
+    body = json.loads(resp.body.decode('utf-8'))
 
     assert(resp.status_int == 200)
     # 4 groupings, 2x2 attrs for 5 slaves
@@ -163,14 +163,14 @@ def test_resources_utilization_with_filter(mock_get_mesos_master):
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body)
+    body = json.loads(resp.body.decode('utf-8'))
 
     assert(resp.status_int == 200)
     assert(len(body) == 2)
 
     request.swagger_data = {'groupings': ['region', 'pool'], 'filter': ['region:non-exist', 'pool:default,other']}
     resp = resources_utilization(request)
-    body = json.loads(resp.body)
+    body = json.loads(resp.body.decode('utf-8'))
 
     assert(resp.status_int == 200)
     assert(len(body) == 0)
