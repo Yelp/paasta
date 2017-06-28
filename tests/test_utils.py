@@ -1678,18 +1678,17 @@ class TestFileLogWriter:
                 instance="instance",
             )
 
-        try:
-            mock_print.assert_called_once_with(
-                "Could not log to /dev/null: IOError: hurp durp -- would have logged: line\n",
-                file=sys.stderr,
-            )
-        except AssertionError:
-            # On python3, they merged IOError and OSError. Once paasta is fully py3, remove the assertion above, and use
-            # only the one below.
-            mock_print.assert_called_once_with(
-                "Could not log to /dev/null: OSError: hurp durp -- would have logged: line\n",
-                file=sys.stderr,
-            )
+        mock_print.assert_called_once_with(
+            mock.ANY,
+            file=sys.stderr,
+        )
+
+        # On python3, they merged IOError and OSError. Once paasta is fully py3, replace mock.ANY above with the OSError
+        # message below.
+        assert mock_print.call_args[0][0] in {
+            "Could not log to /dev/null: IOError: hurp durp -- would have logged: line\n",
+            "Could not log to /dev/null: OSError: hurp durp -- would have logged: line\n",
+        }
 
 
 def test_deep_merge_dictionaries():
