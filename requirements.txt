@@ -6,7 +6,9 @@ blessings==1.6
 boto3==1.3.0
 bravado==8.4.0
 choice==0.1
-chronos-python==0.37.0
+# Until we get fixed chronos-python
+git+git://github.com/jolynch/chronos-python@efecbe1b#egg=chronos
+# chronos-python==0.37.0
 cookiecutter==1.4.0
 croniter==0.3.14
 docker-py==1.2.3
