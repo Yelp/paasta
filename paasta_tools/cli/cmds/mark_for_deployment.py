@@ -211,7 +211,9 @@ def paasta_mark_for_deployment(args):
         refs = remote_git.list_remote_refs(args.git_url)
         commits = short_to_full_git_sha(short=args.commit, refs=refs)
         if len(commits) != 1:
-            raise ValueError("%s matched %d git shas. Must match exactly 1." % (args.commit, len(commits)))
+            raise ValueError(
+                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
+                (args.commit, len(commits)))
         args.commit = commits[0]
 
     old_git_sha = get_currently_deployed_sha(service=service, deploy_group=args.deploy_group)
