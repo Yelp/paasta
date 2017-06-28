@@ -37,7 +37,7 @@ setup(
         'argcomplete >= 0.8.1',
         'bravado == 8.4.0',
         'choice == 0.1',
-        'chronos >= 1.1.0',
+        'chronos >= 1.2.0',
         'cookiecutter == 1.4.0',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers

@@ -6,9 +6,7 @@ blessings==1.6
 boto3==1.3.0
 bravado==8.4.0
 choice==0.1
-# Until we get fixed chronos-python
-git+git://github.com/jolynch/chronos-python@efecbe1b#egg=chronos
-# chronos-python==0.37.0
+chronos-python==1.2.0
 cookiecutter==1.4.0
 croniter==0.3.14
 docker-py==1.2.3
@@ -20,8 +18,7 @@ gevent==1.1.1
 git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 # We have git commit access to marathon-python but don't have pypi
 # so we pull from git
-#git+git://github.com/thefactory/marathon-python@b52edbcd#egg=marathon
-git+git://github.com/jolynch/marathon-python@a614abfd#egg=marathon
+git+git://github.com/thefactory/marathon-python@c1e0c341#egg=marathon
 # While task_processing is in rapid development mode, we install it from git
 git+git://github.com/Yelp/task_processing@4192ee8d#egg=task_processing[mesos_executor]
 http-parser==0.8.3
