@@ -1,3 +1,11 @@
+paasta-tools (0.65.30) xenial; urgency=medium
+
+  * 0.65.30 tagged with 'make release'
+    Commit: Merge pull request #1320 from Yelp/fix/deployd-catchall
+    Catch any exception running setup_marathon_job
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 28 Jun 2017 08:49:59 -0700
+
 paasta-tools (0.65.29) xenial; urgency=medium
 
   * 0.65.29 tagged with 'make release'
