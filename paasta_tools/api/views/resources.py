@@ -44,7 +44,7 @@ def resources_utilization(request):
     filters = request.swagger_data.get('filter', [])
     filters = parse_filters(filters)
     filter_funcs = [
-        lambda slave: slave['attributes'].get(attr, None) in vals for attr, vals in filters.items()
+        metastatus_lib.make_filter_slave_func(attr, vals) for attr, vals in filters.items()
     ]
     grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
     resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(

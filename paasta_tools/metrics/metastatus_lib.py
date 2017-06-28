@@ -319,6 +319,10 @@ def key_func_for_attribute_multi(attributes):
     :param attributes: the attribues to inspect in the slave
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
+    if attributes is None:
+        # TODO: don't hard code superregion
+        attributes = ['superregion']
+
     def key_func(slave):
         return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
     return key_func
@@ -389,6 +393,12 @@ def filter_tasks_for_slaves(slaves, tasks):
     return [task for task in tasks if task['slave_id'] in slave_ids]
 
 
+def make_filter_slave_func(attribute, values):
+    def filter_func(slave):
+        return slave['attributes'].get(attribute, None) in values
+    return filter_func
+
+
 def filter_slaves(slaves, filters):
     """ Filter slaves by attributes
 
@@ -397,6 +407,8 @@ def filter_slaves(slaves, filters):
     slave should be included
     :returns: list of slaves that return true for all the filters
     """
+    if filters is None:
+        return slaves
     return [s for s in slaves if all([f(s) for f in filters])]
 
 
