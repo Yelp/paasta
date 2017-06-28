@@ -9,7 +9,12 @@ from threading import Thread
 from six.moves.queue import Queue
 
 BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
-ServiceInstance = namedtuple('ServiceInstance', ['service', 'instance', 'bounce_by', 'watcher', 'bounce_timers'])
+ServiceInstance = namedtuple('ServiceInstance', ['service',
+                                                 'instance',
+                                                 'bounce_by',
+                                                 'watcher',
+                                                 'bounce_timers',
+                                                 'failures'])
 
 
 class PaastaThread(Thread):
@@ -48,6 +53,12 @@ def rate_limit_instances(instances, number_per_minute, watcher_name):
                                                  instance=instance,
                                                  watcher=watcher_name,
                                                  bounce_by=bounce_time,
-                                                 bounce_timers=None))
+                                                 bounce_timers=None,
+                                                 failures=0))
         bounce_time += time_step
     return service_instances
+
+
+def exponential_back_off(failures, factor, base, max_time):
+    seconds = factor * base ** failures
+    return seconds if seconds < max_time else max_time

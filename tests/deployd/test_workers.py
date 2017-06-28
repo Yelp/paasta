@@ -74,7 +74,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.worker.marathon_config = mock.Mock()
             mock_deploy_marathon_service.return_value = (0, None)
             mock_si = mock.Mock(service='universe',
-                                instance='c137')
+                                instance='c137',
+                                failures=0)
             self.mock_bounce_q.get.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
@@ -109,7 +110,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
                                                                      instance='c137',
                                                                      bounce_by=61,
                                                                      watcher='Worker1',
-                                                                     bounce_timers=mock_setup_timers.return_value))
+                                                                     bounce_timers=mock_setup_timers.return_value,
+                                                                     failures=0))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
             mock_deploy_marathon_service.side_effect = Exception()
@@ -128,9 +130,10 @@ class TestPaastaDeployWorker(unittest.TestCase):
             assert mock_setup_timers.return_value.processed_by_worker.start.called
             self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='universe',
                                                                      instance='c137',
-                                                                     bounce_by=61,
+                                                                     bounce_by=121,
                                                                      watcher='Worker1',
-                                                                     bounce_timers=mock_setup_timers.return_value))
+                                                                     bounce_timers=mock_setup_timers.return_value,
+                                                                     failures=1))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
 
