@@ -632,6 +632,7 @@ def test_get_mesos_task_count_by_slave():
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
         # test SlaveDoesNotExist exception handling
+        mock_task2.__getitem__ = mock.Mock(side_effect="fakeid")
         mock_task2.slave = mock.Mock()
         mock_task2.slave.__getitem__ = mock.Mock()
         mock_task2.slave.__getitem__.side_effect = mesos.exceptions.SlaveDoesNotExist
