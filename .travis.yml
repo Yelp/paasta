@@ -6,10 +6,7 @@ branches:
 language: python
 cache: pip
 env:
-  - TOXENV=py27
-  - TOXENV=py3
-  - TOXENV=coverage
-  - TOXENV=docs
+  - TOXENV=py27,py3,coverage,docs
   - TOXENV=general_itests
   - TOXENV=general_itests_py3
   - TOXENV=paasta_itests
