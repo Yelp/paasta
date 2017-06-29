@@ -4,7 +4,10 @@ branches:
     - /^v[0-9.]+$/
     - /^maci-.*$/
 language: python
-cache: pip
+cache:
+  pip: true
+  directories:
+    - .tox/
 env:
   - TOXENV=py27,py3,coverage,docs
   - TOXENV=general_itests
