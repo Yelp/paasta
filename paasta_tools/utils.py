@@ -902,9 +902,15 @@ class FileLogWriter(LogWriter):
 
         to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
 
-        with io.FileIO(path, mode=self.mode, closefd=True) as f:
-            with self.maybe_flock(f):
-                f.write(to_write.encode('UTF-8'))
+        try:
+            with io.FileIO(path, mode=self.mode, closefd=True) as f:
+                with self.maybe_flock(f):
+                    f.write(to_write.encode('UTF-8'))
+        except IOError as e:
+            paasta_print(
+                "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
+                file=sys.stderr,
+            )
 
 
 @contextlib.contextmanager
