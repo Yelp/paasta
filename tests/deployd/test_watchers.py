@@ -6,6 +6,7 @@ import unittest
 
 import mock
 from pytest import raises
+from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -277,6 +278,11 @@ class TestMaintenanceWatcher(unittest.TestCase):
             assert self.watcher.get_new_draining_hosts() == []
             assert self.watcher.draining == {'host1'}
 
+            mock_get_draining_hosts.side_effect = RequestException
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == {'host1'}
+
+            mock_get_draining_hosts.side_effect = None
             mock_get_draining_hosts.return_value = ['host3', 'host1']
             assert self.watcher.get_new_draining_hosts() == ['host3']
             assert self.watcher.draining == {'host1', 'host3'}
