@@ -8,6 +8,9 @@ cache:
   pip: true
   directories:
     - .tox/
+before_cache:
+  # We don't currently use any secure environment variables, but just in case, and also to avoid caches that grow forever, remove log dirs.
+  - rm -rf .tox/*/log .tox/log .tox/*/local/log
 env:
   - TOXENV=py27,py3,coverage,docs
   - TOXENV=general_itests
