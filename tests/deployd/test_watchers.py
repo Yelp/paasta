@@ -129,7 +129,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
                                                                      instance='instance',
                                                                      bounce_by=1,
                                                                      bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__))
+                                                                     watcher=self.watcher.__class__.__name__,
+                                                                     failures=0))
 
             mock_event_changed = mock_event_type.CHANGED
             mock_event = mock.Mock(type=mock_event_changed,
@@ -139,7 +140,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
                                                                      instance='instance',
                                                                      bounce_by=1,
                                                                      bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__))
+                                                                     watcher=self.watcher.__class__.__name__,
+                                                                     failures=0))
 
     def test_process_folder_event(self):
         with mock.patch(
@@ -312,12 +314,14 @@ class TestMaintenanceWatcher(unittest.TestCase):
                                         instance='c137',
                                         bounce_by=1,
                                         watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None),
+                                        bounce_timers=None,
+                                        failures=0),
                         ServiceInstance(service='universe',
                                         instance='c139',
                                         bounce_by=1,
                                         watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None)]
+                                        bounce_timers=None,
+                                        failures=0)]
             assert ret == expected
 
 
@@ -529,6 +533,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                                           instance='c137',
                                           bounce_by=1,
                                           watcher='YelpSoaEventHandler',
-                                          bounce_timers=None)
+                                          bounce_timers=None,
+                                          failures=0)
             self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
             assert self.mock_filewatcher.inbox_q.put.call_count == 1

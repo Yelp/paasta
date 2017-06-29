@@ -1087,6 +1087,14 @@ class SystemPaastaConfig(dict):
         """
         return self.get('deployd_metrics_provider')
 
+    def get_deployd_worker_failure_backoff_factor(self):
+        """Get the factor for calculating exponential backoff when a deployd worker
+        fails to bounce a service
+
+        :returns: An integer
+        """
+        return self.get('deployd_worker_failure_backoff_factor', 30)
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 

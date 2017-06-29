@@ -180,7 +180,7 @@ class DeployDaemon(PaastaThread):
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
             worker_no = len(self.workers) + 1
-            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
+            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 
@@ -190,7 +190,7 @@ class DeployDaemon(PaastaThread):
     def start_workers(self):
         self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
+            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 

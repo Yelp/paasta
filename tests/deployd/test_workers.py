@@ -17,13 +17,17 @@ class TestPaastaDeployWorker(unittest.TestCase):
         self.mock_inbox_q = mock.Mock()
         self.mock_bounce_q = mock.Mock()
         self.mock_metrics = mock.Mock()
+        mock_config = mock.Mock(
+            get_cluster=mock.Mock(return_value='westeros-prod'),
+            get_deployd_worker_failure_backoff_factor=mock.Mock(return_value=30)
+        )
         with mock.patch(
             'paasta_tools.deployd.workers.PaastaDeployWorker.setup', autospec=True
         ):
             self.worker = PaastaDeployWorker(1,
                                              self.mock_inbox_q,
                                              self.mock_bounce_q,
-                                             "westeros-prod",
+                                             mock_config,
                                              self.mock_metrics)
 
     def test_setup(self):
@@ -74,7 +78,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.worker.marathon_config = mock.Mock()
             mock_deploy_marathon_service.return_value = (0, None)
             mock_si = mock.Mock(service='universe',
-                                instance='c137')
+                                instance='c137',
+                                failures=0)
             self.mock_bounce_q.get.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
@@ -109,7 +114,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
                                                                      instance='c137',
                                                                      bounce_by=61,
                                                                      watcher='Worker1',
-                                                                     bounce_timers=mock_setup_timers.return_value))
+                                                                     bounce_timers=mock_setup_timers.return_value,
+                                                                     failures=0))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
             mock_deploy_marathon_service.side_effect = Exception()
@@ -130,7 +136,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
                                                                      instance='c137',
                                                                      bounce_by=61,
                                                                      watcher='Worker1',
-                                                                     bounce_timers=mock_setup_timers.return_value))
+                                                                     bounce_timers=mock_setup_timers.return_value,
+                                                                     failures=1))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
 

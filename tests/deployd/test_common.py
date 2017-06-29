@@ -5,6 +5,7 @@ import unittest
 
 import mock
 
+from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
@@ -46,10 +47,18 @@ def test_rate_limit_instances():
                                     instance='c137',
                                     watcher='Custos',
                                     bounce_by=1,
-                                    bounce_timers=None),
+                                    bounce_timers=None,
+                                    failures=0),
                     ServiceInstance(service='universe',
                                     instance='c138',
                                     watcher='Custos',
                                     bounce_by=31,
-                                    bounce_timers=None)]
+                                    bounce_timers=None,
+                                    failures=0)]
         assert ret == expected
+
+
+def test_exponential_back_off():
+    assert exponential_back_off(0, 60, 2, 6000) == 60
+    assert exponential_back_off(2, 60, 2, 6000) == 240
+    assert exponential_back_off(99, 60, 2, 6000) == 6000

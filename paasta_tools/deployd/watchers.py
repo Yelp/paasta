@@ -75,7 +75,8 @@ class AutoscalerWatcher(PaastaWatcher):
                                                instance=instance,
                                                bounce_by=int(time.time()),
                                                bounce_timers=None,
-                                               watcher=self.__class__.__name__)
+                                               watcher=self.__class__.__name__,
+                                               failures=0)
             self.inbox_q.put(service_instance)
 
     def process_folder_event(self, children, event):
@@ -180,7 +181,8 @@ class MaintenanceWatcher(PaastaWatcher):
                                                          instance=instance,
                                                          bounce_by=int(time.time()),
                                                          watcher=self.__class__.__name__,
-                                                         bounce_timers=None))
+                                                         bounce_timers=None,
+                                                         failures=0))
         return service_instances
 
 
@@ -306,7 +308,8 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                                              instance=instance,
                                              bounce_by=int(time.time()),
                                              watcher=self.__class__.__name__,
-                                             bounce_timers=None)
+                                             bounce_timers=None,
+                                             failures=0)
                              for service, instance in service_instances]
         for service_instance in service_instances:
             self.filewatcher.inbox_q.put(service_instance)
