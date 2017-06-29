@@ -147,15 +147,23 @@ def get_marathon_client_from_config():
 class MaintenanceWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, **kwargs):
         super(MaintenanceWatcher, self).__init__(inbox_q, cluster)
-        self.draining = []
+        self.draining = set()
         self.marathon_client = get_marathon_client_from_config()
+
+    def get_new_draining_hosts(self):
+        draining_hosts = get_draining_hosts()
+        new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
+        for host in new_draining_hosts:
+            self.draining.add(host)
+        hosts_finished_draining = [host for host in self.draining if host not in draining_hosts]
+        for host in hosts_finished_draining:
+            self.draining.remove(host)
+        return new_draining_hosts
 
     def run(self):
         self.is_ready = True
         while True:
-            draining_hosts = get_draining_hosts()
-            new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
-            self.draining = draining_hosts
+            new_draining_hosts = self.get_new_draining_hosts()
             service_instances = []
             if new_draining_hosts:
                 self.log.info("Found new draining hosts: {}".format(new_draining_hosts))
