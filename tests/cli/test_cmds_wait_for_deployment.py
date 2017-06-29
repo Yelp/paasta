@@ -35,7 +35,7 @@ class fake_args:
     deploy_group = 'test_deploy_group'
     service = 'test_service'
     git_url = ''
-    commit = 'fake-hash'
+    commit = 'd670460b4b4aece5915caf5c68d12f560a9fe3e4'
     soa_dir = 'fake_soa_dir'
     timeout = 0
     verbose = False
