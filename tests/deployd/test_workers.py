@@ -17,13 +17,17 @@ class TestPaastaDeployWorker(unittest.TestCase):
         self.mock_inbox_q = mock.Mock()
         self.mock_bounce_q = mock.Mock()
         self.mock_metrics = mock.Mock()
+        mock_config = mock.Mock(
+            get_cluster=mock.Mock(return_value='westeros-prod'),
+            get_deployd_worker_failure_backoff_factor=mock.Mock(return_value=30)
+        )
         with mock.patch(
             'paasta_tools.deployd.workers.PaastaDeployWorker.setup', autospec=True
         ):
             self.worker = PaastaDeployWorker(1,
                                              self.mock_inbox_q,
                                              self.mock_bounce_q,
-                                             "westeros-prod",
+                                             mock_config,
                                              self.mock_metrics)
 
     def test_setup(self):
@@ -130,7 +134,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             assert mock_setup_timers.return_value.processed_by_worker.start.called
             self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='universe',
                                                                      instance='c137',
-                                                                     bounce_by=121,
+                                                                     bounce_by=61,
                                                                      watcher='Worker1',
                                                                      bounce_timers=mock_setup_timers.return_value,
                                                                      failures=1))

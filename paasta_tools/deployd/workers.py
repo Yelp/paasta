@@ -12,14 +12,15 @@ from paasta_tools.setup_marathon_job import deploy_marathon_service
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, inbox_q, bounce_q, cluster, metrics_provider):
+    def __init__(self, worker_number, inbox_q, bounce_q, config, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
         self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
-        self.cluster = cluster
+        self.config = config
+        self.cluster = self.config.get_cluster()
         self.setup()
 
     def setup(self):
@@ -72,7 +73,12 @@ class PaastaDeployWorker(PaastaThread):
                 return_code = -2
             if return_code != 0:
                 failures += 1
-                bounce_again_in_seconds = exponential_back_off(failures, factor=60, base=2, max_time=6000)
+                bounce_again_in_seconds = exponential_back_off(
+                    failures=failures,
+                    factor=self.config.get_deployd_worker_failure_backoff_factor(),
+                    base=2,
+                    max_time=6000
+                )
 
             bounce_timers.setup_marathon.stop()
             self.log.info("setup marathon completed with exit code {} for {}.{}".format(return_code,
