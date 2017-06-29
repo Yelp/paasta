@@ -15,9 +15,12 @@ from clog.handlers import ScribeHandler
 from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
+from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import get_service_instances_with_changed_id
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
+from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
@@ -102,6 +105,7 @@ class DeployDaemon(PaastaThread):
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
+        self.marathon_client = get_marathon_client_from_config()
 
     def setup_logging(self):
         root_logger = logging.getLogger()
@@ -145,7 +149,9 @@ class DeployDaemon(PaastaThread):
         self.log.info("Starting all watcher threads")
         self.start_watchers()
         self.log.info("All watchers started, now adding all services for initial bounce")
-        self.add_all_services()
+        instances = self.add_all_services()
+        self.log.info("Prioritising services that we know need a bounce...")
+        self.prioritise_bouncing_services(instances)
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True
@@ -203,6 +209,20 @@ class DeployDaemon(PaastaThread):
                                                 watcher_name='daemon_start')
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
+        return instances
+
+    def prioritise_bouncing_services(self, instances):
+        service_instances = get_service_instances_with_changed_id(self.marathon_client,
+                                                                  instances,
+                                                                  self.config.get_cluster())
+        self.log.info("Found the following services that need bouncing now: {}".format(service_instances))
+        for service, instance in service_instances:
+            self.inbox_q.put(ServiceInstance(service=service,
+                                             instance=instance,
+                                             watcher=self.__class__.__name__,
+                                             bounce_by=int(time.time()),
+                                             bounce_timers=None,
+                                             failures=0))
 
     def start_watchers(self):
         """ should block until all threads happy"""

@@ -8,6 +8,8 @@ import mock
 from pytest import raises
 from six.moves.queue import Empty
 
+from paasta_tools.deployd.common import ServiceInstance
+
 
 class FakePyinotify(object):  # pragma: no cover
     class ProcessEvent():
@@ -129,6 +131,8 @@ class TestDeployDaemon(unittest.TestCase):
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True
         ) as self.mock_inbox, mock.patch(
+            'paasta_tools.deployd.master.get_marathon_client_from_config', autospec=True
+        ), mock.patch(
             'paasta_tools.deployd.master.load_system_paasta_config', autospec=True
         ) as mock_config_getter:
             mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
@@ -288,6 +292,34 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.metrics = mock.Mock()
             self.deployd.start_workers()
             assert mock_paasta_worker.call_count == 5
+
+    def test_prioritise_bouncing_services(self):
+        with mock.patch(
+            'paasta_tools.deployd.master.get_service_instances_with_changed_id', autospec=True
+        ) as mock_get_service_instances_with_changed_id, mock.patch(
+            'time.time', autospec=True, return_value=1
+        ):
+            mock_changed_instances = [('universe', 'c137'), ('universe', 'c138')]
+            mock_instances = mock.Mock()
+            mock_get_service_instances_with_changed_id.return_value = mock_changed_instances
+
+            self.deployd.prioritise_bouncing_services(mock_instances)
+            mock_get_service_instances_with_changed_id.assert_called_with(self.deployd.marathon_client,
+                                                                          mock_instances,
+                                                                          'westeros-prod')
+            calls = [mock.call(ServiceInstance(service='universe',
+                                               instance='c138',
+                                               watcher='DeployDaemon',
+                                               bounce_by=1,
+                                               bounce_timers=None,
+                                               failures=0)),
+                     mock.call(ServiceInstance(service='universe',
+                                               instance='c137',
+                                               watcher='DeployDaemon',
+                                               bounce_by=1,
+                                               bounce_timers=None,
+                                               failures=0))]
+            self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
         class FakeWatchers(object):  # pragma: no cover
