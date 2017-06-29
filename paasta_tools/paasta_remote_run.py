@@ -40,7 +40,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -135,10 +134,7 @@ def paasta_to_task_config_kwargs(
         config_overrides=config_overrides
     )
 
-    image = get_docker_url(
-        system_paasta_config.get_docker_registry(),
-        native_job_config.get_docker_image()
-    )
+    image = native_job_config.get_docker_url()
     docker_parameters = [
         {'key': param['key'], 'value': param['value']}
         for param in native_job_config.format_docker_parameters()
@@ -192,6 +188,34 @@ def paasta_to_task_config_kwargs(
     return kwargs
 
 
+def build_executor_stack(
+        service,
+        instance,
+        run_id,  # TODO: move run_id into task identifier?
+        system_paasta_config,
+        framework_staging_timeout):
+    mesos_address = '{}:{}'.format(
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+    )
+
+    taskproc_config = system_paasta_config.get('taskproc')
+    # TODO: implement DryRunExecutor?
+    mesos_executor = MesosExecutor(
+        role=taskproc_config.get('role', taskproc_config['principal']),
+        principal=taskproc_config['principal'],
+        secret=taskproc_config['secret'],
+        mesos_address=mesos_address,
+        framework_name="paasta-remote %s %s %s" % (
+            compose_job_id(service, instance),
+            datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
+            run_id
+        ),
+        framework_staging_timeout=framework_staging_timeout
+    )
+    retrying_executor = RetryingExecutor(mesos_executor)
+    return retrying_executor
+
+
 def remote_run_start(args):
     system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
@@ -232,26 +256,14 @@ def remote_run_start(args):
 
     paasta_print('Scheduling a task on Mesos')
 
-    mesos_address = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+    executor_stack = build_executor_stack(
+        service,
+        instance,
+        run_id,
+        system_paasta_config,
+        args.staging_timeout
     )
-
-    taskproc_config = system_paasta_config.get('taskproc')
-    # TODO: implement DryRunExecutor?
-    mesos_executor = MesosExecutor(
-        role=taskproc_config['principal'],
-        principal=taskproc_config['principal'],
-        secret=taskproc_config['secret'],
-        mesos_address=mesos_address,
-        framework_name="paasta-remote %s %s %s" % (
-            compose_job_id(service, instance),
-            datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
-            run_id
-        ),
-        framework_staging_timeout=args.staging_timeout
-    )
-    retrying_executor = RetryingExecutor(mesos_executor)
-    runner = Sync(retrying_executor)
+    runner = Sync(executor_stack)
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
@@ -282,6 +294,7 @@ def remote_run_start(args):
         sys.exit(1)
 
 
+# TODO: reimplement using build_executor_stack and task uuid instead of run_id
 def remote_run_stop(args):
     _, service, cluster, _, instance, _ = extract_args(args)
     if args.framework_id is None and args.run_id is None:
@@ -316,11 +329,11 @@ def remote_run_stop(args):
 
     paasta_print("Tearing down framework %s." % framework_id)
     mesos_master = get_mesos_master()
-    teardown = mesos_master.teardown(framework_id)
-    if teardown.status_code == 200:
+    shutdown = mesos_master.shutdown(framework_id)
+    if shutdown.status_code == 200:
         paasta_print(PaastaColors.green("OK"))
     else:
-        paasta_print(teardown.text)
+        paasta_print(shutdown.text)
 
 
 def remote_run_list(args):

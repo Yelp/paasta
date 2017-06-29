@@ -227,6 +227,17 @@ class MesosMaster(object):
     def teardown(self, framework_id):
         return self.post("/master/teardown", data="frameworkId=%s" % framework_id)
 
+    def shutdown(self, framework_id, executor_id=None):
+        if executor_id is None:
+            executor_id = framework_id
+
+        return self.post(
+            "/master/shutdown",
+            data="frameworkId={}&executor_id={}".format(
+                framework_id, executor_id
+            )
+        )
+
     def metrics_snapshot(self):
         return self.fetch("/metrics/snapshot").json()
 
