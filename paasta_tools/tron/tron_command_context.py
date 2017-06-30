@@ -5,6 +5,7 @@ This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/command_context.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import functools
 import operator
 
 from paasta_tools.tron import tron_timeutils
@@ -30,7 +31,7 @@ def build_filled_context(*context_objects):
     def build(current, next):
         return CommandContext(next(filler), current)
 
-    return reduce(build, context_objects, None)
+    return functools.reduce(build, context_objects, None)
 
 
 class CommandContext(object):

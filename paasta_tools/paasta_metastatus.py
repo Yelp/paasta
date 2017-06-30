@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import functools
 import logging
 import sys
 
@@ -167,7 +168,7 @@ def main(argv=None):
         if args.autoscaling_info:
             print_with_indent("Autoscaling resources:", 2)
             headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
-            table = reduce(
+            table = functools.reduce(
                 lambda x, y: x + [(y)],
                 get_autoscaling_info_for_all_resources(),
                 [headers]
