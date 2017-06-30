@@ -170,6 +170,8 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_get_metrics_interface, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.start_watchers', autospec=True
         ) as mock_start_watchers, mock.patch(
+            'paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services', autospec=True
+        ) as mock_prioritise_bouncing_services, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.add_all_services', autospec=True
         ) as mock_add_all_services, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.start_workers', autospec=True
@@ -186,6 +188,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
             assert mock_add_all_services.called
+            assert mock_prioritise_bouncing_services.called
             assert mock_start_workers.called
             assert mock_main_loop.called
 
@@ -295,18 +298,16 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_prioritise_bouncing_services(self):
         with mock.patch(
-            'paasta_tools.deployd.master.get_service_instances_with_changed_id', autospec=True
-        ) as mock_get_service_instances_with_changed_id, mock.patch(
+            'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True
+        ) as mock_get_service_instances_that_need_bouncing, mock.patch(
             'time.time', autospec=True, return_value=1
         ):
-            mock_changed_instances = [('universe', 'c137'), ('universe', 'c138')]
-            mock_instances = mock.Mock()
-            mock_get_service_instances_with_changed_id.return_value = mock_changed_instances
+            mock_changed_instances = ('universe.c137', 'universe.c138')
+            mock_get_service_instances_that_need_bouncing.return_value = mock_changed_instances
 
-            self.deployd.prioritise_bouncing_services(mock_instances)
-            mock_get_service_instances_with_changed_id.assert_called_with(self.deployd.marathon_client,
-                                                                          mock_instances,
-                                                                          'westeros-prod')
+            self.deployd.prioritise_bouncing_services()
+            mock_get_service_instances_that_need_bouncing.assert_called_with(self.deployd.marathon_client,
+                                                                             '/nail/etc/services')
             calls = [mock.call(ServiceInstance(service='universe',
                                                instance='c138',
                                                watcher='DeployDaemon',
