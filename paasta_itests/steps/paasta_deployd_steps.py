@@ -15,7 +15,7 @@ from itest_utils import get_service_connection_string
 from kazoo.exceptions import NodeExistsError
 
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
-from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import ZookeeperPool
 
@@ -88,7 +88,7 @@ def second_deployd_is_leader(context):
 def check_app_running(context, service_instance, seconds):
     service, instance, _, _ = decompose_job_id(service_instance)
     service_configuration_lib._yaml_cache = {}
-    context.marathon_config = load_marathon_service_config(service, instance, context.cluster)
+    context.marathon_config = load_marathon_service_config_no_cache(service, instance, context.cluster)
     context.app_id = context.marathon_config.format_marathon_app_dict()['id']
     step = 5
     attempts = 0
@@ -122,5 +122,5 @@ def set_cmd(context, cmd):
 def check_sha_changed(context, service_instance):
     service, instance, _, _ = decompose_job_id(service_instance)
     service_configuration_lib._yaml_cache = {}
-    context.marathon_config = load_marathon_service_config(service, instance, context.cluster)
+    context.marathon_config = load_marathon_service_config_no_cache(service, instance, context.cluster)
     assert context.app_id != context.marathon_config.format_marathon_app_dict()['id']
