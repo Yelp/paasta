@@ -1,5 +1,5 @@
 {
     "cluster": "cluster",
-    "zookeeper": "something",
+    "zookeeper": "zk://zookeeper:2181",
     "docker_registry": "docker-dev.yelpcorp.com"
 }

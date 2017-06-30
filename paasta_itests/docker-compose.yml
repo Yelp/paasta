@@ -25,6 +25,54 @@ services:
     depends_on:
       - zookeeper
 
+  mesosslave2:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+    ports:
+      - 5051
+    environment:
+      CLUSTER: testcluster
+    command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker --work_dir=/tmp/mesos --attributes="region:otherregion;pool:default" --no-docker_kill_orphans --log_dir=/var/log/mesos'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
+  mesosslave3:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+    ports:
+      - 5051
+    environment:
+      CLUSTER: testcluster
+    command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker --work_dir=/tmp/mesos --attributes="region:fakeregion;pool:nondefault" --no-docker_kill_orphans --log_dir=/var/log/mesos'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
+  mesosslave4:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+    ports:
+      - 5051
+    environment:
+      CLUSTER: testcluster
+    command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker --work_dir=/tmp/mesos --attributes="region:otherregion;pool:nondefault" --no-docker_kill_orphans --log_dir=/var/log/mesos'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
+  mesosslave5:
+    build: ../yelp_package/dockerfiles/itest/mesos/
+    ports:
+      - 5051
+    environment:
+      CLUSTER: testcluster
+      command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker --work_dir=/tmp/mesos --attributes="region:fakeregion;pool:nondefault;ssd:true" --no-docker_kill_orphans --log_dir=/var/log/mesos'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
   marathon:
     build: ../yelp_package/dockerfiles/itest/marathon/
     ports:
@@ -43,8 +91,20 @@ services:
       HACHECK_PORT: 'http://hacheck:6666'
       ZOOKEEPER_PORT: 'zk://zookeeper:2181'
       CHRONOS_PORT: 'http://chronos:8081'
+      API_PORT: 'http://paasta_api:5054'
     volumes:
-    - ../:/work:rw
+      - ../:/work:rw
+    depends_on:
+      - zookeeper
+      - paasta_api
+
+  paasta_api:
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/itest/api/Dockerfile
+    command: '/usr/local/bin/paasta-api -D 5054'
+    ports:
+      - 5054
     depends_on:
       - zookeeper
 
