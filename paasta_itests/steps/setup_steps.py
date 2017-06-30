@@ -177,13 +177,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         }
     }, 'paasta_native.json')
     write_etc_paasta(context, {
-        'taskproc': {
-            'role': '*',
-            'principal': 'paasta_native',
-            'secret': 'secret4',
-        }
-    }, 'taskproc.json')
-    write_etc_paasta(context, {
         'mesos_config': {
             "path": mesos_cli_config_filename
         }
