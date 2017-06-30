@@ -233,7 +233,7 @@ class MesosMaster(object):
 
         return self.post(
             "/master/shutdown",
-            data="frameworkId={}&executor_id={}".format(
+            data="frameworkId={}&executorId={}".format(
                 framework_id, executor_id
             )
         )
