@@ -80,7 +80,7 @@ def setup_marathon_client():
 
 def setup_chronos_client():
     connection_string = get_service_connection_string('chronos')
-    return chronos.connect(connection_string)
+    return chronos.connect(connection_string, scheduler_api_version=None)
 
 
 def setup_chronos_config():
