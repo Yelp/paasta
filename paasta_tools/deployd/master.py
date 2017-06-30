@@ -5,13 +5,11 @@ from __future__ import unicode_literals
 import inspect
 import logging
 import logging.handlers
-import os
 import socket
 import sys
 import time
 
 import service_configuration_lib
-from clog.handlers import ScribeHandler
 from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
@@ -106,21 +104,10 @@ class DeployDaemon(PaastaThread):
     def setup_logging(self):
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))
-        log_handlers = [logging.StreamHandler()]
-        if os.path.exists('/dev/log'):
-            log_handlers.append(logging.handlers.SysLogHandler('/dev/log'))
-        log_writer = self.config.get_log_writer()
-        for handler in log_handlers:
-            root_logger.addHandler(handler)
-            handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
-        if log_writer['driver'] == 'scribe':
-            handler = ScribeHandler(host=log_writer['scribe_host'],
-                                    port=log_writer['scribe_port'],
-                                    stream='stream_paasta_deployd_{}'.format(self.config.get_cluster()),
-                                    retry_interval=10)
-            handler.addFilter(AddHostnameFilter())
-            handler.setFormatter(logging.Formatter('%(asctime)s:%(hostname)s:%(levelname)s:%(name)s:%(message)s'))
-            root_logger.addHandler(handler)
+        handler = logging.StreamHandler()
+        handler.addFilter(AddHostnameFilter())
+        root_logger.addHandler(handler)
+        handler.setFormatter(logging.Formatter('%(asctime)s:%(hostname)s:%(levelname)s:%(name)s:%(message)s'))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
