@@ -1627,11 +1627,12 @@ class Timeout:
         raise TimeoutError(self.error_message)
 
     def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
+        self.old_handler = signal.signal(signal.SIGALRM, self.handle_timeout)
         signal.alarm(self.seconds)
 
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
+        signal.signal(signal.SIGALRM, self.old_handler)
 
 
 def print_with_indent(line, indent=2):
