@@ -260,8 +260,8 @@ def wait_launch_tasks(context, job_id, task_count):
 
 @when('we wait for our native scheduler to launch exactly {task_count:d} tasks')
 def wait_launch_tasks_native(context, task_count):
-    while not context.scheduler.get_happy_tasks(context.scheduler.tasks_with_flags.keys()):
-        paasta_print("waiting for scheduler to have %d tasks; %r" % (task_count, context.scheduler.tasks_with_flags))
+    while not context.scheduler.get_happy_tasks(context.scheduler.task_store.keys()):
+        paasta_print("waiting for scheduler to have %d tasks; %r" % (task_count, context.scheduler.task_store))
         time.sleep(0.5)
 
 

@@ -82,7 +82,7 @@ class NativeScheduler(Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        self.tasks_with_flags = {}
+        self.task_store = {}
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
@@ -119,7 +119,7 @@ class NativeScheduler(Scheduler):
         paasta_print("Freezing the scheduler. Further status updates and resource offers are ignored.")
         self.frozen = True
         paasta_print("Killing any remaining live tasks.")
-        for task, parameters in self.tasks_with_flags.items():
+        for task, parameters in self.task_store.items():
             if parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
@@ -172,7 +172,7 @@ class NativeScheduler(Scheduler):
                                 driver,
                                 task.task_id.value
                             )
-                            self.tasks_with_flags.setdefault(
+                            self.task_store.setdefault(
                                 task.task_id.value,
                                 MesosTaskParameters(
                                     health=None,
@@ -224,14 +224,14 @@ class NativeScheduler(Scheduler):
         return set(filter(
             lambda tid:
                 self.is_task_new(name, tid) and
-                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
+                self.task_store[tid].mesos_task_state in LIVE_TASK_STATES,
             tasks))
 
     def get_old_tasks(self, name, tasks):
         return set(filter(
             lambda tid:
                 not(self.is_task_new(name, tid)) and
-                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
+                self.task_store[tid].mesos_task_state in LIVE_TASK_STATES,
             tasks))
 
     def is_task_new(self, name, tid):
@@ -239,7 +239,7 @@ class NativeScheduler(Scheduler):
 
     def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
-        self.blacklist_slave(self.tasks_with_flags[task_id].offer.agent_id.value)
+        self.blacklist_slave(self.task_store[task_id].offer.agent_id.value)
         self.kill_task(driver, task_id)
 
     def staging_timer_for_task(self, timeout_value, driver, task_id):
@@ -276,7 +276,7 @@ class NativeScheduler(Scheduler):
         new_constraint_state = copy.deepcopy(state)
         total = 0
         failed_constraints = 0
-        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks):
+        while self.need_more_tasks(base_task.name, self.task_store, tasks):
             total += 1
 
             if not(remainingCpus >= task_cpus and
@@ -348,17 +348,17 @@ class NativeScheduler(Scheduler):
             task_id, update.state
         ))
 
-        task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
+        task_params = self.task_store.setdefault(task_id, MesosTaskParameters(health=None))
         task_params.mesos_task_state = update.state
 
-        for task, params in list(self.tasks_with_flags.items()):
+        for task, params in list(self.task_store.items()):
             if params.marked_for_gc:
-                self.tasks_with_flags.pop(task)
+                self.task_store.pop(task)
 
         if task_params.mesos_task_state is not TASK_STAGING:
-            if self.tasks_with_flags[task_id].staging_timer:
-                self.tasks_with_flags[task_id].staging_timer.cancel()
-                self.tasks_with_flags[task_id].staging_timer = None
+            if self.task_store[task_id].staging_timer:
+                self.task_store[task_id].staging_timer.cancel()
+                self.task_store[task_id].staging_timer = None
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
@@ -373,7 +373,7 @@ class NativeScheduler(Scheduler):
         def healthiness_score(task_id):
             """Return a tuple that can be used as a key for sorting, that expresses our desire to keep this task around.
             Higher values (things that sort later) are more desirable."""
-            params = self.tasks_with_flags[task_id]
+            params = self.task_store[task_id]
 
             state_score = {
                 TASK_KILLING: 0,
@@ -396,7 +396,7 @@ class NativeScheduler(Scheduler):
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
-        new_tasks = self.get_new_tasks(base_task.name, self.tasks_with_flags.keys())
+        new_tasks = self.get_new_tasks(base_task.name, self.task_store.keys())
         happy_new_tasks = self.get_happy_tasks(new_tasks)
 
         desired_instances = self.service_config.get_desired_instances()
@@ -409,7 +409,7 @@ class NativeScheduler(Scheduler):
             reverse=True)
         new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
 
-        old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
+        old_tasks = self.get_old_tasks(base_task.name, self.task_store.keys())
         old_happy_tasks = self.get_happy_tasks(old_tasks)
         old_draining_tasks = self.get_draining_tasks(old_tasks)
         old_unhappy_tasks = set(old_tasks) - set(old_happy_tasks) - set(old_draining_tasks)
@@ -427,7 +427,7 @@ class NativeScheduler(Scheduler):
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task, parameters in self.tasks_with_flags.items():
+        for task, parameters in self.task_store.items():
             if parameters.is_draining and \
                     self.drain_method.is_safe_to_kill(DrainTask(id=task)) and \
                     parameters.mesos_task_state in LIVE_TASK_STATES:
@@ -437,26 +437,26 @@ class NativeScheduler(Scheduler):
         """Filter a list of tasks to those that are happy."""
         happy_tasks = []
         for task in tasks:
-            params = self.tasks_with_flags[task]
+            params = self.task_store[task]
             if params.mesos_task_state == TASK_RUNNING and not params.is_draining:
                 happy_tasks.append(task)
         return happy_tasks
 
     def get_draining_tasks(self, tasks):
         """Filter a list of tasks to those that are draining."""
-        return [t for t, p in self.tasks_with_flags.items() if p.is_draining]
+        return [t for t, p in self.task_store.items() if p.is_draining]
 
     def undrain_task(self, task):
         self.drain_method.stop_draining(DrainTask(id=task))
-        self.tasks_with_flags[task].is_draining = False
+        self.task_store[task].is_draining = False
 
     def drain_task(self, task):
         self.drain_method.drain(DrainTask(id=task))
-        self.tasks_with_flags[task].is_draining = True
+        self.task_store[task].is_draining = True
 
     def kill_task(self, driver, task):
         driver.killTask(Dict(value=task))
-        self.tasks_with_flags[task].mesos_task_state = TASK_KILLING
+        self.task_store[task].mesos_task_state = TASK_KILLING
 
     def group_tasks_by_version(self, task_ids):
         d = {}

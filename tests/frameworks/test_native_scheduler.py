@@ -93,7 +93,7 @@ class TestNativeScheduler(object):
                         ):
             # First, start up 3 old tasks
             old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 3
+            assert len(scheduler.task_store) == 3
             # and mark the old tasks as up
             for task in old_tasks:
                 scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
@@ -104,10 +104,10 @@ class TestNativeScheduler(object):
 
             # and start 3 more tasks
             new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 6
+            assert len(scheduler.task_store) == 6
             # It should not drain anything yet, since the new tasks aren't up.
             scheduler.kill_tasks_if_necessary(fake_driver)
-            assert len(scheduler.tasks_with_flags) == 6
+            assert len(scheduler.task_store) == 6
             assert len(scheduler.drain_method.downed_task_ids) == 0
 
             # Now we mark the new tasks as up.
@@ -368,4 +368,4 @@ class TestNativeServiceConfig(object):
         scheduler.blacklist_slave('super big slave')
         assert len(scheduler.blacklisted_slaves) == 1
         scheduler.resourceOffers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 0
+        assert len(scheduler.task_store) == 0
