@@ -13,13 +13,16 @@ import service_configuration_lib
 from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
+from paasta_tools.deployd.common import get_marathon_client_from_config
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
+from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
+from paasta_tools.list_marathon_service_instances import get_service_instances_that_need_bouncing
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -100,6 +103,7 @@ class DeployDaemon(PaastaThread):
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
+        self.marathon_client = get_marathon_client_from_config()
 
     def setup_logging(self):
         root_logger = logging.getLogger()
@@ -133,6 +137,8 @@ class DeployDaemon(PaastaThread):
         self.start_watchers()
         self.log.info("All watchers started, now adding all services for initial bounce")
         self.add_all_services()
+        self.log.info("Prioritising services that we know need a bounce...")
+        self.prioritise_bouncing_services()
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True
@@ -190,6 +196,19 @@ class DeployDaemon(PaastaThread):
                                                 watcher_name='daemon_start')
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
+
+    def prioritise_bouncing_services(self):
+        service_instances = get_service_instances_that_need_bouncing(self.marathon_client,
+                                                                     DEFAULT_SOA_DIR)
+        self.log.info("Found the following services that need bouncing now: {}".format(service_instances))
+        for service_instance in service_instances:
+            service, instance = service_instance.split('.')
+            self.inbox_q.put(ServiceInstance(service=service,
+                                             instance=instance,
+                                             watcher=self.__class__.__name__,
+                                             bounce_by=int(time.time()),
+                                             bounce_timers=None,
+                                             failures=0))
 
     def start_watchers(self):
         """ should block until all threads happy"""
