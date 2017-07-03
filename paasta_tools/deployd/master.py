@@ -200,7 +200,7 @@ class DeployDaemon(PaastaThread):
     def prioritise_bouncing_services(self):
         service_instances = get_service_instances_that_need_bouncing(self.marathon_client,
                                                                      DEFAULT_SOA_DIR)
-        self.log.info("Found the following services that need bouncing now: {}".format(service_instances))
+        self.log.info("Found the following services that need bouncing now: {}".format(list(service_instances)))
         for service_instance in service_instances:
             service, instance = service_instance.split('.')
             self.inbox_q.put(ServiceInstance(service=service,
