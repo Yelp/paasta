@@ -6,6 +6,7 @@ import unittest
 
 import mock
 from pytest import raises
+from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -266,21 +267,48 @@ class TestMaintenanceWatcher(unittest.TestCase):
         ):
             self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod")
 
-    def test_run(self):
+    def test_get_new_draining_hosts(self):
         with mock.patch(
             'paasta_tools.deployd.watchers.get_draining_hosts', autospec=True
-        ) as mock_get_draining_hosts, mock.patch(
+        ) as mock_get_draining_hosts:
+
+            mock_get_draining_hosts.return_value = ['host1', 'host2']
+            assert self.watcher.get_new_draining_hosts() == ['host1', 'host2']
+            assert self.watcher.draining == {'host1', 'host2'}
+
+            mock_get_draining_hosts.return_value = ['host1']
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == {'host1'}
+
+            mock_get_draining_hosts.side_effect = RequestException
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == {'host1'}
+
+            mock_get_draining_hosts.side_effect = None
+            mock_get_draining_hosts.return_value = ['host3', 'host1']
+            assert self.watcher.get_new_draining_hosts() == ['host3']
+            assert self.watcher.draining == {'host1', 'host3'}
+
+            mock_get_draining_hosts.return_value = []
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == set()
+
+    def test_run(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_new_draining_hosts', autospec=True
+        ) as mock_get_new_draining_hosts, mock.patch(
             'paasta_tools.deployd.watchers.MaintenanceWatcher.get_at_risk_service_instances', autospec=True
         ) as mock_get_at_risk_service_instances, mock.patch(
             'time.sleep', autospec=True, side_effect=LoopBreak
         ):
+            mock_get_new_draining_hosts.return_value = []
             assert not self.watcher.is_ready
             with raises(LoopBreak):
                 self.watcher.run()
             assert self.watcher.is_ready
             assert not mock_get_at_risk_service_instances.called
 
-            mock_get_draining_hosts.return_value = ['host1', 'host2']
+            mock_get_new_draining_hosts.return_value = ['host1', 'host2']
             mock_get_at_risk_service_instances.return_value = ['si1', 'si2']
             with raises(LoopBreak):
                 self.watcher.run()
@@ -288,11 +316,6 @@ class TestMaintenanceWatcher(unittest.TestCase):
             calls = [mock.call('si1'),
                      mock.call('si2')]
             self.mock_inbox_q.put.assert_has_calls(calls)
-
-            mock_get_draining_hosts.return_value = ['host1', 'host2', 'host3']
-            with raises(LoopBreak):
-                self.watcher.run()
-            mock_get_at_risk_service_instances.assert_called_with(self.watcher, ['host3'])
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
