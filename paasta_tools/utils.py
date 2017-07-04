@@ -1095,6 +1095,14 @@ class SystemPaastaConfig(dict):
         """
         return self.get('deployd_worker_failure_backoff_factor', 30)
 
+    def get_deployd_maintenance_polling_frequency(self):
+        """Get the frequency in seconds that the deployd maintenance watcher should
+        poll mesos's api for new draining hosts
+
+        :returns: An integer
+        """
+        return self.get('deployd_maintenance_polling_frequency', 30)
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 

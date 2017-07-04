@@ -47,14 +47,17 @@ from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 class TestPaastaWatcher(unittest.TestCase):
     def test_init(self):
         mock_inbox_q = mock.Mock()
-        PaastaWatcher(mock_inbox_q, 'westeros-prod')
+        PaastaWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
 
 
 class TestAutoscalerWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_zk = mock.Mock()
         self.mock_inbox_q = mock.Mock()
-        self.watcher = AutoscalerWatcher(self.mock_inbox_q, "westeros-prod", zookeeper_client=self.mock_zk)
+        self.watcher = AutoscalerWatcher(self.mock_inbox_q,
+                                         "westeros-prod",
+                                         zookeeper_client=self.mock_zk,
+                                         config=mock.Mock())
 
     def test_watch_folder(self):
         with mock.patch(
@@ -193,7 +196,7 @@ class TestSoaFileWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = SoaFileWatcher(mock_inbox_q, 'westeros-prod')
+            self.watcher = SoaFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -227,7 +230,7 @@ class TestPublicConfigWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = PublicConfigFileWatcher(mock_inbox_q, 'westeros-prod')
+            self.watcher = PublicConfigFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -251,10 +254,11 @@ class TestMaintenanceWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_inbox_q = mock.Mock()
         self.mock_marathon_client = mock.Mock()
+        mock_config = mock.Mock(get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20))
         with mock.patch(
             'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
         ):
-            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod")
+            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod", config=mock_config)
 
     def test_get_new_draining_hosts(self):
         with mock.patch(

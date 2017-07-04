@@ -216,7 +216,8 @@ class DeployDaemon(PaastaThread):
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
         self.watcher_threads = [watcher(inbox_q=self.inbox_q,
                                         cluster=self.config.get_cluster(),
-                                        zookeeper_client=self.zk)
+                                        zookeeper_client=self.zk,
+                                        config=self.config)
                                 for watcher in watcher_classes]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:
