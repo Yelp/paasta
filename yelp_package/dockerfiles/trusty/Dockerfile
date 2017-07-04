@@ -53,3 +53,5 @@ RUN pip install --upgrade virtualenv==15.1.0
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
 WORKDIR /work
+
+RUN mkdir -p /nail/etc/

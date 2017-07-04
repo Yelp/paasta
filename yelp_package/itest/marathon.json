@@ -1,10 +1,1 @@
-{
-    "url": ["http://marathon:8080"],
-    "user": "",
-    "password": "",
-    "marathon_config": {
-        "url": ["http://marathon:8080"],
-        "user": "",
-        "password": ""
-    }
-}
+{"marathon_config": {"url": "http://marathon:8080", "password": null, "user": null}}

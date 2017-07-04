@@ -4,7 +4,6 @@
     "title": "Paasta API",
     "version": "1.0.0"
   },
-  "host": "localhost:5054",
   "basePath": "/v1",
   "schemes": ["http"],
   "consumes": ["application/x-www-form-urlencoded"],

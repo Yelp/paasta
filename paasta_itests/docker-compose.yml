@@ -1,4 +1,8 @@
 version: '2'
+
+volumes:
+  nail-etc:
+
 services:
   zookeeper:
     build: ../yelp_package/dockerfiles/itest/zookeeper/
@@ -94,6 +98,7 @@ services:
       API_PORT: 'http://paasta_api:5054'
     volumes:
       - ../:/work:rw
+      - nail-etc:/nail/etc
     depends_on:
       - zookeeper
       - paasta_api
@@ -102,11 +107,14 @@ services:
     build:
       context: ../
       dockerfile: ./yelp_package/dockerfiles/itest/api/Dockerfile
-    command: '/usr/local/bin/paasta-api -D 5054'
+    command: '/bin/bash -c "cp /work/yelp_package/itest/*.json /etc/paasta/ && pip install -e /work && /usr/local/bin/paasta-api -D 5054"'
     ports:
       - 5054
     depends_on:
       - zookeeper
+    volumes:
+      - ../:/work:rw
+      - nail-etc:/nail/etc
 
   chronos:
     build: ../yelp_package/dockerfiles/itest/chronos/

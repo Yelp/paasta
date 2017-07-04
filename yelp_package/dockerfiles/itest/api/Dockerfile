@@ -44,9 +44,9 @@ RUN cd /work
 ADD requirements.txt /work
 RUN pip install -r requirements.txt
 ADD . /work/
-RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
-RUN mkdir /etc/paasta/
-RUN cp /work/yelp_package/itest/*.json /etc/paasta/
 RUN mkdir -p /nail/etc/
-RUN cp /work/paasta_itests/mesos-cli.json /nail/etc/
-RUN pip install -e /work
+RUN mkdir -p /etc/paasta/
+RUN cp /work/yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
+RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
+RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+RUN pip install -e /work/

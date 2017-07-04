@@ -15,40 +15,34 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from behave import then
-from pyramid import testing
+from bravado import exception as bexception
 
-from paasta_tools.api import settings
-from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.api.views.instance import instance_status
 from paasta_tools.utils import decompose_job_id
 
 
 @then('instance GET should return app_count "{app_count}" and an expected number of running instances for "{job_id}"')
 def service_instance_status(context, app_count, job_id):
-    settings.cluster = context.cluster
-    settings.marathon_client = context.marathon_client
-    settings.soa_dir = context.soa_dir
-
     (service, instance, _, __) = decompose_job_id(job_id)
-    request = testing.DummyRequest()
-    request.swagger_data = {'service': service, 'instance': instance}
-    response = instance_status(request)
+    response = context.paasta_api_client.service.status_instance(
+        instance=instance,
+        service=service
+    ).result()
 
     assert response['marathon']['app_count'] == int(app_count), response
-    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
+#    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
 
 
 @then('instance GET should return error code "{error_code}" for "{job_id}"')
 def service_instance_status_error(context, error_code, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    request = testing.DummyRequest()
-    request.swagger_data = {'service': service, 'instance': instance}
 
     response = None
     try:
-        response = instance_status(request)
-    except ApiFailure as exc:
-        assert 'not found' in exc.msg
-        assert exc.err == int(error_code)
+        response = context.paasta_api_client.service.status_instance(
+            instance=instance,
+            service=service
+        ).result()
+    except bexception.HTTPError as exc:
+        assert exc.status_code == int(error_code)
 
     assert not response
