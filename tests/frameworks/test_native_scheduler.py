@@ -7,8 +7,6 @@ from addict import Dict
 
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
-from paasta_tools.frameworks.native_scheduler import DictTaskStore
-from paasta_tools.frameworks.native_scheduler import MesosTaskParameters
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
@@ -51,35 +49,6 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
         ]
 
     return offer
-
-
-def test_DictTaskStore():
-    task_store = DictTaskStore(service_name="foo", instance_name="bar")
-    task_store.add_task_if_doesnt_exist("task_id", MesosTaskParameters(
-        mesos_task_state="foo",
-    ))
-
-    task_store.update_task("task_id", MesosTaskParameters(
-        is_draining=True,
-    ))
-
-    assert task_store.get_all_tasks() == {
-        "task_id": MesosTaskParameters(
-            mesos_task_state="foo",
-            is_draining=True,
-        )
-    }
-
-    task_store.update_task("task_id", MesosTaskParameters(
-        mesos_task_state="bar"
-    ))
-
-    assert task_store.get_all_tasks() == {
-        "task_id": MesosTaskParameters(
-            mesos_task_state="bar",
-            is_draining=True,
-        )
-    }
 
 
 class TestNativeScheduler(object):

@@ -22,6 +22,7 @@ from paasta_tools import mesos_tools
 from paasta_tools.frameworks.constraints import check_offer_constraints
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
+from paasta_tools.frameworks.task_store import DictTaskStore
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -48,102 +49,6 @@ LIVE_TASK_STATES = (TASK_STAGING, TASK_STARTING, TASK_RUNNING)
 
 class ConstraintFailAllTasksError(Exception):
     pass
-
-
-class MesosTaskParametersIsImmutableError(Exception):
-    pass
-
-
-class MesosTaskParameters(object):
-    def __init__(
-        self,
-        health=None,
-        mesos_task_state=None,
-        is_draining=None,
-        is_healthy=None,
-        offer=None
-    ):
-        self.__dict__['health'] = health
-        self.__dict__['mesos_task_state'] = mesos_task_state
-        self.__dict__['is_draining'] = is_draining
-        self.__dict__['is_healthy'] = is_healthy
-        self.__dict__['offer'] = offer
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-
-    def __repr__(self):
-        return "%s(\n    %s)" % (type(self).__name__, ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]))
-
-    def __setattr__(self, name, value):
-        raise MesosTaskParametersIsImmutableError()
-
-    def __delattr__(self, name):
-        raise MesosTaskParametersIsImmutableError()
-
-    def merge(self, other):
-        """Return a merged MesosTaskParameters object, where attributes in other take precedence over self."""
-        return MesosTaskParameters(
-            health=(other.health if other.health is not None else self.health),
-            mesos_task_state=(other.mesos_task_state if other.mesos_task_state is not None else self.mesos_task_state),
-            is_draining=(other.is_draining if other.is_draining is not None else self.is_draining),
-            is_healthy=(other.is_healthy if other.is_healthy is not None else self.is_healthy),
-            offer=(other.offer if other.offer is not None else self.offer),
-        )
-
-
-class TaskStore(object):
-    def __init__(self, service_name, instance_name):
-        self.service_name = service_name
-        self.instance_name = instance_name
-
-    def get_task(self, task_id):
-        """Get task data for task_id. If we don't know about task_id, return None"""
-        raise NotImplementedError()
-
-    def get_all_tasks(self):
-        """Returns a dictionary of task_id -> MesosTaskParameters for all known tasks."""
-        raise NotImplementedError()
-
-    def overwrite_task(self, task_id, params):
-        raise NotImplementedError()
-
-    def add_task_if_doesnt_exist(self, task_id, params):
-        """Add a task if it does not already exist. If it already exists, do nothing."""
-        if self.get_task(task_id) is not None:
-            return
-        else:
-            self.overwrite_task(task_id, params)
-
-    def update_task(self, task_id, params):
-        if task_id in self.tasks:
-            merged_params = self.tasks[task_id].merge(params)
-        else:
-            merged_params = params
-
-        self.overwrite_task(task_id, merged_params)
-        return merged_params
-
-    def garbage_collect_old_tasks(self, max_dead_task_age):
-        # TODO: call me.
-        # TODO: implement in base class.
-        raise NotImplementedError()
-
-
-class DictTaskStore(TaskStore):
-    def __init__(self, service_name, instance_name):
-        self.tasks = {}
-        super(DictTaskStore, self).__init__(service_name, instance_name)
-
-    def get_task(self, task_id):
-        return self.tasks.get(task_id)
-
-    def get_all_tasks(self):
-        """Returns a dictionary of task_id -> MesosTaskParameters for all known tasks."""
-        return dict(self.tasks)
-
-    def overwrite_task(self, task_id, params):
-        self.tasks[task_id] = params
 
 
 class NativeScheduler(Scheduler):
@@ -189,8 +94,14 @@ class NativeScheduler(Scheduler):
         else:
             self.load_config()
 
-    def log(line, level=DEFAULT_LOGLEVEL):
-        _log(line=line, level=level)
+    def log(self, line, level=DEFAULT_LOGLEVEL):
+        _log(
+            service=self.service_name,
+            instance=self.instance_name,
+            component='deploy',
+            line=line,
+            level=level,
+        )
 
     def shutdown(self, driver):
         # TODO: this is naive, as it does nothing to stop on-going calls
@@ -248,11 +159,10 @@ class NativeScheduler(Scheduler):
                         for task in tasks:
                             self.task_store.add_task_if_doesnt_exist(
                                 task.task_id.value,
-                                MesosTaskParameters(
-                                    health=None,
-                                    mesos_task_state=TASK_STAGING,
-                                    offer=offer,
-                                ))
+                                health=None,
+                                mesos_task_state=TASK_STAGING,
+                                offer=offer,
+                            )
                         launched_tasks.extend(tasks)
                         self.constraint_state = new_state
                     else:
@@ -420,7 +330,7 @@ class NativeScheduler(Scheduler):
 
         task_params = self.task_store.update_task(
             task_id,
-            MesosTaskParameters(mesos_task_state=update.state)
+            mesos_task_state=update.state,
         )
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
@@ -512,18 +422,18 @@ class NativeScheduler(Scheduler):
         # TODO: DrainTask needs ports
         self.log("Undraining task %s" % task_id)
         self.drain_method.stop_draining(DrainTask(id=task_id))
-        self.task_store.update_task(task_id, MesosTaskParameters(is_draining=False))
+        self.task_store.update_task(task_id, is_draining=False)
 
     def drain_task(self, task_id):
         # TODO: DrainTask needs ports
         self.log("Draining task %s" % task_id)
         self.drain_method.drain(DrainTask(id=task_id))
-        self.task_store.update_task(task_id, MesosTaskParameters(is_draining=True))
+        self.task_store.update_task(task_id, is_draining=True)
 
     def kill_task(self, driver, task_id):
         self.log("Killing task %s" % task_id)
         driver.killTask(Dict(value=task_id))
-        self.task_store.update_task(task_id, MesosTaskParameters(mesos_task_state=TASK_KILLING))
+        self.task_store.update_task(task_id, mesos_task_state=TASK_KILLING)
 
     def group_tasks_by_version(self, task_ids):
         d = {}
