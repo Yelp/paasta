@@ -1,3 +1,36 @@
+paasta-tools (0.65.32) xenial; urgency=medium
+
+  * 0.65.32 tagged with 'make release'
+    Commit: Merge pull request #1340 from Yelp/fix/deployd-prioritise-
+    bouncing-services  Make deployd prioritise bouncing services on
+    start
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Jul 2017 04:45:19 -0700
+
+paasta-tools (0.65.31) xenial; urgency=medium
+
+  * 0.65.31 tagged with 'make release'
+    Commit: Merge pull request #1342 from Yelp/simplify-deployd-logging
+    Simplify logging for deployd
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 30 Jun 2017 08:16:16 -0700
+
+paasta-tools (0.65.30) xenial; urgency=medium
+
+  * 0.65.30 tagged with 'make release'
+    Commit: Merge pull request #1320 from Yelp/fix/deployd-catchall
+    Catch any exception running setup_marathon_job
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 28 Jun 2017 08:49:59 -0700
+
+paasta-tools (0.65.29) xenial; urgency=medium
+
+  * 0.65.29 tagged with 'make release'
+    Commit: Merge pull request #1333 from Yelp/fix/rounding-paasta-
+    cluster-autoscaler  Fix rounding error: cluster autoscaler
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 27 Jun 2017 04:06:43 -0700
+
 paasta-tools (0.65.28) xenial; urgency=medium
 
   * 0.65.28 tagged with 'make release'

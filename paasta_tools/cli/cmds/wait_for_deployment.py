@@ -19,16 +19,20 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+from argparse import ArgumentTypeError
 
+from paasta_tools import remote_git
 from paasta_tools.cli.cmds.mark_for_deployment import NoInstancesFound
 from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.cli.utils import short_to_full_git_sha
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import _log
@@ -76,7 +80,7 @@ def add_subparser(subparsers):
         '-c', '-k', '--commit',
         help='Git sha to wait for deployment',
         required=True,
-        type=validate_full_git_sha
+        type=validate_short_git_sha
     )
     list_parser.add_argument(
         '-l', '--deploy-group',
@@ -188,6 +192,17 @@ def paasta_wait_for_deployment(args):
 
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
+
+    try:
+        validate_full_git_sha(args.commit)
+    except ArgumentTypeError:
+        refs = remote_git.list_remote_refs(args.git_url)
+        commits = short_to_full_git_sha(short=args.commit, refs=refs)
+        if len(commits) != 1:
+            raise ValueError(
+                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
+                (args.commit, len(commits)))
+        args.commit = commits[0]
 
     try:
         validate_service_name(service, soa_dir=args.soa_dir)

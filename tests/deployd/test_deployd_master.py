@@ -8,6 +8,8 @@ import mock
 from pytest import raises
 from six.moves.queue import Empty
 
+from paasta_tools.deployd.common import ServiceInstance
+
 
 class FakePyinotify(object):  # pragma: no cover
     class ProcessEvent():
@@ -129,6 +131,8 @@ class TestDeployDaemon(unittest.TestCase):
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True
         ) as self.mock_inbox, mock.patch(
+            'paasta_tools.deployd.master.get_marathon_client_from_config', autospec=True
+        ), mock.patch(
             'paasta_tools.deployd.master.load_system_paasta_config', autospec=True
         ) as mock_config_getter:
             mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
@@ -166,6 +170,8 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_get_metrics_interface, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.start_watchers', autospec=True
         ) as mock_start_watchers, mock.patch(
+            'paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services', autospec=True
+        ) as mock_prioritise_bouncing_services, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.add_all_services', autospec=True
         ) as mock_add_all_services, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.start_workers', autospec=True
@@ -182,6 +188,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
             assert mock_add_all_services.called
+            assert mock_prioritise_bouncing_services.called
             assert mock_start_workers.called
             assert mock_main_loop.called
 
@@ -288,6 +295,32 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.metrics = mock.Mock()
             self.deployd.start_workers()
             assert mock_paasta_worker.call_count == 5
+
+    def test_prioritise_bouncing_services(self):
+        with mock.patch(
+            'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True
+        ) as mock_get_service_instances_that_need_bouncing, mock.patch(
+            'time.time', autospec=True, return_value=1
+        ):
+            mock_changed_instances = ('universe.c137', 'universe.c138')
+            mock_get_service_instances_that_need_bouncing.return_value = mock_changed_instances
+
+            self.deployd.prioritise_bouncing_services()
+            mock_get_service_instances_that_need_bouncing.assert_called_with(self.deployd.marathon_client,
+                                                                             '/nail/etc/services')
+            calls = [mock.call(ServiceInstance(service='universe',
+                                               instance='c138',
+                                               watcher='DeployDaemon',
+                                               bounce_by=1,
+                                               bounce_timers=None,
+                                               failures=0)),
+                     mock.call(ServiceInstance(service='universe',
+                                               instance='c137',
+                                               watcher='DeployDaemon',
+                                               bounce_by=1,
+                                               bounce_timers=None,
+                                               failures=0))]
+            self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
         class FakeWatchers(object):  # pragma: no cover

@@ -25,7 +25,7 @@ class fake_args:
     deploy_group = 'test_deploy_group'
     service = 'test_service'
     git_url = 'git://false.repo/services/test_services'
-    commit = 'fake-hash'
+    commit = 'd670460b4b4aece5915caf5c68d12f560a9fe3e4'
     soa_dir = 'fake_soa_dir'
     block = False
     verbose = False
@@ -45,7 +45,7 @@ def test_paasta_mark_for_deployment_acts_like_main(
     mock_mark_for_deployment.assert_called_once_with(
         service='test_service',
         deploy_group='test_deploy_group',
-        commit='fake-hash',
+        commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
         git_url='git://false.repo/services/test_services',
     )
     assert mock_validate_service_name.called
@@ -107,7 +107,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_mark_for_deployment.assert_any_call(
         service='test_service',
         deploy_group='test_deploy_group',
-        commit='fake-hash',
+        commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
         git_url='git://false.repo/services/test_services',
     )
     mock_mark_for_deployment.assert_any_call(
@@ -135,11 +135,11 @@ def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
         timeout = 600
 
     mock_wait_for_deployment.side_effect = TimeoutError
-    mock_get_currently_deployed_sha.return_value = "fake-hash"
+    mock_get_currently_deployed_sha.return_value = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
     assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
     mock_mark_for_deployment.assert_called_once_with(
         service='test_service',
         deploy_group='test_deploy_group',
-        commit='fake-hash',
+        commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
         git_url='git://false.repo/services/test_services',
     )

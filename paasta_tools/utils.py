@@ -843,9 +843,9 @@ class ScribeLogWriter(LogWriter):
         configured the log object. We'll just write things to it.
         """
         if level == 'event':
-            paasta_print(line, file=sys.stdout)
+            paasta_print("[service %s] %s" % (service, line), file=sys.stdout)
         elif level == 'debug':
-            paasta_print(line, file=sys.stderr)
+            paasta_print("[service %s] %s" % (service, line), file=sys.stderr)
         else:
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
@@ -902,9 +902,15 @@ class FileLogWriter(LogWriter):
 
         to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
 
-        with io.FileIO(path, mode=self.mode, closefd=True) as f:
-            with self.maybe_flock(f):
-                f.write(to_write.encode('UTF-8'))
+        try:
+            with io.FileIO(path, mode=self.mode, closefd=True) as f:
+                with self.maybe_flock(f):
+                    f.write(to_write.encode('UTF-8'))
+        except IOError as e:
+            paasta_print(
+                "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
+                file=sys.stderr,
+            )
 
 
 @contextlib.contextmanager
@@ -1080,6 +1086,14 @@ class SystemPaastaConfig(dict):
         :returns: A string identifying the metrics_provider
         """
         return self.get('deployd_metrics_provider')
+
+    def get_deployd_worker_failure_backoff_factor(self):
+        """Get the factor for calculating exponential backoff when a deployd worker
+        fails to bounce a service
+
+        :returns: An integer
+        """
+        return self.get('deployd_worker_failure_backoff_factor', 30)
 
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
@@ -1613,11 +1627,12 @@ class Timeout:
         raise TimeoutError(self.error_message)
 
     def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
+        self.old_handler = signal.signal(signal.SIGALRM, self.handle_timeout)
         signal.alarm(self.seconds)
 
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
+        signal.signal(signal.SIGALRM, self.old_handler)
 
 
 def print_with_indent(line, indent=2):
