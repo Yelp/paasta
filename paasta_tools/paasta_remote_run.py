@@ -25,10 +25,6 @@ import string
 import sys
 from datetime import datetime
 
-from task_processing.plugins.mesos.mesos_executor import MesosExecutor
-from task_processing.plugins.mesos.retrying_executor import RetryingExecutor
-from task_processing.runners.sync import Sync
-
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
 from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
@@ -46,6 +42,9 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
+from task_processing.plugins.mesos.mesos_executor import MesosExecutor
+from task_processing.plugins.mesos.retrying_executor import RetryingExecutor
+from task_processing.runners.sync import Sync
 
 MESOS_TASK_SPACER = '.'
 
@@ -329,11 +328,11 @@ def remote_run_stop(args):
 
     paasta_print("Tearing down framework %s." % framework_id)
     mesos_master = get_mesos_master()
-    shutdown = mesos_master.shutdown(framework_id)
-    if shutdown.status_code == 200:
+    teardown = mesos_master.teardown(framework_id)
+    if teardown.status_code == 200:
         paasta_print(PaastaColors.green("OK"))
     else:
-        paasta_print(shutdown.text)
+        paasta_print(teardown.text)
 
 
 def remote_run_list(args):
