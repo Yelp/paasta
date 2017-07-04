@@ -7,6 +7,8 @@ from addict import Dict
 
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
+from paasta_tools.frameworks.native_scheduler import DictTaskStore
+from paasta_tools.frameworks.native_scheduler import MesosTaskParameters
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
@@ -51,8 +53,38 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
     return offer
 
 
+def test_DictTaskStore():
+    task_store = DictTaskStore(service_name="foo", instance_name="bar")
+    task_store.add_task_if_doesnt_exist("task_id", MesosTaskParameters(
+        mesos_task_state="foo",
+    ))
+
+    task_store.update_task("task_id", MesosTaskParameters(
+        is_draining=True,
+    ))
+
+    assert task_store.get_all_tasks() == {
+        "task_id": MesosTaskParameters(
+            mesos_task_state="foo",
+            is_draining=True,
+        )
+    }
+
+    task_store.update_task("task_id", MesosTaskParameters(
+        mesos_task_state="bar"
+    ))
+
+    assert task_store.get_all_tasks() == {
+        "task_id": MesosTaskParameters(
+            mesos_task_state="bar",
+            is_draining=True,
+        )
+    }
+
+
 class TestNativeScheduler(object):
-    def test_start_upgrade_rollback_scaledown(self, system_paasta_config):
+    @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
+    def test_start_upgrade_rollback_scaledown(self, mock_log, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -93,7 +125,7 @@ class TestNativeScheduler(object):
                         ):
             # First, start up 3 old tasks
             old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.task_store) == 3
+            assert len(scheduler.task_store.get_all_tasks()) == 3
             # and mark the old tasks as up
             for task in old_tasks:
                 scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
@@ -104,10 +136,10 @@ class TestNativeScheduler(object):
 
             # and start 3 more tasks
             new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.task_store) == 6
+            assert len(scheduler.task_store.get_all_tasks()) == 6
             # It should not drain anything yet, since the new tasks aren't up.
             scheduler.kill_tasks_if_necessary(fake_driver)
-            assert len(scheduler.task_store) == 6
+            assert len(scheduler.task_store.get_all_tasks()) == 6
             assert len(scheduler.drain_method.downed_task_ids) == 0
 
             # Now we mark the new tasks as up.
@@ -368,4 +400,4 @@ class TestNativeServiceConfig(object):
         scheduler.blacklist_slave('super big slave')
         assert len(scheduler.blacklisted_slaves) == 1
         scheduler.resourceOffers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.task_store) == 0
+        assert len(scheduler.task_store.get_all_tasks()) == 0

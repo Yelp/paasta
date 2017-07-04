@@ -791,7 +791,7 @@ def _log(*args, **kwargs):
 
 
 class LogWriter(object):
-    def log(self, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
         raise NotImplementedError()
 
 
