@@ -1,1 +1,7 @@
-{"chronos_config": {"url": ["http://chronos:8081"], "password": null, "user": null}}
+{
+  "user": "aaaaaa",
+  "password": "AAAAAAAA",
+  "url": [
+    "http://foobar:5053"
+  ]
+}

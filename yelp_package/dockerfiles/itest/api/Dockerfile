@@ -49,4 +49,5 @@ RUN mkdir -p /etc/paasta/
 RUN cp /work/yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
 RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
 RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+RUN cp /work/yelp_package/dockerfiles/itst/api/*.json /etc/paasta/
 RUN pip install -e /work/
