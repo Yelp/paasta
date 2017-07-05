@@ -40,13 +40,18 @@ def resources_utilization(request):
     master = get_mesos_master()
     mesos_state = master.state
 
-    groupings = request.swagger_data.get('groupings', [])
+    groupings = request.swagger_data.get('groupings', ['superregion'])
+    # swagger actually makes the key None if it's not set
+    if groupings is None:
+        groupings = ['superregion']
+    grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
+
     filters = request.swagger_data.get('filter', [])
     filters = parse_filters(filters)
     filter_funcs = [
         metastatus_lib.make_filter_slave_func(attr, vals) for attr, vals in filters.items()
     ]
-    grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
+
     resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(
         grouping_func=grouping_function,
         mesos_state=mesos_state,

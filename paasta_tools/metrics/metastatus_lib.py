@@ -319,10 +319,6 @@ def key_func_for_attribute_multi(attributes):
     :param attributes: the attribues to inspect in the slave
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
-    if attributes is None:
-        # TODO: don't hard code superregion
-        attributes = ['superregion']
-
     def key_func(slave):
         return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
     return key_func
