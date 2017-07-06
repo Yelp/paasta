@@ -99,7 +99,7 @@ def setup_paasta_api():
     # Set up transparent cache for http API calls. With expire_after, responses
     # are removed only when the same request is made. Expired storage is not a
     # concern here. Thus remove_expired_responses is not needed.
-    requests_cache.install_cache("paasta-api", backend="memory", expire_after=30)
+    requests_cache.install_cache("paasta-api", backend="memory", expire_after=5)
 
 
 def main(argv=None):
