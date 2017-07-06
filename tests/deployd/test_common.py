@@ -7,7 +7,7 @@ import mock
 
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import get_marathon_client_from_config
-from paasta_tools.deployd.common import get_service_instances_with_changed_id
+from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
@@ -68,7 +68,7 @@ def test_exponential_back_off():
     assert exponential_back_off(99, 60, 2, 6000) == 6000
 
 
-def test_get_service_instances_with_changed_id():
+def test_get_service_instances_needing_update():
     with mock.patch(
         'paasta_tools.deployd.common.get_all_marathon_apps', autospec=True
     ) as mock_get_marathon_apps, mock.patch(
@@ -83,7 +83,7 @@ def test_get_service_instances_with_changed_id():
                         mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
                                                                                    'instances': 2}))]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
+        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert mock_get_marathon_apps.called
         calls = [mock.call(service='universe',
                            instance='c137',
@@ -101,14 +101,14 @@ def test_get_service_instances_with_changed_id():
                         mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
                                                                                    'instances': 2}))]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
+        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
         mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
                         mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
                                                                                          'instances': 2}))]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
+        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
 

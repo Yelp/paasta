@@ -71,7 +71,7 @@ def exponential_back_off(failures, factor, base, max_time):
     return seconds if seconds < max_time else max_time
 
 
-def get_service_instances_with_changed_id(marathon_client, instances, cluster):
+def get_service_instances_needing_update(marathon_client, instances, cluster):
     marathon_apps = {app.id: app for app in get_all_marathon_apps(marathon_client)}
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
