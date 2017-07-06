@@ -52,3 +52,18 @@ def service_instance_status_error(context, error_code, job_id):
 def resouces_resource_used(context, resource, used):
     response = context.paasta_api_client.resources.resources().result()
     assert response[0][resource]['used'] == used, response
+
+
+@then('resources GET with groupings "{groupings}" and filters "{filters}" should return {num:d} groups')
+def resources_groupings_filters(context, groupings, filters, num):
+    groupings = groupings.split(",")
+    if len(filters) > 0:
+        filters = filters.split("|")
+    response = context.paasta_api_client.resources.resources(groupings=groupings, filter=filters).result()
+
+    assert len(response) == num, response
+
+
+@then('resources GET with groupings "{groupings}" should return {num:d} groups')
+def resourses_groupings(context, groupings, num):
+    return resources_groupings_filters(context, groupings, [], num)
