@@ -437,7 +437,7 @@
         "groupings": {
           "type": "object"
         },
-        "cpu": {
+        "cpus": {
           "$ref": "#/definitions/ResourceValue"
         },
         "mem": {

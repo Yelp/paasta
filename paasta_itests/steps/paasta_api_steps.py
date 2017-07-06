@@ -46,3 +46,9 @@ def service_instance_status_error(context, error_code, job_id):
         assert exc.status_code == int(error_code)
 
     assert not response
+
+
+@then('resources GET should show "{resource}" has {used:d} used')
+def resouces_resource_used(context, resource, used):
+    response = context.paasta_api_client.resources.resources().result()
+    assert response[0][resource]['used'] == used, response
