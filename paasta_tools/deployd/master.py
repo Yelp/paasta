@@ -200,8 +200,8 @@ class DeployDaemon(PaastaThread):
     def prioritise_bouncing_services(self):
         service_instances = get_service_instances_that_need_bouncing(self.marathon_client,
                                                                      DEFAULT_SOA_DIR)
-        self.log.info("Found the following services that need bouncing now: {}".format(list(service_instances)))
         for service_instance in service_instances:
+            self.log.info("Prioritising {} to be bounced immediately".format(service_instance))
             service, instance = service_instance.split('.')
             self.inbox_q.put(ServiceInstance(service=service,
                                              instance=instance,
@@ -216,7 +216,8 @@ class DeployDaemon(PaastaThread):
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
         self.watcher_threads = [watcher(inbox_q=self.inbox_q,
                                         cluster=self.config.get_cluster(),
-                                        zookeeper_client=self.zk)
+                                        zookeeper_client=self.zk,
+                                        config=self.config)
                                 for watcher in watcher_classes]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:

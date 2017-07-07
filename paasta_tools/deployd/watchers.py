@@ -30,18 +30,19 @@ from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 class PaastaWatcher(PaastaThread):
 
-    def __init__(self, inbox_q, cluster):
+    def __init__(self, inbox_q, cluster, config):
         super(PaastaWatcher, self).__init__()
         self.daemon = True
         self.inbox_q = inbox_q
         self.cluster = cluster
+        self.config = config
         self.is_ready = False
 
 
 class AutoscalerWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(AutoscalerWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(AutoscalerWatcher, self).__init__(inbox_q, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers = {}
 
@@ -94,8 +95,8 @@ class AutoscalerWatcher(PaastaWatcher):
 
 class SoaFileWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(SoaFileWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(SoaFileWatcher, self).__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(watch_manager=self.wm,
@@ -116,8 +117,8 @@ class SoaFileWatcher(PaastaWatcher):
 
 class PublicConfigFileWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(PublicConfigFileWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(PublicConfigFileWatcher, self).__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(watch_manager=self.wm,
@@ -137,8 +138,8 @@ class PublicConfigFileWatcher(PaastaWatcher):
 
 
 class MaintenanceWatcher(PaastaWatcher):
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(MaintenanceWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(MaintenanceWatcher, self).__init__(inbox_q, cluster, config)
         self.draining = set()
         self.marathon_client = get_marathon_client_from_config()
 
@@ -166,7 +167,7 @@ class MaintenanceWatcher(PaastaWatcher):
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
             for service_instance in service_instances:
                 self.inbox_q.put(service_instance)
-            time.sleep(20)
+            time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts):
         marathon_apps = get_all_marathon_apps(self.marathon_client, embed_failures=True)

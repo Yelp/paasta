@@ -302,7 +302,7 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_get_service_instances_that_need_bouncing, mock.patch(
             'time.time', autospec=True, return_value=1
         ):
-            mock_changed_instances = ('universe.c137', 'universe.c138')
+            mock_changed_instances = (x for x in {'universe.c137', 'universe.c138'})
             mock_get_service_instances_that_need_bouncing.return_value = mock_changed_instances
 
             self.deployd.prioritise_bouncing_services()
