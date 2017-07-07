@@ -56,13 +56,15 @@ def perform_security_check(args):
         paasta_print("Nothing to be executed during the security-check step")
         return 0
 
-    ret_code, output = _run(security_check_command, timeout=300, stream=True)
+    ret_code, _ = _run(security_check_command, timeout=300, stream=True)
     if ret_code != 0:
         paasta_print("The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
                      "including whitelisting safe versions of packages).")
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
     send_event(service=args.service, check_name='%s.security_check' % args.service,
-               overrides={'page': False, 'ticket': True}, status=sensu_status, output=output, soa_dir=DEFAULT_SOA_DIR)
+               overrides={'page': False, 'ticket': True}, status=sensu_status,
+               output='Please check the console output of the security-check step to see detailed test results.',
+               soa_dir=DEFAULT_SOA_DIR)
 
     return ret_code
