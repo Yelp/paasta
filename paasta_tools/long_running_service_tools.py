@@ -189,7 +189,7 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
-    if mode == "http":
+    if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
         healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
