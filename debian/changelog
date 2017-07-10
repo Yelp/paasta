@@ -1,3 +1,11 @@
+paasta-tools (0.65.35) xenial; urgency=medium
+
+  * 0.65.35 tagged with 'make release'
+    Commit: Merge pull request #1350 from Yelp/fix/not-updating-
+    instance-count  Fix deployd updating instance count
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Jul 2017 03:59:11 -0700
+
 paasta-tools (0.65.34) xenial; urgency=medium
 
   * 0.65.34 tagged with 'make release'
