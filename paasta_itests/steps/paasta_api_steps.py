@@ -49,7 +49,7 @@ def service_instance_status_error(context, error_code, job_id):
 
 
 @then('resources GET should show "{resource}" has {used:d} used')
-def resouces_resource_used(context, resource, used):
+def resources_resource_used(context, resource, used):
     response = context.paasta_api_client.resources.resources().result()
     assert response[0][resource]['used'] == used, response
 
@@ -65,5 +65,5 @@ def resources_groupings_filters(context, groupings, filters, num):
 
 
 @then('resources GET with groupings "{groupings}" should return {num:d} groups')
-def resourses_groupings(context, groupings, num):
+def resources_groupings(context, groupings, num):
     return resources_groupings_filters(context, groupings, [], num)
