@@ -158,7 +158,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
 
     mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
     assert perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url)
+    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
 @mock.patch('requests.get', autospec=True)
@@ -170,7 +170,7 @@ def test_perform_http_healthcheck_failure_known_high(mock_http_conn):
     result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
     assert result is False
     assert '400' in reason
-    mock_http_conn.assert_called_once_with(fake_http_url)
+    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
 @mock.patch('requests.get', autospec=True)
@@ -182,7 +182,7 @@ def test_perform_http_healthcheck_failure_known_low(mock_http_conn):
     result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
     assert result is False
     assert '100' in reason
-    mock_http_conn.assert_called_once_with(fake_http_url)
+    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
 @mock.patch('requests.get', side_effect=TimeoutError, autospec=True)
@@ -194,7 +194,7 @@ def test_perform_http_healthcheck_timeout(mock_http_conn):
     assert actual[0] is False
     assert "10" in actual[1]
     assert "timed out" in actual[1]
-    mock_http_conn.assert_called_once_with(fake_http_url)
+    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
 @mock.patch('requests.get', autospec=True)
@@ -207,7 +207,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     actual = perform_http_healthcheck(fake_http_url, fake_timeout)
     assert actual[0] is False
     assert "200" in actual[1]
-    mock_http_conn.assert_called_once_with(fake_http_url)
+    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.perform_http_healthcheck', autospec=True)
