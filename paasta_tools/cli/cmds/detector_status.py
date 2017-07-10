@@ -52,7 +52,7 @@ def make_requests(urls):
     for url in urls:
         logging.info('GET %s', url)
     headers = {
-        'Content-Type': 'application/json', 
+        'Content-Type': 'application/json',
         'X-SF-TOKEN': sfx_token(),
         }
     def exception_handler(request, exception):
@@ -81,7 +81,7 @@ def get_detector_incidents(detector_ids):
         for i in response.json():
             events = i['events']
             detector_name = events[0]['detectorName']
-            severity = i['severity']    
+            severity = i['severity']
             since_timestamp = format_timestamp(
                     sorted(e['timestamp'] for e in events)[0])
             incident_data.append({

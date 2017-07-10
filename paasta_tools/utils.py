@@ -314,7 +314,7 @@ class InstanceConfig(object):
                 # TODO validation stuff like this should be moved into a check_* like in chronos tools
                 raise InvalidInstanceConfig('Instance configuration can specify cmd or args, but not both.')
 
-    def get_monitoring_config(self):
+    def get_monitoring(self):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
