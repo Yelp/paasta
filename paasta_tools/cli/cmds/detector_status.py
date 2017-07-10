@@ -34,15 +34,14 @@ MAX_ROWS_IN_SFX_RESULTS = 1000
 MAX_CONCURRENT_QUERIES = 10
 
 def sfx_token():
-    system_paasta_config = load_system_paasta_config()
-    token = system_paasta_config.get_monitoring_config()['signalfx_api_key']
-    if token:
-        return token
     try:
         return os.environ['SFX_TOKEN']
     except KeyError:
-        logging.warn('SFX_TOKEN env variable not found.')
-        raise
+        logging.info(
+            'SFX_TOKEN env variable not found:' +
+            ' looking in paasta system config')
+    system_paasta_config = load_system_paasta_config()
+    return system_paasta_config.get_monitoring_config()['signalfx_api_key']
 
 def format_timestamp(ts_millis):
     return datetime.datetime.fromtimestamp(

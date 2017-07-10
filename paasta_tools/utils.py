@@ -1162,7 +1162,7 @@ class SystemPaastaConfig(dict):
         """
         return self.get("mesos_config", {})
 
-    def get_monitoring(self):
+    def get_monitoring_config(self):
         """Get the monitoring config
 
         :returns: the monitoring config dictionary"""
