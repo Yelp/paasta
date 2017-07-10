@@ -6,10 +6,9 @@ import unittest
 
 import mock
 from pytest import raises
+from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import ServiceInstance
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import NoDockerImageError
 
 
 class FakePyinotify(object):  # pragma: no cover
@@ -48,14 +47,17 @@ from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 class TestPaastaWatcher(unittest.TestCase):
     def test_init(self):
         mock_inbox_q = mock.Mock()
-        PaastaWatcher(mock_inbox_q, 'westeros-prod')
+        PaastaWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
 
 
 class TestAutoscalerWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_zk = mock.Mock()
         self.mock_inbox_q = mock.Mock()
-        self.watcher = AutoscalerWatcher(self.mock_inbox_q, "westeros-prod", zookeeper_client=self.mock_zk)
+        self.watcher = AutoscalerWatcher(self.mock_inbox_q,
+                                         "westeros-prod",
+                                         zookeeper_client=self.mock_zk,
+                                         config=mock.Mock())
 
     def test_watch_folder(self):
         with mock.patch(
@@ -129,7 +131,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
                                                                      instance='instance',
                                                                      bounce_by=1,
                                                                      bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__))
+                                                                     watcher=self.watcher.__class__.__name__,
+                                                                     failures=0))
 
             mock_event_changed = mock_event_type.CHANGED
             mock_event = mock.Mock(type=mock_event_changed,
@@ -139,7 +142,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
                                                                      instance='instance',
                                                                      bounce_by=1,
                                                                      bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__))
+                                                                     watcher=self.watcher.__class__.__name__,
+                                                                     failures=0))
 
     def test_process_folder_event(self):
         with mock.patch(
@@ -192,7 +196,7 @@ class TestSoaFileWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = SoaFileWatcher(mock_inbox_q, 'westeros-prod')
+            self.watcher = SoaFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -226,7 +230,7 @@ class TestPublicConfigWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = PublicConfigFileWatcher(mock_inbox_q, 'westeros-prod')
+            self.watcher = PublicConfigFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -246,39 +250,58 @@ class TestPublicConfigWatcher(unittest.TestCase):
         assert self.watcher.is_ready
 
 
-def test_get_marathon_client_from_config():
-    with mock.patch(
-        'paasta_tools.deployd.watchers.load_marathon_config', autospec=True
-    ), mock.patch(
-        'paasta_tools.deployd.watchers.get_marathon_client', autospec=True
-    ) as mock_marathon_client:
-        assert get_marathon_client_from_config() == mock_marathon_client.return_value
-
-
 class TestMaintenanceWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_inbox_q = mock.Mock()
         self.mock_marathon_client = mock.Mock()
+        mock_config = mock.Mock(get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20))
         with mock.patch(
             'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
         ):
-            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod")
+            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod", config=mock_config)
+
+    def test_get_new_draining_hosts(self):
+        with mock.patch(
+            'paasta_tools.deployd.watchers.get_draining_hosts', autospec=True
+        ) as mock_get_draining_hosts:
+
+            mock_get_draining_hosts.return_value = ['host1', 'host2']
+            assert self.watcher.get_new_draining_hosts() == ['host1', 'host2']
+            assert self.watcher.draining == {'host1', 'host2'}
+
+            mock_get_draining_hosts.return_value = ['host1']
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == {'host1'}
+
+            mock_get_draining_hosts.side_effect = RequestException
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == {'host1'}
+
+            mock_get_draining_hosts.side_effect = None
+            mock_get_draining_hosts.return_value = ['host3', 'host1']
+            assert self.watcher.get_new_draining_hosts() == ['host3']
+            assert self.watcher.draining == {'host1', 'host3'}
+
+            mock_get_draining_hosts.return_value = []
+            assert self.watcher.get_new_draining_hosts() == []
+            assert self.watcher.draining == set()
 
     def test_run(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_draining_hosts', autospec=True
-        ) as mock_get_draining_hosts, mock.patch(
+            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_new_draining_hosts', autospec=True
+        ) as mock_get_new_draining_hosts, mock.patch(
             'paasta_tools.deployd.watchers.MaintenanceWatcher.get_at_risk_service_instances', autospec=True
         ) as mock_get_at_risk_service_instances, mock.patch(
             'time.sleep', autospec=True, side_effect=LoopBreak
         ):
+            mock_get_new_draining_hosts.return_value = []
             assert not self.watcher.is_ready
             with raises(LoopBreak):
                 self.watcher.run()
             assert self.watcher.is_ready
             assert not mock_get_at_risk_service_instances.called
 
-            mock_get_draining_hosts.return_value = ['host1', 'host2']
+            mock_get_new_draining_hosts.return_value = ['host1', 'host2']
             mock_get_at_risk_service_instances.return_value = ['si1', 'si2']
             with raises(LoopBreak):
                 self.watcher.run()
@@ -286,11 +309,6 @@ class TestMaintenanceWatcher(unittest.TestCase):
             calls = [mock.call('si1'),
                      mock.call('si2')]
             self.mock_inbox_q.put.assert_has_calls(calls)
-
-            mock_get_draining_hosts.return_value = ['host1', 'host2', 'host3']
-            with raises(LoopBreak):
-                self.watcher.run()
-            mock_get_at_risk_service_instances.assert_called_with(self.watcher, ['host3'])
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
@@ -312,12 +330,14 @@ class TestMaintenanceWatcher(unittest.TestCase):
                                         instance='c137',
                                         bounce_by=1,
                                         watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None),
+                                        bounce_timers=None,
+                                        failures=0),
                         ServiceInstance(service='universe',
                                         instance='c139',
                                         bounce_by=1,
                                         watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None)]
+                                        bounce_timers=None,
+                                        failures=0)]
             assert ret == expected
 
 
@@ -404,38 +424,6 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             assert mock_get_service_instances_with_changed_id.called
             assert mock_rate_limit_instances.called
             self.mock_filewatcher.inbox_q.put.assert_called_with(mock_si)
-
-
-def test_get_service_instances_with_changed_id():
-    with mock.patch(
-        'paasta_tools.deployd.watchers.list_all_marathon_app_ids', autospec=True
-    ) as mock_get_marathon_apps, mock.patch(
-        'paasta_tools.deployd.watchers.load_marathon_service_config_no_cache', autospec=True
-    ) as mock_load_marathon_service_config:
-        mock_get_marathon_apps.return_value = ['universe.c137.c1.g1',
-                                               'universe.c138.c1.g1']
-        mock_service_instances = [('universe', 'c137'), ('universe', 'c138')]
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c137.c1.g1'})),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2'}))]
-        mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
-        assert mock_get_marathon_apps.called
-        calls = [mock.call(service='universe',
-                           instance='c137',
-                           cluster='westeros-prod',
-                           soa_dir=DEFAULT_SOA_DIR),
-                 mock.call(service='universe',
-                           instance='c138',
-                           cluster='westeros-prod',
-                           soa_dir=DEFAULT_SOA_DIR)]
-        mock_load_marathon_service_config.assert_has_calls(calls)
-        assert ret == [('universe', 'c138')]
-
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2'}))]
-        mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_with_changed_id(mock.Mock(), mock_service_instances, 'westeros-prod')
-        assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
 
 class TestYelpSoaEventHandler(unittest.TestCase):
@@ -529,6 +517,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                                           instance='c137',
                                           bounce_by=1,
                                           watcher='YelpSoaEventHandler',
-                                          bounce_timers=None)
+                                          bounce_timers=None,
+                                          failures=0)
             self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
             assert self.mock_filewatcher.inbox_q.put.call_count == 1

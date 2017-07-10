@@ -731,6 +731,24 @@ def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
     return valid_deploy_groups, invalid_deploy_groups
 
 
+def short_to_full_git_sha(short, refs):
+    """Converts a short git sha to a full sha
+
+    :param short: A short git sha represented as a string
+    :param refs: A list of refs in the git repository
+    :return: The full git sha or None if one can't be found
+    """
+    return [sha for sha in set(refs.values()) if sha.startswith(short)]
+
+
+def validate_short_git_sha(value):
+    pattern = re.compile('[a-f0-9]{4,40}')
+    if not pattern.match(value):
+        raise argparse.ArgumentTypeError(
+            "%s is not a valid git sha" % value)
+    return value
+
+
 def validate_full_git_sha(value):
     pattern = re.compile('[a-f0-9]{40}')
     if not pattern.match(value):

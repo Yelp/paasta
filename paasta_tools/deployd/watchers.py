@@ -10,7 +10,10 @@ import pyinotify
 from kazoo.protocol.states import EventType
 from kazoo.recipe.watchers import ChildrenWatch
 from kazoo.recipe.watchers import DataWatch
+from requests.exceptions import RequestException
 
+from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import get_service_instances_with_changed_id
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
@@ -18,32 +21,28 @@ from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_all_marathon_apps
-from paasta_tools.marathon_tools import get_marathon_client
-from paasta_tools.marathon_tools import list_all_marathon_app_ids
-from paasta_tools.marathon_tools import load_marathon_config
-from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
 class PaastaWatcher(PaastaThread):
 
-    def __init__(self, inbox_q, cluster):
+    def __init__(self, inbox_q, cluster, config):
         super(PaastaWatcher, self).__init__()
         self.daemon = True
         self.inbox_q = inbox_q
         self.cluster = cluster
+        self.config = config
         self.is_ready = False
 
 
 class AutoscalerWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(AutoscalerWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(AutoscalerWatcher, self).__init__(inbox_q, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers = {}
 
@@ -75,7 +74,8 @@ class AutoscalerWatcher(PaastaWatcher):
                                                instance=instance,
                                                bounce_by=int(time.time()),
                                                bounce_timers=None,
-                                               watcher=self.__class__.__name__)
+                                               watcher=self.__class__.__name__,
+                                               failures=0)
             self.inbox_q.put(service_instance)
 
     def process_folder_event(self, children, event):
@@ -95,8 +95,8 @@ class AutoscalerWatcher(PaastaWatcher):
 
 class SoaFileWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(SoaFileWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(SoaFileWatcher, self).__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(watch_manager=self.wm,
@@ -117,8 +117,8 @@ class SoaFileWatcher(PaastaWatcher):
 
 class PublicConfigFileWatcher(PaastaWatcher):
 
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(PublicConfigFileWatcher, self).__init__(inbox_q, cluster)
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(PublicConfigFileWatcher, self).__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(watch_manager=self.wm,
@@ -137,32 +137,37 @@ class PublicConfigFileWatcher(PaastaWatcher):
         self.is_ready = True
 
 
-def get_marathon_client_from_config():
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                          marathon_config.get_password())
-    return marathon_client
-
-
 class MaintenanceWatcher(PaastaWatcher):
-    def __init__(self, inbox_q, cluster, **kwargs):
-        super(MaintenanceWatcher, self).__init__(inbox_q, cluster)
-        self.draining = []
+    def __init__(self, inbox_q, cluster, config, **kwargs):
+        super(MaintenanceWatcher, self).__init__(inbox_q, cluster, config)
+        self.draining = set()
         self.marathon_client = get_marathon_client_from_config()
+
+    def get_new_draining_hosts(self):
+        try:
+            draining_hosts = get_draining_hosts()
+        except RequestException as e:
+            self.log.error("Unable to get list of draining hosts from mesos: {}".format(e))
+            draining_hosts = list(self.draining)
+        new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
+        for host in new_draining_hosts:
+            self.draining.add(host)
+        hosts_finished_draining = [host for host in self.draining if host not in draining_hosts]
+        for host in hosts_finished_draining:
+            self.draining.remove(host)
+        return new_draining_hosts
 
     def run(self):
         self.is_ready = True
         while True:
-            draining_hosts = get_draining_hosts()
-            new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
-            self.draining = draining_hosts
+            new_draining_hosts = self.get_new_draining_hosts()
             service_instances = []
             if new_draining_hosts:
                 self.log.info("Found new draining hosts: {}".format(new_draining_hosts))
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
             for service_instance in service_instances:
                 self.inbox_q.put(service_instance)
-            time.sleep(20)
+            time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts):
         marathon_apps = get_all_marathon_apps(self.marathon_client, embed_failures=True)
@@ -180,7 +185,8 @@ class MaintenanceWatcher(PaastaWatcher):
                                                          instance=instance,
                                                          bounce_by=int(time.time()),
                                                          watcher=self.__class__.__name__,
-                                                         bounce_timers=None))
+                                                         bounce_timers=None,
+                                                         failures=0))
         return service_instances
 
 
@@ -236,23 +242,6 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 self.filewatcher.inbox_q.put(service_instance)
 
 
-def get_service_instances_with_changed_id(marathon_client, instances, cluster):
-    marathon_app_ids = list_all_marathon_app_ids(marathon_client)
-    service_instances = []
-    for service, instance in instances:
-        config = load_marathon_service_config_no_cache(service=service,
-                                                       instance=instance,
-                                                       cluster=cluster,
-                                                       soa_dir=DEFAULT_SOA_DIR)
-        try:
-            config_app_id = config.format_marathon_app_dict()['id']
-        except NoDockerImageError:
-            config_app_id = None
-        if not config_app_id or (config_app_id not in marathon_app_ids):
-            service_instances.append((service, instance))
-    return service_instances
-
-
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
 
     def my_init(self, filewatcher):
@@ -306,7 +295,8 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                                              instance=instance,
                                              bounce_by=int(time.time()),
                                              watcher=self.__class__.__name__,
-                                             bounce_timers=None)
+                                             bounce_timers=None,
+                                             failures=0)
                              for service, instance in service_instances]
         for service_instance in service_instances:
             self.filewatcher.inbox_q.put(service_instance)

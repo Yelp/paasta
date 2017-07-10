@@ -284,7 +284,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             mesos_state = get_mesos_master().state_summary()
             slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
-            killable_capacity = sum([slave.instance_weight for slave in filtered_slaves])
+            killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
             amount_to_decrease = delta * -1
             if amount_to_decrease > killable_capacity:
                 self.log.error(

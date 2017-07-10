@@ -31,7 +31,7 @@ from paasta_tools.mac_address import reserve_unique_mac_address
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-LOCK_DIRECTORY = '/var/run/paasta/mac-address'
+LOCK_DIRECTORY = '/var/lib/paasta/mac-address'
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 

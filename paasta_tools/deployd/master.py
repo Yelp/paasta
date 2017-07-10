@@ -5,23 +5,24 @@ from __future__ import unicode_literals
 import inspect
 import logging
 import logging.handlers
-import os
 import socket
 import sys
 import time
 
 import service_configuration_lib
-from clog.handlers import ScribeHandler
 from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
+from paasta_tools.deployd.common import get_marathon_client_from_config
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
+from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
+from paasta_tools.list_marathon_service_instances import get_service_instances_that_need_bouncing
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -102,25 +103,15 @@ class DeployDaemon(PaastaThread):
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
+        self.marathon_client = get_marathon_client_from_config()
 
     def setup_logging(self):
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))
-        log_handlers = [logging.StreamHandler()]
-        if os.path.exists('/dev/log'):
-            log_handlers.append(logging.handlers.SysLogHandler('/dev/log'))
-        log_writer = self.config.get_log_writer()
-        for handler in log_handlers:
-            root_logger.addHandler(handler)
-            handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
-        if log_writer['driver'] == 'scribe':
-            handler = ScribeHandler(host=log_writer['scribe_host'],
-                                    port=log_writer['scribe_port'],
-                                    stream='stream_paasta_deployd_{}'.format(self.config.get_cluster()),
-                                    retry_interval=10)
-            handler.addFilter(AddHostnameFilter())
-            handler.setFormatter(logging.Formatter('%(asctime)s:%(hostname)s:%(levelname)s:%(name)s:%(message)s'))
-            root_logger.addHandler(handler)
+        handler = logging.StreamHandler()
+        handler.addFilter(AddHostnameFilter())
+        root_logger.addHandler(handler)
+        handler.setFormatter(logging.Formatter('%(asctime)s:%(hostname)s:%(levelname)s:%(name)s:%(message)s'))
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
@@ -146,6 +137,8 @@ class DeployDaemon(PaastaThread):
         self.start_watchers()
         self.log.info("All watchers started, now adding all services for initial bounce")
         self.add_all_services()
+        self.log.info("Prioritising services that we know need a bounce...")
+        self.prioritise_bouncing_services()
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True
@@ -180,7 +173,7 @@ class DeployDaemon(PaastaThread):
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
             worker_no = len(self.workers) + 1
-            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
+            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 
@@ -190,7 +183,7 @@ class DeployDaemon(PaastaThread):
     def start_workers(self):
         self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config.get_cluster(), self.metrics)
+            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 
@@ -204,13 +197,27 @@ class DeployDaemon(PaastaThread):
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
 
+    def prioritise_bouncing_services(self):
+        service_instances = get_service_instances_that_need_bouncing(self.marathon_client,
+                                                                     DEFAULT_SOA_DIR)
+        for service_instance in service_instances:
+            self.log.info("Prioritising {} to be bounced immediately".format(service_instance))
+            service, instance = service_instance.split('.')
+            self.inbox_q.put(ServiceInstance(service=service,
+                                             instance=instance,
+                                             watcher=self.__class__.__name__,
+                                             bounce_by=int(time.time()),
+                                             bounce_timers=None,
+                                             failures=0))
+
     def start_watchers(self):
         """ should block until all threads happy"""
         watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
         self.watcher_threads = [watcher(inbox_q=self.inbox_q,
                                         cluster=self.config.get_cluster(),
-                                        zookeeper_client=self.zk)
+                                        zookeeper_client=self.zk,
+                                        config=self.config)
                                 for watcher in watcher_classes]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:

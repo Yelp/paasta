@@ -32,6 +32,7 @@ import service_configuration_lib
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 log = logging.getLogger(__name__)
@@ -173,8 +174,13 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     team = get_team(overrides, service, soa_dir)
     if not team:
         return
+
     runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
     system_paasta_config = load_system_paasta_config()
+    try:
+        cluster_name = system_paasta_config.get_cluster()
+    except PaastaNotConfiguredError:
+        cluster_name = 'localhost'
     result_dict = {
         'tip': get_tip(overrides, service, soa_dir),
         'notification_email': get_notification_email(overrides, service, soa_dir),
@@ -185,7 +191,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': overrides.get('realert_every', monitoring_defaults('realert_every')),
-        'source': 'paasta-%s' % system_paasta_config.get_cluster(),
+        'source': 'paasta-%s' % cluster_name,
         'ttl': ttl,
     }
 

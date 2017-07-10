@@ -5,20 +5,22 @@ import time
 
 from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
+from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.setup_marathon_job import deploy_marathon_service
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, inbox_q, bounce_q, cluster, metrics_provider):
+    def __init__(self, worker_number, inbox_q, bounce_q, config, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
         self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
-        self.cluster = cluster
+        self.config = config
+        self.cluster = self.config.get_cluster()
         self.setup()
 
     def setup(self):
@@ -54,16 +56,30 @@ class PaastaDeployWorker(PaastaThread):
         self.log.info("{} starting up".format(self.name))
         while True:
             service_instance = self.bounce_q.get()
+            failures = service_instance.failures
             bounce_timers = self.setup_timers(service_instance)
             self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
             marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_failures=True)
             bounce_timers.setup_marathon.start()
-            return_code, bounce_again_in_seconds = deploy_marathon_service(service=service_instance.service,
-                                                                           instance=service_instance.instance,
-                                                                           client=self.marathon_client,
-                                                                           soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-                                                                           marathon_config=self.marathon_config,
-                                                                           marathon_apps=marathon_apps)
+            try:
+                return_code, bounce_again_in_seconds = deploy_marathon_service(service=service_instance.service,
+                                                                               instance=service_instance.instance,
+                                                                               client=self.marathon_client,
+                                                                               soa_dir=marathon_tools.DEFAULT_SOA_DIR,
+                                                                               marathon_config=self.marathon_config,
+                                                                               marathon_apps=marathon_apps)
+            except Exception as e:
+                self.log.warning("deploy_marathon_service caused exception: {}".format(e))
+                return_code = -2
+            if return_code != 0:
+                failures += 1
+                bounce_again_in_seconds = exponential_back_off(
+                    failures=failures,
+                    factor=self.config.get_deployd_worker_failure_backoff_factor(),
+                    base=2,
+                    max_time=6000
+                )
+
             bounce_timers.setup_marathon.stop()
             self.log.info("setup marathon completed with exit code {} for {}.{}".format(return_code,
                                                                                         service_instance.service,
@@ -78,7 +94,8 @@ class PaastaDeployWorker(PaastaThread):
                                                    instance=service_instance.instance,
                                                    bounce_by=int(time.time()) + bounce_again_in_seconds,
                                                    watcher=self.name,
-                                                   bounce_timers=bounce_timers)
+                                                   bounce_timers=bounce_timers,
+                                                   failures=failures)
                 self.inbox_q.put(service_instance)
             else:
                 bounce_timers.bounce_length.stop()

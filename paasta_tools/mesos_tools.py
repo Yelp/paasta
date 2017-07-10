@@ -692,7 +692,7 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
                 if task.framework.name == CHRONOS_FRAMEWORK_NAME:
                     slaves[task.slave['id']]['chronos_count'] += 1
         except SlaveDoesNotExist:
-            log.debug("Tried to get mesos slaves for task {}, but none existed.".format(task))
+            log.debug("Tried to get mesos slaves for task {}, but none existed.".format(task['id']))
             continue
     if slaves_list:
         for slave in slaves_list:

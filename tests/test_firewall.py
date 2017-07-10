@@ -8,6 +8,7 @@ import pytest
 from paasta_tools import firewall
 from paasta_tools import iptables
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import NoConfigurationForServiceError
 
 
 EMPTY_RULE = iptables.Rule(
@@ -270,6 +271,12 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
 
 def test_service_group_rules_empty_when_invalid_instance_type(service_group, mock_service_config):
     with mock.patch.object(firewall, 'get_instance_config', side_effect=NotImplementedError()):
+        assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == ()
+
+
+def test_service_group_rules_empty_when_service_is_deleted(service_group, mock_service_config):
+    """A deleted service which still has running containers shouldn't cause exceptions."""
+    with mock.patch.object(firewall, 'get_instance_config', side_effect=NoConfigurationForServiceError()):
         assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == ()
 
 

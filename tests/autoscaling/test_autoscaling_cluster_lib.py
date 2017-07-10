@@ -784,19 +784,19 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_set_capacity.assert_called_with(self.autoscaler, 4)
 
             # test scale down
-            mock_slave_1 = mock.Mock(instance_weight=1)
-            mock_slave_2 = mock.Mock(instance_weight=2)
+            mock_slave_1 = mock.Mock(instance_weight=1.099999999)
+            mock_slave_2 = mock.Mock(instance_weight=2.2)
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
             mock_filter_aws_slaves.return_value = mock_sfr_sorted_slaves_1
-            self.autoscaler.scale_resource(5, 2)
+            self.autoscaler.scale_resource(3.3, 0)
             assert mock_get_mesos_master.called
             mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state,
                                                                   pool='default')
             mock_filter_aws_slaves.assert_called_with(self.autoscaler, mock_get_mesos_task_count_by_slave.return_value)
             mock_downscale_aws_resource.assert_called_with(self.autoscaler,
                                                            filtered_slaves=mock_filter_aws_slaves.return_value,
-                                                           current_capacity=5,
-                                                           target_capacity=2)
+                                                           current_capacity=3.3,
+                                                           target_capacity=0)
 
     def test_downscale_aws_resource(self):
         with mock.patch(
