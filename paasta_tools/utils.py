@@ -35,6 +35,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import wraps
@@ -1516,6 +1517,59 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     ):
         clusters.add(cluster)
     return sorted(clusters)
+
+
+def get_instance_configs(instance_type, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    rootdir = os.path.abspath(soa_dir)
+    service_instance_configs = {}
+    for srv_dir in os.listdir(rootdir):
+        service_instance_configs[srv_dir] = service_configuration_lib.read_extra_service_information(
+            srv_dir,
+            "%s-%s" % (instance_type, cluster),
+            soa_dir=soa_dir
+        )
+    return service_instance_configs
+
+
+def get_all_instance_configs(clusters, soa_dir=DEFAULT_SOA_DIR):
+    confs = defaultdict(dict)
+    for t in INSTANCE_TYPES:
+        for c in clusters:
+            services = get_instance_configs(t, c, soa_dir)
+            for service, instance in services.items():
+                if service not in confs[c].keys():
+                    confs[c][service] = {}
+                confs[c][service].update(instance)
+    return confs
+
+
+def get_all_service_configs(soa_dir=DEFAULT_SOA_DIR):
+    rootdir = os.path.abspath(soa_dir)
+    service_configs = {}
+    for srv_dir in os.listdir(rootdir):
+        service_configs[srv_dir] = service_configuration_lib.read_service_configuration(
+            srv_dir,
+            soa_dir=soa_dir
+        )
+    return service_configs
+
+
+def get_instances_by_owner(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
+    all_instances = {s for c in clusters for s in get_services_for_cluster(cluster=c, soa_dir=soa_dir)}
+    service_confs = get_all_service_configs(soa_dir)
+    instance_confs = get_all_instance_configs(clusters, soa_dir)
+
+    service_instances = defaultdict(set)
+    for service, instance in all_instances:
+        service_team = service_confs.get(service, {}).get('monitoring', {}).get('team', None)
+        for service_conf in instance_confs.values():
+            instance_team = service_conf.get(service, {}).get(instance, {}).get('monitoring', {}).get('team', None)
+            if instance_team in owners or (instance_team is None and service_team in owners):
+                service_instances[service].add(instance)
+
+    return service_instances
 
 
 def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):
