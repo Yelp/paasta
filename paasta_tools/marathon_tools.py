@@ -954,8 +954,8 @@ def get_matching_apps(servicename, instance, marathon_apps):
     return [app for app in marathon_apps if app.id.startswith(expected_prefix)]
 
 
-def get_all_marathon_apps(client, embed_failures=False):
-    return client.list_apps(embed_failures=embed_failures)
+def get_all_marathon_apps(client, embed_tasks=False):
+    return client.list_apps(embed_tasks=embed_tasks)
 
 
 def kill_task(client, app_id, task_id, scale):

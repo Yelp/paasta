@@ -180,7 +180,7 @@ class MaintenanceWatcher(PaastaWatcher):
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts):
-        marathon_apps = get_all_marathon_apps(self.marathon_client, embed_failures=True)
+        marathon_apps = get_all_marathon_apps(self.marathon_client, embed_tasks=True)
         at_risk_tasks = [task for app in marathon_apps for task in app.tasks if task.host in draining_hosts]
         self.log.info("At risk tasks: {}".format(at_risk_tasks))
         service_instances = []
