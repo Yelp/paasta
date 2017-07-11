@@ -395,6 +395,7 @@ def paasta_status(args):
 
     return_codes = [0]
     for service, instances in services_instances.items():
+        paasta_print('service: %s' % PaastaColors.blue(service))
         actual_deployments = get_actual_deployments(service, soa_dir)
         if 'USE_API_ENDPOINT' in os.environ:
             use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
