@@ -1,3 +1,11 @@
+paasta-tools (0.65.36) xenial; urgency=medium
+
+  * 0.65.36 tagged with 'make release'
+    Commit: Merge pull request #1325 from Yelp/remote-run-taskproc
+    Remote-run on taskproc
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 11 Jul 2017 07:31:03 -0700
+
 paasta-tools (0.65.35) xenial; urgency=medium
 
   * 0.65.35 tagged with 'make release'
