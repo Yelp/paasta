@@ -422,6 +422,6 @@ def paasta_status(args):
             return_codes.append(return_code)
         else:
             paasta_print(missing_deployments_message(service))
-            return_code.append(1)
+            return_codes.append(1)
 
     return max(return_codes)
