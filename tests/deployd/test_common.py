@@ -13,6 +13,7 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDockerImageError
 
 
@@ -105,6 +106,13 @@ def test_get_service_instances_needing_update():
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
         mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
+                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
+                                                                                         'instances': 2}))]
+        mock_load_marathon_service_config.side_effect = mock_configs
+        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        assert ret == [('universe', 'c137'), ('universe', 'c138')]
+
+        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=InvalidJobNameError)),
                         mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
                                                                                          'instances': 2}))]
         mock_load_marathon_service_config.side_effect = mock_configs
