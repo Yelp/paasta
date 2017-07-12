@@ -20,6 +20,7 @@ import mock
 import pytest
 
 from paasta_tools import generate_services_yaml
+from paasta_tools import generate_services_file
 
 
 MOCK_NAMESPACES = [
@@ -31,31 +32,17 @@ MOCK_NAMESPACES = [
 @pytest.yield_fixture
 def mock_namespaces():
     with mock.patch(
-            'paasta_tools.generate_services_yaml.get_all_namespaces',
+            'paasta_tools.generate_services_file.get_all_namespaces',
             autospec=True,
             return_value=MOCK_NAMESPACES,
     ):
         yield
 
 
-def test_generate_configuration(mock_namespaces):
-    expected = {
-        'foo.main': {
-            'host': '169.254.255.254',
-            'port': 1024
-        },
-        'bar.canary': {
-            'host': '169.254.255.254',
-            'port': 1025
-        }
-    }
-    assert expected == generate_services_yaml.generate_configuration()
-
-
 def test_main(tmpdir, mock_namespaces):
     services_yaml = tmpdir.join('services.yaml')
 
-    with mock.patch.object(generate_services_yaml, 'datetime') as m, \
+    with mock.patch.object(generate_services_file, 'datetime') as m, \
             mock.patch.object(socket, 'getfqdn', return_value='somehost.yelp'):
         m.now().isoformat.return_value = '$TIME'
         generate_services_yaml.main((services_yaml.strpath,))
