@@ -210,7 +210,8 @@ def build_executor_stack(
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
             run_id
         ),
-        framework_staging_timeout=framework_staging_timeout
+        framework_staging_timeout=framework_staging_timeout,
+        initial_decline_delay=0.5
     )
     retrying_executor = RetryingExecutor(mesos_executor)
     return retrying_executor
@@ -256,6 +257,19 @@ def remote_run_start(args):
 
     paasta_print('Scheduling a task on Mesos')
 
+    # prepare task before launching executor
+    task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
+        **paasta_to_task_config_kwargs(
+            service,
+            instance,
+            cluster,
+            system_paasta_config,
+            instance_type=instance_type,
+            soa_dir=soa_dir,
+            config_overrides=overrides_dict,
+        )
+    )
+
     executor_stack = build_executor_stack(
         service,
         instance,
@@ -272,17 +286,6 @@ def remote_run_start(args):
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
-    task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
-        **paasta_to_task_config_kwargs(
-            service,
-            instance,
-            cluster,
-            system_paasta_config,
-            instance_type=instance_type,
-            soa_dir=soa_dir,
-            config_overrides=overrides_dict,
-        )
-    )
     terminal_event = runner.run(task_config)
     runner.stop()
     if terminal_event.success:
