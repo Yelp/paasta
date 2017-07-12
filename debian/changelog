@@ -1,3 +1,11 @@
+paasta-tools (0.65.37) xenial; urgency=medium
+
+  * 0.65.37 tagged with 'make release'
+    Commit: Merge pull request #1357 from Yelp/remote-run-initial-delay
+    prepare task_config before initializing mesos stack
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 12 Jul 2017 04:15:40 -0700
+
 paasta-tools (0.65.36) xenial; urgency=medium
 
   * 0.65.36 tagged with 'make release'
