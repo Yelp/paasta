@@ -536,6 +536,25 @@ def test_filter_mesos_state_metrics():
     assert metastatus_lib.filter_mesos_state_metrics(test_resource_dictionary) == expected
 
 
+def test_filter_slaves():
+    filters = {"foo": ['one', 'two'], "bar": ['three', 'four']}
+    fns = [
+        metastatus_lib.make_filter_slave_func(k, v) for k, v in filters.items()
+    ]
+
+    data = [
+        {"name": "aaa", "attributes": {"foo": "one", "bar": "three"}},
+        {"name": "bbb", "attributes": {"foo": "one"}},
+        {"name": "ccc", "attributes": {"foo": "wrong", "bar": "four"}},
+    ]
+
+    slaves = metastatus_lib.filter_slaves(data, fns)
+    names = [s["name"] for s in slaves]
+    assert("aaa" in names)
+    assert("bbb" not in names)
+    assert("ccc" not in names)
+
+
 def test_group_slaves_by_key_func():
     slaves = [
         {
@@ -659,6 +678,75 @@ def test_get_resource_utilization_by_grouping_correctly_groups():
         grouping_func=grouping_func
     )['foo']['free'].cpus
     assert free_cpus == 9
+
+
+def test_get_resource_utilization_by_grouping_correctly_multi_groups():
+    fake_state = {
+        'slaves': [{
+            'id': 'foo1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'one': 'yes', 'two': 'yes'},
+            'reserved_resources': []},
+            {
+            'id': 'bar1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'one': 'yes', 'two': 'no'},
+            'reserved_resources': []},
+            {
+            'id': 'foo2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'one': 'no', 'two': 'yes'},
+            'reserved_resources': []},
+            {
+            'id': 'bar2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'one': 'no', 'two': 'no'},
+            'reserved_resources': []},
+        ],
+        'frameworks': [
+            {'tasks': [
+                {
+                    'state': 'TASK_RUNNING',
+                    'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
+                    'slave_id': 'foo1'
+                },
+                {
+                    'state': 'TASK_RUNNING',
+                    'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
+                    'slave_id': 'bar1'
+                },
+            ]}
+        ]
+    }
+
+    grouping_func = metastatus_lib.key_func_for_attribute_multi(['one', 'two'])
+    resp = metastatus_lib.get_resource_utilization_by_grouping(
+        mesos_state=fake_state,
+        grouping_func=grouping_func
+    )
+    print(resp)
+    # resp should have 4 keys...
+    assert(len(resp.keys()) == 4)
+    # Each key should be a set with 2 items...
+    assert(len(list(resp.keys())[0]) == 2)
+    # Each item in the set should have 2 values (original key, value)
+    assert(len(list(list(resp.keys())[0])[0]) == 2)
 
 
 def test_get_resource_utilization_per_slave():

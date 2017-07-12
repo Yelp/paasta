@@ -5,7 +5,6 @@ import json
 import os
 import socket
 import time
-from tempfile import mkdtemp
 
 import mock
 import yaml
@@ -136,7 +135,7 @@ def should_eventually_start_num_tasks(context, num):
 
 @given('a fresh soa_dir')
 def fresh_soa_dir(context):
-    soa_dir = mkdtemp()
+    soa_dir = '/nail/etc/services/'
     context.soa_dir = soa_dir
 
 

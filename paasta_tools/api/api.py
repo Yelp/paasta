@@ -70,6 +70,7 @@ def make_app(global_config=None):
     })
 
     config.include('pyramid_swagger')
+    config.add_route('resources.utilization', '/v1/resources/utilization')
     config.add_route('service.instance.status', '/v1/services/{service}/{instance}/status')
     config.add_route('service.instance.tasks', '/v1/services/{service}/{instance}/tasks')
     config.add_route('service.instance.tasks.task', '/v1/services/{service}/{instance}/tasks/{task_id}')
@@ -98,7 +99,7 @@ def setup_paasta_api():
     # Set up transparent cache for http API calls. With expire_after, responses
     # are removed only when the same request is made. Expired storage is not a
     # concern here. Thus remove_expired_responses is not needed.
-    requests_cache.install_cache("paasta-api", backend="memory", expire_after=30)
+    requests_cache.install_cache("paasta-api", backend="memory", expire_after=5)
 
 
 def main(argv=None):
