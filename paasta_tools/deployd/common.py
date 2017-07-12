@@ -13,6 +13,7 @@ from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDockerImageError
 
 BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
@@ -83,7 +84,7 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
         try:
             config_app = config.format_marathon_app_dict()
             app_id = '/{}'.format(config_app['id'])
-        except NoDockerImageError:
+        except (NoDockerImageError, InvalidJobNameError):
             config_app = None
         if not config_app:
             service_instances.append((service, instance))
