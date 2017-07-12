@@ -27,5 +27,6 @@ def main(argv=None):
 
     write_yaml_file(args.output_path)
 
+
 if __name__ == '__main__':
     main()

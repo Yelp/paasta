@@ -19,8 +19,8 @@ import socket
 import mock
 import pytest
 
-from paasta_tools import generate_services_yaml
 from paasta_tools import generate_services_file
+from paasta_tools import generate_services_yaml
 
 
 MOCK_NAMESPACES = [
