@@ -455,7 +455,7 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments.return_value = actual_deployments
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     mock_load_system_paasta_config.return_value = fake_system_paasta_config
-    mock_report_status.return_value = sentinel.return_value
+    mock_report_status.return_value = 1776
 
     args = MagicMock()
     args.service = service
@@ -466,7 +466,7 @@ def test_status_calls_sergeants(
     args.soa_dir = '/fake/soa/dir'
     return_value = paasta_status(args)
 
-    assert return_value == sentinel.return_value
+    assert return_value == 1776
 
     mock_figure_out_service_name.assert_called_once_with(args, '/fake/soa/dir')
     mock_get_actual_deployments.assert_called_once_with(service, '/fake/soa/dir')
