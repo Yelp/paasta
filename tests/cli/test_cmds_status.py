@@ -70,6 +70,7 @@ def test_status_arg_service_not_found(
 
     args = MagicMock()
     args.service = False
+    args.owner = None
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
@@ -383,6 +384,7 @@ def test_status_pending_pipeline_build_message(
     args = MagicMock()
     args.service = service
     args.deploy_group = None
+    args.owner = None
 
     paasta_status(args)
     output, _ = capfd.readouterr()
@@ -460,6 +462,7 @@ def test_status_calls_sergeants(
     args.clusters = None
     args.instances = None
     args.verbose = False
+    args.owner = None
     args.soa_dir = '/fake/soa/dir'
     return_value = paasta_status(args)
 
@@ -733,7 +736,7 @@ def test_paasta_args_mixer_clusters_and_instances(mock_cluster_instance_map):
 def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service):
     mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
 
-    assert verify_instances('west,esst', 'fake_service', []) == ['west', 'esst']
+    assert verify_instances(['west', 'esst'], 'fake_service', []) == ['west', 'esst']
     assert mock_paasta_print.called
     mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"),
                                         call("Did you mean any of these?"),
@@ -746,7 +749,7 @@ def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service
 def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instances_for_service):
     mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
 
-    assert verify_instances('west,esst,fake', 'fake_service',
+    assert verify_instances(['west', 'esst', 'fake'], 'fake_service',
                             ['fake_cluster1', 'fake_cluster2']) == ['west', 'esst', 'fake']
     assert mock_paasta_print.called
     mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst,"

@@ -339,7 +339,9 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def paasta_args_mixer(args, service, instances):
+def paasta_args_mixer(args, service, instances=None):
+    if instances is None and args.instances is not None:
+        instances = args.instances.split(',')
     if args.deploy_group is None:
         cluster_whitelist = args.clusters.split(",") if args.clusters is not None else []
         if instances is not None:
@@ -368,7 +370,8 @@ def paasta_args_mixer(args, service, instances):
                                   if instances is not None else instances_set)
 
         diff = set(instance_whitelist) - instances_set
-        if (instances is not None and not instance_whitelist) or diff:
+        print(instances, instance_whitelist, diff)
+        if (instances and not instance_whitelist) or diff:
             paasta_print("The %s deploy_group doesn't have any instances of %s matching %s." %
                          (args.deploy_group, service, ', '.join(diff) or ','.join(instances)))
             return None
@@ -391,18 +394,23 @@ def paasta_status(args):
         services_instances = get_instances_by_owner(args.owner.split(','), clusters, soa_dir=soa_dir)
     else:
         service = figure_out_service_name(args, soa_dir)
-        services_instances = {service: args.instances.split(',')}
+        if args.instances is not None:
+            services_instances = {service: args.instances.split(',')}
+        else:
+            services_instances = {service: []}
 
     return_codes = [0]
     for service, instances in services_instances.items():
         paasta_print('service: %s' % PaastaColors.blue(service))
         actual_deployments = get_actual_deployments(service, soa_dir)
+        print(actual_deployments)
         if 'USE_API_ENDPOINT' in os.environ:
             use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
         else:
             use_api_endpoint = False
 
         pargs = paasta_args_mixer(args, service, instances)
+        print(pargs)
         if pargs is None:
             return_codes.append(1)
             continue
@@ -419,6 +427,7 @@ def paasta_status(args):
                 verbose=args.verbose,
                 use_api_endpoint=use_api_endpoint
             )
+            print(return_code)
             return_codes.append(return_code)
         else:
             paasta_print(missing_deployments_message(service))
