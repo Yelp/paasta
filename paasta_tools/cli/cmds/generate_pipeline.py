@@ -96,7 +96,7 @@ def print_warning():
     paasta_print("hand-made customizations and will leave behind orphaned Jenkins jobs")
     paasta_print("that need to be manually cleaned up.")
     paasta_print()
-    raw_input("Press enter to continue or ctrl-c to cancel")
+    input("Press enter to continue or ctrl-c to cancel")
 
 
 def generate_pipeline(service, soa_dir):
