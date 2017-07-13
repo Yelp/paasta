@@ -68,19 +68,19 @@ def add_subparser(subparsers):
         epilog=(
             "Note: Access and credentials to the Git repo of a service "
             "are required for this command to work."
-        )
+        ),
     )
     list_parser.add_argument(
         '-u', '--git-url',
         help=('Git url for service. Defaults to the normal git URL for '
               'the service.'),
-        default=None
+        default=None,
     )
     list_parser.add_argument(
         '-c', '-k', '--commit',
         help='Git sha to wait for deployment',
         required=True,
-        type=validate_short_git_sha
+        type=validate_short_git_sha,
     )
     list_parser.add_argument(
         '-l', '--deploy-group',
@@ -116,7 +116,7 @@ def add_subparser(subparsers):
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output."
+        help="Print out more output.",
     )
 
     list_parser.set_defaults(command=paasta_wait_for_deployment)

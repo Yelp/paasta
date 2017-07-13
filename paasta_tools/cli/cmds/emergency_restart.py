@@ -79,7 +79,7 @@ def paasta_emergency_restart(args):
         cluster=args.cluster,
         service=args.service,
         instances=args.instance,
-        system_paasta_config=system_paasta_config
+        system_paasta_config=system_paasta_config,
     )
     paasta_print("Output: %s" % output)
     paasta_print("%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-7:]))

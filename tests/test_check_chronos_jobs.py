@@ -25,12 +25,12 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
             get_monitoring=Mock(return_value={}),
             get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
-        'soa_dir'
+        'soa_dir',
     ) == {
         'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': 480
+        'realert_every': 480,
     }
 
 
@@ -43,12 +43,12 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
             get_monitoring=Mock(return_value={'alert_after': '10m'}),
             get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
-        'soa_dir'
+        'soa_dir',
     ) == {
         'alert_after': '10m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': 480
+        'realert_every': 480,
     }
 
 
@@ -65,12 +65,12 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
             get_monitoring=Mock(return_value={'realert_every': 5}),
             get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
-        'soa_dir'
+        'soa_dir',
     ) == {
         'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': 5
+        'realert_every': 5,
     }
 
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
@@ -79,7 +79,7 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
             get_monitoring=Mock(return_value={}),
             get_schedule_interval_in_seconds=Mock(return_value=None),
         ),
-        'soa_dir'
+        'soa_dir',
     ) == {
         'alert_after': '15m',
         'check_every': '1m',
@@ -94,12 +94,12 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
             get_monitoring=Mock(return_value={}),
             get_schedule_interval_in_seconds=Mock(return_value=None),
         ),
-        'soa_dir'
+        'soa_dir',
     ) == {
         'alert_after': '15m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': 10
+        'realert_every': 10,
     }
 
 
@@ -174,7 +174,7 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
     fake_job = {
         'name': 'service1 test-job',
         'lastSuccess': '2016-07-26T22:00:00+00:00',
-        'lastError': '2016-07-26T22:01:00+00:00'
+        'lastError': '2016-07-26T22:01:00+00:00',
     }
     mock_lookup_chronos_jobs.side_effect = [[
         fake_job
@@ -184,7 +184,7 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
     fake_client = Mock(list=Mock(return_value=[('service1', 'chronos_job')]))
 
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
-        ('service1', 'chronos_job'): fake_job
+        ('service1', 'chronos_job'): fake_job,
     }
 
     # simulate a re-run where we now pass
@@ -198,7 +198,7 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
         reran_job
     ]]
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
-        ('service1', 'chronos_job'): reran_job
+        ('service1', 'chronos_job'): reran_job,
     }
 
 
@@ -210,15 +210,15 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
     fake_jobs = [[
         {
             'name': service + ' foo',
-            'lastSuccess': '2016-07-26T22:02:00+00:00'
+            'lastSuccess': '2016-07-26T22:02:00+00:00',
         },
         {
             'name': service + ' foo',
-            'lastError': latest_time
+            'lastError': latest_time,
         },
         {
-            'name': service + ' foo'
-        }
+            'name': service + ' foo',
+        },
     ] for service in services]
     fake_jobs.append([
         {
@@ -231,7 +231,7 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
         },
         {
             'name': 'service4 foo',
-        }
+        },
     ])
     mock_lookup_chronos_jobs.side_effect = fake_jobs
     mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for _ in range(0, 4)]
@@ -240,13 +240,13 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
         ('service1', 'main'),
         ('service2', 'main'),
         ('service3', 'main'),
-        ('service4', 'main')
+        ('service4', 'main'),
     ]
     fake_client = Mock(list=Mock(return_value=[
         ('service1', 'main'),
         ('service2', 'main'),
         ('service3', 'main'),
-        ('service4', 'main')
+        ('service4', 'main'),
     ]))
 
     expected = {
@@ -351,7 +351,7 @@ def test_sensu_message_status_disabled():
         service='myservice',
         instance='myinstance',
         cluster='mycluster',
-        chronos_job=fake_job
+        chronos_job=fake_job,
     )
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
@@ -375,7 +375,7 @@ def test_sensu_message_status_stuck():
         service='myservice',
         instance='myinstance',
         cluster='mycluster',
-        chronos_job=fake_job
+        chronos_job=fake_job,
     )
     assert status == pysensu_yelp.Status.CRITICAL
     assert ("Job myservice.myinstance with schedule {}"

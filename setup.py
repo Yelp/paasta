@@ -118,7 +118,7 @@ setup(
             'paasta_oom_finder=paasta_tools.oom_finder:main',
         ],
         'paste.app_factory': [
-            'paasta-api-config=paasta_tools.api.api:make_app'
+            'paasta-api-config=paasta_tools.api.api:make_app',
         ],
     },
 )

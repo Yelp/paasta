@@ -15,8 +15,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             'Cross references running containers with task ids from the mesos slave',
-            ' and optionally kills them.'
-        )
+            ' and optionally kills them.',
+        ),
     )
     parser.add_argument('-f', '--force', action="store_true",
                         help="Actually kill the containers. (defaults to dry-run)")

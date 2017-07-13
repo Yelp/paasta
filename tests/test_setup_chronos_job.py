@@ -83,7 +83,7 @@ class TestSetupChronosJob:
             }]
             mock_lookup_chronos_jobs.return_value = ret
             init_config = {
-                'name': 'foo bar'
+                'name': 'foo bar',
             }
             expected_merge = {
                 'name': 'foo bar',
@@ -108,7 +108,7 @@ class TestSetupChronosJob:
             ret = []
             mock_lookup_chronos_jobs.return_value = ret
             init_config = {
-                'name': 'foo bar'
+                'name': 'foo bar',
             }
             expected_merge = {
                 'name': 'foo bar',
@@ -238,7 +238,7 @@ class TestSetupChronosJob:
                 instance=self.fake_instance,
                 soa_dir=self.fake_args.soa_dir,
                 status=Status.CRITICAL,
-                output=expected_error_msg
+                output=expected_error_msg,
             )
 
     def test_setup_job_new_app_with_no_previous_jobs(self):
@@ -315,7 +315,7 @@ class TestSetupChronosJob:
             complete_config = chronos_tools.create_complete_config(
                 service=self.fake_service,
                 job_name=self.fake_instance,
-                soa_dir=self.fake_args.soa_dir
+                soa_dir=self.fake_args.soa_dir,
             )
             actual = setup_chronos_job.setup_job(
                 service=self.fake_service,
@@ -397,7 +397,7 @@ class TestSetupChronosJob:
                 overrides={'alert_after': '10m', 'check_every': '10s'},
                 status=fake_status,
                 output=fake_output,
-                soa_dir=fake_soa_dir
+                soa_dir=fake_soa_dir,
             )
             mock_load_chronos_job_config.assert_called_once_with(
                 service=self.fake_service,

@@ -60,7 +60,7 @@ def add_subparser(subparsers):
         status_parser.add_argument(
             '-i', '--instances',
             help='A comma-separated list of instances of the service that you '
-                 'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower
+                 'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower,
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-l', '--deploy-group',
@@ -71,7 +71,7 @@ def add_subparser(subparsers):
             '-c', '--clusters',
             help="A comma-separated list of clusters to view. "
             "For example: --clusters norcal-prod,nova-prod",
-            required=True
+            required=True,
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
@@ -141,13 +141,13 @@ def print_marathon_message(desired_state):
         paasta_print(
             "A 'start' or 'restart' command will trigger a bounce, "
             "gracefully replacing old instances according to the bounce method chosen in soa-configs. "
-            "It will also undo the effect of a previous 'stop' command."
+            "It will also undo the effect of a previous 'stop' command.",
         )
     elif desired_state == "stop":
         paasta_print(
             "A 'stop' command will signal to Marathon that the service should be in Marathon, "
             "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
-            "make the service start back up."
+            "make the service start back up.",
         )
 
 
@@ -155,12 +155,12 @@ def print_chronos_message(desired_state):
     if desired_state == "start":
         paasta_print(
             "'Start' will tell Chronos to start scheduling the job. "
-            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
+            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'.",
         )
     elif desired_state == "stop":
         paasta_print(
             "'Stop' for a Chronos job will cause the job to be disabled until the "
-            "next deploy or a 'start' command is issued."
+            "next deploy or a 'start' command is issued.",
         )
 
 

@@ -34,7 +34,7 @@ class TestPaastaQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            'paasta_tools.deployd.common.Queue', autospec=True
+            'paasta_tools.deployd.common.Queue', autospec=True,
         ) as mock_q:
             self.queue.put("human")
             mock_q.put.assert_called_with(self.queue, "human")
@@ -42,7 +42,7 @@ class TestPaastaQueue(unittest.TestCase):
 
 def test_rate_limit_instances():
     with mock.patch(
-        'time.time', autospec=True
+        'time.time', autospec=True,
     ) as mock_time:
         mock_time.return_value = 1
         mock_si_1 = ('universe', 'c137')
@@ -71,9 +71,9 @@ def test_exponential_back_off():
 
 def test_get_service_instances_needing_update():
     with mock.patch(
-        'paasta_tools.deployd.common.get_all_marathon_apps', autospec=True
+        'paasta_tools.deployd.common.get_all_marathon_apps', autospec=True,
     ) as mock_get_marathon_apps, mock.patch(
-        'paasta_tools.deployd.common.load_marathon_service_config_no_cache', autospec=True
+        'paasta_tools.deployd.common.load_marathon_service_config_no_cache', autospec=True,
     ) as mock_load_marathon_service_config:
         mock_marathon_apps = [mock.Mock(id='/universe.c137.c1.g1', instances=2),
                               mock.Mock(id='/universe.c138.c1.g1', instances=2)]
@@ -122,8 +122,8 @@ def test_get_service_instances_needing_update():
 
 def test_get_marathon_client_from_config():
     with mock.patch(
-        'paasta_tools.deployd.common.load_marathon_config', autospec=True
+        'paasta_tools.deployd.common.load_marathon_config', autospec=True,
     ), mock.patch(
-        'paasta_tools.deployd.common.get_marathon_client', autospec=True
+        'paasta_tools.deployd.common.get_marathon_client', autospec=True,
     ) as mock_marathon_client:
         assert get_marathon_client_from_config() == mock_marathon_client.return_value

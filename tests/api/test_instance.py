@@ -45,12 +45,12 @@ def test_instances_status_marathon(
     mock_validate_service_instance.return_value = 'marathon'
 
     mock_marathon_config = marathon_tools.MarathonConfig(
-        {'url': 'fake_url', 'user': 'fake_user', 'password': 'fake_password'}
+        {'url': 'fake_url', 'user': 'fake_user', 'password': 'fake_password'},
     )
     settings.marathon_client = marathon_tools.get_marathon_client(
         mock_marathon_config.get_url(),
         mock_marathon_config.get_username(),
-        mock_marathon_config.get_password()
+        mock_marathon_config.get_password(),
     )
 
     mock_get_matching_appids.return_value = ['a', 'b']

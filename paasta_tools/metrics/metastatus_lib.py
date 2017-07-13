@@ -107,7 +107,7 @@ def healthcheck_result_for_resource_utilization(resource_utilization, threshold)
     healthy = utilization <= threshold
     return HealthCheckResult(
         message=message,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -161,13 +161,13 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
         return HealthCheckResult(
             message="Memory: %0.2f / %0.2fGB in use (%s)"
             % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
                     % (threshold, perc_used, total),
-                    healthy=False
+                    healthy=False,
         )
 
 
@@ -191,12 +191,12 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
         return HealthCheckResult(
             message="Disk: %0.2f / %0.2fGB in use (%s)"
             % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)" % (threshold, perc_used),
-            healthy=False
+            healthy=False,
         )
 
 
@@ -206,7 +206,7 @@ def assert_tasks_running(metrics):
     starting = metrics['master/tasks_starting']
     return HealthCheckResult(
         message="Tasks: running: %d staging: %d starting: %d" % (running, staging, starting),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -238,7 +238,7 @@ def assert_no_duplicate_frameworks(state):
             output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
         message=("\n").join(output),
-        healthy=ok
+        healthy=ok,
     )
 
 
@@ -246,7 +246,7 @@ def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
     return HealthCheckResult(
         message="Slaves: active: %d inactive: %d" % (active, inactive),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -255,7 +255,7 @@ def assert_connected_frameworks(mesos_metrics):
     healthy = connected_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
     return HealthCheckResult(
         message="Connected Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, connected_frameworks),
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -264,7 +264,7 @@ def assert_disconnected_frameworks(mesos_metrics):
     healthy = disconnected_frameworks == 0
     return HealthCheckResult(
         message="Disconnected Frameworks: expected: 0 actual: %d" % disconnected_frameworks,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -273,7 +273,7 @@ def assert_active_frameworks(mesos_metrics):
     healthy = active_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
     return HealthCheckResult(
         message="Active Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, active_frameworks),
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -282,7 +282,7 @@ def assert_inactive_frameworks(mesos_metrics):
     healthy = inactive_frameworks == 0
     return HealthCheckResult(
         message="Inactive Frameworks: expected: 0 actual: %d" % inactive_frameworks,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -291,12 +291,12 @@ def assert_quorum_size():
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Number of masters (%d) less than configured quorum(%d)." % (masters, quorum),
-            healthy=False
+            healthy=False,
         )
 
 
@@ -364,13 +364,13 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
         "free": ResourceInfo(
             cpus=resource_free_dict['cpus'],
             disk=resource_free_dict['disk'],
-            mem=resource_free_dict['mem']
+            mem=resource_free_dict['mem'],
         ),
         "total": ResourceInfo(
             cpus=resource_total_dict['cpus'],
             disk=resource_total_dict['disk'],
             mem=resource_total_dict['mem'],
-        )
+        ),
     }
 
 
@@ -433,7 +433,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[])
     return {
         attribute_value: calculate_resource_utilization_for_slaves(
             slaves=slaves,
-            tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks)
+            tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks),
         )
         for attribute_value, slaves in slave_groupings.items()
     }
@@ -481,7 +481,7 @@ def get_framework_metrics_status(metrics):
     return [
         assert_connected_frameworks(metrics),
         assert_disconnected_frameworks(metrics),
-        assert_inactive_frameworks(metrics)
+        assert_inactive_frameworks(metrics),
     ]
 
 
@@ -546,7 +546,7 @@ def assert_chronos_queued_jobs(client):
         perc_used = 0
     return HealthCheckResult(
         message="Jobs Queued: %s (%s%%)" % (all_jobs_queued, perc_used),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -569,7 +569,7 @@ def get_marathon_client(marathon_config):
     return marathon_tools.get_marathon_client(
         marathon_config.get_url(),
         marathon_config.get_username(),
-        marathon_config.get_password()
+        marathon_config.get_password(),
     )
 
 

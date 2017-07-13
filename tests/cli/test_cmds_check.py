@@ -68,7 +68,7 @@ def test_check_paasta_check_calls_everything(
         mock_figure_out_service_name,
         mock_validate_service_name,
         mock_service_dir_check,
-        mock_git_repo_check
+        mock_git_repo_check,
 ):
     # Ensure each check in 'paasta_check' is called
 
@@ -257,9 +257,9 @@ def test_check_smartstack_check_pass(
     smartstack_dict = {
         'smartstack': {
             instance: {
-                'proxy_port': port
-            }
-        }
+                'proxy_port': port,
+            },
+        },
     }
     mock_read_service_info.return_value = smartstack_dict
     expected_output = "%s\n%s\n" \
@@ -285,8 +285,8 @@ def test_check_smartstack_check_missing_port(
     instance = 'main'
     smartstack_dict = {
         instance: {
-            'foo': 0
-        }
+            'foo': 0,
+        },
     }
     mock_read_service_info.return_value = smartstack_dict
     expected_output = "%s\n%s\n" \
@@ -350,7 +350,7 @@ def test_makefile_has_a_tab_true():
     with patch(
         'paasta_tools.cli.cmds.check.get_file_contents',
         autospec=True,
-        return_value=fake_contents
+        return_value=fake_contents,
     ):
         assert makefile_has_a_tab(fake_makefile_path) is True
 
@@ -361,7 +361,7 @@ def test_makefile_has_a_tab_false():
     with patch(
         'paasta_tools.cli.cmds.check.get_file_contents',
         autospec=True,
-        return_value=fake_contents
+        return_value=fake_contents,
     ):
         assert makefile_has_a_tab(fake_makefile_path) is False
 
@@ -372,7 +372,7 @@ def test_makefile_has_docker_tag_true():
     with patch(
         'paasta_tools.cli.cmds.check.get_file_contents',
         autospec=True,
-        return_value=fake_contents
+        return_value=fake_contents,
     ):
         assert makefile_has_docker_tag(fake_makefile_path) is True
 
@@ -383,7 +383,7 @@ def test_makefile_has_docker_tag_false():
     with patch(
         'paasta_tools.cli.cmds.check.get_file_contents',
         autospec=True,
-        return_value=fake_contents
+        return_value=fake_contents,
     ):
         assert makefile_has_docker_tag(fake_makefile_path) is False
 
@@ -538,7 +538,7 @@ def test_makefile_check():
     with patch(
         'paasta_tools.cli.cmds.check.get_file_contents',
         autospec=True,
-        return_value=fake_contents
+        return_value=fake_contents,
     ), patch(
         'paasta_tools.cli.cmds.check.makefile_has_a_tab',
         autospec=True,
@@ -551,7 +551,7 @@ def test_makefile_check():
     ) as mock_makefile_has_docker_tag, patch(
         'paasta_tools.cli.cmds.check.is_file_in_dir',
         autospec=True,
-        return_value=fake_makefile_path
+        return_value=fake_makefile_path,
     ):
         makefile_check()
         assert mock_makefile_has_a_tab.call_count == 1

@@ -61,9 +61,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_watch_folder(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.ChildrenWatch', autospec=True
+            'paasta_tools.deployd.watchers.ChildrenWatch', autospec=True,
         ) as mock_children_watch, mock.patch(
-            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_node', autospec=True
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_node', autospec=True,
         ) as mock_watch_node:
             self.watcher.watch_folder('/path/autoscaling.lock')
             assert not mock_children_watch.called
@@ -104,7 +104,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_watch_node(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.DataWatch', autospec=True
+            'paasta_tools.deployd.watchers.DataWatch', autospec=True,
         ) as mock_data_watch:
             self.watcher.watch_node('/some/node')
             mock_data_watch.assert_called_with(self.mock_zk,
@@ -114,9 +114,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_process_node_event(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.EventType', autospec=True
+            'paasta_tools.deployd.watchers.EventType', autospec=True,
         ) as mock_event_type, mock.patch(
-            'time.time', autospec=True, return_value=1
+            'time.time', autospec=True, return_value=1,
         ):
             mock_event_other = mock_event_type.DELETED
             mock_event = mock.Mock(type=mock_event_other,
@@ -147,9 +147,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_process_folder_event(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.EventType', autospec=True
+            'paasta_tools.deployd.watchers.EventType', autospec=True,
         ) as mock_event_type, mock.patch(
-            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True,
         ) as mock_watch_folder:
             mock_event_other = mock_event_type.DELETED
             mock_event = mock.Mock(type=mock_event_other,
@@ -167,9 +167,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_run(self):
         with mock.patch(
-            'time.sleep', autospec=True, side_effect=LoopBreak
+            'time.sleep', autospec=True, side_effect=LoopBreak,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True
+            'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True,
         ) as mock_watch_folder:
             assert not self.watcher.is_ready
             with raises(LoopBreak):
@@ -186,13 +186,13 @@ class TestSoaFileWatcher(unittest.TestCase):
     def setUp(self):
         mock_inbox_q = mock.Mock()
         with mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler', autospec=True
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.Notifier', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.Notifier', autospec=True,
         ) as mock_notifier_class, mock.patch(
-            'paasta_tools.deployd.watchers.SoaFileWatcher.mask', autospec=True
+            'paasta_tools.deployd.watchers.SoaFileWatcher.mask', autospec=True,
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
@@ -201,7 +201,7 @@ class TestSoaFileWatcher(unittest.TestCase):
 
     def test_mask(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.EventsCodes', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.EventsCodes', autospec=True,
         ) as mock_event_codes:
             mock_event_codes.OP_FLAGS = {'UNION_JACK': 1, 'STARS_AND_STRIPES': 2, 'IN_OPEN': 4}
             assert self.watcher.mask == 3
@@ -220,13 +220,13 @@ class TestPublicConfigWatcher(unittest.TestCase):
     def setUp(self):
         mock_inbox_q = mock.Mock()
         with mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.PublicConfigEventHandler', autospec=True
+            'paasta_tools.deployd.watchers.PublicConfigEventHandler', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.Notifier', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.Notifier', autospec=True,
         ) as mock_notifier_class, mock.patch(
-            'paasta_tools.deployd.watchers.PublicConfigFileWatcher.mask', autospec=True
+            'paasta_tools.deployd.watchers.PublicConfigFileWatcher.mask', autospec=True,
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
@@ -235,7 +235,7 @@ class TestPublicConfigWatcher(unittest.TestCase):
 
     def test_mask(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.pyinotify.EventsCodes', autospec=True
+            'paasta_tools.deployd.watchers.pyinotify.EventsCodes', autospec=True,
         ) as mock_event_codes:
             mock_event_codes.OP_FLAGS = {'UNION_JACK': 1, 'STARS_AND_STRIPES': 2, 'IN_OPEN': 4}
             assert self.watcher.mask == 3
@@ -256,13 +256,13 @@ class TestMaintenanceWatcher(unittest.TestCase):
         self.mock_marathon_client = mock.Mock()
         mock_config = mock.Mock(get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20))
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
         ):
             self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod", config=mock_config)
 
     def test_get_new_draining_hosts(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_draining_hosts', autospec=True
+            'paasta_tools.deployd.watchers.get_draining_hosts', autospec=True,
         ) as mock_get_draining_hosts:
 
             mock_get_draining_hosts.return_value = ['host1', 'host2']
@@ -288,11 +288,11 @@ class TestMaintenanceWatcher(unittest.TestCase):
 
     def test_run(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_new_draining_hosts', autospec=True
+            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_new_draining_hosts', autospec=True,
         ) as mock_get_new_draining_hosts, mock.patch(
-            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_at_risk_service_instances', autospec=True
+            'paasta_tools.deployd.watchers.MaintenanceWatcher.get_at_risk_service_instances', autospec=True,
         ) as mock_get_at_risk_service_instances, mock.patch(
-            'time.sleep', autospec=True, side_effect=LoopBreak
+            'time.sleep', autospec=True, side_effect=LoopBreak,
         ):
             mock_get_new_draining_hosts.return_value = []
             assert not self.watcher.is_ready
@@ -312,9 +312,9 @@ class TestMaintenanceWatcher(unittest.TestCase):
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True
+            'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True,
         ) as mock_get_marathon_apps, mock.patch(
-            'time.time', autospec=True, return_value=1
+            'time.time', autospec=True, return_value=1,
         ):
             mock_marathon_apps = [mock.Mock(tasks=[mock.Mock(host='host1',
                                                              app_id='/universe.c137.configsha.gitsha'),
@@ -347,9 +347,9 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         self.mock_filewatcher = mock.Mock()
         self.mock_config = mock.Mock(get_cluster=mock.Mock())
         with mock.patch(
-            'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True, return_value=self.mock_config
+            'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True, return_value=self.mock_config,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
         ):
             self.handler.my_init(self.mock_filewatcher)
 
@@ -382,18 +382,18 @@ class TestPublicConfigEventHandler(unittest.TestCase):
 
     def test_process_default(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.PublicConfigEventHandler.filter_event', autospec=True
+            'paasta_tools.deployd.watchers.PublicConfigEventHandler.filter_event', autospec=True,
         ) as mock_filter_event, mock.patch(
-            'paasta_tools.deployd.watchers.PublicConfigEventHandler.watch_new_folder', autospec=True
+            'paasta_tools.deployd.watchers.PublicConfigEventHandler.watch_new_folder', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.get_services_for_cluster', autospec=True
+            'paasta_tools.deployd.watchers.get_services_for_cluster', autospec=True,
         ) as mock_get_services_for_cluster, mock.patch(
             'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True,
         ) as mock_load_system_config, mock.patch(
             'paasta_tools.deployd.watchers.get_service_instances_needing_update',
-            autospec=True
+            autospec=True,
         ) as mock_get_service_instances_needing_update, mock.patch(
-            'paasta_tools.deployd.watchers.rate_limit_instances', autospec=True
+            'paasta_tools.deployd.watchers.rate_limit_instances', autospec=True,
         ) as mock_rate_limit_instances:
             mock_event = mock.Mock()
             mock_filter_event.return_value = mock_event
@@ -431,7 +431,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         self.handler = YelpSoaEventHandler()
         self.mock_filewatcher = mock.Mock()
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True
+            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
         ):
             self.handler.my_init(self.mock_filewatcher)
 
@@ -452,9 +452,9 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
     def test_watch_new_folder(self):
         with mock.patch(
-            'os.listdir', autospec=True
+            'os.listdir', autospec=True,
         ) as mock_os_list, mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True,
         ) as mock_bounce_service:
             mock_os_list.return_value = ["some.file", "some_other.file"]
             mock_event = mock.Mock(maskname='MAJORAS', pathname='/some/path')
@@ -482,11 +482,11 @@ class TestYelpSoaEventHandler(unittest.TestCase):
     def test_process_default(self):
         mock_event = mock.Mock(path='/folder/universe')
         with mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True,
         ) as mock_bounce_service, mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler.watch_new_folder', autospec=True
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.watch_new_folder', autospec=True,
         ) as mock_watch_folder, mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler.filter_event', autospec=True
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.filter_event', autospec=True,
         ) as mock_filter_event:
             mock_filter_event.return_value = mock_event
             self.handler.process_default(mock_event)
@@ -496,11 +496,11 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
     def test_bounce_service(self):
         with mock.patch(
-            'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True
+            'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True,
         ) as mock_list_instances, mock.patch(
-            'paasta_tools.deployd.watchers.get_service_instances_needing_update', autospec=True
+            'paasta_tools.deployd.watchers.get_service_instances_needing_update', autospec=True,
         ) as mock_get_service_instances_needing_update, mock.patch(
-            'time.time', autospec=True, return_value=1
+            'time.time', autospec=True, return_value=1,
         ):
             mock_list_instances.return_value = ['c137', 'c138']
             mock_get_service_instances_needing_update.return_value = [('universe', 'c137')]

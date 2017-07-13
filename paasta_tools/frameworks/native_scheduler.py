@@ -58,7 +58,7 @@ class MesosTaskParameters(object):
         is_draining=False,
         is_healthy=False,
         staging_timer=None,
-        offer=None
+        offer=None,
     ):
         self.health = health
         self.mesos_task_state = mesos_task_state
@@ -170,7 +170,7 @@ class NativeScheduler(Scheduler):
                             staging_timer = self.staging_timer_for_task(
                                 self.staging_timeout,
                                 driver,
-                                task.task_id.value
+                                task.task_id.value,
                             )
                             self.tasks_with_flags.setdefault(
                                 task.task_id.value,
@@ -294,7 +294,7 @@ class NativeScheduler(Scheduler):
 
             task = copy.deepcopy(base_task)
             task.task_id = Dict(
-                value='{}.{}'.format(task.name, uuid.uuid4().hex)
+                value='{}.{}'.format(task.name, uuid.uuid4().hex),
             )
 
             task.container.docker.port_mappings[0].host_port = task_port
@@ -345,7 +345,7 @@ class NativeScheduler(Scheduler):
         # update tasks
         task_id = update.task_id.value
         paasta_print('Task {} is in state {}'.format(
-            task_id, update.state
+            task_id, update.state,
         ))
 
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
@@ -473,7 +473,7 @@ class NativeScheduler(Scheduler):
             instance_type=self.instance_type,
             cluster=self.cluster,
             soa_dir=self.soa_dir,
-            config_overrides=self.service_config_overrides
+            config_overrides=self.service_config_overrides,
         )
         self.recreate_drain_method()
         self.reload_constraints()
@@ -532,10 +532,10 @@ def create_driver(
     framework_name,
     scheduler,
     system_paasta_config,
-    implicit_acks=False
+    implicit_acks=False,
 ):
     master_uri = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
     framework = Dict(
@@ -544,7 +544,7 @@ def create_driver(
         failover_timeout=604800,
         id=Dict(value=find_existing_id_if_exists_or_gen_new(framework_name)),
         checkpoint=True,
-        principal=system_paasta_config.get_paasta_native_config()['principal']
+        principal=system_paasta_config.get_paasta_native_config()['principal'],
     )
 
     driver = MesosSchedulerDriver(

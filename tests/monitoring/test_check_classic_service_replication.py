@@ -70,8 +70,8 @@ def test_do_replication_check():
         'replication': {
             'key': 'test_key',
             'default': 'test_default',
-            'map': 'test_map'
-        }
+            'map': 'test_map',
+        },
     }
 
     with mock.patch(
@@ -90,7 +90,7 @@ def test_do_replication_check():
             'page': False,
             'check_every': '1m',
             'alert_after': '0s',
-            'realert_every': -1
+            'realert_every': -1,
         }
         results = do_replication_check('test_service', mock_default_data,
                                        3)
@@ -107,7 +107,7 @@ def test_do_replication_check():
             'page': 'test_page',
             'check_every': '1m',
             'alert_after': 'test_alert_after',
-            'realert_every': 'test_realert_every'
+            'realert_every': 'test_realert_every',
         }
         results = do_replication_check('test_service', mock_specific_data,
                                        3)
@@ -121,7 +121,7 @@ def test_extract_replication_info_valid_data():
 
     mock_valid_data = {
         'team': 'test_team',
-        'service_type': 'classic'
+        'service_type': 'classic',
     }
     with mock.patch(extract_method, return_value=mock_valid_data, autospec=True):
         expected = (True, mock_valid_data)
@@ -135,7 +135,7 @@ def test_extract_replication_info_non_classic_data():
     extract_method = check_classic_module + '.extract_monitoring_info'
     mock_valid_non_classic_data = {
         'team': 'test_team',
-        'service_type': 'not_classic'
+        'service_type': 'not_classic',
     }
     with mock.patch(extract_method, return_value=mock_valid_non_classic_data, autospec=True):
         expected = (False, {})
@@ -150,7 +150,7 @@ def test_extract_replication_info_valid_team_no_email():
     mock_valid_team_no_email = {
         'team': 'test_team',
         'notification_email': None,
-        'service_type': 'classic'
+        'service_type': 'classic',
     }
     with mock.patch(extract_method, return_value=mock_valid_team_no_email, autospec=True):
         expected = (True, mock_valid_team_no_email)

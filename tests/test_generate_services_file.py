@@ -42,12 +42,12 @@ def test_generate_configuration(mock_namespaces):
     expected = {
         'foo.main': {
             'host': '169.254.255.254',
-            'port': 1024
+            'port': 1024,
         },
         'bar.canary': {
             'host': '169.254.255.254',
-            'port': 1025
-        }
+            'port': 1025,
+        },
     }
     assert expected == generate_services_file.generate_configuration()
 

@@ -79,7 +79,7 @@ def humanize_bytes(b):
         (1 << 30, 'GB'),
         (1 << 20, 'MB'),
         (1 << 10, 'kB'),
-        (1, 'B')
+        (1, 'B'),
     )
     for factor, suffix in abbrevs:
         if b >= factor:

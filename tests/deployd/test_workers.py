@@ -19,10 +19,10 @@ class TestPaastaDeployWorker(unittest.TestCase):
         self.mock_metrics = mock.Mock()
         mock_config = mock.Mock(
             get_cluster=mock.Mock(return_value='westeros-prod'),
-            get_deployd_worker_failure_backoff_factor=mock.Mock(return_value=30)
+            get_deployd_worker_failure_backoff_factor=mock.Mock(return_value=30),
         )
         with mock.patch(
-            'paasta_tools.deployd.workers.PaastaDeployWorker.setup', autospec=True
+            'paasta_tools.deployd.workers.PaastaDeployWorker.setup', autospec=True,
         ):
             self.worker = PaastaDeployWorker(1,
                                              self.mock_inbox_q,
@@ -32,9 +32,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
 
     def test_setup(self):
         with mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.load_marathon_config', autospec=True
+            'paasta_tools.deployd.workers.marathon_tools.load_marathon_config', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_marathon_client', autospec=True
+            'paasta_tools.deployd.workers.marathon_tools.get_marathon_client', autospec=True,
         ):
             self.worker.setup()
 
@@ -63,15 +63,15 @@ class TestPaastaDeployWorker(unittest.TestCase):
 
     def test_run(self):
         with mock.patch(
-            'time.sleep', autospec=True
+            'time.sleep', autospec=True,
         ) as mock_sleep, mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True
+            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True,
         ) as mock_get_all_marathon_apps, mock.patch(
-            'paasta_tools.deployd.workers.PaastaDeployWorker.setup_timers', autospec=True
+            'paasta_tools.deployd.workers.PaastaDeployWorker.setup_timers', autospec=True,
         ) as mock_setup_timers, mock.patch(
-            'paasta_tools.deployd.workers.deploy_marathon_service', autospec=True
+            'paasta_tools.deployd.workers.deploy_marathon_service', autospec=True,
         ) as mock_deploy_marathon_service, mock.patch(
-            'time.time', autospec=True, return_value=1
+            'time.time', autospec=True, return_value=1,
         ):
             mock_sleep.side_effect = LoopBreak
             self.worker.marathon_client = mock.Mock()

@@ -169,7 +169,7 @@ def message_for_status(status, service, instance, cluster):
             'service': service,
             'instance': instance,
             'cluster': cluster,
-            'separator': utils.SPACER
+            'separator': utils.SPACER,
         }
     elif status == pysensu_yelp.Status.UNKNOWN:
         return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
@@ -217,7 +217,7 @@ def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
                  'interval': human_readable_time_interval(interval_in_seconds // 60),
                  'last_run': last_run_local,
                  'schedule': schedule,
-                 'timezone': schedule_timezone
+                 'timezone': schedule_timezone,
                  }
 
 
@@ -286,12 +286,12 @@ def main():
                 service=service,
                 instance=instance,
                 cluster=cluster,
-                chronos_job=chronos_job
+                chronos_job=chronos_job,
             )
             if sensu_status is not None:
                 monitoring_overrides = compose_monitoring_overrides_for_service(
                     chronos_job_config=chronos_job_config,
-                    soa_dir=soa_dir
+                    soa_dir=soa_dir,
                 )
                 send_event(
                     service=service,

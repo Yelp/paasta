@@ -185,7 +185,7 @@ def test_main():
         json_dump_patch.assert_called_once_with(
             {
                 'v1': {
-                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'},
                 },
                 'v2': mock.sentinel.v2_mappings,
             },
@@ -196,7 +196,7 @@ def test_main():
         # test no update to file if content unchanged
         json_load_patch.return_value = {
             'v1': {
-                'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'},
             },
             'v2': mock.sentinel.v2_mappings,
         }

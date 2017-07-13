@@ -135,8 +135,8 @@ def test_get_machine_ids_one_host(
     expected = [
         {
             'hostname': hostname,
-            'ip': ip
-        }
+            'ip': ip,
+        },
     ]
     assert get_machine_ids(hostnames) == expected
 
@@ -156,16 +156,16 @@ def test_get_machine_ids_multiple_hosts(
     expected = [
         {
             'hostname': hostname1,
-            'ip': ip1
+            'ip': ip1,
         },
         {
             'hostname': hostname2,
-            'ip': ip2
+            'ip': ip2,
         },
         {
             'hostname': hostname3,
-            'ip': ip3
-        }
+            'ip': ip3,
+        },
     ]
     assert get_machine_ids(hostnames) == expected
 
@@ -181,16 +181,16 @@ def test_get_machine_ids_multiple_hosts_ips():
     expected = [
         {
             'hostname': hostname1,
-            'ip': ip1
+            'ip': ip1,
         },
         {
             'hostname': hostname2,
-            'ip': ip2
+            'ip': ip2,
         },
         {
             'hostname': hostname3,
-            'ip': ip3
-        }
+            'ip': ip3,
+        },
     ]
     assert get_machine_ids(hostnames) == expected
 
@@ -298,23 +298,23 @@ def test_build_maintenance_schedule_payload_schedule(
             {
                 "machine_ids": [
                     {"hostname": "machine1", "ip": "10.0.0.1"},
-                    {"hostname": "machine2", "ip": "10.0.0.2"}
+                    {"hostname": "machine2", "ip": "10.0.0.2"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443830400000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
             {
                 "machine_ids": [
-                    {"hostname": "machine3", "ip": "10.0.0.3"}
+                    {"hostname": "machine3", "ip": "10.0.0.3"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443834000000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
-            }
-        ]
+                    "duration": {"nanoseconds": 3600000000000},
+                },
+            },
+        ],
     }
     machine_ids = [{'hostname': 'machine2', 'ip': '10.0.0.2'}]
     mock_get_machine_ids.return_value = machine_ids
@@ -333,26 +333,26 @@ def test_build_maintenance_schedule_payload_schedule(
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443830400000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
             {
                 "machine_ids": [
-                    {"hostname": "machine3", "ip": "10.0.0.3"}
+                    {"hostname": "machine3", "ip": "10.0.0.3"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443834000000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
             {
                 "machine_ids": machine_ids,
                 "unavailability": {
                     "start": {"nanoseconds": int(start)},
-                    "duration": {"nanoseconds": int(duration)}
-                }
-            }
-        ]
+                    "duration": {"nanoseconds": int(duration)},
+                },
+            },
+        ],
     }
     assert actual == expected
 
@@ -368,23 +368,23 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
             {
                 "machine_ids": [
                     {"hostname": "machine1", "ip": "10.0.0.1"},
-                    {"hostname": "machine2", "ip": "10.0.0.2"}
+                    {"hostname": "machine2", "ip": "10.0.0.2"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443830400000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
             {
                 "machine_ids": [
-                    {"hostname": "machine3", "ip": "10.0.0.3"}
+                    {"hostname": "machine3", "ip": "10.0.0.3"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443834000000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
-            }
-        ]
+                    "duration": {"nanoseconds": 3600000000000},
+                },
+            },
+        ],
     }
     machine_ids = [{'hostname': 'machine2', 'ip': '10.0.0.2'}]
     mock_get_machine_ids.return_value = machine_ids
@@ -403,19 +403,19 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443830400000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
             {
                 "machine_ids": [
-                    {"hostname": "machine3", "ip": "10.0.0.3"}
+                    {"hostname": "machine3", "ip": "10.0.0.3"},
                 ],
                 "unavailability": {
                     "start": {"nanoseconds": 1443834000000000000},
-                    "duration": {"nanoseconds": 3600000000000}
-                }
+                    "duration": {"nanoseconds": 3600000000000},
+                },
             },
-        ]
+        ],
     }
     assert actual == expected
 
@@ -659,13 +659,13 @@ def test_get_hosts_with_state_draining(
         "draining_machines": [
             {
                 "hostname": "fake-host1.fakesite.something",
-                "ip": "0.0.0.0"
+                "ip": "0.0.0.0",
             },
             {
                 "hostname": "fake-host2.fakesite.something",
-                "ip": "0.0.0.1"
-            }
-        ]
+                "ip": "0.0.0.1",
+            },
+        ],
     }
     mock_get_maintenance_status.return_value = mock.Mock()
     mock_get_maintenance_status.return_value.json.return_value = fake_status
@@ -681,13 +681,13 @@ def test_get_hosts_with_state_down(
         "down_machines": [
             {
                 "hostname": "fake-host1.fakesite.something",
-                "ip": "0.0.0.0"
+                "ip": "0.0.0.0",
             },
             {
                 "hostname": "fake-host2.fakesite.something",
-                "ip": "0.0.0.1"
-            }
-        ]
+                "ip": "0.0.0.1",
+            },
+        ],
     }
     mock_get_maintenance_status.return_value = mock.Mock()
     mock_get_maintenance_status.return_value.json.return_value = fake_status
@@ -779,28 +779,28 @@ def test_get_hosts_past_maintenance_start(
             {
                 "machine_ids": [
                     {
-                        "hostname": "host3"
-                    }
+                        "hostname": "host3",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 10
-                    }
-                }
+                        "nanoseconds": 10,
+                    },
+                },
             },
             {
                 "machine_ids": [
                     {
-                        "hostname": "host2"
-                    }
+                        "hostname": "host2",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 5
-                    }
-                }
-            }
-        ]
+                        "nanoseconds": 5,
+                    },
+                },
+            },
+        ],
     }
     mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
@@ -826,28 +826,28 @@ def test_get_hosts_past_maintenance_start_grace(
             {
                 "machine_ids": [
                     {
-                        "hostname": "host3"
-                    }
+                        "hostname": "host3",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 10
-                    }
-                }
+                        "nanoseconds": 10,
+                    },
+                },
             },
             {
                 "machine_ids": [
                     {
-                        "hostname": "host2"
-                    }
+                        "hostname": "host2",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 5
-                    }
-                }
-            }
-        ]
+                        "nanoseconds": 5,
+                    },
+                },
+            },
+        ],
     }
     mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
@@ -870,34 +870,34 @@ def test_get_hosts_past_maintenance_end(
             {
                 "machine_ids": [
                     {
-                        "hostname": "host3"
-                    }
+                        "hostname": "host3",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 10
+                        "nanoseconds": 10,
                     },
                     "duration": {
-                        "nanoseconds": 20
-                    }
-                }
+                        "nanoseconds": 20,
+                    },
+                },
             },
             {
                 "machine_ids": [
                     {
-                        "hostname": "host2"
-                    }
+                        "hostname": "host2",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 5
+                        "nanoseconds": 5,
                     },
                     "duration": {
-                        "nanoseconds": 10
-                    }
-                }
-            }
-        ]
+                        "nanoseconds": 10,
+                    },
+                },
+            },
+        ],
     }
     mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)
@@ -924,34 +924,34 @@ def test_get_hosts_past_maintenance_end_grace(
             {
                 "machine_ids": [
                     {
-                        "hostname": "host3"
-                    }
+                        "hostname": "host3",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 10
+                        "nanoseconds": 10,
                     },
                     "duration": {
-                        "nanoseconds": 20
-                    }
-                }
+                        "nanoseconds": 20,
+                    },
+                },
             },
             {
                 "machine_ids": [
                     {
-                        "hostname": "host2"
-                    }
+                        "hostname": "host2",
+                    },
                 ],
                 "unavailability": {
                     "start": {
-                        "nanoseconds": 5
+                        "nanoseconds": 5,
                     },
                     "duration": {
-                        "nanoseconds": 10
-                    }
-                }
-            }
-        ]
+                        "nanoseconds": 10,
+                    },
+                },
+            },
+        ],
     }
     mock_maintenance_dict = mock.Mock(return_value=mock_schedule)
     mock_get_maintenance_schedule.return_value = mock.Mock(json=mock_maintenance_dict)

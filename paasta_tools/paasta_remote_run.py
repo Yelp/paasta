@@ -87,7 +87,7 @@ def extract_args(args):
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and remote-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA."
+                "the same way it would behave on a server configured for PaaSTA.",
             ),
             sep='\n',
         )
@@ -131,7 +131,7 @@ def paasta_to_task_config_kwargs(
         cluster,
         soa_dir=soa_dir,
         instance_type=instance_type,
-        config_overrides=config_overrides
+        config_overrides=config_overrides,
     )
 
     image = native_job_config.get_docker_url()
@@ -142,7 +142,7 @@ def paasta_to_task_config_kwargs(
     # network = native_job_config.get_mesos_network_mode()
 
     docker_volumes = native_job_config.get_volumes(
-        system_volumes=system_paasta_config.get_volumes()
+        system_volumes=system_paasta_config.get_volumes(),
     )
     volumes = [
         {
@@ -169,7 +169,7 @@ def paasta_to_task_config_kwargs(
         # 'cap_add'
         # 'ulimit'
         'uris': [uris],
-        'docker_parameters': docker_parameters
+        'docker_parameters': docker_parameters,
     }
 
     config_hash = get_config_hash(
@@ -195,7 +195,7 @@ def build_executor_stack(
         system_paasta_config,
         framework_staging_timeout):
     mesos_address = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
     taskproc_config = system_paasta_config.get('taskproc')
@@ -208,10 +208,10 @@ def build_executor_stack(
         framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
-            run_id
+            run_id,
         ),
         framework_staging_timeout=framework_staging_timeout,
-        initial_decline_delay=0.5
+        initial_decline_delay=0.5,
     )
     retrying_executor = RetryingExecutor(mesos_executor)
     return retrying_executor
@@ -275,7 +275,7 @@ def remote_run_start(args):
         instance,
         run_id,
         system_paasta_config,
-        args.staging_timeout
+        args.staging_timeout,
     )
     runner = Sync(executor_stack)
 
@@ -362,7 +362,7 @@ def main(argv):
     actions = {
         'start': remote_run_start,
         'stop': remote_run_stop,
-        'list': remote_run_list
+        'list': remote_run_list,
     }
     actions[args.action](args)
 

@@ -327,7 +327,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
         fobjs = list(cluster.get_files_for_tasks(
             task_list=[task],
             file_list=['stdout', 'stderr'],
-            max_workers=mesos_cli_config["max_workers"]
+            max_workers=mesos_cli_config["max_workers"],
         ))
         fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
@@ -392,7 +392,7 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     output = []
     output.append(colorize("  %s" % list_title))
     table_rows = [
-        [colorize(th) for th in table_header]
+        [colorize(th) for th in table_header],
     ]
     for task in tasks:
         table_rows.append(format_task_row(task, get_short_task_id))
@@ -427,7 +427,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
         "Host deployed to",
         "Ram",
         "CPU",
-        "Deployed at what localtime"
+        "Deployed at what localtime",
     ]
     output.extend(format_task_list(
         tasks=running_and_active_tasks,
@@ -481,7 +481,7 @@ def get_local_slave_state(hostname=None):
         raise MesosSlaveConnectionError(
             'Could not connect to the mesos slave to see which services are running\n'
             'on %s. Is the mesos-slave running?\n'
-            'Error was: %s\n' % (e.request.url, str(e))
+            'Error was: %s\n' % (e.request.url, str(e)),
         )
     response.raise_for_status()
     return json.loads(response.text)
@@ -561,11 +561,11 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     """
     sorted_slaves = sorted(
         slaves,
-        key=lambda slave: slave['attributes'].get(attribute)
+        key=lambda slave: slave['attributes'].get(attribute),
     )
     return {key: list(group) for key, group in itertools.groupby(
         sorted_slaves,
-        key=lambda slave: slave['attributes'].get(attribute)
+        key=lambda slave: slave['attributes'].get(attribute),
     ) if key}
 
 

@@ -106,7 +106,7 @@ def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_serv
     except TimeoutError as e:
         log.error(
             'Unable to update firewalls for {} because time-out obtaining flock: {}'.format(
-                service_groups.keys(), e)
+                service_groups.keys(), e),
         )
 
 

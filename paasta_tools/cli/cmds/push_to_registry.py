@@ -121,7 +121,7 @@ def paasta_push_to_registry(args):
         log=True,
         component='build',
         service=service,
-        loglevel='debug'
+        loglevel='debug',
     )
     if returncode != 0:
         loglines.append('ERROR: Failed to promote image for %s.' % args.commit)

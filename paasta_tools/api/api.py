@@ -42,7 +42,7 @@ def parse_paasta_api_args():
         '-D', '--debug',
         dest='debug',
         action='store_true', default=False,
-        help="output the debug logs"
+        help="output the debug logs",
     )
     parser.add_argument(
         'port', type=int,
@@ -50,7 +50,7 @@ def parse_paasta_api_args():
     parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
-        help="define a different soa config directory"
+        help="define a different soa config directory",
     )
     args = parser.parse_args()
     return args
@@ -91,7 +91,7 @@ def setup_paasta_api():
     settings.marathon_client = marathon_tools.get_marathon_client(
         marathon_config.get_url(),
         marathon_config.get_username(),
-        marathon_config.get_password()
+        marathon_config.get_password(),
     )
 
     # Set up transparent cache for http API calls. With expire_after, responses

@@ -65,13 +65,13 @@ def add_subparser(subparsers):
     )
     check_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect. Defaults to autodetect.'
+        help='The name of the service you wish to inspect. Defaults to autodetect.',
     ).completer = lazy_choices_completer(list_services)
     check_parser.add_argument(
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=DEFAULT_SOA_DIR
+        default=DEFAULT_SOA_DIR,
     )
     check_parser.set_defaults(command=paasta_check)
 

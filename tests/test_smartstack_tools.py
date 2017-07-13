@@ -54,15 +54,15 @@ def test_get_smartstack_replication_for_attribute():
         {
             'hostname': 'hostone',
             'attributes': {
-                'fake_attribute': 'foo'
-            }
+                'fake_attribute': 'foo',
+            },
         },
         {
             'hostname': 'hostone',
             'attributes': {
-                'fake_attribute': 'bar'
-            }
-        }
+                'fake_attribute': 'bar',
+            },
+        },
     ]
 
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
@@ -75,7 +75,7 @@ def test_get_smartstack_replication_for_attribute():
     ) as mock_get_replication_for_services:
         expected = {
             'foo': {},
-            'bar': {}
+            'bar': {},
         }
         actual = smartstack_tools.get_smartstack_replication_for_attribute(
             attribute='fake_attribute',
@@ -86,7 +86,7 @@ def test_get_smartstack_replication_for_attribute():
         )
         mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
             blacklist=[],
-            whitelist=[]
+            whitelist=[],
         )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
@@ -114,13 +114,13 @@ def test_get_replication_for_service():
             'fake_host',
             6666,
             DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-            ['service1', 'service2', 'service3', 'service4']
+            ['service1', 'service2', 'service3', 'service4'],
         )
         expected = {
             'service1': 18,
             'service2': 19,
             'service3': 0,
-            'service4': 3
+            'service4': 3,
         }
         assert expected == replication_result
 

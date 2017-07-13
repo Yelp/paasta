@@ -52,7 +52,7 @@ def test_execute_in_container_reuses_exec():
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', fake_command],
-        }
+        },
     }
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
@@ -72,14 +72,14 @@ def test_execute_in_container_reuses_only_valid_exec():
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', 'some_other_command'],
-        }
+        },
     }
     good_exec = {
         'ExitCode': fake_return_code,
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', fake_command],
-        }
+        },
     }
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.inspect_container.return_value = {'ExecIDs': ['fake_other_exec', fake_execid, 'fake_other_exec']}

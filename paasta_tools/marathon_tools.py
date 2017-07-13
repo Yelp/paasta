@@ -142,7 +142,7 @@ def load_marathon_service_config_no_cache(service, instance, cluster, load_deplo
 
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
+            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file),
         )
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
@@ -207,7 +207,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             self.instance,
             self.config_dict,
             self.branch_dict,
-            self.soa_dir
+            self.soa_dir,
         )
 
     def copy(self):
@@ -217,7 +217,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             cluster=self.cluster,
             config_dict=dict(self.config_dict),
             branch_dict=dict(self.branch_dict),
-            soa_dir=self.soa_dir
+            soa_dir=self.soa_dir,
         )
 
     def get_autoscaling_params(self):
@@ -267,10 +267,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         """
         constraints = self.get_constraints()
         blacklist = self.get_deploy_blacklist(
-            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
         )
         whitelist = self.get_deploy_whitelist(
-            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
         )
         if constraints is not None:
             return constraints
@@ -309,10 +309,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         filtered_slaves = filter_mesos_slaves_by_blacklist(
             slaves=fake_slaves,
             blacklist=self.get_deploy_blacklist(
-                system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+                system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
             ),
             whitelist=self.get_deploy_whitelist(
-                system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+                system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
             ),
         )
         if not filtered_slaves:
@@ -321,12 +321,12 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                     "We do not believe any slaves on the cluster will match the constraints for %s.%s. If you believe "
                     "this is incorrect, have your system administrator adjust the value of expected_slave_attributes "
                     "in the system paasta configs."
-                ) % (self.service, self.instance)
+                ) % (self.service, self.instance),
             )
 
         value_dict = get_mesos_slaves_grouped_by_attribute(
             filtered_slaves,
-            discover_level
+            discover_level,
         )
         routing_constraints = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
@@ -389,7 +389,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'disk': float(self.get_disk()),
             'constraints': self.get_calculated_constraints(
                 system_paasta_config=system_paasta_config,
-                service_namespace_config=service_namespace_config
+                service_namespace_config=service_namespace_config,
             ),
             'instances': self.get_desired_instances(),
             'cmd': self.get_cmd(),
@@ -479,7 +479,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                     "intervalSeconds": intervalseconds,
                     "portIndex": 0,
                     "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
+                    "maxConsecutiveFailures": maxconsecutivefailures,
                 },
             ]
         elif mode == 'tcp':
@@ -490,7 +490,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                     "intervalSeconds": intervalseconds,
                     "portIndex": 0,
                     "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
+                    "maxConsecutiveFailures": maxconsecutivefailures,
                 },
             ]
         elif mode == 'cmd':
@@ -501,7 +501,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                     "gracePeriodSeconds": graceperiodseconds,
                     "intervalSeconds": intervalseconds,
                     "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
+                    "maxConsecutiveFailures": maxconsecutivefailures,
                 },
             ]
         elif mode is None:
@@ -641,7 +641,7 @@ def read_all_registrations_for_service_instance(service, instance, cluster=None,
         cluster = load_system_paasta_config().get_cluster()
 
     marathon_service_config = load_marathon_service_config(
-        service, instance, cluster, load_deployments=False, soa_dir=soa_dir
+        service, instance, cluster, load_deployments=False, soa_dir=soa_dir,
     )
     return marathon_service_config.get_registrations()
 
@@ -660,7 +660,7 @@ def read_registration_for_service_instance(service, instance, cluster=None, soa_
     :returns a fully qualified service.instance registration
     """
     return read_all_registrations_for_service_instance(
-        service, instance, cluster, soa_dir
+        service, instance, cluster, soa_dir,
     )[0]
 
 
@@ -756,7 +756,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     for name, instance, port in marathon_services:
         try:
             registrations = read_all_registrations_for_service_instance(
-                name, instance, cluster, soa_dir
+                name, instance, cluster, soa_dir,
             )
             for registration in registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
@@ -794,7 +794,7 @@ def get_puppet_services_running_here_for_nerve(soa_dir):
         for namespace in namespaces:
             puppet_services.append(
                 _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir)
+                    service, namespace, soa_dir),
             )
     return puppet_services
 
@@ -820,7 +820,7 @@ def get_classic_services_running_here_for_nerve(soa_dir):
         for namespace in namespaces:
             classic_services.append(
                 _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir)
+                    service, namespace, soa_dir),
             )
     return classic_services
 

@@ -264,7 +264,7 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
 def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
     mock_list_deploy_groups,
     mock_validate_service_name,
-    mock_get_cluster_instance_map_for_service
+    mock_get_cluster_instance_map_for_service,
 ):
     mock_list_deploy_groups.return_value = {'test_deploy_group'}
     mock_get_cluster_instance_map_for_service.return_value = {}
@@ -282,7 +282,7 @@ def test_get_latest_marked_sha_good(mock_list_remote_refs):
         'refs/tags/paasta-fake_group2-20161125T095651-deploy':
             'a4911648beb2e53886658ba7ea7eb93d582d754c',
         'refs/tags/paasta-fake_group1.everywhere-20161109T223959-deploy':
-            '71e97ec397a3f0e7c4ee46e8ea1e2982cbcb0b79'
+            '71e97ec397a3f0e7c4ee46e8ea1e2982cbcb0b79',
     }
     assert get_latest_marked_sha('', 'fake_group1') \
         == '968b948b3fca457326718dc7b2e278f89ccc5c87'

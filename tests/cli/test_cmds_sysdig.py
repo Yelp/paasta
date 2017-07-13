@@ -64,7 +64,7 @@ def test_paasta_sysdig(mock_get_status_for_instance,
     mock_get_any_mesos_master.assert_called_with(cluster='cluster1')
     mock__run.assert_called_with(
         'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET master1 '
-        '"sudo paasta sysdig blah blah --local"'
+        '"sudo paasta sysdig blah blah --local"',
     )
     mock_subprocess.call.assert_called_with(["ssh", "-tA", 'slave', 'command123'])
 

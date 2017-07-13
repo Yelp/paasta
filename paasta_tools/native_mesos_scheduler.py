@@ -52,7 +52,7 @@ def main(argv):
         driver = create_driver(
             framework_name="paasta_native %s" % compose_job_id(service, instance),
             scheduler=scheduler,
-            system_paasta_config=system_paasta_config
+            system_paasta_config=system_paasta_config,
         )
         driver.start()
         drivers.append(driver)
@@ -91,7 +91,7 @@ def paasta_native_services_running_here(hostname=None, framework_id=None):
     return mesos_tools.mesos_services_running_here(
         framework_filter=framework_filter,
         parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
-        hostname=hostname
+        hostname=hostname,
     )
 
 
@@ -111,7 +111,7 @@ def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname
     for name, instance, port in paasta_native_services:
         try:
             registrations = read_all_registrations_for_service_instance(
-                name, instance, cluster, soa_dir
+                name, instance, cluster, soa_dir,
             )
             for registration in registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)

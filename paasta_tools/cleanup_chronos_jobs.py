@@ -129,7 +129,7 @@ def filter_expired_tmp_jobs(client, job_names):
         temporary_jobs = chronos_tools.get_temporary_jobs_for_service_instance(
             client=client,
             service=service,
-            instance=instance
+            instance=instance,
         )
         for job in temporary_jobs:
             last_run_time, last_run_state = chronos_tools.get_status_last_run(job)

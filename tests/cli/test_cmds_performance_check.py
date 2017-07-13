@@ -37,7 +37,7 @@ def test_submit_performance_check_job_happy(
     performance_check.submit_performance_check_job('fake_service', 'fake_soa_dir')
     mock_requests_post.assert_called_once_with(
         url=fake_endpoint,
-        params={'fake_param': 'fake_value'}
+        params={'fake_param': 'fake_value'},
     )
 
 

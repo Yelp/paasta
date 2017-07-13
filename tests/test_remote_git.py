@@ -35,13 +35,13 @@ def test_make_determine_wants_func():
 
     # don't modify anything existing.
     determine_wants = remote_git._make_determine_wants_func(
-        lambda x: {k: v[::-1] for k, v in x.items()}
+        lambda x: {k: v[::-1] for k, v in x.items()},
     )
     assert determine_wants(refs) == refs
 
     # only allow new things
     determine_wants = remote_git._make_determine_wants_func(
-        lambda x: {'foo': 'bar'}
+        lambda x: {'foo': 'bar'},
     )
     actual = determine_wants(refs)
     expected = dict(refs)

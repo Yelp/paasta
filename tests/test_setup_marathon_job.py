@@ -47,7 +47,7 @@ class TestSetupMarathonJob:
             'mem': 100,
             'docker_image': fake_docker_image,
             'nerve_ns': 'aaaaugh',
-            'bounce_method': 'brutal'
+            'bounce_method': 'brutal',
         },
         branch_dict={},
     )
@@ -63,7 +63,7 @@ class TestSetupMarathonJob:
         verbose=False,
     )
     fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
-        'mode': 'http'
+        'mode': 'http',
     })
 
     def test_main_success(self):
@@ -251,7 +251,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 fake_soa_dir,
                 fake_status,
-                fake_output
+                fake_output,
             )
 
             send_event_patch.assert_called_once_with(
@@ -260,7 +260,7 @@ class TestSetupMarathonJob:
                 {'alert_after': '10m', 'check_every': '10s'},
                 fake_status,
                 fake_output,
-                fake_soa_dir
+                fake_soa_dir,
             )
             load_marathon_service_config_patch.assert_called_once_with(
                 fake_service,
@@ -296,16 +296,16 @@ class TestSetupMarathonJob:
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
-            marathon.MarathonClient
+            marathon.MarathonClient,
         )
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
 
         with mock.patch(
-            'paasta_tools.setup_marathon_job._log', autospec=True
+            'paasta_tools.setup_marathon_job._log', autospec=True,
         ) as mock_log, mock.patch(
-            'paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True
+            'paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True,
         ) as mock_create_marathon_app, mock.patch(
-            'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True
+            'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True,
         ) as mock_kill_old_ids:
             mock_bad_response = mock.Mock(status_code=409,
                                           headers={'content-type': 'application/json'})
@@ -1244,7 +1244,7 @@ class TestSetupMarathonJob:
                 'mem': 100,
                 'docker_image': self.fake_docker_image,
                 'nerve_ns': 'fake_nerve_ns',
-                'bounce_method': 'brutal'
+                'bounce_method': 'brutal',
             },
             branch_dict={},
         )
@@ -1383,7 +1383,7 @@ class TestSetupMarathonJob:
             return_value={
                 "create_app": True,
                 "tasks_to_drain": [old_task_to_drain],
-            }
+            },
         )
 
         fake_drain_method = mock.Mock(is_draining=lambda t: t is old_task_is_draining, is_safe_to_kill=lambda t: True)
@@ -1545,7 +1545,7 @@ class TestSetupMarathonJob:
         with mock.patch(
             'paasta_tools.marathon_tools.load_marathon_config',
             return_value=fake_conf,
-            autospec=True
+            autospec=True,
         ) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()
@@ -1587,7 +1587,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 
         fake_apps = [
             mock.Mock(id=fake_id, tasks=[]),
-            mock.Mock(id=('%s2' % fake_id), tasks=[])
+            mock.Mock(id=('%s2' % fake_id), tasks=[]),
         ]
         fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
