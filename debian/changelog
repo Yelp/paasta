@@ -1,3 +1,11 @@
+paasta-tools (0.66.2) xenial; urgency=low
+
+  * 0.66.2 tagged with 'make release'
+    Commit: Merge pull request #1361 from
+    Yelp/jlynch_paasta_firewall_python3  Fixup firewall.py for py3
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 19:11:26 -0700
+
 paasta-tools (0.66.1) xenial; urgency=low
 
   * 0.66.1 tagged with 'make release'
