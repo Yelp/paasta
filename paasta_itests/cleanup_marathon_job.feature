@@ -1,5 +1,5 @@
 Feature: cleanup_marathon_job removes no longer needed jobs
-    
+
   Scenario: deleted apps are destroyed
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"

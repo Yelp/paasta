@@ -37,13 +37,13 @@ its instancename.
 **Nerve**
 ~~~~~~~~~
 
-A service announcement `daemon <https://github.com/airbnb/nerve>`_ 
+A service announcement `daemon <https://github.com/airbnb/nerve>`_
 that registers services in zookeeper to be discovered.
 
 **Marathon**
 ~~~~~~~~~~~~
 
-A `Mesos Framework <https://mesosphere.github.io/marathon/>`_ 
+A `Mesos Framework <https://mesosphere.github.io/marathon/>`_
 designed to deploy stateless services.
 
 **Mesos**
