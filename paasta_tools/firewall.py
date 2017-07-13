@@ -30,7 +30,7 @@ PRIVATE_IP_RANGES = (
     '192.168.0.0/255.255.0.0',
     '169.254.0.0/255.255.0.0',
 )
-DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
+DEFAULT_SYNAPSE_SERVICE_DIR = '/var/run/synapse/services'
 DEFAULT_FIREWALL_FLOCK_PATH = '/var/lib/paasta/firewall.flock'
 DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
 
