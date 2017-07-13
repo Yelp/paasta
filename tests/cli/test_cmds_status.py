@@ -482,6 +482,42 @@ def test_status_calls_sergeants(
     )
 
 
+@patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_status', autospec=True)
+@patch('paasta_tools.cli.cmds.status.get_instances_by_owner', autospec=True)
+def test_status_with_owner(
+        mock_get_instances_by_owner, mock_report_status,
+        mock_load_system_paasta_config, mock_get_actual_deployments, capfd,
+):
+    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
+    mock_load_system_paasta_config.return_value = fake_system_paasta_config
+
+    mock_get_actual_deployments.return_value = {
+        'fakeservice.instance1': 'sha1',
+        'fakeservice.instance2': 'sha2',
+        'otherservice.instance3': 'sha3',
+        'otherservice.instance1': 'sha4',
+    }
+    mock_get_instances_by_owner.return_value = {
+        'fakeservice': ['instance1', 'instance2'],
+        'otherservice': ['instance3', 'instance4'],
+    }
+    mock_report_status.return_value = 0
+
+    args = MagicMock()
+    args.service = None
+    args.instances = None
+    args.clusters = None
+    args.deploy_group = None
+    args.owner = 'faketeam'
+    args.soa_dir = '/fake/soa/dir'
+    return_value = paasta_status(args)
+
+    assert return_value == 0
+    assert mock_report_status.call_count == 2
+
+
 def test_report_invalid_whitelist_values_no_whitelists():
     whitelist = []
     items = ['cluster1', 'cluster2', 'cluster3']

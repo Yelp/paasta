@@ -403,14 +403,12 @@ def paasta_status(args):
     for service, instances in services_instances.items():
         paasta_print('service: %s' % PaastaColors.blue(service))
         actual_deployments = get_actual_deployments(service, soa_dir)
-        print(actual_deployments)
         if 'USE_API_ENDPOINT' in os.environ:
             use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
         else:
             use_api_endpoint = False
 
         pargs = paasta_args_mixer(args, service, instances)
-        print(pargs)
         if pargs is None:
             return_codes.append(1)
             continue
@@ -427,7 +425,6 @@ def paasta_status(args):
                 verbose=args.verbose,
                 use_api_endpoint=use_api_endpoint
             )
-            print(return_code)
             return_codes.append(return_code)
         else:
             paasta_print(missing_deployments_message(service))
