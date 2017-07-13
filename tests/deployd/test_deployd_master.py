@@ -36,7 +36,56 @@ sys.modules['pyinotify'] = FakePyinotify
 
 from paasta_tools.deployd.master import Inbox  # noqa
 from paasta_tools.deployd.master import DeployDaemon  # noqa
+from paasta_tools.deployd.master import DedupedQueue  # noqa
 from paasta_tools.deployd.master import main  # noqa
+
+
+class TestDedupedQueue(unittest.TestCase):
+    def setUp(self):
+        self.queue = DedupedQueue("BounceQueue")
+        assert not self.queue.bouncing
+        self.mock_service_instance = ServiceInstance(
+            service='universe',
+            instance='c137',
+            watcher='tests',
+            bounce_by=1,
+            bounce_timers=None,
+            failures=0,
+        )
+
+    def test_put(self):
+        with mock.patch(
+            'paasta_tools.deployd.master.PaastaQueue', autospec=True,
+        ) as mock_paasta_queue:
+
+            self.queue.put(self.mock_service_instance)
+            mock_paasta_queue.put.assert_called_with(self.queue, self.mock_service_instance)
+            assert 'universe.c137' in self.queue.bouncing
+
+            mock_paasta_queue.reset_mock()
+            self.queue.put(self.mock_service_instance)
+            assert not mock_paasta_queue.called
+            assert 'universe.c137' in self.queue.bouncing
+
+    def test_get(self):
+        with mock.patch(
+            'paasta_tools.deployd.master.PaastaQueue', autospec=True,
+        ) as mock_paasta_queue:
+
+            self.mock_service_instance = ServiceInstance(
+                service='universe',
+                instance='c137',
+                watcher='tests',
+                bounce_by=1,
+                bounce_timers=None,
+                failures=0,
+            )
+            self.queue.bouncing.add('universe.c137')
+            mock_paasta_queue.get.return_value = self.mock_service_instance
+
+            assert self.queue.get() is self.mock_service_instance
+            assert mock_paasta_queue.get.called
+            assert 'universe.c137' not in self.queue.bouncing
 
 
 class TestInbox(unittest.TestCase):
@@ -130,6 +179,8 @@ class TestDeployDaemon(unittest.TestCase):
     def setUp(self):
         with mock.patch(
             'paasta_tools.deployd.master.PaastaQueue', autospec=True,
+        ), mock.patch(
+            'paasta_tools.deployd.master.DedupedQueue', autospec=True,
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True,
         ) as self.mock_inbox, mock.patch(
