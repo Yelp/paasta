@@ -16,13 +16,13 @@ from __future__ import unicode_literals
 
 import json
 import os
-from tempfile import mkdtemp
 from tempfile import NamedTemporaryFile
 
 import chronos
 import yaml
 from behave import given
 from behave import when
+from bravado.client import SwaggerClient
 from itest_utils import get_service_connection_string
 
 from paasta_tools import chronos_tools
@@ -80,13 +80,17 @@ def setup_marathon_client():
 
 def setup_chronos_client():
     connection_string = get_service_connection_string('chronos')
-    return chronos.connect(connection_string)
+    return chronos.connect(connection_string, scheduler_api_version=None)
 
 
 def setup_chronos_config():
     system_paasta_config = setup_system_paasta_config()
     chronos_config = chronos_tools.ChronosConfig(system_paasta_config.get_chronos_config())
     return chronos_config
+
+
+def setup_paasta_api_client():
+    return SwaggerClient.from_url("http://%s/%s" % (get_service_connection_string('api'), 'swagger.json'))
 
 
 def _generate_mesos_cli_config(zk_host_and_port):
@@ -103,10 +107,9 @@ def _generate_mesos_cli_config(zk_host_and_port):
 
 
 def write_mesos_cli_config(config):
-    mesos_cli_config_file = NamedTemporaryFile(delete=False)
-    mesos_cli_config_file.write(json.dumps(config))
-    mesos_cli_config_file.close()
-    return mesos_cli_config_file.name
+    with NamedTemporaryFile(mode='w', delete=False) as mesos_cli_config_file:
+        mesos_cli_config_file.write(json.dumps(config))
+        return mesos_cli_config_file.name
 
 
 def write_etc_paasta(context, config, filename):
@@ -150,6 +153,9 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     else:
         paasta_print('Chronos connection already established')
 
+    if not hasattr(context, 'paasta_api_client'):
+        context.paasta_api_client = setup_paasta_api_client()
+
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
@@ -185,7 +191,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
 
 @given('we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
 def write_soa_dir_chronos_instance(context, service, disabled, instance):
-    soa_dir = mkdtemp()
+    soa_dir = '/nail/etc/services/'
     desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
@@ -206,7 +212,7 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
 @given(('we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
         ' "{instance}" and parent "{parent}"'))
 def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
-    soa_dir = mkdtemp()
+    soa_dir = '/nail/etc/services/'
     desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
@@ -235,7 +241,7 @@ def write_soa_dir_marathon_job(context, job_id):
     try:
         soa_dir = context.soa_dir
     except AttributeError:
-        soa_dir = mkdtemp()
+        soa_dir = '/nail/etc/services/'
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
 
@@ -255,7 +261,7 @@ def write_soa_dir_native_service(context, job_id):
     try:
         soa_dir = context.soa_dir
     except AttributeError:
-        soa_dir = mkdtemp()
+        soa_dir = '/nail/etc/services/'
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'paasta_native-%s.yaml' % context.cluster), 'w') as f:

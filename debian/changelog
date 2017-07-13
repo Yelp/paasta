@@ -1,3 +1,58 @@
+paasta-tools (0.66.2) xenial; urgency=low
+
+  * 0.66.2 tagged with 'make release'
+    Commit: Merge pull request #1361 from
+    Yelp/jlynch_paasta_firewall_python3  Fixup firewall.py for py3
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 19:11:26 -0700
+
+paasta-tools (0.66.1) xenial; urgency=low
+
+  * 0.66.1 tagged with 'make release'
+    Commit: Merge pull request #1360 from Yelp/jlynch_upgrade_pysensu
+    Pysensu is not py36 compatible until 0.3.4
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 17:41:00 -0700
+
+paasta-tools (0.66.0) xenial; urgency=low
+
+  * 0.66.0 tagged with 'make release'
+    Commit: Merge pull request #1341 from Yelp/port_to_python_3  Port to
+    python 3
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 14:43:06 -0700
+
+paasta-tools (0.65.38) xenial; urgency=medium
+
+  * 0.65.38 tagged with 'make release'
+    Commit: bump task_processing
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 12 Jul 2017 05:34:49 -0700
+
+paasta-tools (0.65.37) xenial; urgency=medium
+
+  * 0.65.37 tagged with 'make release'
+    Commit: Merge pull request #1357 from Yelp/remote-run-initial-delay
+    prepare task_config before initializing mesos stack
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 12 Jul 2017 04:15:40 -0700
+
+paasta-tools (0.65.36) xenial; urgency=medium
+
+  * 0.65.36 tagged with 'make release'
+    Commit: Merge pull request #1325 from Yelp/remote-run-taskproc
+    Remote-run on taskproc
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 11 Jul 2017 07:31:03 -0700
+
+paasta-tools (0.65.35) xenial; urgency=medium
+
+  * 0.65.35 tagged with 'make release'
+    Commit: Merge pull request #1350 from Yelp/fix/not-updating-
+    instance-count  Fix deployd updating instance count
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Jul 2017 03:59:11 -0700
+
 paasta-tools (0.65.34) xenial; urgency=medium
 
   * 0.65.34 tagged with 'make release'

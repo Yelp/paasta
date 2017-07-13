@@ -13,7 +13,7 @@ from kazoo.recipe.watchers import DataWatch
 from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import get_marathon_client_from_config
-from paasta_tools.deployd.common import get_service_instances_with_changed_id
+from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
@@ -228,9 +228,9 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 all_service_instances = get_services_for_cluster(cluster=self.public_config.get_cluster(),
                                                                  instance_type='marathon',
                                                                  soa_dir=DEFAULT_SOA_DIR)
-                service_instances = get_service_instances_with_changed_id(self.marathon_client,
-                                                                          all_service_instances,
-                                                                          self.public_config.get_cluster())
+                service_instances = get_service_instances_needing_update(self.marathon_client,
+                                                                         all_service_instances,
+                                                                         self.public_config.get_cluster())
             if service_instances:
                 self.log.info("Found config change affecting {} service instances, "
                               "now doing a staggered bounce".format(len(service_instances)))
@@ -286,9 +286,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                                                    cache=False)
         self.log.debug(instances)
         service_instances = [(service_name, instance) for instance in instances]
-        service_instances = get_service_instances_with_changed_id(self.marathon_client,
-                                                                  service_instances,
-                                                                  self.filewatcher.cluster)
+        service_instances = get_service_instances_needing_update(self.marathon_client,
+                                                                 service_instances,
+                                                                 self.filewatcher.cluster)
         for service, instance in service_instances:
             self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
         service_instances = [ServiceInstance(service=service,

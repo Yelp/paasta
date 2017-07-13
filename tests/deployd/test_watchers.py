@@ -39,7 +39,7 @@ from paasta_tools.deployd.watchers import YelpSoaEventHandler  # noqa
 from paasta_tools.deployd.watchers import AutoscalerWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigFileWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigEventHandler  # noqa
-from paasta_tools.deployd.watchers import get_service_instances_with_changed_id  # noqa
+from paasta_tools.deployd.watchers import get_service_instances_needing_update  # noqa
 from paasta_tools.deployd.watchers import get_marathon_client_from_config  # noqa
 from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 
@@ -390,9 +390,9 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         ) as mock_get_services_for_cluster, mock.patch(
             'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True,
         ) as mock_load_system_config, mock.patch(
-            'paasta_tools.deployd.watchers.get_service_instances_with_changed_id',
+            'paasta_tools.deployd.watchers.get_service_instances_needing_update',
             autospec=True
-        ) as mock_get_service_instances_with_changed_id, mock.patch(
+        ) as mock_get_service_instances_needing_update, mock.patch(
             'paasta_tools.deployd.watchers.rate_limit_instances', autospec=True
         ) as mock_rate_limit_instances:
             mock_event = mock.Mock()
@@ -401,27 +401,27 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
             assert not mock_get_services_for_cluster.called
-            assert not mock_get_service_instances_with_changed_id.called
+            assert not mock_get_service_instances_needing_update.called
             assert not mock_rate_limit_instances.called
             assert not self.mock_filewatcher.inbox_q.put.called
 
             mock_load_system_config.return_value = mock.Mock(get_cluster=mock.Mock())
-            mock_get_service_instances_with_changed_id.return_value = []
+            mock_get_service_instances_needing_update.return_value = []
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
             assert mock_get_services_for_cluster.called
-            assert mock_get_service_instances_with_changed_id.called
+            assert mock_get_service_instances_needing_update.called
             assert not mock_rate_limit_instances.called
             assert not self.mock_filewatcher.inbox_q.put.called
 
             mock_load_system_config.return_value = mock.Mock(get_deployd_big_bounce_rate=mock.Mock())
             mock_si = mock.Mock()
-            mock_get_service_instances_with_changed_id.return_value = [mock_si]
+            mock_get_service_instances_needing_update.return_value = [mock_si]
             mock_rate_limit_instances.return_value = [mock_si]
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
             assert mock_get_services_for_cluster.called
-            assert mock_get_service_instances_with_changed_id.called
+            assert mock_get_service_instances_needing_update.called
             assert mock_rate_limit_instances.called
             self.mock_filewatcher.inbox_q.put.assert_called_with(mock_si)
 
@@ -498,21 +498,21 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True
         ) as mock_list_instances, mock.patch(
-            'paasta_tools.deployd.watchers.get_service_instances_with_changed_id', autospec=True
-        ) as mock_get_service_instances_with_changed_id, mock.patch(
+            'paasta_tools.deployd.watchers.get_service_instances_needing_update', autospec=True
+        ) as mock_get_service_instances_needing_update, mock.patch(
             'time.time', autospec=True, return_value=1
         ):
             mock_list_instances.return_value = ['c137', 'c138']
-            mock_get_service_instances_with_changed_id.return_value = [('universe', 'c137')]
+            mock_get_service_instances_needing_update.return_value = [('universe', 'c137')]
             self.handler.bounce_service('universe')
             mock_list_instances.assert_called_with(service='universe',
                                                    clusters=[self.handler.filewatcher.cluster],
                                                    instance_type='marathon',
                                                    cache=False)
-            mock_get_service_instances_with_changed_id.assert_called_with(self.handler.marathon_client,
-                                                                          [('universe', 'c137'),
-                                                                           ('universe', 'c138')],
-                                                                          self.handler.filewatcher.cluster)
+            mock_get_service_instances_needing_update.assert_called_with(self.handler.marathon_client,
+                                                                         [('universe', 'c137'),
+                                                                          ('universe', 'c138')],
+                                                                         self.handler.filewatcher.cluster)
             expected_si = ServiceInstance(service='universe',
                                           instance='c137',
                                           bounce_by=1,

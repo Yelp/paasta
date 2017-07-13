@@ -73,6 +73,7 @@ def step_paasta_mark_for_deployments_when(context):
         service='fake_deployments_json_service',
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
+        soa_dir='fake_soa_configs',
         block=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())

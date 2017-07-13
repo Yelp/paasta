@@ -5,6 +5,7 @@ a utilization report for those hosts.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import functools
 import json
 import sys
 
@@ -49,5 +50,5 @@ def main(hostnames):
 
 
 if __name__ == "__main__":
-    hostnames = reduce(lambda x, y: x + [y.strip()], sys.stdin, [])
+    hostnames = functools.reduce(lambda x, y: x + [y.strip()], sys.stdin, [])
     main(hostnames)

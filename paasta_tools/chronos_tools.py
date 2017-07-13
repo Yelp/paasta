@@ -154,13 +154,19 @@ def get_chronos_client(config, cached=False):
     chronos_hostnames = [urlsplit(hostname).netloc for hostname in chronos_hosts]
     log.info("Attempting to connect to Chronos servers: %s" % chronos_hosts)
     if cached:
-        return CachingChronosClient(servers=chronos_hostnames,
-                                    username=config.get_username(),
-                                    password=config.get_password())
+        return CachingChronosClient(
+            servers=chronos_hostnames,
+            username=config.get_username(),
+            password=config.get_password(),
+            scheduler_api_version=None
+        )
     else:
-        return chronos.connect(servers=chronos_hostnames,
-                               username=config.get_username(),
-                               password=config.get_password())
+        return chronos.connect(
+            servers=chronos_hostnames,
+            username=config.get_username(),
+            password=config.get_password(),
+            scheduler_api_version=None
+        )
 
 
 def compose_job_id(service, instance):

@@ -16,17 +16,7 @@ FROM ubuntu:trusty
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-
-RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-
-# Need Python 3.6
-RUN apt-get update > /dev/null
-RUN apt-get install -y --no-install-recommends software-properties-common
-RUN add-apt-repository ppa:fkrull/deadsnakes
-
 RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
-        curl \
         debhelper \
         dpkg-dev \
         gcc \
@@ -37,9 +27,6 @@ RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         libssl-dev \
         libyaml-dev \
         pyflakes \
-        python3.6 \
-        python3.6-dev \
-        python3-dev \
         python-dev \
         python-pip \
         python-pytest \
@@ -51,15 +38,16 @@ RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         zsh > /dev/null \
     && apt-get clean > /dev/null
 
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
-
-RUN pip install --upgrade virtualenv==15.1.0
-
-ADD mesos-slave-secret /etc/mesos-slave-secret
-
 WORKDIR /work
 
+RUN cd /work
+ADD requirements.txt /work
+RUN pip install -r requirements.txt
+ADD . /work/
 RUN mkdir -p /nail/etc/
+RUN mkdir -p /etc/paasta/
+RUN cp /work/yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
+RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
+RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+RUN cp /work/yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
+RUN pip install -e /work/

@@ -86,3 +86,15 @@ Feature: paasta-deployd deploys apps
      Then paasta-deployd can be stopped
      Then a second deployd becomes leader
 
+  Scenario: deployd will scale an app if the number of instances changes
+    Given a working paasta cluster
+      And paasta-deployd is running
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main" image "busybox"
+     When we set the "instances" field of the marathon config for service "test-service" and instance "main" to the integer 2
+      And we set the "cmd" field of the marathon config for service "test-service" and instance "main" to "sleep 300"
+      And we set the "disk" field of the marathon config for service "test-service" and instance "main" to the integer 1
+     Then we should see "test-service.main" listed in marathon after 45 seconds
+     Then we should see the number of instances become 2
+     When we set the "instances" field of the marathon config for service "test-service" and instance "main" to the integer 3
+     Then we should see the number of instances become 3

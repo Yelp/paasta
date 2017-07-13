@@ -1,3 +1,31 @@
-*
-!yelp_package/*
-!requirements*
+*/.cache
+build/
+dist/
+.tox
+.paasta
+.pip/
+*.py?
+.*.sw?
+.idea
+paasta_tools.egg-info/
+docs/man/
+tags
+venv
+.bash_history
+.lesshst
+.coverage
+coverage-html/
+
+# Generated debian artifacts
+debian/paasta-tools/
+debian/files
+debian/paasta-tools.substvars
+debian/paasta-tools.debhelper.log
+debian/paasta-tools.postinst.debhelper
+
+# Itest artifacts
+fake_service_uno/
+paasta_itests/mesos-cli.json
+paasta_itests/fake_etc_paasta/chronos.json
+paasta_itests/fake_etc_paasta/marathon.json
+yelp_package/bintray.json
