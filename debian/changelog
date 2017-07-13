@@ -1,3 +1,11 @@
+paasta-tools (0.66.1) xenial; urgency=low
+
+  * 0.66.1 tagged with 'make release'
+    Commit: Merge pull request #1360 from Yelp/jlynch_upgrade_pysensu
+    Pysensu is not py36 compatible until 0.3.4
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 17:41:00 -0700
+
 paasta-tools (0.66.0) xenial; urgency=low
 
   * 0.66.0 tagged with 'make release'
