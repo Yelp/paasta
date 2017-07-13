@@ -457,11 +457,6 @@ def _cleanup_container(docker_client, container_id):
             "Could not clean up container! You should stop and remove container '%s' manually." % container_id))
 
 
-def get_monitoring_config(self):
-    """Get monitoring config."""
-    return self.config_dict.get('monitoring', {})
-
-
 def get_local_run_environment_vars(instance_config, port0, framework):
     """Returns a dictionary of environment variables to simulate what would be available to
     a paasta service running in a container"""
