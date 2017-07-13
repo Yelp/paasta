@@ -609,6 +609,99 @@ def test_list_clusters_ignores_bogus_clusters():
         assert actual == expected
 
 
+def test_get_instances_by_owner():
+    owners = ['me', 'you']
+    clusters = ['fake_cluster']
+    service_confs = {
+        'service1': {'monitoring': {'team': 'me'}},
+        'service2': {'monitoring': {'team': 'you'}},
+        'service3': {'monitoring': {'team': 'thatotherguy'}},
+        'service4': {'monitorying': {}},
+        'service5': {},
+    }
+    instance_confs = {
+        'fake_cluster': {
+            'service1': {
+                'instance1': {},
+                'instance2': {'monitoring': {}},
+                'instance3': {'monitoring': {'team': 'me'}},
+                'instance4': {'monitoring': {'team': 'nobody'}},
+            }, 'service2': {
+                'instance6': {},
+            }, 'service3': {
+                'instance7': {'monitoring': {'team': 'me'}},
+                'instance8': {},
+            },
+        },
+    }
+    all_instances = [
+        ('service1', 'instance1'),
+        ('service1', 'instance2'),
+        ('service1', 'instance3'),
+        ('service1', 'instance4'),
+        ('service1', 'instance5'),
+        ('service2', 'instance6'),
+        ('service3', 'instance7'),
+        ('service3', 'instance8'),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.get_services_for_cluster', autospec=True,
+    ) as mock_get_services_for_cluster, mock.patch(
+        'paasta_tools.utils.get_all_service_configs', autospec=True,
+    ) as mock_get_all_service_configs, mock.patch(
+        'paasta_tools.utils.get_all_instance_configs', autospec=True,
+    ) as mock_get_all_instance_configs:
+        mock_get_services_for_cluster.return_value = all_instances
+        mock_get_all_service_configs.return_value = service_confs
+        mock_get_all_instance_configs.return_value = instance_confs
+
+        return_value = utils.get_instances_by_owner(owners, clusters, '/fake/soa/dir')
+        assert return_value['service1'] == {'instance1', 'instance2', 'instance3', 'instance5'}
+        assert return_value['service2'] == {'instance6'}
+        assert return_value['service3'] == {'instance7'}
+
+
+def test_get_all_instance_configs():
+    clusters = ['c1', 'c2']
+    confs = [
+        {
+            'service1': {
+                'instance1': {},
+                'instance2': {'monitoring': {}},
+                'instance3': {'monitoring': {'team': 'me'}},
+                'instance4': {'monitoring': {'team': 'nobody'}},
+            }, 'service2': {
+                'instance6': {},
+            },
+        },
+        {
+            'service3': {
+                'instance7': {'monitoring': {'team': 'me'}},
+                'instance8': {},
+            },
+        },
+    ]
+
+    def conf_iter():
+        for c in confs:
+            yield c
+        while True:
+            yield {}
+
+    with mock.patch(
+        'paasta_tools.utils.get_instance_configs', autospec=True,
+    ) as mock_get_instance_configs:
+        mock_get_instance_configs.side_effect = conf_iter()
+
+        return_value = utils.get_all_instance_configs(clusters, '/fake/soa/dir')
+
+        print(return_value)
+
+        assert len(return_value.keys()) == 2
+        assert len(return_value['c1'].keys()) == 2
+        assert len(return_value['c2'].keys()) == 1
+
+
 def test_list_all_instances_for_service():
     service = 'fake_service'
     clusters = ['fake_cluster']

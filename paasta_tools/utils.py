@@ -1520,6 +1520,12 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
 
 
 def get_instance_configs(instance_type, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns instance configs associated with an instance type and cluster
+
+    :param instance_type: The instance type, eg chronos or marathong
+    :param cluster: The cluster to look in.  If not specified will lookup the current cluster
+    :returns: dict in format {service_name: {instance_name: {instance_conf}, ...}, ...}
+    """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
@@ -1534,6 +1540,11 @@ def get_instance_configs(instance_type, cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
 
 def get_all_instance_configs(clusters, soa_dir=DEFAULT_SOA_DIR):
+    """Get all instance configs for all instance types for a list of clusters
+
+    :param clusters: The clusters to get configs for
+    :returns: A dict in the format {cluster_name: {service_name: {instance_name: {instance_conf}, ...}, ...}, ...}
+    """
     confs = defaultdict(dict)
     for t in INSTANCE_TYPES:
         for c in clusters:
@@ -1546,6 +1557,10 @@ def get_all_instance_configs(clusters, soa_dir=DEFAULT_SOA_DIR):
 
 
 def get_all_service_configs(soa_dir=DEFAULT_SOA_DIR):
+    """Get the service config for all services
+
+    :returns: A dict in the format {service_name: {service_conf}, ...}
+    """
     rootdir = os.path.abspath(soa_dir)
     service_configs = {}
     for srv_dir in os.listdir(rootdir):
@@ -1557,6 +1572,12 @@ def get_all_service_configs(soa_dir=DEFAULT_SOA_DIR):
 
 
 def get_instances_by_owner(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
+    """Get all service instances with onwer in a list
+
+    :param owners: A list of owners to match against
+    :param clusters: A list of clusters to look for services in
+    :returns: A dict of service_instances, in the format {service_name: [instance1, instance2, ...], ...}
+    """
     all_instances = {s for c in clusters for s in get_services_for_cluster(cluster=c, soa_dir=soa_dir)}
     service_confs = get_all_service_configs(soa_dir)
     instance_confs = get_all_instance_configs(clusters, soa_dir)
