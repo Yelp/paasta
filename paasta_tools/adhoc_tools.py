@@ -107,7 +107,7 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(
             (
-                deployment.encode('utf-8')
+                deployment
                 for deployment in deployments_json['deployments'].keys()
             ),
             choosing='deploy group',
