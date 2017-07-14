@@ -79,7 +79,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
             log=True,
             component='build',
             service=service,
-            loglevel='debug'
+            loglevel='debug',
         )
         if returncode != 0:
             _log(

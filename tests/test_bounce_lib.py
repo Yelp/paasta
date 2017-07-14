@@ -185,7 +185,7 @@ class TestBounceLib:
                                                             self.fake_system_paasta_config())
 
         with mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
-                        side_effect=[[fake_task], [ConnectionError], [RequestException]]
+                        side_effect=[[fake_task], [ConnectionError], [RequestException]],
                         ):
             assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
             assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
@@ -320,7 +320,7 @@ class TestBounceLib:
         expected = set(all_tasks)
         actual = bounce_lib.flatten_tasks({
             'app_id_1': set(all_tasks[:5]),
-            'app_id_2': set(all_tasks[5:])
+            'app_id_2': set(all_tasks[5:]),
         })
 
         assert actual == expected

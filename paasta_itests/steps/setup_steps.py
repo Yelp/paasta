@@ -80,7 +80,7 @@ def setup_marathon_client():
 
 def setup_chronos_client():
     connection_string = get_service_connection_string('chronos')
-    return chronos.connect(connection_string)
+    return chronos.connect(connection_string, scheduler_api_version=None)
 
 
 def setup_chronos_config():
@@ -101,16 +101,15 @@ def _generate_mesos_cli_config(zk_host_and_port):
             'log_level': 'warning',
             'log_file': 'None',
             'response_timeout': 5,
-        }
+        },
     }
     return config
 
 
 def write_mesos_cli_config(config):
-    mesos_cli_config_file = NamedTemporaryFile(delete=False)
-    mesos_cli_config_file.write(json.dumps(config))
-    mesos_cli_config_file.close()
-    return mesos_cli_config_file.name
+    with NamedTemporaryFile(mode='w', delete=False) as mesos_cli_config_file:
+        mesos_cli_config_file.write(json.dumps(config))
+        return mesos_cli_config_file.name
 
 
 def write_etc_paasta(context, config, filename):
@@ -129,7 +128,7 @@ def add_volume_public_config(context):
             {'hostPath': '/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
             {'hostPath': '/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
             {'hostPath': '/nail/tmp/noob', 'containerPath': '/nail/tmp/noob', 'mode': 'RO'},
-        ]
+        ],
     }, 'volumes.json')
 
 
@@ -166,7 +165,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     write_etc_paasta(context, {
         "cluster": "testcluster",
         "zookeeper": "zk://zookeeper/mesos-testcluster",
-        "docker_registry": docker_registry
+        "docker_registry": docker_registry,
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
     write_etc_paasta(context, {"sensu_host": None}, 'sensu.json')
@@ -175,18 +174,18 @@ def working_paasta_cluster_with_registry(context, docker_registry):
             {'hostPath': '/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
             {'hostPath': '/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
             {'hostPath': '/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
-        ]
+        ],
     }, 'volumes.json')
     write_etc_paasta(context, {
         'paasta_native': {
             'principal': 'paasta_native',
             'secret': 'secret4',
-        }
+        },
     }, 'paasta_native.json')
     write_etc_paasta(context, {
         'mesos_config': {
-            "path": mesos_cli_config_filename
-        }
+            "path": mesos_cli_config_filename,
+        },
     }, 'mesos.json')
 
 
@@ -205,7 +204,7 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
                 'disabled': desired_disabled,
                 'mem': 50,
                 'disk': 10,
-            }
+            },
         }))
     context.soa_dir = soa_dir
 
@@ -231,7 +230,7 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
                 'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
-            }
+            },
         }))
     context.soa_dir = soa_dir
 
@@ -271,7 +270,7 @@ def write_soa_dir_native_service(context, job_id):
                 'cpus': 0.1,
                 'mem': 100,
                 'cmd': '/bin/sleep 300',
-            }
+            },
         }))
     context.soa_dir = soa_dir
     context.service = service
@@ -306,7 +305,7 @@ def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
                     'desired_state': desired_state,
                 }
                 for instance in csv_instances.split(',')
-            }
+            },
         }))
 
 

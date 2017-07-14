@@ -1,3 +1,45 @@
+paasta-tools (0.66.4) xenial; urgency=low
+
+  * 0.66.4 tagged with 'make release'
+    Commit: Merge pull request #1369 from
+    Yelp/jlynch_upgrade_scribereader  Scribereader was not py3
+    compatible until 0.2.6
+
+ -- Joseph Lynch <jlynch@yelp.com>  Thu, 13 Jul 2017 20:12:47 -0700
+
+paasta-tools (0.66.3) xenial; urgency=low
+
+  * 0.66.3 tagged with 'make release'
+    Commit: Merge pull request #1365 from
+    Yelp/jlynch_fixup_some_encodings  Fixing some encoding errors
+    uncovered in dev/stage
+
+ -- Joseph Lynch <jlynch@yelp.com>  Thu, 13 Jul 2017 16:47:44 -0700
+
+paasta-tools (0.66.2) xenial; urgency=low
+
+  * 0.66.2 tagged with 'make release'
+    Commit: Merge pull request #1361 from
+    Yelp/jlynch_paasta_firewall_python3  Fixup firewall.py for py3
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 19:11:26 -0700
+
+paasta-tools (0.66.1) xenial; urgency=low
+
+  * 0.66.1 tagged with 'make release'
+    Commit: Merge pull request #1360 from Yelp/jlynch_upgrade_pysensu
+    Pysensu is not py36 compatible until 0.3.4
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 17:41:00 -0700
+
+paasta-tools (0.66.0) xenial; urgency=low
+
+  * 0.66.0 tagged with 'make release'
+    Commit: Merge pull request #1341 from Yelp/port_to_python_3  Port to
+    python 3
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 12 Jul 2017 14:43:06 -0700
+
 paasta-tools (0.65.38) xenial; urgency=medium
 
   * 0.65.38 tagged with 'make release'

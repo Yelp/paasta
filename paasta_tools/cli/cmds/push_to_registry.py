@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import base64
+import binascii
 import os
 
 import requests
@@ -120,7 +121,7 @@ def paasta_push_to_registry(args):
         log=True,
         component='build',
         service=service,
-        loglevel='debug'
+        loglevel='debug',
     )
     if returncode != 0:
         loglines.append('ERROR: Failed to promote image for %s.' % args.commit)
@@ -144,7 +145,7 @@ def read_docker_registy_creds(registry_uri):
     try:
         with open(dockercfg_path) as f:
             dockercfg = json.load(f)
-            auth = base64.b64decode(dockercfg[registry_uri]['auth'])
+            auth = base64.b64decode(dockercfg[registry_uri]['auth']).decode('utf-8')
             first_colon = auth.find(':')
             if first_colon != -1:
                 return (auth[:first_colon], auth[first_colon + 1:-2])
@@ -152,7 +153,7 @@ def read_docker_registy_creds(registry_uri):
         pass
     except json.scanner.JSONDecodeError:  # JSON decoder error
         pass
-    except TypeError:  # base64 decode error
+    except binascii.Error:  # base64 decode error
         pass
     return (None, None)
 

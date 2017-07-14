@@ -75,7 +75,7 @@ class DateArithmetic(object):
         'month': '%m',
         'day': '%d',
         'hour': '%H',
-        'shortdate': '%Y-%m-%d'
+        'shortdate': '%Y-%m-%d',
     }
 
     @classmethod

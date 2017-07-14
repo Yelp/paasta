@@ -117,7 +117,7 @@ class TestLongRunningServiceConfig(object):
             config_dict={
                 'instances': 1,
                 'healthcheck_mode': 'cmd',
-                'healthcheck_cmd': fake_cmd
+                'healthcheck_cmd': fake_cmd,
             },
             branch_dict={},
         )

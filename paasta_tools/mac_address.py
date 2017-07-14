@@ -27,8 +27,8 @@ def reserve_unique_mac_address(lock_directory):
                 random_hex[0:2],
                 random_hex[2:4],
                 random_hex[4:6],
-                random_hex[6:8]
-            )
+                random_hex[6:8],
+            ),
         )
 
         lock_filepath = os.path.join(lock_directory, mac_address)

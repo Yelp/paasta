@@ -112,7 +112,7 @@ def test_format_log_line_with_timestamp():
         fake_instance,
         fake_component,
         input_line,
-        timestamp=fake_timestamp
+        timestamp=fake_timestamp,
     )
     assert actual == expected
 
@@ -276,7 +276,7 @@ def test_SystemPaastaConfig_get_volumes_dne():
 
 def test_SystemPaastaConfig_get_zk():
     fake_config = utils.SystemPaastaConfig({
-        'zookeeper': 'zk://fake_zookeeper_host'
+        'zookeeper': 'zk://fake_zookeeper_host',
     }, '/some/fake/dir')
     expected = 'fake_zookeeper_host'
     actual = fake_config.get_zk_hosts()
@@ -826,13 +826,13 @@ def test_get_running_mesos_docker_containers():
         {
             "Status": "Up 2 hours",
             "Names": ['/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
-            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3"
+            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3",
         },
         {
             "Status": "Up 3 days",
             "Names": ['/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
-            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
-        }
+            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c",
+        },
     ]
 
     with mock.patch("paasta_tools.utils.get_docker_client", autospec=True) as mock_docker:
@@ -1021,7 +1021,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={
-                'mem': 50
+                'mem': 50,
             },
             branch_dict={},
         )
@@ -1033,7 +1033,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={
-                'mem': 50.4
+                'mem': 50.4,
             },
             branch_dict={},
         )
@@ -1068,7 +1068,7 @@ class TestInstanceConfig:
                 'ulimit': {
                     'nofile': {'soft': 1024, 'hard': 2048},
                     'nice': {'soft': 20},
-                }
+                },
             },
             branch_dict={},
         )
@@ -1312,7 +1312,7 @@ class TestInstanceConfig:
             {
                 "containerPath": "/etc/a",
                 "hostPath": "/var/data/a",
-                "mode": "RO"
+                "mode": "RO",
             },
         ]
         fake_conf = utils.InstanceConfig(
@@ -1441,10 +1441,10 @@ class TestInstanceConfig:
 
         with mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_registry', autospec=True,
-            return_value=fake_registry
+            return_value=fake_registry,
         ), mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
-            return_value=fake_image
+            return_value=fake_image,
         ):
             expected_url = "%s/%s" % (fake_registry, fake_image)
             assert fake_conf.get_docker_url() == expected_url
@@ -1463,7 +1463,7 @@ class TestInstanceConfig:
             instance='',
             config_dict={
                 'dependencies_reference': dependencies_reference,
-                'dependencies': dependencies
+                'dependencies': dependencies,
             },
             branch_dict={},
         )
@@ -1516,7 +1516,7 @@ class TestInstanceConfig:
             instance='',
             config_dict={
                 'dependencies_reference': dependencies_reference,
-                'dependencies': dependencies
+                'dependencies': dependencies,
             },
             branch_dict={},
         )
@@ -1639,8 +1639,8 @@ def test_format_table():
         [
             ['looooong', 'y', 'z'],
             ['a', 'looooong', 'c'],
-            ['j', 'k', 'looooong']
-        ]
+            ['j', 'k', 'looooong'],
+        ],
     )
     expected = [
         'looooong  y         z',
@@ -1658,8 +1658,8 @@ def test_format_table_with_interjected_lines():
             'interjection',
             ['a', 'looooong', 'c'],
             'unicode interjection',
-            ['j', 'k', 'looooong']
-        ]
+            ['j', 'k', 'looooong'],
+        ],
     )
     expected = [
         'looooong  y         z',
@@ -1727,7 +1727,7 @@ class TestFileLogWriter:
         fake_file = mock.Mock()
         fake_contextmgr = mock.Mock(
             __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None
+            __exit__=lambda _self, t, v, tb: None,
         )
 
         fake_line = "text" * 1000000
@@ -1749,7 +1749,7 @@ class TestFileLogWriter:
 
         fake_contextmgr = mock.Mock(
             __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None
+            __exit__=lambda _self, t, v, tb: None,
         )
 
         fake_line = "line"

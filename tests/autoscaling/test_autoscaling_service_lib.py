@@ -217,7 +217,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
-        })
+        }),
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
 
@@ -251,7 +251,7 @@ def test_mesos_cpu_metrics_provider():
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
-        })
+        }),
     )
     fake_mesos_task_2 = mock.MagicMock(
         stats_callable=lambda: None,
@@ -329,7 +329,7 @@ def test_get_json_body_from_service():
             'fake-host', 'fake-port', 'fake-endpoint') == mock.sentinel.json_body
         mock_request_get.assert_called_once_with(
             'http://fake-host:fake-port/fake-endpoint',
-            headers={'User-Agent': mock.ANY}, timeout=2
+            headers={'User-Agent': mock.ANY}, timeout=2,
         )
 
 
@@ -1078,7 +1078,7 @@ def test_get_utilization():
             marathon_tasks=mock_marathon_tasks,
             mesos_tasks=mock_mesos_tasks,
             log_utilization_data=mock_log_utilization_data,
-            autoscaling_params=mock_autoscaling_params
+            autoscaling_params=mock_autoscaling_params,
         )
         mock_metrics_provider.assert_called_with(
             marathon_service_config=mock_marathon_service_config,
@@ -1095,7 +1095,7 @@ def test_get_new_instance_count():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
     ) as mock_get_decision_policy, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.compose_autoscaling_zookeeper_root', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.compose_autoscaling_zookeeper_root', autospec=True,
     ) as mock_compose_autoscaling_zookeeper_root:
         mock_decision_policy = mock.Mock(return_value=1)
         mock_get_decision_policy.return_value = mock_decision_policy
@@ -1115,7 +1115,7 @@ def test_get_new_instance_count():
             max_instances=mock_marathon_service_config.get_max_instances(),
             current_instances=4,
             zookeeper_path=mock_compose_autoscaling_zookeeper_root.return_value,
-            mock_param=2
+            mock_param=2,
         )
         mock_marathon_service_config.limit_instance_count.assert_called_with(5)
         assert ret == mock_marathon_service_config.limit_instance_count.return_value
@@ -1137,21 +1137,21 @@ def test_get_new_instance_count():
 
 def test_get_autoscaling_info():
     with mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.load_marathon_service_config', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.load_marathon_service_config', autospec=True,
     ) as mock_load_marathon_service_config, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_utilization', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_utilization', autospec=True,
     ) as mock_get_utilization, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.filter_autoscaling_tasks', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.filter_autoscaling_tasks', autospec=True,
     ) as mock_filter_autoscaling_tasks, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_error_from_utilization', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_error_from_utilization', autospec=True,
     ) as mock_get_error_from_utilization, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_new_instance_count', autospec=True
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_new_instance_count', autospec=True,
     ) as mock_get_new_instance_count, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.load_system_paasta_config', autospec=True,
-        return_value=mock.Mock(get_cluster=mock.Mock())
+        return_value=mock.Mock(get_cluster=mock.Mock()),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_all_marathon_mesos_tasks', autospec=True,
-        return_value=([], [])
+        return_value=([], []),
     ) as mock_get_all_marathon_mesos_tasks:
         mock_get_utilization.return_value = 0.80131
         mock_marathon_client = mock.Mock()

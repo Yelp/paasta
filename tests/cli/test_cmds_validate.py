@@ -42,7 +42,7 @@ def test_paasta_validate_calls_everything(
     mock_check_service_path,
     mock_get_service_path,
     mock_validate_chronos,
-    mock_validate_all_schemas
+    mock_validate_all_schemas,
 ):
     # Ensure each check in 'paasta_validate' is called
 
@@ -88,7 +88,7 @@ def test_validate_unknown_service_service_path():
 @patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_get_service_path_cwd(
     mock_glob,
-    mock_isdir
+    mock_isdir,
 ):
     mock_isdir.return_value = True
     mock_glob.return_value = ['something.yaml']
@@ -105,7 +105,7 @@ def test_get_service_path_cwd(
 @patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_get_service_path_soa_dir(
     mock_glob,
-    mock_isdir
+    mock_isdir,
 ):
     mock_isdir.return_value = True
     mock_glob.return_value = ['something.yaml']
@@ -616,7 +616,7 @@ def test_check_service_path_empty(mock_isdir, capfd):
 @patch('paasta_tools.cli.cmds.validate.glob', autospec=True)
 def test_check_service_path_good(
     mock_glob,
-    mock_isdir
+    mock_isdir,
 ):
     mock_isdir.return_value = True
     mock_glob.return_value = True

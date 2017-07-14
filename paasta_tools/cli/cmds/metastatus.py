@@ -68,7 +68,7 @@ def add_subparser(subparsers):
         action='store_true',
         default=False,
         dest="autoscaling_info",
-        help="Show cluster autoscaling info, implies -vv"
+        help="Show cluster autoscaling info, implies -vv",
     )
     status_parser.add_argument(
         '-g',
@@ -78,7 +78,7 @@ def add_subparser(subparsers):
         help=(
             'Group resource information of slaves grouped by attribute.'
             'Note: This is only effective with -vv'
-        )
+        ),
     )
     status_parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=True,
                                help="Print human-readable sizes")
@@ -94,7 +94,7 @@ def print_cluster_status(cluster, system_paasta_config, humanize, groupings, ver
         humanize=humanize,
         groupings=groupings,
         verbose=verbose,
-        autoscaling_info=autoscaling_info
+        autoscaling_info=autoscaling_info,
     )
 
     paasta_print("Cluster: %s" % cluster)
@@ -148,7 +148,7 @@ def paasta_metastatus(args):
                     groupings=args.groupings,
                     verbose=args.verbose,
                     autoscaling_info=args.autoscaling_info,
-                )
+                ),
             )
         else:
             paasta_print("Cluster %s doesn't look like a valid cluster?" % args.clusters)

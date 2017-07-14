@@ -56,7 +56,7 @@ def restart_marathon_job(service, instance, app_id, client, cluster):
         component='deploy',
         level='event',
         cluster=cluster,
-        instance=instance
+        instance=instance,
     )
     client.scale_app(app_id, instances=0, force=True)
 
@@ -216,7 +216,7 @@ def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
-                soa_dir=soa_dir
+                soa_dir=soa_dir,
             )
             all_tasks.extend(tasks)
             all_output.append(output)
@@ -295,22 +295,22 @@ def status_smartstack_backends(
     """
     output = []
     service_instance = marathon_tools.read_registration_for_service_instance(
-        service, instance, cluster
+        service, instance, cluster,
     )
 
     service_namespace_config = marathon_tools.load_service_namespace_config(
         service=service,
         namespace=instance,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_deploy_blacklist
+        system_deploy_blacklist=system_deploy_blacklist,
     )
 
     filtered_slaves = get_all_slaves_for_blacklist_whitelist(
         blacklist=monitoring_blacklist,
-        whitelist=[]
+        whitelist=[],
     )
 
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(

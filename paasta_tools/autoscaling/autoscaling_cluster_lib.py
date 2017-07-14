@@ -126,7 +126,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         try:
             instance_descriptions = ec2_client.describe_instance_status(
                 InstanceIds=instance_ids,
-                Filters=instance_filters
+                Filters=instance_filters,
             )
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
@@ -198,7 +198,7 @@ class ClusterAutoscaler(ResourceLogMixin):
 
         region_pool_utilization_dict = get_resource_utilization_by_grouping(
             lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-            mesos_state
+            mesos_state,
         )[(self.resource['pool'], self.resource['region'],)]
 
         self.log.debug(region_pool_utilization_dict)
@@ -228,7 +228,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     instance_id = slave.instance_id
                     if not instance_id:
                         self.log.warning(
-                            "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid)
+                            "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
@@ -288,13 +288,13 @@ class ClusterAutoscaler(ResourceLogMixin):
             amount_to_decrease = delta * -1
             if amount_to_decrease > killable_capacity:
                 self.log.error(
-                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!"
+                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
                 )
                 return
             self.downscale_aws_resource(
                 filtered_slaves=filtered_slaves,
                 current_capacity=current_capacity,
-                target_capacity=target_capacity
+                target_capacity=target_capacity,
             )
 
     def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
@@ -347,7 +347,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         slave_ips = [slave_pid_to_ip(slave['task_counts'].slave['pid']) for slave in slaves]
         instance_type_weights = self.get_instance_type_weights()
         instance_statuses = self.instance_status_for_instance_ids(
-            instance_ids=[instance['InstanceId'] for instance in self.instances]
+            instance_ids=[instance['InstanceId'] for instance in self.instances],
         )
         instance_descriptions = self.instance_descriptions_for_ips(slave_ips)
 
@@ -367,7 +367,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 description = matching_descriptions[0]
                 matching_status = self.filter_instance_status_for_instance_id(
                     instance_id=description['InstanceId'],
-                    instance_statuses=instance_statuses
+                    instance_statuses=instance_statuses,
                 )
                 assert len(matching_status) == 1, "There should be only one InstanceStatus per instance"
             else:
@@ -377,7 +377,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 slave=slave,
                 instance_status=matching_status[0],
                 instance_description=description,
-                instance_type_weights=instance_type_weights
+                instance_type_weights=instance_type_weights,
             ))
 
         return paasta_aws_slaves
@@ -396,7 +396,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         for subgroup in partitions:
             res = self.describe_instance_status(
                 instance_ids=subgroup,
-                region=self.resource['region']
+                region=self.resource['region'],
             )
             accumulated['InstanceStatuses'] += res['InstanceStatuses']
 
@@ -409,9 +409,9 @@ class ClusterAutoscaler(ResourceLogMixin):
             instance_filters=[
                 {
                     'Name': 'private-ip-address',
-                    'Values': ips
-                }
-            ]
+                    'Values': ips,
+                },
+            ],
         )
 
     def filter_instance_description_for_ip(self, ip, instance_descriptions):
@@ -443,7 +443,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                               " so this is as close to our target as we can get".format(
                                   slave_to_kill.instance_id,
                                   slave_to_kill.instance_weight,
-                                  target_capacity
+                                  target_capacity,
                               ))
                 if self.resource['type'] == 'aws_spot_fleet_request' and killed_slaves == 0:
                     self.log.info("This is a SFR so we must kill at least one slave to prevent the autoscaler "
@@ -454,7 +454,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
                     current_capacity=current_capacity,
-                    new_capacity=new_capacity
+                    new_capacity=new_capacity,
                 )
                 killed_slaves += 1
             except HTTPError:
@@ -471,7 +471,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     slaves_list=[
                         {'task_counts': slave.task_counts}
                         for slave in filtered_sorted_slaves
-                    ]
+                    ],
                 )
                 for i, slave in enumerate(filtered_sorted_slaves):
                     slave.task_counts = task_counts[i]['task_counts']
@@ -549,7 +549,7 @@ class SpotAutoscaler(ClusterAutoscaler):
                 mesos_state=mesos_state)
             if pool_error > 0:
                 self.log.info(
-                    "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id'])
+                    "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id']),
                 )
                 return 0, 0
             current, target = self.get_spot_fleet_delta(-1)
@@ -586,14 +586,14 @@ class SpotAutoscaler(ClusterAutoscaler):
         if ideal_capacity > self.resource['max_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!" % (
-                    ideal_capacity, self.resource['max_capacity']
-                )
+                    ideal_capacity, self.resource['max_capacity'],
+                ),
             )
         if ideal_capacity < self.resource['min_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
-                    ideal_capacity, self.resource['min_capacity']
-                )
+                    ideal_capacity, self.resource['min_capacity'],
+                ),
             )
         return current_capacity, new_capacity
 
@@ -712,7 +712,7 @@ class AsgAutoscaler(ClusterAutoscaler):
                 ),
                 ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
                 # if max and min set to 0 we still drain gradually
-                max(self.resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)))
+                max(self.resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA))),
             ))
         new_capacity = max(new_capacity, self.resource['min_capacity'])
         self.log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
@@ -720,13 +720,13 @@ class AsgAutoscaler(ClusterAutoscaler):
         if ideal_capacity > self.resource['max_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!" % (
-                    ideal_capacity, self.resource['max_capacity']
+                    ideal_capacity, self.resource['max_capacity'],
                 ))
         if ideal_capacity < self.resource['min_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
-                    ideal_capacity, self.resource['min_capacity']
-                )
+                    ideal_capacity, self.resource['min_capacity'],
+                ),
             )
         return current_capacity, new_capacity
 
@@ -878,7 +878,7 @@ def autoscaling_info_for_resource(resource, pool_settings):
         resource=resource,
         pool_settings=pool_settings,
         config_folder=None,
-        dry_run=True
+        dry_run=True,
     )
     if not scaler.exists:
         log.info("no scaler for resource {}. ignoring".format(resource['id']))
@@ -895,5 +895,5 @@ def autoscaling_info_for_resource(resource, pool_settings):
         target=str(target_capacity),
         min_capacity=str(scaler.resource['min_capacity']),
         max_capacity=str(scaler.resource['max_capacity']),
-        instances=str(len(scaler.instances))
+        instances=str(len(scaler.instances)),
     )

@@ -56,7 +56,7 @@ def test_dry_run(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    capfd
+    capfd,
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_validate_service_instance.return_value = 'marathon'
@@ -88,7 +88,7 @@ def test_dry_run_json_dict(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
-    capfd
+    capfd,
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
@@ -1052,7 +1052,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_execlp,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
-    mock_simulate_healthcheck
+    mock_simulate_healthcheck,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -1261,7 +1261,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_health
 def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
-    mock_sleep
+    mock_sleep,
 ):
     # prevent grace period from ending
     mock_time.side_effect = [0, 0]

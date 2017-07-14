@@ -58,7 +58,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             instances,
             queue,
             filter_fn,
-            parse_fn=None
+            parse_fn=None,
         ):
             # The print here is just for debugging
             paasta_print('fake log line added for %s' % scribe_env)

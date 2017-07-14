@@ -346,7 +346,7 @@ def test_parse_marathon_log_line_ok():
         'service': fake_service,
         'instance': 'ALL',
         'level': 'event',
-        'message': line
+        'message': line,
     })
     assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(expected)
 
@@ -369,7 +369,7 @@ def test_parse_chronos_log_line_ok():
         'service': fake_service,
         'instance': 'ALL',
         'level': 'event',
-        'message': line
+        'message': line,
     })
     assert sorted(logs.parse_chronos_log_line(line, clusters, fake_service)) == sorted(expected)
 
@@ -416,7 +416,7 @@ def test_scribe_tail_log_everything():
             components,
             clusters,
             queue,
-            filter_fn
+            filter_fn,
         )
         assert mock_scribereader.get_env_scribe_host.call_count == 1
         mock_scribereader.get_stream_tailer.assert_called_once_with(
@@ -954,8 +954,8 @@ def test_determine_scribereader_additional_envs():
         }
         LOG_COMPONENTS = {
             'fake_component': {
-                'additional_source_envs': ['fake_scribe_env2']
-            }
+                'additional_source_envs': ['fake_scribe_env2'],
+            },
         }
         mock_LOG_COMPONENTS.__getitem__.side_effect = LOG_COMPONENTS.__getitem__
 

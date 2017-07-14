@@ -123,7 +123,7 @@ def bounce_chronos_job(
     instance,
     cluster,
     job_to_update,
-    client
+    client,
 ):
     if job_to_update:
         log_line = 'Job to update: %s' % job_to_update
@@ -272,7 +272,7 @@ def main():
         chronos_client=client,
         service=service,
         instance=instance,
-        job_config=complete_job_config
+        job_config=complete_job_config,
     )
 
     status, output = setup_job(

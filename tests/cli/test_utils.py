@@ -174,7 +174,7 @@ def test_run_paasta_serviceinit_status(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
-        stream=True
+        stream=True,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert return_code == 0
@@ -196,7 +196,7 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
         'fake_instance',
         'fake_cluster',
         stream=True,
-        verbose=1
+        verbose=1,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert return_code == 0
@@ -285,7 +285,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         service,
         instancename,
         cluster,
-        False
+        False,
     )
     assert return_code == mock.sentinel.paasta_serviceinit_return_code
     assert actual == mock.sentinel.paasta_serviceinit_output
@@ -509,13 +509,13 @@ def test_list_teams():
                 'pages_irc_channel': 'red_jaguars_pages',
                 'notifications_irc_channel': 'red_jaguars_notifications',
                 'notification_email': 'red_jaguars+alert@yelp.com',
-                'project': 'REDJAGS'
+                'project': 'REDJAGS',
             },
             'blue_barracudas': {
                 'pagerduty_api_key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
                 'pages_irc_channel': 'blue_barracudas_pages',
             },
-        }
+        },
     }
     expected = {
         'red_jaguars',
@@ -610,7 +610,7 @@ def test_run_chronos_rerun(mock_run):
         'a_service',
         'an_instance',
         verbose=2,
-        execution_date='2016-04-08T02:37:27'
+        execution_date='2016-04-08T02:37:27',
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value

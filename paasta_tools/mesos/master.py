@@ -160,8 +160,8 @@ class MesosMaster(object):
             raise exceptions.MultipleSlavesForIDError(
                 "Multiple slaves matching filter %s. %s" % (
                     fltr,
-                    ",".join([slave.id for slave in lst])
-                )
+                    ",".join([slave.id for slave in lst]),
+                ),
             )
 
         return lst[0]
@@ -190,8 +190,8 @@ class MesosMaster(object):
             raise exceptions.MultipleTasksForIDError(
                 "Multiple tasks matching filter %s. %s" % (
                     fltr,
-                    ",".join([task.id for task in lst])
-                )
+                    ",".join([task.id for task in lst]),
+                ),
             )
         return lst[0]
 

@@ -26,25 +26,25 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
         resources=[
             Dict(
                 name='cpus',
-                scalar=Dict(value=cpu)
+                scalar=Dict(value=cpu),
             ),
             Dict(
                 name='mem',
-                scalar=Dict(value=mem)
+                scalar=Dict(value=mem),
             ),
             Dict(
                 name='ports',
                 ranges=Dict(
-                    range=[Dict(begin=port_begin, end=port_end)]
+                    range=[Dict(begin=port_begin, end=port_end)],
                 ),
             ),
         ],
-        attributes=[]
+        attributes=[],
     )
 
     if pool is not None:
         offer.attributes = [
-            Dict(name='pool', text=Dict(value=pool))
+            Dict(name='pool', text=Dict(value=pool)),
         ]
 
     return offer
@@ -65,14 +65,14 @@ class TestAdhocScheduler(object):
                     "cpus": 0.1,
                     "mem": 50,
                     "instances": 3,
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         with pytest.raises(UnknownNativeServiceError):
@@ -102,14 +102,14 @@ class TestAdhocScheduler(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         scheduler = adhoc_scheduler.AdhocScheduler(
@@ -126,7 +126,7 @@ class TestAdhocScheduler(object):
         fake_driver = mock.Mock()
 
         with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
+                        return_value=system_paasta_config,
                         ):
             # Check that offers with invalid pool don't get accepted
             tasks, _ = scheduler.tasks_and_state_for_offer(
@@ -172,14 +172,14 @@ class TestAdhocScheduler(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         scheduler = adhoc_scheduler.AdhocScheduler(
@@ -191,13 +191,13 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
             staging_timeout=30,
-            service_config_overrides={'instances': 5}
+            service_config_overrides={'instances': 5},
         )
 
         fake_driver = mock.Mock()
 
         with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
+                        return_value=system_paasta_config,
                         ):
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
             task_name = tasks[0].name

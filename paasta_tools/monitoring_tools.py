@@ -46,7 +46,7 @@ def monitoring_defaults(key):
                'https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml',
         'ticket': False,
         'project': None,
-        'realert_every': -1
+        'realert_every': -1,
     }
     return defaults.get(key, None)
 

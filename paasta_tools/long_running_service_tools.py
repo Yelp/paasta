@@ -67,14 +67,14 @@ class LongRunningServiceConfig(InstanceConfig):
             except InvalidJobNameError:
                 log.error(
                     'Provided registration {} for service '
-                    '{} is invalid'.format(registration, self.service)
+                    '{} is invalid'.format(registration, self.service),
                 )
 
         # Backwards compatbility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
         if not registrations and 'nerve_ns' in self.config_dict:
             registrations.append(
-                compose_job_id(self.service, self.config_dict['nerve_ns'])
+                compose_job_id(self.service, self.config_dict['nerve_ns']),
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
@@ -259,7 +259,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'mode',
         'discover',
         'advertise',
-        'extra_healthcheck_headers'
+        'extra_healthcheck_headers',
     }
 
     for key, value in namespace_config_from_file.items():

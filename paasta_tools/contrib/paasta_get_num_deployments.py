@@ -13,7 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             'Helper script to get the number of in-progress marathon deployments'
-        )
+        ),
     )
     return parser.parse_args()
 

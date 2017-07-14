@@ -58,7 +58,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         git_url=mock_get_git_url.return_value,
         deploy_group=fake_args.deploy_groups,
         service=mock_figure_out_service_name.return_value,
-        commit=fake_args.commit
+        commit=fake_args.commit,
     )
 
 
@@ -95,7 +95,7 @@ def test_paasta_rollback_with_force(
         git_url=mock_get_git_url.return_value,
         deploy_group=fake_args.deploy_groups,
         service=mock_figure_out_service_name.return_value,
-        commit=fake_args.commit
+        commit=fake_args.commit,
     )
 
 

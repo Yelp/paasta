@@ -500,32 +500,32 @@ class ScribeLogReader(LogReader):
             per_cluster=False,
             stream_name_fn=get_log_name_for_service,
             filter_fn=paasta_log_line_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'stdout': ScribeComponentStreamInfo(
             per_cluster=False,
             stream_name_fn=lambda service: get_log_name_for_service(service, prefix='app_output'),
             filter_fn=paasta_app_output_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'stderr': ScribeComponentStreamInfo(
             per_cluster=False,
             stream_name_fn=lambda service: get_log_name_for_service(service, prefix='app_output'),
             filter_fn=paasta_app_output_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'marathon': ScribeComponentStreamInfo(
             per_cluster=True,
             stream_name_fn=lambda service, cluster: 'stream_marathon_%s' % cluster,
             filter_fn=marathon_log_line_passes_filter,
-            parse_fn=parse_marathon_log_line
+            parse_fn=parse_marathon_log_line,
         ),
         'chronos': ScribeComponentStreamInfo(
             per_cluster=True,
             stream_name_fn=lambda service, cluster: 'stream_chronos_%s' % cluster,
             filter_fn=chronos_log_line_passes_filter,
-            parse_fn=parse_chronos_log_line
-        )
+            parse_fn=parse_chronos_log_line,
+        ),
     }
 
     def __init__(self, cluster_map):
@@ -704,7 +704,7 @@ class ScribeLogReader(LogReader):
                 PaastaColors.red(
                     "Warning, you have chosen to get marathon or chronos logs based "
                     "on time. This command may take a dozen minutes or so to run "
-                    "because marathon and chronos are on shared streams.\n"
+                    "because marathon and chronos are on shared streams.\n",
                 ),
                 file=sys.stderr,
             )
@@ -959,7 +959,7 @@ def validate_filtering_args(args, log_reader):
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
         paasta_print(
             PaastaColors.red(
-                log_reader.__class__.__name__ + " does not support line based offsets"
+                log_reader.__class__.__name__ + " does not support line based offsets",
             ),
             file=sys.stderr,
         )

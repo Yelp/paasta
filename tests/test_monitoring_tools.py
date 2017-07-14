@@ -29,7 +29,7 @@ class TestMonitoring_Tools:
         'runbook': 'y/general_test_runbook',
         'tip': 'general_test_tip',
         'notification_email': 'general_test_notification_email',
-        'page': general_page
+        'page': general_page,
     }
 
     empty_service_config = marathon_tools.MarathonServiceConfig(
@@ -49,7 +49,7 @@ class TestMonitoring_Tools:
             'runbook': 'y/job_test_runbook',
             'tip': 'job_test_tip',
             'notification_email': 'job_test_notification_email',
-            'page': job_page
+            'page': job_page,
         },
         branch_dict={},
     )
@@ -62,7 +62,7 @@ class TestMonitoring_Tools:
             'runbook': 'y/job_test_runbook',
             'tip': 'job_test_tip',
             'notification_email': 'job_test_notification_email',
-            'page': job_page
+            'page': job_page,
         },
         branch_dict={},
     )
@@ -73,7 +73,7 @@ class TestMonitoring_Tools:
         'runbook': 'y/monitor_test_runbook',
         'tip': 'monitor_test_tip',
         'notification_email': 'monitor_test_notification_email',
-        'page': monitor_page
+        'page': monitor_page,
     }
     empty_monitor_config = {}
     framework = 'fake_framework'
@@ -84,7 +84,7 @@ class TestMonitoring_Tools:
 
     def test_get_team(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('team', self.overrides, self.service,
@@ -92,7 +92,7 @@ class TestMonitoring_Tools:
 
     def test_get_runbook(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_runbook(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('runbook', self.overrides, self.service,
@@ -100,7 +100,7 @@ class TestMonitoring_Tools:
 
     def test_get_tip(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_tip(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('tip', self.overrides, self.service,
@@ -108,7 +108,7 @@ class TestMonitoring_Tools:
 
     def test_get_notification_email(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_notification_email(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.overrides,
@@ -116,7 +116,7 @@ class TestMonitoring_Tools:
 
     def test_get_page(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_page(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('page', self.overrides, self.service,
@@ -124,7 +124,7 @@ class TestMonitoring_Tools:
 
     def test_get_alert_after(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_alert_after(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('alert_after', self.overrides, self.service,
@@ -132,7 +132,7 @@ class TestMonitoring_Tools:
 
     def test_get_realert_every(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_defaults = mock.Mock()
             monitoring_tools.get_realert_every(self.overrides, self.service, self.soa_dir, monitoring_defaults)
@@ -141,7 +141,7 @@ class TestMonitoring_Tools:
 
     def test_get_check_every(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_check_every(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('check_every', self.overrides, self.service,
@@ -149,7 +149,7 @@ class TestMonitoring_Tools:
 
     def test_get_irc_channels(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_irc_channels(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('irc_channels', self.overrides, self.service,
@@ -157,7 +157,7 @@ class TestMonitoring_Tools:
 
     def test_get_dependencies(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_dependencies(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.overrides, self.service,
@@ -165,7 +165,7 @@ class TestMonitoring_Tools:
 
     def test_get_ticket(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_ticket(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('ticket', self.overrides, self.service,
@@ -173,7 +173,7 @@ class TestMonitoring_Tools:
 
     def test_get_project(self):
         with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_project(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('project', self.overrides, self.service,
@@ -260,7 +260,7 @@ class TestMonitoring_Tools:
             mock_get_team.return_value = 'test_team'
             mock_get_monitoring_config_value.return_value = False
             mock_get_sensu_team_data.return_value = {
-                'notification_email': expected
+                'notification_email': expected,
             }
             actual = monitoring_tools.get_team_email_address('fake_service')
             assert actual == expected
@@ -351,7 +351,7 @@ class TestMonitoring_Tools:
                 fake_monitoring_overrides,
                 fake_status,
                 fake_output,
-                fake_soa_dir
+                fake_soa_dir,
             )
 
             get_team_patch.assert_called_once_with(
@@ -362,22 +362,22 @@ class TestMonitoring_Tools:
             get_tip_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
-                fake_soa_dir
+                fake_soa_dir,
             )
             get_notification_email_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
-                fake_soa_dir
+                fake_soa_dir,
             )
             get_irc_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
-                fake_soa_dir
+                fake_soa_dir,
             )
             get_page_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
-                fake_soa_dir
+                fake_soa_dir,
             )
             pysensu_yelp_send_event_patch.assert_called_once_with(
                 expected_check_name,
@@ -429,7 +429,7 @@ class TestMonitoring_Tools:
                 fake_monitoring_overrides,
                 fake_status,
                 fake_output,
-                fake_soa_dir
+                fake_soa_dir,
             )
 
             assert pysensu_yelp_send_event_patch.call_count == 0

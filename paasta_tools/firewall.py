@@ -30,7 +30,7 @@ PRIVATE_IP_RANGES = (
     '192.168.0.0/255.255.0.0',
     '169.254.0.0/255.255.0.0',
 )
-DEFAULT_SYNAPSE_SERVICE_DIR = b'/var/run/synapse/services'
+DEFAULT_SYNAPSE_SERVICE_DIR = '/var/run/synapse/services'
 DEFAULT_FIREWALL_FLOCK_PATH = '/var/lib/paasta/firewall.flock'
 DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
 
@@ -119,9 +119,9 @@ def _default_rules(conf, log_prefix):
                 'limit', (
                     ('limit', ('1/sec',)),
                     ('limit-burst', ('1',)),
-                )
+                ),
             ),
-        )
+        ),
     )
 
     policy = conf.get_outbound_firewall()
@@ -192,13 +192,13 @@ def _yocalhost_rule(port, comment, protocol='tcp'):
                 'comment',
                 (
                     ('comment', (comment,)),
-                )
+                ),
             ),
             (
                 protocol,
                 (
                     ('dport', (six.text_type(port),)),
-                )
+                ),
             ),
         ),
         target_parameters=(),
@@ -232,13 +232,13 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                         'comment',
                         (
                             ('comment', ('backend ' + namespace,)),
-                        )
+                        ),
                     ),
                     (
                         'tcp',
                         (
                             ('dport', (six.text_type(backend['port']),)),
-                        )
+                        ),
                     ),
                 ),
                 target_parameters=(),
@@ -358,7 +358,7 @@ def _ensure_dns_chain():
                 ),
             )
             for dns_server in _dns_servers()
-        ))
+        )),
     )
 
 
@@ -384,7 +384,7 @@ def _ensure_internet_chain():
                 target_parameters=(),
             )
             for ip_range in PRIVATE_IP_RANGES
-        )
+        ),
     )
 
 

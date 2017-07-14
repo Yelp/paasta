@@ -27,7 +27,7 @@ def test_format_tag():
     actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
-        desired_state='stop'
+        desired_state='stop',
     )
     assert actual == expected
 
@@ -53,7 +53,7 @@ def test_issue_state_change_for_service(mock_log_event, get_transport_and_path, 
             branch_dict={},
         ),
         '0',
-        'stop'
+        'stop',
     )
 
     get_transport_and_path.assert_called_once_with(fake_git_url)
@@ -114,7 +114,7 @@ def test_log_event():
             component='deploy',
             cluster='fake_cluster',
             line=("Issued request to change state of fake_instance (an instance of "
-                  "fake_service) to 'stopped' by fake_user@fake_fqdn")
+                  "fake_service) to 'stopped' by fake_user@fake_fqdn"),
         )
 
 

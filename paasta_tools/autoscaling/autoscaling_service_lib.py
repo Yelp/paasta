@@ -265,7 +265,7 @@ def deserialize_historical_load(historical_load_bytes):
                 # unfortunately struct.unpack doesn't like kwargs.
                 HISTORICAL_LOAD_SERIALIZATION_FORMAT,
                 historical_load_bytes[pos:pos + SIZE_PER_HISTORICAL_LOAD_RECORD],
-            )
+            ),
         )
 
     return historical_load
@@ -274,7 +274,7 @@ def deserialize_historical_load(historical_load_bytes):
 def get_json_body_from_service(host, port, endpoint, timeout=2):
     return requests.get(
         'http://%s:%s/%s' % (host, port, endpoint),
-        headers={'User-Agent': get_user_agent()}, timeout=timeout
+        headers={'User-Agent': get_user_agent()}, timeout=timeout,
     ).json()
 
 
@@ -574,7 +574,7 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         autoscaling_params=autoscaling_params,
         log_utilization_data=log_utilization_data,
         marathon_tasks=marathon_tasks,
-        mesos_tasks=mesos_tasks
+        mesos_tasks=mesos_tasks,
     )
     error = get_error_from_utilization(
         utilization=utilization,

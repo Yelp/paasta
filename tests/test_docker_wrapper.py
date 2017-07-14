@@ -63,14 +63,14 @@ class TestParseEnvArgs(object):
         env = docker_wrapper.parse_env_args(['docker', '--env-file={}'.format(mock_env_file)])
         assert env == {
             'fileKeyA': 'fileValueA',
-            'fileKeyB': 'fileValueB'
+            'fileKeyB': 'fileValueB',
         }
 
     def test_file(self, mock_env_file):
         env = docker_wrapper.parse_env_args(['docker', '--env-file', mock_env_file])
         assert env == {
             'fileKeyA': 'fileValueA',
-            'fileKeyB': 'fileValueB'
+            'fileKeyB': 'fileValueB',
         }
 
     def test_two_files(self, mock_env_file, mock_env_file2):
@@ -78,7 +78,7 @@ class TestParseEnvArgs(object):
         assert env == {
             'fileKeyA': 'fileValueA',
             'fileKeyB': 'fileValueB',
-            'fileKeyC': 'fileValueC'
+            'fileKeyC': 'fileValueC',
         }
 
     def test_file_and_short(self, mock_env_file):
@@ -86,7 +86,7 @@ class TestParseEnvArgs(object):
         assert env == {
             'foo': 'bar',
             'fileKeyA': 'fileValueA',
-            'fileKeyB': 'fileValueB'
+            'fileKeyB': 'fileValueB',
         }
 
     @pytest.fixture
@@ -204,8 +204,8 @@ class TestGenerateHostname(object):
         ['docker', 'run', '--hostname=myhostname', 'run']),
     (  # ignore args before run
         ['docker', '--host', '/fake.sock', 'run', '-t'],
-        ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t']
-    )
+        ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t'],
+    ),
 ])
 def test_add_argument(input_args, expected_args):
     args = docker_wrapper.add_argument(input_args, '--hostname=myhostname')
@@ -658,10 +658,10 @@ class TestMain(object):
         with mock.patch.object(
             docker_wrapper,
             'is_numa_enabled',
-            return_value=is_numa_enabled
+            return_value=is_numa_enabled,
         ), mock.patch.object(docker_wrapper,
                              'get_numa_memsize',
-                             return_value=node_mem
+                             return_value=node_mem,
                              ), mock.patch.object(docker_wrapper, 'open', new=m):
             yield
 
@@ -679,7 +679,7 @@ class TestMain(object):
         return [
             '--env=PAASTA_FIREWALL=1',
             '--env=PAASTA_SERVICE=myservice',
-            '--env=PAASTA_INSTANCE=myinstance'
+            '--env=PAASTA_INSTANCE=myinstance',
         ]
 
     @mock.patch.object(docker_wrapper, 'firewall_flock', autospec=True)
@@ -690,7 +690,7 @@ class TestMain(object):
         mock_firewall_flock,
         mock_mac_address,
         mock_execlp,
-        mock_firewall_env_args
+        mock_firewall_env_args,
     ):
         argv = [
             'docker',
@@ -775,7 +775,7 @@ class TestMain(object):
         capsys,
         mock_mac_address,
         mock_execlp,
-        mock_firewall_env_args
+        mock_firewall_env_args,
     ):
         argv = [
             'docker',

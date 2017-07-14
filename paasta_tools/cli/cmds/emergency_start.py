@@ -74,7 +74,7 @@ def paasta_emergency_start(args):
         cluster=args.cluster,
         service=service,
         instances=args.instance,
-        system_paasta_config=system_paasta_config
+        system_paasta_config=system_paasta_config,
     )
     paasta_print("%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:]))
     paasta_print("Output: %s" % PaastaColors.grey(output))

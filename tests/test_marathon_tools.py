@@ -369,10 +369,10 @@ class TestMarathonTools:
             'routes': [
                 {
                     'source': 'oregon',
-                    'destinations': ['indiana']
+                    'destinations': ['indiana'],
                 },
                 {
-                    'source': 'florida', 'destinations': ['miami', 'beach']
+                    'source': 'florida', 'destinations': ['miami', 'beach'],
                 },
             ],
             'discover': fake_discover,
@@ -382,7 +382,7 @@ class TestMarathonTools:
                 'gamma': ['delta', 'epsilon'],
             },
             'extra_healthcheck_headers': {
-                'Host': 'example.com'
+                'Host': 'example.com',
             },
         }
         fake_config = {
@@ -403,15 +403,15 @@ class TestMarathonTools:
             'retries': fake_retries,
             'mode': mode,
             'routes': [
-                ('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')
+                ('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach'),
             ],
             'discover': fake_discover,
             'advertise': fake_advertise,
             'extra_advertise': [
-                ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon')
+                ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon'),
             ],
             'extra_healthcheck_headers': {
-                'Host': 'example.com'
+                'Host': 'example.com',
             },
         }
         with mock.patch('service_configuration_lib.read_service_configuration',
@@ -491,8 +491,8 @@ class TestMarathonTools:
             config_dict={
                 'registrations': [
                     compose_job_id(name, instance),
-                    compose_job_id(name, 'something else')
-                ]
+                    compose_job_id(name, 'something else'),
+                ],
             },
             branch_dict={},
         )
@@ -516,7 +516,7 @@ class TestMarathonTools:
             branch_dict={},
         )
         actual_registrations = marathon_tools.read_all_registrations_for_service_instance(
-            name, instance, cluster, soa_dir
+            name, instance, cluster, soa_dir,
         )
         assert set(actual_registrations) == set(registrations)
         load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
@@ -557,30 +557,30 @@ class TestMarathonTools:
                     'executors': [
                         {'id': id_1, 'resources': {'ports': ports_1},
                             'tasks': [{'state': 'TASK_RUNNING'}]},
-                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{'state': 'TASK_RUNNING'}]}
+                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
-                    'name': 'marathon-1111111'
+                    'name': 'marathon-1111111',
                 },
                 {
                     'executors': [
                         {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                         {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
-                    'name': 'marathon-3145jgreoifd'
+                    'name': 'marathon-3145jgreoifd',
                 },
                 {
                     'executors': [
                         {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{'state': 'TASK_STAGED'}]},
                     ],
-                    'name': 'marathon-754rchoeurcho'
+                    'name': 'marathon-754rchoeurcho',
                 },
                 {
                     'executors': [
                         {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                     ],
-                    'name': 'super_bunk'
-                }
-            ]
+                    'name': 'super_bunk',
+                },
+            ],
         }
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
@@ -597,7 +597,7 @@ class TestMarathonTools:
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         registrations = [
             ['no_docstrings.dos'],
-            ['no_test.uno']
+            ['no_test.uno'],
         ]
         nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
                        long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
@@ -633,13 +633,13 @@ class TestMarathonTools:
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         namespaces = [
             ['no_docstrings.quatro'],
-            ['no_test.uno', 'no_test.dos', 'no_test.tres']
+            ['no_test.uno', 'no_test.dos', 'no_test.tres'],
         ]
         nerve_dicts = {
             ('no_test', 'uno'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6666}),
             ('no_test', 'dos'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6667}),
             ('no_test', 'tres'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6668}),
-            ('no_docstrings', 'quatro'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6669})
+            ('no_docstrings', 'quatro'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6669}),
         }
         expected = [('no_test.uno', {'port': 1111, 'proxy_port': 6666}),
                     ('no_test.dos', {'port': 1111, 'proxy_port': 6667}),
@@ -677,7 +677,7 @@ class TestMarathonTools:
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         registrations = [
             ['no_docstrings.dos'],
-            ['no_test.uno']
+            ['no_test.uno'],
         ]
         nerve_dicts = [long_running_service_tools.ServiceNamespaceConfig({'binary': 1}),
                        long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
@@ -766,14 +766,14 @@ class TestMarathonTools:
         with mock.patch(
             'os.listdir',
             autospec=True,
-            return_value=['b', 'a']
+            return_value=['b', 'a'],
         ) as listdir_patch, mock.patch(
             'os.path.exists',
             autospec=True,
             side_effect=lambda x: x in (
                 '/etc/nerve/puppet_services.d',
                 '/etc/nerve/puppet_services.d/a',
-            )
+            ),
         ), mock.patch(
             'paasta_tools.marathon_tools.open',
             create=True,
@@ -792,28 +792,28 @@ class TestMarathonTools:
         ), mock.patch(
             'paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve',
             autospec=True,
-            side_effect=lambda x, y, _: (compose_job_id(x, y), {})
+            side_effect=lambda x, y, _: (compose_job_id(x, y), {}),
         ):
             assert marathon_tools.get_puppet_services_running_here_for_nerve('foo') == [
-                ('c.main', {}), ('c.canary', {}), ('d.main', {})
+                ('c.main', {}), ('c.canary', {}), ('d.main', {}),
             ]
 
     def test_get_classic_services_running_here_for_nerve(self):
         with mock.patch(
             'service_configuration_lib.services_that_run_here',
             autospec=True,
-            side_effect=lambda: {'a', 'b'}
+            side_effect=lambda: {'a', 'b'},
         ), mock.patch(
             'paasta_tools.marathon_tools.get_all_namespaces_for_service',
             autospec=True,
-            side_effect=lambda x, y, full_name: [('foo', {})]
+            side_effect=lambda x, y, full_name: [('foo', {})],
         ), mock.patch(
             'paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve',
             autospec=True,
-            side_effect=lambda x, y, _: (compose_job_id(x, y), {})
+            side_effect=lambda x, y, _: (compose_job_id(x, y), {}),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                ('a.foo', {}), ('b.foo', {})
+                ('a.foo', {}), ('b.foo', {}),
             ]
 
     def test_format_marathon_app_dict(self):
@@ -857,7 +857,7 @@ class TestMarathonTools:
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 3
+                "maxConsecutiveFailures": 3,
             },
         ]
         fake_period = 200000
@@ -883,7 +883,7 @@ class TestMarathonTools:
                         {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
                         {"key": "label", "value": "paasta_service=can_you_dig_it"},
                         {"key": "label", "value": "paasta_instance=yes_i_can"},
-                    ]
+                    ],
                 },
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
@@ -923,7 +923,7 @@ class TestMarathonTools:
                 'healthcheck_max_consecutive_failures': 3,
                 'accepted_resource_roles': ['ads'],
             },
-            branch_dict={'desired_state': 'start'}
+            branch_dict={'desired_state': 'start'},
         )
         with mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
@@ -939,10 +939,10 @@ class TestMarathonTools:
                     'dockercfg_location': 'file:///root/.dockercfg',
                     'deploy_blacklist': [],
                     'deploy_whitelist': [],
-                    'expected_slave_attributes': [{"habitat": "my cool habitat"}]
+                    'expected_slave_attributes': [{"habitat": "my cool habitat"}],
                 },
-                "/foo"
-            )
+                "/foo",
+            ),
         ):
             actual = config.format_marathon_app_dict()
             assert actual == expected_conf
@@ -1120,7 +1120,7 @@ class TestMarathonTools:
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == [['something', 'GROUP_BY']]
 
@@ -1140,7 +1140,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1154,7 +1154,7 @@ class TestMarathonTools:
             branch_dict={},
         )
         fake_system_paasta_config = SystemPaastaConfig({
-            "expected_slave_attributes": [{"region": "fake_region"}]
+            "expected_slave_attributes": [{"region": "fake_region"}],
         }, "/foo")
 
         expected_constraints = [
@@ -1163,7 +1163,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1184,7 +1184,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1205,7 +1205,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1223,7 +1223,7 @@ class TestMarathonTools:
             branch_dict={},
         )
         fake_system_paasta_config = SystemPaastaConfig({
-            "expected_slave_attributes": [{"habitat": "one"}, {"habitat": "two"}]
+            "expected_slave_attributes": [{"habitat": "one"}, {"habitat": "two"}],
         }, "/foo")
         expected_constraints = [
             ["habitat", "GROUP_BY", "2"],
@@ -1231,7 +1231,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1252,7 +1252,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1273,7 +1273,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1297,7 +1297,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert sorted(actual) == sorted(expected_constraints)
 
@@ -1321,7 +1321,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1488,7 +1488,7 @@ class TestMarathonTools:
             'cluster': 'fake_cluster',
             'volumes': [],
             'docker_registry': 'fake_registry',
-            'expected_slave_attributes': [{"region": "blah"}]
+            'expected_slave_attributes': [{"region": "blah"}],
         }, '/fake/dir/')
         with mock.patch(
             'paasta_tools.marathon_tools.filter_mesos_slaves_by_blacklist',
@@ -1507,7 +1507,7 @@ class TestMarathonTools:
             with raises(NoSlavesAvailableError) as excinfo:
                 fake_service_config.get_routing_constraints(
                     service_namespace_config=self.fake_service_namespace_config,
-                    system_paasta_config=fake_system_paasta_config
+                    system_paasta_config=fake_system_paasta_config,
                 )
             assert str(excinfo.value) == (
                 "We do not believe any slaves on the cluster will match the constraints for fake_name.fake_instance. "
@@ -1611,7 +1611,7 @@ class TestMarathonServiceConfig(object):
     def test_repr(self):
         actual = repr(marathon_tools.MarathonServiceConfig(
             str('foo'), str('bar'), str(''),
-            {str('baz'): str('baz')}, {str('bubble'): str('gum')}
+            {str('baz'): str('baz')}, {str('bubble'): str('gum')},
         ))
         expect = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}, '/nail/etc/services')"""
         assert actual == expect
@@ -1725,7 +1725,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 30
+                "maxConsecutiveFailures": 30,
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1747,7 +1747,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 30
+                "maxConsecutiveFailures": 30,
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1770,7 +1770,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 30
+                "maxConsecutiveFailures": 30,
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1797,7 +1797,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": fake_timeout,
-                "maxConsecutiveFailures": 30
+                "maxConsecutiveFailures": 30,
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1955,7 +1955,7 @@ def test_format_marathon_app_dict_no_smartstack():
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
-                    ]
+                    ],
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2024,7 +2024,7 @@ def test_format_marathon_app_dict_with_smartstack():
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
-                    ]
+                    ],
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2048,7 +2048,7 @@ def test_format_marathon_app_dict_with_smartstack():
                     'gracePeriodSeconds': 60,
                     'maxConsecutiveFailures': 30,
                     'path': '/status',
-                }
+                },
             ],
             'env': mock.ANY,
             'id': fake_job_id,
@@ -2068,8 +2068,8 @@ def test_format_marathon_app_dict_utilizes_net():
         {
             "containerPath": "/system",
             "hostPath": "/system",
-            "mode": "RO"
-        }
+            "mode": "RO",
+        },
     ]
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service_name,
@@ -2109,15 +2109,15 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         {
             "containerPath": "/extra",
             "hostPath": "/extra",
-            "mode": "RO"
-        }
+            "mode": "RO",
+        },
     ]
     fake_system_volumes = [
         {
             "containerPath": "/system",
             "hostPath": "/system",
-            "mode": "RO"
-        }
+            "mode": "RO",
+        },
     ]
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service_name,
@@ -2158,7 +2158,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
-                    ]
+                    ],
                 },
                 'type': 'DOCKER',
                 'volumes': fake_extra_volumes + fake_system_volumes,

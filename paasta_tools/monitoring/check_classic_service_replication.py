@@ -158,7 +158,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                 synapse_host,
                 synapse_port,
                 synapse_haproxy_url_format,
-                ['%s.main' % name for name in all_services]
+                ['%s.main' % name for name in all_services],
             )
         except requests.exceptions.ConnectionError:
             self.log.error(
@@ -193,7 +193,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         checked_services = []
         for service, service_config in all_service_config.items():
             do_monitoring, monitoring_config = extract_replication_info(
-                service_config
+                service_config,
             )
 
             if do_monitoring:

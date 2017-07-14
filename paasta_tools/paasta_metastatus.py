@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import functools
 import logging
 import sys
 
@@ -56,7 +57,7 @@ def parse_args(argv):
         help=(
             'Group resource information of slaves grouped by attribute.'
             'Note: This is only effective with -vv'
-        )
+        ),
     )
     parser.add_argument('-t', '--threshold', type=int, default=90)
     parser.add_argument('-a', '--autoscaling-info', action='store_true', default=False,
@@ -157,7 +158,7 @@ def main(argv=None):
                 table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
                     attribute_value,
                     healthcheck_utilization_pairs,
-                    args.humanize
+                    args.humanize,
                 ))
             table_rows = sorted(table_rows, key=lambda x: x[0])
             all_rows.extend(table_rows)
@@ -167,10 +168,10 @@ def main(argv=None):
         if args.autoscaling_info:
             print_with_indent("Autoscaling resources:", 2)
             headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
-            table = reduce(
+            table = functools.reduce(
                 lambda x, y: x + [(y)],
                 get_autoscaling_info_for_all_resources(),
-                [headers]
+                [headers],
             )
 
             for line in format_table(table):
@@ -199,7 +200,7 @@ def main(argv=None):
                 table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
                     attribute_value,
                     healthcheck_utilization_pairs,
-                    args.humanize
+                    args.humanize,
                 ))
                 table_rows = sorted(table_rows, key=lambda x: x[0])
                 all_rows.extend(table_rows)

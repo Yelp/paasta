@@ -125,20 +125,20 @@ def check_smartstack_replication_for_instance(
     full_name = compose_job_id(service, instance)
 
     primary_registration = marathon_tools.read_registration_for_service_instance(
-        service, instance, soa_dir=soa_dir
+        service, instance, soa_dir=soa_dir,
     )
 
     if primary_registration != full_name:
         log.debug(
             '%s is announced under: %s. '
-            'Not checking replication for it' % (full_name, primary_registration)
+            'Not checking replication for it' % (full_name, primary_registration),
         )
         return
 
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
     monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+        system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
     )
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
@@ -241,7 +241,7 @@ def check_healthy_marathon_tasks_for_service_instance(service, instance, cluster
     app_id = format_job_id(service, instance)
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
         all_tasks=all_tasks,
-        app_id=app_id
+        app_id=app_id,
     )
     log.info("Checking %s in marathon as it is not in smartstack" % app_id)
     send_event_if_under_replication(
@@ -342,7 +342,7 @@ def check_service_replication(client, service, instance, all_tasks, cluster, soa
             cluster=cluster,
             soa_dir=soa_dir,
             expected_count=expected_count,
-            all_tasks=all_tasks
+            all_tasks=all_tasks,
         )
 
 

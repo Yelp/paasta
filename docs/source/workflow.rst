@@ -53,7 +53,7 @@ If a Scheduled Job is required to be 'rerun', then this can be achieved using
 the ``paasta rerun`` command.  This allows you to run a job in the context of
 another date.
 
-An example might be: 
+An example might be:
  * Assume I have a job, ``my-job``, which belongs to the service ``myservice``.
  * In the service's ``chronos-testcluster.yaml`` file, the ``schedule`` field is set to ``R/2014-09-25T00:00:00Z/PT24H``.
  * The run for my job yesterday failed due to a third party outage.

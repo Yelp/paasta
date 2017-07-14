@@ -157,7 +157,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
     attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves,
-        attribute=attribute
+        attribute=attribute,
     )
 
     full_name = compose_job_id(service, namespace)

@@ -196,7 +196,7 @@ def main():
         # Strip all the configuration for the related services
         # those information will not be used by the rest of the flow
         related_jobs = {
-            (service, instance): related_jobs[(service, instance)]
+            (service, instance): related_jobs[(service, instance)],
         }
 
     complete_job_configs = {}

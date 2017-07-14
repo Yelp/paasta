@@ -77,7 +77,7 @@ class PaastaDeployWorker(PaastaThread):
                     failures=failures,
                     factor=self.config.get_deployd_worker_failure_backoff_factor(),
                     base=2,
-                    max_time=6000
+                    max_time=6000,
                 )
 
             bounce_timers.setup_marathon.stop()

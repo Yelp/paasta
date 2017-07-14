@@ -43,18 +43,18 @@ def test_get_service_info():
             'external_link': 'http://bla',
             'smartstack': {
                 'main': {
-                    'proxy_port': 9001
-                }
-            }
+                    'proxy_port': 9001,
+                },
+            },
         }
         mock_scl_read_service_configuration.return_value = {
             'description': 'a fake service that does stuff',
             'external_link': 'http://bla',
             'smartstack': {
                 'main': {
-                    'proxy_port': 9001
-                }
-            }
+                    'proxy_port': 9001,
+                },
+            },
         }
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_get_smartstack_endpoints.return_value = ['http://foo:1234', 'tcp://bar:1234']
@@ -87,14 +87,14 @@ def test_deployments_to_clusters():
 
 def test_get_smartstack_endpoints_http():
     with mock.patch(
-        'service_configuration_lib.read_service_configuration', autospec=True
+        'service_configuration_lib.read_service_configuration', autospec=True,
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {
             'smartstack': {
                 'main': {
-                    'proxy_port': 1234
-                }
-            }
+                    'proxy_port': 1234,
+                },
+            },
         }
         expected = ["http://169.254.255.254:1234 (main)"]
         actual = info.get_smartstack_endpoints('unused', '/fake/soa/dir')
@@ -103,15 +103,15 @@ def test_get_smartstack_endpoints_http():
 
 def test_get_smartstack_endpoints_tcp():
     with mock.patch(
-        'service_configuration_lib.read_service_configuration', autospec=True
+        'service_configuration_lib.read_service_configuration', autospec=True,
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {
             'smartstack': {
                 'tcpone': {
                     'proxy_port': 1234,
                     'mode': 'tcp',
-                }
-            }
+                },
+            },
         }
         expected = ["tcp://169.254.255.254:1234 (tcpone)"]
         actual = info.get_smartstack_endpoints('unused', '/fake/soa/dir')
@@ -128,9 +128,9 @@ def test_get_deployments_strings_default_case_with_smartstack():
         mock_read_service_configuration.return_value = {
             'smartstack': {
                 'main': {
-                    'proxy_port': 9001
-                }
-            }
+                    'proxy_port': 9001,
+                },
+            },
         }
         actual = info.get_deployments_strings('fake_service', '/fake/soa/dir')
         assert ' - clusterA (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterA.yelp/') in actual
@@ -165,7 +165,7 @@ def test_get_deployments_strings_non_listening_service():
 
 def test_get_deployments_strings_no_deployments():
     with mock.patch(
-        'paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True
+        'paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True,
     ) as mock_get_actual_deployments:
         mock_get_actual_deployments.side_effect = NoDeploymentsAvailable
         actual = info.get_deployments_strings('unused', '/fake/soa/dir')

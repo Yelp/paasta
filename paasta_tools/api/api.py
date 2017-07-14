@@ -26,7 +26,6 @@ import requests_cache
 import service_configuration_lib
 from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
-from pyramid.scripts.pserve import watch_file
 
 import paasta_tools.api
 from paasta_tools import marathon_tools
@@ -43,7 +42,7 @@ def parse_paasta_api_args():
         '-D', '--debug',
         dest='debug',
         action='store_true', default=False,
-        help="output the debug logs"
+        help="output the debug logs",
     )
     parser.add_argument(
         'port', type=int,
@@ -51,7 +50,7 @@ def parse_paasta_api_args():
     parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
-        help="define a different soa config directory"
+        help="define a different soa config directory",
     )
     args = parser.parse_args()
     return args
@@ -60,7 +59,6 @@ def parse_paasta_api_args():
 def make_app(global_config=None):
     paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
-    watch_file(os.path.join(paasta_api_path, 'api_docs/swagger.json'))
 
     config = Configurator(settings={
         'service_name': 'paasta-api',
@@ -93,7 +91,7 @@ def setup_paasta_api():
     settings.marathon_client = marathon_tools.get_marathon_client(
         marathon_config.get_url(),
         marathon_config.get_username(),
-        marathon_config.get_password()
+        marathon_config.get_password(),
     )
 
     # Set up transparent cache for http API calls. With expire_after, responses

@@ -162,7 +162,7 @@ def main():
         proxy_port = get_proxy_port(service, instance)
         paasta_print("# %s,%s,%s,%s,%s" % (container_id, service, instance, proxy_port, marathon_port))
         paasta_print("sudo hadown -P %s -e $((`date +'%%s'`+%s)) %s.%s" % (
-            marathon_port, hadown_expire_in_seconds, service, instance
+            marathon_port, hadown_expire_in_seconds, service, instance,
         ))
         paasta_print("sleep %s" % smartstack_grace_sleep)
         t += smartstack_grace_sleep

@@ -30,26 +30,26 @@ from paasta_tools.chronos_tools import SPACER
 def test_modify_command_for_date(mock_parse_time_variables):
     mock_parse_time_variables.return_value = '2016-03-17'
     fake_chronos_job_config = {
-        'command': 'foo'
+        'command': 'foo',
     }
     actual = chronos_rerun.modify_command_for_date(fake_chronos_job_config,
                                                    datetime.datetime.now())
 
     assert actual == {
-        'command': '2016-03-17'
+        'command': '2016-03-17',
     }
 
 
 def test_remove_parents():
     fake_chronos_job_config = {
-        'parents': ['foo', 'bar', 'baz']
+        'parents': ['foo', 'bar', 'baz'],
     }
     assert chronos_rerun.remove_parents(fake_chronos_job_config) == {}
 
 
 def test_set_default_schedule():
     fake_chronos_job_config = {
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     assert chronos_rerun.set_default_schedule(fake_chronos_job_config) == \
         {'schedule': 'R1//PT1M'}
@@ -57,14 +57,14 @@ def test_set_default_schedule():
 
 def test_set_tmp_naming_scheme():
     fake_chronos_job_config = {
-        'name': 'foo bar'
+        'name': 'foo bar',
     }
     name_pattern = re.compile(r"%s-.* foo bar" % chronos_tools.TMP_JOB_IDENTIFIER)
     assert name_pattern.match(
         chronos_rerun.set_tmp_naming_scheme(
             chronos_job=fake_chronos_job_config,
             timestamp=mock.Mock(),
-        )['name']
+        )['name'],
     ) is not None
 
 
@@ -75,7 +75,7 @@ def test_clone_job(
     mock_set_tmp_naming_scheme,
 ):
     fake_chronos_job_config = {
-        'parents': ['foo', 'bar']
+        'parents': ['foo', 'bar'],
     }
     mock_get_job_type.return_value = chronos_tools.JobType.Dependent
     timestamp = datetime.datetime.utcnow().isoformat()
@@ -92,7 +92,7 @@ def test_clone_job_dependent_jobs(
 ):
     fake_chronos_job_config = {
         'name': 'child',
-        'parents': ['foo', 'bar']
+        'parents': ['foo', 'bar'],
     }
     timestamp = '2017-06-12T11:59:45.583867'
     timestamp_chronos_name = '2017-06-12T115945583867'
@@ -123,7 +123,7 @@ def test_clone_job_dependent_jobs(
         ('testcluster', 'testservice', 'test_independent_instance_1', False, False,),
         ('testcluster', 'testservice', 'test_dependent_instance_2', False, True,),
         ('testcluster', 'testservice', 'test_dependent_instance_2', True, True,),
-    )
+    ),
 )
 @mock.patch('paasta_tools.chronos_rerun.clone_job', autospec=True)
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.get_job_type', autospec=True)

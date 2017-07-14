@@ -53,7 +53,7 @@ def test_filter_not_running_tasks():
 
 @mark.parametrize('test_case', [
     [0, 0],
-    [10, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
+    [10, 1 + 10],  # 1 running task, 10 non-running taks (truncated)
 ])
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
@@ -287,26 +287,26 @@ def test_get_mesos_slaves_grouped_by_attribute():
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': fake_value_1,
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': fake_value_2,
-            }
+            },
         },
         {
             'hostname': 'fake_host_3',
             'attributes': {
                 'fake_attribute': fake_value_1,
-            }
+            },
         },
         {
             'hostname': 'fake_host_4',
             'attributes': {
                 'fake_attribute': 'fake_other_value',
-            }
-        }
+            },
+        },
     ]
     expected = {
         'fake_value_1': [
@@ -314,13 +314,13 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_1',
                 'attributes': {
                     'fake_attribute': fake_value_1,
-                }
+                },
             },
             {
                 'hostname': 'fake_host_3',
                 'attributes': {
                     'fake_attribute': fake_value_1,
-                }
+                },
             },
         ],
         'fake_value_2': [
@@ -328,7 +328,7 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_2',
                 'attributes': {
                     'fake_attribute': fake_value_2,
-                }
+                },
             },
 
         ],
@@ -337,9 +337,9 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_4',
                 'attributes': {
                     'fake_attribute': 'fake_other_value',
-                }
-            }
-        ]
+                },
+            },
+        ],
     }
     actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_slaves, 'fake_attribute')
     assert actual == expected
@@ -349,8 +349,8 @@ def test_slave_passes_whitelist():
     fake_slave = {
         'attributes': {
             'location_type': 'fake_location',
-            'fake_location_type': 'fake_location'
-        }
+            'fake_location_type': 'fake_location',
+        },
     }
     fake_whitelist_allow = ['fake_location_type', ['fake_location']]
     fake_whitelist_deny = ['anoterfake_location_type', ['anotherfake_location']]
@@ -371,14 +371,14 @@ def test_filter_mesos_slaves_by_blacklist_when_unfiltered(mock_slave_passes_blac
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
-        }
+            },
+        },
     ]
     blacklist = []
     whitelist = []
@@ -395,14 +395,14 @@ def test_filter_mesos_slaves_by_blacklist_when_filtered(mock_slave_passes_blackl
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
-        }
+            },
+        },
     ]
     blacklist = []
     whitelist = []
@@ -416,7 +416,7 @@ def test_slave_passes_blacklist_passes():
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
-        }
+        },
     }
     blacklist = [["fake_attribute", "No what we have here"], ['foo', 'bar']]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
@@ -428,7 +428,7 @@ def test_slave_passes_blacklist_blocks_blacklisted_locations():
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
-        }
+        },
     }
     blacklist = [["fake_attribute", "fake_value_1"]]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
@@ -512,7 +512,7 @@ def test_zip_tasks_verbose_output(test_case):
     ['a_task', None, None, 10, mesos.exceptions.SlaveDoesNotExist],
     ['a_task', None, None, 10, mesos.exceptions.TaskNotFoundException],
     ['a_task', None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
-    ['a_task', None, None, 10, utils.TimeoutError]
+    ['a_task', None, None, 10, utils.TimeoutError],
 ])
 def test_format_stdstreams_tail_for_task(
     test_case,
@@ -540,7 +540,7 @@ def test_format_stdstreams_tail_for_task(
                 raise raise_what(raise_what)
             return [
                 gen_mesos_cli_fobj(file1[0], file1[1]),
-                gen_mesos_cli_fobj(file2[0], file2[1])
+                gen_mesos_cli_fobj(file2[0], file2[1]),
             ]
         mock_cluster_files = mock.MagicMock()
         mock_cluster_files.side_effect = retfunc

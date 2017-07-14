@@ -42,7 +42,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
             fake_system_paasta_config,
             False,
             [],
-            verbose=0
+            verbose=0,
         )
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
             cluster=cluster,
@@ -50,7 +50,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
             humanize=False,
             groupings=[],
             verbose=0,
-            autoscaling_info=False
+            autoscaling_info=False,
         )
         actual, _ = capfd.readouterr()
         assert 'Cluster: %s' % cluster in actual

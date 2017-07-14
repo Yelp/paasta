@@ -98,7 +98,7 @@ class MesosSlave(object):
     def task_stats(self, _id):
         stats = list(filter(
             lambda x: x["executor_id"] == _id,
-            self.stats
+            self.stats,
         ))
 
         # Tasks that are not yet in a RUNNING state have no stats.
