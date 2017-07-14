@@ -55,8 +55,8 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
     mock_get_resource_utilization_by_grouping.return_value = {
         frozenset([('superregion', 'unknown')]): {
             'total': metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
-            'free': metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0)
-        }
+            'free': metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
+        },
     }
 
     resp = resources_utilization(request)
@@ -135,8 +135,8 @@ mock_mesos_state = {
                 'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
                 'slave_id': 'bar1'
             },
-        ]}
-    ]
+        ]},
+    ],
 }
 
 

@@ -55,7 +55,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
             component="deploy",
             level="event",
             cluster=cluster,
-            instance=instance
+            instance=instance,
         )
 
         client.update(complete_job_config)
@@ -72,7 +72,7 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergenc
             component="deploy",
             level="event",
             cluster=cluster,
-            instance=instance
+            instance=instance,
         )
         job["disabled"] = True
         client.update(job)
@@ -88,7 +88,7 @@ def restart_chronos_job(
     matching_jobs,
     job_config,
     complete_job_config,
-    emergency=False
+    emergency=False,
 ):
     stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
     start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency)
@@ -366,7 +366,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, clien
             instance=instance,
             client=client,
             include_disabled=True,
-            include_temporary=True
+            include_temporary=True,
         )
         stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":

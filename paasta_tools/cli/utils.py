@@ -191,25 +191,25 @@ class PaastaCheckMessages:
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
         "No Makefile available. Please make a Makefile that responds\n"
-        "to the proper targets. More info:", "http://paasta.readthedocs.io/en/latest/about/contract.html"
+        "to the proper targets. More info:", "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make cook-image`")
     MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL = failure(
         "The Makefile does not have a `make cook-image` target. local-run needs\n"
         "this and expects it to build your docker image. More info:",
-        "http://paasta.readthedocs.io/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
     MAKEFILE_RESPONDS_ITEST_FAIL = failure(
         "The Makefile does not have a `make itest` target. Jenkins needs\n"
         "this and expects it to build and itest your docker image. More info:",
-        "http://paasta.readthedocs.io/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_RESPONDS_TEST = success("The Makefile responds to `make test`")
     MAKEFILE_RESPONDS_TEST_FAIL = failure(
         "The Makefile does not have a `make test` target. Jenkins needs\n"
         "this and expects it to run unit tests. More info:",
-        "http://paasta.readthedocs.io/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_HAS_A_TAB = success("The Makefile contains a tab character")
     MAKEFILE_HAS_NO_TABS = failure(
@@ -432,7 +432,7 @@ def connectable_master(cluster, system_paasta_config):
     master, output = find_connectable_master(masters)
     if not master:
         raise NoMasterError(
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
         )
 
     return master
@@ -620,7 +620,7 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
             # wait for stdin with timeout in a loop, exit when original process finished
             'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
             # kill original process if loop finished (something on stdin)
-            'kill $p; wait'
+            'kill $p; wait',
         )
         stdin = subprocess.PIPE
         stdin_interrupt = True
@@ -686,14 +686,14 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
-            % (instance, instance_type)
+            % (instance, instance_type),
         )
     return instance_config_load_function(
         service=service,
         instance=instance,
         cluster=cluster,
         load_deployments=load_deployments,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
 
 
@@ -770,27 +770,27 @@ def get_subparser(subparsers, function, command, help_text, description):
     new_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect',
-        required=True
+        required=True,
     ).completer = lazy_choices_completer(list_services)
     new_parser.add_argument(
         '-c', '--cluster',
         help="Cluster on which the service is running"
              "For example: --cluster norcal-prod",
-        required=True
+        required=True,
     ).completer = lazy_choices_completer(list_clusters)
     new_parser.add_argument(
         '-i', '--instance',
         help="The instance that you wish to inspect"
              "For example: --instance main",
         required=True,
-        default='main'
+        default='main',
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     new_parser.add_argument(
         '-H', '--host',
         dest="host",
         default=None,
         help="Specify a specific host on which to run. Defaults to"
-             " one that is running the service chosen at random"
+             " one that is running the service chosen at random",
     )
     new_parser.add_argument(
         '-m', '--mesos-id',
@@ -798,7 +798,7 @@ def get_subparser(subparsers, function, command, help_text, description):
         default=None,
         help="A specific mesos task ID, must match a task "
              "running on the specified host. If not specified we "
-             "will pick a task at random"
+             "will pick a task at random",
     )
     new_parser.set_defaults(command=function)
     return new_parser

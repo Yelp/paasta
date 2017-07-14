@@ -45,7 +45,7 @@ def test_update_autoscaler_count(mock_load_marathon_service_config):
 
     mock_load_marathon_service_config.return_value = mock.MagicMock(
         get_min_instances=mock.MagicMock(return_value=100),
-        get_max_instances=mock.MagicMock(return_value=200)
+        get_max_instances=mock.MagicMock(return_value=200),
     )
 
     with mock.patch('paasta_tools.api.views.autoscaler.set_instances_for_marathon_service',
@@ -59,7 +59,7 @@ def test_update_autoscaler_count(mock_load_marathon_service_config):
 @mock.patch('paasta_tools.api.views.autoscaler.set_instances_for_marathon_service', autospec=True)
 def test_update_autoscaler_count_warning(
     mock_set_instances_for_marathon_service,
-    mock_load_marathon_service_config
+    mock_load_marathon_service_config,
 ):
     request = testing.DummyRequest()
     request.swagger_data = {
@@ -70,7 +70,7 @@ def test_update_autoscaler_count_warning(
 
     mock_load_marathon_service_config.return_value = mock.MagicMock(
         get_min_instances=mock.MagicMock(return_value=10),
-        get_max_instances=mock.MagicMock(return_value=100)
+        get_max_instances=mock.MagicMock(return_value=100),
     )
 
     response = autoscaler.update_autoscaler_count(request)

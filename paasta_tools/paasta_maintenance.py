@@ -85,7 +85,7 @@ def parse_args():
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output."
+        help="Print out more output.",
     )
     return parser.parse_args()
 
@@ -135,8 +135,8 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
     crit_threshold = 80
     reg_svc, reg_namespace, _, __ = utils.decompose_job_id(
         read_registration_for_service_instance(
-            service=service, instance=instance
-        )
+            service=service, instance=instance,
+        ),
     )
     # We only actually care about the replication of where we're registering
     service, namespace = reg_svc, reg_namespace
@@ -173,14 +173,14 @@ def are_local_tasks_in_danger():
             service=None,
             synapse_host=system_paasta_config.get_default_synapse_host(),
             synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format()
+            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
         )
         for service, instance, port in local_services:
             log.info("Inspecting %s.%s on %s" % (service, instance, port))
             if is_healthy_in_haproxy(port, local_backends) and \
                synapse_replication_is_low(service, instance, system_paasta_config, local_backends=local_backends):
                 log.warning("%s.%s on port %s is healthy but the service is in danger!" % (
-                    service, instance, port
+                    service, instance, port,
                 ))
                 return True
         return False

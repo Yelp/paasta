@@ -119,7 +119,7 @@ class TestChronosTools:
         fake_json_contents = {
             'user': 'fake_user',
             'password': 'fake_password',
-            'url': 'fake_host'
+            'url': 'fake_host',
         }
         fake_config = chronos_tools.ChronosConfig(fake_json_contents)
         assert fake_config.get_username() == 'fake_user'
@@ -326,7 +326,7 @@ class TestChronosTools:
 
         expected = 'parsed_time'
         with mock.patch(
-            'paasta_tools.chronos_tools.parse_time_variables', autospec=True, return_value=expected
+            'paasta_tools.chronos_tools.parse_time_variables', autospec=True, return_value=expected,
         ) as mock_parse_time_variables:
             fake_chronos_job_config = chronos_tools.ChronosJobConfig(
                 service='fake_service',
@@ -339,7 +339,7 @@ class TestChronosTools:
                 fake_docker_url,
                 fake_docker_volumes,
                 dummy_config.get_dockercfg_location(),
-                fake_constraints
+                fake_constraints,
             )
             mock_parse_time_variables.assert_called_with(fake_cmd)
 
@@ -401,7 +401,7 @@ class TestChronosTools:
         )
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == fake_constraints
 
@@ -416,7 +416,7 @@ class TestChronosTools:
         )
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert actual == [['pool', 'LIKE', 'poolname']]
 
@@ -430,10 +430,10 @@ class TestChronosTools:
             branch_dict={},
         )
         fake_system_paasta_config = SystemPaastaConfig({
-            'deploy_blacklist': [['region', 'foo']]
+            'deploy_blacklist': [['region', 'foo']],
         }, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert sorted(actual) == sorted([['pool', 'LIKE', 'poolname'], ['region', 'UNLIKE', 'foo']])
 
@@ -447,10 +447,10 @@ class TestChronosTools:
             branch_dict={},
         )
         fake_system_paasta_config = SystemPaastaConfig({
-            'deploy_whitelist': ['region', ['foo']]
+            'deploy_whitelist': ['region', ['foo']],
         }, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
         assert sorted(actual) == sorted([['pool', 'LIKE', 'poolname'], ['region', 'LIKE', 'foo']])
 
@@ -1055,7 +1055,7 @@ class TestChronosTools:
                     {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
                     {"key": "label", "value": "paasta_service=test_service"},
                     {"key": "label", "value": "paasta_instance=test_job"},
-                ]
+                ],
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1066,7 +1066,7 @@ class TestChronosTools:
                 fake_docker_url,
                 fake_docker_volumes,
                 dummy_config.get_dockercfg_location(),
-                []
+                [],
             )
             assert actual == expected
 
@@ -1097,7 +1097,7 @@ class TestChronosTools:
                 fake_docker_url,
                 fake_docker_volumes,
                 dummy_config.get_dockercfg_location(),
-                []
+                [],
             )
             assert result['container']['network'] == 'HOST'
 
@@ -1122,7 +1122,7 @@ class TestChronosTools:
                 docker_url='',
                 docker_volumes=[],
                 docker_cfg_location={},
-                constraints=[]
+                constraints=[],
             )
         assert ('The specified schedule "%s" is neither a valid '
                 'cron schedule nor a valid ISO 8601 schedule' % fake_schedule) in str(exc.value)
@@ -1405,7 +1405,7 @@ class TestChronosTools:
                 branch_dict={
                     'desired_state': 'stop',
                     'docker_image': 'paasta-%s-%s' % (self.fake_service, self.fake_cluster),
-                }
+                },
             )
             load_chronos_job_config_patch.return_value = stopped_job_config
             second_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
@@ -1421,7 +1421,7 @@ class TestChronosTools:
             config_dict=self.fake_config_dict,
             branch_dict={
                 'desired_state': 'start',
-                'docker_image': 'fake_image'
+                'docker_image': 'fake_image',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1486,7 +1486,7 @@ class TestChronosTools:
             config_dict=self.fake_config_dict,
             branch_dict={
                 'desired_state': 'stop',
-                'docker_image': 'fake_image'
+                'docker_image': 'fake_image',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1548,15 +1548,15 @@ class TestChronosTools:
             {
                 "containerPath": "/extra",
                 "hostPath": "/extra",
-                "mode": "RO"
-            }
+                "mode": "RO",
+            },
         ]
         fake_system_volumes = [
             {
                 "containerPath": "/system",
                 "hostPath": "/system",
-                "mode": "RO"
-            }
+                "mode": "RO",
+            },
         ]
         fake_instance_config = self.fake_config_dict
         fake_instance_config['extra_volumes'] = fake_extra_volumes
@@ -1567,7 +1567,7 @@ class TestChronosTools:
             config_dict=fake_instance_config,
             branch_dict={
                 'desired_state': 'stop',
-                'docker_image': 'fake_image'
+                'docker_image': 'fake_image',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1828,16 +1828,16 @@ class TestChronosTools:
     def test_filter_non_temporary_jobs(self):
         fake_jobs = [
             {
-                'name': 'tmp-2016-04-09T064121354622 example_service mesosstage_robjreruntest'
+                'name': 'tmp-2016-04-09T064121354622 example_service mesosstage_robjreruntest',
             },
             {
-                'name': 'example_service mesosstage_robjreruntest'
-            }
+                'name': 'example_service mesosstage_robjreruntest',
+            },
         ]
         expected = [
             {
-                'name': 'example_service mesosstage_robjreruntest'
-            }
+                'name': 'example_service mesosstage_robjreruntest',
+            },
         ]
         assert chronos_tools.filter_non_temporary_chronos_jobs(fake_jobs) == expected
 
@@ -1864,16 +1864,16 @@ class TestChronosTools:
                         {'id': id_1, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
                         {'id': id_2, 'resources': {}, 'tasks': [{'state': 'TASK_STAGED'}]},
                         {'id': id_3, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
-                    ]
+                    ],
                 },
                 {
                     'name': 'marathon-1111111',
                     'executors': [
                         {'id': 'marathon.service', 'resources': {'ports': '[111-111]'},
                             'tasks': [{'state': 'TASK_RUNNING'}]},
-                    ]
+                    ],
                 },
-            ]
+            ],
         }
         expected = [('my-test-service', 'my_test_date_interpolation', None),
                     ('my-test-service', 'my_long_running', None),

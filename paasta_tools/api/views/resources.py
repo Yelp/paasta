@@ -55,7 +55,7 @@ def resources_utilization(request):
     resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(
         grouping_func=grouping_function,
         mesos_state=mesos_state,
-        filters=filter_funcs
+        filters=filter_funcs,
     )
 
     response_body = []

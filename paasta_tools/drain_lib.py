@@ -188,7 +188,7 @@ class HacheckDrainMethod(DrainMethod):
             r"(?: since (?P<since>[0-9.]+))?",
             r"(?: until (?P<until>[0-9.]+))?",
             r"(?:: (?P<reason>.*))?",
-            "$"
+            "$",
         ])
         match = re.match(regex, response.text)
         groupdict = match.groupdict()

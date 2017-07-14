@@ -158,14 +158,14 @@ def get_chronos_client(config, cached=False):
             servers=chronos_hostnames,
             username=config.get_username(),
             password=config.get_password(),
-            scheduler_api_version=None
+            scheduler_api_version=None,
         )
     else:
         return chronos.connect(
             servers=chronos_hostnames,
             username=config.get_username(),
             password=config.get_password(),
-            scheduler_api_version=None
+            scheduler_api_version=None,
         )
 
 
@@ -200,7 +200,7 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     return service_configuration_lib.read_extra_service_information(
         service,
         chronos_conf_file,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
 
 
@@ -274,10 +274,10 @@ class ChronosJobConfig(InstanceConfig):
     def get_calculated_constraints(self, system_paasta_config):
         constraints = self.get_constraints()
         blacklist = self.get_deploy_blacklist(
-            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist()
+            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
         )
         whitelist = self.get_deploy_whitelist(
-            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist()
+            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
         )
         if constraints is not None:
             return constraints
@@ -594,14 +594,14 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
     constraints = chronos_job_config.get_calculated_constraints(
-        system_paasta_config=system_paasta_config
+        system_paasta_config=system_paasta_config,
     )
 
     complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url=docker_url,
         docker_volumes=docker_volumes,
         docker_cfg_location=system_paasta_config.get_dockercfg_location(),
-        constraints=constraints
+        constraints=constraints,
     )
 
     complete_config['name'] = compose_job_id(service, job_name)
@@ -991,7 +991,7 @@ def chronos_services_running_here():
 
     return mesos_services_running_here(
         framework_filter=lambda fw: fw['name'].startswith('chronos'),
-        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3])
+        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3]),
     )
 
 

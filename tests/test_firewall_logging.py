@@ -22,8 +22,8 @@ def test_syslog_to_paasta_log(mock_lookup_service_instance_by_ip, mock_log):
             level='debug',
             cluster='my-cluster',
             instance='myinstance',
-            line='my-hostname: my-prefix IN=docker0 SRC=1.2.3.4'
-        )
+            line='my-hostname: my-prefix IN=docker0 SRC=1.2.3.4',
+        ),
     ]
 
 
@@ -61,7 +61,7 @@ def test_lookup_service_instance_by_ip(my_mock_log, mock_services_running_here):
     assert firewall_logging.lookup_service_instance_by_ip('2.2.2.2') == ('service1', 'instance2')
     assert firewall_logging.lookup_service_instance_by_ip('3.3.3.3') == (None, None)
     assert my_mock_log.info.mock_calls == [
-        mock.call('Unable to find container for ip 3.3.3.3')
+        mock.call('Unable to find container for ip 3.3.3.3'),
     ]
 
 
@@ -85,7 +85,7 @@ def test_run_server(udpserver_mock):
     firewall_logging.run_server('myhost', 1234)
     assert udpserver_mock.mock_calls == [
         mock.call(('myhost', 1234), firewall_logging.SyslogUDPHandler),
-        mock.call().serve_forever()
+        mock.call().serve_forever(),
     ]
 
 
@@ -97,7 +97,7 @@ def test_main_single_worker(signal_mock, udpserver_mock, logging_mock):
     assert logging_mock.basicConfig.mock_calls == [mock.call(level=logging_mock.WARNING)]
     assert udpserver_mock.mock_calls == [
         mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
-        mock.call().serve_forever()
+        mock.call().serve_forever(),
     ]
 
 
@@ -112,7 +112,7 @@ def test_main_two_workers(signal_mock, fork_mock, udpserver_mock, logging_mock):
         mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
         mock.call().serve_forever(),
         mock.call(('127.0.0.1', 1516), firewall_logging.SyslogUDPHandler),
-        mock.call().serve_forever()
+        mock.call().serve_forever(),
     ]
 
 

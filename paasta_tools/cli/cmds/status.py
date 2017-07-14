@@ -70,17 +70,17 @@ def add_subparser(subparsers):
              "A second -v will also print the stdout/stderr tail.")
     status_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect'
+        help='The name of the service you wish to inspect',
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         '-c', '--clusters',
         help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
-             "For example: --clusters norcal-prod,nova-prod"
+             "For example: --clusters norcal-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
         '-i', '--instances',
         help="A comma-separated list of instances to view. Defaults to view all instances.\n"
-             "For example: --instances canary,main"
+             "For example: --instances canary,main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
         '-l', '--deploy-group',
@@ -193,7 +193,7 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
             marathon_status.app_id,
             marathon_status.running_instance_count,
             marathon_status.expected_instance_count,
-        )
+        ),
     )
     return 0
 
@@ -285,7 +285,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
             instance_whitelist=instance_whitelist,
             system_paasta_config=system_paasta_config,
             verbose=verbose,
-            use_api_endpoint=use_api_endpoint
+            use_api_endpoint=use_api_endpoint,
         )
         for cluster in deployed_clusters
         if not cluster_whitelist or cluster in cluster_whitelist
@@ -397,7 +397,7 @@ def paasta_status(args):
             instance_whitelist=pargs.instance_whitelist,
             system_paasta_config=load_system_paasta_config(),
             verbose=args.verbose,
-            use_api_endpoint=use_api_endpoint
+            use_api_endpoint=use_api_endpoint,
         )
         return return_code
     else:

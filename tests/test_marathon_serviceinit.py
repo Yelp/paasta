@@ -146,7 +146,7 @@ def test_get_verbose_status_of_marathon_app():
                                                    target_instances=str(4))
 
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -175,7 +175,7 @@ def test_get_verbose_status_of_marathon_app():
 
 def test_get_verbose_status_of_marathon_app_no_autoscaling():
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -204,7 +204,7 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
 
 def test_get_verbose_status_of_marathon_app_column_alignment():
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -389,7 +389,7 @@ def test_format_haproxy_backend_row():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         is_correct_instance=True,
     )
@@ -608,15 +608,15 @@ def test_status_smartstack_backends_multiple_locations():
             {
                 'hostname': 'fakehost',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'fakeotherhost',
                 'attributes': {
-                    'fake_discover': 'fakeotherlocation'
-                }
-            }
+                    'fake_discover': 'fakeotherlocation',
+                },
+            },
         ]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -684,15 +684,15 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'hostname2',
                 'attributes': {
-                    'fake_discover': 'fakelocation2'
-                }
-            }
+                    'fake_discover': 'fakelocation2',
+                },
+            },
         ]
         marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -766,8 +766,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
         ]
         actual = marathon_serviceinit.status_smartstack_backends(
@@ -827,15 +827,15 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'hostname2',
                 'attributes': {
-                    'fake_discover': 'fakeotherlocation'
-                }
-            }
+                    'fake_discover': 'fakeotherlocation',
+                },
+            },
         ]
         tasks = [good_task, other_task]
         actual = marathon_serviceinit.status_smartstack_backends(
@@ -899,9 +899,9 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             {
                 'hostname': 'fake',
                 'attributes': {
-                    'fake_discover': 'fake_location_1'
-                }
-            }
+                    'fake_discover': 'fake_location_1',
+                },
+            },
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_reg.return_value = compose_job_id(service, instance)
@@ -952,9 +952,9 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             {
                 'hostname': 'fake',
                 'attributes': {
-                    'fake_discover': 'fake_location_1'
-                }
-            }
+                    'fake_discover': 'fake_location_1',
+                },
+            },
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_reg.return_value = compose_job_id(service, instance)
@@ -1061,7 +1061,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
     tasks = [
         mock.Mock(host='host1', ports=[1234]),
         mock.Mock(host='host2', ports=[1234]),
-        mock.Mock(host='host3', ports=[1234])
+        mock.Mock(host='host3', ports=[1234]),
     ]
     backends = {
         'host1': {
@@ -1070,7 +1070,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         'host2': {
             'svname': '169.254.123.2:1234_host2',
@@ -1078,7 +1078,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         'host3': {
             'svname': '169.254.123.3:1234_host3',
@@ -1086,12 +1086,12 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
     }
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
-        side_effect=lambda _, synapse_host, synapse_port, synapse_haproxy_url_format: [backends[synapse_host]]
+        side_effect=lambda _, synapse_host, synapse_port, synapse_haproxy_url_format: [backends[synapse_host]],
     ), mock.patch(
         'socket.gethostbyname', side_effect=lambda name: host_ip_mapping[name], autospec=True,
     ):

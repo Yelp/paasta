@@ -130,7 +130,7 @@ def run_healthcheck_on_container(
     container_id,
     healthcheck_mode,
     healthcheck_data,
-    timeout
+    timeout,
 ):
     """Performs healthcheck on a container
 
@@ -160,7 +160,7 @@ def simulate_healthcheck_on_service(
     container_id,
     healthcheck_mode,
     healthcheck_data,
-    healthcheck_enabled
+    healthcheck_enabled,
 ):
     """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
 
@@ -191,7 +191,7 @@ def simulate_healthcheck_on_service(
                 paasta_print(
                     PaastaColors.red('Container exited with code {}'.format(
                         container_state['State']['ExitCode'],
-                    ))
+                    )),
                 )
                 healthcheck_passed = False
                 break
@@ -433,7 +433,7 @@ def get_container_id(docker_client, container_name):
         "Can't find the container I just launched so I can't do anything else.\n"
         "Try docker 'ps --all | grep %s' to see where it went.\n"
         "Here were all the containers:\n"
-        "%s" % (container_name, containers)
+        "%s" % (container_name, containers),
     )
 
 
@@ -442,7 +442,7 @@ def _cleanup_container(docker_client, container_id):
         paasta_print(
             PaastaColors.red(
                 "Your service was killed by the OOM Killer!\n"
-                "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs"
+                "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs",
             ),
             file=sys.stderr,
         )
@@ -540,7 +540,7 @@ def run_docker_container(
             paasta_print(
                 PaastaColors.red(
                     "The chosen port is already in use!\n"
-                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
+                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you",
                 ),
                 file=sys.stderr,
             )
@@ -637,7 +637,7 @@ def run_docker_container(
             paasta_print('Container exited: %d)' % returncode)
             paasta_print('Here is the stdout and stderr:\n\n')
             paasta_print(
-                docker_client.attach(container_id, stderr=True, stream=False, logs=True)
+                docker_client.attach(container_id, stderr=True, stream=False, logs=True),
             )
 
         if healthcheck_only:
@@ -705,7 +705,7 @@ def configure_and_run_docker_container(
         system_paasta_config,
         args,
         pull_image=False,
-        dry_run=False
+        dry_run=False,
 ):
     """
     Run Docker container by image hash with args set in command line.
@@ -761,7 +761,7 @@ def configure_and_run_docker_container(
                 "generate_deployments_for_service -d %(soa_dir)s -s %(service)s" % {
                     'soa_dir': soa_dir,
                     'service': service,
-                }
+                },
             ),
             sep='\n',
             file=sys.stderr,
@@ -837,7 +837,7 @@ def paasta_local_run(args):
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and local-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA."
+                "the same way it would behave on a server configured for PaaSTA.",
             ),
             sep='\n',
         )

@@ -64,7 +64,7 @@ def check_replication(service, service_replication,
         expected_message = ", expected value in {}".format(interval)
 
     message = "{} {} has {} instance(s){}".format(
-        status, service, service_replication, expected_message
+        status, service, service_replication, expected_message,
     )
 
     return code, message
@@ -132,7 +132,7 @@ def run_synapse_check():
             options.synapse_host,
             options.synapse_port,
             options.synapse_haproxy_url_format,
-            options.services
+            options.services,
         )
 
         all_codes = []

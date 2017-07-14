@@ -44,7 +44,7 @@ def add_subparser(subparsers):
         '-l', '--local',
         help="Run the script here rather than SSHing to a PaaSTA master",
         default=False,
-        action='store_true'
+        action='store_true',
     )
 
 

@@ -63,7 +63,7 @@ def status_marathon_job(context, status, job_id):
             instance,
             app_id,
             normal_instance_count,
-            context.marathon_client
+            context.marathon_client,
         )
     assert status in output
 
@@ -83,7 +83,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
             app_id,
             normal_instance_count,
             context.marathon_client,
-            cluster
+            cluster,
         )
     paasta_print("Sleeping 5 seconds to wait for %s to be restarted." % service)
     time.sleep(5)

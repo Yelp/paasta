@@ -28,9 +28,9 @@ def test_get_paasta_api_client():
                     autospec=True) as mock_load_system_paasta_config:
         mock_load_system_paasta_config.return_value = SystemPaastaConfig({
             'api_endpoints': {
-                'fake_cluster': "http://fake_cluster:5054"
+                'fake_cluster': "http://fake_cluster:5054",
             },
-            'cluster': 'fake_cluster'
+            'cluster': 'fake_cluster',
         }, 'fake_directory')
 
         client = get_paasta_api_client()
@@ -57,9 +57,9 @@ def test_paasta_status():
 
     system_paasta_config = SystemPaastaConfig({
         'api_endpoints': {
-            'fake_cluster': "http://fake_cluster:5054"
+            'fake_cluster': "http://fake_cluster:5054",
         },
-        'cluster': 'fake_cluster'
+        'cluster': 'fake_cluster',
     }, 'fake_directory')
 
     with mock.patch('bravado.http_future.HttpFuture.result', autospec=True) as mock_result:
@@ -71,9 +71,9 @@ def test_paasta_status():
 def test_paasta_status_exception():
     system_paasta_config = SystemPaastaConfig({
         'api_endpoints': {
-            'fake_cluster': "http://fake_cluster:5054"
+            'fake_cluster': "http://fake_cluster:5054",
         },
-        'cluster': 'fake_cluster'
+        'cluster': 'fake_cluster',
     }, 'fake_directory')
 
     with mock.patch('paasta_tools.cli.cmds.status.get_paasta_api_client', autospec=True) as mock_get_paasta_api_client:

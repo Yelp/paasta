@@ -71,14 +71,14 @@ def add_subparser(subparsers):
         epilog=(
             "Note: Access and credentials to the Git repo of a service are required "
             "for this command to work."
-        )
+        ),
     )
     list_parser.add_argument(
         '-u', '--git-url',
         help=(
             'Git url for service -- where magic mark-for-deployment tags are pushed. '
             'Defaults to the normal git URL for the service.'),
-        default=None
+        default=None,
     )
     list_parser.add_argument(
         '-c', '-k', '--commit',
@@ -105,7 +105,7 @@ def add_subparser(subparsers):
              'the default strategy is to mark for deployment and exit straightaway',
         dest='block',
         action='store_true',
-        default=False
+        default=False,
     )
     list_parser.add_argument(
         '-t', '--timeout',
@@ -125,7 +125,7 @@ def add_subparser(subparsers):
              'Defaults to false.',
         dest='auto_rollback',
         action='store_true',
-        default=False
+        default=False,
     )
     list_parser.add_argument(
         '-d', '--soa-dir',
@@ -139,7 +139,7 @@ def add_subparser(subparsers):
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output."
+        help="Print out more output.",
     )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
@@ -240,7 +240,7 @@ def paasta_mark_for_deployment(args):
                 service=service,
                 component='deploy',
                 line=line,
-                level='event'
+                level='event',
             )
         except (KeyboardInterrupt, TimeoutError):
             if args.auto_rollback is True:
@@ -479,7 +479,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             component='deploy',
             line=("Couldn't find any instances for service {} in deploy "
                   "group {}".format(service, deploy_group)),
-            level='event'
+            level='event',
         )
         raise NoInstancesFound
     paasta_print("Waiting for deployment of {} for '{}' complete..."
@@ -519,7 +519,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         service=service,
         component='deploy',
         line=compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha),
-        level='event'
+        level='event',
     )
     raise TimeoutError
 

@@ -67,7 +67,7 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
     'performance-check',
-    'push-to-registry'
+    'push-to-registry',
 )
 # Default values for _log
 ANY_CLUSTER = 'N/A'
@@ -218,7 +218,7 @@ class InstanceConfig(object):
             hard = val.get('hard')
             if soft is None:
                 raise InvalidInstanceConfig(
-                    'soft limit missing in ulimit configuration for {}.'.format(key)
+                    'soft limit missing in ulimit configuration for {}.'.format(key),
                 )
             combined_val = '%i' % soft
             if hard is not None:
@@ -1555,7 +1555,7 @@ def get_service_instance_list_no_cache(service, cluster=None, instance_type=None
         instances = service_configuration_lib.read_extra_service_information(
             service,
             conf_file,
-            soa_dir=soa_dir
+            soa_dir=soa_dir,
         )
         for instance in instances:
             instance_list.append((service, instance))
@@ -1756,7 +1756,7 @@ def get_config_hash(config, force_bounce=None):
     hasher = hashlib.md5()
     hasher.update(
         json.dumps(config, sort_keys=True).encode('UTF-8') +
-        (force_bounce or '').encode('UTF-8')
+        (force_bounce or '').encode('UTF-8'),
     )
     return "config%s" % hasher.hexdigest()[:8]
 

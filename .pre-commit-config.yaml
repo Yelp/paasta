@@ -42,6 +42,10 @@
     sha: v1.1.2-1
     hooks:
     -   id: pyupgrade
+-   repo: https://github.com/asottile/add-trailing-comma
+    sha: v0.3.0
+    hooks:
+    -   id: add-trailing-comma
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec

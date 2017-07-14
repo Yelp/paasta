@@ -42,7 +42,7 @@ class File(object):
         self._params = {
             "path": self._host_path,
             "offset": -1,
-            "length": self.chunk_size
+            "length": self.chunk_size,
         }
 
     def __iter__(self):

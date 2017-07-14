@@ -60,7 +60,7 @@ def test_send_event_users_monitoring_tools_send_event_properly():
             mock.ANY,
             fake_status,
             fake_output,
-            fake_soa_dir
+            fake_soa_dir,
         )
         # The overrides dictionary is mutated in the function under test, so
         # we expect the send_event_patch to be called with something that is a
@@ -103,7 +103,7 @@ def test_send_event_users_monitoring_tools_send_event_respects_alert_after():
             mock.ANY,
             fake_status,
             fake_output,
-            fake_soa_dir
+            fake_soa_dir,
         )
         # The overrides dictionary is mutated in the function under test, so
         # we expect the send_event_patch to be called with something that is a
@@ -522,7 +522,7 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -589,7 +589,7 @@ def test_check_service_replication_for_non_smartstack():
             instance=instance,
             cluster=cluster,
             soa_dir=None,
-            system_paasta_config=fake_system_paasta_config
+            system_paasta_config=fake_system_paasta_config,
         )
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
@@ -598,7 +598,7 @@ def test_check_service_replication_for_non_smartstack():
             cluster=cluster,
             soa_dir=None,
             expected_count=100,
-            all_tasks=[]
+            all_tasks=[],
         )
 
 
@@ -616,7 +616,7 @@ def test_filter_healthy_marathon_instances_for_short_app_id_correctly_counts_ali
         fakes.append(fake_task)
     actual = check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id(
         app_id='service.instance',
-        all_tasks=fakes
+        all_tasks=fakes,
     )
     assert actual == 2
 
@@ -637,7 +637,7 @@ def test_filter_healthy_marathon_instances_for_short_app_id_considers_new_tasks_
         fakes.append(fake_task)
     actual = check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id(
         all_tasks=fakes,
-        app_id='service.instance'
+        app_id='service.instance',
     )
     assert actual == 3
 
@@ -677,7 +677,7 @@ def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instance
         cluster=cluster,
         expected_count=10,
         num_available=2,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
 
 

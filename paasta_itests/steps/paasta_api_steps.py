@@ -25,7 +25,7 @@ def service_instance_status(context, app_count, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     response = context.paasta_api_client.service.status_instance(
         instance=instance,
-        service=service
+        service=service,
     ).result()
 
     assert response['marathon']['app_count'] == int(app_count), response
@@ -40,7 +40,7 @@ def service_instance_status_error(context, error_code, job_id):
     try:
         response = context.paasta_api_client.service.status_instance(
             instance=instance,
-            service=service
+            service=service,
         ).result()
     except bexception.HTTPError as exc:
         assert exc.status_code == int(error_code)

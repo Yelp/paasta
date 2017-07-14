@@ -385,7 +385,7 @@ def build_reservation_payload(resources):
                 'reservation': {
                     'principal': get_principal(),
                 },
-            }
+            },
         )
     return payload
 

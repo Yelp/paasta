@@ -79,8 +79,8 @@ def get_argparser():
         '-V', '--version',
         action='version',
         version='paasta-tools {}'.format(
-            pkg_resources.get_distribution('paasta-tools').version
-        )
+            pkg_resources.get_distribution('paasta-tools').version,
+        ),
     )
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")

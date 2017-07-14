@@ -50,7 +50,7 @@ def test_check_replication():
 def test_parse_range():
     range_data = ["0:1", "1:", "100:", "20:30", ":2", ":200"]
     expected_ranges = [
-        (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200)
+        (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200),
     ]
 
     computed_ranges = [parse_range(x) for x in range_data]

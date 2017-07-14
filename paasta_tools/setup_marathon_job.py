@@ -199,13 +199,13 @@ def do_bounce(
             component='deploy',
             level=level,
             cluster=cluster,
-            instance=instance
+            instance=instance,
         )
 
     # log if we're not in a steady state.
     if any([
         (not new_app_running),
-        old_app_live_happy_tasks.keys()
+        old_app_live_happy_tasks.keys(),
     ]):
         log_bounce_action(
             line=' '.join([
@@ -281,7 +281,7 @@ def do_bounce(
             line='%s bounce removing old unused apps with app_ids: %s' %
             (
                 bounce_method,
-                ', '.join(apps_to_kill)
+                ', '.join(apps_to_kill),
             ),
         )
         with requests_cache.disabled():
@@ -307,7 +307,7 @@ def do_bounce(
                 (
                     bounce_method,
                     serviceinstance,
-                    marathon_jobid
+                    marathon_jobid,
                 ),
                 level='event',
             )
@@ -330,7 +330,7 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
         except Exception as e:
             log_deploy_error(
                 "Ignoring exception during is_draining of task %s:"
-                " %s. Treating task as 'unhappy'." % (task, e)
+                " %s. Treating task as 'unhappy'." % (task, e),
             )
             state = 'unhappy'
         else:
@@ -431,7 +431,7 @@ def deploy_service(
             component='deploy',
             level='event',
             cluster=cluster,
-            instance=instance
+            instance=instance,
         )
 
     system_paasta_config = load_system_paasta_config()
