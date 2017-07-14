@@ -30,6 +30,7 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_teams
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -43,7 +44,6 @@ from paasta_tools.utils import get_instances_by_owner
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_teams
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
