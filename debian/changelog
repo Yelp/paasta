@@ -1,3 +1,12 @@
+paasta-tools (0.66.4) xenial; urgency=low
+
+  * 0.66.4 tagged with 'make release'
+    Commit: Merge pull request #1369 from
+    Yelp/jlynch_upgrade_scribereader  Scribereader was not py3
+    compatible until 0.2.6
+
+ -- Joseph Lynch <jlynch@yelp.com>  Thu, 13 Jul 2017 20:12:47 -0700
+
 paasta-tools (0.66.3) xenial; urgency=low
 
   * 0.66.3 tagged with 'make release'
