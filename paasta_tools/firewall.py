@@ -85,7 +85,7 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
             # for several minutes after the directory disappears from soa-configs.
             return ()
 
-        if conf.get_dependencies() is None:
+        if not conf.get_outbound_firewall():
             return ()
 
         rules = list(_default_rules(conf, self.log_prefix))
@@ -206,7 +206,7 @@ def _yocalhost_rule(port, comment, protocol='tcp'):
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
-    for dep in conf.get_dependencies():
+    for dep in conf.get_dependencies() or ():
         namespace = dep.get('smartstack')
         if namespace is None:
             continue
