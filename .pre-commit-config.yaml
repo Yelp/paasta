@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: v0.7.0
+    sha: v0.9.1
     hooks:
     -   id: trailing-whitespace
         language_version: python3
@@ -29,7 +29,7 @@
     -   id: check-ast
         language_version: python3
 -   repo: https://github.com/asottile/reorder_python_imports.git
-    sha: v0.3.1
+    sha: v0.3.5
     hooks:
     -   id: reorder-python-imports
         language_version: python3
@@ -38,6 +38,10 @@
         - from __future__ import unicode_literals
         - --add-import
         - from __future__ import absolute_import
+-   repo: https://github.com/asottile/pyupgrade
+    sha: v1.1.2-1
+    hooks:
+    -   id: pyupgrade
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec
@@ -51,7 +55,3 @@
         entry: except:$
         language: pcre
         files: \.py$
--   repo: https://github.com/asottile/pyupgrade
-    sha: v1.0.4
-    hooks:
-    -   id: pyupgrade

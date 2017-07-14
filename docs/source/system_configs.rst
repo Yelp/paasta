@@ -131,4 +131,3 @@ These are the keys that may exist in system configs:
     Defaults to ``paasta-{cluster:s}.yelp``.
 
     Example: ``"cluster_fqdn_format": "paasta-{cluster:s}.service.dc1.consul"``
-
