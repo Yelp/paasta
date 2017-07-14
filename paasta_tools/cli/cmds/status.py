@@ -43,6 +43,7 @@ from paasta_tools.utils import get_instances_by_owner
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_teams
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -87,7 +88,7 @@ def add_subparser(subparsers):
         '-o', '--owner',
         help="Team name to filter instances by. Will get all service instances with that team listed in monitoring\n"
              "For example: --owner operations"
-    )  # TODO: write completer
+    ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         '-l', '--deploy-group',
         help=('Name of the deploy group which you want to get status for. '
