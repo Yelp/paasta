@@ -68,60 +68,67 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
 
 
 mock_mesos_state = {
-    'slaves': [{
-        'id': 'foo1',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
-        },
-        'attributes': {'pool': 'default', 'region': 'top'},
-        'reserved_resources': []},
+    'slaves': [
         {
-        'id': 'bar1',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'default', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'default', 'region': 'bottom'},
-        'reserved_resources': []},
         {
-        'id': 'foo2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'bar1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'default', 'region': 'bottom'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'top'},
-        'reserved_resources': []},
         {
-        'id': 'bar2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'bottom'},
-        'reserved_resources': []},
         {
-        'id': 'foo3',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'bar2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'bottom'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'top'},
-        'reserved_resources': []},
         {
-        'id': 'bar2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo3',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'bottom'},
-        'reserved_resources': []},
+        {
+            'id': 'bar2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'bottom'},
+            'reserved_resources': [],
+        },
     ],
     'frameworks': [
         {'tasks': [

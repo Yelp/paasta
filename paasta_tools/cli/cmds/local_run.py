@@ -82,7 +82,8 @@ def perform_http_healthcheck(url, timeout):
     if 'content-type' in res.headers and ',' in res.headers['content-type']:
         paasta_print(PaastaColors.yellow(
             "Multiple content-type headers detected in response."
-            " The Mesos healthcheck system will treat this as a failure!"))
+            " The Mesos healthcheck system will treat this as a failure!",
+        ))
         return (False, "http request succeeded, code %d" % res.status_code)
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     elif res.status_code >= 200 and res.status_code < 400:
@@ -149,7 +150,8 @@ def run_healthcheck_on_container(
         healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
     else:
         paasta_print(PaastaColors.yellow(
-            "Healthcheck mode '%s' is not currently supported!" % healthcheck_mode))
+            "Healthcheck mode '%s' is not currently supported!" % healthcheck_mode,
+        ))
         sys.exit(1)
     return healthcheck_result
 
@@ -267,8 +269,10 @@ def add_subparser(subparsers):
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '-c', '--cluster',
-        help=("The name of the cluster you wish to simulate. "
-              "If omitted, uses the default cluster defined in the paasta local-run configs"),
+        help=(
+            "The name of the cluster you wish to simulate. "
+            "If omitted, uses the default cluster defined in the paasta local-run configs"
+        ),
     ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -313,9 +317,11 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
+        help=(
+            'Run Docker container with particular command, '
+            'for example: "bash". By default will use the command or args specified by the '
+            'soa-configs or what was specified in the Dockerfile'
+        ),
         required=False,
         default=None,
     )
@@ -334,8 +340,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-I', '--interactive',
-        help=('Run container in interactive mode. If interactive is set the default command will be "bash" '
-              'unless otherwise set by the "--cmd" flag'),
+        help=(
+            'Run container in interactive mode. If interactive is set the default command will be "bash" '
+            'unless otherwise set by the "--cmd" flag'
+        ),
         action='store_true',
         required=False,
         default=False,
@@ -370,8 +378,10 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, chosen_port, container_port, container_name, volumes, env, interactive,
-                       docker_hash, command, net, docker_params):
+def get_docker_run_cmd(
+    memory, chosen_port, container_port, container_name, volumes, env, interactive,
+    docker_hash, command, net, docker_params,
+):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
         cmd.append('--env')
@@ -454,7 +464,8 @@ def _cleanup_container(docker_client, container_id):
         paasta_print("...done")
     except errors.APIError:
         paasta_print(PaastaColors.yellow(
-            "Could not clean up container! You should stop and remove container '%s' manually." % container_id))
+            "Could not clean up container! You should stop and remove container '%s' manually." % container_id,
+        ))
 
 
 def get_local_run_environment_vars(instance_config, port0, framework):
@@ -580,7 +591,8 @@ def run_docker_container(
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     joined_docker_run_cmd = ' '.join(docker_run_cmd)
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
-        service, instance, instance_config, chosen_port, soa_dir=soa_dir)
+        service, instance, instance_config, chosen_port, soa_dir=soa_dir,
+    )
 
     if dry_run:
         if json_dict:
@@ -772,10 +784,14 @@ def configure_and_run_docker_container(
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
-            paasta_print(PaastaColors.red(
-                "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s\n" % (instance_config.get_deploy_group(), service)),
+            paasta_print(
+                PaastaColors.red(
+                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                    "Please ensure this service has either run through a jenkins pipeline "
+                    "or paasta mark-for-deployment has been run for %s\n" % (
+                        instance_config.get_deploy_group(), service,
+                    ),
+                ),
                 sep='',
                 file=sys.stderr,
             )
@@ -855,7 +871,8 @@ def paasta_local_run(args):
             paasta_print(
                 PaastaColors.red(
                     "PaaSTA on this machine has not been configured with a default cluster."
-                    "Please pass one to local-run using '-c'."),
+                    "Please pass one to local-run using '-c'.",
+                ),
                 sep='\n',
                 file=sys.stderr,
             )
