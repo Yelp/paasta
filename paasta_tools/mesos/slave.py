@@ -46,16 +46,21 @@ class MesosSlave(object):
         return "{}://{}:{}".format(
             self.config["scheme"],
             self["hostname"],
-            self["pid"].split(":")[-1])
+            self["pid"].split(":")[-1],
+        )
 
     @log.duration
     def fetch(self, url, **kwargs):
         try:
-            return requests.get(urljoin(
-                self.host, url), timeout=self.config["response_timeout"], **kwargs)
+            return requests.get(
+                urljoin(
+                    self.host, url,
+                ), timeout=self.config["response_timeout"], **kwargs
+            )
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(
-                "Unable to connect to the slave at {}".format(self.host))
+                "Unable to connect to the slave at {}".format(self.host),
+            )
 
     @util.CachedProperty(ttl=5)
     def state(self):
@@ -71,7 +76,9 @@ class MesosSlave(object):
                 if task_id in list(map(
                         lambda x: x["id"],
                         util.merge(
-                            exc, "completed_tasks", "tasks", "queued_tasks"))):
+                            exc, "completed_tasks", "tasks", "queued_tasks",
+                        ),
+                )):
                     return exc
         raise exceptions.MissingExecutor("No executor has a task by that id")
 

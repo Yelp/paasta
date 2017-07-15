@@ -639,22 +639,25 @@ def test_get_resource_utilization_by_grouping(
 
 def test_get_resource_utilization_by_grouping_correctly_groups():
     fake_state = {
-        'slaves': [{
-            'id': 'foo',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'reserved_resources': []},
+        'slaves': [
             {
-            'id': 'bar',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
+                'id': 'foo',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'reserved_resources': [],
             },
-            'reserved_resources': []},
+            {
+                'id': 'bar',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'reserved_resources': [],
+            },
         ],
         'frameworks': [
             {'tasks': [
@@ -682,42 +685,47 @@ def test_get_resource_utilization_by_grouping_correctly_groups():
 
 def test_get_resource_utilization_by_grouping_correctly_multi_groups():
     fake_state = {
-        'slaves': [{
-            'id': 'foo1',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'one': 'yes', 'two': 'yes'},
-            'reserved_resources': []},
+        'slaves': [
             {
-            'id': 'bar1',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
+                'id': 'foo1',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'attributes': {'one': 'yes', 'two': 'yes'},
+                'reserved_resources': [],
             },
-            'attributes': {'one': 'yes', 'two': 'no'},
-            'reserved_resources': []},
             {
-            'id': 'foo2',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
+                'id': 'bar1',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'attributes': {'one': 'yes', 'two': 'no'},
+                'reserved_resources': [],
             },
-            'attributes': {'one': 'no', 'two': 'yes'},
-            'reserved_resources': []},
             {
-            'id': 'bar2',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
+                'id': 'foo2',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'attributes': {'one': 'no', 'two': 'yes'},
+                'reserved_resources': [],
             },
-            'attributes': {'one': 'no', 'two': 'no'},
-            'reserved_resources': []},
+            {
+                'id': 'bar2',
+                'resources': {
+                    'disk': 100,
+                    'cpus': 10,
+                    'mem': 50,
+                },
+                'attributes': {'one': 'no', 'two': 'no'},
+                'reserved_resources': [],
+            },
         ],
         'frameworks': [
             {'tasks': [
@@ -994,8 +1002,10 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_zero_huma
     ) == expected
 
 
-@patch('paasta_tools.metrics.metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair',
-       autospec=True)
+@patch(
+    'paasta_tools.metrics.metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair',
+    autospec=True,
+)
 def test_format_row_for_resource_utilization_checks(mock_format_row):
     fake_pairs = [
         (Mock(), Mock()),
