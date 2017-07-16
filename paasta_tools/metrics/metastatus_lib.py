@@ -128,17 +128,23 @@ def assert_cpu_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available cpu from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available cpu from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
-        return HealthCheckResult(message="CPUs: %.2f / %d in use (%s)"
-                                 % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-                                 healthy=True)
+        return HealthCheckResult(
+            message="CPUs: %.2f / %d in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True,
+        )
     else:
-        return HealthCheckResult(message="CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
-                                 % (threshold, perc_used, total),
-                                 healthy=False)
+        return HealthCheckResult(
+            message="CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
+            % (threshold, perc_used, total),
+            healthy=False,
+        )
 
 
 def assert_memory_health(metrics, mesos_state, threshold=10):
@@ -154,8 +160,10 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available memory from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available memory from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
@@ -184,8 +192,10 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available disk from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available disk from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
@@ -501,8 +511,10 @@ def run_healthchecks_with_param(param, healthcheck_functions, format_options={})
 def assert_marathon_apps(client):
     num_apps = len(client.list_apps())
     if num_apps < 1:
-        return HealthCheckResult(message="CRITICAL: No marathon apps running",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="CRITICAL: No marathon apps running",
+            healthy=False,
+        )
     else:
         return HealthCheckResult(message="marathon apps: %d" % num_apps, healthy=True)
 
@@ -520,10 +532,13 @@ def assert_marathon_deployments(client):
 def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    return run_healthchecks_with_param(client, [
-        assert_marathon_apps,
-        assert_marathon_tasks,
-        assert_marathon_deployments])
+    return run_healthchecks_with_param(
+        client, [
+            assert_marathon_apps,
+            assert_marathon_tasks,
+            assert_marathon_deployments,
+        ],
+    )
 
 
 def assert_chronos_scheduled_jobs(client):
@@ -554,10 +569,12 @@ def get_chronos_status(chronos_client):
     """Gather information about chronos.
     :return: string containing the status
     """
-    return run_healthchecks_with_param(chronos_client, [
-        assert_chronos_scheduled_jobs,
-        assert_chronos_queued_jobs,
-    ])
+    return run_healthchecks_with_param(
+        chronos_client, [
+            assert_chronos_scheduled_jobs,
+            assert_chronos_queued_jobs,
+        ],
+    )
 
 
 def get_marathon_client(marathon_config):

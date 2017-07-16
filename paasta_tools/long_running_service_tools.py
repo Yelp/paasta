@@ -127,7 +127,8 @@ class LongRunningServiceConfig(InstanceConfig):
                 limited_instances = self.limit_instance_count(zk_instances)
                 if limited_instances != zk_instances:
                     log.warning("Returning limited instance count %d. (zk had %d)" % (
-                                limited_instances, zk_instances))
+                        limited_instances, zk_instances,
+                    ))
                 return limited_instances
         else:
             instances = self.config_dict.get('instances', 1)
@@ -234,7 +235,8 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     """
 
     service_config = service_configuration_lib.read_service_configuration(
-        service_name=service, soa_dir=soa_dir)
+        service_name=service, soa_dir=soa_dir,
+    )
     smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
