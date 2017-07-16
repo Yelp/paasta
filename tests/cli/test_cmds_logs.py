@@ -197,14 +197,18 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
     instances = [instance]
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line(levels[0], clusters[0], service, instance, components[0], line,
-                                     timestamp="2016-06-07T23:46:03+00:00")
+    formatted_line = format_log_line(
+        levels[0], clusters[0], service, instance, components[0], line,
+        timestamp="2016-06-07T23:46:03+00:00",
+    )
 
     start_time = isodate.parse_datetime("2016-06-07T23:40:03+00:00")
     end_time = isodate.parse_datetime("2016-06-07T23:50:03+00:00")
 
-    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters,
-                                              instances, start_time=start_time, end_time=end_time) is True
+    assert logs.paasta_log_line_passes_filter(
+        formatted_line, levels, service, components, clusters,
+        instances, start_time=start_time, end_time=end_time,
+    ) is True
 
 
 def test_paasta_log_line_passes_filter_false_when_invalid_time():
@@ -215,13 +219,17 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     instances = [instance]
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line(levels[0], clusters[0], service, instance, components[0], line,
-                                     timestamp=isodate.datetime_isoformat(datetime.datetime.utcnow()))
+    formatted_line = format_log_line(
+        levels[0], clusters[0], service, instance, components[0], line,
+        timestamp=isodate.datetime_isoformat(datetime.datetime.utcnow()),
+    )
 
     start_time, end_time = logs.generate_start_end_time(from_string="5m", to_string="3m")
 
-    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters,
-                                              instances, start_time=start_time, end_time=end_time) is False
+    assert logs.paasta_log_line_passes_filter(
+        formatted_line, levels, service, components, clusters,
+        instances, start_time=start_time, end_time=end_time,
+    ) is False
 
 
 def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
@@ -669,8 +677,10 @@ def test_scribereader_print_last_n_logs():
                                            "timestamp":"2016-06-08T06:31:52.706609135Z"}"""] * 100
         mock_scribereader.get_stream_tailer.return_value = fake_iter
 
-        logs.ScribeLogReader(cluster_map={}).print_last_n_logs(service, 100, levels, components, clusters,
-                                                               instances, raw_mode=False)
+        logs.ScribeLogReader(cluster_map={}).print_last_n_logs(
+            service, 100, levels, components, clusters,
+            instances, raw_mode=False,
+        )
 
         # one call per component per environment except marathon and chronos which run 1/env/cluster
         # Defaults:
@@ -708,17 +718,21 @@ def test_scribereader_print_logs_by_time():
         mock_scribereader.get_stream_reader.return_value = fake_iter
 
         start_time, end_time = logs.generate_start_end_time()
-        logs.ScribeLogReader(cluster_map={}).print_logs_by_time(service, start_time, end_time,
-                                                                levels, components, clusters,
-                                                                instances, raw_mode=False)
+        logs.ScribeLogReader(cluster_map={}).print_logs_by_time(
+            service, start_time, end_time,
+            levels, components, clusters,
+            instances, raw_mode=False,
+        )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
         assert mock_scribereader.get_stream_tailer.call_count == 14
 
         start_time, end_time = logs.generate_start_end_time("3d", "2d")
-        logs.ScribeLogReader(cluster_map={}).print_logs_by_time(service, start_time, end_time,
-                                                                levels, components, clusters,
-                                                                instances, raw_mode=False)
+        logs.ScribeLogReader(cluster_map={}).print_logs_by_time(
+            service, start_time, end_time,
+            levels, components, clusters,
+            instances, raw_mode=False,
+        )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
         assert mock_scribereader.get_stream_reader.call_count == 14
@@ -946,9 +960,12 @@ def test_determine_scribereader_envs():
 def test_determine_scribereader_additional_envs():
     cluster = 'fake_cluster'
     components = ['fake_component']
-    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True), \
-            mock.patch('paasta_tools.cli.cmds.logs.LOG_COMPONENTS',
-                       spec_set=dict, autospec=None) as mock_LOG_COMPONENTS:
+    with mock.patch(
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
+    ), mock.patch(
+        'paasta_tools.cli.cmds.logs.LOG_COMPONENTS',
+        spec_set=dict, autospec=None,
+    ) as mock_LOG_COMPONENTS:
         cluster_map = {
             cluster: 'fake_scribe_env',
         }
@@ -1095,7 +1112,8 @@ def test_pick_default_log_mode():
         fake_reader.SUPPORTS_TAILING = True
 
         logs.pick_default_log_mode(
-            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None)
+            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None,
+        )
 
         # Only supports tailing so that's the one that should be used
         assert tail_logs.call_count == 1
@@ -1108,7 +1126,8 @@ def test_pick_default_log_mode():
         fake_reader.SUPPORTS_TIME = True
 
         logs.pick_default_log_mode(
-            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None)
+            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None,
+        )
 
         # Supports tailing and time, but time should be prioritized
         assert logs_by_time.call_count == 1
@@ -1122,7 +1141,8 @@ def test_pick_default_log_mode():
         fake_reader.SUPPORTS_LINE_COUNT = True
 
         logs.pick_default_log_mode(
-            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None)
+            args, fake_reader, service=None, levels=None, components=None, clusters=None, instances=None,
+        )
 
         # Supports tailing , time and line counts. Line counts should be prioritized
         assert logs_by_lines.call_count == 1

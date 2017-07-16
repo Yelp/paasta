@@ -49,8 +49,10 @@ class Inbox(PaastaThread):
             service_instance = None
         if service_instance:
             self.log.debug("Processing {}.{} to see if we need to add it "
-                           "to bounce queue".format(service_instance.service,
-                                                    service_instance.instance))
+                           "to bounce queue".format(
+                               service_instance.service,
+                               service_instance.instance,
+                           ))
             self.process_service_instance(service_instance)
         if self.inbox_q.empty() and self.to_bounce:
             self.process_to_bounce()
@@ -117,10 +119,12 @@ class DeployDaemon(PaastaThread):
         self.log.info("paasta-deployd starting up...")
         with ZookeeperPool() as self.zk:
             self.log.info("Waiting to become leader")
-            self.election = PaastaLeaderElection(self.zk,
-                                                 "/paasta-deployd-leader",
-                                                 socket.getfqdn(),
-                                                 control=self.control)
+            self.election = PaastaLeaderElection(
+                self.zk,
+                "/paasta-deployd-leader",
+                socket.getfqdn(),
+                control=self.control,
+            )
             self.is_leader = False
             self.election.run(self.startup)
 
@@ -188,37 +192,47 @@ class DeployDaemon(PaastaThread):
             self.workers.append(worker)
 
     def add_all_services(self):
-        instances = get_services_for_cluster(cluster=self.config.get_cluster(),
-                                             instance_type='marathon',
-                                             soa_dir=DEFAULT_SOA_DIR)
-        instances_to_add = rate_limit_instances(instances=instances,
-                                                number_per_minute=self.config.get_deployd_startup_bounce_rate(),
-                                                watcher_name='daemon_start')
+        instances = get_services_for_cluster(
+            cluster=self.config.get_cluster(),
+            instance_type='marathon',
+            soa_dir=DEFAULT_SOA_DIR,
+        )
+        instances_to_add = rate_limit_instances(
+            instances=instances,
+            number_per_minute=self.config.get_deployd_startup_bounce_rate(),
+            watcher_name='daemon_start',
+        )
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
 
     def prioritise_bouncing_services(self):
-        service_instances = get_service_instances_that_need_bouncing(self.marathon_client,
-                                                                     DEFAULT_SOA_DIR)
+        service_instances = get_service_instances_that_need_bouncing(
+            self.marathon_client,
+            DEFAULT_SOA_DIR,
+        )
         for service_instance in service_instances:
             self.log.info("Prioritising {} to be bounced immediately".format(service_instance))
             service, instance = service_instance.split('.')
-            self.inbox_q.put(ServiceInstance(service=service,
-                                             instance=instance,
-                                             watcher=self.__class__.__name__,
-                                             bounce_by=int(time.time()),
-                                             bounce_timers=None,
-                                             failures=0))
+            self.inbox_q.put(ServiceInstance(
+                service=service,
+                instance=instance,
+                watcher=self.__class__.__name__,
+                bounce_by=int(time.time()),
+                bounce_timers=None,
+                failures=0,
+            ))
 
     def start_watchers(self):
         """ should block until all threads happy"""
         watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
                            obj[1].__bases__[0] == watchers.PaastaWatcher]
-        self.watcher_threads = [watcher(inbox_q=self.inbox_q,
-                                        cluster=self.config.get_cluster(),
-                                        zookeeper_client=self.zk,
-                                        config=self.config)
-                                for watcher in watcher_classes]
+        self.watcher_threads = [watcher(
+            inbox_q=self.inbox_q,
+            cluster=self.config.get_cluster(),
+            zookeeper_client=self.zk,
+            config=self.config,
+        )
+            for watcher in watcher_classes]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:
             watcher.start()
