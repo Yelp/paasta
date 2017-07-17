@@ -110,6 +110,8 @@ class MesosMaster(object):
 
             if not data:
                 exceptions.MasterNotAvailableException("Cannot retrieve valid MasterInfo data from ZooKeeper")
+            else:
+                data = data.decode('utf8')
 
             try:
                 parsed = json.loads(data)

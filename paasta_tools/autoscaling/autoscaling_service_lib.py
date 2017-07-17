@@ -140,9 +140,9 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
 
     with ZookeeperPool() as zk:
         try:
-            iterm, _ = zk.get(zk_iterm_path)
-            last_error, _ = zk.get(zk_last_error_path)
-            last_time, _ = zk.get(zk_last_time_path)
+            iterm = zk.get(zk_iterm_path)[0].decode('utf8')
+            last_error = zk.get(zk_last_error_path)[0].decode('utf8')
+            last_time = zk.get(zk_last_time_path)[0].decode('utf8')
             iterm = float(iterm)
             last_error = float(last_error)
             last_time = float(last_time)
@@ -412,8 +412,8 @@ def mesos_cpu_metrics_provider(
 
     with ZookeeperPool() as zk:
         try:
-            last_time, _ = zk.get(zk_last_time_path)
-            last_cpu_data, _ = zk.get(zk_last_cpu_data)
+            last_time = zk.get(zk_last_time_path)[0].decode('utf8')
+            last_cpu_data = zk.get(zk_last_cpu_data)[0].decode('utf8')
             log_utilization_data[last_time] = last_cpu_data
             last_time = float(last_time)
             last_cpu_data = (datum for datum in last_cpu_data.split(',') if datum)
