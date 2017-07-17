@@ -24,6 +24,7 @@ import os
 
 import requests_cache
 import service_configuration_lib
+from gevent import monkey
 from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
 
@@ -32,6 +33,8 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
 
+
+monkey.patch_all()
 
 log = logging.getLogger(__name__)
 
