@@ -60,8 +60,10 @@ class TestBounceLib:
             with bounce_lib.bounce_lock_zookeeper(lock_name):
                 pass
             hosts_patch.assert_called_once_with()
-            client_patch.assert_called_once_with(hosts=fake_zk_hosts,
-                                                 timeout=bounce_lib.ZK_LOCK_CONNECT_TIMEOUT_S)
+            client_patch.assert_called_once_with(
+                hosts=fake_zk_hosts,
+                timeout=bounce_lib.ZK_LOCK_CONNECT_TIMEOUT_S,
+            )
             fake_zk.start.assert_called_once_with()
             fake_zk.Lock.assert_called_once_with('%s/%s' % (bounce_lib.ZK_LOCK_PATH, lock_name))
             fake_lock.acquire.assert_called_once_with(timeout=1)
@@ -174,19 +176,24 @@ class TestBounceLib:
             "status": "UP",
         }
 
-        with mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True,
-                        return_value=[fake_backend]):
+        with mock.patch(
+            'paasta_tools.smartstack_tools.get_multiple_backends', autospec=True,
+            return_value=[fake_backend],
+        ):
             with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
                 assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
 
         with mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True, return_value=[]):
             with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
-                assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns,
-                                                            self.fake_system_paasta_config())
+                assert not bounce_lib.is_task_in_smartstack(
+                    fake_task, service, nerve_ns,
+                    self.fake_system_paasta_config(),
+                )
 
-        with mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
-                        side_effect=[[fake_task], [ConnectionError], [RequestException]],
-                        ):
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
+            side_effect=[[fake_task], [ConnectionError], [RequestException]],
+        ):
             assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
             assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
             assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
@@ -213,9 +220,11 @@ class TestBounceLib:
         """Only tasks with a passing healthcheck should be happy"""
         fake_failing_healthcheck_results = [mock.Mock(alive=False)]
         fake_successful_healthcheck_results = [mock.Mock(alive=True)]
-        tasks = [mock.Mock(health_check_results=fake_failing_healthcheck_results),
-                 mock.Mock(health_check_results=fake_failing_healthcheck_results),
-                 mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        tasks = [
+            mock.Mock(health_check_results=fake_failing_healthcheck_results),
+            mock.Mock(health_check_results=fake_failing_healthcheck_results),
+            mock.Mock(health_check_results=fake_successful_healthcheck_results),
+        ]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config())
         expected = tasks[-1:]
@@ -245,22 +254,28 @@ class TestBounceLib:
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
         # datetime.datetime instead, and give it a utcnow attribute.
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
-            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
-                                                min_task_uptime=121)
+            actual = bounce_lib.get_happy_tasks(
+                fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                min_task_uptime=121,
+            )
             expected = tasks[3:]
             assert actual == expected
 
     def test_get_happy_tasks_min_task_uptime_when_unhealthy(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
-        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)],
-                           started_at=(now - datetime.timedelta(minutes=i)))
-                 for i in range(5)]
+        tasks = [mock.Mock(
+            health_check_results=[mock.Mock(alive=False)],
+            started_at=(now - datetime.timedelta(minutes=i)),
+        )
+            for i in range(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
 
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
-            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
-                                                min_task_uptime=121)
+            actual = bounce_lib.get_happy_tasks(
+                fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                min_task_uptime=121,
+            )
             expected = []
             assert actual == expected
 
@@ -272,8 +287,10 @@ class TestBounceLib:
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
         ):
-            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
-                                                check_haproxy=True)
+            actual = bounce_lib.get_happy_tasks(
+                fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                check_haproxy=True,
+            )
             expected = tasks[2:]
             assert actual == expected
 
@@ -285,8 +302,10 @@ class TestBounceLib:
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True,
         ):
-            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
-                                                check_haproxy=True)
+            actual = bounce_lib.get_happy_tasks(
+                fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                check_haproxy=True,
+            )
             expected = []
             assert actual == expected
 
@@ -299,8 +318,10 @@ class TestBounceLib:
             'paasta_tools.bounce_lib.get_registered_marathon_tasks',
             side_effect=[([t] if i >= 2 else []) for i, t in enumerate(tasks)], autospec=True,
         ) as get_registered_marathon_tasks_patch:
-            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
-                                                check_haproxy=True)
+            actual = bounce_lib.get_happy_tasks(
+                fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                check_haproxy=True,
+            )
             expected = tasks[2:]
             assert actual == expected
 
