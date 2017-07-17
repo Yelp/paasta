@@ -252,7 +252,7 @@ instance MAY have:
 In addition, each instancename MAY configure additional Marathon healthcheck
 options:
 
-  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, or ``http``. If your
+  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``. If your
     service uses Smartstack, then this must match the value of the ``mode`` key
     defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then
     PaaSTA will execute ``healthcheck_cmd`` and examine the return code.

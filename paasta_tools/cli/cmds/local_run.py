@@ -73,7 +73,7 @@ def perform_http_healthcheck(url, timeout):
     try:
         with Timeout(seconds=timeout):
             try:
-                res = requests.get(url)
+                res = requests.get(url, verify=False)
             except requests.ConnectionError:
                 return (False, "http request failed: connection failed")
     except TimeoutError:
@@ -136,15 +136,15 @@ def run_healthcheck_on_container(
     """Performs healthcheck on a container
 
     :param container_id: Docker container id
-    :param healthcheck_mode: one of 'http', 'tcp', or 'cmd'
-    :param healthcheck_data: a URL when healthcheck_mode is 'http' or 'tcp', a command if healthcheck_mode is 'cmd'
+    :param healthcheck_mode: one of 'http', 'https', 'tcp', or 'cmd'
+    :param healthcheck_data: a URL when healthcheck_mode is 'http[s]' or 'tcp', a command if healthcheck_mode is 'cmd'
     :param timeout: timeout in seconds for individual check
     :returns: a tuple of (bool, output string)
     """
     healthcheck_result = (False, "unknown")
     if healthcheck_mode == 'cmd':
         healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
-    elif healthcheck_mode == 'http':
+    elif healthcheck_mode == 'http' or healthcheck_mode == 'https':
         healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
     elif healthcheck_mode == 'tcp':
         healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
