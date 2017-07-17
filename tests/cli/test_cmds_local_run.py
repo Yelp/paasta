@@ -598,6 +598,7 @@ def test_run_cook_image_fails(
     args.healthcheck = False
     args.interactive = False
     args.action = 'build'
+#    import pdb; pdb.set_trace()
     assert paasta_local_run(args) == 1
     assert not mock_run_docker_container.called
 
