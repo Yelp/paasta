@@ -283,6 +283,10 @@ def remote_run_start(args):
         paasta_print(
             PaastaColors.red("Signal received, shutting down scheduler."))
         runner.stop()
+        if _signum == signal.SIGTERM:
+            sys.exit(143)
+        else:
+            sys.exit(1)
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
