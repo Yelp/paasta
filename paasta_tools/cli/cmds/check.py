@@ -65,13 +65,13 @@ def add_subparser(subparsers):
     )
     check_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect. Defaults to autodetect.'
+        help='The name of the service you wish to inspect. Defaults to autodetect.',
     ).completer = lazy_choices_completer(list_services)
     check_parser.add_argument(
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=DEFAULT_SOA_DIR
+        default=DEFAULT_SOA_DIR,
     )
     check_parser.set_defaults(command=paasta_check)
 
@@ -314,12 +314,15 @@ def smartstack_check(service, service_path, soa_dir):
         paasta_print(PaastaCheckMessages.SMARTSTACK_YAML_FOUND)
         instances = get_all_namespaces_for_service(service=service, soa_dir=soa_dir)
         if len(instances) > 0:
-            for namespace, config in get_all_namespaces_for_service(service=service,
-                                                                    soa_dir=soa_dir,
-                                                                    full_name=False):
+            for namespace, config in get_all_namespaces_for_service(
+                service=service,
+                soa_dir=soa_dir,
+                full_name=False,
+            ):
                 if 'proxy_port' in config:
                     paasta_print(PaastaCheckMessages.smartstack_port_found(
-                        namespace, config.get('proxy_port')))
+                        namespace, config.get('proxy_port'),
+                    ))
                 else:
                     paasta_print(PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
         else:

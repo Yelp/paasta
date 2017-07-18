@@ -77,6 +77,7 @@ def paasta_emergency_stop(args):
     paasta_print("%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:]))
     paasta_print("To start this service again asap, run:")
     paasta_print(
-        "paasta emergency-start --service %s --instance %s --cluster %s" % (service, args.instance, args.cluster))
+        "paasta emergency-start --service %s --instance %s --cluster %s" % (service, args.instance, args.cluster),
+    )
 
     return return_code

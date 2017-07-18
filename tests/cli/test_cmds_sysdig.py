@@ -39,23 +39,27 @@ def test_add_subparser(mock_get_subparser):
 @patch('paasta_tools.cli.cmds.sysdig.subprocess', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.pick_slave_from_status', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.get_status_for_instance', autospec=True)
-def test_paasta_sysdig(mock_get_status_for_instance,
-                       mock_pick_slave_from_status,
-                       mock_subprocess,
-                       mock_get_any_mesos_master,
-                       mock__run,
-                       mock_load_marathon_config,
-                       mock_get_mesos_master,
-                       mock_format_mesos_command):
+def test_paasta_sysdig(
+    mock_get_status_for_instance,
+    mock_pick_slave_from_status,
+    mock_subprocess,
+    mock_get_any_mesos_master,
+    mock__run,
+    mock_load_marathon_config,
+    mock_get_mesos_master,
+    mock_format_mesos_command,
+):
 
     mock_status = mock.Mock(marathon=mock.Mock(app_id='appID1'))
     mock_get_status_for_instance.return_value = mock_status
-    mock_args = mock.Mock(cluster='cluster1',
-                          service='mock_service',
-                          instance='mock_instance',
-                          host='host1',
-                          mesos_id=None,
-                          local=False)
+    mock_args = mock.Mock(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        host='host1',
+        mesos_id=None,
+        local=False,
+    )
     mock_pick_slave_from_status.return_value = 'host1'
     mock_get_any_mesos_master.return_value = 'master1'
     mock__run.return_value = (0, 'slave:command123')
@@ -64,7 +68,7 @@ def test_paasta_sysdig(mock_get_status_for_instance,
     mock_get_any_mesos_master.assert_called_with(cluster='cluster1')
     mock__run.assert_called_with(
         'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET master1 '
-        '"sudo paasta sysdig blah blah --local"'
+        '"sudo paasta sysdig blah blah --local"',
     )
     mock_subprocess.call.assert_called_with(["ssh", "-tA", 'slave', 'command123'])
 
@@ -72,23 +76,31 @@ def test_paasta_sysdig(mock_get_status_for_instance,
     with raises(SystemExit):
         sysdig.paasta_sysdig(mock_args)
 
-    mock_args = mock.Mock(cluster='cluster1',
-                          service='mock_service',
-                          instance='mock_instance',
-                          host='host1',
-                          mesos_id=None,
-                          local=True)
+    mock_args = mock.Mock(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        host='host1',
+        mesos_id=None,
+        local=True,
+    )
     mock_pick_slave_from_status.return_value = 'slave1'
-    mock_load_marathon_config.return_value = mock.Mock(get_url=mock.Mock(return_value=['http://blah']),
-                                                       get_username=mock.Mock(return_value='user'),
-                                                       get_password=mock.Mock(return_value='pass'))
+    mock_load_marathon_config.return_value = mock.Mock(
+        get_url=mock.Mock(return_value=['http://blah']),
+        get_username=mock.Mock(return_value='user'),
+        get_password=mock.Mock(return_value='pass'),
+    )
     mock_get_mesos_master.return_value = mock.Mock(host='http://foo')
     sysdig.paasta_sysdig(mock_args)
-    mock_get_status_for_instance.assert_called_with(cluster='cluster1',
-                                                    service='mock_service',
-                                                    instance='mock_instance')
-    mock_pick_slave_from_status.assert_called_with(status=mock_status,
-                                                   host='host1')
+    mock_get_status_for_instance.assert_called_with(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+    )
+    mock_pick_slave_from_status.assert_called_with(
+        status=mock_status,
+        host='host1',
+    )
     assert mock_load_marathon_config.called
     mock_format_mesos_command.assert_called_with('slave1', 'appID1', 'http://foo', 'http://user:pass@blah')
 
@@ -107,8 +119,10 @@ def test_get_any_mesos_master(mock_find_connectable_master, mock_calculate_remot
     with raises(SystemExit):
         sysdig.get_any_mesos_master('cluster1')
     assert mock_load_system_config.called
-    mock_calculate_remote_masters.assert_called_with('cluster1',
-                                                     mock_load_system_config.return_value)
+    mock_calculate_remote_masters.assert_called_with(
+        'cluster1',
+        mock_load_system_config.return_value,
+    )
 
     mock_masters = mock.Mock()
     mock_calculate_remote_masters.return_value = (mock_masters, 'fake')

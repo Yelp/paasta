@@ -96,8 +96,10 @@ def lookup_service_instance_by_ip(ip_lookup):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description='Adapts iptables syslog messages into scribe')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
     parser.add_argument('-l', '--listen-host', help='Default %(default)s', default='127.0.0.1')
     parser.add_argument('-p', '--listen-port', type=int, help='Default %(default)s', default=1516)
     parser.add_argument('-w', '--num-workers', type=int, help='Default %(default)s', default=DEFAULT_NUM_WORKERS)

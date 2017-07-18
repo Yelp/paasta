@@ -89,12 +89,12 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
         'hassecurity': {
             'dependencies_reference': 'my_ref',
             'security': {
-                'outbound_firewall': 'block'
-            }
+                'outbound_firewall': 'block',
+            },
         },
         'nosecurity': {
             'dependencies_reference': 'my_ref',
-        }
+        },
     }
     myservice_dir.join('marathon-mycluster.yaml').write(yaml.safe_dump(marathon_config))
 
@@ -102,8 +102,8 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
         'chronoswithsecurity': {
             'dependencies_reference': 'my_ref',
             'security': {
-                'outbound_firewall': 'block'
-            }
+                'outbound_firewall': 'block',
+            },
         },
     }
     myservice_dir.join('chronos-mycluster.yaml').write(yaml.safe_dump(chronos_config))
@@ -113,7 +113,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
             {'well-known': 'internet'},
             {'smartstack': 'mydependency.depinstance'},
             {'smartstack': 'another.one'},
-        ]
+        ],
     }
     myservice_dir.join('dependencies.yaml').write(yaml.safe_dump(dependencies_config))
 
@@ -172,7 +172,7 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
     }
 
     services_by_dependencies = {
-        'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
+        'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')},
     }
     soa_dir = mock.Mock()
     synapse_service_dir = mock.Mock()
@@ -180,7 +180,8 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
         (None, None, None, 'mydep.depinstance.json'),
         services_by_dependencies,
         soa_dir,
-        synapse_service_dir)
+        synapse_service_dir,
+    )
     assert log_mock.debug.call_count == 2
     log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
     log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
@@ -191,8 +192,8 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
                 firewall.ServiceGroup('anotherservice', 'instance'): {'11:11:11:11:11:11'},
             },
             soa_dir,
-            synapse_service_dir
-        )
+            synapse_service_dir,
+        ),
     ]
 
     assert firewall_flock_mock.return_value.__enter__.called is True
@@ -204,7 +205,8 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
         (None, None, None, 'mydep.depinstance.tmp'),
         services_by_dependencies,
         soa_dir,
-        synapse_service_dir)
+        synapse_service_dir,
+    )
     assert log_mock.debug.call_count == 0
     assert ensure_service_chains_mock.call_count == 0
 
@@ -217,7 +219,7 @@ def test_process_inotify_event_flock_error(
     firewall_flock_mock,
     active_service_groups_mock,
     ensure_service_chains_mock,
-    log_mock
+    log_mock,
 ):
     active_service_groups_mock.return_value = {
         firewall.ServiceGroup('myservice', 'myinstance'): {'00:00:00:00:00:00'},
@@ -226,7 +228,7 @@ def test_process_inotify_event_flock_error(
     }
 
     services_by_dependencies = {
-        'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')}
+        'mydep.depinstance': {('myservice', 'myinstance'), ('anotherservice', 'instance')},
     }
     soa_dir = mock.Mock()
     synapse_service_dir = mock.Mock()
@@ -234,7 +236,8 @@ def test_process_inotify_event_flock_error(
         (None, None, None, 'mydep.depinstance.json'),
         services_by_dependencies,
         soa_dir,
-        synapse_service_dir)
+        synapse_service_dir,
+    )
     assert log_mock.debug.call_count == 0
     assert log_mock.error.call_count == 1
 

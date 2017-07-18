@@ -27,7 +27,7 @@ def test_format_tag():
     actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
-        desired_state='stop'
+        desired_state='stop',
     )
     assert actual == expected
 
@@ -53,12 +53,14 @@ def test_issue_state_change_for_service(mock_log_event, get_transport_and_path, 
             branch_dict={},
         ),
         '0',
-        'stop'
+        'stop',
     )
 
     get_transport_and_path.assert_called_once_with(fake_git_url)
-    mock_git_client.send_pack.assert_called_once_with(fake_path, mock.ANY,
-                                                      mock.ANY)
+    mock_git_client.send_pack.assert_called_once_with(
+        fake_path, mock.ANY,
+        mock.ANY,
+    )
     assert mock_log_event.call_count == 1
 
 
@@ -113,8 +115,10 @@ def test_log_event():
             level='event',
             component='deploy',
             cluster='fake_cluster',
-            line=("Issued request to change state of fake_instance (an instance of "
-                  "fake_service) to 'stopped' by fake_user@fake_fqdn")
+            line=(
+                "Issued request to change state of fake_instance (an instance of "
+                "fake_service) to 'stopped' by fake_user@fake_fqdn"
+            ),
         )
 
 
@@ -140,8 +144,10 @@ def test_paasta_start_or_stop(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
 ):
-    args, _ = parse_args(['start', '-s', 'fake_service', '-i', 'main1,canary',
-                          '-c', 'cluster1,cluster2', '-d', '/soa/dir'])
+    args, _ = parse_args([
+        'start', '-s', 'fake_service', '-i', 'main1,canary',
+        '-c', 'cluster1,cluster2', '-d', '/soa/dir',
+    ])
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.return_value = set(args.instances.split(","))
     mock_get_git_url.return_value = 'fake_git_url'
@@ -152,35 +158,51 @@ def test_paasta_start_or_stop(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     ret = args.command(args)
-    c1_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster1',
-                                            instance='main1',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    c2_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster1',
-                                            instance='canary',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    c3_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster2',
-                                            instance='main1',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    c4_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster2',
-                                            instance='canary',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    mock_get_instance_config.assert_has_calls([c1_get_instance_config_call,
-                                               c2_get_instance_config_call,
-                                               c3_get_instance_config_call,
-                                               c4_get_instance_config_call], any_order=True)
-    mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
-                                                      'some_group')
-    mock_issue_state_change_for_service.assert_called_with(service_config=mock_instance_config,
-                                                           force_bounce='not_a_real_timestamp',
-                                                           desired_state='start')
+    c1_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster1',
+        instance='main1',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    c2_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster1',
+        instance='canary',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    c3_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster2',
+        instance='main1',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    c4_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster2',
+        instance='canary',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    mock_get_instance_config.assert_has_calls(
+        [
+            c1_get_instance_config_call,
+            c2_get_instance_config_call,
+            c3_get_instance_config_call,
+            c4_get_instance_config_call,
+        ], any_order=True,
+    )
+    mock_get_latest_deployment_tag.assert_called_with(
+        ['not_a_real_tag', 'fake_tag'],
+        'some_group',
+    )
+    mock_issue_state_change_for_service.assert_called_with(
+        service_config=mock_instance_config,
+        force_bounce='not_a_real_timestamp',
+        desired_state='start',
+    )
     assert mock_issue_state_change_for_service.call_count == 4
     assert(ret == 0)
 
@@ -209,8 +231,10 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
 ):
-    args, _ = parse_args(['start', '-s', 'fake_service', '-c', 'cluster1',
-                          '-l', 'fake_group', '-d', '/soa/dir'])
+    args, _ = parse_args([
+        'start', '-s', 'fake_service', '-c', 'cluster1',
+        '-l', 'fake_group', '-d', '/soa/dir',
+    ])
     mock_get_cluster_instance_map_for_service.return_value = {'cluster1': {'instances': ['instance1']}}
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.return_value = {'instance1', 'instance2', 'instance3'}
@@ -223,16 +247,22 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     ret = args.command(args)
 
-    mock_get_instance_config.assert_called_once_with(service='fake_service',
-                                                     cluster='cluster1',
-                                                     instance='instance1',
-                                                     soa_dir='/soa/dir',
-                                                     load_deployments=False)
-    mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
-                                                      args.deploy_group)
-    mock_issue_state_change_for_service.assert_called_once_with(service_config=mock_instance_config,
-                                                                force_bounce='not_a_real_timestamp',
-                                                                desired_state='start')
+    mock_get_instance_config.assert_called_once_with(
+        service='fake_service',
+        cluster='cluster1',
+        instance='instance1',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    mock_get_latest_deployment_tag.assert_called_with(
+        ['not_a_real_tag', 'fake_tag'],
+        args.deploy_group,
+    )
+    mock_issue_state_change_for_service.assert_called_once_with(
+        service_config=mock_instance_config,
+        force_bounce='not_a_real_timestamp',
+        desired_state='start',
+    )
     assert ret == 0
 
 
@@ -258,8 +288,10 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
 ):
-    args, _ = parse_args(['start', '-s', 'fake_service', '-i', 'main1,canary',
-                          '-c', 'cluster1,cluster2', '-d', '/soa/dir'])
+    args, _ = parse_args([
+        'start', '-s', 'fake_service', '-i', 'main1,canary',
+        '-c', 'cluster1,cluster2', '-d', '/soa/dir',
+    ])
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_list_all_instances.side_effect = (
         lambda service, clusters, soa_dir:
@@ -273,29 +305,43 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     ret = args.command(args)
-    c1_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster1',
-                                            instance='main1',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    c2_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster2',
-                                            instance='main1',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    c3_get_instance_config_call = mock.call(service='fake_service',
-                                            cluster='cluster2',
-                                            instance='canary',
-                                            soa_dir='/soa/dir',
-                                            load_deployments=False)
-    mock_get_instance_config.assert_has_calls([c1_get_instance_config_call,
-                                               c2_get_instance_config_call,
-                                               c3_get_instance_config_call], any_order=True)
-    mock_get_latest_deployment_tag.assert_called_with(['not_a_real_tag', 'fake_tag'],
-                                                      'some_group')
-    mock_issue_state_change_for_service.assert_called_with(service_config=mock_instance_config,
-                                                           force_bounce='not_a_real_timestamp',
-                                                           desired_state='start')
+    c1_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster1',
+        instance='main1',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    c2_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster2',
+        instance='main1',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    c3_get_instance_config_call = mock.call(
+        service='fake_service',
+        cluster='cluster2',
+        instance='canary',
+        soa_dir='/soa/dir',
+        load_deployments=False,
+    )
+    mock_get_instance_config.assert_has_calls(
+        [
+            c1_get_instance_config_call,
+            c2_get_instance_config_call,
+            c3_get_instance_config_call,
+        ], any_order=True,
+    )
+    mock_get_latest_deployment_tag.assert_called_with(
+        ['not_a_real_tag', 'fake_tag'],
+        'some_group',
+    )
+    mock_issue_state_change_for_service.assert_called_with(
+        service_config=mock_instance_config,
+        force_bounce='not_a_real_timestamp',
+        desired_state='start',
+    )
     assert mock_issue_state_change_for_service.call_count == 3
     assert(ret == 0)
 
@@ -313,8 +359,10 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_remote_refs,
     capfd,
 ):
-    args, _ = parse_args(['restart', '-s', 'fake_service',
-                          '-c', 'cluster1', '-d', '/soa/dir'])
+    args, _ = parse_args([
+        'restart', '-s', 'fake_service',
+        '-c', 'cluster1', '-d', '/soa/dir',
+    ])
 
     mock_list_clusters.return_value = ['cluster1']
     mock_get_git_url.return_value = 'fake_git_url'
@@ -339,8 +387,10 @@ def test_start_or_stop_bad_refs(
     mock_figure_out_service_name,
     capfd,
 ):
-    args, _ = parse_args(['restart', '-s', 'fake_service', '-i', 'fake_instance',
-                          '-c', 'fake_cluster1,fake_cluster2', '-d', '/fake/soa/dir'])
+    args, _ = parse_args([
+        'restart', '-s', 'fake_service', '-i', 'fake_instance',
+        '-c', 'fake_cluster1,fake_cluster2', '-d', '/fake/soa/dir',
+    ])
     mock_list_clusters.return_value = ['fake_cluster1', 'fake_cluster2']
 
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -352,7 +402,8 @@ def test_start_or_stop_bad_refs(
         branch_dict={},
     )
     mock_list_remote_refs.return_value = {
-        "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"}
+        "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783",
+    }
     mock_list_all_instances.return_value = {args.instances}
     assert args.command(args) == 1
     assert "No branches found for" in capfd.readouterr()[0]
@@ -369,8 +420,10 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
         mock_figure_out_service_name,
         capfd,
 ):
-    args, _ = parse_args(['restart', '-s', 'fake_service',
-                          '-c', 'fake_cluster_1,fake_cluster_2', '-d', '/foo'])
+    args, _ = parse_args([
+        'restart', '-s', 'fake_service',
+        '-c', 'fake_cluster_1,fake_cluster_2', '-d', '/foo',
+    ])
 
     mock_list_clusters.return_value = ['fake_cluster_2']
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -388,8 +441,10 @@ def test_cluster_throws_exception_no_matching_instance_clusters(
         mock_figure_out_service_name,
         capfd,
 ):
-    args, _ = parse_args(['restart', '-s', 'fake_service', '-i', 'instance_one,instance_tw',
-                          '-c', 'fake_cluster_1,fake_cluster_2,fake_cluster_3', '-d', '/foo'])
+    args, _ = parse_args([
+        'restart', '-s', 'fake_service', '-i', 'instance_one,instance_tw',
+        '-c', 'fake_cluster_1,fake_cluster_2,fake_cluster_3', '-d', '/foo',
+    ])
 
     # this is called twice: once for each of the instances.
     # the code should flatten these out to be one list.

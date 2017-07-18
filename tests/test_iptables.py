@@ -58,9 +58,11 @@ def test_rule_from_iptc_mac_match():
     assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(
         target='DROP',
         matches=(
-            ('mac', (
-                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
-            )),
+            (
+                'mac', (
+                    ('mac-source', ('20:C9:D0:2B:6F:F3',)),
+                ),
+            ),
         ),
     )
 
@@ -72,7 +74,7 @@ def test_rule_from_iptc_target_parameters():
 
     assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(
         target='LOG',
-        target_parameters=(('log-prefix', ('my-prefix ',)),)
+        target_parameters=(('log-prefix', ('my-prefix ',)),),
     )
 
 
@@ -81,9 +83,11 @@ def test_rule_tcp_to_iptc():
         protocol='tcp',
         target='ACCEPT',
         matches=(
-            ('tcp', (
-                ('dport', ('443',)),
-            )),
+            (
+                'tcp', (
+                    ('dport', ('443',)),
+                ),
+            ),
         ),
     ).to_iptc()
     assert rule.protocol == 'tcp'
@@ -97,9 +101,11 @@ def test_mac_src_to_iptc():
     rule = EMPTY_RULE._replace(
         target='ACCEPT',
         matches=(
-            ('mac', (
-                ('mac-source', ('20:C9:D0:2B:6F:F3',)),
-            )),
+            (
+                'mac', (
+                    ('mac-source', ('20:C9:D0:2B:6F:F3',)),
+                ),
+            ),
         ),
     ).to_iptc()
     assert rule.protocol == 'ip'
@@ -152,10 +158,12 @@ def test_ensure_chain():
     ) as mock_insert_rule, mock.patch.object(
         iptables, 'delete_rules', autospec=True,
     ) as mock_delete_rules:
-        iptables.ensure_chain('PAASTA.service', (
-            EMPTY_RULE._replace(target='DROP'),
-            EMPTY_RULE._replace(target='ACCEPT', src='2.0.0.0/255.255.255.0'),
-        ))
+        iptables.ensure_chain(
+            'PAASTA.service', (
+                EMPTY_RULE._replace(target='DROP'),
+                EMPTY_RULE._replace(target='ACCEPT', src='2.0.0.0/255.255.255.0'),
+            ),
+        )
 
     # It should add the missing rule
     assert mock_insert_rule.mock_calls == [
@@ -177,7 +185,7 @@ def test_ensure_chain():
 def test_ensure_chain_creates_chain_if_doesnt_exist():
     with mock.patch.object(
         iptables, 'list_chain',
-        side_effect=iptables.ChainDoesNotExist('PAASTA.service')
+        side_effect=iptables.ChainDoesNotExist('PAASTA.service'),
     ), mock.patch.object(
         iptables, 'create_chain', autospec=True,
     ) as mock_create_chain:
@@ -241,18 +249,20 @@ def test_delete_rules(mock_Table, mock_Chain):
             target='REJECT',
             target_parameters=(
                 ('reject-with', ('icmp-port-unreachable',)),
-            )
+            ),
         ).to_iptc(),
     )
-    iptables.delete_rules('PAASTA.service', (
-        EMPTY_RULE._replace(target='ACCEPT'),
-        EMPTY_RULE._replace(
-            target='REJECT',
-            target_parameters=(
-                ('reject-with', ('icmp-port-unreachable',)),
-            )
-        )
-    ))
+    iptables.delete_rules(
+        'PAASTA.service', (
+            EMPTY_RULE._replace(target='ACCEPT'),
+            EMPTY_RULE._replace(
+                target='REJECT',
+                target_parameters=(
+                    ('reject-with', ('icmp-port-unreachable',)),
+                ),
+            ),
+        ),
+    )
     assert mock_Chain('filter', 'PAASTA.service').delete_rule.mock_calls == [
         mock.call(mock_Chain.return_value.rules[1]),
         mock.call(mock_Chain.return_value.rules[2]),
@@ -296,13 +306,13 @@ class TestReorderChain(object):
     @pytest.yield_fixture(autouse=True)
     def chain_mock(self):
         with mock.patch.object(
-                iptables, 'iptables_txn', autospec=True
-            ), mock.patch.object(
-                iptables.iptc, 'Table', autospec=True
+                iptables, 'iptables_txn', autospec=True,
         ), mock.patch.object(
-                iptables.iptc, 'Chain', autospec=True
+                iptables.iptc, 'Table', autospec=True,
+        ), mock.patch.object(
+                iptables.iptc, 'Chain', autospec=True,
         ) as chain_mock, mock.patch.object(
-                iptables, 'list_chain', autospec=True
+                iptables, 'list_chain', autospec=True,
         ) as list_chain_mock:
             self.chain_mock = chain_mock
             self.list_chain_mock = list_chain_mock

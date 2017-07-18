@@ -67,14 +67,20 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates chronos jobs.')
-    parser.add_argument('service_instance',
-                        help="The chronos instance of the service to create or update",
-                        metavar=compose_job_id("SERVICE", "INSTANCE"))
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=chronos_tools.DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument(
+        'service_instance',
+        help="The chronos instance of the service to create or update",
+        metavar=compose_job_id("SERVICE", "INSTANCE"),
+    )
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=chronos_tools.DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
     args = parser.parse_args()
     return args
 
@@ -123,16 +129,20 @@ def bounce_chronos_job(
     instance,
     cluster,
     job_to_update,
-    client
+    client,
 ):
     if job_to_update:
         log_line = 'Job to update: %s' % job_to_update
-        _log(service=service, instance=instance, component='deploy',
-             cluster=cluster, level='debug', line=log_line)
+        _log(
+            service=service, instance=instance, component='deploy',
+            cluster=cluster, level='debug', line=log_line,
+        )
         chronos_tools.update_job(client=client, job=job_to_update)
         log_line = 'Updated Chronos job: %s' % job_to_update['name']
-        _log(service=service, instance=instance, component='deploy',
-             cluster=cluster, level='event', line=log_line)
+        _log(
+            service=service, instance=instance, component='deploy',
+            cluster=cluster, level='event', line=log_line,
+        )
 
     return (0, "All chronos bouncing tasks finished.")
 
@@ -227,7 +237,8 @@ def main():
         )
     except (NoDeploymentsAvailable, NoDockerImageError):
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
-            args.service_instance, cluster)
+            args.service_instance, cluster,
+        )
         send_event(
             service=service,
             instance=instance,
@@ -240,7 +251,8 @@ def main():
     except NoConfigurationForServiceError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
-            "Error was: %s" % str(e))
+            "Error was: %s" % str(e)
+        )
         send_event(
             service=service,
             instance=instance,
@@ -254,7 +266,8 @@ def main():
         error_msg = (
             "There are no PaaSTA slaves that can run %s in cluster %s\n" % (args.service_instance, cluster) +
             "Double check the cluster and the configured constratints/pool/whitelist.\n"
-            "Error was: %s" % str(e))
+            "Error was: %s" % str(e)
+        )
         send_event(
             service=service,
             instance=instance,
@@ -272,7 +285,7 @@ def main():
         chronos_client=client,
         service=service,
         instance=instance,
-        job_config=complete_job_config
+        job_config=complete_job_config,
     )
 
     status, output = setup_job(

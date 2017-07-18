@@ -23,9 +23,11 @@ from __future__ import unicode_literals
 import copy
 
 
-monitoring_keys = ['team', 'notification_email', 'service_type',
-                   'runbook', 'tip', 'page', 'alert_after', 'realert_every',
-                   'extra']
+monitoring_keys = [
+    'team', 'notification_email', 'service_type',
+    'runbook', 'tip', 'page', 'alert_after', 'realert_every',
+    'extra',
+]
 
 
 def extract_classic_monitoring_info(service_config):

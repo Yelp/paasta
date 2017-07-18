@@ -8,6 +8,7 @@ import pytest
 from paasta_tools import firewall
 from paasta_tools import iptables
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import NoConfigurationForServiceError
 
 
 EMPTY_RULE = iptables.Rule(
@@ -43,7 +44,7 @@ def mock_get_running_mesos_docker_containers():
                     'Networks': {
                         'bridge': {
                             'MacAddress': '02:42:a9:fe:00:0a',
-                            'IPAddress': '1.1.1.1'
+                            'IPAddress': '1.1.1.1',
                         },
                     },
                 },
@@ -58,7 +59,7 @@ def mock_get_running_mesos_docker_containers():
                     'Networks': {
                         'bridge': {
                             'MacAddress': '02:42:a9:fe:00:0b',
-                            'IPAddress': '2.2.2.2'
+                            'IPAddress': '2.2.2.2',
                         },
                     },
                 },
@@ -118,9 +119,9 @@ def mock_service_config():
         firewall, 'get_all_namespaces_for_service', autospec=True,
         return_value={'example_happyhour.main': {'proxy_port': '20000'}},
     ), mock.patch.object(
-        firewall, 'load_system_paasta_config', autospec=True
+        firewall, 'load_system_paasta_config', autospec=True,
     ) as mock_system_paasta_config, mock.patch.object(
-        firewall, '_synapse_backends', autospec=True
+        firewall, '_synapse_backends', autospec=True,
     ) as mock_synapse_backends:
 
         mock_system_paasta_config.return_value.get_cluster.return_value = 'mycluster'
@@ -134,7 +135,7 @@ def mock_service_config():
 
         mock_synapse_backends.return_value = [
             {'host': '1.2.3.4', 'port': 123},
-            {'host': '5.6.7.8', 'port': 567}
+            {'host': '5.6.7.8', 'port': 567},
         ]
         yield mock_instance_config
 
@@ -144,10 +145,12 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),
@@ -198,10 +201,12 @@ def test_service_group_rules_block(mock_service_config, service_group):
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),
@@ -245,10 +250,12 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),
@@ -270,6 +277,12 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
 
 def test_service_group_rules_empty_when_invalid_instance_type(service_group, mock_service_config):
     with mock.patch.object(firewall, 'get_instance_config', side_effect=NotImplementedError()):
+        assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == ()
+
+
+def test_service_group_rules_empty_when_service_is_deleted(service_group, mock_service_config):
+    """A deleted service which still has running containers shouldn't cause exceptions."""
+    with mock.patch.object(firewall, 'get_instance_config', side_effect=NoConfigurationForServiceError()):
         assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == ()
 
 
@@ -342,7 +355,7 @@ def test_ensure_service_chains(mock_reorder_chain, mock_active_service_groups, m
         assert firewall.ensure_service_chains(
             mock_active_service_groups,
             DEFAULT_SOA_DIR,
-            firewall.DEFAULT_SYNAPSE_SERVICE_DIR
+            firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
         ) == {
             'PAASTA.cool_servi.397dba3c1f': {
                 'fe:a3:a3:da:2d:40',
@@ -403,7 +416,7 @@ def test_garbage_collect_old_service_chains():
             'PAASTA-INTERNET',
             'PAASTA.chain1',
             'PAASTA.chain3',
-        }
+        },
     ):
         firewall.garbage_collect_old_service_chains({
             'PAASTA.chain1': {'mac1', 'mac2'},
@@ -425,13 +438,13 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chai
         firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
         'myservice',
         'myinstance',
-        '00:00:00:00:00:00'
+        '00:00:00:00:00:00',
     )
     assert ensure_chain_mock.mock_calls == [
         mock.call('PAASTA-DNS', mock.ANY),
         mock.call('PAASTA-INTERNET', mock.ANY),
         mock.call('PAASTA-COMMON', mock.ANY),
-        mock.call('PAASTA.myservice.7e8522249a', mock.sentinel.RULES)
+        mock.call('PAASTA.myservice.7e8522249a', mock.sentinel.RULES),
     ]
     assert reorder_chain_mock.mock_calls == [
         mock.call('PAASTA.myservice.7e8522249a'),
@@ -443,7 +456,7 @@ def test_prepare_new_container(insert_rule_mock, ensure_chain_mock, reorder_chai
                 target='PAASTA.myservice.7e8522249a',
                 matches=(('mac', (('mac-source', ('00:00:00:00:00:00',)),)),),
             ),
-        )
+        ),
     ]
 
 
@@ -483,7 +496,7 @@ def test_ensure_dns_chain(tmpdir):
     path = tmpdir.join('resolv.conf')
     path.write(
         'nameserver 8.8.8.8\n'
-        'nameserver 8.8.4.4\n'
+        'nameserver 8.8.4.4\n',
     )
     with mock.patch.object(
         iptables, 'ensure_chain', autospec=True,

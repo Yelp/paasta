@@ -57,7 +57,7 @@ def get_rerun_jobs_for_service_instance_from_chronos(context, service, instance,
         service,
         instance,
         include_disabled=True,
-        include_temporary=True
+        include_temporary=True,
     )
     all_tmp_jobs = [job for job in jobs_for_service if job['name'].startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
     context.jobs[job_name] = all_tmp_jobs[0]

@@ -73,6 +73,7 @@ def step_paasta_mark_for_deployments_when(context):
         service='fake_deployments_json_service',
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
+        soa_dir='fake_soa_configs',
         block=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
@@ -141,7 +142,7 @@ def step_impl_then(context):
         'fake_deployments_json_service:paasta-test_cluster.test_instance': {
             'force_bounce': context.force_bounce_timestamp,
             'desired_state': 'stop',
-            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
+            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
         },
         'fake_deployments_json_service:paasta-test_cluster.test_instance_2': {
             'force_bounce': None,

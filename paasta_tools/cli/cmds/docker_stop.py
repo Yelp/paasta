@@ -25,23 +25,27 @@ from paasta_tools.cli.utils import PaastaTaskNotFound
 
 
 def add_subparser(subparsers):
-    get_subparser(description="'paasta docker_stop' works by picking a container running your service "
-                              "at random. It then runs docker stop <container_id> to stop the container. "
-                              "You should expect marathon to then replace the dead container. "
-                              "Note this doesn't do any draining of the connections to this container!",
-                  help_text="Docker stop a container running your service",
-                  command='docker_stop',
-                  function=paasta_docker_stop,
-                  subparsers=subparsers)
+    get_subparser(
+        description="'paasta docker_stop' works by picking a container running your service "
+                    "at random. It then runs docker stop <container_id> to stop the container. "
+                    "You should expect marathon to then replace the dead container. "
+                    "Note this doesn't do any draining of the connections to this container!",
+        help_text="Docker stop a container running your service",
+        command='docker_stop',
+        function=paasta_docker_stop,
+        subparsers=subparsers,
+    )
 
 
 def paasta_docker_stop(args):
     try:
-        task = get_task_from_instance(cluster=args.cluster,
-                                      service=args.service,
-                                      instance=args.instance,
-                                      slave_hostname=args.host,
-                                      task_id=args.mesos_id)
+        task = get_task_from_instance(
+            cluster=args.cluster,
+            service=args.service,
+            instance=args.instance,
+            slave_hostname=args.host,
+            task_id=args.mesos_id,
+        )
     except PaastaTaskNotFound:
         sys.exit(1)
     container = get_container_name(task)

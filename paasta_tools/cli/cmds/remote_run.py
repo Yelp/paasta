@@ -38,9 +38,11 @@ from paasta_tools.utils import SystemPaastaConfig
 def add_start_args_to_parser(parser):
     parser.add_argument(
         '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
+        help=(
+            'Run Docker container with particular command, '
+            'for example: "bash". By default will use the command or args specified by the '
+            'soa-configs or what was specified in the Dockerfile'
+        ),
         required=False,
         default=None,
     )
@@ -74,8 +76,10 @@ def add_common_args_to_parser(parser):
     ).completer = lazy_choices_completer(list_services)
     parser.add_argument(
         '-c', '--cluster',
-        help=("The name of the cluster you wish to run your task on. "
-              "If omitted, uses the default cluster defined in the paasta remote-run configs"),
+        help=(
+            "The name of the cluster you wish to run your task on. "
+            "If omitted, uses the default cluster defined in the paasta remote-run configs"
+        ),
     ).completer = lazy_choices_completer(list_clusters)
     parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -130,7 +134,7 @@ def add_subparser(subparsers):
 
     start_parser = main_subs.add_parser(
         'start',
-        help="Start task subcommand"
+        help="Start task subcommand",
     )
     add_start_args_to_parser(start_parser)
     add_common_args_to_parser(start_parser)
@@ -142,24 +146,24 @@ def add_subparser(subparsers):
         'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
         required=False,
         action='append',
-        default=[]
+        default=[],
     )
 
     stop_parser = main_subs.add_parser(
         'stop',
-        help="Stop task subcommand"
+        help="Stop task subcommand",
     )
     add_common_args_to_parser(stop_parser)
     stop_parser.add_argument(
         '-F', '--framework-id',
         help='ID of framework to stop. Must belong to remote-run of selected service instance.',
         required=False,
-        default=None
+        default=None,
     )
 
     list_parser = main_subs.add_parser(
         'list',
-        help="Stop task subcommand"
+        help="Stop task subcommand",
     )
     add_common_args_to_parser(list_parser)
 
@@ -174,7 +178,7 @@ def paasta_remote_run(args):
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and remote-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA."
+                "the same way it would behave on a server configured for PaaSTA.",
             ),
             sep='\n',
         )
@@ -220,7 +224,8 @@ def paasta_remote_run(args):
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        graceful_exit=graceful_exit)
+        graceful_exit=graceful_exit,
+    )
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:

@@ -31,11 +31,15 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--age', dest='age', type=timedelta_type, default='1h',
-                        help="Max age of a Marathon deployment before it is stopped."
-                        "Any pytimeparse unit is supported")
-    parser.add_argument('-n', '--dry-run', action="store_true",
-                        help="Don't actually stop any Marathon deployments")
+    parser.add_argument(
+        '-a', '--age', dest='age', type=timedelta_type, default='1h',
+        help="Max age of a Marathon deployment before it is stopped."
+        "Any pytimeparse unit is supported",
+    )
+    parser.add_argument(
+        '-n', '--dry-run', action="store_true",
+        help="Don't actually stop any Marathon deployments",
+    )
     parser.add_argument('-v', '--verbose', action='store_true')
     options = parser.parse_args()
     return options

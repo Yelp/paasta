@@ -31,7 +31,7 @@ class TestPaastaLeaderElection(unittest.TestCase):
 
     def test_connection_listener(self):
         with mock.patch(
-            'paasta_tools.deployd.leader.PaastaThread', autospec=True
+            'paasta_tools.deployd.leader.PaastaThread', autospec=True,
         ) as mock_paasta_thread:
             self.election.connection_listener(KazooState.CONNECTED)
             self.election.connection_listener(KazooState.SUSPENDED)

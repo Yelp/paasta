@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.6
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -23,8 +23,10 @@ def get_deploy_durations_from_file(filename):
     The way I've been fetching them is by running 'internal logreader command' | grep deploy | grep event > filename
     """
     file_object = open(filename, 'r')
-    data = sorted([json.loads(line.rstrip('\n')) for line in file_object],
-                  key=lambda x: get_datetime_from_ts(x['timestamp']))
+    data = sorted(
+        [json.loads(line.rstrip('\n')) for line in file_object],
+        key=lambda x: get_datetime_from_ts(x['timestamp']),
+    )
 
     timedeltas = defaultdict(list)
     last_time = dict()

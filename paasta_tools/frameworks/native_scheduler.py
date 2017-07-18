@@ -58,7 +58,7 @@ class MesosTaskParameters(object):
         is_draining=False,
         is_healthy=False,
         staging_timer=None,
-        offer=None
+        offer=None,
     ):
         self.health = health
         self.mesos_task_state = mesos_task_state
@@ -71,11 +71,13 @@ class MesosTaskParameters(object):
 
 
 class NativeScheduler(Scheduler):
-    def __init__(self, service_name, instance_name, cluster,
-                 system_paasta_config, staging_timeout,
-                 soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
-                 instance_type='paasta_native', service_config_overrides=None,
-                 reconcile_start_time=float('inf')):
+    def __init__(
+        self, service_name, instance_name, cluster,
+        system_paasta_config, staging_timeout,
+        soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
+        instance_type='paasta_native', service_config_overrides=None,
+        reconcile_start_time=float('inf'),
+    ):
         self.service_name = service_name
         self.instance_name = instance_name
         self.instance_type = instance_type
@@ -161,7 +163,8 @@ class NativeScheduler(Scheduler):
             with self.constraint_state_lock:
                 try:
                     tasks, new_state = self.tasks_and_state_for_offer(
-                        driver, offer, self.constraint_state)
+                        driver, offer, self.constraint_state,
+                    )
 
                     if tasks is not None and len(tasks) > 0:
                         driver.launchTasks([offer.id], tasks)
@@ -170,7 +173,7 @@ class NativeScheduler(Scheduler):
                             staging_timer = self.staging_timer_for_task(
                                 self.staging_timeout,
                                 driver,
-                                task.task_id.value
+                                task.task_id.value,
                             )
                             self.tasks_with_flags.setdefault(
                                 task.task_id.value,
@@ -179,7 +182,8 @@ class NativeScheduler(Scheduler):
                                     mesos_task_state=TASK_STAGING,
                                     offer=offer,
                                     staging_timer=staging_timer,
-                                ))
+                                ),
+                            )
                             staging_timer.start()
                         launched_tasks.extend(tasks)
                         self.constraint_state = new_state
@@ -225,14 +229,16 @@ class NativeScheduler(Scheduler):
             lambda tid:
                 self.is_task_new(name, tid) and
                 self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks))
+            tasks,
+        ))
 
     def get_old_tasks(self, name, tasks):
         return set(filter(
             lambda tid:
                 not(self.is_task_new(name, tid)) and
                 self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks))
+            tasks,
+        ))
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
@@ -279,14 +285,18 @@ class NativeScheduler(Scheduler):
         while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks):
             total += 1
 
-            if not(remainingCpus >= task_cpus and
-                   remainingMem >= task_mem and
-                   self.offer_matches_pool(offer) and
-                   len(remainingPorts) >= 1):
+            if not(
+                remainingCpus >= task_cpus and
+                remainingMem >= task_mem and
+                self.offer_matches_pool(offer) and
+                len(remainingPorts) >= 1
+            ):
                 break
 
-            if not(check_offer_constraints(offer, self.constraints,
-                                           new_constraint_state)):
+            if not(check_offer_constraints(
+                offer, self.constraints,
+                new_constraint_state,
+            )):
                 failed_constraints += 1
                 break
 
@@ -294,7 +304,7 @@ class NativeScheduler(Scheduler):
 
             task = copy.deepcopy(base_task)
             task.task_id = Dict(
-                value='{}.{}'.format(task.name, uuid.uuid4().hex)
+                value='{}.{}'.format(task.name, uuid.uuid4().hex),
             )
 
             task.container.docker.port_mappings[0].host_port = task_port
@@ -345,7 +355,7 @@ class NativeScheduler(Scheduler):
         # update tasks
         task_id = update.task_id.value
         paasta_print('Task {} is in state {}'.format(
-            task_id, update.state
+            task_id, update.state,
         ))
 
         task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
@@ -363,8 +373,10 @@ class NativeScheduler(Scheduler):
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
             task_params.marked_for_gc = True
             with self.constraint_state_lock:
-                update_constraint_state(task_params.offer, self.constraints,
-                                        self.constraint_state, step=-1)
+                update_constraint_state(
+                    task_params.offer, self.constraints,
+                    self.constraint_state, step=-1,
+                )
 
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
@@ -406,7 +418,8 @@ class NativeScheduler(Scheduler):
         new_tasks_by_desirability = sorted(
             list(new_tasks),
             key=self.make_healthiness_sorter(base_task.name),
-            reverse=True)
+            reverse=True,
+        )
         new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
 
         old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
@@ -473,7 +486,7 @@ class NativeScheduler(Scheduler):
             instance_type=self.instance_type,
             cluster=self.cluster,
             soa_dir=self.soa_dir,
-            config_overrides=self.service_config_overrides
+            config_overrides=self.service_config_overrides,
         )
         self.recreate_drain_method()
         self.reload_constraints()
@@ -532,10 +545,10 @@ def create_driver(
     framework_name,
     scheduler,
     system_paasta_config,
-    implicit_acks=False
+    implicit_acks=False,
 ):
     master_uri = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
     framework = Dict(
@@ -544,7 +557,7 @@ def create_driver(
         failover_timeout=604800,
         id=Dict(value=find_existing_id_if_exists_or_gen_new(framework_name)),
         checkpoint=True,
-        principal=system_paasta_config.get_paasta_native_config()['principal']
+        principal=system_paasta_config.get_paasta_native_config()['principal'],
     )
 
     driver = MesosSchedulerDriver(

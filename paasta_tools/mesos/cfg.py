@@ -35,7 +35,7 @@ class Config(object):
         "master": "localhost:5050",
         "max_workers": 5,
         "scheme": "http",
-        "response_timeout": 5
+        "response_timeout": 5,
     }
 
     cfg_name = _cfg_name
@@ -46,7 +46,7 @@ class Config(object):
         os.path.expanduser("~"),
         "/etc",
         "/usr/etc",
-        "/usr/local/etc"
+        "/usr/local/etc",
     )]
 
     def __init__(self, config_path):
@@ -69,7 +69,8 @@ class Config(object):
 
     def _get_path(self):
         return os.environ.get(
-            'MESOS_CLI_CONFIG', self._config_file())
+            'MESOS_CLI_CONFIG', self._config_file(),
+        )
 
     @property
     def _profile_key(self):
@@ -101,7 +102,7 @@ class Config(object):
                 except ValueError as e:
                     raise ValueError(
                         'Invalid %s JSON: %s [%s]' %
-                        (type(self).__name__, str(e), self._get_path())
+                        (type(self).__name__, str(e), self._get_path()),
                     )
                 self.__items.update(data)
         except IOError as e:

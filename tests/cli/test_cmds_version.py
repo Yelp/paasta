@@ -25,5 +25,5 @@ def test_paasta_version(capfd):
     with pytest.raises(SystemExit) as excinfo:
         main(('-V',))
     assert excinfo.value.code == 0
-    output = capfd.readouterr()[1]
-    assert re.match('^paasta-tools \d+\.\d+\.\d+\n$', output)
+    out, err = capfd.readouterr()
+    assert re.match('^paasta-tools \d+\.\d+\.\d+\n$', out)

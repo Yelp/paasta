@@ -16,9 +16,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import contextlib
-
 import concurrent.futures
+import contextlib
 
 from . import exceptions
 
@@ -27,7 +26,8 @@ from . import exceptions
 def execute(max_workers):
     try:
         executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers)
+            max_workers=max_workers,
+        )
         yield executor
     except KeyboardInterrupt:
         # Threads in the ThreadPoolExecutor are created with

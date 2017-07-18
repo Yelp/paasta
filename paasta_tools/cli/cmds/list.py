@@ -34,11 +34,13 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-a', '--all',
         action='store_true',
-        help='Display all services, even if not on PaaSTA.')
+        help='Display all services, even if not on PaaSTA.',
+    )
     list_parser.add_argument(
         '-i', '--print-instances',
         action='store_true',
-        help='Display all service%sinstance values, which only PaaSTA services have.' % SPACER)
+        help='Display all service%sinstance values, which only PaaSTA services have.' % SPACER,
+    )
     list_parser.set_defaults(command=paasta_list)
 
 

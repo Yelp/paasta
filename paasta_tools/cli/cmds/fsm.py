@@ -87,15 +87,17 @@ def add_subparser(subparsers):
         "-y", "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         default=".",
-        help=("Path to root of yelpsoa-configs checkout\n"
-              "Defaults to current working directory")
+        help=(
+            "Path to root of yelpsoa-configs checkout\n"
+            "Defaults to current working directory"
+        ),
     )
     fsm_parser.set_defaults(command=paasta_fsm)
 
 
 def get_paasta_config(yelpsoa_config_root):
     variables = {
-        'proxy_port': suggest_smartstack_proxy_port(yelpsoa_config_root)
+        'proxy_port': suggest_smartstack_proxy_port(yelpsoa_config_root),
     }
     return variables
 

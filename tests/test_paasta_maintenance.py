@@ -135,7 +135,7 @@ def test_synapse_replication_is_low_understands_underreplicated_services(
     mock_read_registration_for_service_instance.return_value = "service.main"
     mock_get_expected_instance_count_for_namespace.return_value = 3
     mock_load_smartstack_info_for_service.return_value = {
-        "local_region": {"service.main": "up"}
+        "local_region": {"service.main": "up"},
     }
     mock_get_replication_for_services.return_value = {"service.main": 1}
     local_backends = ["foo"]
@@ -150,12 +150,12 @@ def test_synapse_replication_is_low_understands_underreplicated_services(
 
 @mock.patch('paasta_tools.paasta_maintenance.gethostbyname', autospec=True)
 def test_is_healthy_in_harproxy_healthy_path(
-    mock_gethostbyname
+    mock_gethostbyname,
 ):
     mock_gethostbyname.return_value = '192.0.2.1'
     local_port = 42
     backends = [
-        {'status': 'UP', 'pxname': 'service.main', 'svname': '192.0.2.1:42_hostname'}
+        {'status': 'UP', 'pxname': 'service.main', 'svname': '192.0.2.1:42_hostname'},
     ]
     assert paasta_maintenance.is_healthy_in_haproxy(
         local_port=local_port,
@@ -165,12 +165,12 @@ def test_is_healthy_in_harproxy_healthy_path(
 
 @mock.patch('paasta_tools.paasta_maintenance.gethostbyname', autospec=True)
 def test_is_healthy_in_haproxy_unhealthy_path(
-    mock_gethostbyname
+    mock_gethostbyname,
 ):
     mock_gethostbyname.return_value = '192.0.2.1'
     local_port = 42
     backends = [
-        {'status': 'DOWN', 'pxname': 'service.main', 'svname': '192.0.2.1:42_hostname'}
+        {'status': 'DOWN', 'pxname': 'service.main', 'svname': '192.0.2.1:42_hostname'},
     ]
     assert paasta_maintenance.is_healthy_in_haproxy(
         local_port=local_port,
@@ -180,12 +180,12 @@ def test_is_healthy_in_haproxy_unhealthy_path(
 
 @mock.patch('paasta_tools.paasta_maintenance.gethostbyname', autospec=True)
 def test_is_healthy_in_haproxy_missing_backend_entirely(
-    mock_gethostbyname
+    mock_gethostbyname,
 ):
     mock_gethostbyname.return_value = '192.0.2.1'
     local_port = 42
     backends = [
-        {'status': 'DOWN', 'pxname': 'service.main', 'svname': '192.0.2.4:666_otherhostname'}
+        {'status': 'DOWN', 'pxname': 'service.main', 'svname': '192.0.2.4:666_otherhostname'},
     ]
     assert paasta_maintenance.is_healthy_in_haproxy(
         local_port=local_port,

@@ -34,19 +34,19 @@ log = logging.getLogger(__name__)
 def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     general_config = service_configuration_lib.read_service_configuration(
         service,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
     adhoc_conf_file = "adhoc-%s" % cluster
     log.info("Reading adhoc configuration file: %s.yaml", adhoc_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
         service_name=service,
         extra_info=adhoc_conf_file,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
 
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, adhoc_conf_file)
+            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, adhoc_conf_file),
         )
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
@@ -85,7 +85,7 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
     default_job_config = {
         'cpus': 4,
         'mem': 10240,
-        'disk': 1024
+        'disk': 1024,
     }
 
     try:
@@ -101,13 +101,14 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
         )
     except NoDeploymentsAvailable:
         job_config = load_adhoc_job_config(
-            service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False)
+            service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False,
+        )
 
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(
             (
-                deployment.encode('utf-8')
+                deployment
                 for deployment in deployments_json['deployments'].keys()
             ),
             choosing='deploy group',

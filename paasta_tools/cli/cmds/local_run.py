@@ -73,7 +73,7 @@ def perform_http_healthcheck(url, timeout):
     try:
         with Timeout(seconds=timeout):
             try:
-                res = requests.get(url)
+                res = requests.get(url, verify=False)
             except requests.ConnectionError:
                 return (False, "http request failed: connection failed")
     except TimeoutError:
@@ -82,7 +82,8 @@ def perform_http_healthcheck(url, timeout):
     if 'content-type' in res.headers and ',' in res.headers['content-type']:
         paasta_print(PaastaColors.yellow(
             "Multiple content-type headers detected in response."
-            " The Mesos healthcheck system will treat this as a failure!"))
+            " The Mesos healthcheck system will treat this as a failure!",
+        ))
         return (False, "http request succeeded, code %d" % res.status_code)
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     elif res.status_code >= 200 and res.status_code < 400:
@@ -130,26 +131,27 @@ def run_healthcheck_on_container(
     container_id,
     healthcheck_mode,
     healthcheck_data,
-    timeout
+    timeout,
 ):
     """Performs healthcheck on a container
 
     :param container_id: Docker container id
-    :param healthcheck_mode: one of 'http', 'tcp', or 'cmd'
-    :param healthcheck_data: a URL when healthcheck_mode is 'http' or 'tcp', a command if healthcheck_mode is 'cmd'
+    :param healthcheck_mode: one of 'http', 'https', 'tcp', or 'cmd'
+    :param healthcheck_data: a URL when healthcheck_mode is 'http[s]' or 'tcp', a command if healthcheck_mode is 'cmd'
     :param timeout: timeout in seconds for individual check
     :returns: a tuple of (bool, output string)
     """
     healthcheck_result = (False, "unknown")
     if healthcheck_mode == 'cmd':
         healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
-    elif healthcheck_mode == 'http':
+    elif healthcheck_mode == 'http' or healthcheck_mode == 'https':
         healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
     elif healthcheck_mode == 'tcp':
         healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
     else:
         paasta_print(PaastaColors.yellow(
-            "Healthcheck mode '%s' is not currently supported!" % healthcheck_mode))
+            "Healthcheck mode '%s' is not currently supported!" % healthcheck_mode,
+        ))
         sys.exit(1)
     return healthcheck_result
 
@@ -160,7 +162,7 @@ def simulate_healthcheck_on_service(
     container_id,
     healthcheck_mode,
     healthcheck_data,
-    healthcheck_enabled
+    healthcheck_enabled,
 ):
     """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
 
@@ -191,7 +193,7 @@ def simulate_healthcheck_on_service(
                 paasta_print(
                     PaastaColors.red('Container exited with code {}'.format(
                         container_state['State']['ExitCode'],
-                    ))
+                    )),
                 )
                 healthcheck_passed = False
                 break
@@ -267,8 +269,10 @@ def add_subparser(subparsers):
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '-c', '--cluster',
-        help=("The name of the cluster you wish to simulate. "
-              "If omitted, uses the default cluster defined in the paasta local-run configs"),
+        help=(
+            "The name of the cluster you wish to simulate. "
+            "If omitted, uses the default cluster defined in the paasta local-run configs"
+        ),
     ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -313,9 +317,11 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
+        help=(
+            'Run Docker container with particular command, '
+            'for example: "bash". By default will use the command or args specified by the '
+            'soa-configs or what was specified in the Dockerfile'
+        ),
         required=False,
         default=None,
     )
@@ -334,8 +340,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-I', '--interactive',
-        help=('Run container in interactive mode. If interactive is set the default command will be "bash" '
-              'unless otherwise set by the "--cmd" flag'),
+        help=(
+            'Run container in interactive mode. If interactive is set the default command will be "bash" '
+            'unless otherwise set by the "--cmd" flag'
+        ),
         action='store_true',
         required=False,
         default=False,
@@ -359,6 +367,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-o', '--port',
         help='Specify a port number to use. If not set, a random non-conflicting port will be found.',
+        type=int,
         dest='user_port',
         required=False,
         default=False,
@@ -370,8 +379,10 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, chosen_port, container_port, container_name, volumes, env, interactive,
-                       docker_hash, command, net, docker_params):
+def get_docker_run_cmd(
+    memory, chosen_port, container_port, container_name, volumes, env, interactive,
+    docker_hash, command, net, docker_params,
+):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
         cmd.append('--env')
@@ -433,7 +444,7 @@ def get_container_id(docker_client, container_name):
         "Can't find the container I just launched so I can't do anything else.\n"
         "Try docker 'ps --all | grep %s' to see where it went.\n"
         "Here were all the containers:\n"
-        "%s" % (container_name, containers)
+        "%s" % (container_name, containers),
     )
 
 
@@ -442,7 +453,7 @@ def _cleanup_container(docker_client, container_id):
         paasta_print(
             PaastaColors.red(
                 "Your service was killed by the OOM Killer!\n"
-                "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs"
+                "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs",
             ),
             file=sys.stderr,
         )
@@ -454,7 +465,8 @@ def _cleanup_container(docker_client, container_id):
         paasta_print("...done")
     except errors.APIError:
         paasta_print(PaastaColors.yellow(
-            "Could not clean up container! You should stop and remove container '%s' manually." % container_id))
+            "Could not clean up container! You should stop and remove container '%s' manually." % container_id,
+        ))
 
 
 def get_local_run_environment_vars(instance_config, port0, framework):
@@ -540,7 +552,7 @@ def run_docker_container(
             paasta_print(
                 PaastaColors.red(
                     "The chosen port is already in use!\n"
-                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
+                    "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you",
                 ),
                 file=sys.stderr,
             )
@@ -580,7 +592,8 @@ def run_docker_container(
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     joined_docker_run_cmd = ' '.join(docker_run_cmd)
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
-        service, instance, instance_config, chosen_port, soa_dir=soa_dir)
+        service, instance, instance_config, chosen_port, soa_dir=soa_dir,
+    )
 
     if dry_run:
         if json_dict:
@@ -637,7 +650,7 @@ def run_docker_container(
             paasta_print('Container exited: %d)' % returncode)
             paasta_print('Here is the stdout and stderr:\n\n')
             paasta_print(
-                docker_client.attach(container_id, stderr=True, stream=False, logs=True)
+                docker_client.attach(container_id, stderr=True, stream=False, logs=True),
             )
 
         if healthcheck_only:
@@ -705,7 +718,7 @@ def configure_and_run_docker_container(
         system_paasta_config,
         args,
         pull_image=False,
-        dry_run=False
+        dry_run=False,
 ):
     """
     Run Docker container by image hash with args set in command line.
@@ -761,7 +774,7 @@ def configure_and_run_docker_container(
                 "generate_deployments_for_service -d %(soa_dir)s -s %(service)s" % {
                     'soa_dir': soa_dir,
                     'service': service,
-                }
+                },
             ),
             sep='\n',
             file=sys.stderr,
@@ -772,10 +785,14 @@ def configure_and_run_docker_container(
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
-            paasta_print(PaastaColors.red(
-                "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s\n" % (instance_config.get_deploy_group(), service)),
+            paasta_print(
+                PaastaColors.red(
+                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                    "Please ensure this service has either run through a jenkins pipeline "
+                    "or paasta mark-for-deployment has been run for %s\n" % (
+                        instance_config.get_deploy_group(), service,
+                    ),
+                ),
                 sep='',
                 file=sys.stderr,
             )
@@ -837,7 +854,7 @@ def paasta_local_run(args):
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and local-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA."
+                "the same way it would behave on a server configured for PaaSTA.",
             ),
             sep='\n',
         )
@@ -855,7 +872,8 @@ def paasta_local_run(args):
             paasta_print(
                 PaastaColors.red(
                     "PaaSTA on this machine has not been configured with a default cluster."
-                    "Please pass one to local-run using '-c'."),
+                    "Please pass one to local-run using '-c'.",
+                ),
                 sep='\n',
                 file=sys.stderr,
             )

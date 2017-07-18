@@ -107,7 +107,7 @@ def healthcheck_result_for_resource_utilization(resource_utilization, threshold)
     healthy = utilization <= threshold
     return HealthCheckResult(
         message=message,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -128,17 +128,23 @@ def assert_cpu_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available cpu from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available cpu from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
-        return HealthCheckResult(message="CPUs: %.2f / %d in use (%s)"
-                                 % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-                                 healthy=True)
+        return HealthCheckResult(
+            message="CPUs: %.2f / %d in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True,
+        )
     else:
-        return HealthCheckResult(message="CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
-                                 % (threshold, perc_used, total),
-                                 healthy=False)
+        return HealthCheckResult(
+            message="CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
+            % (threshold, perc_used, total),
+            healthy=False,
+        )
 
 
 def assert_memory_health(metrics, mesos_state, threshold=10):
@@ -154,20 +160,22 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available memory from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available memory from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
             message="Memory: %0.2f / %0.2fGB in use (%s)"
             % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
                     % (threshold, perc_used, total),
-                    healthy=False
+                    healthy=False,
         )
 
 
@@ -184,19 +192,21 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message="Error reading total available disk from mesos!",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="Error reading total available disk from mesos!",
+            healthy=False,
+        )
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
             message="Disk: %0.2f / %0.2fGB in use (%s)"
             % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)" % (threshold, perc_used),
-            healthy=False
+            healthy=False,
         )
 
 
@@ -206,7 +216,7 @@ def assert_tasks_running(metrics):
     starting = metrics['master/tasks_starting']
     return HealthCheckResult(
         message="Tasks: running: %d staging: %d starting: %d" % (running, staging, starting),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -238,7 +248,7 @@ def assert_no_duplicate_frameworks(state):
             output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
         message=("\n").join(output),
-        healthy=ok
+        healthy=ok,
     )
 
 
@@ -246,7 +256,7 @@ def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
     return HealthCheckResult(
         message="Slaves: active: %d inactive: %d" % (active, inactive),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -255,7 +265,7 @@ def assert_connected_frameworks(mesos_metrics):
     healthy = connected_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
     return HealthCheckResult(
         message="Connected Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, connected_frameworks),
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -264,7 +274,7 @@ def assert_disconnected_frameworks(mesos_metrics):
     healthy = disconnected_frameworks == 0
     return HealthCheckResult(
         message="Disconnected Frameworks: expected: 0 actual: %d" % disconnected_frameworks,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -273,7 +283,7 @@ def assert_active_frameworks(mesos_metrics):
     healthy = active_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
     return HealthCheckResult(
         message="Active Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, active_frameworks),
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -282,7 +292,7 @@ def assert_inactive_frameworks(mesos_metrics):
     healthy = inactive_frameworks == 0
     return HealthCheckResult(
         message="Inactive Frameworks: expected: 0 actual: %d" % inactive_frameworks,
-        healthy=healthy
+        healthy=healthy,
     )
 
 
@@ -291,12 +301,12 @@ def assert_quorum_size():
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
-            healthy=True
+            healthy=True,
         )
     else:
         return HealthCheckResult(
             message="CRITICAL: Number of masters (%d) less than configured quorum(%d)." % (masters, quorum),
-            healthy=False
+            healthy=False,
         )
 
 
@@ -309,6 +319,18 @@ def key_func_for_attribute(attribute):
     """
     def key_func(slave):
         return slave['attributes'].get(attribute, 'unknown')
+    return key_func
+
+
+def key_func_for_attribute_multi(attributes):
+    """ Return a closure that given a slave, will return the value of a list of
+    attributes, compiled into a hashable frozenset
+
+    :param attributes: the attribues to inspect in the slave
+    :returns: a closure, which takes a slave and returns the value of those attributes
+    """
+    def key_func(slave):
+        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
     return key_func
 
 
@@ -352,13 +374,13 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
         "free": ResourceInfo(
             cpus=resource_free_dict['cpus'],
             disk=resource_free_dict['disk'],
-            mem=resource_free_dict['mem']
+            mem=resource_free_dict['mem'],
         ),
         "total": ResourceInfo(
             cpus=resource_total_dict['cpus'],
             disk=resource_total_dict['disk'],
             mem=resource_total_dict['mem'],
-        )
+        ),
     }
 
 
@@ -377,18 +399,40 @@ def filter_tasks_for_slaves(slaves, tasks):
     return [task for task in tasks if task['slave_id'] in slave_ids]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state):
+def make_filter_slave_func(attribute, values):
+    def filter_func(slave):
+        return slave['attributes'].get(attribute, None) in values
+    return filter_func
+
+
+def filter_slaves(slaves, filters):
+    """ Filter slaves by attributes
+
+    :param slaves: list of slaves to filter
+    :param filters: list of functions that take a slave and return whether the
+    slave should be included
+    :returns: list of slaves that return true for all the filters
+    """
+    if filters is None:
+        return slaves
+    return [s for s in slaves if all([f(s) for f in filters])]
+
+
+def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[]):
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
     :grouping_func: a function that given a slave, will return the value of an
     attribtue to group by.
     :param mesos_state: the mesos state
+    :param filters: filters to apply to the slaves in the calculation, with
+    filtering preformed by filter_slaves
     :returns: a dict of {attribute_value: resource_usage}, where resource usage
     is the dict returned by ``calculate_resource_utilization_for_slaves`` for
     slaves grouped by attribute value.
     """
     slaves = mesos_state.get('slaves', [])
+    slaves = filter_slaves(slaves, filters)
     if not has_registered_slaves(mesos_state):
         raise ValueError("There are no slaves registered in the mesos state.")
 
@@ -399,7 +443,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state):
     return {
         attribute_value: calculate_resource_utilization_for_slaves(
             slaves=slaves,
-            tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks)
+            tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks),
         )
         for attribute_value, slaves in slave_groupings.items()
     }
@@ -447,7 +491,7 @@ def get_framework_metrics_status(metrics):
     return [
         assert_connected_frameworks(metrics),
         assert_disconnected_frameworks(metrics),
-        assert_inactive_frameworks(metrics)
+        assert_inactive_frameworks(metrics),
     ]
 
 
@@ -467,8 +511,10 @@ def run_healthchecks_with_param(param, healthcheck_functions, format_options={})
 def assert_marathon_apps(client):
     num_apps = len(client.list_apps())
     if num_apps < 1:
-        return HealthCheckResult(message="CRITICAL: No marathon apps running",
-                                 healthy=False)
+        return HealthCheckResult(
+            message="CRITICAL: No marathon apps running",
+            healthy=False,
+        )
     else:
         return HealthCheckResult(message="marathon apps: %d" % num_apps, healthy=True)
 
@@ -486,10 +532,13 @@ def assert_marathon_deployments(client):
 def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    return run_healthchecks_with_param(client, [
-        assert_marathon_apps,
-        assert_marathon_tasks,
-        assert_marathon_deployments])
+    return run_healthchecks_with_param(
+        client, [
+            assert_marathon_apps,
+            assert_marathon_tasks,
+            assert_marathon_deployments,
+        ],
+    )
 
 
 def assert_chronos_scheduled_jobs(client):
@@ -512,7 +561,7 @@ def assert_chronos_queued_jobs(client):
         perc_used = 0
     return HealthCheckResult(
         message="Jobs Queued: %s (%s%%)" % (all_jobs_queued, perc_used),
-        healthy=True
+        healthy=True,
     )
 
 
@@ -520,10 +569,12 @@ def get_chronos_status(chronos_client):
     """Gather information about chronos.
     :return: string containing the status
     """
-    return run_healthchecks_with_param(chronos_client, [
-        assert_chronos_scheduled_jobs,
-        assert_chronos_queued_jobs,
-    ])
+    return run_healthchecks_with_param(
+        chronos_client, [
+            assert_chronos_scheduled_jobs,
+            assert_chronos_queued_jobs,
+        ],
+    )
 
 
 def get_marathon_client(marathon_config):
@@ -535,7 +586,7 @@ def get_marathon_client(marathon_config):
     return marathon_tools.get_marathon_client(
         marathon_config.get_url(),
         marathon_config.get_username(),
-        marathon_config.get_password()
+        marathon_config.get_password(),
     )
 
 
