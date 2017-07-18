@@ -75,13 +75,17 @@ def get_alert_after(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('alert_after', overrides, service, soa_dir)
 
 
-def get_realert_every(overrides, service, soa_dir=DEFAULT_SOA_DIR,
-                      monitoring_defaults=monitoring_defaults):
-    return __get_monitoring_config_value('realert_every',
-                                         overrides=overrides,
-                                         service=service,
-                                         soa_dir=soa_dir,
-                                         monitoring_defaults=monitoring_defaults)
+def get_realert_every(
+    overrides, service, soa_dir=DEFAULT_SOA_DIR,
+    monitoring_defaults=monitoring_defaults,
+):
+    return __get_monitoring_config_value(
+        'realert_every',
+        overrides=overrides,
+        service=service,
+        soa_dir=soa_dir,
+        monitoring_defaults=monitoring_defaults,
+    )
 
 
 def get_check_every(overrides, service, soa_dir=DEFAULT_SOA_DIR):
@@ -104,9 +108,11 @@ def get_project(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('project', overrides, service, soa_dir)
 
 
-def __get_monitoring_config_value(key, overrides, service,
-                                  soa_dir=DEFAULT_SOA_DIR,
-                                  monitoring_defaults=monitoring_defaults):
+def __get_monitoring_config_value(
+    key, overrides, service,
+    soa_dir=DEFAULT_SOA_DIR,
+    monitoring_defaults=monitoring_defaults,
+):
     general_config = service_configuration_lib.read_service_configuration(service, soa_dir=soa_dir)
     monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
@@ -128,7 +134,8 @@ def get_team_email_address(service, overrides=None, soa_dir=DEFAULT_SOA_DIR):
     if overrides is None:
         overrides = {}
     email_address = __get_monitoring_config_value(
-        'notification_email', overrides=overrides, service=service, soa_dir=soa_dir)
+        'notification_email', overrides=overrides, service=service, soa_dir=soa_dir,
+    )
     if not email_address:
         team = get_team(overrides=overrides, service=service)
         email_address = get_sensu_team_data(team).get('notification_email', None)
@@ -199,8 +206,10 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     sensu_port = system_paasta_config.get_sensu_port()
 
     if sensu_host is not None:
-        pysensu_yelp.send_event(check_name, runbook, status, output, team, sensu_host=sensu_host, sensu_port=sensu_port,
-                                **result_dict)
+        pysensu_yelp.send_event(
+            check_name, runbook, status, output, team, sensu_host=sensu_host, sensu_port=sensu_port,
+            **result_dict
+        )
 
 
 def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):

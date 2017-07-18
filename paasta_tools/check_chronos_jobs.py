@@ -29,11 +29,15 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=('Check the status of Chronos jobs, and report'
-                                                  'their status to Sensu.'))
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
+    parser = argparse.ArgumentParser(description=(
+        'Check the status of Chronos jobs, and report'
+        'their status to Sensu.'
+    ))
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     args = parser.parse_args()
     return args
 
@@ -58,17 +62,20 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
         monitoring_overrides['alert_after'] = '15m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
-        monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+        monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+    )
 
     if 'realert_every' not in monitoring_overrides:
         guessed_realert_every = guess_realert_every(chronos_job_config)
         if guessed_realert_every is not None:
             monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
                 monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
-                monitoring_defaults=lambda x: {'realert_every': guessed_realert_every}.get(x))
+                monitoring_defaults=lambda x: {'realert_every': guessed_realert_every}.get(x),
+            )
         else:
             monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+            )
     return monitoring_overrides
 
 
@@ -194,8 +201,10 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds):
     return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
 
 
-def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
-                          interval_in_seconds, schedule, schedule_timezone):
+def message_for_stuck_job(
+    service, instance, cluster, last_run_iso_time,
+    interval_in_seconds, schedule, schedule_timezone,
+):
     last_run_utc = isodate.parse_datetime(last_run_iso_time)
     if schedule_timezone is None:
         last_run_local = last_run_utc
@@ -203,22 +212,24 @@ def message_for_stuck_job(service, instance, cluster, last_run_iso_time,
     else:
         last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
 
-    return ("Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s (%(timezone)s) "
-            "hasn't run since %(last_run)s, and is configured to run every "
-            "%(interval)s.\n\n"
-            "You can view the logs for the job with:\n"
-            "\n"
-            "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
-            "\n"
-            ) % {'service': service,
-                 'instance': instance,
-                 'cluster': cluster,
-                 'separator': utils.SPACER,
-                 'interval': human_readable_time_interval(interval_in_seconds // 60),
-                 'last_run': last_run_local,
-                 'schedule': schedule,
-                 'timezone': schedule_timezone,
-                 }
+    return (
+        "Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s (%(timezone)s) "
+        "hasn't run since %(last_run)s, and is configured to run every "
+        "%(interval)s.\n\n"
+        "You can view the logs for the job with:\n"
+        "\n"
+        "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+        "\n"
+    ) % {
+        'service': service,
+        'instance': instance,
+        'cluster': cluster,
+        'separator': utils.SPACER,
+        'interval': human_readable_time_interval(interval_in_seconds // 60),
+        'last_run': last_run_local,
+        'schedule': schedule,
+        'timezone': schedule_timezone,
+    }
 
 
 def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job):

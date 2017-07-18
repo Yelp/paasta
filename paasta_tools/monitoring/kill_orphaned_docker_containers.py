@@ -18,8 +18,10 @@ def parse_args():
             ' and optionally kills them.',
         ),
     )
-    parser.add_argument('-f', '--force', action="store_true",
-                        help="Actually kill the containers. (defaults to dry-run)")
+    parser.add_argument(
+        '-f', '--force', action="store_true",
+        help="Actually kill the containers. (defaults to dry-run)",
+    )
     args = parser.parse_args()
     return args
 
@@ -29,21 +31,25 @@ def main():
     docker_client = get_docker_client()
 
     running_mesos_task_ids = [task["id"] for task in mesos_tools.filter_running_tasks(
-        mesos_tools.get_running_tasks_from_frameworks(''))]
+        mesos_tools.get_running_tasks_from_frameworks(''),
+    )]
     running_mesos_docker_containers = get_running_mesos_docker_containers()
 
     orphaned_containers = []
     for container in running_mesos_docker_containers:
         mesos_task_id = mesos_tools.get_mesos_id_from_container(
-            container=container, client=docker_client)
+            container=container, client=docker_client,
+        )
         if mesos_task_id not in running_mesos_task_ids:
             orphaned_containers.append((container["Names"][0].strip("/"), mesos_task_id))
 
     if orphaned_containers:
-        paasta_print("CRIT: Docker containers are orphaned: %s%s" % (", ".join(
-            "%s (%s)" % (container_name, mesos_task_id)
-            for container_name, mesos_task_id in orphaned_containers
-        ), " and will be killed" if args.force else ""))
+        paasta_print("CRIT: Docker containers are orphaned: %s%s" % (
+            ", ".join(
+                "%s (%s)" % (container_name, mesos_task_id)
+                for container_name, mesos_task_id in orphaned_containers
+            ), " and will be killed" if args.force else "",
+        ))
         if args.force:
             for container_name, mesos_task_id in orphaned_containers:
                 docker_client.kill(container_name)

@@ -56,8 +56,10 @@ def test__frameworks(mock_fetch):
 def test__framework_list(mock__frameworks):
     mock_frameworks = Mock()
     mock_completed = Mock()
-    mock__frameworks.__get__ = Mock(return_value={'frameworks': [mock_frameworks],
-                                                  'completed_frameworks': [mock_completed]})
+    mock__frameworks.__get__ = Mock(return_value={
+        'frameworks': [mock_frameworks],
+        'completed_frameworks': [mock_completed],
+    })
     mesos_master = master.MesosMaster({})
     ret = mesos_master._framework_list()
     expected = [mock_frameworks, mock_completed]
@@ -72,8 +74,10 @@ def test__framework_list(mock__frameworks):
 def test__task_list(mock__frameworks_list):
     mock_task_1 = Mock()
     mock_task_2 = Mock()
-    mock_framework = {'tasks': [mock_task_1],
-                      'completed_tasks': [mock_task_2]}
+    mock_framework = {
+        'tasks': [mock_task_1],
+        'completed_tasks': [mock_task_2],
+    }
     mock__frameworks_list.return_value = [mock_framework]
     mesos_master = master.MesosMaster({})
     ret = mesos_master._task_list()
@@ -99,8 +103,10 @@ def test_tasks(mock__task_list, mock_task):
     mock_task.return_value = Mock()
     mesos_master = master.MesosMaster({})
     ret = mesos_master.tasks()
-    mock_task.assert_has_calls([call(mesos_master, mock_task_1),
-                                call(mesos_master, mock_task_2)])
+    mock_task.assert_has_calls([
+        call(mesos_master, mock_task_1),
+        call(mesos_master, mock_task_2),
+    ])
     mock__task_list.assert_called_with(mesos_master, False)
     expected = [mock_task.return_value, mock_task.return_value]
     assert list(ret) == expected

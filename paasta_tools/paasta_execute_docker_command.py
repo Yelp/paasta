@@ -83,7 +83,8 @@ def main():
 
     if not args.mesos_id:
         paasta_print(
-            "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.")
+            "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.",
+        )
         sys.exit(2)
 
     docker_client = get_docker_client()

@@ -14,11 +14,13 @@ from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 
 @pytest.fixture
 def system_paasta_config():
-    return utils.SystemPaastaConfig({
-        "docker_registry": "fake",
-        "volumes": [],
-        "dockercfg_location": "/foo/bar",
-    }, "/fake/system/configs")
+    return utils.SystemPaastaConfig(
+        {
+            "docker_registry": "fake",
+            "volumes": [],
+            "dockercfg_location": "/foo/bar",
+        }, "/fake/system/configs",
+    )
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
@@ -88,9 +90,10 @@ class TestNativeScheduler(object):
         )
         fake_driver = mock.Mock()
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config,
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             # First, start up 3 old tasks
             old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
             assert len(scheduler.tasks_with_flags) == 3
@@ -202,11 +205,13 @@ class TestNativeScheduler(object):
             staging_timeout=1,
         )
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config,
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             tasks, _ = scheduler.tasks_and_state_for_offer(
-                mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
+                mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {},
+            )
 
         assert len(tasks) == 1
         for task in tasks:
@@ -283,9 +288,10 @@ class TestNativeServiceConfig(object):
             soa_dir='/nail/etc/services',
         )
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config,
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             task = service_config.base_task(system_paasta_config)
 
         assert task.container.type == 'DOCKER'

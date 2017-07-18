@@ -314,12 +314,15 @@ def smartstack_check(service, service_path, soa_dir):
         paasta_print(PaastaCheckMessages.SMARTSTACK_YAML_FOUND)
         instances = get_all_namespaces_for_service(service=service, soa_dir=soa_dir)
         if len(instances) > 0:
-            for namespace, config in get_all_namespaces_for_service(service=service,
-                                                                    soa_dir=soa_dir,
-                                                                    full_name=False):
+            for namespace, config in get_all_namespaces_for_service(
+                service=service,
+                soa_dir=soa_dir,
+                full_name=False,
+            ):
                 if 'proxy_port' in config:
                     paasta_print(PaastaCheckMessages.smartstack_port_found(
-                        namespace, config.get('proxy_port')))
+                        namespace, config.get('proxy_port'),
+                    ))
                 else:
                     paasta_print(PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
         else:

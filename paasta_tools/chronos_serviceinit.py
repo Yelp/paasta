@@ -176,7 +176,8 @@ def _format_parents_verbose(job):
     # find matching parent jobs
     parent_jobs = [
         chronos_tools.get_jobs_for_service_instance(
-            *service_instance, include_disabled=True, include_temporary=False)[0]
+            *service_instance, include_disabled=True, include_temporary=False
+        )[0]
         for service_instance in parent_service_instances
     ]
 
@@ -320,8 +321,10 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         desired_state = job_config.get_desired_state_human()
         output.append("Desired:    %s" % desired_state)
         for job in jobs:
-            running_task_count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(),
-                                                        job["name"]))
+            running_task_count = len(select_tasks_by_id(
+                get_cached_list_of_running_tasks_from_frameworks(),
+                job["name"],
+            ))
             output.append(format_chronos_job_status(client, job, running_task_count, verbose))
         return "\n".join(output)
 

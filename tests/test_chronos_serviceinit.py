@@ -34,8 +34,10 @@ def test_start_chronos_job():
     job_id = 'my_job_id'
     cluster = 'my_cluster'
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_soa_config = mock.Mock(get_disabled=mock.Mock(return_value=False),
-                               get_desired_state=mock.Mock(return_value="start"))
+    job_soa_config = mock.Mock(
+        get_disabled=mock.Mock(return_value=False),
+        get_desired_state=mock.Mock(return_value="start"),
+    )
     job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with mock.patch(
         'paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True,
@@ -89,9 +91,11 @@ def test_stop_chronos_job():
     service = 'my_service'
     instance = 'my_instance'
     cluster = 'my_cluster'
-    existing_jobs = [{'name': 'job_v1', 'disabled': False},
-                     {'name': 'job_v2', 'disabled': False},
-                     {'name': 'job_v3', 'disabled': True}]
+    existing_jobs = [
+        {'name': 'job_v1', 'disabled': False},
+        {'name': 'job_v2', 'disabled': False},
+        {'name': 'job_v3', 'disabled': True},
+    ]
     with mock.patch(
         'paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True,
     ) as mock_client, mock.patch(
@@ -409,8 +413,10 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
 
 @mock.patch('paasta_tools.chronos_serviceinit.format_chronos_job_status', autospec=True)
 @mock.patch('paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
-def test_status_chronos_jobs_is_deployed(mock_get_cached_list_of_running_tasks_from_frameworks,
-                                         mock_format_chronos_job_status):
+def test_status_chronos_jobs_is_deployed(
+    mock_get_cached_list_of_running_tasks_from_frameworks,
+    mock_format_chronos_job_status,
+):
     jobs = [{'name': 'my_service my_instance'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()

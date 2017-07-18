@@ -90,8 +90,10 @@ def test_check_paasta_check_calls_everything(
     assert mock_smartstart_check.called
     assert mock_paasta_validate_soa_configs.called
 
-    service_path = os.path.join(args.yelpsoa_config_root,
-                                mock_figure_out_service_name.return_value)
+    service_path = os.path.join(
+        args.yelpsoa_config_root,
+        mock_figure_out_service_name.return_value,
+    )
     mock_deploy_check.assert_called_once_with(service_path)
 
 
@@ -172,9 +174,11 @@ def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "%s\n%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
-                                        PaastaCheckMessages.CHRONOS_YAML_FOUND,
-                                        PaastaCheckMessages.ADHOC_YAML_FOUND)
+    expected_output = "%s\n%s\n%s\n" % (
+        PaastaCheckMessages.MARATHON_YAML_FOUND,
+        PaastaCheckMessages.CHRONOS_YAML_FOUND,
+        PaastaCheckMessages.ADHOC_YAML_FOUND,
+    )
 
     yaml_check('path')
 
@@ -203,15 +207,19 @@ def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = "/fake/path"
     team = 'team-service-infra'
     mock_get_team.return_value = team
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.SENSU_MONITORING_FOUND,
-                                    PaastaCheckMessages.sensu_team_found(team))
+    expected_output = "%s\n%s\n" % (
+        PaastaCheckMessages.SENSU_MONITORING_FOUND,
+        PaastaCheckMessages.sensu_team_found(team),
+    )
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
 
     output, _ = capfd.readouterr()
     assert output == expected_output
-    mock_get_team.assert_called_once_with(service='fake_service', overrides={},
-                                          soa_dir='path')
+    mock_get_team.assert_called_once_with(
+        service='fake_service', overrides={},
+        soa_dir='path',
+    )
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
@@ -221,8 +229,10 @@ def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capfd):
 
     mock_is_file_in_dir.return_value = "/fake/path"
     mock_get_team.return_value = None
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.SENSU_MONITORING_FOUND,
-                                    PaastaCheckMessages.SENSU_TEAM_MISSING)
+    expected_output = "%s\n%s\n" % (
+        PaastaCheckMessages.SENSU_MONITORING_FOUND,
+        PaastaCheckMessages.SENSU_TEAM_MISSING,
+    )
 
     sensu_check(service='fake_service', service_path='path', soa_dir='path')
 
@@ -243,8 +253,10 @@ def test_check_sensu_check_fail(mock_is_file_in_dir, capfd):
     assert output == expected_output
 
 
-@patch('service_configuration_lib.'
-       'read_service_configuration', autospec=True)
+@patch(
+    'service_configuration_lib.'
+    'read_service_configuration', autospec=True,
+)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_pass(
         mock_is_file_in_dir, mock_read_service_info, capfd,
@@ -263,9 +275,12 @@ def test_check_smartstack_check_pass(
     }
     mock_read_service_info.return_value = smartstack_dict
     expected_output = "%s\n%s\n" \
-                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
-                         PaastaCheckMessages.smartstack_port_found(
-                             instance, port))
+                      % (
+                          PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                          PaastaCheckMessages.smartstack_port_found(
+                              instance, port,
+                          ),
+                      )
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
@@ -273,8 +288,10 @@ def test_check_smartstack_check_pass(
     assert output == expected_output
 
 
-@patch('service_configuration_lib.'
-       'read_service_configuration', autospec=True)
+@patch(
+    'service_configuration_lib.'
+    'read_service_configuration', autospec=True,
+)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_missing_port(
         mock_is_file_in_dir, mock_read_service_info, capfd,
@@ -290,8 +307,10 @@ def test_check_smartstack_check_missing_port(
     }
     mock_read_service_info.return_value = smartstack_dict
     expected_output = "%s\n%s\n" \
-                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
-                         PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
+                      % (
+                          PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING,
+                      )
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 
@@ -299,19 +318,24 @@ def test_check_smartstack_check_missing_port(
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.'
-       'read_service_configuration', autospec=True)
+@patch(
+    'paasta_tools.cli.cmds.check.'
+    'read_service_configuration', autospec=True,
+)
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
 def test_check_smartstack_check_missing_instance(
-        mock_is_file_in_dir, mock_read_service_info, capfd):
+        mock_is_file_in_dir, mock_read_service_info, capfd,
+):
     # smartstack.yaml exists, but no instances found
 
     mock_is_file_in_dir.return_value = True
     smartstack_dict = {}
     mock_read_service_info.return_value = smartstack_dict
     expected_output = "%s\n%s\n" \
-                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
-                         PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
+                      % (
+                          PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING,
+                      )
 
     smartstack_check(service='fake_service', service_path='path', soa_dir='path')
 

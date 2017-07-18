@@ -24,14 +24,16 @@ RULE_TARGET_SORT_ORDER = {
 }
 
 
-_RuleBase = collections.namedtuple('Rule', (
-    'protocol',
-    'src',
-    'dst',
-    'target',
-    'matches',
-    'target_parameters',
-))
+_RuleBase = collections.namedtuple(
+    'Rule', (
+        'protocol',
+        'src',
+        'dst',
+        'target',
+        'matches',
+        'target_parameters',
+    ),
+)
 
 
 class Rule(_RuleBase):

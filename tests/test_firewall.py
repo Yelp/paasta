@@ -145,10 +145,12 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),
@@ -199,10 +201,12 @@ def test_service_group_rules_block(mock_service_config, service_group):
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),
@@ -246,10 +250,12 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
         EMPTY_RULE._replace(
             target='LOG',
             matches=(
-                ('limit', (
-                    ('limit', ('1/sec',)),
-                    ('limit-burst', ('1',)),
-                )),
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
             ),
             target_parameters=(
                 ('log-prefix', ('paasta.my_cool_service ',)),

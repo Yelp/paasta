@@ -43,9 +43,11 @@ from paasta_tools.utils import paasta_print
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Cleans up stale chronos jobs.')
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=chronos_tools.DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=chronos_tools.DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     args = parser.parse_args()
     return args
 
@@ -196,8 +198,10 @@ def main():
         paasta_print('No Chronos Jobs to remove')
     else:
         if len(task_successes) > 0:
-            paasta_print(format_list_output("Successfully Removed Tasks (if any were running) for:",
-                                            [job[0] for job in task_successes]))
+            paasta_print(format_list_output(
+                "Successfully Removed Tasks (if any were running) for:",
+                [job[0] for job in task_successes],
+            ))
 
         # if there are any failures, print and exit appropriately
         if len(task_failures) > 0:

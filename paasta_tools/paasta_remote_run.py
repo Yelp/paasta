@@ -100,7 +100,8 @@ def extract_args(args):
         paasta_print(
             PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster."
-                "Please pass one using '-c'."),
+                "Please pass one using '-c'.",
+            ),
             sep='\n',
             file=sys.stderr,
         )
@@ -124,7 +125,8 @@ def paasta_to_task_config_kwargs(
         system_paasta_config,
         instance_type='paasta_native',
         soa_dir=DEFAULT_SOA_DIR,
-        config_overrides=None):
+        config_overrides=None,
+):
     native_job_config = load_paasta_native_job_config(
         service,
         instance,
@@ -193,7 +195,8 @@ def build_executor_stack(
         instance,
         run_id,  # TODO: move run_id into task identifier?
         system_paasta_config,
-        framework_staging_timeout):
+        framework_staging_timeout,
+):
     mesos_address = '{}:{}'.format(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
@@ -281,7 +284,8 @@ def remote_run_start(args):
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
-            PaastaColors.red("Signal received, shutting down scheduler."))
+            PaastaColors.red("Signal received, shutting down scheduler."),
+        )
         runner.stop()
         if _signum == signal.SIGTERM:
             sys.exit(143)
@@ -297,7 +301,8 @@ def remote_run_start(args):
         sys.exit(0)
     else:
         paasta_print(
-            PaastaColors.red("Task failed: {}".format(terminal_event.raw)))
+            PaastaColors.red("Task failed: {}".format(terminal_event.raw)),
+        )
         sys.exit(1)
 
 
@@ -331,7 +336,9 @@ def remote_run_stop(args):
             paasta_print(
                 PaastaColors.red(
                     "Framework id %s does not match any %s.%s remote-run. Check status to find the correct id." %
-                    (framework_id, service, instance)))
+                    (framework_id, service, instance),
+                ),
+            )
             os._exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
@@ -356,7 +363,8 @@ def remote_run_list(args):
     if len(filtered) > 0:
         paasta_print(
             "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance))
+            (service, cluster, instance),
+        )
     else:
         paasta_print("Nothing found.")
 

@@ -87,48 +87,60 @@ class TestMonitoring_Tools:
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('team', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'team', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_runbook(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_runbook(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('runbook', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'runbook', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_tip(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_tip(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('tip', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'tip', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_notification_email(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_notification_email(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.overrides,
-                                                                      self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'notification_email', self.overrides,
+                self.service, self.soa_dir,
+            )
 
     def test_get_page(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_page(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('page', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'page', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_alert_after(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_alert_after(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('alert_after', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'alert_after', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_realert_every(self):
         with mock.patch(
@@ -136,48 +148,60 @@ class TestMonitoring_Tools:
         ) as get_monitoring_config_value_patch:
             monitoring_defaults = mock.Mock()
             monitoring_tools.get_realert_every(self.overrides, self.service, self.soa_dir, monitoring_defaults)
-            get_monitoring_config_value_patch.assert_called_once_with('realert_every', self.overrides,
-                                                                      self.service, self.soa_dir, monitoring_defaults)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'realert_every', self.overrides,
+                self.service, self.soa_dir, monitoring_defaults,
+            )
 
     def test_get_check_every(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_check_every(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('check_every', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'check_every', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_irc_channels(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_irc_channels(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('irc_channels', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'irc_channels', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_dependencies(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_dependencies(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'dependencies', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_ticket(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_ticket(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('ticket', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'ticket', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_project(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
         ) as get_monitoring_config_value_patch:
             monitoring_tools.get_project(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('project', self.overrides, self.service,
-                                                                      self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'project', self.overrides, self.service,
+                self.soa_dir,
+            )
 
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = 'monitor_test_team'

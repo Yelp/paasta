@@ -81,8 +81,10 @@ def get_container_env_as_dict(docker_inspect):
 
 
 def get_service_instance(env_vars):
-    return '{}.{}'.format(env_vars.get('PAASTA_SERVICE', ''),
-                          env_vars.get('PAASTA_INSTANCE', ''))
+    return '{}.{}'.format(
+        env_vars.get('PAASTA_SERVICE', ''),
+        env_vars.get('PAASTA_INSTANCE', ''),
+    )
 
 
 def main():
