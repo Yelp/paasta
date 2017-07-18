@@ -69,7 +69,7 @@ class PaastaDeployWorker(PaastaThread):
             failures = service_instance.failures
             bounce_timers = self.setup_timers(service_instance)
             self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
-            marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_failures=True)
+            marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_tasks=True)
             bounce_timers.setup_marathon.start()
             try:
                 return_code, bounce_again_in_seconds = deploy_marathon_service(

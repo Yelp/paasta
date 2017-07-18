@@ -216,7 +216,7 @@ def when_setup_service_initiated(context):
         # 120 * 0.5 = 60 seconds
         for _ in range(120):
             try:
-                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
+                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_tasks=True)
                 (code, message, bounce_again) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
