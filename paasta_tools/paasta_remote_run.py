@@ -25,9 +25,6 @@ import string
 import sys
 from datetime import datetime
 
-from task_processing.runners.sync import Sync
-from task_processing.task_processor import TaskProcessor
-
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
 from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
@@ -45,6 +42,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
+from task_processing.runners.sync import Sync
+from task_processing.task_processor import TaskProcessor
 
 MESOS_TASK_SPACER = '.'
 
