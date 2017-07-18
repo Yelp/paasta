@@ -106,7 +106,7 @@ class LongRunningServiceConfig(InstanceConfig):
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd', None]:
+        elif mode not in ['http', 'https', 'tcp', 'cmd', None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
