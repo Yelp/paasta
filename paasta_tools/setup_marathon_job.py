@@ -685,7 +685,7 @@ def main():
         marathon_config.get_url(), marathon_config.get_username(),
         marathon_config.get_password(),
     )
-    marathon_apps = marathon_tools.get_all_marathon_apps(client, embed_failures=True)
+    marathon_apps = marathon_tools.get_all_marathon_apps(client, embed_tasks=True)
 
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:
