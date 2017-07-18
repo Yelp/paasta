@@ -25,9 +25,8 @@ import string
 import sys
 from datetime import datetime
 
-from task_processing.plugins.mesos.mesos_executor import MesosExecutor
-from task_processing.plugins.mesos.retrying_executor import RetryingExecutor
 from task_processing.runners.sync import Sync
+from task_processing.task_processor import TaskProcessor
 
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
@@ -191,9 +190,12 @@ def paasta_to_task_config_kwargs(
 
 
 def build_executor_stack(
+        # TODO: rename to registry?
+        processor,
         service,
         instance,
-        run_id,  # TODO: move run_id into task identifier?
+        # TODO: move run_id into task identifier?
+        run_id,
         system_paasta_config,
         framework_staging_timeout,
 ):
@@ -201,8 +203,10 @@ def build_executor_stack(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
-    taskproc_config = system_paasta_config.get('taskproc')
     # TODO: implement DryRunExecutor?
+    taskproc_config = system_paasta_config.get('taskproc')
+
+    MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(
         role=taskproc_config.get('role', taskproc_config['principal']),
         principal=taskproc_config['principal'],
@@ -216,8 +220,8 @@ def build_executor_stack(
         framework_staging_timeout=framework_staging_timeout,
         initial_decline_delay=0.5,
     )
-    retrying_executor = RetryingExecutor(mesos_executor)
-    return retrying_executor
+    RetryingExecutor = processor.executor_cls(provider='retrying')
+    return RetryingExecutor(mesos_executor)
 
 
 def remote_run_start(args):
@@ -260,7 +264,10 @@ def remote_run_start(args):
 
     paasta_print('Scheduling a task on Mesos')
 
-    # prepare task before launching executor
+    processor = TaskProcessor()
+    processor.load_plugin(provider_module='task_processing.plugins.mesos')
+
+    MesosExecutor = processor.executor_cls(provider='mesos')
     task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
         **paasta_to_task_config_kwargs(
             service,
@@ -274,6 +281,7 @@ def remote_run_start(args):
     )
 
     executor_stack = build_executor_stack(
+        processor,
         service,
         instance,
         run_id,
