@@ -11,7 +11,7 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.setup_marathon_job import deploy_marathon_service
 
-BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'failures', 'bounce_timers'])
+BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'return_code', 'bounce_timers'])
 
 
 class PaastaDeployWorker(PaastaThread):
@@ -69,45 +69,47 @@ class PaastaDeployWorker(PaastaThread):
         self.log.info("{} starting up".format(self.name))
         while True:
             service_instance = self.bounce_q.get()
-            bounce_results = self.process_service_instance(service_instance)
-            if bounce_results.bounce_again_in_seconds:
+            try:
+                bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(service_instance)
+            except Exception as e:
+                self.log.error("Worker failed to process service instance and will retry. "
+                               "Caused by exception: {}".format(e))
+                return_code = -2
+                bounce_timers = service_instance.bounce_timers
+            failures = service_instance.failures
+            if return_code != 0:
+                failures = service_instance.failures + 1
+                bounce_again_in_seconds = exponential_back_off(
+                    failures=failures,
+                    factor=self.config.get_deployd_worker_failure_backoff_factor(),
+                    base=2,
+                    max_time=6000,
+                )
+            if bounce_again_in_seconds:
                 service_instance = ServiceInstance(
                     service=service_instance.service,
                     instance=service_instance.instance,
-                    bounce_by=int(time.time()) + bounce_results.bounce_again_in_seconds,
+                    bounce_by=int(time.time()) + bounce_again_in_seconds,
                     watcher=self.name,
-                    bounce_timers=bounce_results.bounce_timers,
-                    failures=bounce_results.failures,
+                    bounce_timers=bounce_timers,
+                    failures=failures,
                 )
                 self.inbox_q.put(service_instance)
             time.sleep(0.1)
 
     def process_service_instance(self, service_instance):
-        failures = service_instance.failures
         bounce_timers = self.setup_timers(service_instance)
         self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
         marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_tasks=True)
         bounce_timers.setup_marathon.start()
-        try:
-            return_code, bounce_again_in_seconds = deploy_marathon_service(
-                service=service_instance.service,
-                instance=service_instance.instance,
-                client=self.marathon_client,
-                soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-                marathon_config=self.marathon_config,
-                marathon_apps=marathon_apps,
-            )
-        except Exception as e:
-            self.log.warning("deploy_marathon_service caused exception: {}".format(e))
-            return_code = -2
-        if return_code != 0:
-            failures += 1
-            bounce_again_in_seconds = exponential_back_off(
-                failures=failures,
-                factor=self.config.get_deployd_worker_failure_backoff_factor(),
-                base=2,
-                max_time=6000,
-            )
+        return_code, bounce_again_in_seconds = deploy_marathon_service(
+            service=service_instance.service,
+            instance=service_instance.instance,
+            client=self.marathon_client,
+            soa_dir=marathon_tools.DEFAULT_SOA_DIR,
+            marathon_config=self.marathon_config,
+            marathon_apps=marathon_apps,
+        )
 
         bounce_timers.setup_marathon.stop()
         self.log.info("setup marathon completed with exit code {} for {}.{}".format(
@@ -129,4 +131,4 @@ class PaastaDeployWorker(PaastaThread):
                 service_instance.service,
                 service_instance.instance,
             ))
-        return BounceResults(bounce_again_in_seconds, failures, bounce_timers)
+        return BounceResults(bounce_again_in_seconds, return_code, bounce_timers)
