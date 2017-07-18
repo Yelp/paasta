@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1213,6 +1213,12 @@ class SystemPaastaConfig(dict):
         :returns: The mesos cli config
         """
         return self.get("mesos_config", {})
+
+    def get_monitoring_config(self):
+        """Get the monitoring config
+
+        :returns: the monitoring config dictionary"""
+        return self.get('monitoring_config', {})
 
     def get_deploy_blacklist(self):
         """Get global blacklist. This applies to all services
