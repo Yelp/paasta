@@ -26,7 +26,6 @@ import os
 import sys
 import urllib
 
-import grequests
 
 from paasta_tools.utils import load_system_paasta_config
 
@@ -49,6 +48,10 @@ def format_timestamp(ts_millis):
     ).isoformat() + 'Z'
 
 def make_requests(urls):
+    # grequests is sheltered inside this function to prevent it from polluting 
+    # all of paasta_tools with its monkey-patching mayhem.
+    import grequests
+
     for url in urls:
         logging.info('GET %s', url)
     headers = {
