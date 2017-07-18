@@ -20,18 +20,20 @@ log = logging.getLogger(__name__)
 RULE_TARGET_SORT_ORDER = {
     # all else defaults to '0'
     'LOG': 1,
-    'REJECT': 2.
+    'REJECT': 2.,
 }
 
 
-_RuleBase = collections.namedtuple('Rule', (
-    'protocol',
-    'src',
-    'dst',
-    'target',
-    'matches',
-    'target_parameters',
-))
+_RuleBase = collections.namedtuple(
+    'Rule', (
+        'protocol',
+        'src',
+        'dst',
+        'target',
+        'matches',
+        'target_parameters',
+    ),
+)
 
 
 class Rule(_RuleBase):
@@ -85,7 +87,7 @@ class Rule(_RuleBase):
         for match in rule.matches:
             matches.append((
                 match.name,
-                tuple((param, tuple(value)) for param, value in sorted(match.get_all_parameters().items()))
+                tuple((param, tuple(value)) for param, value in sorted(match.get_all_parameters().items())),
             ))
         # ensure that matches are sorted for consistency with matching
         fields['matches'] = tuple(sorted(matches))

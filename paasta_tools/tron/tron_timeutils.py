@@ -47,7 +47,8 @@ def macro_timedelta(start_date, years=0, months=0, days=0, hours=0):
         years -= 1
 
     end_date = datetime.datetime(
-        start_date.year + years, new_month, start_date.day, start_date.hour)
+        start_date.year + years, new_month, start_date.day, start_date.hour,
+    )
     delta += end_date - start_date
 
     return delta
@@ -75,7 +76,7 @@ class DateArithmetic(object):
         'month': '%m',
         'day': '%d',
         'hour': '%H',
-        'shortdate': '%Y-%m-%d'
+        'shortdate': '%Y-%m-%d',
     }
 
     @classmethod

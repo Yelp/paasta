@@ -71,14 +71,15 @@ def add_subparser(subparsers):
         epilog=(
             "Note: Access and credentials to the Git repo of a service are required "
             "for this command to work."
-        )
+        ),
     )
     list_parser.add_argument(
         '-u', '--git-url',
         help=(
             'Git url for service -- where magic mark-for-deployment tags are pushed. '
-            'Defaults to the normal git URL for the service.'),
-        default=None
+            'Defaults to the normal git URL for the service.'
+        ),
+        default=None,
     )
     list_parser.add_argument(
         '-c', '-k', '--commit',
@@ -105,7 +106,7 @@ def add_subparser(subparsers):
              'the default strategy is to mark for deployment and exit straightaway',
         dest='block',
         action='store_true',
-        default=False
+        default=False,
     )
     list_parser.add_argument(
         '-t', '--timeout',
@@ -125,7 +126,7 @@ def add_subparser(subparsers):
              'Defaults to false.',
         dest='auto_rollback',
         action='store_true',
-        default=False
+        default=False,
     )
     list_parser.add_argument(
         '-d', '--soa-dir',
@@ -139,7 +140,7 @@ def add_subparser(subparsers):
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output."
+        help="Print out more output.",
     )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
@@ -194,9 +195,11 @@ def paasta_mark_for_deployment(args):
 
     if len(invalid_deploy_groups) == 1:
         paasta_print(PaastaColors.red(
-            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups)))
+            "ERROR: These deploy groups are not currently used anywhere: %s.\n" % (",").join(invalid_deploy_groups),
+        ))
         paasta_print(PaastaColors.red(
-            "This isn't technically wrong because you can mark-for-deployment before deploying there"))
+            "This isn't technically wrong because you can mark-for-deployment before deploying there",
+        ))
         paasta_print(PaastaColors.red("but this is probably a typo. Did you mean one of these in-use deploy groups?:"))
         paasta_print(PaastaColors.red("   %s" % (",").join(in_use_deploy_groups)))
         paasta_print()
@@ -213,7 +216,8 @@ def paasta_mark_for_deployment(args):
         if len(commits) != 1:
             raise ValueError(
                 "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (args.commit, len(commits)))
+                (args.commit, len(commits)),
+            )
         args.commit = commits[0]
 
     old_git_sha = get_currently_deployed_sha(service=service, deploy_group=args.deploy_group)
@@ -230,17 +234,19 @@ def paasta_mark_for_deployment(args):
     )
     if args.block:
         try:
-            wait_for_deployment(service=service,
-                                deploy_group=args.deploy_group,
-                                git_sha=args.commit,
-                                soa_dir=args.soa_dir,
-                                timeout=args.timeout)
+            wait_for_deployment(
+                service=service,
+                deploy_group=args.deploy_group,
+                git_sha=args.commit,
+                soa_dir=args.soa_dir,
+                timeout=args.timeout,
+            )
             line = "Deployment of {} for {} complete".format(args.commit, args.deploy_group)
             _log(
                 service=service,
                 component='deploy',
                 line=line,
-                level='event'
+                level='event',
             )
         except (KeyboardInterrupt, TimeoutError):
             if args.auto_rollback is True:
@@ -270,8 +276,10 @@ def paasta_mark_for_deployment(args):
         paasta_print()
         paasta_print("If you wish to roll back, you can run:")
         paasta_print()
-        paasta_print(PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
-            service, args.deploy_group, old_git_sha))
+        paasta_print(
+            PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
+                service, args.deploy_group, old_git_sha,
+            )),
         )
     return ret
 
@@ -310,8 +318,10 @@ def instances_deployed(cluster_data, instances_out, green_light):
 
     workers_launched = []
     for _ in range(num_threads):
-        worker = Thread(target=_run_instance_worker,
-                        args=(cluster_data, instances_out, green_light))
+        worker = Thread(
+            target=_run_instance_worker,
+            args=(cluster_data, instances_out, green_light),
+        )
         worker.start()
         workers_launched.append(worker)
 
@@ -351,80 +361,106 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                   .format(cluster_data.service, instance, cluster_data.cluster))
         try:
             status = None
-            status = api.service.status_instance(service=cluster_data.service,
-                                                 instance=instance).result()
+            status = api.service.status_instance(
+                service=cluster_data.service,
+                instance=instance,
+            ).result()
         except HTTPError as e:
             if e.response.status_code == 404:
                 log.warning("Can't get status for instance {}, service {} in "
                             "cluster {}. This is normally because it is a new "
                             "service that hasn't been deployed by PaaSTA yet"
-                            .format(instance, cluster_data.service,
-                                    cluster_data.cluster))
+                            .format(
+                                instance, cluster_data.service,
+                                cluster_data.cluster,
+                            ))
             else:
                 log.warning("Error getting service status from PaaSTA API for {}: {}"
-                            "{}".format(cluster_data.cluster, e.response.status_code,
-                                        e.response.text))
+                            "{}".format(
+                                cluster_data.cluster, e.response.status_code,
+                                e.response.text,
+                            ))
         except ConnectionError as e:
             log.warning("Error getting service status from PaaSTA API for {}:"
                         "{}".format(cluster_data.cluster, e))
 
         if not status:
             log.debug("No status for {}.{}, in {}. Not deployed yet."
-                      .format(cluster_data.service, instance,
-                              cluster_data.cluster))
+                      .format(
+                          cluster_data.service, instance,
+                          cluster_data.cluster,
+                      ))
             cluster_data.instances_queue.task_done()
             instances_out.put(instance)
         elif not status.marathon:
             log.debug("{}.{} in {} is not a Marathon job. Marked as deployed."
-                      .format(cluster_data.service, instance,
-                              cluster_data.cluster))
-        elif (status.marathon.expected_instance_count == 0 or
-                status.marathon.desired_state == 'stop'):
+                      .format(
+                          cluster_data.service, instance,
+                          cluster_data.cluster,
+                      ))
+        elif (
+            status.marathon.expected_instance_count == 0 or
+            status.marathon.desired_state == 'stop'
+        ):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
-                      .format(cluster_data.service, status.instance,
-                              cluster_data.cluster))
+                      .format(
+                          cluster_data.service, status.instance,
+                          cluster_data.cluster,
+                      ))
         else:
             if status.marathon.app_count != 1:
                 paasta_print("  {}.{} on {} is still bouncing, {} versions "
                              "running"
-                             .format(cluster_data.service, status.instance,
-                                     cluster_data.cluster,
-                                     status.marathon.app_count))
+                             .format(
+                                 cluster_data.service, status.instance,
+                                 cluster_data.cluster,
+                                 status.marathon.app_count,
+                             ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             if not cluster_data.git_sha.startswith(status.git_sha):
                 paasta_print("  {}.{} on {} doesn't have the right sha yet: {}"
-                             .format(cluster_data.service, instance,
-                                     cluster_data.cluster, status.git_sha))
+                             .format(
+                                 cluster_data.service, instance,
+                                 cluster_data.cluster, status.git_sha,
+                             ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             if status.marathon.deploy_status not in ['Running', 'Deploying', 'Waiting']:
                 paasta_print("  {}.{} on {} isn't running yet: {}"
-                             .format(cluster_data.service, instance,
-                                     cluster_data.cluster,
-                                     status.marathon.deploy_status))
+                             .format(
+                                 cluster_data.service, instance,
+                                 cluster_data.cluster,
+                                 status.marathon.deploy_status,
+                             ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
-            if (status.marathon.expected_instance_count >
-                    status.marathon.running_instance_count):
+            if (
+                status.marathon.expected_instance_count >
+                status.marathon.running_instance_count
+            ):
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
                              "has {} out of {}"
-                             .format(cluster_data.service, instance,
-                                     cluster_data.cluster,
-                                     status.marathon.running_instance_count,
-                                     status.marathon.expected_instance_count))
+                             .format(
+                                 cluster_data.service, instance,
+                                 cluster_data.cluster,
+                                 status.marathon.running_instance_count,
+                                 status.marathon.expected_instance_count,
+                             ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
             paasta_print("Complete: {}.{} on {} looks 100% deployed at {} "
                          "instances on {}"
-                         .format(cluster_data.service, instance,
-                                 cluster_data.cluster,
-                                 status.marathon.running_instance_count,
-                                 status.git_sha))
+                         .format(
+                             cluster_data.service, instance,
+                             cluster_data.cluster,
+                             status.marathon.running_instance_count,
+                             status.git_sha,
+                         ))
             cluster_data.instances_queue.task_done()
 
 
@@ -441,8 +477,10 @@ def _query_clusters(clusters_data, green_light):
 
     for cluster_data in clusters_data:
         if not cluster_data.instances_queue.empty():
-            worker = Thread(target=_run_cluster_worker,
-                            args=(cluster_data, green_light))
+            worker = Thread(
+                target=_run_cluster_worker,
+                args=(cluster_data, green_light),
+            )
             worker.start()
             workers_launched.append(worker)
 
@@ -463,9 +501,11 @@ def _run_cluster_worker(cluster_data, green_light):
     :param green_light: See the docstring for _query_clusters().
     """
     instances_out = Queue()
-    instances_deployed(cluster_data=cluster_data,
-                       instances_out=instances_out,
-                       green_light=green_light)
+    instances_deployed(
+        cluster_data=cluster_data,
+        instances_out=instances_out,
+        green_light=green_light,
+    )
     cluster_data.instances_queue = instances_out
     if cluster_data.instances_queue.empty():
         paasta_print("Deploy to {} complete!".format(cluster_data.cluster))
@@ -479,7 +519,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             component='deploy',
             line=("Couldn't find any instances for service {} in deploy "
                   "group {}".format(service, deploy_group)),
-            level='event'
+            level='event',
         )
         raise NoInstancesFound
     paasta_print("Waiting for deployment of {} for '{}' complete..."
@@ -488,9 +528,11 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     total_instances = 0
     clusters_data = []
     for cluster in cluster_map:
-        clusters_data.append(ClusterData(cluster=cluster, service=service,
-                                         git_sha=git_sha,
-                                         instances_queue=Queue()))
+        clusters_data.append(ClusterData(
+            cluster=cluster, service=service,
+            git_sha=git_sha,
+            instances_queue=Queue(),
+        ))
         for i in cluster_map[cluster]['instances']:
             clusters_data[-1].instances_queue.put(i)
         total_instances += len(cluster_map[cluster]['instances'])
@@ -504,11 +546,15 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             if not green_light.is_set():
                 raise KeyboardInterrupt
 
-            bar.update(total_instances - sum((c.instances_queue.qsize()
-                                              for c in clusters_data)))
+            bar.update(total_instances - sum((
+                c.instances_queue.qsize()
+                for c in clusters_data
+            )))
 
-            if all((cluster.instances_queue.empty()
-                    for cluster in clusters_data)):
+            if all((
+                cluster.instances_queue.empty()
+                for cluster in clusters_data
+            )):
                 sys.stdout.flush()
                 return 0
             else:
@@ -519,7 +565,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         service=service,
         component='deploy',
         line=compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha),
-        level='event'
+        level='event',
     )
     raise TimeoutError
 
@@ -537,11 +583,15 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
         if instances:
             joined_instances = ','.join(instances)
             paasta_status.append('paasta status -c {cluster} -s {service} -i {instances}'
-                                 .format(cluster=cluster, service=service,
-                                         instances=joined_instances))
+                                 .format(
+                                     cluster=cluster, service=service,
+                                     instances=joined_instances,
+                                 ))
             paasta_logs.append('paasta logs -c {cluster} -s {service} -i {instances} -C deploy -l 1000'
-                               .format(cluster=cluster, service=service,
-                                       instances=joined_instances))
+                               .format(
+                                   cluster=cluster, service=service,
+                                   instances=joined_instances,
+                               ))
 
     return ("\n\nTimed out after {timeout} seconds, waiting for {service} "
             "in {deploy_group} to be deployed by PaaSTA.\n"
@@ -553,12 +603,14 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
             "increase the timeout on this step.\n"
             "To wait a little longer run:\n\n"
             "  paasta wait-for-deployment -s {service} -l {deploy_group} -c {git_sha}"
-            .format(timeout=timeout,
-                    deploy_group=deploy_group,
-                    service=service,
-                    git_sha=git_sha,
-                    status_commands='\n  '.join(paasta_status),
-                    logs_commands='\n  '.join(paasta_logs)))
+            .format(
+                timeout=timeout,
+                deploy_group=deploy_group,
+                service=service,
+                git_sha=git_sha,
+                status_commands='\n  '.join(paasta_status),
+                logs_commands='\n  '.join(paasta_logs),
+            ))
 
 
 class NoInstancesFound(Exception):

@@ -48,7 +48,7 @@ class TestInbox(unittest.TestCase):
     def test_run(self):
         with mock.patch(
             'paasta_tools.deployd.master.Inbox.process_inbox', autospec=True,
-            side_effect=LoopBreak
+            side_effect=LoopBreak,
         ) as mock_process:
             with raises(LoopBreak):
                 self.inbox.run()
@@ -59,11 +59,11 @@ class TestInbox(unittest.TestCase):
         self.mock_inbox_q.empty.return_value = True
         self.inbox.to_bounce = {}
         with mock.patch(
-            'paasta_tools.deployd.master.Inbox.process_service_instance', autospec=True
+            'paasta_tools.deployd.master.Inbox.process_service_instance', autospec=True,
         ) as mock_process_service_instance, mock.patch(
-            'paasta_tools.deployd.master.Inbox.process_to_bounce', autospec=True
+            'paasta_tools.deployd.master.Inbox.process_to_bounce', autospec=True,
         ) as mock_process_to_bounce, mock.patch(
-            'time.sleep', autospec=True
+            'time.sleep', autospec=True,
         ):
             self.inbox.process_inbox()
             self.mock_inbox_q.get.assert_called_with(block=False)
@@ -109,13 +109,15 @@ class TestInbox(unittest.TestCase):
 
     def test_process_to_bounce(self):
         with mock.patch(
-            'time.time', autospec=True
+            'time.time', autospec=True,
         ) as mock_time:
             mock_time.return_value = 50
             mock_service_instance_1 = mock.Mock(bounce_by=10)
             mock_service_instance_2 = mock.Mock(bounce_by=60)
-            self.inbox.to_bounce = {'universe.c137': mock_service_instance_1,
-                                    'universe.c138': mock_service_instance_2}
+            self.inbox.to_bounce = {
+                'universe.c137': mock_service_instance_1,
+                'universe.c138': mock_service_instance_2,
+            }
             self.inbox.process_to_bounce()
             self.mock_bounce_q.put.assert_called_with(mock_service_instance_1)
             assert self.mock_bounce_q.put.call_count == 1
@@ -127,27 +129,29 @@ class TestInbox(unittest.TestCase):
 class TestDeployDaemon(unittest.TestCase):
     def setUp(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaQueue', autospec=True
+            'paasta_tools.deployd.master.PaastaQueue', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.master.Inbox', autospec=True
+            'paasta_tools.deployd.master.Inbox', autospec=True,
         ) as self.mock_inbox, mock.patch(
-            'paasta_tools.deployd.master.get_marathon_client_from_config', autospec=True
+            'paasta_tools.deployd.master.get_marathon_client_from_config', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.master.load_system_paasta_config', autospec=True
+            'paasta_tools.deployd.master.load_system_paasta_config', autospec=True,
         ) as mock_config_getter:
-            mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
-                                    get_deployd_number_workers=mock.Mock(return_value=5),
-                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10),
-                                    get_cluster=mock.Mock(return_value='westeros-prod'),
-                                    get_log_writer=mock.Mock(return_value={'driver': None}))
+            mock_config = mock.Mock(
+                get_deployd_log_level=mock.Mock(return_value='INFO'),
+                get_deployd_number_workers=mock.Mock(return_value=5),
+                get_deployd_big_bounce_rate=mock.Mock(return_value=10),
+                get_cluster=mock.Mock(return_value='westeros-prod'),
+                get_log_writer=mock.Mock(return_value={'driver': None}),
+            )
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
 
     def test_run(self):
         with mock.patch(
-            'paasta_tools.deployd.master.ZookeeperPool', autospec=True
+            'paasta_tools.deployd.master.ZookeeperPool', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.master.PaastaLeaderElection', autospec=True
+            'paasta_tools.deployd.master.PaastaLeaderElection', autospec=True,
         ) as mock_election_class:
             mock_election = mock.Mock()
             mock_election_class.return_value = mock_election
@@ -164,27 +168,29 @@ class TestDeployDaemon(unittest.TestCase):
         assert not hasattr(self.deployd, 'is_leader')
         assert not self.deployd.started
         with mock.patch(
-            'paasta_tools.deployd.master.QueueMetrics', autospec=True
+            'paasta_tools.deployd.master.QueueMetrics', autospec=True,
         ) as mock_q_metrics, mock.patch(
-            'paasta_tools.deployd.master.get_metrics_interface', autospec=True
+            'paasta_tools.deployd.master.get_metrics_interface', autospec=True,
         ) as mock_get_metrics_interface, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.start_watchers', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.start_watchers', autospec=True,
         ) as mock_start_watchers, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services', autospec=True,
         ) as mock_prioritise_bouncing_services, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.add_all_services', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.add_all_services', autospec=True,
         ) as mock_add_all_services, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.start_workers', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.start_workers', autospec=True,
         ) as mock_start_workers, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.main_loop', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.main_loop', autospec=True,
         ) as mock_main_loop:
             self.deployd.startup()
             assert self.deployd.started
             assert self.deployd.is_leader
-            mock_q_metrics.assert_called_with(self.deployd.inbox,
-                                              self.deployd.bounce_q,
-                                              'westeros-prod',
-                                              mock_get_metrics_interface.return_value)
+            mock_q_metrics.assert_called_with(
+                self.deployd.inbox,
+                self.deployd.bounce_q,
+                'westeros-prod',
+                mock_get_metrics_interface.return_value,
+            )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
             assert mock_add_all_services.called
@@ -194,13 +200,13 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_main_loop(self):
         with mock.patch(
-            'time.sleep', autospec=True
+            'time.sleep', autospec=True,
         ) as mock_sleep, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.all_watchers_running', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.all_watchers_running', autospec=True,
         ) as mock_all_watchers_running, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.all_workers_dead', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.all_workers_dead', autospec=True,
         ) as mock_all_workers_dead, mock.patch(
-            'paasta_tools.deployd.master.DeployDaemon.check_and_start_workers', autospec=True
+            'paasta_tools.deployd.master.DeployDaemon.check_and_start_workers', autospec=True,
         ) as mock_check_and_start_workers:
             mock_all_workers_dead.return_value = False
             mock_all_watchers_running.return_value = True
@@ -235,40 +241,52 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_check_and_start_workers.call_count == 2
 
     def test_all_watchers_running(self):
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                         mock.Mock(is_alive=mock.Mock(return_value=True))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert self.deployd.all_watchers_running()
 
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert not self.deployd.all_watchers_running()
 
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
-                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert not self.deployd.all_watchers_running()
 
     def test_all_workers_dead(self):
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                        mock.Mock(is_alive=mock.Mock(return_value=True))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+        ]
         self.deployd.workers = mock_workers
         assert not self.deployd.all_workers_dead()
 
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.workers = mock_workers
         assert not self.deployd.all_workers_dead()
 
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
-                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.workers = mock_workers
         assert self.deployd.all_workers_dead()
 
     def test_check_and_start_workers(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaDeployWorker', autospec=True
+            'paasta_tools.deployd.master.PaastaDeployWorker', autospec=True,
         ) as mock_paasta_worker:
             mock_worker_instance = mock.Mock()
             mock_paasta_worker.return_value = mock_worker_instance
@@ -290,7 +308,7 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_start_workers(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaDeployWorker', autospec=True
+            'paasta_tools.deployd.master.PaastaDeployWorker', autospec=True,
         ) as mock_paasta_worker:
             self.deployd.metrics = mock.Mock()
             self.deployd.start_workers()
@@ -298,28 +316,36 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_prioritise_bouncing_services(self):
         with mock.patch(
-            'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True
+            'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True,
         ) as mock_get_service_instances_that_need_bouncing, mock.patch(
-            'time.time', autospec=True, return_value=1
+            'time.time', autospec=True, return_value=1,
         ):
-            mock_changed_instances = ('universe.c137', 'universe.c138')
+            mock_changed_instances = (x for x in {'universe.c137', 'universe.c138'})
             mock_get_service_instances_that_need_bouncing.return_value = mock_changed_instances
 
             self.deployd.prioritise_bouncing_services()
-            mock_get_service_instances_that_need_bouncing.assert_called_with(self.deployd.marathon_client,
-                                                                             '/nail/etc/services')
-            calls = [mock.call(ServiceInstance(service='universe',
-                                               instance='c138',
-                                               watcher='DeployDaemon',
-                                               bounce_by=1,
-                                               bounce_timers=None,
-                                               failures=0)),
-                     mock.call(ServiceInstance(service='universe',
-                                               instance='c137',
-                                               watcher='DeployDaemon',
-                                               bounce_by=1,
-                                               bounce_timers=None,
-                                               failures=0))]
+            mock_get_service_instances_that_need_bouncing.assert_called_with(
+                self.deployd.marathon_client,
+                '/nail/etc/services',
+            )
+            calls = [
+                mock.call(ServiceInstance(
+                    service='universe',
+                    instance='c138',
+                    watcher='DeployDaemon',
+                    bounce_by=1,
+                    bounce_timers=None,
+                    failures=0,
+                )),
+                mock.call(ServiceInstance(
+                    service='universe',
+                    instance='c137',
+                    watcher='DeployDaemon',
+                    bounce_by=1,
+                    bounce_timers=None,
+                    failures=0,
+                )),
+            ]
             self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
@@ -338,9 +364,9 @@ class TestDeployDaemon(unittest.TestCase):
             class FakeWatcher(PaastaWatcher):
                 pass
         with mock.patch(
-            'paasta_tools.deployd.master.watchers', autospec=False, new=FakeWatchers
+            'paasta_tools.deployd.master.watchers', autospec=False, new=FakeWatchers,
         ), mock.patch(
-            'time.sleep', autospec=True
+            'time.sleep', autospec=True,
         ) as mock_sleep:
             mock_zk = mock.Mock()
             self.deployd.zk = mock_zk
@@ -357,9 +383,9 @@ class TestDeployDaemon(unittest.TestCase):
 
 def test_main():
     with mock.patch(
-        'paasta_tools.deployd.master.DeployDaemon', autospec=True
+        'paasta_tools.deployd.master.DeployDaemon', autospec=True,
     ) as mock_deployd_class, mock.patch(
-        'time.sleep', autospec=True, side_effect=LoopBreak
+        'time.sleep', autospec=True, side_effect=LoopBreak,
     ):
         mock_deployd = mock.Mock()
         mock_deployd_class.return_value = mock_deployd

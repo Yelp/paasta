@@ -174,7 +174,7 @@ def test_run_paasta_serviceinit_status(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
-        stream=True
+        stream=True,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert return_code == 0
@@ -196,7 +196,7 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
         'fake_instance',
         'fake_cluster',
         stream=True,
-        verbose=1
+        verbose=1,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert return_code == 0
@@ -270,13 +270,16 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         'fake_master3',
     ]
     mock_run_paasta_serviceinit.return_value = (
-        mock.sentinel.paasta_serviceinit_return_code, mock.sentinel.paasta_serviceinit_output)
+        mock.sentinel.paasta_serviceinit_return_code, mock.sentinel.paasta_serviceinit_output,
+    )
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    return_code, actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename,
-                                                                            fake_system_paasta_config)
+    return_code, actual = utils.execute_paasta_serviceinit_on_remote_master(
+        'status', cluster, service, instancename,
+        fake_system_paasta_config,
+    )
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_serviceinit.assert_called_once_with(
@@ -285,7 +288,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         service,
         instancename,
         cluster,
-        False
+        False,
     )
     assert return_code == mock.sentinel.paasta_serviceinit_return_code
     assert actual == mock.sentinel.paasta_serviceinit_output
@@ -330,7 +333,8 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
     return_code, actual = utils.execute_paasta_serviceinit_on_remote_master(
-        'status', cluster, service, instancename, fake_system_paasta_config)
+        'status', cluster, service, instancename, fake_system_paasta_config,
+    )
     assert mock_check_ssh_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert return_code == 255
@@ -352,13 +356,15 @@ def test_execute_paasta_metastatus_on_remote_master(
         'fake_master3',
     ]
     mock_run_paasta_metastatus.return_value = (
-        mock.sentinel.paasta_metastatus_return_code, mock.sentinel.paasta_metastatus_output)
+        mock.sentinel.paasta_metastatus_return_code, mock.sentinel.paasta_metastatus_output,
+    )
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
     return_code, actual = utils.execute_paasta_metastatus_on_remote_master(
-        cluster, fake_system_paasta_config, False, [], 0, False)
+        cluster, fake_system_paasta_config, False, [], 0, False,
+    )
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0, False)
@@ -382,30 +388,33 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
     return_code, actual = utils.execute_paasta_metastatus_on_remote_master(
-        cluster, fake_system_paasta_config, False, [], 0)
+        cluster, fake_system_paasta_config, False, [], 0,
+    )
     assert mock_check_ssh_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert return_code == 255
     assert "fake_err_msg" in actual
 
 
-@mark.parametrize('test_case', [
-    [
-        (['fake_master1', 'fake_master2'], None),  # OK
-        ('fake_connectable_master', None),  # OK
-        (0, 'OK'),  # OK
+@mark.parametrize(
+    'test_case', [
+        [
+            (['fake_master1', 'fake_master2'], None),  # OK
+            ('fake_connectable_master', None),  # OK
+            (0, 'OK'),  # OK
+        ],
+        [
+            ([], 'Error in calculate_remote_masters'),  # Error
+            None,  # not called
+            None,  # not called
+        ],
+        [
+            (['fake_master1', 'fake_master2'], None),  # OK
+            (None, 'Error in find_connectable_master'),  # Error
+            None,  # not called
+        ],
     ],
-    [
-        ([], 'Error in calculate_remote_masters'),  # Error
-        None,  # not called
-        None,  # not called
-    ],
-    [
-        (['fake_master1', 'fake_master2'], None),  # OK
-        (None, 'Error in find_connectable_master'),  # Error
-        None,  # not called
-    ],
-])
+)
 def test_execute_chronos_rerun_on_remote_master(test_case):
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
@@ -416,9 +425,11 @@ def test_execute_chronos_rerun_on_remote_master(test_case):
     ) as mock_find_connectable_master, patch(
         'paasta_tools.cli.utils.run_chronos_rerun', autospec=True,
     ) as mock_run_chronos_rerun:
-        (mock_calculate_remote_masters.return_value,
-         mock_find_connectable_master.return_value,
-         mock_run_chronos_rerun.return_value) = test_case
+        (
+            mock_calculate_remote_masters.return_value,
+            mock_find_connectable_master.return_value,
+            mock_run_chronos_rerun.return_value,
+        ) = test_case
 
         outcome = utils.execute_chronos_rerun_on_remote_master(
             'service',
@@ -509,13 +520,13 @@ def test_list_teams():
                 'pages_irc_channel': 'red_jaguars_pages',
                 'notifications_irc_channel': 'red_jaguars_notifications',
                 'notification_email': 'red_jaguars+alert@yelp.com',
-                'project': 'REDJAGS'
+                'project': 'REDJAGS',
             },
             'blue_barracudas': {
                 'pagerduty_api_key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
                 'pages_irc_channel': 'blue_barracudas_pages',
             },
-        }
+        },
     }
     expected = {
         'red_jaguars',
@@ -610,7 +621,7 @@ def test_run_chronos_rerun(mock_run):
         'a_service',
         'an_instance',
         verbose=2,
-        execution_date='2016-04-08T02:37:27'
+        execution_date='2016-04-08T02:37:27',
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value
@@ -643,16 +654,22 @@ def test_get_subparser():
     mock_command = 'test'
     mock_help_text = 'HALP'
     mock_description = 'what_i_do'
-    utils.get_subparser(subparsers=mock_subparser,
-                        function=mock_function,
-                        help_text=mock_help_text,
-                        description=mock_description,
-                        command=mock_command)
-    mock_subparser.add_parser.assert_called_with('test',
-                                                 help='HALP',
-                                                 description=('what_i_do'),
-                                                 epilog=("Note: This command requires SSH and "
-                                                         "sudo privileges on the remote PaaSTA nodes."))
+    utils.get_subparser(
+        subparsers=mock_subparser,
+        function=mock_function,
+        help_text=mock_help_text,
+        description=mock_description,
+        command=mock_command,
+    )
+    mock_subparser.add_parser.assert_called_with(
+        'test',
+        help='HALP',
+        description=('what_i_do'),
+        epilog=(
+            "Note: This command requires SSH and "
+            "sudo privileges on the remote PaaSTA nodes."
+        ),
+    )
     mock_subparser.add_parser.return_value.set_defaults.assert_called_with(command=mock_function)
 
 
@@ -671,8 +688,10 @@ def test_get_status_for_instance(mock_client):
     mock_result = mock.Mock(return_value=mock.Mock(marathon=True))
     mock_api.service.status_instance.return_value = mock.Mock(result=mock_result)
     utils.get_status_for_instance('cluster1', 'my-service', 'main')
-    mock_api.service.status_instance.assert_called_with(service='my-service',
-                                                        instance='main')
+    mock_api.service.status_instance.assert_called_with(
+        service='my-service',
+        instance='main',
+    )
 
 
 def test_pick_slave_from_status():
@@ -684,7 +703,8 @@ def test_pick_slave_from_status():
 
 def test_git_sha_validation():
     assert utils.validate_full_git_sha(
-        '060ce8bc10efe0030c048a4711ad5dd85de5adac') == '060ce8bc10efe0030c048a4711ad5dd85de5adac'
+        '060ce8bc10efe0030c048a4711ad5dd85de5adac',
+    ) == '060ce8bc10efe0030c048a4711ad5dd85de5adac'
     with raises(argparse.ArgumentTypeError):
         utils.validate_full_git_sha('BAD')
     assert utils.validate_short_git_sha('060c') == '060c'
@@ -733,37 +753,49 @@ def test_get_task_from_instance(mock_client):
     mock_api.service.task_instance.return_value = mock.Mock(result=mock_task_result)
     ret = utils.get_task_from_instance('cluster1', 'my-service', 'main', task_id='123')
     assert ret == mock_task_2
-    mock_api.service.task_instance.assert_called_with(service='my-service',
-                                                      instance='main',
-                                                      verbose=True,
-                                                      task_id='123')
+    mock_api.service.task_instance.assert_called_with(
+        service='my-service',
+        instance='main',
+        verbose=True,
+        task_id='123',
+    )
 
     ret = utils.get_task_from_instance('cluster1', 'my-service', 'main')
     assert ret == mock_task_1
-    mock_api.service.tasks_instance.assert_called_with(service='my-service',
-                                                       instance='main',
-                                                       verbose=True,
-                                                       slave_hostname=None)
+    mock_api.service.tasks_instance.assert_called_with(
+        service='my-service',
+        instance='main',
+        verbose=True,
+        slave_hostname=None,
+    )
 
     mock_result = mock.Mock(return_value=[])
     mock_api.service.tasks_instance.return_value = mock.Mock(result=mock_result)
     with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
-                                           slave_hostname='test')
+        ret = utils.get_task_from_instance(
+            'cluster1', 'my-service', 'main',
+            slave_hostname='test',
+        )
 
     mock_api.service.tasks_instance.side_effect = HTTPError(response=mock.Mock(status_code=500))
     with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
-                                           slave_hostname='test')
-    mock_api.service.tasks_instance.assert_called_with(service='my-service',
-                                                       instance='main',
-                                                       verbose=True,
-                                                       slave_hostname='test')
+        ret = utils.get_task_from_instance(
+            'cluster1', 'my-service', 'main',
+            slave_hostname='test',
+        )
+    mock_api.service.tasks_instance.assert_called_with(
+        service='my-service',
+        instance='main',
+        verbose=True,
+        slave_hostname='test',
+    )
 
     mock_api.service.tasks_instance.side_effect = HTTPNotFound(response=mock.Mock(status_code=404))
     with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance('cluster1', 'my-service', 'main',
-                                           slave_hostname='test')
+        ret = utils.get_task_from_instance(
+            'cluster1', 'my-service', 'main',
+            slave_hostname='test',
+        )
 
 
 def test_get_container_name():

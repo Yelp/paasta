@@ -26,13 +26,19 @@ log = logging.getLogger(__name__)
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Autoscales the local PaaSTA cluster')
-    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
-                        help="Print out more output.")
-    parser.add_argument('-d', '--dry-run', action='store_true',
-                        help="Perform no actions, only print what to do")
-    parser.add_argument('-a', '--autoscaler-configs',
-                        help="Path to autoscaler config files",
-                        default='/etc/paasta/cluster_autoscaling')
+    parser.add_argument(
+        '-v', '--verbose', action='count', dest="verbose", default=0,
+        help="Print out more output.",
+    )
+    parser.add_argument(
+        '-d', '--dry-run', action='store_true',
+        help="Perform no actions, only print what to do",
+    )
+    parser.add_argument(
+        '-a', '--autoscaler-configs',
+        help="Path to autoscaler config files",
+        default='/etc/paasta/cluster_autoscaling',
+    )
     return parser.parse_args(argv)
 
 

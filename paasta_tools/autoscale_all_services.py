@@ -24,11 +24,15 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Autoscales marathon jobs')
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help="Increase logging verboseness")
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        help="Increase logging verboseness",
+    )
     args = parser.parse_args()
     return args
 

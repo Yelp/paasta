@@ -60,7 +60,7 @@ def add_subparser(subparsers):
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output regarding the operation."
+        help="Print out more output regarding the operation.",
     )
     rerun_parser.add_argument(
         '-s', '--service',
@@ -74,12 +74,12 @@ def add_subparser(subparsers):
     rerun_parser.add_argument(
         '-c', '--clusters',
         help="A comma-separated list of clusters to rerun the job on. Defaults to rerun on all clusters.\n"
-             "For example: --clusters norcal-prod,nova-prod"
+             "For example: --clusters norcal-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     rerun_parser.add_argument(
         '-d', '--execution_date',
         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
-        type=chronos_tools.parse_execution_date
+        type=chronos_tools.parse_execution_date,
     )
     rerun_parser.add_argument(
         '-y', '--soa-dir',
@@ -167,10 +167,13 @@ def paasta_rerun(args):
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
-                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir)
+                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir,
+            )
             if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
-                paasta_print(("  Warning: \"%s\" uses time variables interpolation, "
-                              "please supply a `--execution_date` argument." % args.instance))
+                paasta_print((
+                    "  Warning: \"%s\" uses time variables interpolation, "
+                    "please supply a `--execution_date` argument." % args.instance
+                ))
                 continue
         except NoConfigurationForServiceError as e:
             paasta_print("  Warning: %s" % e)

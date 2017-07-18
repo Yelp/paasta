@@ -24,15 +24,17 @@ import os
 
 import requests_cache
 import service_configuration_lib
+from gevent import monkey
 from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
-from pyramid.scripts.pserve import watch_file
 
 import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
 
+
+monkey.patch_all()
 
 log = logging.getLogger(__name__)
 
@@ -43,15 +45,16 @@ def parse_paasta_api_args():
         '-D', '--debug',
         dest='debug',
         action='store_true', default=False,
-        help="output the debug logs"
+        help="output the debug logs",
     )
     parser.add_argument(
         'port', type=int,
-        help="port number for the api server")
+        help="port number for the api server",
+    )
     parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
-        help="define a different soa config directory"
+        help="define a different soa config directory",
     )
     args = parser.parse_args()
     return args
@@ -60,7 +63,6 @@ def parse_paasta_api_args():
 def make_app(global_config=None):
     paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
-    watch_file(os.path.join(paasta_api_path, 'api_docs/swagger.json'))
 
     config = Configurator(settings={
         'service_name': 'paasta-api',
@@ -70,6 +72,7 @@ def make_app(global_config=None):
     })
 
     config.include('pyramid_swagger')
+    config.add_route('resources.utilization', '/v1/resources/utilization')
     config.add_route('service.instance.status', '/v1/services/{service}/{instance}/status')
     config.add_route('service.instance.tasks', '/v1/services/{service}/{instance}/tasks')
     config.add_route('service.instance.tasks.task', '/v1/services/{service}/{instance}/tasks/{task_id}')
@@ -92,13 +95,13 @@ def setup_paasta_api():
     settings.marathon_client = marathon_tools.get_marathon_client(
         marathon_config.get_url(),
         marathon_config.get_username(),
-        marathon_config.get_password()
+        marathon_config.get_password(),
     )
 
     # Set up transparent cache for http API calls. With expire_after, responses
     # are removed only when the same request is made. Expired storage is not a
     # concern here. Thus remove_expired_responses is not needed.
-    requests_cache.install_cache("paasta-api", backend="memory", expire_after=30)
+    requests_cache.install_cache("paasta-api", backend="memory", expire_after=5)
 
 
 def main(argv=None):

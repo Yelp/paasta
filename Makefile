@@ -31,7 +31,7 @@ test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python2.7 .paasta
+	test -d .paasta/bin/activate || virtualenv -p python3.6 .paasta
 	.paasta/bin/pip install -U pip==9.0.1
 	.paasta/bin/pip install -U virtualenv==15.1.0
 	.paasta/bin/pip install -U tox==2.6.0

@@ -58,15 +58,17 @@ def test_format_log_line():
     fake_component = 'build'
     fake_level = 'debug'
     fake_now = 'fake_now'
-    expected = json.dumps({
-        'timestamp': fake_now,
-        'level': fake_level,
-        'cluster': fake_cluster,
-        'service': fake_service,
-        'instance': fake_instance,
-        'component': fake_component,
-        'message': input_line,
-    }, sort_keys=True)
+    expected = json.dumps(
+        {
+            'timestamp': fake_now,
+            'level': fake_level,
+            'cluster': fake_cluster,
+            'service': fake_service,
+            'instance': fake_instance,
+            'component': fake_component,
+            'message': input_line,
+        }, sort_keys=True,
+    )
     with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
         mock_now.return_value = fake_now
         actual = utils.format_log_line(
@@ -96,15 +98,17 @@ def test_format_log_line_with_timestamp():
     fake_component = 'build'
     fake_level = 'debug'
     fake_timestamp = 'fake_timestamp'
-    expected = json.dumps({
-        'timestamp': fake_timestamp,
-        'level': fake_level,
-        'cluster': fake_cluster,
-        'service': fake_service,
-        'instance': fake_instance,
-        'component': fake_component,
-        'message': input_line,
-    }, sort_keys=True)
+    expected = json.dumps(
+        {
+            'timestamp': fake_timestamp,
+            'level': fake_level,
+            'cluster': fake_cluster,
+            'service': fake_service,
+            'instance': fake_instance,
+            'component': fake_component,
+            'message': input_line,
+        }, sort_keys=True,
+    )
     actual = utils.format_log_line(
         fake_level,
         fake_cluster,
@@ -112,7 +116,7 @@ def test_format_log_line_with_timestamp():
         fake_instance,
         fake_component,
         input_line,
-        timestamp=fake_timestamp
+        timestamp=fake_timestamp,
     )
     assert actual == expected
 
@@ -245,9 +249,11 @@ def test_load_system_paasta_config_merge_lexographically():
 
 
 def test_SystemPaastaConfig_get_cluster():
-    fake_config = utils.SystemPaastaConfig({
-        'cluster': 'peanut',
-    }, '/some/fake/dir')
+    fake_config = utils.SystemPaastaConfig(
+        {
+            'cluster': 'peanut',
+        }, '/some/fake/dir',
+    )
     expected = 'peanut'
     actual = fake_config.get_cluster()
     assert actual == expected
@@ -260,9 +266,11 @@ def test_SystemPaastaConfig_get_cluster_dne():
 
 
 def test_SystemPaastaConfig_get_volumes():
-    fake_config = utils.SystemPaastaConfig({
-        'volumes': [{'fake_path': "fake_other_path"}],
-    }, '/some/fake/dir')
+    fake_config = utils.SystemPaastaConfig(
+        {
+            'volumes': [{'fake_path': "fake_other_path"}],
+        }, '/some/fake/dir',
+    )
     expected = [{'fake_path': "fake_other_path"}]
     actual = fake_config.get_volumes()
     assert actual == expected
@@ -275,9 +283,11 @@ def test_SystemPaastaConfig_get_volumes_dne():
 
 
 def test_SystemPaastaConfig_get_zk():
-    fake_config = utils.SystemPaastaConfig({
-        'zookeeper': 'zk://fake_zookeeper_host'
-    }, '/some/fake/dir')
+    fake_config = utils.SystemPaastaConfig(
+        {
+            'zookeeper': 'zk://fake_zookeeper_host',
+        }, '/some/fake/dir',
+    )
     expected = 'fake_zookeeper_host'
     actual = fake_config.get_zk_hosts()
     assert actual == expected
@@ -297,8 +307,10 @@ def test_get_service_registry():
         "git_url": "git@mercurial-scm.org:fake-service",
         "docker_registry": fake_registry,
     }
-    with mock.patch('service_configuration_lib.read_service_configuration',
-                    return_value=fake_service_config, autospec=True):
+    with mock.patch(
+        'service_configuration_lib.read_service_configuration',
+        return_value=fake_service_config, autospec=True,
+    ):
         actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
         assert actual == fake_registry
 
@@ -311,13 +323,19 @@ def test_get_service_registry_dne():
         "git_url": "git@mercurial-scm.org:fake-service",
         # no docker_registry configured for this service
     }
-    fake_system_config = utils.SystemPaastaConfig({
-        "docker_registry": fake_registry,
-    }, '/some/fake/dir')
-    with mock.patch('service_configuration_lib.read_service_configuration',
-                    return_value=fake_service_config, autospec=True):
-        with mock.patch('paasta_tools.utils.load_system_paasta_config',
-                        return_value=fake_system_config, autospec=True):
+    fake_system_config = utils.SystemPaastaConfig(
+        {
+            "docker_registry": fake_registry,
+        }, '/some/fake/dir',
+    )
+    with mock.patch(
+        'service_configuration_lib.read_service_configuration',
+        return_value=fake_service_config, autospec=True,
+    ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config',
+            return_value=fake_system_config, autospec=True,
+        ):
             actual = utils.get_service_docker_registry('fake_service', 'fake_soa_dir')
             assert actual == fake_registry
 
@@ -497,8 +515,10 @@ def test_build_docker_image_name():
     registry_url = "fake_registry"
     upstream_job_name = "a_really_neat_service"
     expected = "%s/services-%s" % (registry_url, upstream_job_name)
-    with mock.patch('paasta_tools.utils.get_service_docker_registry', autospec=True,
-                    return_value=registry_url):
+    with mock.patch(
+        'paasta_tools.utils.get_service_docker_registry', autospec=True,
+        return_value=registry_url,
+    ):
         actual = utils.build_docker_image_name(upstream_job_name)
     assert actual == expected
 
@@ -523,13 +543,15 @@ def test_check_docker_image_false(mock_build_docker_image_name):
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
     with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
-        docker_client.images.return_value = [{
-            'Created': 1425430339,
-            'VirtualSize': 250344331,
-            'ParentId': '1111',
-            'RepoTags': [docker_tag],
-            'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
-            'Size': 0}
+        docker_client.images.return_value = [
+            {
+                'Created': 1425430339,
+                'VirtualSize': 250344331,
+                'ParentId': '1111',
+                'RepoTags': [docker_tag],
+                'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
+                'Size': 0,
+            },
         ]
         assert utils.check_docker_image('test_service', 'tag2') is False
 
@@ -542,13 +564,15 @@ def test_check_docker_image_true(mock_build_docker_image_name):
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
     with mock.patch('paasta_tools.utils.get_docker_client', autospec=True) as mock_docker:
         docker_client = mock_docker.return_value
-        docker_client.images.return_value = [{
-            'Created': 1425430339,
-            'VirtualSize': 250344331,
-            'ParentId': '1111',
-            'RepoTags': [docker_tag],
-            'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
-            'Size': 0}
+        docker_client.images.return_value = [
+            {
+                'Created': 1425430339,
+                'VirtualSize': 250344331,
+                'ParentId': '1111',
+                'RepoTags': [docker_tag],
+                'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
+                'Size': 0,
+            },
         ]
         assert utils.check_docker_image(fake_app, fake_commit) is True
 
@@ -561,8 +585,10 @@ def test_remove_ansi_escape_sequences():
 
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = '/nail/etc/services'
-    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
-                            '/nail/etc/services/service2/chronos-cluster2.yaml']
+    fake_cluster_configs = [
+        '/nail/etc/services/service1/marathon-cluster1.yaml',
+        '/nail/etc/services/service2/chronos-cluster2.yaml',
+    ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
         'os.path.join', autospec=True, return_value='%s/*' % fake_soa_dir,
@@ -578,8 +604,10 @@ def test_list_clusters_no_service_given_lists_all_of_them():
 def test_list_clusters_with_service():
     fake_soa_dir = '/nail/etc/services'
     fake_service = 'fake_service'
-    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
-                            '/nail/etc/services/service1/chronos-cluster2.yaml']
+    fake_cluster_configs = [
+        '/nail/etc/services/service1/marathon-cluster1.yaml',
+        '/nail/etc/services/service1/chronos-cluster2.yaml',
+    ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
         'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
@@ -595,10 +623,12 @@ def test_list_clusters_with_service():
 def test_list_clusters_ignores_bogus_clusters():
     fake_soa_dir = '/nail/etc/services'
     fake_service = 'fake_service'
-    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
-                            '/nail/etc/services/service1/marathon-PROD.yaml',
-                            '/nail/etc/services/service1/chronos-cluster2.yaml',
-                            '/nail/etc/services/service1/chronos-SHARED.yaml']
+    fake_cluster_configs = [
+        '/nail/etc/services/service1/marathon-cluster1.yaml',
+        '/nail/etc/services/service1/marathon-PROD.yaml',
+        '/nail/etc/services/service1/chronos-cluster2.yaml',
+        '/nail/etc/services/service1/chronos-SHARED.yaml',
+    ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
         'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
@@ -633,8 +663,10 @@ def test_get_service_instance_list():
     fake_instance_2 = 'water'
     fake_cluster = '16floz'
     fake_dir = '/nail/home/hipster'
-    fake_job_config = {fake_instance_1: {},
-                       fake_instance_2: {}}
+    fake_job_config = {
+        fake_instance_1: {},
+        fake_instance_2: {},
+    }
     expected = [
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
@@ -733,13 +765,13 @@ def test_get_running_mesos_docker_containers():
         {
             "Status": "Up 2 hours",
             "Names": ['/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
-            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3"
+            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3",
         },
         {
             "Status": "Up 3 days",
             "Names": ['/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
-            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
-        }
+            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c",
+        },
     ]
 
     with mock.patch("paasta_tools.utils.get_docker_client", autospec=True) as mock_docker:
@@ -928,7 +960,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={
-                'mem': 50
+                'mem': 50,
             },
             branch_dict={},
         )
@@ -940,7 +972,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={
-                'mem': 50.4
+                'mem': 50.4,
             },
             branch_dict={},
         )
@@ -975,7 +1007,7 @@ class TestInstanceConfig:
                 'ulimit': {
                     'nofile': {'soft': 1024, 'hard': 2048},
                     'nice': {'soft': 20},
-                }
+                },
             },
             branch_dict={},
         )
@@ -1219,7 +1251,7 @@ class TestInstanceConfig:
             {
                 "containerPath": "/etc/a",
                 "hostPath": "/var/data/a",
-                "mode": "RO"
+                "mode": "RO",
             },
         ]
         fake_conf = utils.InstanceConfig(
@@ -1348,21 +1380,23 @@ class TestInstanceConfig:
 
         with mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_registry', autospec=True,
-            return_value=fake_registry
+            return_value=fake_registry,
         ), mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
-            return_value=fake_image
+            return_value=fake_image,
         ):
             expected_url = "%s/%s" % (fake_registry, fake_image)
             assert fake_conf.get_docker_url() == expected_url
 
-    @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
-        (None, None, None),
-        ('aaa', None, None),
-        ('aaa', {}, None),
-        ('aaa', {"aaa": [{"foo": "bar"}]}, {"foo": "bar"}),
-        ('aaa', {"bbb": [{"foo": "bar"}]}, None),
-    ])
+    @pytest.mark.parametrize(
+        ('dependencies_reference', 'dependencies', 'expected'), [
+            (None, None, None),
+            ('aaa', None, None),
+            ('aaa', {}, None),
+            ('aaa', {"aaa": [{"foo": "bar"}]}, {"foo": "bar"}),
+            ('aaa', {"bbb": [{"foo": "bar"}]}, None),
+        ],
+    )
     def test_get_dependencies(self, dependencies_reference, dependencies, expected):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -1370,18 +1404,20 @@ class TestInstanceConfig:
             instance='',
             config_dict={
                 'dependencies_reference': dependencies_reference,
-                'dependencies': dependencies
+                'dependencies': dependencies,
             },
             branch_dict={},
         )
         fake_conf.get_dependencies() == expected
 
-    @pytest.mark.parametrize(('security', 'expected'), [
-        ({}, None),
-        (None, None),
-        ({"outbound_firewall": "monitor"}, 'monitor'),
-        ({"outbound_firewall": "foo"}, 'foo'),
-    ])
+    @pytest.mark.parametrize(
+        ('security', 'expected'), [
+            ({}, None),
+            (None, None),
+            ({"outbound_firewall": "monitor"}, 'monitor'),
+            ({"outbound_firewall": "foo"}, 'foo'),
+        ],
+    )
     def test_get_outbound_firewall(self, security, expected):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -1392,14 +1428,18 @@ class TestInstanceConfig:
         )
         fake_conf.get_outbound_firewall() == expected
 
-    @pytest.mark.parametrize(('security', 'expected'), [
-        ({}, (True, '')),
-        ({"outbound_firewall": "monitor"}, (True, '')),
-        ({"outbound_firewall": "block"}, (True, '')),
-        ({"outbound_firewall": "foo"}, (False, 'Unrecognized outbound_firewall value "foo"')),
-        ({"outbound_firewall": "monitor", "foo": 1},
-            (False, 'Unrecognized items in security dict of service config: "foo"')),
-    ])
+    @pytest.mark.parametrize(
+        ('security', 'expected'), [
+            ({}, (True, '')),
+            ({"outbound_firewall": "monitor"}, (True, '')),
+            ({"outbound_firewall": "block"}, (True, '')),
+            ({"outbound_firewall": "foo"}, (False, 'Unrecognized outbound_firewall value "foo"')),
+            (
+                {"outbound_firewall": "monitor", "foo": 1},
+                (False, 'Unrecognized items in security dict of service config: "foo"'),
+            ),
+        ],
+    )
     def test_check_security(self, security, expected):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -1410,12 +1450,14 @@ class TestInstanceConfig:
         )
         assert fake_conf.check_security() == expected
 
-    @pytest.mark.parametrize(('dependencies_reference', 'dependencies', 'expected'), [
-        (None, None, (True, '')),
-        ('aaa', {"aaa": []}, (True, '')),
-        ('aaa', None, (False, 'dependencies_reference "aaa" declared but no dependencies found')),
-        ('aaa', {"bbb": []}, (False, 'dependencies_reference "aaa" not found in dependencies dictionary')),
-    ])
+    @pytest.mark.parametrize(
+        ('dependencies_reference', 'dependencies', 'expected'), [
+            (None, None, (True, '')),
+            ('aaa', {"aaa": []}, (True, '')),
+            ('aaa', None, (False, 'dependencies_reference "aaa" declared but no dependencies found')),
+            ('aaa', {"bbb": []}, (False, 'dependencies_reference "aaa" not found in dependencies dictionary')),
+        ],
+    )
     def test_check_dependencies_reference(self, dependencies_reference, dependencies, expected):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -1423,7 +1465,7 @@ class TestInstanceConfig:
             instance='',
             config_dict={
                 'dependencies_reference': dependencies_reference,
-                'dependencies': dependencies
+                'dependencies': dependencies,
             },
             branch_dict={},
         )
@@ -1546,8 +1588,8 @@ def test_format_table():
         [
             ['looooong', 'y', 'z'],
             ['a', 'looooong', 'c'],
-            ['j', 'k', 'looooong']
-        ]
+            ['j', 'k', 'looooong'],
+        ],
     )
     expected = [
         'looooong  y         z',
@@ -1565,8 +1607,8 @@ def test_format_table_with_interjected_lines():
             'interjection',
             ['a', 'looooong', 'c'],
             'unicode interjection',
-            ['j', 'k', 'looooong']
-        ]
+            ['j', 'k', 'looooong'],
+        ],
     )
     expected = [
         'looooong  y         z',
@@ -1634,7 +1676,7 @@ class TestFileLogWriter:
         fake_file = mock.Mock()
         fake_contextmgr = mock.Mock(
             __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None
+            __exit__=lambda _self, t, v, tb: None,
         )
 
         fake_line = "text" * 1000000
@@ -1656,7 +1698,7 @@ class TestFileLogWriter:
 
         fake_contextmgr = mock.Mock(
             __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None
+            __exit__=lambda _self, t, v, tb: None,
         )
 
         fake_line = "line"

@@ -14,11 +14,13 @@ from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 
 @pytest.fixture
 def system_paasta_config():
-    return utils.SystemPaastaConfig({
-        "docker_registry": "fake",
-        "volumes": [],
-        "dockercfg_location": "/foo/bar",
-    }, "/fake/system/configs")
+    return utils.SystemPaastaConfig(
+        {
+            "docker_registry": "fake",
+            "volumes": [],
+            "dockercfg_location": "/foo/bar",
+        }, "/fake/system/configs",
+    )
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
@@ -27,25 +29,25 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
         resources=[
             Dict(
                 name='cpus',
-                scalar=Dict(value=cpu)
+                scalar=Dict(value=cpu),
             ),
             Dict(
                 name='mem',
-                scalar=Dict(value=mem)
+                scalar=Dict(value=mem),
             ),
             Dict(
                 name='ports',
                 ranges=Dict(
-                    range=[Dict(begin=port_begin, end=port_end)]
+                    range=[Dict(begin=port_begin, end=port_end)],
                 ),
             ),
         ],
-        attributes=[]
+        attributes=[],
     )
 
     if pool is not None:
         offer.attributes = [
-            Dict(name='pool', text=Dict(value=pool))
+            Dict(name='pool', text=Dict(value=pool)),
         ]
 
     return offer
@@ -69,7 +71,7 @@ class TestNativeScheduler(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
@@ -89,9 +91,10 @@ class TestNativeScheduler(object):
         )
         fake_driver = mock.Mock()
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             # First, start up 3 old tasks
             old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
             assert len(scheduler.task_store.get_all_tasks()) == 3
@@ -183,7 +186,7 @@ class TestNativeScheduler(object):
                 "mem": 50,
                 "instances": 1,
                 "cmd": 'sleep 50',
-                "drain_method": "test"
+                "drain_method": "test",
             },
             branch_dict={
                 'docker_image': 'busybox',
@@ -203,11 +206,13 @@ class TestNativeScheduler(object):
             staging_timeout=1,
         )
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             tasks, _ = scheduler.tasks_and_state_for_offer(
-                mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {})
+                mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {},
+            )
 
         assert len(tasks) == 1
         for task in tasks:
@@ -250,7 +255,7 @@ class TestNativeScheduler(object):
             cluster=cluster,
             system_paasta_config=system_paasta_config,
             service_config=service_config,
-            staging_timeout=1
+            staging_timeout=1,
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))
@@ -274,7 +279,7 @@ class TestNativeServiceConfig(object):
                 "instances": 3,
                 "cmd": 'sleep 50',
                 "drain_method": "test",
-                "extra_volumes": [{"containerPath": "/foo", "hostPath": "/bar", "mode": "RW"}]
+                "extra_volumes": [{"containerPath": "/foo", "hostPath": "/bar", "mode": "RW"}],
             },
             branch_dict={
                 'docker_image': 'busybox',
@@ -284,9 +289,10 @@ class TestNativeServiceConfig(object):
             soa_dir='/nail/etc/services',
         )
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             task = service_config.base_task(system_paasta_config)
 
         assert task.container.type == 'DOCKER'
@@ -345,14 +351,14 @@ class TestNativeServiceConfig(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         scheduler = native_scheduler.NativeScheduler(

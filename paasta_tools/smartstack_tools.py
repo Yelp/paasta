@@ -41,10 +41,12 @@ def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format)
     haproxy_request.headers.update({'User-Agent': get_user_agent()})
     haproxy_request.mount(
         'http://',
-        requests.adapters.HTTPAdapter(max_retries=3))
+        requests.adapters.HTTPAdapter(max_retries=3),
+    )
     haproxy_request.mount(
         'https://',
-        requests.adapters.HTTPAdapter(max_retries=3))
+        requests.adapters.HTTPAdapter(max_retries=3),
+    )
     haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
     haproxy_data = haproxy_response.text
     reader = csv.DictReader(haproxy_data.splitlines())
@@ -66,8 +68,10 @@ def get_backends(service, synapse_host, synapse_port, synapse_haproxy_url_format
         services = [service]
     else:
         services = None
-    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port,
-                                 synapse_haproxy_url_format=synapse_haproxy_url_format)
+    return get_multiple_backends(
+        services, synapse_host=synapse_host, synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
 
 
 def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_url_format):
@@ -124,7 +128,8 @@ def load_smartstack_info_for_service(service, namespace, blacklist, system_paast
 
     """
     service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir)
+        service=service, namespace=namespace, soa_dir=soa_dir,
+    )
     discover_location_type = service_namespace_config.get_discover()
     return get_smartstack_replication_for_attribute(
         attribute=discover_location_type,
@@ -157,7 +162,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
     attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves,
-        attribute=attribute
+        attribute=attribute,
     )
 
     full_name = compose_job_id(service, namespace)
@@ -252,8 +257,10 @@ def get_registered_marathon_tasks(
     :param service: A list of strings that are the service names that should be checked for replication.
     :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
-    backends = get_multiple_backends([service], synapse_host=synapse_host, synapse_port=synapse_port,
-                                     synapse_haproxy_url_format=synapse_haproxy_url_format)
+    backends = get_multiple_backends(
+        [service], synapse_host=synapse_host, synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
     healthy_tasks = []
     for backend, task in match_backends_and_tasks(backends, marathon_tasks):
         if backend is not None and task is not None and backend['status'].startswith('UP'):

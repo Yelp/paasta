@@ -111,9 +111,12 @@ def get_git_shas_for_service(service, deploy_groups, soa_dir):
         except KeyError:
             pass
         else:
-            # note that all strings are greater than ''
-            if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
-                previously_deployed_shas[sha] = (tstamp, deploy_group)
+            # Now we filter and dedup by picking the most recent sha for a deploy group
+            # Note that all strings are greater than ''
+            if deploy_group in deploy_groups:
+                tstamp_so_far = previously_deployed_shas.get(sha, ('all', ''))[1]
+                if tstamp > tstamp_so_far:
+                    previously_deployed_shas[sha] = (tstamp, deploy_group)
     return previously_deployed_shas
 
 
@@ -132,7 +135,8 @@ def list_previous_commits(service, deploy_groups, any_given_deploy_groups, git_s
         sha, (timestamp, deploy_group) = git_shas[1]
         deploy_groups_arg_line = '-l %s ' % ','.join(deploy_groups) if any_given_deploy_groups else ''
         paasta_print("\nFor example, to use the second to last commit from %s used on %s, run:" % (
-            format_timestamp(timestamp), PaastaColors.bold(deploy_group)))
+            format_timestamp(timestamp), PaastaColors.bold(deploy_group),
+        ))
         paasta_print(PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha)))
 
 

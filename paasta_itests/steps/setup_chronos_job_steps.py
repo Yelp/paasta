@@ -80,8 +80,10 @@ def should_be_disabled_jobs(context, disabled, job_count, service, instance):
     assert len(filtered_jobs) == int(job_count)
 
 
-@then('setup_chronos_job exits with return code "{expected_return_code}"'
-      ' and the output contains "{expected_output_substring}"')
+@then(
+    'setup_chronos_job exits with return code "{expected_return_code}"'
+    ' and the output contains "{expected_output_substring}"',
+)
 def check_setup_chronos_job_output(context, expected_return_code, expected_output_substring):
     assert int(expected_return_code) == context.exit_code
     assert expected_output_substring in context.output

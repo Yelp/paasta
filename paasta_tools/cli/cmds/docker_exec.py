@@ -25,26 +25,32 @@ from paasta_tools.cli.utils import PaastaTaskNotFound
 
 
 def add_subparser(subparsers):
-    new_parser = get_subparser(description="'paasta docker_exec' works by picking a container running your service "
-                                           "at random. It then runs docker exec -ti <container_id> <commands> "
-                                           "where commands are those that you specify",
-                               help_text="Docker exec against a container running your service",
-                               command='docker_exec',
-                               function=paasta_docker_exec,
-                               subparsers=subparsers)
-    new_parser.add_argument('exec_command',
-                            help='Command to append to docker docker_exec',
-                            nargs='?',
-                            default='/bin/bash')
+    new_parser = get_subparser(
+        description="'paasta docker_exec' works by picking a container running your service "
+                    "at random. It then runs docker exec -ti <container_id> <commands> "
+                    "where commands are those that you specify",
+        help_text="Docker exec against a container running your service",
+        command='docker_exec',
+        function=paasta_docker_exec,
+        subparsers=subparsers,
+    )
+    new_parser.add_argument(
+        'exec_command',
+        help='Command to append to docker docker_exec',
+        nargs='?',
+        default='/bin/bash',
+    )
 
 
 def paasta_docker_exec(args):
     try:
-        task = get_task_from_instance(cluster=args.cluster,
-                                      service=args.service,
-                                      instance=args.instance,
-                                      slave_hostname=args.host,
-                                      task_id=args.mesos_id)
+        task = get_task_from_instance(
+            cluster=args.cluster,
+            service=args.service,
+            instance=args.instance,
+            slave_hostname=args.host,
+            task_id=args.mesos_id,
+        )
     except PaastaTaskNotFound:
         sys.exit(1)
     container = get_container_name(task)

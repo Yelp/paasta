@@ -40,18 +40,28 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
-    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
-                        help="Print out more output regarding the state of the service")
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=chronos_tools.DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-a', '--run-all-related-jobs', action='store_true', dest='run_all_related_jobs',
-                        default=False, help='Run all the parent-dependent related jobs')
-    parser.add_argument('-f', '--force-disabled', action='store_true', dest='force_disabled',
-                        default=False, help='Run services that are configured to be disabled')
+    parser.add_argument(
+        '-v', '--verbose', action='store_true', dest="verbose", default=False,
+        help="Print out more output regarding the state of the service",
+    )
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=chronos_tools.DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-a', '--run-all-related-jobs', action='store_true', dest='run_all_related_jobs',
+        default=False, help='Run all the parent-dependent related jobs',
+    )
+    parser.add_argument(
+        '-f', '--force-disabled', action='store_true', dest='force_disabled',
+        default=False, help='Run services that are configured to be disabled',
+    )
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
-    parser.add_argument('execution_date',
-                        help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .")
+    parser.add_argument(
+        'execution_date',
+        help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
+    )
     args = parser.parse_args()
     return args
 
@@ -188,7 +198,8 @@ def main():
     related_jobs = chronos_tools.get_related_jobs_configs(cluster, service, instance, soa_dir=args.soa_dir)
     if not related_jobs:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
-            args.service_instance, cluster)
+            args.service_instance, cluster,
+        )
         paasta_print(error_msg)
         raise NoDeploymentsAvailable
 
@@ -196,7 +207,7 @@ def main():
         # Strip all the configuration for the related services
         # those information will not be used by the rest of the flow
         related_jobs = {
-            (service, instance): related_jobs[(service, instance)]
+            (service, instance): related_jobs[(service, instance)],
         }
 
     complete_job_configs = {}

@@ -31,7 +31,7 @@ from paasta_tools.mac_address import reserve_unique_mac_address
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-LOCK_DIRECTORY = '/var/run/paasta/mac-address'
+LOCK_DIRECTORY = '/var/lib/paasta/mac-address'
 ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
@@ -240,7 +240,8 @@ def append_cpuset_args(argv, env_args):
         pinned_numa_node = int(env_args.get('PIN_TO_NUMA_NODE'))
     except (ValueError, TypeError):
         logging.error('Could not read PIN_TO_NUMA_NODE value as an int: {}'.format(
-            env_args.get('PIN_TO_NUMA_NODE')))
+            env_args.get('PIN_TO_NUMA_NODE'),
+        ))
         return argv
 
     cpumap = get_cpumap()
@@ -250,7 +251,8 @@ def append_cpuset_args(argv, env_args):
         return argv
     if pinned_numa_node not in cpumap:
         logging.error('Specified NUMA node: {} does not exist on this system'.format(
-            pinned_numa_node))
+            pinned_numa_node,
+        ))
         return argv
     if arg_collision(['--cpuset-cpus', '--cpuset-mems'], argv):
         logging.error('--cpuset options are already set. Not overriding')
@@ -263,12 +265,16 @@ def append_cpuset_args(argv, env_args):
         return argv
     if get_numa_memsize(len(cpumap)) <= get_mem_requierements(env_args):
         logging.error('Requested memory:{} MB does not fit in one NUMA node: {} MB'.format(
-            get_mem_requierements(env_args), get_numa_memsize(len(cpumap))))
+            get_mem_requierements(env_args), get_numa_memsize(len(cpumap)),
+        ))
         return argv
 
     logging.info('Binding container to NUMA node {}'.format(pinned_numa_node))
-    argv = add_argument(argv, ('--cpuset-cpus=' + ','.join(
-        str(c) for c in cpumap[pinned_numa_node])))
+    argv = add_argument(
+        argv, ('--cpuset-cpus=' + ','.join(
+            str(c) for c in cpumap[pinned_numa_node]
+        )),
+    )
     argv = add_argument(argv, ('--cpuset-mems=' + str(pinned_numa_node)))
     return argv
 
@@ -289,7 +295,8 @@ def add_firewall(argv, service, instance):
                     DEFAULT_SYNAPSE_SERVICE_DIR,
                     service,
                     instance,
-                    mac_address)
+                    mac_address,
+                )
         except Exception as e:
             output = 'Unable to add firewall rules: {}'.format(e)
 

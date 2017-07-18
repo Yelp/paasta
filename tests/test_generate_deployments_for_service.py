@@ -91,8 +91,10 @@ def test_get_deploy_group_mappings():
         'paasta_tools.remote_git.list_remote_refs',
         return_value=fake_remote_refs, autospec=True,
     ) as list_remote_refs_patch:
-        actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
-                                                                                       fake_service, fake_old_mappings)
+        actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(
+            fake_soa_dir,
+            fake_service, fake_old_mappings,
+        )
         get_instance_configs_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
         assert expected == actual
@@ -138,8 +140,10 @@ def test_get_cluster_instance_map_for_service():
 
 
 def test_get_service_from_docker_image():
-    mock_image = ('docker-paasta.yelpcorp.com:443/'
-                  'services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6')
+    mock_image = (
+        'docker-paasta.yelpcorp.com:443/'
+        'services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6'
+    )
     actual = generate_deployments_for_service.get_service_from_docker_image(mock_image)
     assert 'example_service' == actual
 
@@ -185,7 +189,7 @@ def test_main():
         json_dump_patch.assert_called_once_with(
             {
                 'v1': {
-                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'},
                 },
                 'v2': mock.sentinel.v2_mappings,
             },
@@ -196,7 +200,7 @@ def test_main():
         # test no update to file if content unchanged
         json_load_patch.return_value = {
             'v1': {
-                'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'},
             },
             'v2': mock.sentinel.v2_mappings,
         }
@@ -227,7 +231,8 @@ def test_get_deployments_dict():
     v2_mappings = mock.sentinel.v2_mappings
 
     assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(
-        branch_mappings, v2_mappings) == {
+        branch_mappings, v2_mappings,
+    ) == {
         'v1': branch_mappings,
         'v2': mock.sentinel.v2_mappings,
     }

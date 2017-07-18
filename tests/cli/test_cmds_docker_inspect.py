@@ -30,26 +30,34 @@ def test_add_subparser(mock_get_subparser):
 @patch('paasta_tools.cli.cmds.docker_inspect.subprocess', autospec=True)
 @patch('paasta_tools.cli.cmds.docker_inspect.get_container_name', autospec=True)
 @patch('paasta_tools.cli.cmds.docker_inspect.get_task_from_instance', autospec=True)
-def test_paasta_docker_inspect(mock_get_task_from_instance,
-                               mock_get_container_name,
-                               mock_subprocess):
+def test_paasta_docker_inspect(
+    mock_get_task_from_instance,
+    mock_get_container_name,
+    mock_subprocess,
+):
     mock_task = mock.Mock(slave={'hostname': 'host1'})
     mock_get_task_from_instance.return_value = mock_task
-    mock_args = mock.Mock(cluster='cluster1',
-                          service='mock_service',
-                          instance='mock_instance',
-                          host='host1',
-                          mesos_id=None)
+    mock_args = mock.Mock(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        host='host1',
+        mesos_id=None,
+    )
 
     docker_inspect.paasta_docker_inspect(mock_args)
 
-    mock_get_task_from_instance.assert_called_with(cluster='cluster1',
-                                                   service='mock_service',
-                                                   instance='mock_instance',
-                                                   slave_hostname='host1',
-                                                   task_id=None)
+    mock_get_task_from_instance.assert_called_with(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        slave_hostname='host1',
+        task_id=None,
+    )
 
     mock_get_container_name.assert_called_with(mock_task)
-    expected = ["ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
-                "sudo docker inspect {}".format(mock_get_container_name.return_value)]
+    expected = [
+        "ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
+        "sudo docker inspect {}".format(mock_get_container_name.return_value),
+    ]
     mock_subprocess.call.assert_called_with(expected)

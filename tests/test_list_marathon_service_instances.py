@@ -33,7 +33,8 @@ def test_get_desired_marathon_configs():
             format_marathon_app_dict=mock.MagicMock(return_value=mock_app_dict),
         )
         assert list_marathon_service_instances.get_desired_marathon_configs(
-            '/fake/soa/dir') == {'service.instance.git.configs': mock_app_dict}
+            '/fake/soa/dir',
+        ) == {'service.instance.git.configs': mock_app_dict}
 
 
 def test_get_service_instances_that_need_bouncing():
@@ -55,7 +56,8 @@ def test_get_service_instances_that_need_bouncing():
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir')) == {'fake_service.fake_instance'}
+            mock_client, '/fake/soa/dir',
+        )) == {'fake_service.fake_instance'}
 
 
 def test_get_service_instances_that_need_bouncing_two_existing_services():
@@ -76,7 +78,8 @@ def test_get_service_instances_that_need_bouncing_two_existing_services():
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir')) == {'fake_service.fake_instance'}
+            mock_client, '/fake/soa/dir',
+        )) == {'fake_service.fake_instance'}
 
 
 def test_get_service_instances_that_need_bouncing_no_difference():
@@ -92,7 +95,8 @@ def test_get_service_instances_that_need_bouncing_no_difference():
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir')) == set()
+            mock_client, '/fake/soa/dir',
+        )) == set()
 
 
 def test_get_service_instances_that_need_bouncing_instances_difference():
@@ -108,7 +112,8 @@ def test_get_service_instances_that_need_bouncing_instances_difference():
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir')) == {'fake_service.fake_instance'}
+            mock_client, '/fake/soa/dir',
+        )) == {'fake_service.fake_instance'}
 
 
 def test_get_service_instances_that_need_bouncing_at_risk():
@@ -124,4 +129,5 @@ def test_get_service_instances_that_need_bouncing_at_risk():
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
         mock_get_num_at_risk_tasks.return_value = 1
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir')) == {'fake_service.fake_instance'}
+            mock_client, '/fake/soa/dir',
+        )) == {'fake_service.fake_instance'}

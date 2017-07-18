@@ -315,8 +315,10 @@ def crossover_bounce(
     assert margin_factor > 0
     assert margin_factor <= 1
 
-    needed_count = max(int(math.ceil(new_config['instances'] * margin_factor)) -
-                       len(happy_new_tasks), 0)
+    needed_count = max(
+        int(math.ceil(new_config['instances'] * margin_factor)) -
+        len(happy_new_tasks), 0,
+    )
 
     old_tasks = []
     for app, tasks in old_app_live_happy_tasks.items():

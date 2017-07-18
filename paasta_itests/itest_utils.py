@@ -126,7 +126,7 @@ def setup_mesos_cli_config(config_file, cluster):
             "master": "zk://%s/mesos-%s" % (zookeeper_service, cluster),
             "log_file": "None",
             "response_timeout": 5,
-        }
+        },
     }
     paasta_print('Generating mesos.cli config file: %s' % config_file)
     with open(config_file, 'w') as fp:

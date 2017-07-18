@@ -19,10 +19,12 @@ def test_check_offer_constraints_returns_true_when_satisfied():
     attr = Mock(text=Mock(value='test'))
     attr.configure_mock(name='pool')
     offer = Mock(attributes=[attr])
-    cons = [['pool', 'MAX_PER', '5'],
-            ['pool', 'EQUALS', 'test'],
-            ['pool', 'LIKE', 'te.*$'],
-            ['pool', 'UNLIKE', 'ta.*']]
+    cons = [
+        ['pool', 'MAX_PER', '5'],
+        ['pool', 'EQUALS', 'test'],
+        ['pool', 'LIKE', 'te.*$'],
+        ['pool', 'UNLIKE', 'ta.*'],
+    ]
     state = {'MAX_PER': {'pool': {'test': 0}}}
     assert constraints.check_offer_constraints(offer, cons, state) is True
     state = {'MAX_PER': {'pool': {'test': 6}}}

@@ -102,16 +102,20 @@ def test_status_marathon_job_verbose():
     ) as mock_is_app_id_running:
         mock_get_matching_appids.return_value = ['/app1']
         mock_get_verbose_app.return_value = ([task], 'fake_return')
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client, 'fake_cluster',
-                                                                      '/nail/blah')
+        tasks, out = marathon_serviceinit.status_marathon_job_verbose(
+            service, instance, client, 'fake_cluster',
+            '/nail/blah',
+        )
         mock_is_app_id_running.assert_called_once_with('/app1', client)
         mock_get_matching_appids.assert_called_once_with(service, instance, client)
-        mock_get_verbose_app.assert_called_once_with(marathon_client=client,
-                                                     app=app,
-                                                     service=service,
-                                                     instance=instance,
-                                                     cluster='fake_cluster',
-                                                     soa_dir='/nail/blah')
+        mock_get_verbose_app.assert_called_once_with(
+            marathon_client=client,
+            app=app,
+            service=service,
+            instance=instance,
+            cluster='fake_cluster',
+            soa_dir='/nail/blah',
+        )
         assert tasks == [task]
         assert 'fake_return' in out
 
@@ -130,8 +134,10 @@ def test_status_marathon_job_verbose_when_not_running():
         'paasta_tools.marathon_tools.is_app_id_running', return_value=False, autospec=True,
     ) as mock_is_app_id_running:
         mock_get_matching_appids.return_value = ['/app1']
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client, 'fake_cluster',
-                                                                      '/nail/blah')
+        tasks, out = marathon_serviceinit.status_marathon_job_verbose(
+            service, instance, client, 'fake_cluster',
+            '/nail/blah',
+        )
         mock_is_app_id_running.assert_called_once_with('/app1', client)
         assert not mock_get_verbose_app.called
         assert tasks == []
@@ -139,14 +145,16 @@ def test_status_marathon_job_verbose_when_not_running():
 
 
 def test_get_verbose_status_of_marathon_app():
-    mock_autoscaling_info = ServiceAutoscalingInfo(current_instances=str(3),
-                                                   max_instances=str(5),
-                                                   min_instances=str(1),
-                                                   current_utilization="81%",
-                                                   target_instances=str(4))
+    mock_autoscaling_info = ServiceAutoscalingInfo(
+        current_instances=str(3),
+        max_instances=str(5),
+        min_instances=str(1),
+        current_utilization="81%",
+        target_instances=str(4),
+    )
 
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -159,12 +167,14 @@ def test_get_verbose_status_of_marathon_app():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
-                                                                             fake_app,
-                                                                             'fake_service',
-                                                                             'main',
-                                                                             'fake_cluster',
-                                                                             '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+            mock_marathon_client,
+            fake_app,
+            'fake_service',
+            'main',
+            'fake_cluster',
+            '/nail/blah',
+        )
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
@@ -175,7 +185,7 @@ def test_get_verbose_status_of_marathon_app():
 
 def test_get_verbose_status_of_marathon_app_no_autoscaling():
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -188,12 +198,14 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
-                                                                             fake_app,
-                                                                             'fake_service',
-                                                                             'main',
-                                                                             'fake_cluster',
-                                                                             '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+            mock_marathon_client,
+            fake_app,
+            'fake_service',
+            'main',
+            'fake_cluster',
+            '/nail/blah',
+        )
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
@@ -204,7 +216,7 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
 
 def test_get_verbose_status_of_marathon_app_column_alignment():
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -226,12 +238,14 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
         fake_task2.health_check_results = []
 
         fake_app.tasks = [fake_task1, fake_task2]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(mock_marathon_client,
-                                                                             fake_app,
-                                                                             'fake_service',
-                                                                             'main',
-                                                                             'fake_cluster',
-                                                                             '/nail/blah')
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+            mock_marathon_client,
+            fake_app,
+            'fake_service',
+            'main',
+            'fake_cluster',
+            '/nail/blah',
+        )
         (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
         assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
         assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
@@ -389,7 +403,7 @@ def test_format_haproxy_backend_row():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         is_correct_instance=True,
     )
@@ -412,12 +426,16 @@ def test_status_smartstack_backends_normal():
     bad_task = mock.Mock()
     other_task = mock.Mock()
     haproxy_backends_by_task = {
-        good_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1},
-        bad_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                   'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
-                   'check_status': 'L7OK', 'check_duration': 1},
+        good_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
+        bad_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
     }
 
     with mock.patch(
@@ -435,8 +453,8 @@ def test_status_smartstack_backends_normal():
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
             'hostname': 'fakehost',
             'attributes': {
-                'fake_discover': 'fakelocation'
-            }
+                'fake_discover': 'fakelocation',
+            },
         }]
 
         mock_read_reg.return_value = service_instance
@@ -482,12 +500,16 @@ def test_status_smartstack_backends_different_nerve_ns():
     bad_task = mock.Mock()
     other_task = mock.Mock()
     haproxy_backends_by_task = {
-        good_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1},
-        bad_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                   'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
-                   'check_status': 'L7OK', 'check_duration': 1},
+        good_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
+        bad_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
     }
 
     with mock.patch(
@@ -505,8 +527,8 @@ def test_status_smartstack_backends_different_nerve_ns():
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
             'hostname': 'fakehost',
             'attributes': {
-                'fake_discover': 'fakelocation'
-            }
+                'fake_discover': 'fakelocation',
+            },
         }]
 
         mock_read_reg.return_value = service_instance
@@ -583,9 +605,11 @@ def test_status_smartstack_backends_multiple_locations():
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1}
+    fake_backend = {
+        'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
     with mock.patch(
         'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace_config, mock.patch(
@@ -608,15 +632,15 @@ def test_status_smartstack_backends_multiple_locations():
             {
                 'hostname': 'fakehost',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'fakeotherhost',
                 'attributes': {
-                    'fake_discover': 'fakeotherlocation'
-                }
-            }
+                    'fake_discover': 'fakeotherlocation',
+                },
+            },
         ]
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -657,9 +681,11 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
 
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1}
+    fake_backend = {
+        'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
     with mock.patch(
         'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace_config, mock.patch(
@@ -684,15 +710,15 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'hostname2',
                 'attributes': {
-                    'fake_discover': 'fakelocation2'
-                }
-            }
+                    'fake_discover': 'fakelocation2',
+                },
+            },
         ]
         marathon_serviceinit.status_smartstack_backends(
             service=service,
@@ -734,12 +760,16 @@ def test_status_smartstack_backends_verbose_multiple_apps():
     bad_task = mock.Mock()
     other_task = mock.Mock()
     haproxy_backends_by_task = {
-        good_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1},
-        bad_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                   'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
-                   'check_status': 'L7OK', 'check_duration': 1},
+        good_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
+        bad_task: {
+            'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+            'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
+            'check_status': 'L7OK', 'check_duration': 1,
+        },
     }
 
     with mock.patch(
@@ -766,8 +796,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
         ]
         actual = marathon_serviceinit.status_smartstack_backends(
@@ -802,12 +832,16 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1}
-    fake_other_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-                          'check_code': '200', 'svname': 'ipaddress1:1002_hostname2',
-                          'check_status': 'L7OK', 'check_duration': 1}
+    fake_backend = {
+        'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
+    fake_other_backend = {
+        'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1002_hostname2',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
     with mock.patch(
         'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace_config, mock.patch(
@@ -827,15 +861,15 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             {
                 'hostname': 'hostname1',
                 'attributes': {
-                    'fake_discover': 'fakelocation'
-                }
+                    'fake_discover': 'fakelocation',
+                },
             },
             {
                 'hostname': 'hostname2',
                 'attributes': {
-                    'fake_discover': 'fakeotherlocation'
-                }
-            }
+                    'fake_discover': 'fakeotherlocation',
+                },
+            },
         ]
         tasks = [good_task, other_task]
         actual = marathon_serviceinit.status_smartstack_backends(
@@ -881,9 +915,11 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
     normal_count = 10
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_backend = {'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1}
+    fake_backend = {
+        'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
     with mock.patch(
         'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace_config, mock.patch(
@@ -899,9 +935,9 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             {
                 'hostname': 'fake',
                 'attributes': {
-                    'fake_discover': 'fake_location_1'
-                }
-            }
+                    'fake_discover': 'fake_location_1',
+                },
+            },
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_reg.return_value = compose_job_id(service, instance)
@@ -934,9 +970,11 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
     normal_count = 10
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_backend = {'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
-                    'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
-                    'check_status': 'L7OK', 'check_duration': 1}
+    fake_backend = {
+        'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
+        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+        'check_status': 'L7OK', 'check_duration': 1,
+    }
     with mock.patch(
         'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace_config, mock.patch(
@@ -952,9 +990,9 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             {
                 'hostname': 'fake',
                 'attributes': {
-                    'fake_discover': 'fake_location_1'
-                }
-            }
+                    'fake_discover': 'fake_location_1',
+                },
+            },
         ]
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
         mock_read_reg.return_value = compose_job_id(service, instance)
@@ -1003,7 +1041,8 @@ def test_get_short_task_id():
 def test_status_mesos_tasks_working():
     with mock.patch(
             'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
-            autospec=True) as mock_tasks:
+            autospec=True,
+    ) as mock_tasks:
         mock_tasks.return_value = [{'id': 'unused{0}unused{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
                                    for _ in range(2)]
         normal_count = 2
@@ -1014,7 +1053,8 @@ def test_status_mesos_tasks_working():
 def test_status_mesos_tasks_warning():
     with mock.patch(
             'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
-            autospec=True) as mock_tasks:
+            autospec=True,
+    ) as mock_tasks:
         mock_tasks.return_value = [{'id': 'fake{0}fake{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
                                    for _ in range(2)]
         normal_count = 4
@@ -1025,7 +1065,8 @@ def test_status_mesos_tasks_warning():
 def test_status_mesos_tasks_critical():
     with mock.patch(
             'paasta_tools.marathon_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
-            autospec=True) as mock_tasks:
+            autospec=True,
+    ) as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
@@ -1047,7 +1088,8 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
         return_value=SystemPaastaConfig({}, "/fake/config"),
     ):
         actual = marathon_serviceinit.perform_command(
-            'start', fake_service, fake_instance, fake_cluster, False, soa_dir)
+            'start', fake_service, fake_instance, fake_cluster, False, soa_dir,
+        )
         assert actual == 1
 
 
@@ -1061,7 +1103,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
     tasks = [
         mock.Mock(host='host1', ports=[1234]),
         mock.Mock(host='host2', ports=[1234]),
-        mock.Mock(host='host3', ports=[1234])
+        mock.Mock(host='host3', ports=[1234]),
     ]
     backends = {
         'host1': {
@@ -1070,7 +1112,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         'host2': {
             'svname': '169.254.123.2:1234_host2',
@@ -1078,7 +1120,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
         'host3': {
             'svname': '169.254.123.3:1234_host3',
@@ -1086,12 +1128,12 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             'check_status': 'L7OK',
             'check_code': '200',
             'check_duration': 4,
-            'lastchg': 0
+            'lastchg': 0,
         },
     }
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
-        side_effect=lambda _, synapse_host, synapse_port, synapse_haproxy_url_format: [backends[synapse_host]]
+        side_effect=lambda _, synapse_host, synapse_port, synapse_haproxy_url_format: [backends[synapse_host]],
     ), mock.patch(
         'socket.gethostbyname', side_effect=lambda name: host_ip_mapping[name], autospec=True,
     ):
