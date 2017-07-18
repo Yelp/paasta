@@ -707,6 +707,12 @@ LOG_COMPONENTS = OrderedDict([
             'help': 'Logs from security-related services such as firewall monitoring',
         },
     ),
+    (
+        'oom', {
+            'color': PaastaColors.red,
+            'help': 'Kernel OOM events.',
+        },
+    ),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
