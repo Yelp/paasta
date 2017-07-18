@@ -19,4 +19,4 @@
 # Don't bump version manually. See `make release` docs in ./Makefile
 from __future__ import absolute_import
 from __future__ import unicode_literals
-__version__ = '0.66.4'
+__version__ = '0.66.5'
