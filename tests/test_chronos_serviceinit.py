@@ -34,8 +34,10 @@ def test_start_chronos_job():
     job_id = 'my_job_id'
     cluster = 'my_cluster'
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_soa_config = mock.Mock(get_disabled=mock.Mock(return_value=False),
-                               get_desired_state=mock.Mock(return_value="start"))
+    job_soa_config = mock.Mock(
+        get_disabled=mock.Mock(return_value=False),
+        get_desired_state=mock.Mock(return_value="start"),
+    )
     job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with mock.patch(
         'paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True,
@@ -89,9 +91,11 @@ def test_stop_chronos_job():
     service = 'my_service'
     instance = 'my_instance'
     cluster = 'my_cluster'
-    existing_jobs = [{'name': 'job_v1', 'disabled': False},
-                     {'name': 'job_v2', 'disabled': False},
-                     {'name': 'job_v3', 'disabled': True}]
+    existing_jobs = [
+        {'name': 'job_v1', 'disabled': False},
+        {'name': 'job_v2', 'disabled': False},
+        {'name': 'job_v3', 'disabled': True},
+    ]
     with mock.patch(
         'paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True,
     ) as mock_client, mock.patch(
@@ -115,7 +119,7 @@ def test_get_short_task_id():
 def test_format_chronos_job_name_exists(mock_status):
     example_job = {
         'name': 'my_service my_instance',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -128,7 +132,7 @@ def test_format_chronos_job_name_exists(mock_status):
 def test_format_chronos_job_temp_job(mock_status):
     example_job = {
         'name': '%s my_service my_instance' % chronos_tools.TMP_JOB_IDENTIFIER,
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -141,7 +145,7 @@ def test_format_chronos_job_temp_job(mock_status):
 def test_format_chronos_job_name_does_not_exist(mock_status):
     example_job = {
         'name': 'my_service my_instance',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -155,7 +159,7 @@ def test_format_chronos_job_status_disabled(mock_status):
     example_job = {
         'name': 'my_service my_instance',
         'disabled': True,
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -169,7 +173,7 @@ def test_format_chronos_job_status_enabled(mock_status):
     example_job = {
         'name': 'my_service my_instance',
         'disabled': False,
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -183,7 +187,7 @@ def test_format_chronos_job_chronos_status(mock_status):
     example_job = {
         'name': 'my_service my_instance',
         'disabled': True,
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -198,7 +202,7 @@ def test_format_chronos_job_status_no_last_run(mock_status):
         'name': 'my_service my_instance',
         'lastError': '',
         'lastSuccess': '',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -214,7 +218,7 @@ def test_format_chronos_job_status_failure_no_success(mock_status):
         'name': 'my_service my_instance',
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -231,7 +235,7 @@ def test_format_chronos_job_status_success_no_failure(mock_status):
         'name': 'my_service my_instance',
         'lastError': '',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -248,7 +252,7 @@ def test_format_chronos_job_status_failure_and_then_success(mock_status):
         'name': 'my_service my_instance',
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '2015-04-21T23:20:00.420Z',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -265,7 +269,7 @@ def test_format_chronos_job_status_success_and_then_failure(mock_status):
         'name': 'my_service my_instance',
         'lastError': '2015-04-21T23:20:00.420Z',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -296,7 +300,7 @@ def test_format_chronos_job_command(mock_status):
     example_job = {
         'name': 'my_service my_instance',
         'command': 'do the hokey pokey',
-        'schedule': 'foo'
+        'schedule': 'foo',
     }
     running_tasks = []
     verbose = False
@@ -333,7 +337,7 @@ def test_format_parents_summary():
 def test_format_parents_verbose():
     example_job = {
         'name': 'myexamplejob',
-        'parents': ['testservice testinstance']
+        'parents': ['testservice testinstance'],
     }
     fake_last_datetime = '2007-04-01T17:52:58.908Z'
     fake_last_datetime_dt = datetime.datetime(2007, 4, 1, 17, 52, 58, 908000, pytz.utc)
@@ -345,7 +349,7 @@ def test_format_parents_verbose():
     ), mock.patch(
         'paasta_tools.chronos_tools.get_status_last_run',
         autospec=True,
-        return_value=example_status
+        return_value=example_status,
     ):
         expected_time = humanize.naturaltime(datetime_from_utc_to_local(fake_last_datetime_dt))
         actual = chronos_serviceinit._format_parents_verbose(example_job)
@@ -356,7 +360,7 @@ def test_format_parents_verbose():
 def test_format_schedule_dependent_job():
     example_job = {
         'epsilon': 'myepsilon',
-        'parents': ['testservice testinstance']
+        'parents': ['testservice testinstance'],
     }
     actual = chronos_serviceinit._format_schedule(example_job)
     assert "None (Dependent Job)." in actual
@@ -365,7 +369,7 @@ def test_format_schedule_dependent_job():
 
 def test_format_schedule_null_scheduletimezone():
     example_job = {
-        'scheduleTimeZone': 'null'  # This is what Chronos returns.
+        'scheduleTimeZone': 'null',  # This is what Chronos returns.
     }
     actual = chronos_serviceinit._format_schedule(example_job)
     assert "(UTC) Epsilon" in actual  # In the output, we default to UTC (Chronos should do the same)
@@ -373,7 +377,7 @@ def test_format_schedule_null_scheduletimezone():
 
 def test_format_schedule_scheduletimezone():
     example_job = {
-        'scheduleTimeZone': 'Zulu'
+        'scheduleTimeZone': 'Zulu',
     }
     actual = chronos_serviceinit._format_schedule(example_job)
     assert "(Zulu) Epsilon" in actual
@@ -389,7 +393,7 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
     expected_tail_lines = {
         1: 0,
         2: 10,
-        3: 100
+        3: 100,
     }[verbosity_level]
     mock_client = mock.Mock()
     with mock.patch(
@@ -409,8 +413,10 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
 
 @mock.patch('paasta_tools.chronos_serviceinit.format_chronos_job_status', autospec=True)
 @mock.patch('paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
-def test_status_chronos_jobs_is_deployed(mock_get_cached_list_of_running_tasks_from_frameworks,
-                                         mock_format_chronos_job_status):
+def test_status_chronos_jobs_is_deployed(
+    mock_get_cached_list_of_running_tasks_from_frameworks,
+    mock_format_chronos_job_status,
+):
     jobs = [{'name': 'my_service my_instance'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
@@ -419,7 +425,7 @@ def test_status_chronos_jobs_is_deployed(mock_get_cached_list_of_running_tasks_f
     mock_format_chronos_job_status.return_value = 'job_status_output'
     mock_get_cached_list_of_running_tasks_from_frameworks.return_value = [
         {'id': 'ct:1492206300000:0:my_service my_instance:'},
-        {'id': 'ct:1492206300000:0:not_my_service not_my_instance:'}
+        {'id': 'ct:1492206300000:0:not_my_service not_my_instance:'},
     ]
     fake_client = mock.Mock()
 

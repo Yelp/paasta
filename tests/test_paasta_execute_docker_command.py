@@ -33,7 +33,8 @@ def test_execute_in_container():
     mock_docker_client.exec_inspect.return_value = {'ExitCode': fake_return_code}
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     expected_cmd = ['/bin/sh', '-c', fake_command]
     mock_docker_client.exec_create.assert_called_once_with(fake_container_id, expected_cmd)
 
@@ -52,11 +53,12 @@ def test_execute_in_container_reuses_exec():
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', fake_command],
-        }
+        },
     }
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 
@@ -72,14 +74,14 @@ def test_execute_in_container_reuses_only_valid_exec():
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', 'some_other_command'],
-        }
+        },
     }
     good_exec = {
         'ExitCode': fake_return_code,
         'ProcessConfig': {
             'entrypoint': '/bin/sh',
             'arguments': ['-c', fake_command],
-        }
+        },
     }
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.inspect_container.return_value = {'ExecIDs': ['fake_other_exec', fake_execid, 'fake_other_exec']}
@@ -88,7 +90,8 @@ def test_execute_in_container_reuses_only_valid_exec():
     mock_docker_client.exec_inspect.side_effect = [bad_exec, good_exec, bad_exec, good_exec]
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 

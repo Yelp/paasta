@@ -52,7 +52,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect'
+        help='The name of the service you wish to inspect',
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '-d', '--soa-dir',
@@ -78,7 +78,7 @@ def get_smartstack_endpoints(service, soa_dir):
         mode = config.get('mode', 'http')
         port = config.get('proxy_port')
         endpoints.append("%s://169.254.255.254:%s (%s)" % (
-            mode, port, name
+            mode, port, name,
         ))
     return endpoints
 
@@ -93,7 +93,8 @@ def get_deployments_strings(service, soa_dir):
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
         service_config = load_service_namespace_config(
-            service=service, namespace='main', soa_dir=soa_dir)
+            service=service, namespace='main', soa_dir=soa_dir,
+        )
         service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
             if service_mode == "tcp":

@@ -39,7 +39,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
                 'Code': 'instance-reboot',
                 'Description': 'string',
                 'NotBefore': datetime(2015, 1, 1),
-                'NotAfter': datetime(2015, 1, 1)
+                'NotAfter': datetime(2015, 1, 1),
             },
         ],
         'SystemStatus': {
@@ -47,7 +47,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
         },
         'InstanceStatus': {
             'Status': 'ok',
-        }
+        },
     }
     mock_slave_2 = Mock(name='slave2')
     mock_slave_2.task_counts = SlaveTaskCount(
@@ -61,7 +61,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
                 'Code': 'instance-reboot',
                 'Description': 'string',
                 'NotBefore': datetime(2015, 1, 1),
-                'NotAfter': datetime(2015, 1, 1)
+                'NotAfter': datetime(2015, 1, 1),
             },
         ],
         'SystemStatus': {
@@ -69,7 +69,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
         },
         'InstanceStatus': {
             'Status': 'ok',
-        }
+        },
     }
     ret = ec2_fitness.sort_by_system_instance_health([mock_slave_1, mock_slave_2])
     assert ret == [mock_slave_2, mock_slave_1]
@@ -89,7 +89,7 @@ def test_sort_by_upcoming_events():
         },
         'InstanceStatus': {
             'Status': 'ok',
-        }
+        },
     }
     mock_slave_2 = Mock()
     mock_slave_2. task_counts = SlaveTaskCount(
@@ -103,7 +103,7 @@ def test_sort_by_upcoming_events():
                 'Code': 'instance-reboot',
                 'Description': 'string',
                 'NotBefore': datetime(2015, 1, 1),
-                'NotAfter': datetime(2015, 1, 1)
+                'NotAfter': datetime(2015, 1, 1),
             },
         ],
         'SystemStatus': {
@@ -111,7 +111,7 @@ def test_sort_by_upcoming_events():
         },
         'InstanceStatus': {
             'Status': 'ok',
-        }
+        },
     }
     ret = ec2_fitness.sort_by_upcoming_events([mock_slave_1, mock_slave_2])
     assert ret == [mock_slave_1, mock_slave_2]
@@ -129,7 +129,7 @@ def test_sort_by_fitness_calls_all_sorting_funcs():
         autospec=True,
     ) as mock_sort_by_running_batch_count, mock.patch(
         'paasta_tools.autoscaling.ec2_fitness.sort_by_total_tasks',
-        autospec=True
+        autospec=True,
     ) as mock_sort_by_total_tasks:
         instances = []
         ec2_fitness.sort_by_ec2_fitness(instances)
@@ -149,7 +149,7 @@ def test_sort_by_fitness():
     mock_slave_1.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'impaired', },
-        'InstanceStatus': {'Status': 'ok', }
+        'InstanceStatus': {'Status': 'ok', },
     }
     mock_slave_2 = Mock(name='slave2')
     mock_slave_2.task_counts = SlaveTaskCount(
@@ -163,11 +163,11 @@ def test_sort_by_fitness():
                 'Code': 'instance-reboot',
                 'Description': 'foo',
                 'NotBefore': datetime(2015, 1, 1),
-                'NotAfter': datetime(2015, 1, 1)
+                'NotAfter': datetime(2015, 1, 1),
             },
         ],
         'SystemStatus': {'Status': 'ok', },
-        'InstanceStatus': {'Status': 'ok', }
+        'InstanceStatus': {'Status': 'ok', },
     }
     mock_slave_3 = Mock(name='slave3')
     mock_slave_3.task_counts = SlaveTaskCount(
@@ -178,7 +178,7 @@ def test_sort_by_fitness():
     mock_slave_3.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
-        'InstanceStatus': {'Status': 'ok', }
+        'InstanceStatus': {'Status': 'ok', },
     }
     mock_slave_4 = Mock(name='slave4')
     mock_slave_4.task_counts = SlaveTaskCount(
@@ -189,7 +189,7 @@ def test_sort_by_fitness():
     mock_slave_4.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
-        'InstanceStatus': {'Status': 'ok', }
+        'InstanceStatus': {'Status': 'ok', },
     }
     mock_slave_5 = Mock(name='slave5')
     mock_slave_5.task_counts = SlaveTaskCount(
@@ -200,7 +200,7 @@ def test_sort_by_fitness():
     mock_slave_5.instance_status = {
         'Events': [],
         'SystemStatus': {'Status': 'ok', },
-        'InstanceStatus': {'Status': 'ok', }
+        'InstanceStatus': {'Status': 'ok', },
     }
     ret = ec2_fitness.sort_by_ec2_fitness([mock_slave_1, mock_slave_2, mock_slave_3, mock_slave_4, mock_slave_5])
 

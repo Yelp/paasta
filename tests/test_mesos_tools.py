@@ -51,10 +51,12 @@ def test_filter_not_running_tasks():
     assert not_running[0]['id'] == 2
 
 
-@mark.parametrize('test_case', [
-    [0, 0],
-    [10, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
-])
+@mark.parametrize(
+    'test_case', [
+        [0, 0],
+        [10, 1 + 10],  # 1 running task, 10 non-running taks (truncated)
+    ],
+)
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
     job_id = format_job_id('fake_service', 'fake_instance')
@@ -287,26 +289,26 @@ def test_get_mesos_slaves_grouped_by_attribute():
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': fake_value_1,
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': fake_value_2,
-            }
+            },
         },
         {
             'hostname': 'fake_host_3',
             'attributes': {
                 'fake_attribute': fake_value_1,
-            }
+            },
         },
         {
             'hostname': 'fake_host_4',
             'attributes': {
                 'fake_attribute': 'fake_other_value',
-            }
-        }
+            },
+        },
     ]
     expected = {
         'fake_value_1': [
@@ -314,13 +316,13 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_1',
                 'attributes': {
                     'fake_attribute': fake_value_1,
-                }
+                },
             },
             {
                 'hostname': 'fake_host_3',
                 'attributes': {
                     'fake_attribute': fake_value_1,
-                }
+                },
             },
         ],
         'fake_value_2': [
@@ -328,7 +330,7 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_2',
                 'attributes': {
                     'fake_attribute': fake_value_2,
-                }
+                },
             },
 
         ],
@@ -337,9 +339,9 @@ def test_get_mesos_slaves_grouped_by_attribute():
                 'hostname': 'fake_host_4',
                 'attributes': {
                     'fake_attribute': 'fake_other_value',
-                }
-            }
-        ]
+                },
+            },
+        ],
     }
     actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_slaves, 'fake_attribute')
     assert actual == expected
@@ -349,8 +351,8 @@ def test_slave_passes_whitelist():
     fake_slave = {
         'attributes': {
             'location_type': 'fake_location',
-            'fake_location_type': 'fake_location'
-        }
+            'fake_location_type': 'fake_location',
+        },
     }
     fake_whitelist_allow = ['fake_location_type', ['fake_location']]
     fake_whitelist_deny = ['anoterfake_location_type', ['anotherfake_location']]
@@ -371,14 +373,14 @@ def test_filter_mesos_slaves_by_blacklist_when_unfiltered(mock_slave_passes_blac
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
-        }
+            },
+        },
     ]
     blacklist = []
     whitelist = []
@@ -395,14 +397,14 @@ def test_filter_mesos_slaves_by_blacklist_when_filtered(mock_slave_passes_blackl
             'hostname': 'fake_host_1',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
+            },
         },
         {
             'hostname': 'fake_host_2',
             'attributes': {
                 'fake_attribute': 'fake_value_1',
-            }
-        }
+            },
+        },
     ]
     blacklist = []
     whitelist = []
@@ -416,7 +418,7 @@ def test_slave_passes_blacklist_passes():
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
-        }
+        },
     }
     blacklist = [["fake_attribute", "No what we have here"], ['foo', 'bar']]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
@@ -428,7 +430,7 @@ def test_slave_passes_blacklist_blocks_blacklisted_locations():
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
-        }
+        },
     }
     blacklist = [["fake_attribute", "fake_value_1"]]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
@@ -473,16 +475,25 @@ def test_get_paasta_execute_docker_healthcheck_when_not_found():
     assert mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) is None
 
 
-@mark.parametrize('test_case', [
-    [['taska', 'taskb'],  # test_case0 - OK
-     [['outlna1', 'outlna2', 'errlna1'],
-      ['outlnb1', 'errlnb1', 'errlnb2']],
-     ['taska', 'outlna1', 'outlna2', 'errlna1', 'taskb', 'outlnb1', 'errlnb1', 'errlnb2'],
-     False],
-    [['a'],  # test_case1 - can't zip different length lists
-     [1, 2],
-     None,
-     True]])
+@mark.parametrize(
+    'test_case', [
+        [
+            ['taska', 'taskb'],  # test_case0 - OK
+            [
+                ['outlna1', 'outlna2', 'errlna1'],
+                ['outlnb1', 'errlnb1', 'errlnb2'],
+            ],
+            ['taska', 'outlna1', 'outlna2', 'errlna1', 'taskb', 'outlnb1', 'errlnb1', 'errlnb2'],
+            False,
+        ],
+        [
+            ['a'],  # test_case1 - can't zip different length lists
+            [1, 2],
+            None,
+            True,
+        ],
+    ],
+)
 def test_zip_tasks_verbose_output(test_case):
     table, stdstreams, expected, should_raise = test_case
     result = None
@@ -496,24 +507,30 @@ def test_zip_tasks_verbose_output(test_case):
     assert result == expected
 
 
-@mark.parametrize('test_case', [
-    # task_id, file1, file2, nlines, raise_what
-    ['a_task',  # test_case0 - OK
-     ['stdout', [str(x) for x in range(20)]],
-     ['stderr', [str(x) for x in range(30)]],
-     10,
-     None],
-    ['a_task',  # test_case1 - OK, short stdout, swapped stdout/stderr
-     ['stderr', [str(x) for x in range(30)]],
-     ['stdout', ['1', '2']],
-     10,
-     None],
-    ['a_task', None, None, 10, mesos.exceptions.MasterNotAvailableException],
-    ['a_task', None, None, 10, mesos.exceptions.SlaveDoesNotExist],
-    ['a_task', None, None, 10, mesos.exceptions.TaskNotFoundException],
-    ['a_task', None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
-    ['a_task', None, None, 10, utils.TimeoutError]
-])
+@mark.parametrize(
+    'test_case', [
+        # task_id, file1, file2, nlines, raise_what
+        [
+            'a_task',  # test_case0 - OK
+            ['stdout', [str(x) for x in range(20)]],
+            ['stderr', [str(x) for x in range(30)]],
+            10,
+            None,
+        ],
+        [
+            'a_task',  # test_case1 - OK, short stdout, swapped stdout/stderr
+            ['stderr', [str(x) for x in range(30)]],
+            ['stdout', ['1', '2']],
+            10,
+            None,
+        ],
+        ['a_task', None, None, 10, mesos.exceptions.MasterNotAvailableException],
+        ['a_task', None, None, 10, mesos.exceptions.SlaveDoesNotExist],
+        ['a_task', None, None, 10, mesos.exceptions.TaskNotFoundException],
+        ['a_task', None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
+        ['a_task', None, None, 10, utils.TimeoutError],
+    ],
+)
 def test_format_stdstreams_tail_for_task(
     test_case,
 ):
@@ -540,7 +557,7 @@ def test_format_stdstreams_tail_for_task(
                 raise raise_what(raise_what)
             return [
                 gen_mesos_cli_fobj(file1[0], file1[1]),
-                gen_mesos_cli_fobj(file2[0], file2[1])
+                gen_mesos_cli_fobj(file2[0], file2[1]),
             ]
         mock_cluster_files = mock.MagicMock()
         mock_cluster_files.side_effect = retfunc
@@ -605,14 +622,18 @@ def test_get_mesos_task_count_by_slave():
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         assert mock_get_all_running_tasks.called
-        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)}]
+        expected = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+        ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
         ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         assert mock_get_all_running_tasks.called
-        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        expected = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+        ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
         # test slaves_list override
@@ -621,14 +642,20 @@ def test_get_mesos_task_count_by_slave():
         mock_task2.framework = mock_marathon
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
-        mock_slaves_list = [{'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
-                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
-                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state,
-                                                        slaves_list=mock_slaves_list)
-        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        mock_slaves_list = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+        ]
+        ret = mesos_tools.get_mesos_task_count_by_slave(
+            mock_mesos_state,
+            slaves_list=mock_slaves_list,
+        )
+        expected = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+        ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
         # test SlaveDoesNotExist exception handling
@@ -639,15 +666,21 @@ def test_get_mesos_task_count_by_slave():
         # we expect to handle this SlaveDoesNotExist exception gracefully, and continue on to handle other tasks
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
-        mock_slaves_list = [{'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
-                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
-                            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
-        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state,
-                                                        slaves_list=mock_slaves_list)
+        mock_slaves_list = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+        ]
+        ret = mesos_tools.get_mesos_task_count_by_slave(
+            mock_mesos_state,
+            slaves_list=mock_slaves_list,
+        )
         # we expect mock_slave_2 to only count 2 tasks, as one of them returned a SlaveDoesNotExist exception
-        expected = [{'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
-                    {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)}]
+        expected = [
+            {'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+        ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
 
@@ -662,8 +695,10 @@ def test_get_count_running_tasks_on_slave():
         mock_master.state_summary.return_value = mock_mesos_state
         mock_get_master.return_value = mock_master
 
-        mock_slave_counts = [{'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
-                             {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})}]
+        mock_slave_counts = [
+            {'task_counts': mock.Mock(count=3, slave={'hostname': 'host1'})},
+            {'task_counts': mock.Mock(count=0, slave={'hostname': 'host2'})},
+        ]
         mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
 
         assert mesos_tools.get_count_running_tasks_on_slave('host1') == 3
@@ -733,9 +768,13 @@ def test_get_all_tasks_from_state():
     mock_task_2 = mock.Mock()
     mock_task_3 = mock.Mock()
     mock_task_4 = mock.Mock()
-    mock_state = {'frameworks': [{'tasks': [mock_task_1, mock_task_2]},
-                                 {'tasks': [mock_task_3]}],
-                  'orphan_tasks': [mock_task_4]}
+    mock_state = {
+        'frameworks': [
+            {'tasks': [mock_task_1, mock_task_2]},
+            {'tasks': [mock_task_3]},
+        ],
+        'orphan_tasks': [mock_task_4],
+    }
     ret = mesos_tools.get_all_tasks_from_state(mock_state)
     expected = [mock_task_1, mock_task_2, mock_task_3]
     assert len(ret) == len(expected) and ret == expected

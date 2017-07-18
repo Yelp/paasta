@@ -55,8 +55,8 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
     mock_get_resource_utilization_by_grouping.return_value = {
         frozenset([('superregion', 'unknown')]): {
             'total': metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
-            'free': metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0)
-        }
+            'free': metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
+        },
     }
 
     resp = resources_utilization(request)
@@ -68,75 +68,82 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
 
 
 mock_mesos_state = {
-    'slaves': [{
-        'id': 'foo1',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
-        },
-        'attributes': {'pool': 'default', 'region': 'top'},
-        'reserved_resources': []},
+    'slaves': [
         {
-        'id': 'bar1',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'default', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'default', 'region': 'bottom'},
-        'reserved_resources': []},
         {
-        'id': 'foo2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'bar1',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'default', 'region': 'bottom'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'top'},
-        'reserved_resources': []},
         {
-        'id': 'bar2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'bottom'},
-        'reserved_resources': []},
         {
-        'id': 'foo3',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'bar2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'bottom'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'top'},
-        'reserved_resources': []},
         {
-        'id': 'bar2',
-        'resources': {
-            'disk': 100,
-            'cpus': 10,
-            'mem': 50,
+            'id': 'foo3',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'top'},
+            'reserved_resources': [],
         },
-        'attributes': {'pool': 'other', 'region': 'bottom'},
-        'reserved_resources': []},
+        {
+            'id': 'bar2',
+            'resources': {
+                'disk': 100,
+                'cpus': 10,
+                'mem': 50,
+            },
+            'attributes': {'pool': 'other', 'region': 'bottom'},
+            'reserved_resources': [],
+        },
     ],
     'frameworks': [
         {'tasks': [
             {
                 'state': 'TASK_RUNNING',
                 'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'foo1'
+                'slave_id': 'foo1',
             },
             {
                 'state': 'TASK_RUNNING',
                 'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'bar1'
+                'slave_id': 'bar1',
             },
-        ]}
-    ]
+        ]},
+    ],
 }
 
 

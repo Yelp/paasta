@@ -47,6 +47,7 @@ def duration(fn):
             debug("duration: {}.{}: {:2.2f}s".format(
                 fn.__module__,
                 fn.__name__,
-                time.time() - start))
+                time.time() - start,
+            ))
 
     return timer

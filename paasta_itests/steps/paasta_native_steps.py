@@ -64,7 +64,7 @@ def new_paasta_native_config(context, num):
             "mem": 50,
             "instances": int(num),
             "cmd": 'sleep 50',
-            "drain_method": "test"
+            "drain_method": "test",
         },
         branch_dict={
             'docker_image': 'busybox',
@@ -150,18 +150,20 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
                 'mem': 100,
                 'cpus': 0.1,
                 'instances': 1,
-            }
+            },
         }))
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as f:
-        json.dump({
-            'v1': {
-                '%s:paasta-%s.%s' % (service, context.cluster, instance): {
-                    'docker_image': 'busybox',
-                    'desired_state': 'start',
-                    'force_bounce': None,
-                }
-            }
-        }, f)
+        json.dump(
+            {
+                'v1': {
+                    '%s:paasta-%s.%s' % (service, context.cluster, instance): {
+                        'docker_image': 'busybox',
+                        'desired_state': 'start',
+                        'force_bounce': None,
+                    },
+                },
+            }, f,
+        )
 
 
 @when('we run native_mesos_scheduler.main()')
@@ -170,7 +172,7 @@ def run_native_mesos_scheduler_main(context):
     context.main_schedulers = main([
         '--soa-dir', context.soa_dir,
         '--stay-alive-seconds', '10',
-        '--periodic-interval', '1'
+        '--periodic-interval', '1',
     ])
 
 
@@ -241,7 +243,7 @@ def it_should_drain_num_tasks(context, num):
     else:
         raise Exception("Expected %d tasks to drain before timeout, saw %d" % (
             num,
-            len(drain_lib.TestDrainMethod.downed_task_ids)
+            len(drain_lib.TestDrainMethod.downed_task_ids),
         ))
 
 

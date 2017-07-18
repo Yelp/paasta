@@ -41,7 +41,7 @@ def add_subparser(subparsers):
             "to build a build pipeline that matches what is declared in the 'deploy.yaml' "
             "for a service."
         ),
-        epilog="Warning: Due to the Yelpisms in this tool, it is not currently useful to other organizations."
+        epilog="Warning: Due to the Yelpisms in this tool, it is not currently useful to other organizations.",
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -70,7 +70,7 @@ def validate_git_url_for_fab_repo(git_url):
     if not git_url.startswith('git@git.yelpcorp.com:'):
         raise NotImplementedError(
             "fab_repo cannot currently handle git urls that look like: '%s'.\n"
-            "They must start with 'git@git.yelpcorp.com:'" % git_url
+            "They must start with 'git@git.yelpcorp.com:'" % git_url,
         )
     return True
 

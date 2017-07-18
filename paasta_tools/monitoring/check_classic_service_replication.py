@@ -73,7 +73,8 @@ def do_replication_check(service, monitoring_config, service_replication):
         does NOT send it to Sensu
     """
     replication_config = monitoring_config.get('extra', {}).get(
-        'replication', {})
+        'replication', {},
+    )
     replication_key = replication_config.get('key', 'habitat')
     replication_default = replication_config.get('default', 1)
     replication_map = replication_config.get('map', {})
@@ -88,9 +89,11 @@ def do_replication_check(service, monitoring_config, service_replication):
     warn_range = (goal_replication, sys.maxsize)
     crit_range = warn_range
 
-    status_code, message = check_replication(service,
-                                             service_replication,
-                                             warn_range, crit_range)
+    status_code, message = check_replication(
+        service,
+        service_replication,
+        warn_range, crit_range,
+    )
     return {
         'name': "replication_{}".format(service),
         'status': status_code,
@@ -125,8 +128,10 @@ def extract_replication_info(service_config):
     monitoring_config = extract_monitoring_info('classic', service_config)
 
     # If we do not meet required information, do nothing
-    if not (monitoring_config['team'] and
-            monitoring_config.get('service_type') == 'classic'):
+    if not (
+        monitoring_config['team'] and
+        monitoring_config.get('service_type') == 'classic'
+    ):
         return False, {}
     return True, monitoring_config
 
@@ -142,41 +147,49 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             self.log.setLevel(logging.WARNING)
 
     def setup(self):
-        self.parser.add_argument('-d', '--debug', default=False,
-                                 action='store_true',
-                                 help='Turn on debug output')
+        self.parser.add_argument(
+            '-d', '--debug', default=False,
+            action='store_true',
+            help='Turn on debug output',
+        )
 
     def get_service_replication(self, all_services, synapse_host, synapse_port, synapse_haproxy_url_format):
         # Get the replication data once for performance
         synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
         self.log.debug(
             "Gathering replication information from {}".
-            format(synapse_host_port))
+            format(synapse_host_port),
+        )
         service_replication = {}
         try:
             service_replication = get_replication_for_services(
                 synapse_host,
                 synapse_port,
                 synapse_haproxy_url_format,
-                ['%s.main' % name for name in all_services]
+                ['%s.main' % name for name in all_services],
             )
         except requests.exceptions.ConnectionError:
             self.log.error(
                 'Failed to connect synapse haproxy on {}'.
-                format(synapse_host_port))
+                format(synapse_host_port),
+            )
             self.critical(
                 'Failed to connect synapse haproxy on {}'.
-                format(synapse_host_port))
+                format(synapse_host_port),
+            )
         except Exception as e:
             self.log.error(
                 'Unable to collect replication information on {}: {}'.
-                format(synapse_host_port, str(e)))
+                format(synapse_host_port, str(e)),
+            )
             self.critical(
                 'Unable to collect replication information: {}'.
-                format(str(e)))
+                format(str(e)),
+            )
         self.log.debug(
             "Finished gathering replication information from {}".
-            format(synapse_host_port))
+            format(synapse_host_port),
+        )
         return service_replication
 
     def run(self):
@@ -193,17 +206,21 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         checked_services = []
         for service, service_config in all_service_config.items():
             do_monitoring, monitoring_config = extract_replication_info(
-                service_config
+                service_config,
             )
 
             if do_monitoring:
                 self.log.debug("Checking {}".format(service))
                 replication = service_replication.get('%s.main' % service, 0)
-                event = do_replication_check(service, monitoring_config,
-                                             replication)
+                event = do_replication_check(
+                    service, monitoring_config,
+                    replication,
+                )
                 checked_services.append(service)
-                self.log.debug("Result for {}: {}".format(service,
-                                                          event['output']))
+                self.log.debug("Result for {}: {}".format(
+                    service,
+                    event['output'],
+                ))
                 report_event(event)
             else:
                 self.log.debug("Not checking {}".format(service))

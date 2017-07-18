@@ -87,7 +87,7 @@ def extract_args(args):
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and remote-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA."
+                "the same way it would behave on a server configured for PaaSTA.",
             ),
             sep='\n',
         )
@@ -100,7 +100,8 @@ def extract_args(args):
         paasta_print(
             PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster."
-                "Please pass one using '-c'."),
+                "Please pass one using '-c'.",
+            ),
             sep='\n',
             file=sys.stderr,
         )
@@ -124,14 +125,15 @@ def paasta_to_task_config_kwargs(
         system_paasta_config,
         instance_type='paasta_native',
         soa_dir=DEFAULT_SOA_DIR,
-        config_overrides=None):
+        config_overrides=None,
+):
     native_job_config = load_paasta_native_job_config(
         service,
         instance,
         cluster,
         soa_dir=soa_dir,
         instance_type=instance_type,
-        config_overrides=config_overrides
+        config_overrides=config_overrides,
     )
 
     image = native_job_config.get_docker_url()
@@ -142,7 +144,7 @@ def paasta_to_task_config_kwargs(
     # network = native_job_config.get_mesos_network_mode()
 
     docker_volumes = native_job_config.get_volumes(
-        system_volumes=system_paasta_config.get_volumes()
+        system_volumes=system_paasta_config.get_volumes(),
     )
     volumes = [
         {
@@ -169,7 +171,7 @@ def paasta_to_task_config_kwargs(
         # 'cap_add'
         # 'ulimit'
         'uris': [uris],
-        'docker_parameters': docker_parameters
+        'docker_parameters': docker_parameters,
     }
 
     config_hash = get_config_hash(
@@ -193,9 +195,10 @@ def build_executor_stack(
         instance,
         run_id,  # TODO: move run_id into task identifier?
         system_paasta_config,
-        framework_staging_timeout):
+        framework_staging_timeout,
+):
     mesos_address = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
+        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
     taskproc_config = system_paasta_config.get('taskproc')
@@ -208,10 +211,10 @@ def build_executor_stack(
         framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
-            run_id
+            run_id,
         ),
         framework_staging_timeout=framework_staging_timeout,
-        initial_decline_delay=0.5
+        initial_decline_delay=0.5,
     )
     retrying_executor = RetryingExecutor(mesos_executor)
     return retrying_executor
@@ -275,14 +278,19 @@ def remote_run_start(args):
         instance,
         run_id,
         system_paasta_config,
-        args.staging_timeout
+        args.staging_timeout,
     )
     runner = Sync(executor_stack)
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
-            PaastaColors.red("Signal received, shutting down scheduler."))
+            PaastaColors.red("Signal received, shutting down scheduler."),
+        )
         runner.stop()
+        if _signum == signal.SIGTERM:
+            sys.exit(143)
+        else:
+            sys.exit(1)
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
@@ -293,7 +301,8 @@ def remote_run_start(args):
         sys.exit(0)
     else:
         paasta_print(
-            PaastaColors.red("Task failed: {}".format(terminal_event.raw)))
+            PaastaColors.red("Task failed: {}".format(terminal_event.raw)),
+        )
         sys.exit(1)
 
 
@@ -327,7 +336,9 @@ def remote_run_stop(args):
             paasta_print(
                 PaastaColors.red(
                     "Framework id %s does not match any %s.%s remote-run. Check status to find the correct id." %
-                    (framework_id, service, instance)))
+                    (framework_id, service, instance),
+                ),
+            )
             os._exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
@@ -352,7 +363,8 @@ def remote_run_list(args):
     if len(filtered) > 0:
         paasta_print(
             "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance))
+            (service, cluster, instance),
+        )
     else:
         paasta_print("Nothing found.")
 
@@ -362,7 +374,7 @@ def main(argv):
     actions = {
         'start': remote_run_start,
         'stop': remote_run_stop,
-        'list': remote_run_list
+        'list': remote_run_list,
     }
     actions[args.action](args)
 

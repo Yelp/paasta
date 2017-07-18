@@ -46,15 +46,18 @@ SCHEMA_VALID = success("Successfully validated schema")
 
 SCHEMA_INVALID = failure(
     "Failed to validate schema. More info:",
-    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+)
 
 SCHEMA_NOT_FOUND = failure(
     "Failed to find schema to validate against. More info:",
-    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+)
 
 FAILED_READING_FILE = failure(
     "Failed to read file. More info:",
-    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+)
 
 UNKNOWN_SERVICE = "Unable to determine service to validate.\n" \
                   "Please supply the %s name you wish to " \
@@ -66,7 +69,8 @@ def invalid_chronos_instance(cluster, instance, output):
     return failure(
         'chronos-%s.yaml has an invalid instance: %s.\n  %s\n  '
         'More info:' % (cluster, instance, output),
-        "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml")
+        "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
+    )
 
 
 def valid_chronos_instance(cluster, instance):
@@ -147,7 +151,8 @@ def add_subparser(subparsers):
     validate_parser = subparsers.add_parser(
         'validate',
         description="Execute 'paasta validate' from service repo root",
-        help="Validate that all paasta config files in pwd are correct")
+        help="Validate that all paasta config files in pwd are correct",
+    )
     validate_parser.add_argument(
         '-s', '--service',
         required=False,
@@ -169,12 +174,16 @@ def check_service_path(service_path):
     :param service_path: Path to directory that should contain yaml files
     """
     if not service_path or not os.path.isdir(service_path):
-        paasta_print(failure("%s is not a directory" % service_path,
-                             "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html"))
+        paasta_print(failure(
+            "%s is not a directory" % service_path,
+            "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+        ))
         return False
     if not glob(os.path.join(service_path, "*.yaml")):
-        paasta_print(failure("%s does not contain any .yaml files" % service_path,
-                             "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html"))
+        paasta_print(failure(
+            "%s does not contain any .yaml files" % service_path,
+            "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+        ))
         return False
     return True
 
@@ -212,15 +221,18 @@ def validate_chronos(service_path):
     returncode = True
 
     if service.startswith(TMP_JOB_IDENTIFIER):
-        paasta_print(("Services using scheduled tasks cannot be named %s, as it clashes with the "
-                      "identifier used for temporary jobs" % TMP_JOB_IDENTIFIER))
+        paasta_print((
+            "Services using scheduled tasks cannot be named %s, as it clashes with the "
+            "identifier used for temporary jobs" % TMP_JOB_IDENTIFIER
+        ))
         return False
     for cluster in list_clusters(service, soa_dir, instance_type):
         services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
         valid_services = {"%s%s%s" % (name, chronos_spacer, instance) for name, instance in services_in_cluster}
         for instance in list_all_instances_for_service(
                 service=service, clusters=[cluster], instance_type=instance_type,
-                soa_dir=soa_dir):
+                soa_dir=soa_dir,
+        ):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
             parents = cjc.get_parents() or []
             checks_passed, check_msgs = cjc.validate()

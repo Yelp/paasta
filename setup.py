@@ -115,9 +115,10 @@ setup(
             'paasta_docker_wrapper=paasta_tools.docker_wrapper:main',
             'paasta_firewall_update=paasta_tools.firewall_update:main',
             'paasta_firewall_logging=paasta_tools.firewall_logging:main',
+            'paasta_oom_finder=paasta_tools.oom_finder:main',
         ],
         'paste.app_factory': [
-            'paasta-api-config=paasta_tools.api.api:make_app'
+            'paasta-api-config=paasta_tools.api.api:make_app',
         ],
     },
 )

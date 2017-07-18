@@ -34,23 +34,29 @@ def test_check_replication():
     # replication < 1 => critical
     mock_crit_range = (1, 1000)
 
-    code, message = check_replication('foo', 0,
-                                      mock_warn_range, mock_crit_range)
+    code, message = check_replication(
+        'foo', 0,
+        mock_warn_range, mock_crit_range,
+    )
     assert code == 2 and 'foo' in message
 
-    code, message = check_replication('foo', 1,
-                                      mock_warn_range, mock_crit_range)
+    code, message = check_replication(
+        'foo', 1,
+        mock_warn_range, mock_crit_range,
+    )
     assert code == 1 and 'foo' in message
 
-    code, message = check_replication('bar', 2,
-                                      mock_warn_range, mock_crit_range)
+    code, message = check_replication(
+        'bar', 2,
+        mock_warn_range, mock_crit_range,
+    )
     assert code == 0 and 'bar' in message
 
 
 def test_parse_range():
     range_data = ["0:1", "1:", "100:", "20:30", ":2", ":200"]
     expected_ranges = [
-        (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200)
+        (0, 1), (1, sys.maxsize), (100, sys.maxsize), (20, 30), (0, 2), (0, 200),
     ]
 
     computed_ranges = [parse_range(x) for x in range_data]

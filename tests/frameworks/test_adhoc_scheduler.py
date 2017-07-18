@@ -14,10 +14,12 @@ from paasta_tools.frameworks.native_service_config import UnknownNativeServiceEr
 
 @pytest.fixture
 def system_paasta_config():
-    return utils.SystemPaastaConfig({
-        "docker_registry": "fake",
-        "volumes": [],
-    }, "/fake/system/configs")
+    return utils.SystemPaastaConfig(
+        {
+            "docker_registry": "fake",
+            "volumes": [],
+        }, "/fake/system/configs",
+    )
 
 
 def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool='default'):
@@ -26,25 +28,25 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
         resources=[
             Dict(
                 name='cpus',
-                scalar=Dict(value=cpu)
+                scalar=Dict(value=cpu),
             ),
             Dict(
                 name='mem',
-                scalar=Dict(value=mem)
+                scalar=Dict(value=mem),
             ),
             Dict(
                 name='ports',
                 ranges=Dict(
-                    range=[Dict(begin=port_begin, end=port_end)]
+                    range=[Dict(begin=port_begin, end=port_end)],
                 ),
             ),
         ],
-        attributes=[]
+        attributes=[],
     )
 
     if pool is not None:
         offer.attributes = [
-            Dict(name='pool', text=Dict(value=pool))
+            Dict(name='pool', text=Dict(value=pool)),
         ]
 
     return offer
@@ -65,14 +67,14 @@ class TestAdhocScheduler(object):
                     "cpus": 0.1,
                     "mem": 50,
                     "instances": 3,
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         with pytest.raises(UnknownNativeServiceError):
@@ -102,14 +104,14 @@ class TestAdhocScheduler(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         scheduler = adhoc_scheduler.AdhocScheduler(
@@ -125,16 +127,19 @@ class TestAdhocScheduler(object):
 
         fake_driver = mock.Mock()
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             # Check that offers with invalid pool don't get accepted
             tasks, _ = scheduler.tasks_and_state_for_offer(
-                fake_driver, make_fake_offer(pool='notdefault'), {})
+                fake_driver, make_fake_offer(pool='notdefault'), {},
+            )
             assert len(tasks) == 0
 
             tasks, _ = scheduler.tasks_and_state_for_offer(
-                fake_driver, make_fake_offer(pool=None), {})
+                fake_driver, make_fake_offer(pool=None), {},
+            )
             assert len(tasks) == 0
 
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
@@ -152,7 +157,8 @@ class TestAdhocScheduler(object):
 
             scheduler.statusUpdate(
                 fake_driver,
-                mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
+                mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
+            )
             assert len(scheduler.tasks_with_flags) == 1
             assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
             assert scheduler.need_to_stop() is True
@@ -172,14 +178,14 @@ class TestAdhocScheduler(object):
                     "mem": 50,
                     "instances": 3,
                     "cmd": 'sleep 50',
-                    "drain_method": "test"
+                    "drain_method": "test",
                 },
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
                 },
                 soa_dir='/nail/etc/services',
-            )
+            ),
         ]
 
         scheduler = adhoc_scheduler.AdhocScheduler(
@@ -191,14 +197,15 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
             staging_timeout=30,
-            service_config_overrides={'instances': 5}
+            service_config_overrides={'instances': 5},
         )
 
         fake_driver = mock.Mock()
 
-        with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                        return_value=system_paasta_config
-                        ):
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
             task_name = tasks[0].name
             task_ids = [t.task_id.value for t in tasks]
@@ -216,7 +223,8 @@ class TestAdhocScheduler(object):
             for idx, task_id in enumerate(task_ids):
                 scheduler.statusUpdate(
                     fake_driver,
-                    mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED))
+                    mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
+                )
                 assert len(scheduler.tasks_with_flags) == 5 - idx
                 assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
                 assert scheduler.need_to_stop() is (idx == 4)

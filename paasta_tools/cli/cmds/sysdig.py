@@ -34,17 +34,19 @@ from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
-    new_parser = get_subparser(description="'paasta sysdig' works by SSH'ing to remote PaaSTA masters and "
-                                           "running sysdig with the neccessary filters",
-                               help_text="Run sysdig on a remote host and filter to a service and instance",
-                               command='sysdig',
-                               function=paasta_sysdig,
-                               subparsers=subparsers)
+    new_parser = get_subparser(
+        description="'paasta sysdig' works by SSH'ing to remote PaaSTA masters and "
+                    "running sysdig with the neccessary filters",
+        help_text="Run sysdig on a remote host and filter to a service and instance",
+        command='sysdig',
+        function=paasta_sysdig,
+        subparsers=subparsers,
+    )
     new_parser.add_argument(
         '-l', '--local',
         help="Run the script here rather than SSHing to a PaaSTA master",
         default=False,
-        action='store_true'
+        action='store_true',
     )
 
 
@@ -75,19 +77,25 @@ def paasta_sysdig(args):
         slave, command = output.split(':', 1)
         subprocess.call(shlex.split("ssh -tA {} '{}'".format(slave, command.strip())))
         return
-    status = get_status_for_instance(cluster=args.cluster,
-                                     service=args.service,
-                                     instance=args.instance)
-    slave = pick_slave_from_status(status=status,
-                                   host=args.host)
+    status = get_status_for_instance(
+        cluster=args.cluster,
+        service=args.service,
+        instance=args.instance,
+    )
+    slave = pick_slave_from_status(
+        status=status,
+        host=args.host,
+    )
     marathon_config = load_marathon_config()
     marathon_url = marathon_config.get_url()[0]
     marathon_user = marathon_config.get_username()
     marathon_pass = marathon_config.get_password()
     mesos_url = get_mesos_master().host
     marathon_parsed_url = urlparse(marathon_url)
-    marathon_creds_url = marathon_parsed_url._replace(netloc="{}:{}@{}".format(marathon_user, marathon_pass,
-                                                                               marathon_parsed_url.netloc))
+    marathon_creds_url = marathon_parsed_url._replace(netloc="{}:{}@{}".format(
+        marathon_user, marathon_pass,
+        marathon_parsed_url.netloc,
+    ))
     paasta_print(format_mesos_command(slave, status.marathon.app_id, mesos_url, marathon_creds_url.geturl()))
 
 

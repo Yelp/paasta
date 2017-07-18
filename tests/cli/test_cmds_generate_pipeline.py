@@ -29,7 +29,8 @@ from paasta_tools.cli.utils import NoSuchService
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
 def test_paasta_generate_pipeline_service_not_found(
-        mock_guess_service_name, mock_validate_service_name, capfd):
+        mock_guess_service_name, mock_validate_service_name, capfd,
+):
     # paasta generate cannot guess service name and none is provided
 
     mock_guess_service_name.return_value = 'not_a_service'
@@ -85,11 +86,15 @@ def test_generate_pipeline_calls_the_right_commands_and_owner(
     mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
     generate_pipeline('fake_service', '/fake/soa/dir')
     assert mock_run.call_count == 2
-    expected_cmd1 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
-                     'owner=fake_email,repo=fake_repo')
+    expected_cmd1 = (
+        'fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
+        'owner=fake_email,repo=fake_repo'
+    )
     mock_run.assert_any_call(expected_cmd1, timeout=90)
-    expected_cmd2 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta,'
-                     'job_disabled=False,owner=fake_email,repo=fake_repo')
+    expected_cmd2 = (
+        'fab_repo setup_jenkins:services/fake_service,profile=paasta,'
+        'job_disabled=False,owner=fake_email,repo=fake_repo'
+    )
     mock_run.assert_any_call(expected_cmd2, timeout=90)
 
 
@@ -111,11 +116,15 @@ def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
     mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
     generate_pipeline('fake_service', '/fake/soa/dir')
     assert mock_run.call_count == 2
-    expected_cmd1 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
-                     'owner=fake_team,repo=fake_repo')
+    expected_cmd1 = (
+        'fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
+        'owner=fake_team,repo=fake_repo'
+    )
     mock_run.assert_any_call(expected_cmd1, timeout=90)
-    expected_cmd2 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta,'
-                     'job_disabled=False,owner=fake_team,repo=fake_repo')
+    expected_cmd2 = (
+        'fab_repo setup_jenkins:services/fake_service,profile=paasta,'
+        'job_disabled=False,owner=fake_team,repo=fake_repo'
+    )
     mock_run.assert_any_call(expected_cmd2, timeout=90)
 
 
@@ -125,7 +134,8 @@ def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
 def test_paasta_generate_pipeline_success_guesses_service_name(
         mock_generate_pipeline,
         mock_guess_service_name,
-        mock_validate_service_name):
+        mock_validate_service_name,
+):
     # paasta generate succeeds when service name must be guessed
     mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
@@ -139,7 +149,8 @@ def test_paasta_generate_pipeline_success_guesses_service_name(
 @patch('paasta_tools.cli.cmds.generate_pipeline.generate_pipeline', autospec=True)
 def test_generate_pipeline_success_with_no_opts(
         mock_generate_pipeline,
-        mock_validate_service_name):
+        mock_validate_service_name,
+):
     # paasta generate succeeds when service name provided as arg
     mock_validate_service_name.return_value = None
     args = MagicMock()

@@ -76,7 +76,8 @@ def marathon_instance_status(instance_status, service, instance, verbose):
     mstatus = {}
     apps = marathon_tools.get_matching_appids(service, instance, settings.marathon_client)
     job_config = marathon_tools.load_marathon_service_config(
-        service, instance, settings.cluster, soa_dir=settings.soa_dir)
+        service, instance, settings.cluster, soa_dir=settings.soa_dir,
+    )
 
     # bouncing status can be inferred from app_count, ref get_bouncing_status
     mstatus['app_count'] = len(apps)

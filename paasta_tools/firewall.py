@@ -42,10 +42,12 @@ IPV4_REGEX = re.compile('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 log = logging.getLogger(__name__)
 
 
-class ServiceGroup(collections.namedtuple('ServiceGroup', (
-    'service',
-    'instance',
-))):
+class ServiceGroup(collections.namedtuple(
+    'ServiceGroup', (
+        'service',
+        'instance',
+    ),
+)):
     """A service group.
 
     :param service: service name
@@ -85,7 +87,7 @@ class ServiceGroup(collections.namedtuple('ServiceGroup', (
             # for several minutes after the directory disappears from soa-configs.
             return ()
 
-        if conf.get_dependencies() is None:
+        if not conf.get_outbound_firewall():
             return ()
 
         rules = list(_default_rules(conf, self.log_prefix))
@@ -119,9 +121,9 @@ def _default_rules(conf, log_prefix):
                 'limit', (
                     ('limit', ('1/sec',)),
                     ('limit-burst', ('1',)),
-                )
+                ),
             ),
-        )
+        ),
     )
 
     policy = conf.get_outbound_firewall()
@@ -137,7 +139,7 @@ def _default_rules(conf, log_prefix):
                     (('reject-with', ('icmp-port-unreachable',))),
                 ),
             ),
-            log_rule
+            log_rule,
         )
     elif policy == 'monitor':
         return (log_rule,)
@@ -192,13 +194,13 @@ def _yocalhost_rule(port, comment, protocol='tcp'):
                 'comment',
                 (
                     ('comment', (comment,)),
-                )
+                ),
             ),
             (
                 protocol,
                 (
                     ('dport', (six.text_type(port),)),
-                )
+                ),
             ),
         ),
         target_parameters=(),
@@ -206,7 +208,7 @@ def _yocalhost_rule(port, comment, protocol='tcp'):
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
-    for dep in conf.get_dependencies():
+    for dep in conf.get_dependencies() or ():
         namespace = dep.get('smartstack')
         if namespace is None:
             continue
@@ -232,13 +234,13 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                         'comment',
                         (
                             ('comment', ('backend ' + namespace,)),
-                        )
+                        ),
                     ),
                     (
                         'tcp',
                         (
                             ('dport', (six.text_type(backend['port']),)),
-                        )
+                        ),
                     ),
                 ),
                 target_parameters=(),
@@ -358,7 +360,7 @@ def _ensure_dns_chain():
                 ),
             )
             for dns_server in _dns_servers()
-        ))
+        )),
     )
 
 
@@ -384,7 +386,7 @@ def _ensure_internet_chain():
                 target_parameters=(),
             )
             for ip_range in PRIVATE_IP_RANGES
-        )
+        ),
     )
 
 

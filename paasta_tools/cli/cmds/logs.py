@@ -500,32 +500,32 @@ class ScribeLogReader(LogReader):
             per_cluster=False,
             stream_name_fn=get_log_name_for_service,
             filter_fn=paasta_log_line_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'stdout': ScribeComponentStreamInfo(
             per_cluster=False,
             stream_name_fn=lambda service: get_log_name_for_service(service, prefix='app_output'),
             filter_fn=paasta_app_output_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'stderr': ScribeComponentStreamInfo(
             per_cluster=False,
             stream_name_fn=lambda service: get_log_name_for_service(service, prefix='app_output'),
             filter_fn=paasta_app_output_passes_filter,
-            parse_fn=None
+            parse_fn=None,
         ),
         'marathon': ScribeComponentStreamInfo(
             per_cluster=True,
             stream_name_fn=lambda service, cluster: 'stream_marathon_%s' % cluster,
             filter_fn=marathon_log_line_passes_filter,
-            parse_fn=parse_marathon_log_line
+            parse_fn=parse_marathon_log_line,
         ),
         'chronos': ScribeComponentStreamInfo(
             per_cluster=True,
             stream_name_fn=lambda service, cluster: 'stream_chronos_%s' % cluster,
             filter_fn=chronos_log_line_passes_filter,
-            parse_fn=parse_chronos_log_line
-        )
+            parse_fn=parse_chronos_log_line,
+        ),
     }
 
     def __init__(self, cluster_map):
@@ -704,7 +704,7 @@ class ScribeLogReader(LogReader):
                 PaastaColors.red(
                     "Warning, you have chosen to get marathon or chronos logs based "
                     "on time. This command may take a dozen minutes or so to run "
-                    "because marathon and chronos are on shared streams.\n"
+                    "because marathon and chronos are on shared streams.\n",
                 ),
                 file=sys.stderr,
             )
@@ -773,18 +773,22 @@ class ScribeLogReader(LogReader):
         for line in aggregated_logs:
             print_log(line['raw_line'], levels, raw_mode)
 
-    def filter_and_aggregate_scribe_logs(self, scribe_reader_ctx, scribe_env, stream_name,
-                                         levels, service, components, clusters, instances,
-                                         aggregated_logs, parser_fn=None, filter_fn=None,
-                                         start_time=None, end_time=None):
+    def filter_and_aggregate_scribe_logs(
+        self, scribe_reader_ctx, scribe_env, stream_name,
+        levels, service, components, clusters, instances,
+        aggregated_logs, parser_fn=None, filter_fn=None,
+        start_time=None, end_time=None,
+    ):
         with scribe_reader_ctx as scribe_reader:
             try:
                 for line in scribe_reader:
                     if parser_fn:
                         line = parser_fn(line, clusters, service)
                     if filter_fn:
-                        if filter_fn(line, levels, service, components, clusters,
-                                     instances, start_time=start_time, end_time=end_time):
+                        if filter_fn(
+                            line, levels, service, components, clusters,
+                            instances, start_time=start_time, end_time=end_time,
+                        ):
                             try:
                                 parsed_line = json.loads(line)
                                 timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
@@ -844,8 +848,10 @@ class ScribeLogReader(LogReader):
 
         return fake_context()
 
-    def scribe_tail(self, scribe_env, stream_name, service, levels, components, clusters, instances, queue, filter_fn,
-                    parse_fn=None):
+    def scribe_tail(
+        self, scribe_env, stream_name, service, levels, components, clusters, instances, queue, filter_fn,
+        parse_fn=None,
+    ):
         """Creates a scribetailer for a particular environment.
 
         When it encounters a line that it should report, it sticks it into the
@@ -959,7 +965,7 @@ def validate_filtering_args(args, log_reader):
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
         paasta_print(
             PaastaColors.red(
-                log_reader.__class__.__name__ + " does not support line based offsets"
+                log_reader.__class__.__name__ + " does not support line based offsets",
             ),
             file=sys.stderr,
         )
@@ -989,8 +995,10 @@ def validate_filtering_args(args, log_reader):
         )
         return False
 
-    if args.tail and (args.line_count is not None or args.time_from is not None or
-                      args.time_to is not None or args.line_offset is not None):
+    if args.tail and (
+        args.line_count is not None or args.time_from is not None or
+        args.time_to is not None or args.line_offset is not None
+    ):
         paasta_print(
             PaastaColors.red(
                 "You cannot specify line/time based filtering parameters when tailing",

@@ -149,7 +149,8 @@ def main():
         environment = docker_env_to_dict(docker_inspect_data[0]['Config']['Env'])
         if 'CHRONOS_JOB_NAME' in environment:
             paasta_print(
-                "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME']))
+                "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME']),
+            )
             paasta_print()
             continue
         if not has_all_paasta_env(environment):
@@ -162,7 +163,7 @@ def main():
         proxy_port = get_proxy_port(service, instance)
         paasta_print("# %s,%s,%s,%s,%s" % (container_id, service, instance, proxy_port, marathon_port))
         paasta_print("sudo hadown -P %s -e $((`date +'%%s'`+%s)) %s.%s" % (
-            marathon_port, hadown_expire_in_seconds, service, instance
+            marathon_port, hadown_expire_in_seconds, service, instance,
         ))
         paasta_print("sleep %s" % smartstack_grace_sleep)
         t += smartstack_grace_sleep

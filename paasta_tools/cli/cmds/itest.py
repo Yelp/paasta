@@ -36,7 +36,7 @@ def add_subparser(subparsers):
             "'paasta itest' runs 'make itest' in the root of a service directory. "
             "It is designed to be used in conjection with the 'Jenkins' workflow: "
             "http://paasta.readthedocs.io/en/latest/about/contract.html#jenkins-pipeline-recommended"
-        )
+        ),
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -77,7 +77,7 @@ def paasta_itest(args):
         service=service,
         line='starting itest for %s.' % args.commit,
         component='build',
-        level='event'
+        level='event',
     )
     returncode, output = _run(
         cmd,
@@ -90,7 +90,7 @@ def paasta_itest(args):
     )
     if returncode != 0:
         loglines.append(
-            'ERROR: itest failed for %s.' % args.commit
+            'ERROR: itest failed for %s.' % args.commit,
         )
         output = get_jenkins_build_output_url()
         if output:

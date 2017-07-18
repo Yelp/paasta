@@ -73,7 +73,8 @@ class TestLongRunningServiceConfig(object):
         ):
             expected = ('http', 'http://%s:%d%s' % (fake_hostname, fake_random_port, fake_path))
             actual = long_running_service_tools.get_healthcheck_for_instance(
-                fake_service, fake_namespace, fake_service_config, fake_random_port)
+                fake_service, fake_namespace, fake_service_config, fake_random_port,
+            )
             assert expected == actual
 
     def test_get_healthcheck_for_instance_tcp(self):
@@ -101,7 +102,8 @@ class TestLongRunningServiceConfig(object):
         ):
             expected = ('tcp', 'tcp://%s:%d' % (fake_hostname, fake_random_port))
             actual = long_running_service_tools.get_healthcheck_for_instance(
-                fake_service, fake_namespace, fake_service_config, fake_random_port)
+                fake_service, fake_namespace, fake_service_config, fake_random_port,
+            )
             assert expected == actual
 
     def test_get_healthcheck_for_instance_cmd(self):
@@ -117,7 +119,7 @@ class TestLongRunningServiceConfig(object):
             config_dict={
                 'instances': 1,
                 'healthcheck_mode': 'cmd',
-                'healthcheck_cmd': fake_cmd
+                'healthcheck_cmd': fake_cmd,
             },
             branch_dict={},
         )
@@ -131,7 +133,8 @@ class TestLongRunningServiceConfig(object):
         ):
             expected = ('cmd', fake_cmd)
             actual = long_running_service_tools.get_healthcheck_for_instance(
-                fake_service, fake_namespace, fake_service_config, fake_random_port)
+                fake_service, fake_namespace, fake_service_config, fake_random_port,
+            )
             assert expected == actual
 
     def test_get_healthcheck_for_instance_other(self):
@@ -158,7 +161,8 @@ class TestLongRunningServiceConfig(object):
         ):
             expected = (None, None)
             actual = long_running_service_tools.get_healthcheck_for_instance(
-                fake_service, fake_namespace, fake_service_config, fake_random_port)
+                fake_service, fake_namespace, fake_service_config, fake_random_port,
+            )
             assert expected == actual
 
     def test_get_healthcheck_for_instance_custom_soadir(self):
@@ -186,7 +190,8 @@ class TestLongRunningServiceConfig(object):
         ):
             expected = (None, None)
             actual = long_running_service_tools.get_healthcheck_for_instance(
-                fake_service, fake_namespace, fake_service_config, fake_random_port, soa_dir=fake_soadir)
+                fake_service, fake_namespace, fake_service_config, fake_random_port, soa_dir=fake_soadir,
+            )
             assert expected == actual
             load_service_namespace_config_patch.assert_called_once_with(fake_service, fake_namespace, fake_soadir)
 

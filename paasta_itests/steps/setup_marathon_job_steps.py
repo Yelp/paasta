@@ -35,17 +35,17 @@ from paasta_tools.utils import SystemPaastaConfig
 def run_setup_marathon_job_no_apps_found(context):
     update_context_marathon_config(context)
     with mock.patch.object(
-        SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts
+        SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts,
     ), mock.patch(
-        'paasta_tools.setup_marathon_job.parse_args', autospec=True
+        'paasta_tools.setup_marathon_job.parse_args', autospec=True,
     ) as mock_parse_args, mock.patch.object(
         MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
-        return_value=context.marathon_complete_config
+        return_value=context.marathon_complete_config,
     ), mock.patch(
-        'paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True
+        'paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True,
     ), mock.patch(
         'paasta_tools.setup_marathon_job.marathon_tools.get_all_marathon_apps', autospec=True,
-        return_value=[]
+        return_value=[],
     ):
         mock_parse_args.return_value = mock.Mock(
             verbose=True,

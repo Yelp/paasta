@@ -74,16 +74,17 @@ def main():
 
     while marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         app_to_kill = client.get_app(full_appid)
-        (old_app_live_happy_tasks,
-         old_app_live_unhappy_tasks,
-         old_app_draining_tasks,
-         old_app_at_risk_tasks,
-         ) = get_tasks_by_state(
-             other_apps=[app_to_kill],
-             drain_method=drain_method,
-             service=service,
-             nerve_ns=nerve_ns,
-             bounce_health_params=service_instance_config.get_bounce_health_params(service_namespace_config),
+        (
+            old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks,
+            old_app_draining_tasks,
+            old_app_at_risk_tasks,
+        ) = get_tasks_by_state(
+            other_apps=[app_to_kill],
+            drain_method=drain_method,
+            service=service,
+            nerve_ns=nerve_ns,
+            bounce_health_params=service_instance_config.get_bounce_health_params(service_namespace_config),
         )
         do_bounce(
             bounce_func=bounce_func,

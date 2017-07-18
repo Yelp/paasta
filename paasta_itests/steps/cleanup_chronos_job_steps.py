@@ -24,8 +24,10 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import paasta_print
 
 
-@when(('I launch {num_jobs} {state} jobs for the service "{service}"'
-       ' with scheduled chronos instance "{job}"'))
+@when((
+    'I launch {num_jobs} {state} jobs for the service "{service}"'
+    ' with scheduled chronos instance "{job}"'
+))
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{

@@ -67,14 +67,14 @@ class LongRunningServiceConfig(InstanceConfig):
             except InvalidJobNameError:
                 log.error(
                     'Provided registration {} for service '
-                    '{} is invalid'.format(registration, self.service)
+                    '{} is invalid'.format(registration, self.service),
                 )
 
         # Backwards compatbility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
         if not registrations and 'nerve_ns' in self.config_dict:
             registrations.append(
-                compose_job_id(self.service, self.config_dict['nerve_ns'])
+                compose_job_id(self.service, self.config_dict['nerve_ns']),
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
@@ -127,7 +127,8 @@ class LongRunningServiceConfig(InstanceConfig):
                 limited_instances = self.limit_instance_count(zk_instances)
                 if limited_instances != zk_instances:
                     log.warning("Returning limited instance count %d. (zk had %d)" % (
-                                limited_instances, zk_instances))
+                        limited_instances, zk_instances,
+                    ))
                 return limited_instances
         else:
             instances = self.config_dict.get('instances', 1)
@@ -189,7 +190,7 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
-    if mode == "http":
+    if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
         healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
@@ -234,7 +235,8 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     """
 
     service_config = service_configuration_lib.read_service_configuration(
-        service_name=service, soa_dir=soa_dir)
+        service_name=service, soa_dir=soa_dir,
+    )
     smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
@@ -259,7 +261,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'mode',
         'discover',
         'advertise',
-        'extra_healthcheck_headers'
+        'extra_healthcheck_headers',
     }
 
     for key, value in namespace_config_from_file.items():

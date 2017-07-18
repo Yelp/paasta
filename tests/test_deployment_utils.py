@@ -30,8 +30,8 @@ def test_get_currently_deployed_sha(
             "everything": {
                 "git_sha": "abc",
                 "docker_image": "foo",
-            }
-        }
+            },
+        },
     })
     actual = deployment_utils.get_currently_deployed_sha(service='service', deploy_group='everything')
     assert actual == "abc"

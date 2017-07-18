@@ -56,7 +56,7 @@ def restart_marathon_job(service, instance, app_id, client, cluster):
         component='deploy',
         level='event',
         cluster=cluster,
-        instance=instance
+        instance=instance,
     )
     client.scale_app(app_id, instances=0, force=True)
 
@@ -96,8 +96,10 @@ def status_desired_state(service, instance, client, job_config):
     return "Desired State:      %s and %s" % (status, desired_state)
 
 
-def status_marathon_job_human(service, instance, deploy_status, app_id,
-                              running_instances, normal_instance_count):
+def status_marathon_job_human(
+    service, instance, deploy_status, app_id,
+    running_instances, normal_instance_count,
+):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     if deploy_status != 'NotRunning':
         if running_instances >= normal_instance_count:
@@ -113,7 +115,8 @@ def status_marathon_job_human(service, instance, deploy_status, app_id,
     else:
         status = PaastaColors.yellow("Warning")
         return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)" % (
-            status, name, app_id)
+            status, name, app_id,
+        )
 
 
 def marathon_app_deploy_status_human(status, backoff_seconds=None):
@@ -123,7 +126,8 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
         deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
     elif status == marathon_tools.MarathonDeployStatus.Delayed:
         deploy_status = "%s (tasks are crashing, next won't launch for another %s seconds)" % (
-                        PaastaColors.red(status_string), backoff_seconds)
+                        PaastaColors.red(status_string), backoff_seconds,
+        )
     elif status == marathon_tools.MarathonDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
     elif status == marathon_tools.MarathonDeployStatus.Stopped:
@@ -148,8 +152,10 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         running_instances = 0
     else:
         running_instances = client.get_app(app_id).tasks_running
-    return status_marathon_job_human(service, instance, deploy_status_human, app_id,
-                                     running_instances, normal_instance_count)
+    return status_marathon_job_human(
+        service, instance, deploy_status_human, app_id,
+        running_instances, normal_instance_count,
+    )
 
 
 def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir):
@@ -216,7 +222,7 @@ def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
-                soa_dir=soa_dir
+                soa_dir=soa_dir,
             )
             all_tasks.extend(tasks)
             all_output.append(output)
@@ -230,9 +236,11 @@ def haproxy_backend_report(normal_instance_count, up_backends):
     report of the up backends"""
     # TODO: Take into account a configurable threshold, PAASTA-1102
     crit_threshold = 50
-    under_replicated, ratio = is_under_replicated(num_available=up_backends,
-                                                  expected_count=normal_instance_count,
-                                                  crit_threshold=crit_threshold)
+    under_replicated, ratio = is_under_replicated(
+        num_available=up_backends,
+        expected_count=normal_instance_count,
+        crit_threshold=crit_threshold,
+    )
     if under_replicated:
         status = PaastaColors.red("Critical")
         count = PaastaColors.red("(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio))
@@ -295,22 +303,22 @@ def status_smartstack_backends(
     """
     output = []
     service_instance = marathon_tools.read_registration_for_service_instance(
-        service, instance, cluster
+        service, instance, cluster,
     )
 
     service_namespace_config = marathon_tools.load_service_namespace_config(
         service=service,
         namespace=instance,
-        soa_dir=soa_dir
+        soa_dir=soa_dir,
     )
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_deploy_blacklist
+        system_deploy_blacklist=system_deploy_blacklist,
     )
 
     filtered_slaves = get_all_slaves_for_blacklist_whitelist(
         blacklist=monitoring_blacklist,
-        whitelist=[]
+        whitelist=[],
     )
 
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
@@ -345,8 +353,10 @@ def status_smartstack_backends(
     return "\n".join(output)
 
 
-def pretty_print_smartstack_backends_for_locations(service_instance, tasks, locations, expected_count, verbose,
-                                                   synapse_port, synapse_haproxy_url_format):
+def pretty_print_smartstack_backends_for_locations(
+    service_instance, tasks, locations, expected_count, verbose,
+    synapse_port, synapse_haproxy_url_format,
+):
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
     """
@@ -428,9 +438,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
 
     if client is None:
         marathon_config = marathon_tools.load_marathon_config()
-        client = marathon_tools.get_marathon_client(marathon_config.get_url(),
-                                                    marathon_config.get_username(),
-                                                    marathon_config.get_password())
+        client = marathon_tools.get_marathon_client(
+            marathon_config.get_url(),
+            marathon_config.get_username(),
+            marathon_config.get_password(),
+        )
 
     if command == 'restart':
         restart_marathon_job(service, instance, app_id, client, cluster)
@@ -449,9 +461,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 tail_lines=tail_lines,
             ))
         if proxy_port is not None:
-            normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service,
-                                                                                               instance,
-                                                                                               cluster)
+            normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+                service,
+                instance,
+                cluster,
+            )
             paasta_print(status_smartstack_backends(
                 service=service,
                 instance=instance,

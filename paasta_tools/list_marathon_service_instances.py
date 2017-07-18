@@ -51,15 +51,22 @@ from paasta_tools.utils import use_requests_cache
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Lists marathon instances for a service.')
-    parser.add_argument('-c', '--cluster', dest="cluster", metavar="CLUSTER",
-                        default=None,
-                        help="define a specific cluster to read from")
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-m', '--minimal', dest='minimal', action='store_true',
-                        help="show only service instances that need bouncing")
+        description='Lists marathon instances for a service.',
+    )
+    parser.add_argument(
+        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        default=None,
+        help="define a specific cluster to read from",
+    )
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-m', '--minimal', dest='minimal', action='store_true',
+        help="show only service instances that need bouncing",
+    )
     args = parser.parse_args()
     return args
 
@@ -103,8 +110,10 @@ def get_service_instances_that_need_bouncing(marathon_client, soa_dir):
     for app_id, app in current_apps.items():
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
-            if (app.instances != desired_marathon_configs[app_id]['instances'] or
-                    get_num_at_risk_tasks(app, draining_hosts) != 0):
+            if (
+                app.instances != desired_marathon_configs[app_id]['instances'] or
+                get_num_at_risk_tasks(app, draining_hosts) != 0
+            ):
                 apps_that_need_bouncing.add(short_app_id)
 
     return (app_id.replace('--', '_') for app_id in apps_that_need_bouncing)
@@ -122,11 +131,14 @@ def main():
             passwd=marathon_config.get_password(),
         )
         service_instances = get_service_instances_that_need_bouncing(
-            marathon_client=marathon_client, soa_dir=soa_dir)
+            marathon_client=marathon_client, soa_dir=soa_dir,
+        )
     else:
-        instances = get_services_for_cluster(cluster=cluster,
-                                             instance_type='marathon',
-                                             soa_dir=soa_dir)
+        instances = get_services_for_cluster(
+            cluster=cluster,
+            instance_type='marathon',
+            soa_dir=soa_dir,
+        )
         service_instances = []
         for name, instance in instances:
             service_instances.append(compose_job_id(name, instance))

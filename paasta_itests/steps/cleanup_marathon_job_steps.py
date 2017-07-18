@@ -37,10 +37,14 @@ def delete_apps(context, job_id, cluster_name):
     context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
     update_context_marathon_config(context)
     context.app_id = context.marathon_complete_config['id']
-    os.remove("{}/{}/marathon-{}.yaml".format(context.soa_dir, service,
-                                              cluster_name))
-    os.remove("{}/{}/deployments.json".format(context.soa_dir, service,
-                                              cluster_name))
+    os.remove("{}/{}/marathon-{}.yaml".format(
+        context.soa_dir, service,
+        cluster_name,
+    ))
+    os.remove("{}/{}/deployments.json".format(
+        context.soa_dir, service,
+        cluster_name,
+    ))
     os.rmdir("{}/{}".format(context.soa_dir, service))
 
 
