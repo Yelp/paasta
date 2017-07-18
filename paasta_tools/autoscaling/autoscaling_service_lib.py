@@ -57,11 +57,15 @@ from paasta_tools.utils import mean
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
-ServiceAutoscalingInfo = namedtuple('ServiceAutoscalingInfo', ['current_instances',
-                                                               'max_instances',
-                                                               'min_instances',
-                                                               'current_utilization',
-                                                               'target_instances'])
+ServiceAutoscalingInfo = namedtuple(
+    'ServiceAutoscalingInfo', [
+        'current_instances',
+        'max_instances',
+        'min_instances',
+        'current_utilization',
+        'target_instances',
+    ],
+)
 
 
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
@@ -172,9 +176,11 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
 
 
 @register_autoscaling_component('proportional', DECISION_POLICY_KEY)
-def proportional_decision_policy(zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
-                                 num_healthy_instances, noop=False, offset=0.0, forecast_policy='current',
-                                 good_enough_window=None, **kwargs):
+def proportional_decision_policy(
+    zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
+    num_healthy_instances, noop=False, offset=0.0, forecast_policy='current',
+    good_enough_window=None, **kwargs
+):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
     the setpoint, scales up by 10%. Includes correction for an offset, if your containers have a baseline utilization
     independent of the number of containers.
@@ -333,7 +339,8 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
     if not utilization:
         raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
-            endpoint, marathon_service_config.service, marathon_service_config.instance))
+            endpoint, marathon_service_config.service, marathon_service_config.instance,
+        ))
     return mean(utilization)
 
 
@@ -381,8 +388,10 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='sta
 
 
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
-def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, log_utilization_data={},
-                               noop=False, **kwargs):
+def mesos_cpu_metrics_provider(
+    marathon_service_config, marathon_tasks, mesos_tasks, log_utilization_data={},
+    noop=False, **kwargs
+):
     """
     Gets the mean cpu utilization of a service across all of its tasks.
 
@@ -488,38 +497,50 @@ def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         try:
-            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
-                                                                   all_marathon_tasks,
-                                                                   all_mesos_tasks,
-                                                                   service_config)
-            utilization = get_utilization(marathon_service_config=service_config,
-                                          autoscaling_params=autoscaling_params,
-                                          log_utilization_data={},
-                                          marathon_tasks=list(marathon_tasks.values()),
-                                          mesos_tasks=mesos_tasks)
-            error = get_error_from_utilization(utilization=utilization,
-                                               setpoint=autoscaling_params['setpoint'],
-                                               current_instances=service_config.get_instances())
-            new_instance_count = get_new_instance_count(utilization=utilization,
-                                                        error=error,
-                                                        autoscaling_params=autoscaling_params,
-                                                        current_instances=service_config.get_instances(),
-                                                        marathon_service_config=service_config,
-                                                        num_healthy_instances=len(marathon_tasks))
+            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
+                marathon_client,
+                all_marathon_tasks,
+                all_mesos_tasks,
+                service_config,
+            )
+            utilization = get_utilization(
+                marathon_service_config=service_config,
+                autoscaling_params=autoscaling_params,
+                log_utilization_data={},
+                marathon_tasks=list(marathon_tasks.values()),
+                mesos_tasks=mesos_tasks,
+            )
+            error = get_error_from_utilization(
+                utilization=utilization,
+                setpoint=autoscaling_params['setpoint'],
+                current_instances=service_config.get_instances(),
+            )
+            new_instance_count = get_new_instance_count(
+                utilization=utilization,
+                error=error,
+                autoscaling_params=autoscaling_params,
+                current_instances=service_config.get_instances(),
+                marathon_service_config=service_config,
+                num_healthy_instances=len(marathon_tasks),
+            )
             current_utilization = "{:.1f}%".format(utilization * 100)
         except MetricsProviderNoDataError:
             current_utilization = "Exception"
             new_instance_count = "Exception"
-        return ServiceAutoscalingInfo(current_instances=str(service_config.get_instances()),
-                                      max_instances=str(service_config.get_max_instances()),
-                                      min_instances=str(service_config.get_min_instances()),
-                                      current_utilization=current_utilization,
-                                      target_instances=str(new_instance_count))
+        return ServiceAutoscalingInfo(
+            current_instances=str(service_config.get_instances()),
+            max_instances=str(service_config.get_max_instances()),
+            min_instances=str(service_config.get_min_instances()),
+            current_utilization=current_utilization,
+            target_instances=str(new_instance_count),
+        )
     return None
 
 
-def get_new_instance_count(utilization, error, autoscaling_params, current_instances, marathon_service_config,
-                           num_healthy_instances):
+def get_new_instance_count(
+    utilization, error, autoscaling_params, current_instances, marathon_service_config,
+    num_healthy_instances,
+):
     autoscaling_decision_policy = get_decision_policy(autoscaling_params[DECISION_POLICY_KEY])
 
     zookeeper_path = compose_autoscaling_zookeeper_root(
@@ -593,11 +614,13 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     safe_downscaling_threshold = int(current_instances * 0.7)
     if new_instance_count != current_instances:
         if new_instance_count < current_instances and task_data_insufficient:
-            write_to_log(config=marathon_service_config,
-                         line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
-                              'This can happen because tasks are delayed/waiting/unhealthy or because we are '
-                              'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
-                              'we make a decision to scale down.')
+            write_to_log(
+                config=marathon_service_config,
+                line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
+                     'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                     'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
+                     'we make a decision to scale down.',
+            )
             return
         if new_instance_count == safe_downscaling_threshold:
             write_to_log(
@@ -609,7 +632,8 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         write_to_log(
             config=marathon_service_config,
             line='Scaling from %d to %d instances (%s)' % (
-                current_instances, new_instance_count, humanize_error(error)),
+                current_instances, new_instance_count, humanize_error(error),
+            ),
         )
         set_instances_for_marathon_service(
             service=marathon_service_config.service,
@@ -670,16 +694,19 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
             marathon_client = get_marathon_client(
                 url=marathon_config.get_url(),
                 user=marathon_config.get_username(),
-                passwd=marathon_config.get_password())
+                passwd=marathon_config.get_password(),
+            )
             all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
             if configs:
                 with ZookeeperPool():
                     for config in configs:
                         try:
-                            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(marathon_client,
-                                                                                   all_marathon_tasks,
-                                                                                   all_mesos_tasks,
-                                                                                   config)
+                            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
+                                marathon_client,
+                                all_marathon_tasks,
+                                all_mesos_tasks,
+                                config,
+                            )
                             autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)

@@ -60,13 +60,19 @@ TARGET_FILE = 'deployments.json'
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
-    parser.add_argument('-s', '--service', required=True,
-                        help="Service name to make the deployments.json for")
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
+    parser.add_argument(
+        '-s', '--service', required=True,
+        help="Service name to make the deployments.json for",
+    )
     args = parser.parse_args()
     return args
 

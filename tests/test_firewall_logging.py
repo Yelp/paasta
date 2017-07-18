@@ -39,11 +39,13 @@ def test_parse_syslog_undecodable():
     assert firewall_logging.parse_syslog(b'<4>Jun  6 07:52:38 myhost \xba~\xa6r') is None
 
 
-@pytest.mark.parametrize('syslog_data', [
-    '<4>Jun  6 07:52:38 myhost someothermessage: hello world',
-    '<4>Jun  6 07:52:38 myhost kernel: hello world',
-    '<4>Jun  6 07:52:38 myhost kernel [0.0]: hello world',
-])
+@pytest.mark.parametrize(
+    'syslog_data', [
+        '<4>Jun  6 07:52:38 myhost someothermessage: hello world',
+        '<4>Jun  6 07:52:38 myhost kernel: hello world',
+        '<4>Jun  6 07:52:38 myhost kernel [0.0]: hello world',
+    ],
+)
 @mock.patch.object(firewall_logging, 'lookup_service_instance_by_ip')
 def test_syslog_to_paasta_log_bad_message(mock_lookup_service_instance_by_ip, syslog_data, mock_log):
     firewall_logging.syslog_to_paasta_log(syslog_data.encode(), 'my-cluster')
@@ -51,10 +53,12 @@ def test_syslog_to_paasta_log_bad_message(mock_lookup_service_instance_by_ip, sy
     assert mock_log.mock_calls == []
 
 
-@mock.patch.object(firewall_logging, 'services_running_here', return_value=[
-    ('service1', 'instance1', '00:00:00:00:00', '1.1.1.1'),
-    ('service1', 'instance2', '00:00:00:00:00', '2.2.2.2'),
-])
+@mock.patch.object(
+    firewall_logging, 'services_running_here', return_value=[
+        ('service1', 'instance1', '00:00:00:00:00', '1.1.1.1'),
+        ('service1', 'instance2', '00:00:00:00:00', '2.2.2.2'),
+    ],
+)
 @mock.patch.object(firewall_logging, 'log')
 def test_lookup_service_instance_by_ip(my_mock_log, mock_services_running_here):
     assert firewall_logging.lookup_service_instance_by_ip('1.1.1.1') == ('service1', 'instance1')

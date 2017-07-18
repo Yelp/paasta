@@ -40,98 +40,100 @@ _planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.in
 _service_name = 'a_service'
 
 
-@mark.parametrize('test_case', [
-    [
-        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
+@mark.parametrize(
+    'test_case', [
+        [
+            [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'instance1', 'cluster1', None, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'instance1', 'cluster1', None, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, True,
+            'please supply a `--execution_date` argument', False,  # job uses time variables interpolation
+        ],
+        [
+            [_service_name, 'instance1', 'cluster1,cluster2', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'instance1', None, _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'cluster: cluster1', True,  # success
+        ],
+        [
+            [_service_name, 'instance1', 'cluster3', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            '"cluster3" does not look like a valid cluster', False,
+        ],
+        [
+            [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'service "{}" has not been deployed to "cluster2" yet'.format(_service_name), False,
+        ],
+        [
+            [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'instance "instanceX" is either invalid', False,
+        ],
+        [
+            [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, None, None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'Please specify the rerun policy via --rerun-type argument', False,
+        ],
+        [
+            [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', None],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,  # TODO: make assertion more selective -> check started instances
+        ],
+        [
+            [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, True],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, False],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', True],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
+        [
+            [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', True],
+            _service_name,
+            _list_clusters, _actual_deployments, _planned_deployments, False,
+            'successfully created job', True,
+        ],
     ],
-    [
-        [_service_name, 'instance1', 'cluster1', None, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'instance1', 'cluster1', None, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, True,
-        'please supply a `--execution_date` argument', False,  # job uses time variables interpolation
-    ],
-    [
-        [_service_name, 'instance1', 'cluster1,cluster2', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'instance1', None, _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'cluster: cluster1', True,  # success
-    ],
-    [
-        [_service_name, 'instance1', 'cluster3', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        '"cluster3" does not look like a valid cluster', False,
-    ],
-    [
-        [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'service "{}" has not been deployed to "cluster2" yet'.format(_service_name), False,
-    ],
-    [
-        [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'instance "instanceX" is either invalid', False,
-    ],
-    [
-        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, None, None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'Please specify the rerun policy via --rerun-type argument', False,
-    ],
-    [
-        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', None],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,  # TODO: make assertion more selective -> check started instances
-    ],
-    [
-        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, True],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'instance1', 'cluster1', _user_supplied_execution_date, None, False],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'dependent_instance1', 'cluster1', _user_supplied_execution_date, 'instance', True],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-    [
-        [_service_name, 'dependent_instance2', 'cluster1', _user_supplied_execution_date, 'graph', True],
-        _service_name,
-        _list_clusters, _actual_deployments, _planned_deployments, False,
-        'successfully created job', True,
-    ],
-])
+)
 def test_rerun_validations(test_case, capfd):
     with patch(
         'paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True,
@@ -156,14 +158,16 @@ def test_rerun_validations(test_case, capfd):
     ) as mock_read_chronos_jobs_for_service, patch(
         'service_configuration_lib.read_services_configuration', autospec=True,
     ) as mock_read_services_configuration:
-        (rerun_args,
-         mock_figure_out_service_name.return_value,
-         mock_list_clusters.return_value,
-         mock_get_actual_deployments.return_value,
-         mock_get_planned_deployments.return_value,
-         mock_uses_time_variables.return_value,
-         expected_output,
-         call_execute_rerun_remote) = test_case
+        (
+            rerun_args,
+            mock_figure_out_service_name.return_value,
+            mock_list_clusters.return_value,
+            mock_get_actual_deployments.return_value,
+            mock_get_planned_deployments.return_value,
+            mock_uses_time_variables.return_value,
+            expected_output,
+            call_execute_rerun_remote,
+        ) = test_case
 
         def fake_load_chronos_jobs_config(service, instance, cluster, *args, **kwargs):
             mock = MagicMock(spec=ChronosJobConfig)
@@ -229,19 +233,21 @@ def test_rerun_validations(test_case, capfd):
         assert expected_output in output
 
 
-@mark.parametrize('test_case', [
-    [['rerun'], True],
-    [['rerun', '-s', _service_name], True],
-    [['rerun', '-s', _service_name, '-i', 'an_instance'], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', 'not_a_date'], True],
-    [['rerun', '-v', '-v', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'not_a_valid_type'], True],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'instance'], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph'], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-f'], False],
-    [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph', '-f'], False],
-])
+@mark.parametrize(
+    'test_case', [
+        [['rerun'], True],
+        [['rerun', '-s', _service_name], True],
+        [['rerun', '-s', _service_name, '-i', 'an_instance'], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-d', 'not_a_date'], True],
+        [['rerun', '-v', '-v', '-s', _service_name, '-i', 'an_instance', '-d', _user_supplied_execution_date], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'not_a_valid_type'], True],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'instance'], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph'], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-f'], False],
+        [['rerun', '-s', _service_name, '-i', 'an_instance', '-t', 'graph', '-f'], False],
+    ],
+)
 def test_rerun_argparse(test_case):
     argv, should_exit = test_case
     parser = argparse.ArgumentParser()

@@ -54,10 +54,12 @@ class TestAutoscalerWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_zk = mock.Mock()
         self.mock_inbox_q = mock.Mock()
-        self.watcher = AutoscalerWatcher(self.mock_inbox_q,
-                                         "westeros-prod",
-                                         zookeeper_client=self.mock_zk,
-                                         config=mock.Mock())
+        self.watcher = AutoscalerWatcher(
+            self.mock_inbox_q,
+            "westeros-prod",
+            zookeeper_client=self.mock_zk,
+            config=mock.Mock(),
+        )
 
     def test_watch_folder(self):
         with mock.patch(
@@ -71,10 +73,12 @@ class TestAutoscalerWatcher(unittest.TestCase):
             mock_watcher = mock.Mock(_prior_children=[])
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
-            mock_children_watch.assert_called_with(self.mock_zk,
-                                                   '/rick/beth',
-                                                   func=self.watcher.process_folder_event,
-                                                   send_event=True)
+            mock_children_watch.assert_called_with(
+                self.mock_zk,
+                '/rick/beth',
+                func=self.watcher.process_folder_event,
+                send_event=True,
+            )
             assert not mock_watch_node.called
 
             mock_children = mock.PropertyMock(side_effect=[['morty', 'summer'], [], []])
@@ -83,18 +87,26 @@ class TestAutoscalerWatcher(unittest.TestCase):
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
             assert not mock_watch_node.called
-            calls = [mock.call(self.mock_zk,
-                               '/rick/beth',
-                               func=self.watcher.process_folder_event,
-                               send_event=True),
-                     mock.call(self.mock_zk,
-                               '/rick/beth/morty',
-                               func=self.watcher.process_folder_event,
-                               send_event=True),
-                     mock.call(self.mock_zk,
-                               '/rick/beth/summer',
-                               func=self.watcher.process_folder_event,
-                               send_event=True)]
+            calls = [
+                mock.call(
+                    self.mock_zk,
+                    '/rick/beth',
+                    func=self.watcher.process_folder_event,
+                    send_event=True,
+                ),
+                mock.call(
+                    self.mock_zk,
+                    '/rick/beth/morty',
+                    func=self.watcher.process_folder_event,
+                    send_event=True,
+                ),
+                mock.call(
+                    self.mock_zk,
+                    '/rick/beth/summer',
+                    func=self.watcher.process_folder_event,
+                    send_event=True,
+                ),
+            ]
             mock_children_watch.assert_has_calls(calls)
 
             mock_watcher = mock.Mock(_prior_children=['instances'])
@@ -107,10 +119,12 @@ class TestAutoscalerWatcher(unittest.TestCase):
             'paasta_tools.deployd.watchers.DataWatch', autospec=True,
         ) as mock_data_watch:
             self.watcher.watch_node('/some/node')
-            mock_data_watch.assert_called_with(self.mock_zk,
-                                               '/some/node',
-                                               func=self.watcher.process_node_event,
-                                               send_event=True)
+            mock_data_watch.assert_called_with(
+                self.mock_zk,
+                '/some/node',
+                func=self.watcher.process_node_event,
+                send_event=True,
+            )
 
     def test_process_node_event(self):
         with mock.patch(
@@ -119,31 +133,41 @@ class TestAutoscalerWatcher(unittest.TestCase):
             'time.time', autospec=True, return_value=1,
         ):
             mock_event_other = mock_event_type.DELETED
-            mock_event = mock.Mock(type=mock_event_other,
-                                   path='/autoscaling/service/instance/instances')
+            mock_event = mock.Mock(
+                type=mock_event_other,
+                path='/autoscaling/service/instance/instances',
+            )
             assert not self.mock_inbox_q.put.called
 
             mock_event_created = mock_event_type.CREATED
-            mock_event = mock.Mock(type=mock_event_created,
-                                   path='/autoscaling/service/instance/instances')
+            mock_event = mock.Mock(
+                type=mock_event_created,
+                path='/autoscaling/service/instance/instances',
+            )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='service',
-                                                                     instance='instance',
-                                                                     bounce_by=1,
-                                                                     bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__,
-                                                                     failures=0))
+            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
+                service='service',
+                instance='instance',
+                bounce_by=1,
+                bounce_timers=None,
+                watcher=self.watcher.__class__.__name__,
+                failures=0,
+            ))
 
             mock_event_changed = mock_event_type.CHANGED
-            mock_event = mock.Mock(type=mock_event_changed,
-                                   path='/autoscaling/service/instance/instances')
+            mock_event = mock.Mock(
+                type=mock_event_changed,
+                path='/autoscaling/service/instance/instances',
+            )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(service='service',
-                                                                     instance='instance',
-                                                                     bounce_by=1,
-                                                                     bounce_timers=None,
-                                                                     watcher=self.watcher.__class__.__name__,
-                                                                     failures=0))
+            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
+                service='service',
+                instance='instance',
+                bounce_by=1,
+                bounce_timers=None,
+                watcher=self.watcher.__class__.__name__,
+                failures=0,
+            ))
 
     def test_process_folder_event(self):
         with mock.patch(
@@ -152,17 +176,23 @@ class TestAutoscalerWatcher(unittest.TestCase):
             'paasta_tools.deployd.watchers.AutoscalerWatcher.watch_folder', autospec=True,
         ) as mock_watch_folder:
             mock_event_other = mock_event_type.DELETED
-            mock_event = mock.Mock(type=mock_event_other,
-                                   path='/autoscaling/service/instance')
+            mock_event = mock.Mock(
+                type=mock_event_other,
+                path='/autoscaling/service/instance',
+            )
             self.watcher.process_folder_event([], mock_event)
             assert not mock_watch_folder.called
 
             mock_event_child = mock_event_type.CHILD
-            mock_event = mock.Mock(type=mock_event_child,
-                                   path='/rick/beth')
+            mock_event = mock.Mock(
+                type=mock_event_child,
+                path='/rick/beth',
+            )
             self.watcher.process_folder_event(['morty', 'summer'], mock_event)
-            calls = [mock.call(self.watcher, '/rick/beth/morty'),
-                     mock.call(self.watcher, '/rick/beth/summer')]
+            calls = [
+                mock.call(self.watcher, '/rick/beth/morty'),
+                mock.call(self.watcher, '/rick/beth/summer'),
+            ]
             mock_watch_folder.assert_has_calls(calls)
 
     def test_run(self):
@@ -306,8 +336,10 @@ class TestMaintenanceWatcher(unittest.TestCase):
             with raises(LoopBreak):
                 self.watcher.run()
             mock_get_at_risk_service_instances.assert_called_with(self.watcher, ['host1', 'host2'])
-            calls = [mock.call('si1'),
-                     mock.call('si2')]
+            calls = [
+                mock.call('si1'),
+                mock.call('si2'),
+            ]
             self.mock_inbox_q.put.assert_has_calls(calls)
 
     def test_get_at_risk_service_instances(self):
@@ -316,28 +348,46 @@ class TestMaintenanceWatcher(unittest.TestCase):
         ) as mock_get_marathon_apps, mock.patch(
             'time.time', autospec=True, return_value=1,
         ):
-            mock_marathon_apps = [mock.Mock(tasks=[mock.Mock(host='host1',
-                                                             app_id='/universe.c137.configsha.gitsha'),
-                                                   mock.Mock(host='host2',
-                                                             app_id='/universe.c138.configsha.gitsha')]),
-                                  mock.Mock(tasks=[mock.Mock(host='host1',
-                                                             app_id='/universe.c139.configsha.gitsha')]),
-                                  mock.Mock(tasks=[mock.Mock(host='host1',
-                                                             app_id='/universe.c139.configsha.gitsha')])]
+            mock_marathon_apps = [
+                mock.Mock(tasks=[
+                    mock.Mock(
+                        host='host1',
+                        app_id='/universe.c137.configsha.gitsha',
+                    ),
+                    mock.Mock(
+                        host='host2',
+                        app_id='/universe.c138.configsha.gitsha',
+                    ),
+                ]),
+                mock.Mock(tasks=[mock.Mock(
+                    host='host1',
+                    app_id='/universe.c139.configsha.gitsha',
+                )]),
+                mock.Mock(tasks=[mock.Mock(
+                    host='host1',
+                    app_id='/universe.c139.configsha.gitsha',
+                )]),
+            ]
             mock_get_marathon_apps.return_value = mock_marathon_apps
             ret = self.watcher.get_at_risk_service_instances(['host1'])
-            expected = [ServiceInstance(service='universe',
-                                        instance='c137',
-                                        bounce_by=1,
-                                        watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None,
-                                        failures=0),
-                        ServiceInstance(service='universe',
-                                        instance='c139',
-                                        bounce_by=1,
-                                        watcher=self.watcher.__class__.__name__,
-                                        bounce_timers=None,
-                                        failures=0)]
+            expected = [
+                ServiceInstance(
+                    service='universe',
+                    instance='c137',
+                    bounce_by=1,
+                    watcher=self.watcher.__class__.__name__,
+                    bounce_timers=None,
+                    failures=0,
+                ),
+                ServiceInstance(
+                    service='universe',
+                    instance='c139',
+                    bounce_by=1,
+                    watcher=self.watcher.__class__.__name__,
+                    bounce_timers=None,
+                    failures=0,
+                ),
+            ]
             assert ret == expected
 
 
@@ -505,19 +555,27 @@ class TestYelpSoaEventHandler(unittest.TestCase):
             mock_list_instances.return_value = ['c137', 'c138']
             mock_get_service_instances_needing_update.return_value = [('universe', 'c137')]
             self.handler.bounce_service('universe')
-            mock_list_instances.assert_called_with(service='universe',
-                                                   clusters=[self.handler.filewatcher.cluster],
-                                                   instance_type='marathon',
-                                                   cache=False)
-            mock_get_service_instances_needing_update.assert_called_with(self.handler.marathon_client,
-                                                                         [('universe', 'c137'),
-                                                                          ('universe', 'c138')],
-                                                                         self.handler.filewatcher.cluster)
-            expected_si = ServiceInstance(service='universe',
-                                          instance='c137',
-                                          bounce_by=1,
-                                          watcher='YelpSoaEventHandler',
-                                          bounce_timers=None,
-                                          failures=0)
+            mock_list_instances.assert_called_with(
+                service='universe',
+                clusters=[self.handler.filewatcher.cluster],
+                instance_type='marathon',
+                cache=False,
+            )
+            mock_get_service_instances_needing_update.assert_called_with(
+                self.handler.marathon_client,
+                [
+                    ('universe', 'c137'),
+                    ('universe', 'c138'),
+                ],
+                self.handler.filewatcher.cluster,
+            )
+            expected_si = ServiceInstance(
+                service='universe',
+                instance='c137',
+                bounce_by=1,
+                watcher='YelpSoaEventHandler',
+                bounce_timers=None,
+                failures=0,
+            )
             self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
             assert self.mock_filewatcher.inbox_q.put.call_count == 1

@@ -170,12 +170,14 @@ class TestSetupMarathonJob:
             get_client_patch.assert_called_once_with(
                 self.fake_marathon_config.get_url(),
                 self.fake_marathon_config.get_username(),
-                self.fake_marathon_config.get_password())
+                self.fake_marathon_config.get_password(),
+            )
             read_service_conf_patch.assert_called_once_with(
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
-                soa_dir=self.fake_args.soa_dir)
+                soa_dir=self.fake_args.soa_dir,
+            )
             setup_service_patch.assert_called_once_with(
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
@@ -221,12 +223,14 @@ class TestSetupMarathonJob:
             get_client_patch.assert_called_once_with(
                 self.fake_marathon_config.get_url(),
                 self.fake_marathon_config.get_username(),
-                self.fake_marathon_config.get_password())
+                self.fake_marathon_config.get_password(),
+            )
             read_service_conf_patch.assert_called_once_with(
                 decompose_job_id(self.fake_args.service_instance_list[0])[0],
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
-                soa_dir=self.fake_args.soa_dir)
+                soa_dir=self.fake_args.soa_dir,
+            )
             assert exc_info.value.code == 0
 
     def test_send_event(self):
@@ -307,8 +311,10 @@ class TestSetupMarathonJob:
         ) as mock_create_marathon_app, mock.patch(
             'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True,
         ) as mock_kill_old_ids:
-            mock_bad_response = mock.Mock(status_code=409,
-                                          headers={'content-type': 'application/json'})
+            mock_bad_response = mock.Mock(
+                status_code=409,
+                headers={'content-type': 'application/json'},
+            )
             mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock_bad_response)
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
@@ -407,8 +413,10 @@ class TestSetupMarathonJob:
             assert mock_kill_old_ids.call_count == 0
 
             # test failure from marathon raised
-            mock_bad_response = mock.Mock(status_code=500,
-                                          headers={'content-type': 'application/json'})
+            mock_bad_response = mock.Mock(
+                status_code=500,
+                headers={'content-type': 'application/json'},
+            )
             mock_create_marathon_app.side_effect = marathon.exceptions.MarathonHttpError(mock_bad_response)
             with raises(marathon.exceptions.MarathonHttpError):
                 setup_marathon_job.do_bounce(
@@ -778,7 +786,8 @@ class TestSetupMarathonJob:
             'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
-                get_cluster=mock.Mock(return_value='fake_cluster'))
+                get_cluster=mock.Mock(return_value='fake_cluster'),
+            )
             mock_get_matching_apps.return_value = [mock.Mock(id='/some_id', instances=1, tasks=[])]
             mock_get_happy_tasks.return_value = []
             mock_get_drain_method.return_value = mock.Mock(is_draining=mock.Mock(return_value=False))
@@ -835,7 +844,8 @@ class TestSetupMarathonJob:
             'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ) as mock_mt_get_draining_hosts:
             mock_load_system_paasta_config.return_value = mock.MagicMock(
-                get_cluster=mock.Mock(return_value='fake_cluster'))
+                get_cluster=mock.Mock(return_value='fake_cluster'),
+            )
             mock_get_draining_hosts.return_value = ['fake-host1', 'fake-host2']
             mock_mt_get_draining_hosts.return_value = ['fake-host1', 'fake-host2']
             tasks = [
@@ -904,7 +914,8 @@ class TestSetupMarathonJob:
             'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
-                get_cluster=mock.Mock(return_value='fake_cluster'))
+                get_cluster=mock.Mock(return_value='fake_cluster'),
+            )
             tasks = [
                 mock.Mock(hostname='fake-host1'),
                 mock.Mock(hostname='fake-host2'),
@@ -969,7 +980,8 @@ class TestSetupMarathonJob:
             'paasta_tools.mesos_maintenance.get_draining_hosts', autospec=True,
         ):
             mock_load_system_paasta_config.return_value = mock.MagicMock(
-                get_cluster=mock.Mock(return_value='fake_cluster'))
+                get_cluster=mock.Mock(return_value='fake_cluster'),
+            )
             happy_tasks = [
                 mock.Mock(hostname='fake-host1'),
                 mock.Mock(hostname='fake-host2'),
@@ -1039,7 +1051,8 @@ class TestSetupMarathonJob:
             mock_stop_draining = mock.MagicMock()
 
             mock_load_system_paasta_config.return_value = mock.MagicMock(
-                get_cluster=mock.Mock(return_value='fake_cluster'))
+                get_cluster=mock.Mock(return_value='fake_cluster'),
+            )
             tasks = [
                 mock.Mock(host='fake-host1'),
                 mock.Mock(host='fake-host2'),
@@ -1051,8 +1064,10 @@ class TestSetupMarathonJob:
 
             mock_get_happy_tasks.return_value = tasks
             # this drain method gives us 1 healthy task (fake-host1) and 4 draining tasks (fake-host[2-5])
-            mock_get_drain_method.return_value = mock.Mock(is_draining=lambda x: x.host != 'fake-host1',
-                                                           stop_draining=mock_stop_draining,)
+            mock_get_drain_method.return_value = mock.Mock(
+                is_draining=lambda x: x.host != 'fake-host1',
+                stop_draining=mock_stop_draining,
+            )
             setup_marathon_job.deploy_service(
                 service=fake_service,
                 instance=fake_instance,
@@ -1120,10 +1135,12 @@ class TestSetupMarathonJob:
         fake_name = 'if_talk_was_cheap'
         fake_instance = 'psychatrists_would_be_broke'
         fake_response = mock.Mock(
-            json=mock.Mock(return_value={'message': 'test'}))
+            json=mock.Mock(return_value={'message': 'test'}),
+        )
         fake_response.headers = {'content-type': 'application/json'}
         fake_client = mock.MagicMock(get_app=mock.Mock(
-            side_effect=marathon.exceptions.NotFoundError(fake_response)))
+            side_effect=marathon.exceptions.NotFoundError(fake_response),
+        ))
         full_id = marathon_tools.format_job_id(fake_name, fake_instance, 'oogabooga', 'bananafanafofooga')
         fake_complete = {
             'do': 'you', 'even': 'dota', 'id': full_id,
@@ -1202,7 +1219,8 @@ class TestSetupMarathonJob:
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(
-                    read_namespace_conf_patch.return_value),
+                    read_namespace_conf_patch.return_value,
+                ),
                 soa_dir=None,
                 bounce_margin_factor=fake_bounce_margin_factor,
             )
@@ -1281,7 +1299,8 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_marathon_apps))
+            list_apps=mock.Mock(return_value=fake_marathon_apps),
+        )
         fake_config = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: drain_method not recognized: doesntexist. Must be one of (exists1, exists2)'
@@ -1323,7 +1342,8 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_marathon_apps))
+            list_apps=mock.Mock(return_value=fake_marathon_apps),
+        )
         fake_config = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
@@ -1441,7 +1461,8 @@ class TestSetupMarathonJob:
 
             assert fake_client.kill_given_tasks.call_count == 1
             assert {old_task_to_drain.id, old_task_is_draining.id} == set(
-                fake_client.kill_given_tasks.call_args[1]['task_ids'])
+                fake_client.kill_given_tasks.call_args[1]['task_ids'],
+            )
             assert fake_client.kill_given_tasks.call_args[1]['scale'] is True
 
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
@@ -1464,7 +1485,8 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_apps))
+            list_apps=mock.Mock(return_value=fake_apps),
+        )
         fake_config = {'id': fake_id, 'instances': 2}
 
         with mock.patch(
@@ -1495,8 +1517,10 @@ class TestSetupMarathonJob:
             assert ret[0] == 0
 
             logged_line = mock_log.mock_calls[0][2]["line"]
-            assert logged_line.startswith("Failed to get lock to create marathon app for %s.%s" % (fake_name,
-                                                                                                   fake_instance))
+            assert logged_line.startswith("Failed to get lock to create marathon app for %s.%s" % (
+                fake_name,
+                fake_instance,
+            ))
 
     def test_deploy_service_logs_exceptions(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
@@ -1506,7 +1530,8 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_apps))
+            list_apps=mock.Mock(return_value=fake_apps),
+        )
         fake_config = {'id': fake_id, 'instances': 2}
 
         with mock.patch(
@@ -1560,12 +1585,14 @@ class TestSetupMarathonJob:
             mock_client = mock.Mock()
             mock_marathon_config = {}
             mock_marathon_apps = []
-            ret = setup_marathon_job.deploy_marathon_service('something',
-                                                             'main',
-                                                             mock_client,
-                                                             'fake_soa',
-                                                             mock_marathon_config,
-                                                             mock_marathon_apps)
+            ret = setup_marathon_job.deploy_marathon_service(
+                'something',
+                'main',
+                mock_client,
+                'fake_soa',
+                mock_marathon_config,
+                mock_marathon_apps,
+            )
             assert not mock_setup_service.called
             assert ret == (0, None)
 

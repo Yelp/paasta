@@ -38,10 +38,12 @@ def test_instances_status_marathon(
     mock_marathon_job_status,
 ):
     settings.cluster = 'fake_cluster'
-    mock_get_actual_deployments.return_value = {'fake_cluster.fake_instance': 'GIT_SHA',
-                                                'fake_cluster.fake_instance2': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance2': 'GIT_SHA'}
+    mock_get_actual_deployments.return_value = {
+        'fake_cluster.fake_instance': 'GIT_SHA',
+        'fake_cluster.fake_instance2': 'GIT_SHA',
+        'fake_cluster2.fake_instance': 'GIT_SHA',
+        'fake_cluster2.fake_instance2': 'GIT_SHA',
+    }
     mock_validate_service_instance.return_value = 'marathon'
 
     mock_marathon_config = marathon_tools.MarathonConfig(
@@ -81,10 +83,12 @@ def test_instances_status_adhoc(
     mock_adhoc_instance_status,
 ):
     settings.cluster = 'fake_cluster'
-    mock_get_actual_deployments.return_value = {'fake_cluster.fake_instance': 'GIT_SHA',
-                                                'fake_cluster.fake_instance2': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance': 'GIT_SHA',
-                                                'fake_cluster2.fake_instance2': 'GIT_SHA'}
+    mock_get_actual_deployments.return_value = {
+        'fake_cluster.fake_instance': 'GIT_SHA',
+        'fake_cluster.fake_instance2': 'GIT_SHA',
+        'fake_cluster2.fake_instance': 'GIT_SHA',
+        'fake_cluster2.fake_instance2': 'GIT_SHA',
+    }
     mock_validate_service_instance.return_value = 'adhoc'
     mock_adhoc_instance_status.return_value = {}
 
@@ -93,10 +97,12 @@ def test_instances_status_adhoc(
 
     response = instance.instance_status(request)
     assert mock_adhoc_instance_status.called
-    assert response == {'service': 'fake_service',
-                        'instance': 'fake_instance',
-                        'git_sha': 'GIT_SHA',
-                        'adhoc': {}}
+    assert response == {
+        'service': 'fake_service',
+        'instance': 'fake_instance',
+        'git_sha': 'GIT_SHA',
+        'adhoc': {},
+    }
 
 
 @mock.patch('paasta_tools.api.views.instance.get_running_tasks_from_frameworks', autospec=True)
@@ -105,9 +111,11 @@ def test_marathon_job_status(
     mock_is_app_id_running,
     mock_get_running_tasks_from_frameworks,
 ):
-    mock_tasks = [mock.Mock(slave={'hostname': 'host1'}),
-                  mock.Mock(slave={'hostname': 'host1'}),
-                  mock.Mock(slave={'hostname': 'host2'})]
+    mock_tasks = [
+        mock.Mock(slave={'hostname': 'host1'}),
+        mock.Mock(slave={'hostname': 'host1'}),
+        mock.Mock(slave={'hostname': 'host2'}),
+    ]
     mock_get_running_tasks_from_frameworks.return_value = mock_tasks
     mock_is_app_id_running.return_value = True
 
@@ -125,10 +133,12 @@ def test_marathon_job_status(
 
     mstatus = {}
     instance.marathon_job_status(mstatus, client, job_config)
-    expected = {'deploy_status': 'Running',
-                'running_instance_count': 5,
-                'expected_instance_count': 5,
-                'app_id': 'mock_app_id'}
+    expected = {
+        'deploy_status': 'Running',
+        'running_instance_count': 5,
+        'expected_instance_count': 5,
+        'app_id': 'mock_app_id',
+    }
     expected_slaves = ['host2', 'host1']
     slaves = mstatus.pop('slaves')
     assert len(slaves) == len(expected_slaves) and sorted(slaves) == sorted(expected_slaves)
@@ -153,10 +163,14 @@ def test_instance_tasks(mock_get_tasks_from_app_id, mock_instance_status, mock_a
     mock_request = mock.Mock(swagger_data={'task_id': '123', 'slave_hostname': 'host1', 'verbose': True})
     ret = instance.instance_tasks(mock_request)
     mock_add_executor_info.assert_has_calls([mock.call(mock_task_1), mock.call(mock_task_2)])
-    mock_add_slave_info.assert_has_calls([mock.call(mock_add_executor_info.return_value),
-                                          mock.call(mock_add_executor_info.return_value)])
-    expected = [mock_add_slave_info.return_value._Task__items,
-                mock_add_slave_info.return_value._Task__items]
+    mock_add_slave_info.assert_has_calls([
+        mock.call(mock_add_executor_info.return_value),
+        mock.call(mock_add_executor_info.return_value),
+    ])
+    expected = [
+        mock_add_slave_info.return_value._Task__items,
+        mock_add_slave_info.return_value._Task__items,
+    ]
 
     def ids(l):
         return {id(x) for x in l}
@@ -196,15 +210,21 @@ def test_instance_task(mock_get_task, mock_instance_status, mock_add_slave_info,
 
 def test_add_executor_info():
     mock_mesos_task = mock.Mock()
-    mock_executor = {'tasks': [mock_mesos_task],
-                     'some': 'thing',
-                     'completed_tasks': [mock_mesos_task],
-                     'queued_tasks': [mock_mesos_task]}
-    mock_task = mock.Mock(_Task__items={'a': 'thing'},
-                          executor=mock_executor)
+    mock_executor = {
+        'tasks': [mock_mesos_task],
+        'some': 'thing',
+        'completed_tasks': [mock_mesos_task],
+        'queued_tasks': [mock_mesos_task],
+    }
+    mock_task = mock.Mock(
+        _Task__items={'a': 'thing'},
+        executor=mock_executor,
+    )
     ret = instance.add_executor_info(mock_task)
-    expected = {'a': 'thing',
-                'executor': {'some': 'thing'}}
+    expected = {
+        'a': 'thing',
+        'executor': {'some': 'thing'},
+    }
     assert ret._Task__items == expected
     with raises(KeyError):
         ret._Task__items['executor']['completed_tasks']
@@ -216,8 +236,12 @@ def test_add_executor_info():
 
 def test_add_slave_info():
     mock_slave = mock.Mock(_MesosSlave__items={'some': 'thing'})
-    mock_task = mock.Mock(_Task__items={'a': 'thing'},
-                          slave=mock_slave)
-    expected = {'a': 'thing',
-                'slave': {'some': 'thing'}}
+    mock_task = mock.Mock(
+        _Task__items={'a': 'thing'},
+        slave=mock_slave,
+    )
+    expected = {
+        'a': 'thing',
+        'slave': {'some': 'thing'},
+    }
     assert instance.add_slave_info(mock_task)._Task__items == expected

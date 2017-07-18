@@ -75,8 +75,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-f', '--force',
-        help=('Do not check if the image is already in the PaaSTA docker registry. '
-              'Push it anyway.'),
+        help=(
+            'Do not check if the image is already in the PaaSTA docker registry. '
+            'Push it anyway.'
+        ),
         action='store_true',
     )
     list_parser.set_defaults(command=paasta_push_to_registry)
@@ -103,9 +105,11 @@ def paasta_push_to_registry(args):
     if not args.force:
         try:
             if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
-                paasta_print("The docker image is already in the PaaSTA docker registry. "
-                             "I'm NOT overriding the existing image. "
-                             "Add --force to override the image in the registry if you are sure what you are doing.")
+                paasta_print(
+                    "The docker image is already in the PaaSTA docker registry. "
+                    "I'm NOT overriding the existing image. "
+                    "Add --force to override the image in the registry if you are sure what you are doing.",
+                )
                 return 0
         except RequestException as e:
             registry_uri = get_service_docker_registry(service, args.soa_dir)

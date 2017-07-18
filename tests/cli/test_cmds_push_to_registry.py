@@ -90,13 +90,15 @@ def test_push_to_registry_force(
     mock_run.return_value = (0, 'Success')
     assert paasta_push_to_registry(args) == 0
     assert not mock_is_docker_image_already_in_registry.called
-    mock_run.assert_called_once_with('docker push fake_registry/services-foo:'
-                                     'paasta-abcd',
-                                     component='build',
-                                     log=True,
-                                     loglevel='debug',
-                                     service='foo',
-                                     timeout=3600)
+    mock_run.assert_called_once_with(
+        'docker push fake_registry/services-foo:'
+        'paasta-abcd',
+        component='build',
+        log=True,
+        loglevel='debug',
+        service='foo',
+        timeout=3600,
+    )
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
@@ -169,8 +171,10 @@ def test_is_docker_image_already_in_registry_success(
         mock_load_system_paasta_config,
 ):
     mock_read_docker_registy_creds.return_value = (None, None)
-    mock_request_get.return_value = MagicMock(status_code=200,
-                                              json=MagicMock(return_value={'tags': ['paasta-fake_sha']}))
+    mock_request_get.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={'tags': ['paasta-fake_sha']}),
+    )
     assert is_docker_image_already_in_registry('fake_service', 'fake_soa_dir', 'fake_sha')
 
 
@@ -196,8 +200,10 @@ def test_is_docker_image_already_in_registry_tags_are_null(
         mock_load_system_paasta_config,
 ):
     mock_read_docker_registy_creds.return_value = (None, None)
-    mock_request_get.return_value = MagicMock(status_code=200,
-                                              json=MagicMock(return_value={'tags': None}))
+    mock_request_get.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={'tags': None}),
+    )
     assert not is_docker_image_already_in_registry('fake_service', 'fake_soa_dir', 'fake_sha')
 
 

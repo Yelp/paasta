@@ -42,10 +42,12 @@ IPV4_REGEX = re.compile('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 log = logging.getLogger(__name__)
 
 
-class ServiceGroup(collections.namedtuple('ServiceGroup', (
-    'service',
-    'instance',
-))):
+class ServiceGroup(collections.namedtuple(
+    'ServiceGroup', (
+        'service',
+        'instance',
+    ),
+)):
     """A service group.
 
     :param service: service name
@@ -137,7 +139,7 @@ def _default_rules(conf, log_prefix):
                     (('reject-with', ('icmp-port-unreachable',))),
                 ),
             ),
-            log_rule
+            log_rule,
         )
     elif policy == 'monitor':
         return (log_rule,)

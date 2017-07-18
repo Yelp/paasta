@@ -101,7 +101,8 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
         )
     except NoDeploymentsAvailable:
         job_config = load_adhoc_job_config(
-            service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False)
+            service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False,
+        )
 
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)

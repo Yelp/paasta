@@ -44,7 +44,8 @@ def get_files_for_tasks(task_list, file_list, max_workers):
             return fobj
 
     elements = itertools.chain(
-        *[[(task, fname) for fname in file_list] for task in task_list])
+        *[[(task, fname) for fname in file_list] for task in task_list]
+    )
 
     for result in parallel.stream(process, elements, max_workers):
         if result:

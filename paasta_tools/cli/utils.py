@@ -143,36 +143,42 @@ class PaastaCheckMessages:
     DEPLOY_YAML_MISSING = failure(
         "No deploy.yaml exists, so your service cannot be deployed.\n  "
         "Push a deploy.yaml and run `paasta generate-pipeline`.\n  "
-        "More info:", "http://y/yelpsoa-configs")
+        "More info:", "http://y/yelpsoa-configs",
+    )
 
     DEPLOY_SECURITY_FOUND = success("Found a security-check entry in your deploy pipeline")
     DEPLOY_SECURITY_MISSING = failure(
         "No 'security-check' entry was found in your deploy.yaml.\n"
         "Please add a security-check entry *AFTER* the itest entry in deploy.yaml\n"
         "so your docker image can be checked against known security vulnerabilities.\n"
-        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.security_check.html")
+        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.security_check.html",
+    )
 
     DEPLOY_PERFORMANCE_FOUND = success("Found a performance-check entry in your deploy pipeline")
     DEPLOY_PERFORMANCE_MISSING = failure(
         "No 'performance-check' entry was found in your deploy.yaml.\n"
         "Please add a performance-check entry *AFTER* the security-check entry in deploy.yaml\n"
         "so your docker image can be checked for performance regressions.\n"
-        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.performance_check.html")
+        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.performance_check.html",
+    )
 
     DOCKERFILE_FOUND = success("Found Dockerfile")
 
     DOCKERFILE_MISSING = failure(
         "Dockerfile not found. Create a Dockerfile and try again.\n  "
-        "More info:", "http://y/paasta-runbook-dockerfile")
+        "More info:", "http://y/paasta-runbook-dockerfile",
+    )
 
     DOCKERFILE_YELPCORP = success(
-        "Your Dockerfile pulls from the standard Yelp images.")
+        "Your Dockerfile pulls from the standard Yelp images.",
+    )
 
     DOCKERFILE_NOT_YELPCORP = failure(
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
         "using the local mirrors.\n"
-        "More info:", "http://y/base-docker-images")
+        "More info:", "http://y/base-docker-images",
+    )
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
@@ -186,7 +192,8 @@ class PaastaCheckMessages:
         "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
         "Push a marathon-[superregion].yaml, chronos-[superregion].yaml or adhoc-[superregion].yaml "
         "and run `paasta generate-pipeline`.\n  "
-        "More info:", "http://y/yelpsoa-configs")
+        "More info:", "http://y/yelpsoa-configs",
+    )
 
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
@@ -227,28 +234,34 @@ class PaastaCheckMessages:
 
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 
-    PIPELINE_MISSING = failure("Jenkins build pipeline missing. Please run "
-                               "'paasta generate-pipeline'\n"
-                               "  More info:", "http://y/paasta-deploy")
+    PIPELINE_MISSING = failure(
+        "Jenkins build pipeline missing. Please run "
+        "'paasta generate-pipeline'\n"
+        "  More info:", "http://y/paasta-deploy",
+    )
 
     SENSU_MONITORING_FOUND = success(
-        "monitoring.yaml found for Sensu monitoring")
+        "monitoring.yaml found for Sensu monitoring",
+    )
 
     SENSU_MONITORING_MISSING = failure(
         "Your service is not using Sensu (monitoring.yaml).\n  "
         "Please setup a monitoring.yaml so we know where to send alerts.\n  "
-        "More info:", "http://y/monitoring-yaml")
+        "More info:", "http://y/monitoring-yaml",
+    )
 
     SENSU_TEAM_MISSING = failure(
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
-        "  More info:", "http://y/monitoring-yaml")
+        "  More info:", "http://y/monitoring-yaml",
+    )
 
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
     SMARTSTACK_PORT_MISSING = failure(
         "Could not determine port. "
         "Ensure 'proxy_port' is set in smartstack.yaml.\n  "
-        "More info:", "http://y/smartstack-cep323")
+        "More info:", "http://y/smartstack-cep323",
+    )
 
     @staticmethod
     def git_repo_missing(git_url):
@@ -257,18 +270,21 @@ class PaastaCheckMessages:
             "Could not find Git repo %s. "
             "Your service must be there.\n"
             "  More info:" % git_url,
-            "http://y/yelpsoa-configs")
+            "http://y/yelpsoa-configs",
+        )
 
     @staticmethod
     def sensu_team_found(team_name):
         return success(
-            "Your service uses Sensu and team '%s' will get alerts." % team_name)
+            "Your service uses Sensu and team '%s' will get alerts." % team_name,
+        )
 
     @staticmethod
     def smartstack_port_found(instance, port):
         return success(
             "Instance '%s' of your service is using smartstack port %d "
-            "and will be automatically load balanced" % (instance, port))
+            "and will be automatically load balanced" % (instance, port),
+        )
 
     @staticmethod
     def service_dir_found(service, soa_dir):
@@ -510,8 +526,10 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     return return_code, output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instances, system_paasta_config,
-                                                stream=False, ignore_ssh_output=False, **kwargs):
+def execute_paasta_serviceinit_on_remote_master(
+    subcommand, cluster, service, instances, system_paasta_config,
+    stream=False, ignore_ssh_output=False, **kwargs
+):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -521,8 +539,10 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return (255, str(e))
 
     if ignore_ssh_output:
-        return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream,
-                                      ssh_flags='-o LogLevel=QUIET', **kwargs)
+        return run_paasta_serviceinit(
+            subcommand, master, service, instances, cluster, stream,
+            ssh_flags='-o LogLevel=QUIET', **kwargs
+        )
     else:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
@@ -548,8 +568,10 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_in
     return return_code, output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, humanize, groupings, verbose,
-                                               autoscaling_info=False):
+def execute_paasta_metastatus_on_remote_master(
+    cluster, system_paasta_config, humanize, groupings, verbose,
+    autoscaling_info=False,
+):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
@@ -585,13 +607,16 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
     try:
         return run_chronos_rerun(
             connectable_master(cluster, system_paasta_config),
-            service, instancename, **kwargs)
+            service, instancename, **kwargs
+        )
     except NoMasterError as e:
         return (-1, str(e))
 
 
-def run_on_master(cluster, system_paasta_config, cmd_parts,
-                  timeout=None, err_code=-1, graceful_exit=False, stdin=None):
+def run_on_master(
+    cluster, system_paasta_config, cmd_parts,
+    timeout=None, err_code=-1, graceful_exit=False, stdin=None,
+):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
 
@@ -633,9 +658,11 @@ def run_on_master(cluster, system_paasta_config, cmd_parts,
 
     log.debug("Running %s" % ' '.join(cmd_parts))
 
-    return _run(cmd_parts, timeout=timeout, stream=True,
-                stdin=stdin, stdin_interrupt=stdin_interrupt,
-                popen_kwargs=popen_kwargs)
+    return _run(
+        cmd_parts, timeout=timeout, stream=True,
+        stdin=stdin, stdin_interrupt=stdin_interrupt,
+        popen_kwargs=popen_kwargs,
+    )
 
 
 def lazy_choices_completer(list_func):
@@ -745,7 +772,8 @@ def validate_short_git_sha(value):
     pattern = re.compile('[a-f0-9]{4,40}')
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a valid git sha" % value)
+            "%s is not a valid git sha" % value,
+        )
     return value
 
 
@@ -753,7 +781,8 @@ def validate_full_git_sha(value):
     pattern = re.compile('[a-f0-9]{40}')
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a full git sha, and PaaSTA needs the full sha" % value)
+            "%s is not a full git sha, and PaaSTA needs the full sha" % value,
+        )
     return value
 
 
@@ -880,35 +909,45 @@ def get_task_from_instance(cluster, service, instance, slave_hostname=None, task
         raise PaastaTaskNotFound
     if task_id:
         log.warning("Specifying a task_id, so ignoring hostname if specified")
-        task = api.service.task_instance(service=service,
-                                         instance=instance,
-                                         verbose=True,
-                                         task_id=task_id).result()
+        task = api.service.task_instance(
+            service=service,
+            instance=instance,
+            verbose=True,
+            task_id=task_id,
+        ).result()
         return task
     try:
         if task_id:
             log.warning("Specifying a task_id, so ignoring hostname if specified")
-            task = api.service.task_instance(service=service,
-                                             instance=instance,
-                                             verbose=True,
-                                             task_id=task_id).result()
+            task = api.service.task_instance(
+                service=service,
+                instance=instance,
+                verbose=True,
+                task_id=task_id,
+            ).result()
             return task
-        tasks = api.service.tasks_instance(service=service,
-                                           instance=instance,
-                                           verbose=True,
-                                           slave_hostname=slave_hostname).result()
+        tasks = api.service.tasks_instance(
+            service=service,
+            instance=instance,
+            verbose=True,
+            slave_hostname=slave_hostname,
+        ).result()
     except HTTPNotFound:
-        log.error("Cannot find instance {}, for service {}, in cluster {}".format(instance,
-                                                                                  service,
-                                                                                  cluster))
+        log.error("Cannot find instance {}, for service {}, in cluster {}".format(
+            instance,
+            service,
+            cluster,
+        ))
         raise PaastaTaskNotFound
     except HTTPError as e:
         log.error("Problem with API call to find task details")
         log.error(e.response.text)
         raise PaastaTaskNotFound
     if not tasks:
-        log.error("Cannot find any tasks on host: {} or with task_id: {}".format(slave_hostname,
-                                                                                 task_id))
+        log.error("Cannot find any tasks on host: {} or with task_id: {}".format(
+            slave_hostname,
+            task_id,
+        ))
         raise PaastaTaskNotFound
     return tasks[0]
 

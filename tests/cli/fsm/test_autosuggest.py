@@ -105,6 +105,8 @@ class TestSuggestSmartstackProxyPort:
                 mock_get_smartstack_proxy_ports_from_file, autospec=None,
             ):
                 with raises(Exception) as exc:
-                    autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20001,
-                                                              range_max=20003)
+                    autosuggest.suggest_smartstack_proxy_port(
+                        yelpsoa_config_root, range_min=20001,
+                        range_max=20003,
+                    )
                 assert "There are no more ports available in the range [20001, 20003]" == str(exc.value)

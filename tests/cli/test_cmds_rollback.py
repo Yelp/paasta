@@ -38,14 +38,17 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10,
-                               '-l', 'fake_deploy_group1'])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+        '-l', 'fake_deploy_group1',
+    ])
 
     mock_get_git_shas_for_service.return_value = {
         fake_args.commit: ('20170403T025512', fake_args.deploy_groups),
-        'dcba' * 10: ('20161006T025416', 'fake_deploy_group2')}
+        'dcba' * 10: ('20161006T025416', 'fake_deploy_group2'),
+    }
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service
@@ -74,15 +77,18 @@ def test_paasta_rollback_with_force(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10,
-                               '-l', 'fake_deploy_group1',
-                               '-f'])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+        '-l', 'fake_deploy_group1',
+        '-f',
+    ])
 
     mock_get_git_shas_for_service.return_value = {
         'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
-        'fake_sha2': ('20161006T025416', 'fake_deploy_group2')}
+        'fake_sha2': ('20161006T025416', 'fake_deploy_group2'),
+    }
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service
@@ -111,18 +117,22 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+    ])
 
     mock_get_git_shas_for_service.return_value = {
         'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
-        fake_args.commit: ('20161006T025416', 'fake_deploy_group2')}
+        fake_args.commit: ('20161006T025416', 'fake_deploy_group2'),
+    }
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service
     mock_list_deploy_groups.return_value = [
-        'fake_deploy_group', 'fake_cluster.fake_instance']
+        'fake_deploy_group', 'fake_cluster.fake_instance',
+    ]
     mock_mark_for_deployment.return_value = 0
 
     assert paasta_rollback(fake_args) == 0
@@ -156,10 +166,12 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10,
-                               '-l', 'wrong_deploy_group'])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+        '-l', 'wrong_deploy_group',
+    ])
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service
@@ -181,14 +193,17 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10,
-                               '-l', 'fake_deploy_group1'])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+        '-l', 'fake_deploy_group1',
+    ])
 
     mock_get_git_shas_for_service.return_value = {
         'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
-        'fake_sha2': ('20161006T025416', 'fake_deploy_group2')}
+        'fake_sha2': ('20161006T025416', 'fake_deploy_group2'),
+    }
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service
@@ -211,16 +226,19 @@ def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
 ):
-    fake_args, _ = parse_args(['rollback',
-                               '-s', 'fakeservice',
-                               '-k', 'abcd' * 10,
-                               '-l', 'cluster.instance1,cluster.instance2'])
+    fake_args, _ = parse_args([
+        'rollback',
+        '-s', 'fakeservice',
+        '-k', 'abcd' * 10,
+        '-l', 'cluster.instance1,cluster.instance2',
+    ])
 
     fake_deploy_groups = fake_args.deploy_groups.split(',')
 
     mock_get_git_shas_for_service.return_value = {
         'fake_sha1': ('20170403T025512', 'fake_deploy_group1'),
-        fake_args.commit: ('20161006T025416', 'fake_deploy_group2')}
+        fake_args.commit: ('20161006T025416', 'fake_deploy_group2'),
+    }
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = fake_args.service

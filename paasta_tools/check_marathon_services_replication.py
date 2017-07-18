@@ -94,11 +94,15 @@ def parse_args():
     epilog = "PERCENTAGE is an integer value representing the percentage of available to expected instances"
     parser = argparse.ArgumentParser(epilog=epilog)
 
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
     options = parser.parse_args()
 
     return options
@@ -152,8 +156,10 @@ def check_smartstack_replication_for_instance(
 
     if len(smartstack_replication_info) == 0:
         status = pysensu_yelp.Status.CRITICAL
-        output = ('Service %s has no Smartstack replication info. Make sure the discover key in your smartstack.yaml '
-                  'is valid!\n') % full_name
+        output = (
+            'Service %s has no Smartstack replication info. Make sure the discover key in your smartstack.yaml '
+            'is valid!\n'
+        ) % full_name
         log.error(output)
     else:
         expected_count_per_location = int(expected_count / len(smartstack_replication_info))
@@ -165,13 +171,16 @@ def check_smartstack_replication_for_instance(
         for location, available_backends in sorted(smartstack_replication_info.items()):
             num_available_in_location = available_backends.get(full_name, 0)
             under_replicated, ratio = is_under_replicated(
-                num_available_in_location, expected_count_per_location, crit_threshold)
+                num_available_in_location, expected_count_per_location, crit_threshold,
+            )
             if under_replicated:
                 output_critical += '- Service %s has %d out of %d expected instances in %s (CRITICAL: %d%%)\n' % (
-                    full_name, num_available_in_location, expected_count_per_location, location, ratio)
+                    full_name, num_available_in_location, expected_count_per_location, location, ratio,
+                )
             else:
                 output_ok += '- Service %s has %d out of %d expected instances in %s (OK: %d%%)\n' % (
-                    full_name, num_available_in_location, expected_count_per_location, location, ratio)
+                    full_name, num_available_in_location, expected_count_per_location, location, ratio,
+                )
             under_replication_per_location.append(under_replicated)
 
         output += output_critical
@@ -236,8 +245,10 @@ def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
     return len(healthy_tasks)
 
 
-def check_healthy_marathon_tasks_for_service_instance(service, instance, cluster,
-                                                      soa_dir, expected_count, all_tasks):
+def check_healthy_marathon_tasks_for_service_instance(
+    service, instance, cluster,
+    soa_dir, expected_count, all_tasks,
+):
     app_id = format_job_id(service, instance)
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
         all_tasks=all_tasks,
@@ -265,8 +276,10 @@ def send_event_if_under_replication(
     full_name = compose_job_id(service, instance)
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
-    output = ('Service %s has %d out of %d expected instances available!\n' +
-              '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
+    output = (
+        'Service %s has %d out of %d expected instances available!\n' +
+        '(threshold: %d%%)'
+    ) % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
     if under_replicated:
         output += (
@@ -303,7 +316,8 @@ def send_event_if_under_replication(
         cluster=cluster,
         soa_dir=soa_dir,
         status=status,
-        output=output)
+        output=output,
+    )
 
 
 def check_service_replication(client, service, instance, all_tasks, cluster, soa_dir, system_paasta_config):
@@ -359,7 +373,8 @@ def main():
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
     service_instances = get_services_for_cluster(
-        cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir)
+        cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir,
+    )
 
     config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())

@@ -72,8 +72,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-u', '--git-url',
-        help=('Git url for service. Defaults to the normal git URL for '
-              'the service.'),
+        help=(
+            'Git url for service. Defaults to the normal git URL for '
+            'the service.'
+        ),
         default=None,
     )
     list_parser.add_argument(
@@ -165,8 +167,10 @@ def validate_deploy_group(deploy_group, service, soa_dir):
 
     Raise exception if the specified deploy group is not used anywhere.
     """
-    in_use_deploy_groups = list_deploy_groups(service=service,
-                                              soa_dir=soa_dir)
+    in_use_deploy_groups = list_deploy_groups(
+        service=service,
+        soa_dir=soa_dir,
+    )
     _, invalid_deploy_groups = \
         validate_given_deploy_groups(in_use_deploy_groups, [deploy_group])
 
@@ -175,8 +179,10 @@ def validate_deploy_group(deploy_group, service, soa_dir):
                                "used anywhere: {}.\n"
                                "You probably need one of these in-use deploy "
                                "groups?:\n   {}"
-                               .format(",".join(invalid_deploy_groups),
-                                       ",".join(in_use_deploy_groups)))
+                               .format(
+                                   ",".join(invalid_deploy_groups),
+                                   ",".join(in_use_deploy_groups),
+                               ))
 
 
 def paasta_wait_for_deployment(args):
@@ -201,29 +207,36 @@ def paasta_wait_for_deployment(args):
         if len(commits) != 1:
             raise ValueError(
                 "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (args.commit, len(commits)))
+                (args.commit, len(commits)),
+            )
         args.commit = commits[0]
 
     try:
         validate_service_name(service, soa_dir=args.soa_dir)
         validate_deploy_group(args.deploy_group, service, args.soa_dir)
-        validate_git_sha(args.commit, args.git_url,
-                         args.deploy_group, service)
+        validate_git_sha(
+            args.commit, args.git_url,
+            args.deploy_group, service,
+        )
     except (GitShaError, DeployGroupError, NoSuchService) as e:
         paasta_print(PaastaColors.red('{}'.format(e)))
         return 1
 
     try:
-        wait_for_deployment(service=service,
-                            deploy_group=args.deploy_group,
-                            git_sha=args.commit,
-                            soa_dir=args.soa_dir,
-                            timeout=args.timeout)
-        _log(service=service,
-             component='deploy',
-             line=("Deployment of {} for {} complete".
-                   format(args.commit, args.deploy_group)),
-             level='event')
+        wait_for_deployment(
+            service=service,
+            deploy_group=args.deploy_group,
+            git_sha=args.commit,
+            soa_dir=args.soa_dir,
+            timeout=args.timeout,
+        )
+        _log(
+            service=service,
+            component='deploy',
+            line=("Deployment of {} for {} complete".
+                  format(args.commit, args.deploy_group)),
+            level='event',
+        )
 
     except (KeyboardInterrupt, TimeoutError):
         paasta_print("Waiting for deployment aborted.")

@@ -399,8 +399,12 @@ class ChronosJobConfig(InstanceConfig):
                 try:
                     repeat, start_time, interval = schedule.split('/')  # the parts have separate validators
                 except ValueError:
-                    return (False, ('The specified schedule "%s" is neither a valid cron schedule nor a valid'
-                                    ' ISO 8601 schedule' % schedule))
+                    return (
+                        False, (
+                            'The specified schedule "%s" is neither a valid cron schedule nor a valid'
+                            ' ISO 8601 schedule' % schedule
+                        ),
+                    )
 
                 # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
                 if start_time == '':
@@ -531,9 +535,11 @@ class ChronosJobConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
-        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk',
-                      'schedule', 'scheduleTimeZone', 'parents', 'cmd',
-                      'security', 'dependencies_reference']:
+        for param in [
+            'epsilon', 'retries', 'cpus', 'mem', 'disk',
+            'schedule', 'scheduleTimeZone', 'parents', 'cmd',
+            'security', 'dependencies_reference',
+        ]:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
@@ -589,7 +595,8 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create a job on Chronos"""
     system_paasta_config = load_system_paasta_config()
     chronos_job_config = load_chronos_job_config(
-        service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
+        service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir,
+    )
     docker_url = chronos_job_config.get_docker_url()
     docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
@@ -611,8 +618,10 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     desired_state = chronos_job_config.get_desired_state()
     soa_disabled_state = complete_config['disabled']
 
-    resolved_disabled_state = determine_disabled_state(desired_state,
-                                                       soa_disabled_state)
+    resolved_disabled_state = determine_disabled_state(
+        desired_state,
+        soa_disabled_state,
+    )
     complete_config['disabled'] = resolved_disabled_state
 
     # we use the undocumented description field to store a hash of the chronos config.

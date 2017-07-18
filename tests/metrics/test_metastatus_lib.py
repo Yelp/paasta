@@ -603,11 +603,11 @@ def test_get_resource_utilization_by_grouping(
     mock_group_slaves_by_key_func.return_value = {
         'somenametest-habitat': [{
             'id': 'abcd',
-            'hostname': 'test.somewhere.www'
+            'hostname': 'test.somewhere.www',
         }],
         'somenametest-habitat-2': [{
             'id': 'abcd',
-            'hostname': 'test2.somewhere.www'
+            'hostname': 'test2.somewhere.www',
         }],
     }
     mock_calculate_resource_utilization_for_slaves.return_value = {
@@ -664,12 +664,12 @@ def test_get_resource_utilization_by_grouping_correctly_groups():
                 {
                     'state': 'TASK_RUNNING',
                     'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                    'slave_id': 'foo'
+                    'slave_id': 'foo',
                 },
                 {
                     'state': 'TASK_RUNNING',
                     'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                    'slave_id': 'bar'
+                    'slave_id': 'bar',
                 },
             ]},
         ],
@@ -732,12 +732,12 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
                 {
                     'state': 'TASK_RUNNING',
                     'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                    'slave_id': 'foo1'
+                    'slave_id': 'foo1',
                 },
                 {
                     'state': 'TASK_RUNNING',
                     'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                    'slave_id': 'bar1'
+                    'slave_id': 'bar1',
                 },
             ]},
         ],

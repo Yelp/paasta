@@ -69,7 +69,8 @@ class Config(object):
 
     def _get_path(self):
         return os.environ.get(
-            'MESOS_CLI_CONFIG', self._config_file())
+            'MESOS_CLI_CONFIG', self._config_file(),
+        )
 
     @property
     def _profile_key(self):

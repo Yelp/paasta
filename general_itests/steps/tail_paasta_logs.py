@@ -72,14 +72,17 @@ def tail_paasta_logs_let_threads_be_threads(context):
 
         context.scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
         context.scribe_log_reader.tail_logs(
-            service, context.levels, context.components, context.clusters, context.instances)
+            service, context.levels, context.components, context.clusters, context.instances,
+        )
 
 
 @then('one message is displayed from each scribe env')
 def step_impl(context):
     for cluster in context.clusters:
-        context.determine_scribereader_envs_patch.assert_any_call(context.scribe_log_reader, context.components,
-                                                                  cluster)
+        context.determine_scribereader_envs_patch.assert_any_call(
+            context.scribe_log_reader, context.components,
+            cluster,
+        )
     # NOTE: Assertions about scribe_tail_patch break under multiprocessing.
     # We think this is because the patched scribe_tail's attributes
     # (call_count, call_args, etc.) don't get updated here in the main

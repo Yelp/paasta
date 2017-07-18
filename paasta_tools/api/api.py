@@ -49,7 +49,8 @@ def parse_paasta_api_args():
     )
     parser.add_argument(
         'port', type=int,
-        help="port number for the api server")
+        help="port number for the api server",
+    )
     parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",

@@ -60,19 +60,27 @@ class DontKillEverythingError(Exception):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-t', '--kill-threshold', dest="kill_threshold",
-                        default=0.5,
-                        help="The decimal fraction of apps we think is "
-                             "sane to kill when this job runs")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
-    parser.add_argument('-f', '--force', action='store_true',
-                        dest="force", default=False,
-                        help="Force the cleanup if we are above the "
-                             "kill_threshold")
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-t', '--kill-threshold', dest="kill_threshold",
+        default=0.5,
+        help="The decimal fraction of apps we think is "
+             "sane to kill when this job runs",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
+    parser.add_argument(
+        '-f', '--force', action='store_true',
+        dest="force", default=False,
+        help="Force the cleanup if we are above the "
+             "kill_threshold",
+    )
     return parser.parse_args(argv)
 
 
@@ -140,8 +148,10 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
     log.info("Loading marathon configuration")
     marathon_config = marathon_tools.load_marathon_config()
     log.info("Connecting to marathon")
-    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                                marathon_config.get_password())
+    client = marathon_tools.get_marathon_client(
+        marathon_config.get_url(), marathon_config.get_username(),
+        marathon_config.get_password(),
+    )
 
     valid_services = get_services_for_cluster(instance_type='marathon', soa_dir=soa_dir)
     running_app_ids = marathon_tools.list_all_marathon_app_ids(client)
@@ -164,9 +174,11 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
     if running_apps:
         above_kill_threshold = float(len(apps_to_kill)) / float(len(running_apps)) > float(kill_threshold)
         if above_kill_threshold and not force:
-            log.critical("Paasta was about to kill more than %s of the running services, this "
-                         "is probably a BAD mistake!, run again with --force if you "
-                         "really need to destroy everything" % kill_threshold)
+            log.critical(
+                "Paasta was about to kill more than %s of the running services, this "
+                "is probably a BAD mistake!, run again with --force if you "
+                "really need to destroy everything" % kill_threshold,
+            )
             raise DontKillEverythingError
     for running_app in apps_to_kill:
         app_id = marathon_tools.format_job_id(*running_app)
