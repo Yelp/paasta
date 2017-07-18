@@ -159,11 +159,10 @@ def test_pid_decision_policy():
     }
 
     with mock.patch(
-        'paasta_tools.utils.KazooClient', autospec=True,
-        return_value=mock.Mock(
+        'paasta_tools.utils.KazooClient', autospec=True, return_value=mock.Mock(
             get=mock.Mock(
-                side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
-            ),
+                side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None)
+	    ),
         ),
     ) as mock_zk_client, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
@@ -305,7 +304,7 @@ def test_mesos_cpu_metrics_provider():
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
         return_value=mock.Mock(get=mock.Mock(
-            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
+            side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
         )),
     ) as mock_zk_client, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
@@ -464,7 +463,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
         return_value=mock.Mock(get=mock.Mock(
-            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
+            side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
         )),
     ), mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
