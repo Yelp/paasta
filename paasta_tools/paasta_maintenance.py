@@ -159,9 +159,11 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
     )
     num_available = local_replication.get(synapse_name, 0)
     under_replicated, ratio = utils.is_under_replicated(
-        num_available, expected_count_per_location, crit_threshold)
+        num_available, expected_count_per_location, crit_threshold,
+    )
     log.info('Service %s.%s has %d out of %d expected instances' % (
-        service, instance, num_available, expected_count_per_location))
+        service, instance, num_available, expected_count_per_location,
+    ))
     return under_replicated
 
 

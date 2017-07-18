@@ -94,8 +94,10 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     assert old_tasks != new_tasks
 
 
-@then(('paasta_serviceinit status for the service_instance "{service_instance}"'
-       ' exits with return code 0 and the correct output'))
+@then((
+    'paasta_serviceinit status for the service_instance "{service_instance}"'
+    ' exits with return code 0 and the correct output'
+))
 def chronos_status_returns_healthy(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     paasta_print('Running cmd %s' % cmd)
@@ -108,8 +110,10 @@ def chronos_status_returns_healthy(context, service_instance):
     assert "New" in output
 
 
-@then(('paasta_serviceinit status --verbose for the service_instance "{service_instance}"'
-       ' exits with return code 0 and the correct output'))
+@then((
+    'paasta_serviceinit status --verbose for the service_instance "{service_instance}"'
+    ' exits with return code 0 and the correct output'
+))
 def chronos_status_verbose_returns_healthy(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
     paasta_print('Running cmd %s' % cmd)
@@ -121,8 +125,10 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
     assert "Running Tasks:" in output
 
 
-@then(('paasta_serviceinit status -vv for the service_instance "{service_instance}"'
-       ' exits with return code 0 and the correct output'))
+@then((
+    'paasta_serviceinit status -vv for the service_instance "{service_instance}"'
+    ' exits with return code 0 and the correct output'
+))
 def paasta_serviceinit_tail_stdstreams(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status -vv" % (context.soa_dir, service_instance)
     paasta_print('Running cmd %s' % cmd)
@@ -134,8 +140,10 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     assert "stdout EOF" in output
 
 
-@then(('paasta_serviceinit status -s "{service}" -i "{instances}"'
-       ' exits with return code 0 and the correct output'))
+@then((
+    'paasta_serviceinit status -s "{service}" -i "{instances}"'
+    ' exits with return code 0 and the correct output'
+))
 def paasta_serviceinit_status_single_instance(context, service, instances):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
@@ -148,8 +156,10 @@ def paasta_serviceinit_status_single_instance(context, service, instances):
     assert exit_code == 0
 
 
-@then(('paasta_serviceinit status -s "{service}" -i "{instances}"'
-       ' has the correct output for instance main and exits with non-zero return code for instance test'))
+@then((
+    'paasta_serviceinit status -s "{service}" -i "{instances}"'
+    ' has the correct output for instance main and exits with non-zero return code for instance test'
+))
 def paasta_serviceinit_status_multi_instances(context, service, instances):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
@@ -163,8 +173,10 @@ def paasta_serviceinit_status_multi_instances(context, service, instances):
     assert exit_code != 0
 
 
-@then('paasta_serviceinit status for the native service "{service_instance}"'
-      ' exits with return code {expected_exit_code:d}')
+@then(
+    'paasta_serviceinit status for the native service "{service_instance}"'
+    ' exits with return code {expected_exit_code:d}',
+)
 def paasta_native_status_returns_healthy(context, service_instance, expected_exit_code):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     paasta_print('Running cmd %s' % cmd)

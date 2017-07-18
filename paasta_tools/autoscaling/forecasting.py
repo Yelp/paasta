@@ -52,8 +52,10 @@ def moving_average_forecast_policy(historical_load, moving_average_window_second
 
 
 @register_autoscaling_component('linreg', FORECAST_POLICY_KEY)
-def linreg_forecast_policy(historical_load, linreg_window_seconds, linreg_extrapolation_seconds,
-                           linreg_default_slope=0, **kwargs):
+def linreg_forecast_policy(
+    historical_load, linreg_window_seconds, linreg_extrapolation_seconds,
+    linreg_default_slope=0, **kwargs
+):
     """Does a linear regression on the load data within the last linreg_window_seconds. For every time delta in
     linreg_extrapolation_seconds, forecasts the value at that time delta from now, and returns the maximum of these
     predicted values. (With linear extrapolation, it doesn't make sense to forecast at more than two points, as the max

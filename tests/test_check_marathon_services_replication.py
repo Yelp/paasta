@@ -48,12 +48,14 @@ def test_send_event_users_monitoring_tools_send_event_properly():
         "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True,
     ) as load_marathon_service_config_patch:
         load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
-        check_marathon_services_replication.send_event(fake_service_name,
-                                                       fake_namespace,
-                                                       fake_cluster,
-                                                       fake_soa_dir,
-                                                       fake_status,
-                                                       fake_output)
+        check_marathon_services_replication.send_event(
+            fake_service_name,
+            fake_namespace,
+            fake_cluster,
+            fake_soa_dir,
+            fake_status,
+            fake_output,
+        )
         send_event_patch.assert_called_once_with(
             fake_service_name,
             expected_check_name,
@@ -90,12 +92,14 @@ def test_send_event_users_monitoring_tools_send_event_respects_alert_after():
         "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True,
     ) as load_marathon_service_config_patch:
         load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
-        check_marathon_services_replication.send_event(fake_service_name,
-                                                       fake_namespace,
-                                                       fake_cluster,
-                                                       fake_soa_dir,
-                                                       fake_status,
-                                                       fake_output)
+        check_marathon_services_replication.send_event(
+            fake_service_name,
+            fake_namespace,
+            fake_cluster,
+            fake_soa_dir,
+            fake_status,
+            fake_output,
+        )
         send_event_patch.call_count == 1
         send_event_patch.assert_called_once_with(
             fake_service_name,
@@ -184,7 +188,8 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
 
 
 def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
@@ -556,7 +561,8 @@ def test_check_service_replication_for_normal_smartstack():
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
             client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config, all_tasks=all_tasks)
+            system_paasta_config=fake_system_paasta_config, all_tasks=all_tasks,
+        )
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
             instance=instance,
@@ -656,8 +662,10 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_none_start_ti
 
 @mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication', autospec=True)
 @mock.patch('paasta_tools.check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id', autospec=True)  # noqa
-def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instances,
-                                                           mock_send_event_if_under_replication):
+def test_check_healthy_marathon_tasks_for_service_instance(
+    mock_healthy_instances,
+    mock_send_event_if_under_replication,
+):
     service = 'service'
     instance = 'instance'
     cluster = 'cluster'
@@ -697,7 +705,8 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
             client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config, all_tasks=[])
+            system_paasta_config=fake_system_paasta_config, all_tasks=[],
+        )
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -719,7 +728,8 @@ def test_send_event_if_under_replication_handles_0_expected():
         mock_load_marathon_service_config.return_value = mock_service_job_config
 
         check_marathon_services_replication.send_event_if_under_replication(
-            service, instance, cluster, expected_count, available, soa_dir)
+            service, instance, cluster, expected_count, available, soa_dir,
+        )
         mock_send_event.assert_called_once_with(
             service=service,
             namespace=instance,
@@ -751,7 +761,8 @@ def test_send_event_if_under_replication_good():
         mock_load_marathon_service_config.return_value = mock_service_job_config
 
         check_marathon_services_replication.send_event_if_under_replication(
-            service, instance, cluster, expected_count, available, soa_dir)
+            service, instance, cluster, expected_count, available, soa_dir,
+        )
         mock_send_event.assert_called_once_with(
             service=service,
             namespace=instance,
@@ -788,7 +799,8 @@ def test_send_event_if_under_replication_critical():
             cluster=cluster,
             expected_count=expected_count,
             num_available=available,
-            soa_dir=soa_dir)
+            soa_dir=soa_dir,
+        )
         mock_send_event.assert_called_once_with(
             service=service,
             namespace=instance,
@@ -836,4 +848,5 @@ def test_main():
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()
         mock_get_services_for_cluster.assert_called_once_with(
-            cluster='fake_cluster', instance_type='marathon', soa_dir=soa_dir)
+            cluster='fake_cluster', instance_type='marathon', soa_dir=soa_dir,
+        )

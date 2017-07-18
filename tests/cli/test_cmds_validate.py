@@ -589,8 +589,10 @@ def test_validate_chronos_valid_instance(
 def test_validate_chronos_tmp_job(mock_path_to_soa_dir_service, capfd):
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'tmp')
     assert validate_chronos('fake_path/tmp') is False
-    assert ("Services using scheduled tasks cannot be named tmp, as it clashes"
-            " with the identifier used for temporary jobs") in \
+    assert (
+        "Services using scheduled tasks cannot be named tmp, as it clashes"
+        " with the identifier used for temporary jobs"
+    ) in \
         capfd.readouterr()[0]
 
 

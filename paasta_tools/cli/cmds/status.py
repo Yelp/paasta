@@ -67,7 +67,8 @@ def add_subparser(subparsers):
         dest="verbose",
         default=0,
         help="Print out more output regarding the state of the service. "
-             "A second -v will also print the stdout/stderr tail.")
+             "A second -v will also print the stdout/stderr tail.",
+    )
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect',
@@ -84,8 +85,10 @@ def add_subparser(subparsers):
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
         '-l', '--deploy-group',
-        help=('Name of the deploy group which you want to get status for. '
-              'If specified together with --instances and/or --clusters, will show common instances only.'),
+        help=(
+            'Name of the deploy group which you want to get status for. '
+            'If specified together with --instances and/or --clusters, will show common instances only.'
+        ),
     ).completer = lazy_choices_completer(list_deploy_groups)
     status_parser.add_argument(
         '-d', '--soa-dir',
@@ -98,8 +101,10 @@ def add_subparser(subparsers):
 
 
 def missing_deployments_message(service):
-    message = ("%s No deployments in deployments.json yet.\n  "
-               "Has Jenkins run?")
+    message = (
+        "%s No deployments in deployments.json yet.\n  "
+        "Has Jenkins run?"
+    )
     return message
 
 
@@ -170,10 +175,14 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
         paasta_print(marathon_status.error_message)
         return 1
 
-    bouncing_status = bouncing_status_human(marathon_status.app_count,
-                                            marathon_status.bounce_method)
-    desired_state = desired_state_human(marathon_status.desired_state,
-                                        marathon_status.expected_instance_count)
+    bouncing_status = bouncing_status_human(
+        marathon_status.app_count,
+        marathon_status.bounce_method,
+    )
+    desired_state = desired_state_human(
+        marathon_status.desired_state,
+        marathon_status.expected_instance_count,
+    )
     paasta_print("State:      %s - Desired state: %s" % (bouncing_status, desired_state))
 
     status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
@@ -198,8 +207,10 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     return 0
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
-                              system_paasta_config, verbose=0, use_api_endpoint=False):
+def report_status_for_cluster(
+    service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
+    system_paasta_config, verbose=0, use_api_endpoint=False,
+):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     paasta_print()
@@ -244,7 +255,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             return_code, status = execute_paasta_serviceinit_on_remote_master(
                 'status', cluster, service, ','.join(deployed_instances),
                 system_paasta_config, stream=True, verbose=verbose,
-                ignore_ssh_output=True)
+                ignore_ssh_output=True,
+            )
             # Status results are streamed. This print is for possible error messages.
             if status is not None:
                 for line in status.rstrip().split('\n'):
@@ -272,8 +284,10 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-                  system_paasta_config, verbose=0, use_api_endpoint=False):
+def report_status(
+    service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
+    system_paasta_config, verbose=0, use_api_endpoint=False,
+):
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     return_codes = [
@@ -314,11 +328,14 @@ def verify_instances(args_instances, service, clusters):
             suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
 
         if clusters:
-            message = ("%s doesn't have any instances matching %s on %s."
-                       % (service,
-                          ', '.join(sorted(misspelled_instances)),
-                          ', '.join(sorted(clusters)))
-                       )
+            message = (
+                "%s doesn't have any instances matching %s on %s."
+                % (
+                    service,
+                    ', '.join(sorted(misspelled_instances)),
+                    ', '.join(sorted(clusters)),
+                )
+            )
         else:
             message = ("%s doesn't have any instances matching %s."
                        % (service, ', '.join(sorted(misspelled_instances))))
@@ -341,11 +358,15 @@ def paasta_args_mixer(args, service):
         else:
             instance_whitelist = []
     else:
-        clusters_instances = get_cluster_instance_map_for_service(soa_dir=args.soa_dir,
-                                                                  service=service,
-                                                                  deploy_group=args.deploy_group)
-        cluster_whitelist = list((set(args.clusters.split(",")) & set(clusters_instances))
-                                 if args.clusters is not None else clusters_instances)
+        clusters_instances = get_cluster_instance_map_for_service(
+            soa_dir=args.soa_dir,
+            service=service,
+            deploy_group=args.deploy_group,
+        )
+        cluster_whitelist = list(
+            (set(args.clusters.split(",")) & set(clusters_instances))
+            if args.clusters is not None else clusters_instances,
+        )
 
         diff = set(cluster_whitelist) - set(clusters_instances)
         if (args.clusters is not None and not cluster_whitelist) or diff:
@@ -358,8 +379,10 @@ def paasta_args_mixer(args, service):
             for instance in clusters_instances[cluster].get('instances', []):
                 instances_set.add(instance)
 
-        instance_whitelist = list(set(args.instances.split(",")) & instances_set
-                                  if args.instances is not None else instances_set)
+        instance_whitelist = list(
+            set(args.instances.split(",")) & instances_set
+            if args.instances is not None else instances_set,
+        )
 
         diff = set(instance_whitelist) - instances_set
         if (args.instances is not None and not instance_whitelist) or diff:
@@ -368,8 +391,10 @@ def paasta_args_mixer(args, service):
             return None
 
     PaastaArgs = namedtuple('PaastaArgs', ['cluster_whitelist', 'instance_whitelist'])
-    return PaastaArgs(cluster_whitelist=cluster_whitelist,
-                      instance_whitelist=instance_whitelist)
+    return PaastaArgs(
+        cluster_whitelist=cluster_whitelist,
+        instance_whitelist=instance_whitelist,
+    )
 
 
 def paasta_status(args):

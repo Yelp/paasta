@@ -45,8 +45,10 @@ class TestCleanupMarathonJobs:
     def test_cleanup_apps(self):
         soa_dir = 'not_really_a_dir'
         expected_apps = [('present', 'away'), ('on-app', 'off')]
-        fake_app_ids = [mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
-                        mock.Mock(id='not-here.oh.no.weirdo')]
+        fake_app_ids = [
+            mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
+            mock.Mock(id='not-here.oh.no.weirdo'),
+        ]
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with mock.patch(
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
@@ -64,9 +66,11 @@ class TestCleanupMarathonJobs:
             cleanup_marathon_jobs.cleanup_apps(soa_dir)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
-                                                 self.fake_marathon_config.get_username(),
-                                                 self.fake_marathon_config.get_password())
+            client_patch.assert_called_once_with(
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password(),
+            )
             delete_patch.assert_called_once_with(
                 app_id='not-here.oh.no.weirdo',
                 client=self.fake_marathon_client,
@@ -76,8 +80,10 @@ class TestCleanupMarathonJobs:
     def test_cleanup_apps_dont_kill_everything(self):
         soa_dir = 'not_really_a_dir'
         expected_apps = []
-        fake_app_ids = [mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
-                        mock.Mock(id='not-here.oh.no.weirdo')]
+        fake_app_ids = [
+            mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
+            mock.Mock(id='not-here.oh.no.weirdo'),
+        ]
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with mock.patch(
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
@@ -96,19 +102,24 @@ class TestCleanupMarathonJobs:
                 cleanup_marathon_jobs.cleanup_apps(soa_dir)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
-                                                 self.fake_marathon_config.get_username(),
-                                                 self.fake_marathon_config.get_password())
+            client_patch.assert_called_once_with(
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password(),
+            )
 
             assert delete_patch.call_count == 0
 
     def test_cleanup_apps_force(self):
         soa_dir = 'not_really_a_dir'
         expected_apps = []
-        fake_app_ids = [mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
-                        mock.Mock(id='not-here.oh.no.weirdo')]
+        fake_app_ids = [
+            mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
+            mock.Mock(id='not-here.oh.no.weirdo'),
+        ]
         self.fake_marathon_client.list_apps = mock.Mock(
-            return_value=fake_app_ids)
+            return_value=fake_app_ids,
+        )
         with mock.patch(
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
             return_value=expected_apps, autospec=True,
@@ -125,9 +136,11 @@ class TestCleanupMarathonJobs:
             cleanup_marathon_jobs.cleanup_apps(soa_dir, force=True)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
-                                                 self.fake_marathon_config.get_username(),
-                                                 self.fake_marathon_config.get_password())
+            client_patch.assert_called_once_with(
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password(),
+            )
             assert delete_patch.call_count == 3
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):

@@ -114,8 +114,10 @@ class TestInbox(unittest.TestCase):
             mock_time.return_value = 50
             mock_service_instance_1 = mock.Mock(bounce_by=10)
             mock_service_instance_2 = mock.Mock(bounce_by=60)
-            self.inbox.to_bounce = {'universe.c137': mock_service_instance_1,
-                                    'universe.c138': mock_service_instance_2}
+            self.inbox.to_bounce = {
+                'universe.c137': mock_service_instance_1,
+                'universe.c138': mock_service_instance_2,
+            }
             self.inbox.process_to_bounce()
             self.mock_bounce_q.put.assert_called_with(mock_service_instance_1)
             assert self.mock_bounce_q.put.call_count == 1
@@ -135,11 +137,13 @@ class TestDeployDaemon(unittest.TestCase):
         ), mock.patch(
             'paasta_tools.deployd.master.load_system_paasta_config', autospec=True,
         ) as mock_config_getter:
-            mock_config = mock.Mock(get_deployd_log_level=mock.Mock(return_value='INFO'),
-                                    get_deployd_number_workers=mock.Mock(return_value=5),
-                                    get_deployd_big_bounce_rate=mock.Mock(return_value=10),
-                                    get_cluster=mock.Mock(return_value='westeros-prod'),
-                                    get_log_writer=mock.Mock(return_value={'driver': None}))
+            mock_config = mock.Mock(
+                get_deployd_log_level=mock.Mock(return_value='INFO'),
+                get_deployd_number_workers=mock.Mock(return_value=5),
+                get_deployd_big_bounce_rate=mock.Mock(return_value=10),
+                get_cluster=mock.Mock(return_value='westeros-prod'),
+                get_log_writer=mock.Mock(return_value={'driver': None}),
+            )
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
 
@@ -181,10 +185,12 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.startup()
             assert self.deployd.started
             assert self.deployd.is_leader
-            mock_q_metrics.assert_called_with(self.deployd.inbox,
-                                              self.deployd.bounce_q,
-                                              'westeros-prod',
-                                              mock_get_metrics_interface.return_value)
+            mock_q_metrics.assert_called_with(
+                self.deployd.inbox,
+                self.deployd.bounce_q,
+                'westeros-prod',
+                mock_get_metrics_interface.return_value,
+            )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
             assert mock_add_all_services.called
@@ -235,34 +241,46 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_check_and_start_workers.call_count == 2
 
     def test_all_watchers_running(self):
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                         mock.Mock(is_alive=mock.Mock(return_value=True))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert self.deployd.all_watchers_running()
 
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert not self.deployd.all_watchers_running()
 
-        mock_watchers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
-                         mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_watchers = [
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.watcher_threads = mock_watchers
         assert not self.deployd.all_watchers_running()
 
     def test_all_workers_dead(self):
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                        mock.Mock(is_alive=mock.Mock(return_value=True))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+        ]
         self.deployd.workers = mock_workers
         assert not self.deployd.all_workers_dead()
 
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=True)),
-                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=True)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.workers = mock_workers
         assert not self.deployd.all_workers_dead()
 
-        mock_workers = [mock.Mock(is_alive=mock.Mock(return_value=False)),
-                        mock.Mock(is_alive=mock.Mock(return_value=False))]
+        mock_workers = [
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+            mock.Mock(is_alive=mock.Mock(return_value=False)),
+        ]
         self.deployd.workers = mock_workers
         assert self.deployd.all_workers_dead()
 
@@ -306,20 +324,28 @@ class TestDeployDaemon(unittest.TestCase):
             mock_get_service_instances_that_need_bouncing.return_value = mock_changed_instances
 
             self.deployd.prioritise_bouncing_services()
-            mock_get_service_instances_that_need_bouncing.assert_called_with(self.deployd.marathon_client,
-                                                                             '/nail/etc/services')
-            calls = [mock.call(ServiceInstance(service='universe',
-                                               instance='c138',
-                                               watcher='DeployDaemon',
-                                               bounce_by=1,
-                                               bounce_timers=None,
-                                               failures=0)),
-                     mock.call(ServiceInstance(service='universe',
-                                               instance='c137',
-                                               watcher='DeployDaemon',
-                                               bounce_by=1,
-                                               bounce_timers=None,
-                                               failures=0))]
+            mock_get_service_instances_that_need_bouncing.assert_called_with(
+                self.deployd.marathon_client,
+                '/nail/etc/services',
+            )
+            calls = [
+                mock.call(ServiceInstance(
+                    service='universe',
+                    instance='c138',
+                    watcher='DeployDaemon',
+                    bounce_by=1,
+                    bounce_timers=None,
+                    failures=0,
+                )),
+                mock.call(ServiceInstance(
+                    service='universe',
+                    instance='c137',
+                    watcher='DeployDaemon',
+                    bounce_by=1,
+                    bounce_timers=None,
+                    failures=0,
+                )),
+            ]
             self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):

@@ -135,12 +135,12 @@ mock_mesos_state = {
             {
                 'state': 'TASK_RUNNING',
                 'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'foo1'
+                'slave_id': 'foo1',
             },
             {
                 'state': 'TASK_RUNNING',
                 'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'bar1'
+                'slave_id': 'bar1',
             },
         ]},
     ],

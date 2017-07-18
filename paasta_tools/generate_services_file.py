@@ -42,10 +42,14 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
-    parser.add_argument('-o', '--output', help="Output filename.", dest='output_filename',
-                        required=True)
-    parser.add_argument('-f', '--format', help="Output format. Defaults to rfc1700", dest='output_format',
-                        choices=['rfc1700', 'yaml', 'json'], default='rfc1700')
+    parser.add_argument(
+        '-o', '--output', help="Output filename.", dest='output_filename',
+        required=True,
+    )
+    parser.add_argument(
+        '-f', '--format', help="Output format. Defaults to rfc1700", dest='output_format',
+        choices=['rfc1700', 'yaml', 'json'], default='rfc1700',
+    )
     args = parser.parse_args()
     return args
 

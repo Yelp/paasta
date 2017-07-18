@@ -48,18 +48,24 @@ def test_rate_limit_instances():
         mock_si_1 = ('universe', 'c137')
         mock_si_2 = ('universe', 'c138')
         ret = rate_limit_instances([mock_si_1, mock_si_2], 2, "Custos")
-        expected = [ServiceInstance(service='universe',
-                                    instance='c137',
-                                    watcher='Custos',
-                                    bounce_by=1,
-                                    bounce_timers=None,
-                                    failures=0),
-                    ServiceInstance(service='universe',
-                                    instance='c138',
-                                    watcher='Custos',
-                                    bounce_by=31,
-                                    bounce_timers=None,
-                                    failures=0)]
+        expected = [
+            ServiceInstance(
+                service='universe',
+                instance='c137',
+                watcher='Custos',
+                bounce_by=1,
+                bounce_timers=None,
+                failures=0,
+            ),
+            ServiceInstance(
+                service='universe',
+                instance='c138',
+                watcher='Custos',
+                bounce_by=31,
+                bounce_timers=None,
+                failures=0,
+            ),
+        ]
         assert ret == expected
 
 
@@ -75,46 +81,74 @@ def test_get_service_instances_needing_update():
     ) as mock_get_marathon_apps, mock.patch(
         'paasta_tools.deployd.common.load_marathon_service_config_no_cache', autospec=True,
     ) as mock_load_marathon_service_config:
-        mock_marathon_apps = [mock.Mock(id='/universe.c137.c1.g1', instances=2),
-                              mock.Mock(id='/universe.c138.c1.g1', instances=2)]
+        mock_marathon_apps = [
+            mock.Mock(id='/universe.c137.c1.g1', instances=2),
+            mock.Mock(id='/universe.c138.c1.g1', instances=2),
+        ]
         mock_get_marathon_apps.return_value = mock_marathon_apps
         mock_service_instances = [('universe', 'c137'), ('universe', 'c138')]
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c137.c1.g1',
-                                                                                   'instances': 2})),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
-                                                                                   'instances': 2}))]
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c137.c1.g1',
+                'instances': 2,
+            })),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
         mock_load_marathon_service_config.side_effect = mock_configs
         ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert mock_get_marathon_apps.called
-        calls = [mock.call(service='universe',
-                           instance='c137',
-                           cluster='westeros-prod',
-                           soa_dir=DEFAULT_SOA_DIR),
-                 mock.call(service='universe',
-                           instance='c138',
-                           cluster='westeros-prod',
-                           soa_dir=DEFAULT_SOA_DIR)]
+        calls = [
+            mock.call(
+                service='universe',
+                instance='c137',
+                cluster='westeros-prod',
+                soa_dir=DEFAULT_SOA_DIR,
+            ),
+            mock.call(
+                service='universe',
+                instance='c138',
+                cluster='westeros-prod',
+                soa_dir=DEFAULT_SOA_DIR,
+            ),
+        ]
         mock_load_marathon_service_config.assert_has_calls(calls)
         assert ret == [('universe', 'c138')]
 
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c137.c1.g1',
-                                                                                   'instances': 3})),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
-                                                                                   'instances': 2}))]
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c137.c1.g1',
+                'instances': 3,
+            })),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
         mock_load_marathon_service_config.side_effect = mock_configs
         ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
-                                                                                         'instances': 2}))]
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
         mock_load_marathon_service_config.side_effect = mock_configs
         ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
-        mock_configs = [mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=InvalidJobNameError)),
-                        mock.Mock(format_marathon_app_dict=mock.Mock(return_value={'id': 'universe.c138.c2.g2',
-                                                                                         'instances': 2}))]
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=InvalidJobNameError)),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
         mock_load_marathon_service_config.side_effect = mock_configs
         ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]

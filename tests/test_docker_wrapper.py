@@ -16,29 +16,35 @@ class TestParseEnvArgs(object):
         env = docker_wrapper.parse_env_args(['docker'])
         assert env == {}
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '-e', 'key=value'],
-        ['docker', '-e=key=value'],
-        ['docker', '-te', 'key=value'],  # -e can be combined with other short args
-        ['docker', '-et', 'key=value'],  # -t takes no additional parameters so docker allows this order
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '-e', 'key=value'],
+            ['docker', '-e=key=value'],
+            ['docker', '-te', 'key=value'],  # -e can be combined with other short args
+            ['docker', '-et', 'key=value'],  # -t takes no additional parameters so docker allows this order
+        ],
+    )
     def test_short(self, args):
         env = docker_wrapper.parse_env_args(args)
         assert env == {'key': 'value'}
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '--env', 'key=value'],
-        ['docker', '--env=key=value'],
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '--env', 'key=value'],
+            ['docker', '--env=key=value'],
+        ],
+    )
     def test_long(self, args):
         env = docker_wrapper.parse_env_args(args)
         assert env == {'key': 'value'}
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '--eep', 'key=value'],  # ignore -e in double dashes unless its --env
-        ['docker', '-a', 'key=value'],  # only -e should matter
-        ['docker', '-'],  # just don't crash
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '--eep', 'key=value'],  # ignore -e in double dashes unless its --env
+            ['docker', '-a', 'key=value'],  # only -e should matter
+            ['docker', '-'],  # just don't crash
+        ],
+    )
     def test_short_invalid(self, args):
         env = docker_wrapper.parse_env_args(args)
         assert env == {}
@@ -106,35 +112,41 @@ class TestCanAddHostname(object):
     def test_empty(self):
         assert docker_wrapper.can_add_hostname(['docker']) is True
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '-h'],
-        ['docker', '-th'],
-        ['docker', '-ht'],
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '-h'],
+            ['docker', '-th'],
+            ['docker', '-ht'],
+        ],
+    )
     def test_short(self, args):
         assert docker_wrapper.can_add_hostname(args) is False
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '-e=foo=hhh'],
-        ['docker', '--hhh'],
-        ['docker', '-'],
-        ['docker', '--net', 'bridged'],
-        ['docker', '--net'],
-        ['docker', '--network', 'bridged'],
-        ['docker', '--network'],
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '-e=foo=hhh'],
+            ['docker', '--hhh'],
+            ['docker', '-'],
+            ['docker', '--net', 'bridged'],
+            ['docker', '--net'],
+            ['docker', '--network', 'bridged'],
+            ['docker', '--network'],
+        ],
+    )
     def test_short_invalid(self, args):
         assert docker_wrapper.can_add_hostname(args) is True
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '--hostname', 'foo'],
-        ['docker', '--hostname=foo'],
-        ['docker', '--net=host'],
-        ['docker', '--net', 'host'],
-        ['docker', '--network=host'],
-        ['docker', '--network', 'host'],
-        ['docker', '--hostname=foo', '--net=host'],
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '--hostname', 'foo'],
+            ['docker', '--hostname=foo'],
+            ['docker', '--net=host'],
+            ['docker', '--net', 'host'],
+            ['docker', '--network=host'],
+            ['docker', '--network', 'host'],
+            ['docker', '--hostname=foo', '--net=host'],
+        ],
+    )
     def test_long(self, args):
         assert docker_wrapper.can_add_hostname(args) is False
 
@@ -149,15 +161,17 @@ class TestCanAddMacAddress(object):
     def test_not_run(self):
         assert docker_wrapper.can_add_mac_address(['docker', 'inspect']) is False
 
-    @pytest.mark.parametrize('args', [
-        ['docker', '--mac-address', 'foo'],
-        ['docker', '--mac-address=foo'],
-        ['docker', '--net=host'],
-        ['docker', '--net', 'host'],
-        ['docker', '--network=host'],
-        ['docker', '--network', 'host'],
-        ['docker', '--mac-address=foo', '--net=host'],
-    ])
+    @pytest.mark.parametrize(
+        'args', [
+            ['docker', '--mac-address', 'foo'],
+            ['docker', '--mac-address=foo'],
+            ['docker', '--net=host'],
+            ['docker', '--net', 'host'],
+            ['docker', '--network=host'],
+            ['docker', '--network', 'host'],
+            ['docker', '--mac-address=foo', '--net=host'],
+        ],
+    )
     def test_long(self, args):
         assert docker_wrapper.can_add_mac_address(args) is False
 
@@ -178,35 +192,42 @@ class TestGenerateHostname(object):
     def test_simple(self):
         hostname = docker_wrapper.generate_hostname(
             'first.part.matters',
-            'what.only.matters.is.lastpart')
+            'what.only.matters.is.lastpart',
+        )
         assert hostname == 'first-lastpart'
 
     def test_truncate(self):
         hostname = docker_wrapper.generate_hostname(
             'reallllllllllllllylooooooooooooooong',
-            'reallyreallylongidsssssssssssssssssssssssss')
+            'reallyreallylongidsssssssssssssssssssssssss',
+        )
         assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidssssssss'
         assert len(hostname) == 63
 
     def test_symbols(self):
         hostname = docker_wrapper.generate_hostname(
             'first.part.matters',
-            'chronos:can_do!s0me weird-stuff')
+            'chronos:can_do!s0me weird-stuff',
+        )
         assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
 
 
-@pytest.mark.parametrize('input_args,expected_args', [
-    (  # do not add it for non-run commands
-        ['docker', 'ps'],
-        ['docker', 'ps']),
-    (  # add it after the first run arg
-        ['docker', 'run', 'run'],
-        ['docker', 'run', '--hostname=myhostname', 'run']),
-    (  # ignore args before run
-        ['docker', '--host', '/fake.sock', 'run', '-t'],
-        ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t'],
-    ),
-])
+@pytest.mark.parametrize(
+    'input_args,expected_args', [
+        (  # do not add it for non-run commands
+            ['docker', 'ps'],
+            ['docker', 'ps'],
+        ),
+        (  # add it after the first run arg
+            ['docker', 'run', 'run'],
+            ['docker', 'run', '--hostname=myhostname', 'run'],
+        ),
+        (  # ignore args before run
+            ['docker', '--host', '/fake.sock', 'run', '-t'],
+            ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t'],
+        ),
+    ],
+)
 def test_add_argument(input_args, expected_args):
     args = docker_wrapper.add_argument(input_args, '--hostname=myhostname')
     assert args == expected_args
@@ -232,7 +253,8 @@ class TestMain(object):
             'docker',
             'run',
             '--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c',
-            '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c')]
+            '--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c',
+        )]
 
     def test_chronos(self, mock_execlp):
         argv = [
@@ -247,7 +269,8 @@ class TestMain(object):
             'docker',
             'run',
             '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
-            '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:')]
+            '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
+        )]
 
     def test_env_not_present(self, mock_execlp):
         argv = [
@@ -260,7 +283,8 @@ class TestMain(object):
             'docker',
             'docker',
             'run',
-            'foobar')]
+            'foobar',
+        )]
 
     def test_already_has_hostname(self, mock_execlp):
         argv = [
@@ -276,7 +300,8 @@ class TestMain(object):
             'docker',
             'run',
             '--env=MESOS_TASK_ID=my-mesos-task-id',
-            '--hostname=somehostname')]
+            '--hostname=somehostname',
+        )]
 
     def test_not_run(self, mock_execlp):
         argv = [
@@ -289,7 +314,8 @@ class TestMain(object):
             'docker',
             'docker',
             'ps',
-            '--env=MESOS_TASK_ID=my-mesos-task-id')]
+            '--env=MESOS_TASK_ID=my-mesos-task-id',
+        )]
 
     def test_numa_string_value(self, mock_execlp):
         argv = [
@@ -302,7 +328,8 @@ class TestMain(object):
             'docker',
             'docker',
             'run',
-            '--env=PIN_TO_NUMA_NODE="true"')]
+            '--env=PIN_TO_NUMA_NODE="true"',
+        )]
 
     def test_numa_bogus_node(self, mock_execlp):
         argv = [
@@ -315,7 +342,8 @@ class TestMain(object):
             'docker',
             'docker',
             'run',
-            '--env=PIN_TO_NUMA_NODE=True')]
+            '--env=PIN_TO_NUMA_NODE=True',
+        )]
 
     def test_numa_unsupported(self, mock_execlp):
         argv = [
@@ -340,7 +368,8 @@ class TestMain(object):
             'docker',
             'run',
             '--env=PIN_TO_NUMA_NODE=1',
-            '--env=MARATHON_APP_RESOURCE_CPUS=1.5')]
+            '--env=MARATHON_APP_RESOURCE_CPUS=1.5',
+        )]
 
     def test_marathon_bogus_value(self, mock_execlp):
         argv = [
@@ -659,10 +688,11 @@ class TestMain(object):
             docker_wrapper,
             'is_numa_enabled',
             return_value=is_numa_enabled,
-        ), mock.patch.object(docker_wrapper,
-                             'get_numa_memsize',
-                             return_value=node_mem,
-                             ), mock.patch.object(docker_wrapper, 'open', new=m):
+        ), mock.patch.object(
+            docker_wrapper,
+            'get_numa_memsize',
+            return_value=node_mem,
+        ), mock.patch.object(docker_wrapper, 'open', new=m):
             yield
 
     @pytest.yield_fixture
@@ -713,7 +743,7 @@ class TestMain(object):
             docker_wrapper.DEFAULT_SYNAPSE_SERVICE_DIR,
             'myservice',
             'myinstance',
-            '00:00:00:00:00:00'
+            '00:00:00:00:00:00',
         )]
 
     def test_mac_address_not_run(self, mock_mac_address, mock_execlp, mock_firewall_env_args):

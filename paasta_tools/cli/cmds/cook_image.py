@@ -67,8 +67,10 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     run_env['DOCKER_TAG'] = tag
 
     if not makefile_responds_to('cook-image'):
-        paasta_print('ERROR: local-run now requires a cook-image target to be present in the Makefile. See'
-                     'http://paasta.readthedocs.io/en/latest/about/contract.html', file=sys.stderr)
+        paasta_print(
+            'ERROR: local-run now requires a cook-image target to be present in the Makefile. See'
+            'http://paasta.readthedocs.io/en/latest/about/contract.html', file=sys.stderr,
+        )
         return 1
 
     try:

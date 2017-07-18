@@ -32,8 +32,10 @@ def test_modify_command_for_date(mock_parse_time_variables):
     fake_chronos_job_config = {
         'command': 'foo',
     }
-    actual = chronos_rerun.modify_command_for_date(fake_chronos_job_config,
-                                                   datetime.datetime.now())
+    actual = chronos_rerun.modify_command_for_date(
+        fake_chronos_job_config,
+        datetime.datetime.now(),
+    )
 
     assert actual == {
         'command': '2016-03-17',

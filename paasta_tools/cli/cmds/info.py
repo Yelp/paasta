@@ -93,7 +93,8 @@ def get_deployments_strings(service, soa_dir):
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
         service_config = load_service_namespace_config(
-            service=service, namespace='main', soa_dir=soa_dir)
+            service=service, namespace='main', soa_dir=soa_dir,
+        )
         service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
             if service_mode == "tcp":

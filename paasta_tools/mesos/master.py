@@ -74,7 +74,8 @@ class MesosMaster(object):
             return method(
                 urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
-                **kwargs)
+                **kwargs
+            )
         except requests.exceptions.ConnectionError:
             raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
 
@@ -154,7 +155,8 @@ class MesosMaster(object):
 
         if len(lst) == 0:
             raise exceptions.SlaveDoesNotExist(
-                "Slave {} no longer exists.".format(fltr))
+                "Slave {} no longer exists.".format(fltr),
+            )
 
         elif len(lst) > 1:
             raise exceptions.MultipleSlavesForIDError(
@@ -178,7 +180,8 @@ class MesosMaster(object):
         if not active_only:
             keys.append("completed_tasks")
         return itertools.chain(
-            *[util.merge(x, *keys) for x in self._framework_list(active_only)])
+            *[util.merge(x, *keys) for x in self._framework_list(active_only)]
+        )
 
     def task(self, fltr):
         lst = self.tasks(fltr)
@@ -209,7 +212,8 @@ class MesosMaster(object):
     def framework(self, fwid):
         return list(filter(
             lambda x: x.id == fwid,
-            self.frameworks()))[0]
+            self.frameworks(),
+        ))[0]
 
     def _framework_list(self, active_only=False):
         keys = ["frameworks"]

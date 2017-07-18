@@ -149,7 +149,8 @@ def main():
         environment = docker_env_to_dict(docker_inspect_data[0]['Config']['Env'])
         if 'CHRONOS_JOB_NAME' in environment:
             paasta_print(
-                "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME']))
+                "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME']),
+            )
             paasta_print()
             continue
         if not has_all_paasta_env(environment):

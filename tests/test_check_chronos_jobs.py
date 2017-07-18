@@ -52,8 +52,10 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
     }
 
 
-@patch('paasta_tools.check_chronos_jobs.monitoring_tools.service_configuration_lib.read_service_configuration',
-       autospec=True)
+@patch(
+    'paasta_tools.check_chronos_jobs.monitoring_tools.service_configuration_lib.read_service_configuration',
+    autospec=True,
+)
 @patch('paasta_tools.check_chronos_jobs.monitoring_tools.read_monitoring_config', autospec=True)
 def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mock_read_service_config):
     mock_read_monitoring.return_value = {'runbook': 'myrunbook'}
@@ -105,8 +107,10 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
 
 def test_compose_check_name_for_job():
     expected_check = 'check-chronos-jobs.myservice.myinstance'
-    assert chronos_tools.compose_check_name_for_service_instance('check-chronos-jobs',
-                                                                 'myservice', 'myinstance') == expected_check
+    assert chronos_tools.compose_check_name_for_service_instance(
+        'check-chronos-jobs',
+        'myservice', 'myinstance',
+    ) == expected_check
 
 
 @patch('paasta_tools.chronos_tools.monitoring_tools.send_event', autospec=True)
@@ -177,7 +181,7 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
         'lastError': '2016-07-26T22:01:00+00:00',
     }
     mock_lookup_chronos_jobs.side_effect = [[
-        fake_job
+        fake_job,
     ]]
 
     fake_configured_jobs = [('service1', 'chronos_job')]
@@ -195,7 +199,7 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
     reran_job = chronos_rerun.set_tmp_naming_scheme(reran_job)
     mock_lookup_chronos_jobs.side_effect = [[
         fake_job,
-        reran_job
+        reran_job,
     ]]
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
         ('service1', 'chronos_job'): reran_job,
@@ -285,11 +289,14 @@ def test_message_for_status_unknown():
 @patch('paasta_tools.check_chronos_jobs.job_is_stuck', autospec=True)
 def test_sensu_message_status_ok(mock_job_is_stuck):
     mock_job_is_stuck.return_value = False
-    fake_job = {'name': 'full_job_id',
-                'disabled': False,
-                'lastSuccess': '2016-07-26T22:02:00+00:00'}
+    fake_job = {
+        'name': 'full_job_id',
+        'disabled': False,
+        'lastSuccess': '2016-07-26T22:02:00+00:00',
+    }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job)
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job,
+    )
     expected_output = "Last run of job myservice.myinstance Succeded"
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -298,11 +305,14 @@ def test_sensu_message_status_ok(mock_job_is_stuck):
 @patch('paasta_tools.check_chronos_jobs.job_is_stuck', autospec=True)
 def test_sensu_message_rerun_status_ok(mock_job_is_stuck):
     mock_job_is_stuck.return_value = False
-    fake_job = {'name': 'tmp-2017-06-13T123738942755 full_job_id',
-                'disabled': True,
-                'lastSuccess': '2016-07-26T22:02:00+00:00'}
+    fake_job = {
+        'name': 'tmp-2017-06-13T123738942755 full_job_id',
+        'disabled': True,
+        'lastSuccess': '2016-07-26T22:02:00+00:00',
+    }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job)
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job,
+    )
     expected_output = "Last run of job myservice.myinstance Succeded"
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -313,21 +323,27 @@ def test_sensu_message_rerun_status_ok(mock_job_is_stuck):
 def test_sensu_message_status_fail(mock_message_for_status, mock_job_is_stuck):
     mock_job_is_stuck.return_value = False
     mock_message_for_status.return_value = 'my failure message'
-    fake_job = {'name': 'full_job_id',
-                'disabled': False,
-                'lastError': '2016-07-26T22:03:00+00:00'}
+    fake_job = {
+        'name': 'full_job_id',
+        'disabled': False,
+        'lastError': '2016-07-26T22:03:00+00:00',
+    }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'mycluster', fake_job)
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'mycluster', fake_job,
+    )
     assert output == 'my failure message'
     assert status == pysensu_yelp.Status.CRITICAL
 
 
 def test_sensu_message_status_no_run():
     fake_job = None
-    with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
-               return_value=Mock(get_disabled=Mock(return_value=False))):
+    with patch(
+        'paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
+        return_value=Mock(get_disabled=Mock(return_value=False)),
+    ):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            Mock(get_disabled=Mock(return_value=False)), 'myservice', 'myinstance', 'mycluster', fake_job)
+            Mock(get_disabled=Mock(return_value=False)), 'myservice', 'myinstance', 'mycluster', fake_job,
+        )
     expected_output = "Warning: myservice.myinstance isn't in chronos at all, which means it may not be deployed yet"
     assert output == expected_output
     assert status == pysensu_yelp.Status.WARNING
@@ -335,10 +351,13 @@ def test_sensu_message_status_no_run():
 
 def test_sensu_message_status_no_run_disabled():
     fake_job = None
-    with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
-               return_value=Mock(get_disabled=Mock(return_value=True))):
+    with patch(
+        'paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
+        return_value=Mock(get_disabled=Mock(return_value=True)),
+    ):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job)
+            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job,
+        )
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -378,8 +397,10 @@ def test_sensu_message_status_stuck():
         chronos_job=fake_job,
     )
     assert status == pysensu_yelp.Status.CRITICAL
-    assert ("Job myservice.myinstance with schedule {}"
-            " (America/Los_Angeles)").format(fake_schedule) in output
+    assert (
+        "Job myservice.myinstance with schedule {}"
+        " (America/Los_Angeles)"
+    ).format(fake_schedule) in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
     assert "and is configured to run every 24h." in output
 
@@ -404,9 +425,11 @@ def test_job_is_stuck_when_stuck():
 
 def test_guess_realert_every():
     assert check_chronos_jobs.guess_realert_every(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3))) == 60 * 3
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 3)),
+    ) == 60 * 3
     assert check_chronos_jobs.guess_realert_every(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 48))) == 60 * 24
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=60 * 60 * 48)),
+    ) == 60 * 24
 
 
 def test_message_for_stuck_job_timezone_is_none():
@@ -418,8 +441,11 @@ def test_message_for_stuck_job_timezone_is_none():
         (datetime.now(pytz.utc) - timedelta(hours=25)).isoformat(),
         60 * 60 * 24,
         fake_schedule,
-        None)
-    assert ("Job myservice.myinstance with schedule {}"
-            " (UTC)").format(fake_schedule) in output
+        None,
+    )
+    assert (
+        "Job myservice.myinstance with schedule {}"
+        " (UTC)"
+    ).format(fake_schedule) in output
     assert "paasta logs -s myservice -i myinstance -c mycluster" in output
     assert "and is configured to run every 24h." in output
