@@ -2032,6 +2032,7 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
+    f.flush()
 
 
 def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):
