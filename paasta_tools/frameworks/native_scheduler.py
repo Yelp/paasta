@@ -446,17 +446,19 @@ class NativeScheduler(Scheduler):
     def make_drain_task(self, task_id):
         """Return a DrainTask object, which is suitable for passing to drain methods."""
 
-        port = None
+        ports = []
 
         params = self.task_store.get_task(task_id)
-        if params is not None:
-            for resource in params.resources:
-                if resource['name'] == "ports":
-                    port = resource['ranges']['range'][0]['begin']
+        for resource in params.resources:
+            if resource['name'] == "ports":
+                for rg in resource['ranges']['range']:
+                    for port in range(rg['begin'], rg['end'] + 1):
+                        ports.append(port)
 
         return DrainTask(
             id=task_id,
-            port=port,
+            host=params.offer['agent_id']['value'],
+            ports=ports,
         )
 
     def undrain_task(self, task_id):
@@ -530,9 +532,10 @@ class NativeScheduler(Scheduler):
 
 
 class DrainTask(object):
-    def __init__(self, id, port=None):
+    def __init__(self, id, host, ports):
         self.id = id
-        self.port = port
+        self.host = host
+        self.ports = ports
 
 
 def find_existing_id_if_exists_or_gen_new(name):

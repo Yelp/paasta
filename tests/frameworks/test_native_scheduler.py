@@ -400,3 +400,58 @@ class TestNativeServiceConfig(object):
         assert len(scheduler.blacklisted_slaves) == 1
         scheduler.resourceOffers(fake_driver, [make_fake_offer()])
         assert len(scheduler.task_store.get_all_tasks()) == 0
+
+    def test_make_drain_task_works_with_hacheck_drain_method(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_config = NativeServiceConfig(
+            service=service_name,
+            instance=instance_name,
+            cluster=cluster,
+            config_dict={
+                "cpus": 0.1,
+                "mem": 50,
+                "instances": 1,
+                "cmd": 'sleep 50',
+                "drain_method": "hacheck",
+                "pool": "default",
+            },
+            branch_dict={
+                'docker_image': 'busybox',
+                'desired_state': 'start',
+                'force_bounce': '0',
+            },
+            soa_dir='/nail/etc/services',
+        )
+
+        scheduler = native_scheduler.NativeScheduler(
+            service_name=service_name,
+            instance_name=instance_name,
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            service_config=service_config,
+            staging_timeout=1,
+            task_store_type=DictTaskStore,
+        )
+
+        fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
+
+        # launch a task
+        offer = make_fake_offer(port_begin=31337, port_end=31337)
+        scheduler.launch_tasks_for_offers(
+            driver=fake_driver,
+            offers=[offer],
+        )
+
+        expected = "http://super_big_slave:6666/spool/service_name.instance_name/31337/status"
+        actual = scheduler.drain_method.spool_url(
+            scheduler.make_drain_task(list(scheduler.task_store.get_all_tasks().keys())[0]),
+        )
+        assert actual == expected

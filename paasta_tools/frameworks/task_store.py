@@ -112,7 +112,8 @@ class DictTaskStore(TaskStore):
         return dict(self.tasks)
 
     def overwrite_task(self, task_id, params):
-        self.tasks[task_id] = params
+        # serialize/deserialize to make sure the returned values are the same format as ZKTaskStore.
+        self.tasks[task_id] = MesosTaskParameters.deserialize(params.serialize())
 
 
 class ZKTaskStore(TaskStore):
