@@ -16,8 +16,8 @@ def given_a_zktaskstore(context):
     context.task_store = ZKTaskStore(
         service_name='service',
         instance_name='instance',
-        zk_hosts=context.system_paasta_config.get_zk_hosts(),
-        zk_base_path='/task_store',
+        system_paasta_config=context.system_paasta_config,
+        framework_id='testing_zk_task_store',
     )
 
     # clean up any old data
