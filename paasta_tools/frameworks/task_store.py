@@ -1,6 +1,11 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
+
+from kazoo.client import KazooClient
+from kazoo.exceptions import NoNodeError
+
 
 class MesosTaskParametersIsImmutableError(Exception):
     pass
@@ -13,7 +18,7 @@ class MesosTaskParameters(object):
         mesos_task_state=None,
         is_draining=None,
         is_healthy=None,
-        offer=None
+        offer=None,
     ):
         self.__dict__['health'] = health
         self.__dict__['mesos_task_state'] = mesos_task_state
@@ -42,6 +47,13 @@ class MesosTaskParameters(object):
             is_healthy=kwargs.get('is_healthy', self.is_healthy),
             offer=kwargs.get('offer', self.offer),
         )
+
+    @classmethod
+    def deserialize(cls, serialized_params):
+        return cls(**json.loads(serialized_params))
+
+    def serialize(self):
+        return json.dumps(self.__dict__).encode('utf-8')
 
 
 class TaskStore(object):
@@ -96,3 +108,44 @@ class DictTaskStore(TaskStore):
 
     def overwrite_task(self, task_id, params):
         self.tasks[task_id] = params
+
+
+class ZKTaskStore(TaskStore):
+    def __init__(self, service_name, instance_name, zk_hosts, zk_base_path):
+        self.zk_base_path = zk_base_path
+        self.zk_hosts = zk_hosts
+
+        self.zk_client = KazooClient(hosts='%s/%s' % (zk_hosts, zk_base_path))
+        self.zk_client.start()
+        self.zk_client.ensure_path('/')
+        # TODO: call self.zk_client.stop() and .close()
+
+        super(ZKTaskStore, self).__init__(service_name, instance_name)
+
+    def get_task(self, task_id):
+        try:
+            data, stat = self.zk_client.get('/%s' % task_id)
+            return MesosTaskParameters.deserialize(data)
+        except NoNodeError:
+            return None
+
+    def get_all_tasks(self):
+        all_tasks = {}
+
+        for child_path in self.zk_client.get_children('/'):
+            task_id = self._task_id_from_zk_path(child_path)
+            all_tasks[task_id] = self.get_task(task_id)
+
+        return all_tasks
+
+    def overwrite_task(self, task_id, params):
+        try:
+            self.zk_client.set(self._zk_path_from_task_id(task_id), params.serialize())
+        except NoNodeError:
+            self.zk_client.create(self._zk_path_from_task_id(task_id), params.serialize())
+
+    def _zk_path_from_task_id(self, task_id):
+        return '/%s' % task_id
+
+    def _task_id_from_zk_path(self, zk_path):
+        return zk_path.lstrip('/')
