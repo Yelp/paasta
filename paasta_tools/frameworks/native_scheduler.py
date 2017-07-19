@@ -177,6 +177,7 @@ class NativeScheduler(Scheduler):
                                 health=None,
                                 mesos_task_state=TASK_STAGING,
                                 offer=offer,
+                                resources=task.resources,
                             )
                         launched_tasks.extend(tasks)
                         self.constraint_state = new_state
@@ -425,7 +426,7 @@ class NativeScheduler(Scheduler):
 
         for task, parameters in self.task_store.get_all_tasks().items():
             if parameters.is_draining and \
-                    self.drain_method.is_safe_to_kill(DrainTask(id=task)) and \
+                    self.drain_method.is_safe_to_kill(self.make_drain_task(task)) and \
                     parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
@@ -442,16 +443,30 @@ class NativeScheduler(Scheduler):
         """Filter a list of tasks to those that are draining."""
         return [t for t in task_ids if self.task_store.get_task(t).is_draining]
 
+    def make_drain_task(self, task_id):
+        """Return a DrainTask object, which is suitable for passing to drain methods."""
+
+        port = None
+
+        params = self.task_store.get_task(task_id)
+        if params is not None:
+            for resource in params.resources:
+                if resource['name'] == "ports":
+                    port = resource['ranges']['range'][0]['begin']
+
+        return DrainTask(
+            id=task_id,
+            port=port,
+        )
+
     def undrain_task(self, task_id):
-        # TODO: DrainTask needs ports
         self.log("Undraining task %s" % task_id)
-        self.drain_method.stop_draining(DrainTask(id=task_id))
+        self.drain_method.stop_draining(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=False)
 
     def drain_task(self, task_id):
-        # TODO: DrainTask needs ports
         self.log("Draining task %s" % task_id)
-        self.drain_method.drain(DrainTask(id=task_id))
+        self.drain_method.drain(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=True)
 
     def kill_task(self, driver, task_id):
@@ -515,8 +530,9 @@ class NativeScheduler(Scheduler):
 
 
 class DrainTask(object):
-    def __init__(self, id):
+    def __init__(self, id, port=None):
         self.id = id
+        self.port = port
 
 
 def find_existing_id_if_exists_or_gen_new(name):

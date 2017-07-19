@@ -38,6 +38,7 @@ class TestMesosTaskParameters(object):
             'is_draining': True,
             'is_healthy': True,
             'offer': 'offer',
+            'resources': 'resources',
         }
 
         assert json.loads(MesosTaskParameters(**param_dict).serialize()) == param_dict

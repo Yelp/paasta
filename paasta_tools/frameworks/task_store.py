@@ -21,12 +21,14 @@ class MesosTaskParameters(object):
         is_draining=None,
         is_healthy=None,
         offer=None,
+        resources=None,
     ):
         self.__dict__['health'] = health
         self.__dict__['mesos_task_state'] = mesos_task_state
         self.__dict__['is_draining'] = is_draining
         self.__dict__['is_healthy'] = is_healthy
         self.__dict__['offer'] = offer
+        self.__dict__['resources'] = resources
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -42,13 +44,11 @@ class MesosTaskParameters(object):
 
     def merge(self, **kwargs):
         """Return a merged MesosTaskParameters object, where attributes in other take precedence over self."""
-        return MesosTaskParameters(
-            health=kwargs.get('health', self.health),
-            mesos_task_state=kwargs.get('mesos_task_state', self.mesos_task_state),
-            is_draining=kwargs.get('is_draining', self.is_draining),
-            is_healthy=kwargs.get('is_healthy', self.is_healthy),
-            offer=kwargs.get('offer', self.offer),
-        )
+
+        new_dict = self.__dict__
+        new_dict.update(kwargs)
+
+        return MesosTaskParameters(**new_dict)
 
     @classmethod
     def deserialize(cls, serialized_params):
