@@ -58,7 +58,7 @@ class NativeScheduler(Scheduler):
         soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
         instance_type='paasta_native', service_config_overrides=None,
         reconcile_start_time=float('inf'),
-        task_store=None,
+        task_store_type=ZKTaskStore,
     ):
         self.service_name = service_name
         self.instance_name = instance_name
@@ -66,15 +66,11 @@ class NativeScheduler(Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        if task_store:
-            self.task_store = task_store
-        else:
-            self.task_store = ZKTaskStore(
-                service_name=service_name,
-                instance_name=instance_name,
-                zk_hosts=system_paasta_config.get_zk_hosts(),
-                zk_base_path='/paasta_native_task_store',
-            )
+
+        # This will be initialized in registered().
+        self.task_store = None
+        self.task_store_type = task_store_type
+
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
@@ -127,6 +123,13 @@ class NativeScheduler(Scheduler):
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
         self.log("Registered with framework ID %s" % frameworkId.value)
+
+        self.task_store = self.task_store_type(
+            service_name=self.service_name,
+            instance_name=self.instance_name,
+            framework_id=self.framework_id,
+            system_paasta_config=self.system_paasta_config,
+        )
 
         self.reconcile_start_time = time.time()
         driver.reconcileTasks([])

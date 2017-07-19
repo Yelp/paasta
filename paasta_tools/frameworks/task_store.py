@@ -59,9 +59,11 @@ class MesosTaskParameters(object):
 
 
 class TaskStore(object):
-    def __init__(self, service_name, instance_name):
+    def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.service_name = service_name
         self.instance_name = instance_name
+        self.framework_id = framework_id
+        self.system_paasta_config = system_paasta_config
 
     def get_task(self, task_id):
         """Get task data for task_id. If we don't know about task_id, return None"""
@@ -98,9 +100,9 @@ class TaskStore(object):
 
 
 class DictTaskStore(TaskStore):
-    def __init__(self, service_name, instance_name):
+    def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.tasks = {}
-        super(DictTaskStore, self).__init__(service_name, instance_name)
+        super(DictTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
 
     def get_task(self, task_id):
         return self.tasks.get(task_id)
@@ -114,29 +116,27 @@ class DictTaskStore(TaskStore):
 
 
 class ZKTaskStore(TaskStore):
-    def __init__(self, service_name, instance_name, zk_hosts, zk_base_path):
-        self.zk_base_path = zk_base_path
-        self.zk_hosts = zk_hosts
+    def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
+        super(ZKTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
+        self.zk_hosts = system_paasta_config.get_zk_hosts()
 
         # For some reason, I could not get the code suggested by this SO post to work to ensure_path on the chroot.
         # https://stackoverflow.com/a/32785625/25327
         # Plus, it just felt dirty to modify instance attributes of a running connection, especially given that
         # KazooClient.set_hosts() doesn't allow you to change the chroot. Must be for a good reason.
 
-        chroot = '%s/%s/%s' % (zk_base_path, service_name, instance_name)
+        chroot = 'task_store/%s/%s/%s' % (service_name, instance_name, framework_id)
 
-        temp_zk_client = KazooClient(hosts=zk_hosts)
+        temp_zk_client = KazooClient(hosts=self.zk_hosts)
         temp_zk_client.start()
         temp_zk_client.ensure_path(chroot)
         temp_zk_client.stop()
         temp_zk_client.close()
 
-        self.zk_client = KazooClient(hosts='%s/%s' % (zk_hosts, chroot))
+        self.zk_client = KazooClient(hosts='%s/%s' % (self.zk_hosts, chroot))
         self.zk_client.start()
         self.zk_client.ensure_path('/')
         # TODO: call self.zk_client.stop() and .close()
-
-        super(ZKTaskStore, self).__init__(service_name, instance_name)
 
     def get_task(self, task_id):
         try:

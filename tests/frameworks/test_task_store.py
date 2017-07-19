@@ -8,7 +8,7 @@ from paasta_tools.frameworks.task_store import MesosTaskParameters
 
 
 def test_DictTaskStore():
-    task_store = DictTaskStore(service_name="foo", instance_name="bar")
+    task_store = DictTaskStore(service_name="foo", instance_name="bar", framework_id='foo', system_paasta_config=None)
     task_store.add_task_if_doesnt_exist("task_id", mesos_task_state="foo")
 
     task_store.update_task("task_id", is_draining=True)

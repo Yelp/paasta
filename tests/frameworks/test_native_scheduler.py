@@ -89,9 +89,14 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
         )
         fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -206,7 +211,12 @@ class TestNativeScheduler(object):
             service_config=service_configs[0],
             reconcile_start_time=0,
             staging_timeout=1,
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
+        )
+        scheduler.registered(
+            driver=mock.Mock(),
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
         )
 
         with mock.patch(
@@ -259,7 +269,12 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_config,
             staging_timeout=1,
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
+        )
+        scheduler.registered(
+            driver=mock.Mock(),
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))
@@ -372,10 +387,14 @@ class TestNativeServiceConfig(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
         )
-
         fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         scheduler.blacklist_slave('super big slave')
         assert len(scheduler.blacklisted_slaves) == 1

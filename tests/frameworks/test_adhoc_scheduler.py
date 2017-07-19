@@ -88,7 +88,7 @@ class TestAdhocScheduler(object):
                 dry_run=False,
                 reconcile_start_time=0,
                 staging_timeout=30,
-                task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+                task_store_type=DictTaskStore,
             )
 
     @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
@@ -126,10 +126,16 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
             staging_timeout=30,
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
         )
 
         fake_driver = mock.Mock()
+
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -202,10 +208,16 @@ class TestAdhocScheduler(object):
             reconcile_start_time=0,
             staging_timeout=30,
             service_config_overrides={'instances': 5},
-            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
+            task_store_type=DictTaskStore,
         )
 
         fake_driver = mock.Mock()
+
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
