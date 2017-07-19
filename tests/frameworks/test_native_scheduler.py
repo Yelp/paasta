@@ -10,6 +10,7 @@ from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
+from paasta_tools.frameworks.task_store import DictTaskStore
 
 
 @pytest.fixture
@@ -88,6 +89,7 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
         fake_driver = mock.Mock()
 
@@ -204,6 +206,7 @@ class TestNativeScheduler(object):
             service_config=service_configs[0],
             reconcile_start_time=0,
             staging_timeout=1,
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
 
         with mock.patch(
@@ -256,6 +259,7 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_config,
             staging_timeout=1,
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))
@@ -368,6 +372,7 @@ class TestNativeServiceConfig(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
 
         fake_driver = mock.Mock()

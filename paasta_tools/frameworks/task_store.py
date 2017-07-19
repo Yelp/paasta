@@ -6,6 +6,8 @@ import json
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
+from paasta_tools.utils import _log
+
 
 class MesosTaskParametersIsImmutableError(Exception):
     pass
@@ -80,8 +82,9 @@ class TaskStore(object):
             self.overwrite_task(task_id, MesosTaskParameters(**kwargs))
 
     def update_task(self, task_id, **kwargs):
-        if task_id in self.tasks:
-            merged_params = self.tasks[task_id].merge(**kwargs)
+        existing_task = self.get_task(task_id)
+        if existing_task:
+            merged_params = existing_task.merge(**kwargs)
         else:
             merged_params = MesosTaskParameters(**kwargs)
 
@@ -119,6 +122,7 @@ class ZKTaskStore(TaskStore):
         # https://stackoverflow.com/a/32785625/25327
         # Plus, it just felt dirty to modify instance attributes of a running connection, especially given that
         # KazooClient.set_hosts() doesn't allow you to change the chroot. Must be for a good reason.
+
         chroot = '%s/%s/%s' % (zk_base_path, service_name, instance_name)
 
         temp_zk_client = KazooClient(hosts=zk_hosts)
@@ -140,13 +144,25 @@ class ZKTaskStore(TaskStore):
             return MesosTaskParameters.deserialize(data)
         except NoNodeError:
             return None
+        except json.decoder.JSONDecodeError:
+            _log(
+                service=self.service_name,
+                instance=self.instance_name,
+                level='debug',
+                component='deploy',
+                line='Warning: found non-json-decodable value in zookeeper for task %s: %s' % (task_id, data),
+            )
+            return None
 
     def get_all_tasks(self):
         all_tasks = {}
 
         for child_path in self.zk_client.get_children('/'):
             task_id = self._task_id_from_zk_path(child_path)
-            all_tasks[task_id] = self.get_task(task_id)
+            params = self.get_task(task_id)
+            # sometimes there are bogus child ZK nodes. Ignore them.
+            if params is not None:
+                all_tasks[task_id] = params
 
         return all_tasks
 

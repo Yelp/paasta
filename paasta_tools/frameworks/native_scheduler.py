@@ -22,7 +22,7 @@ from paasta_tools import mesos_tools
 from paasta_tools.frameworks.constraints import check_offer_constraints
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
-from paasta_tools.frameworks.task_store import DictTaskStore
+from paasta_tools.frameworks.task_store import ZKTaskStore
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -58,6 +58,7 @@ class NativeScheduler(Scheduler):
         soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
         instance_type='paasta_native', service_config_overrides=None,
         reconcile_start_time=float('inf'),
+        task_store=None,
     ):
         self.service_name = service_name
         self.instance_name = instance_name
@@ -65,7 +66,15 @@ class NativeScheduler(Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        self.task_store = DictTaskStore(service_name, instance_name)
+        if task_store:
+            self.task_store = task_store
+        else:
+            self.task_store = ZKTaskStore(
+                service_name=service_name,
+                instance_name=instance_name,
+                zk_hosts=system_paasta_config.get_zk_hosts(),
+                zk_base_path='/paasta_native_task_store',
+            )
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()

@@ -10,6 +10,7 @@ from paasta_tools.frameworks import adhoc_scheduler
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
+from paasta_tools.frameworks.task_store import DictTaskStore
 
 
 @pytest.fixture
@@ -87,6 +88,7 @@ class TestAdhocScheduler(object):
                 dry_run=False,
                 reconcile_start_time=0,
                 staging_timeout=30,
+                task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
             )
 
     @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
@@ -124,6 +126,7 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
             staging_timeout=30,
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
 
         fake_driver = mock.Mock()
@@ -199,6 +202,7 @@ class TestAdhocScheduler(object):
             reconcile_start_time=0,
             staging_timeout=30,
             service_config_overrides={'instances': 5},
+            task_store=DictTaskStore(service_name=service_name, instance_name=instance_name),
         )
 
         fake_driver = mock.Mock()
