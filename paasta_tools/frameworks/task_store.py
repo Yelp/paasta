@@ -115,7 +115,19 @@ class ZKTaskStore(TaskStore):
         self.zk_base_path = zk_base_path
         self.zk_hosts = zk_hosts
 
-        self.zk_client = KazooClient(hosts='%s/%s' % (zk_hosts, zk_base_path))
+        # For some reason, I could not get the code suggested by this SO post to work to ensure_path on the chroot.
+        # https://stackoverflow.com/a/32785625/25327
+        # Plus, it just felt dirty to modify instance attributes of a running connection, especially given that
+        # KazooClient.set_hosts() doesn't allow you to change the chroot. Must be for a good reason.
+        chroot = '%s/%s/%s' % (zk_base_path, service_name, instance_name)
+
+        temp_zk_client = KazooClient(hosts=zk_hosts)
+        temp_zk_client.start()
+        temp_zk_client.ensure_path(chroot)
+        temp_zk_client.stop()
+        temp_zk_client.close()
+
+        self.zk_client = KazooClient(hosts='%s/%s' % (zk_hosts, chroot))
         self.zk_client.start()
         self.zk_client.ensure_path('/')
         # TODO: call self.zk_client.stop() and .close()
