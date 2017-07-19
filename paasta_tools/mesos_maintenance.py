@@ -452,8 +452,10 @@ def load_credentials(mesos_secrets='/nail/etc/mesos-slave-secret'):
         username = data['principal']
         password = data['secret']
     except KeyError:
-        log.error("%s does not contain Mesos slave credentials in the expected format. "
-                  "See http://mesos.apache.org/documentation/latest/authentication/ for details" % mesos_secrets)
+        log.error(
+            "%s does not contain Mesos slave credentials in the expected format. "
+            "See http://mesos.apache.org/documentation/latest/authentication/ for details" % mesos_secrets,
+        )
         raise
     return Credentials(file=mesos_secrets, principal=username, secret=password)
 

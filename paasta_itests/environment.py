@@ -66,17 +66,20 @@ def _clean_up_marathon_apps(context):
             if not apps:
                 break
             paasta_print(
-                "after_scenario: Deleting %d apps to prep for the next scenario. %s" % (len(apps), ",".join(apps)))
+                "after_scenario: Deleting %d apps to prep for the next scenario. %s" % (len(apps), ",".join(apps)),
+            )
             for app in apps:
                 if marathon_tools.is_app_id_running(app, context.marathon_client):
                     paasta_print(
-                        "after_scenario: %s does look like it is running. Scaling down and killing it..." % app)
+                        "after_scenario: %s does look like it is running. Scaling down and killing it..." % app,
+                    )
                     context.marathon_client.scale_app(app, instances=0, force=True)
                     time.sleep(1)
                     context.marathon_client.delete_app(app, force=True)
                 else:
                     paasta_print(
-                        "after_scenario: %s showed up in the app_list, but doesn't look like it is running?" % app)
+                        "after_scenario: %s showed up in the app_list, but doesn't look like it is running?" % app,
+                    )
             time.sleep(0.5)
         while context.marathon_client.list_deployments():
             paasta_print("after_scenario: There are still marathon deployments in progress. sleeping.")

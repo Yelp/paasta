@@ -101,7 +101,8 @@ def test_create_remote_refs_is_safe_by_default(mock_make_determine_wants_func, m
         ref_mutator=mock.sentinel.ref_mutator,
     )
     fake_git_client.send_pack.assert_called_once_with(
-        'fake_path', mock_make_determine_wants_func.return_value, mock.ANY)
+        'fake_path', mock_make_determine_wants_func.return_value, mock.ANY,
+    )
 
 
 @mock.patch('dulwich.client', autospec=True)
@@ -115,4 +116,5 @@ def test_create_remote_refs_allows_force_and_uses_the_provided_mutator(mock_dulw
         force=True,
     )
     fake_git_client.send_pack.assert_called_once_with(
-        'fake_path', mock.sentinel.ref_mutator, mock.ANY)
+        'fake_path', mock.sentinel.ref_mutator, mock.ANY,
+    )

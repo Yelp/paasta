@@ -64,8 +64,10 @@ def add_subparser(subparsers):
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-l', '--deploy-group',
-            help=('Name of the deploy group which you want to get status for. '
-                  'If specified together with --instances and/or --clusters, will %s common instances only.' % lower),
+            help=(
+                'Name of the deploy group which you want to get status for. '
+                'If specified together with --instances and/or --clusters, will %s common instances only.' % lower
+            ),
         ).completer = lazy_choices_completer(list_deploy_groups)
         status_parser.add_argument(
             '-c', '--clusters',
@@ -112,7 +114,8 @@ def log_event(service_config, desired_state):
     host = socket.getfqdn()
     line = "Issued request to change state of %s (an instance of %s) to '%s' by %s@%s" % (
         service_config.get_instance(), service_config.get_service(),
-        desired_state, user, host)
+        desired_state, user, host,
+    )
     utils._log(
         service=service_config.get_service(),
         level='event',

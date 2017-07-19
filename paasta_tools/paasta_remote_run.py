@@ -25,9 +25,8 @@ import string
 import sys
 from datetime import datetime
 
-from task_processing.plugins.mesos.mesos_executor import MesosExecutor
-from task_processing.plugins.mesos.retrying_executor import RetryingExecutor
 from task_processing.runners.sync import Sync
+from task_processing.task_processor import TaskProcessor
 
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
@@ -100,7 +99,8 @@ def extract_args(args):
         paasta_print(
             PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster."
-                "Please pass one using '-c'."),
+                "Please pass one using '-c'.",
+            ),
             sep='\n',
             file=sys.stderr,
         )
@@ -124,7 +124,8 @@ def paasta_to_task_config_kwargs(
         system_paasta_config,
         instance_type='paasta_native',
         soa_dir=DEFAULT_SOA_DIR,
-        config_overrides=None):
+        config_overrides=None,
+):
     native_job_config = load_paasta_native_job_config(
         service,
         instance,
@@ -189,17 +190,23 @@ def paasta_to_task_config_kwargs(
 
 
 def build_executor_stack(
+        # TODO: rename to registry?
+        processor,
         service,
         instance,
-        run_id,  # TODO: move run_id into task identifier?
+        # TODO: move run_id into task identifier?
+        run_id,
         system_paasta_config,
-        framework_staging_timeout):
+        framework_staging_timeout,
+):
     mesos_address = '{}:{}'.format(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
 
-    taskproc_config = system_paasta_config.get('taskproc')
     # TODO: implement DryRunExecutor?
+    taskproc_config = system_paasta_config.get('taskproc')
+
+    MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(
         role=taskproc_config.get('role', taskproc_config['principal']),
         principal=taskproc_config['principal'],
@@ -213,8 +220,8 @@ def build_executor_stack(
         framework_staging_timeout=framework_staging_timeout,
         initial_decline_delay=0.5,
     )
-    retrying_executor = RetryingExecutor(mesos_executor)
-    return retrying_executor
+    RetryingExecutor = processor.executor_cls(provider='retrying')
+    return RetryingExecutor(mesos_executor)
 
 
 def remote_run_start(args):
@@ -257,7 +264,10 @@ def remote_run_start(args):
 
     paasta_print('Scheduling a task on Mesos')
 
-    # prepare task before launching executor
+    processor = TaskProcessor()
+    processor.load_plugin(provider_module='task_processing.plugins.mesos')
+
+    MesosExecutor = processor.executor_cls(provider='mesos')
     task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
         **paasta_to_task_config_kwargs(
             service,
@@ -271,6 +281,7 @@ def remote_run_start(args):
     )
 
     executor_stack = build_executor_stack(
+        processor,
         service,
         instance,
         run_id,
@@ -281,8 +292,13 @@ def remote_run_start(args):
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
-            PaastaColors.red("Signal received, shutting down scheduler."))
+            PaastaColors.red("Signal received, shutting down scheduler."),
+        )
         runner.stop()
+        if _signum == signal.SIGTERM:
+            sys.exit(143)
+        else:
+            sys.exit(1)
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
@@ -293,7 +309,8 @@ def remote_run_start(args):
         sys.exit(0)
     else:
         paasta_print(
-            PaastaColors.red("Task failed: {}".format(terminal_event.raw)))
+            PaastaColors.red("Task failed: {}".format(terminal_event.raw)),
+        )
         sys.exit(1)
 
 
@@ -327,7 +344,9 @@ def remote_run_stop(args):
             paasta_print(
                 PaastaColors.red(
                     "Framework id %s does not match any %s.%s remote-run. Check status to find the correct id." %
-                    (framework_id, service, instance)))
+                    (framework_id, service, instance),
+                ),
+            )
             os._exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
@@ -352,7 +371,8 @@ def remote_run_list(args):
     if len(filtered) > 0:
         paasta_print(
             "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance))
+            (service, cluster, instance),
+        )
     else:
         paasta_print("Nothing found.")
 

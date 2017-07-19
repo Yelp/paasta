@@ -153,15 +153,17 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
             },
         }))
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as f:
-        json.dump({
-            'v1': {
-                '%s:paasta-%s.%s' % (service, context.cluster, instance): {
-                    'docker_image': 'busybox',
-                    'desired_state': 'start',
-                    'force_bounce': None,
+        json.dump(
+            {
+                'v1': {
+                    '%s:paasta-%s.%s' % (service, context.cluster, instance): {
+                        'docker_image': 'busybox',
+                        'desired_state': 'start',
+                        'force_bounce': None,
+                    },
                 },
-            },
-        }, f)
+            }, f,
+        )
 
 
 @when('we run native_mesos_scheduler.main()')

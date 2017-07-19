@@ -14,7 +14,7 @@
                     "oneOf": [
                         {
                             "properties": {
-                                "healthcheck_mode": {"enum": ["tcp", "http"]}
+                                "healthcheck_mode": {"enum": ["tcp", "http", "https"]}
                             }
                         },
                         {
@@ -211,7 +211,7 @@
                     "type": "array"
                 },
                 "healthcheck_mode": {
-                    "enum": [ "cmd", "tcp", "http" ]
+                    "enum": [ "cmd", "tcp", "http", "https" ]
                 },
                 "healthcheck_cmd": {
                     "type": "string",

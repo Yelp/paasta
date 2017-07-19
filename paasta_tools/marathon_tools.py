@@ -177,11 +177,13 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
                              should also be loaded
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
-    return load_marathon_service_config_no_cache(service=service,
-                                                 instance=instance,
-                                                 cluster=cluster,
-                                                 load_deployments=load_deployments,
-                                                 soa_dir=soa_dir)
+    return load_marathon_service_config_no_cache(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        load_deployments=load_deployments,
+        soa_dir=soa_dir,
+    )
 
 
 class InvalidMarathonConfig(Exception):
@@ -508,7 +510,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             healthchecks = []
         else:
             raise InvalidHealthcheckMode(
-                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode,
+            )
         return healthchecks
 
     def get_bounce_health_params(self, service_namespace_config):
@@ -680,7 +683,8 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     registration = read_registration_for_service_instance(name, instance, cluster, soa_dir)
     service, namespace, _, __ = decompose_job_id(registration)
     nerve_dict = load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir)
+        service=service, namespace=namespace, soa_dir=soa_dir,
+    )
     return nerve_dict.get('proxy_port')
 
 
@@ -794,7 +798,8 @@ def get_puppet_services_running_here_for_nerve(soa_dir):
         for namespace in namespaces:
             puppet_services.append(
                 _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir),
+                    service, namespace, soa_dir,
+                ),
             )
     return puppet_services
 
@@ -816,11 +821,13 @@ def get_classic_services_running_here_for_nerve(soa_dir):
     classic_services_here = service_configuration_lib.services_that_run_here()
     for service in sorted(classic_services_here):
         namespaces = [x[0] for x in get_all_namespaces_for_service(
-            service, soa_dir, full_name=False)]
+            service, soa_dir, full_name=False,
+        )]
         for namespace in namespaces:
             classic_services.append(
                 _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir),
+                    service, namespace, soa_dir,
+                ),
             )
     return classic_services
 
@@ -917,10 +924,12 @@ def get_expected_instance_count_for_namespace(service, namespace, cluster=None, 
     total_expected = 0
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    for name, instance in get_service_instance_list(service,
-                                                    cluster=cluster,
-                                                    instance_type='marathon',
-                                                    soa_dir=soa_dir):
+    for name, instance in get_service_instance_list(
+        service,
+        cluster=cluster,
+        instance_type='marathon',
+        soa_dir=soa_dir,
+    ):
         srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
@@ -945,8 +954,8 @@ def get_matching_apps(servicename, instance, marathon_apps):
     return [app for app in marathon_apps if app.id.startswith(expected_prefix)]
 
 
-def get_all_marathon_apps(client, embed_failures=False):
-    return client.list_apps(embed_failures=embed_failures)
+def get_all_marathon_apps(client, embed_tasks=False):
+    return client.list_apps(embed_tasks=embed_tasks)
 
 
 def kill_task(client, app_id, task_id, scale):

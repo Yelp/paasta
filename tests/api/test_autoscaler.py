@@ -27,8 +27,10 @@ def test_get_autoscaler_count():
         'instance': 'fake_instance',
     }
 
-    with mock.patch('paasta_tools.api.views.autoscaler.load_marathon_service_config',
-                    autospec=True) as mock_load_marathon_service_config:
+    with mock.patch(
+        'paasta_tools.api.views.autoscaler.load_marathon_service_config',
+        autospec=True,
+    ) as mock_load_marathon_service_config:
         mock_load_marathon_service_config.return_value = mock.MagicMock(get_instances=mock.MagicMock(return_value=123))
         response = autoscaler.get_autoscaler_count(request)
         assert response.json_body['desired_instances'] == 123
@@ -48,8 +50,10 @@ def test_update_autoscaler_count(mock_load_marathon_service_config):
         get_max_instances=mock.MagicMock(return_value=200),
     )
 
-    with mock.patch('paasta_tools.api.views.autoscaler.set_instances_for_marathon_service',
-                    autospec=True) as mock_set_instances:
+    with mock.patch(
+        'paasta_tools.api.views.autoscaler.set_instances_for_marathon_service',
+        autospec=True,
+    ) as mock_set_instances:
         response = autoscaler.update_autoscaler_count(request)
         assert response.json_body['desired_instances'] == 123
         mock_set_instances.assert_called_once_with(service='fake_service', instance='fake_instance', instance_count=123)

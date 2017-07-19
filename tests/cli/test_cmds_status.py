@@ -120,7 +120,8 @@ def test_report_status_for_cluster_displays_deployed_service(
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance',
-        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+    )
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
@@ -204,7 +205,8 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a,fake_instance_b',
-        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+    )
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
@@ -330,7 +332,8 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
     )
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a',
-        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True)
+        fake_system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+    )
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
@@ -446,7 +449,8 @@ def test_status_calls_sergeants(
     mock_figure_out_service_name.return_value = service
 
     planned_deployments = [
-        'cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
+        'cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1',
+    ]
     mock_get_planned_deployments.return_value = planned_deployments
 
     actual_deployments = {
@@ -547,7 +551,8 @@ def test_report_status_returns_zero_when_clusters_pass(
     cluster_whitelist = []
     instance_whitelist = []
     deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main']
+        'cluster1.main', 'cluster2.main', 'cluster3.main',
+    ]
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     mock_report_status_for_cluster.side_effect = [0, 0, 0]
@@ -576,7 +581,8 @@ def test_report_status_returns_one_when_clusters_pass(
     cluster_whitelist = []
     instance_whitelist = []
     deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main']
+        'cluster1.main', 'cluster2.main', 'cluster3.main',
+    ]
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
 
     mock_report_status_for_cluster.side_effect = [0, 0, 255]
@@ -605,7 +611,8 @@ def test_report_status_obeys_cluster_whitelist(
     cluster_whitelist = ['cluster1']
     instance_whitelist = []
     deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main']
+        'cluster1.main', 'cluster2.main', 'cluster3.main',
+    ]
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     report_status(
         service=service,
@@ -616,7 +623,8 @@ def test_report_status_obeys_cluster_whitelist(
         system_paasta_config=fake_system_paasta_config,
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
-        cluster_whitelist, ['cluster1', 'cluster2', 'cluster3'], 'cluster')
+        cluster_whitelist, ['cluster1', 'cluster2', 'cluster3'], 'cluster',
+    )
     mock_report_status_for_cluster.assert_called_once_with(
         service=service,
         cluster='cluster1',
@@ -640,7 +648,8 @@ def test_report_status_handle_none_whitelist(
     cluster_whitelist = []
     instance_whitelist = []
     deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main']
+        'cluster1.main', 'cluster2.main', 'cluster3.main',
+    ]
     fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
     report_status(
         service=service,
@@ -686,12 +695,16 @@ def test_report_status_handle_none_whitelist(
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_and_instances_clusters_instances_deploy_group(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group='fake_deploy_group',
-                      clusters='cluster1',
-                      instances='instance1,instance3')
-    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
-                                              'cluster2': {'instances': ['instance3']}}
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group='fake_deploy_group',
+        clusters='cluster1',
+        instances='instance1,instance3',
+    )
+    mock_cluster_instance_map.return_value = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance3']},
+    }
 
     pargs = paasta_args_mixer(args, 'fake_service')
     assert pargs.instance_whitelist == ['instance1']
@@ -701,12 +714,16 @@ def test_paasta_args_mixer_clusters_and_instances_clusters_instances_deploy_grou
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_uses_deploy_group_when_no_clusters_and_instances(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group='fake_deploy_group',
-                      clusters=None,
-                      instances=None)
-    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
-                                              'cluster2': {'instances': ['instance3']}}
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group='fake_deploy_group',
+        clusters=None,
+        instances=None,
+    )
+    mock_cluster_instance_map.return_value = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance3']},
+    }
 
     pargs = paasta_args_mixer(args, 'fake_service')
     assert sorted(pargs.instance_whitelist) == ['instance1', 'instance2', 'instance3']
@@ -716,12 +733,16 @@ def test_paasta_args_mixer_clusters_uses_deploy_group_when_no_clusters_and_insta
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_do_not_whitelist_anything_by_default(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group=None,
-                      clusters=None,
-                      instances=None)
-    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
-                                              'cluster2': {'instances': ['instance3']}}
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group=None,
+        clusters=None,
+        instances=None,
+    )
+    mock_cluster_instance_map.return_value = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance3']},
+    }
 
     pargs = paasta_args_mixer(args, 'fake_service')
     assert len(pargs.instance_whitelist) == 0
@@ -731,12 +752,16 @@ def test_paasta_args_mixer_clusters_do_not_whitelist_anything_by_default(mock_cl
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_return_none_when_cluster_not_in_deploy_group(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group='fake_deploy_group',
-                      clusters='cluster4',
-                      instances=None)
-    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
-                                              'cluster2': {'instances': ['instance3']}}
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group='fake_deploy_group',
+        clusters='cluster4',
+        instances=None,
+    )
+    mock_cluster_instance_map.return_value = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance3']},
+    }
 
     assert paasta_args_mixer(args, 'fake_service') is None
 
@@ -744,12 +769,16 @@ def test_paasta_args_mixer_clusters_return_none_when_cluster_not_in_deploy_group
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_return_none_when_instance_not_in_deploy_group(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group='fake_deploy_group',
-                      clusters=None,
-                      instances='instance5')
-    mock_cluster_instance_map.return_value = {'cluster1': {'instances': ['instance1', 'instance2']},
-                                              'cluster2': {'instances': ['instance3']}}
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group='fake_deploy_group',
+        clusters=None,
+        instances='instance5',
+    )
+    mock_cluster_instance_map.return_value = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance3']},
+    }
 
     assert paasta_args_mixer(args, 'fake_service') is None
 
@@ -757,10 +786,12 @@ def test_paasta_args_mixer_clusters_return_none_when_instance_not_in_deploy_grou
 @patch('paasta_tools.cli.cmds.status.get_cluster_instance_map_for_service', autospec=True)
 def test_paasta_args_mixer_clusters_and_instances(mock_cluster_instance_map):
     PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group'])
-    args = PaastaArgs(soa_dir='/fake/soa/dir',
-                      deploy_group=None,
-                      clusters='cluster1',
-                      instances='instance1,instance3')
+    args = PaastaArgs(
+        soa_dir='/fake/soa/dir',
+        deploy_group=None,
+        clusters='cluster1',
+        instances='instance1,instance3',
+    )
     pargs = paasta_args_mixer(args, 'fake_service')
     assert pargs.instance_whitelist == ['instance1', 'instance3']
     assert pargs.cluster_whitelist == ['cluster1']
@@ -774,10 +805,12 @@ def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service
 
     assert verify_instances(['west', 'esst'], 'fake_service', []) == ['west', 'esst']
     assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"),
-                                        call("Did you mean any of these?"),
-                                        call("  east"),
-                                        call("  west")])
+    mock_paasta_print.assert_has_calls([
+        call("\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"),
+        call("Did you mean any of these?"),
+        call("  east"),
+        call("  west"),
+    ])
 
 
 @patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
@@ -785,11 +818,17 @@ def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service
 def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instances_for_service):
     mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
 
-    assert verify_instances(['west', 'esst', 'fake'], 'fake_service',
-                            ['fake_cluster1', 'fake_cluster2']) == ['west', 'esst', 'fake']
+    assert verify_instances(
+        ['west', 'esst', 'fake'], 'fake_service',
+        ['fake_cluster1', 'fake_cluster2'],
+    ) == ['west', 'esst', 'fake']
     assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls([call("\x1b[31mfake_service doesn't have any instances matching esst,"
-                                             " fake on fake_cluster1, fake_cluster2.\x1b[0m"),
-                                        call("Did you mean any of these?"),
-                                        call("  east"),
-                                        call("  west")])
+    mock_paasta_print.assert_has_calls([
+        call(
+            "\x1b[31mfake_service doesn't have any instances matching esst,"
+            " fake on fake_cluster1, fake_cluster2.\x1b[0m",
+        ),
+        call("Did you mean any of these?"),
+        call("  east"),
+        call("  west"),
+    ])

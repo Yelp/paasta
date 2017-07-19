@@ -25,36 +25,46 @@ def test_add_subparser(mock_get_subparser):
     mock_subparsers = mock.Mock()
     docker_exec.add_subparser(mock_subparsers)
     assert mock_get_subparser.called
-    mock_get_subparser.return_value.add_argument.assert_called_with('exec_command',
-                                                                    help='Command to append to docker docker_exec',
-                                                                    nargs='?',
-                                                                    default='/bin/bash')
+    mock_get_subparser.return_value.add_argument.assert_called_with(
+        'exec_command',
+        help='Command to append to docker docker_exec',
+        nargs='?',
+        default='/bin/bash',
+    )
 
 
 @patch('paasta_tools.cli.cmds.docker_exec.subprocess', autospec=True)
 @patch('paasta_tools.cli.cmds.docker_exec.get_container_name', autospec=True)
 @patch('paasta_tools.cli.cmds.docker_exec.get_task_from_instance', autospec=True)
-def test_paasta_docker_exec(mock_get_task_from_instance,
-                            mock_get_container_name,
-                            mock_subprocess):
+def test_paasta_docker_exec(
+    mock_get_task_from_instance,
+    mock_get_container_name,
+    mock_subprocess,
+):
     mock_task = mock.Mock(slave={'hostname': 'host1'})
     mock_get_task_from_instance.return_value = mock_task
-    mock_args = mock.Mock(cluster='cluster1',
-                          service='mock_service',
-                          instance='mock_instance',
-                          host='host1',
-                          mesos_id=None,
-                          exec_command='/bin/bash')
+    mock_args = mock.Mock(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        host='host1',
+        mesos_id=None,
+        exec_command='/bin/bash',
+    )
 
     docker_exec.paasta_docker_exec(mock_args)
 
-    mock_get_task_from_instance.assert_called_with(cluster='cluster1',
-                                                   service='mock_service',
-                                                   instance='mock_instance',
-                                                   slave_hostname='host1',
-                                                   task_id=None)
+    mock_get_task_from_instance.assert_called_with(
+        cluster='cluster1',
+        service='mock_service',
+        instance='mock_instance',
+        slave_hostname='host1',
+        task_id=None,
+    )
 
     mock_get_container_name.assert_called_with(mock_task)
-    expected = ["ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
-                "sudo docker exec -ti {} ''/bin/bash''".format(mock_get_container_name.return_value)]
+    expected = [
+        "ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
+        "sudo docker exec -ti {} ''/bin/bash''".format(mock_get_container_name.return_value),
+    ]
     mock_subprocess.call.assert_called_with(expected)

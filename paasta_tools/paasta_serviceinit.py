@@ -45,27 +45,43 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Runs start/stop/restart/status on a PaaSTA service in a given cluster.',
     )
-    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
-                        help="Print out more output regarding the state of the service. "
-                             "Multiple -v options increase verbosity. Maximum is 2.")
-    parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
-                        help="Output debug logs regarding files, connections, etc")
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
+    parser.add_argument(
+        '-v', '--verbose', action='count', dest="verbose", default=0,
+        help="Print out more output regarding the state of the service. "
+             "Multiple -v options increase verbosity. Maximum is 2.",
+    )
+    parser.add_argument(
+        '-D', '--debug', action='store_true', dest="debug", default=False,
+        help="Output debug logs regarding files, connections, etc",
+    )
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
 
     # service_instance will be replaced with (-s, -i) when CLI changes are made.
-    parser.add_argument('service_instance', nargs='?',
-                        help='Instance to operate on. Eg: example_service.main')
-    parser.add_argument('-s', '--service', dest="service",
-                        help="The name of the service to inspect")
-    parser.add_argument('-i', '--instances', dest="instances",
-                        help="A comma-separated list of instances to view. Eg: canary,main")
+    parser.add_argument(
+        'service_instance', nargs='?',
+        help='Instance to operate on. Eg: example_service.main',
+    )
+    parser.add_argument(
+        '-s', '--service', dest="service",
+        help="The name of the service to inspect",
+    )
+    parser.add_argument(
+        '-i', '--instances', dest="instances",
+        help="A comma-separated list of instances to view. Eg: canary,main",
+    )
 
-    parser.add_argument('-a', '--appid', dest="app_id",
-                        help="app ID as returned by paasta status -v to operate on")
-    parser.add_argument('--delta', dest="delta",
-                        help="Number of instances you want to scale up (positive number) or down (negative number)")
+    parser.add_argument(
+        '-a', '--appid', dest="app_id",
+        help="app ID as returned by paasta status -v to operate on",
+    )
+    parser.add_argument(
+        '--delta', dest="delta",
+        help="Number of instances you want to scale up (positive number) or down (negative number)",
+    )
     command_choices = ['start', 'stop', 'restart', 'status']
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
@@ -87,10 +103,12 @@ class PaastaClients():
     def marathon(self):
         if self._marathon is None:
             marathon_config = marathon_tools.load_marathon_config()
-            self._marathon = marathon_tools.get_marathon_client(marathon_config.get_url(),
-                                                                marathon_config.get_username(),
-                                                                marathon_config.get_password(),
-                                                                cached=self._cached)
+            self._marathon = marathon_tools.get_marathon_client(
+                marathon_config.get_url(),
+                marathon_config.get_username(),
+                marathon_config.get_password(),
+                cached=self._cached,
+            )
         return self._marathon
 
     def chronos(self):

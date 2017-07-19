@@ -106,7 +106,7 @@ class LongRunningServiceConfig(InstanceConfig):
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd', None]:
+        elif mode not in ['http', 'https', 'tcp', 'cmd', None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
@@ -190,7 +190,7 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
-    if mode == "http":
+    if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
         healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":

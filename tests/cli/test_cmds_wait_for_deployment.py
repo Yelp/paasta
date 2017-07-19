@@ -44,43 +44,57 @@ class fake_args:
 def mock_status_instance_side_effect(service, instance):  # pragma: no cover (gevent)
     if instance in ['instance1', 'instance6', 'notaninstance', 'api_error']:
         # valid completed instance
-        mock_mstatus = Mock(app_count=1, deploy_status='Running',
-                            expected_instance_count=2,
-                            running_instance_count=2)
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Running',
+            expected_instance_count=2,
+            running_instance_count=2,
+        )
     if instance == 'instance2':
         # too many marathon apps
-        mock_mstatus = Mock(app_count=2, deploy_status='Running',
-                            expected_instance_count=2,
-                            running_instance_count=2)
+        mock_mstatus = Mock(
+            app_count=2, deploy_status='Running',
+            expected_instance_count=2,
+            running_instance_count=2,
+        )
     if instance == 'instance3':
         # too many running instances
-        mock_mstatus = Mock(app_count=1, deploy_status='Running',
-                            expected_instance_count=2,
-                            running_instance_count=4)
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Running',
+            expected_instance_count=2,
+            running_instance_count=4,
+        )
     if instance == 'instance4':
         # still Deploying
-        mock_mstatus = Mock(app_count=1, deploy_status='Deploying',
-                            expected_instance_count=2,
-                            running_instance_count=2)
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Deploying',
+            expected_instance_count=2,
+            running_instance_count=2,
+        )
     if instance == 'instance4.1':
         # still Deploying
-        mock_mstatus = Mock(app_count=1, deploy_status='Waiting',
-                            expected_instance_count=2,
-                            running_instance_count=2)
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Waiting',
+            expected_instance_count=2,
+            running_instance_count=2,
+        )
     if instance == 'instance5':
         # not a marathon instance
         mock_mstatus = None
     if instance == 'instance7':
         # paasta stop'd
-        mock_mstatus = Mock(app_count=1, deploy_status='Stopped',
-                            expected_instance_count=0,
-                            running_instance_count=0,
-                            desired_state='stop')
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Stopped',
+            expected_instance_count=0,
+            running_instance_count=0,
+            desired_state='stop',
+        )
     if instance == 'instance8':
         # paasta has autoscaled to 0
-        mock_mstatus = Mock(app_count=1, deploy_status='Stopped',
-                            expected_instance_count=0,
-                            running_instance_count=0)
+        mock_mstatus = Mock(
+            app_count=1, deploy_status='Stopped',
+            expected_instance_count=0,
+            running_instance_count=0,
+        )
     mock_status = Mock()
     mock_status.git_sha = 'somesha'
     if instance == 'instance6':
@@ -102,8 +116,10 @@ def mock_status_instance_side_effect(service, instance):  # pragma: no cover (ge
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client',
-       autospec=True)
+@patch(
+    'paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client',
+    autospec=True,
+)
 def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client = Mock()
     mock_get_paasta_api_client.return_value = mock_paasta_api_client
@@ -113,10 +129,12 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     f = mark_for_deployment.instances_deployed
     e = Event()
     e.set()
-    cluster_data = mark_for_deployment.ClusterData(cluster='cluster',
-                                                   service='service1',
-                                                   git_sha='somesha',
-                                                   instances_queue=Queue())
+    cluster_data = mark_for_deployment.ClusterData(
+        cluster='cluster',
+        service='service1',
+        git_sha='somesha',
+        instances_queue=Queue(),
+    )
     cluster_data.instances_queue.put('instance1')
     instances_out = Queue()
     f(cluster_data, instances_out, e)
@@ -207,8 +225,10 @@ def instances_deployed_side_effect(cluster_data, instances_out, green_light):  #
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
-def test_wait_for_deployment(mock_instances_deployed, mock__log,
-                             mock_get_cluster_instance_map_for_service):
+def test_wait_for_deployment(
+    mock_instances_deployed, mock__log,
+    mock_get_cluster_instance_map_for_service,
+):
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     mock_instances_deployed.side_effect = instances_deployed_side_effect
@@ -219,14 +239,18 @@ def test_wait_for_deployment(mock_instances_deployed, mock__log,
                 mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
     mock_get_cluster_instance_map_for_service.assert_called_with('/nail/soa', 'service', 'deploy_group_1')
 
-    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
-                        'cluster2': {'instances': ['instance1', 'instance2']}}
+    mock_cluster_map = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance1', 'instance2']},
+    }
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     with patch('sys.stdout', autospec=True, flush=Mock()):
         assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_2', 'somesha', '/nail/soa', 5) == 0
 
-    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2']},
-                        'cluster2': {'instances': ['instance1', 'instance3']}}
+    mock_cluster_map = {
+        'cluster1': {'instances': ['instance1', 'instance2']},
+        'cluster2': {'instances': ['instance1', 'instance3']},
+    }
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
@@ -301,29 +325,39 @@ def test_get_latest_marked_sha_bad(mock_list_remote_refs):
 def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs):
     test_error_message = 'Git error'
     mock_list_remote_refs.side_effect = LSRemoteException(test_error_message)
-    assert validate_git_sha('fake sha', 'fake_git_url',
-                            'fake_group', 'fake_service') is None
+    assert validate_git_sha(
+        'fake sha', 'fake_git_url',
+        'fake_group', 'fake_service',
+    ) is None
 
 
 def test_compose_timeout_message():
     clusters_data = []
-    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster1',
-                                                         service='someservice',
-                                                         git_sha='somesha',
-                                                         instances_queue=Queue()))
+    clusters_data.append(mark_for_deployment.ClusterData(
+        cluster='cluster1',
+        service='someservice',
+        git_sha='somesha',
+        instances_queue=Queue(),
+    ))
     clusters_data[0].instances_queue.put('instance1')
     clusters_data[0].instances_queue.put('instance2')
-    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster2',
-                                                         service='someservice',
-                                                         git_sha='somesha',
-                                                         instances_queue=Queue()))
+    clusters_data.append(mark_for_deployment.ClusterData(
+        cluster='cluster2',
+        service='someservice',
+        git_sha='somesha',
+        instances_queue=Queue(),
+    ))
     clusters_data[1].instances_queue.put('instance3')
-    clusters_data.append(mark_for_deployment.ClusterData(cluster='cluster3',
-                                                         service='someservice',
-                                                         git_sha='somesha',
-                                                         instances_queue=Queue()))
-    message = mark_for_deployment.compose_timeout_message(clusters_data, 1, 'fake_group',
-                                                          'someservice', 'some_git_sha')
+    clusters_data.append(mark_for_deployment.ClusterData(
+        cluster='cluster3',
+        service='someservice',
+        git_sha='somesha',
+        instances_queue=Queue(),
+    ))
+    message = mark_for_deployment.compose_timeout_message(
+        clusters_data, 1, 'fake_group',
+        'someservice', 'some_git_sha',
+    )
     assert '  paasta status -c cluster1 -s someservice -i instance1,instance2' in message
     assert '  paasta status -c cluster2 -s someservice -i instance3' in message
     assert '  paasta logs -c cluster1 -s someservice -i instance1,instance2 -C deploy -l 1000' in message

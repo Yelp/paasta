@@ -1,3 +1,19 @@
+paasta-tools (0.66.6) xenial; urgency=medium
+
+  * 0.66.6 tagged with 'make release'
+    Commit: Merge pull request #1383 from chriskuehl/flush-in-paasta-
+    print  Call flush() in paasta_print
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 18 Jul 2017 18:57:55 -0700
+
+paasta-tools (0.66.5) xenial; urgency=medium
+
+  * 0.66.5 tagged with 'make release'
+    Commit: Merge pull request #1376 from Yelp/python3_bytes  Python3
+    bytes
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Jul 2017 10:36:15 -0700
+
 paasta-tools (0.66.4) xenial; urgency=low
 
   * 0.66.4 tagged with 'make release'

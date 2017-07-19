@@ -25,21 +25,25 @@ from paasta_tools.cli.utils import PaastaTaskNotFound
 
 
 def add_subparser(subparsers):
-    get_subparser(description="'paasta docker_inspect' works by picking a container running your service "
-                              "at random. It then runs docker docker_inspect <container_id> ",
-                  help_text="Docker inspect against a container running your service",
-                  command='docker_inspect',
-                  function=paasta_docker_inspect,
-                  subparsers=subparsers)
+    get_subparser(
+        description="'paasta docker_inspect' works by picking a container running your service "
+                    "at random. It then runs docker docker_inspect <container_id> ",
+        help_text="Docker inspect against a container running your service",
+        command='docker_inspect',
+        function=paasta_docker_inspect,
+        subparsers=subparsers,
+    )
 
 
 def paasta_docker_inspect(args):
     try:
-        task = get_task_from_instance(cluster=args.cluster,
-                                      service=args.service,
-                                      instance=args.instance,
-                                      slave_hostname=args.host,
-                                      task_id=args.mesos_id)
+        task = get_task_from_instance(
+            cluster=args.cluster,
+            service=args.service,
+            instance=args.instance,
+            slave_hostname=args.host,
+            task_id=args.mesos_id,
+        )
     except PaastaTaskNotFound:
         sys.exit(1)
     container = get_container_name(task)

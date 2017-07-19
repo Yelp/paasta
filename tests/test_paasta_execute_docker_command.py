@@ -33,7 +33,8 @@ def test_execute_in_container():
     mock_docker_client.exec_inspect.return_value = {'ExitCode': fake_return_code}
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     expected_cmd = ['/bin/sh', '-c', fake_command]
     mock_docker_client.exec_create.assert_called_once_with(fake_container_id, expected_cmd)
 
@@ -56,7 +57,8 @@ def test_execute_in_container_reuses_exec():
     }
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 
@@ -88,7 +90,8 @@ def test_execute_in_container_reuses_only_valid_exec():
     mock_docker_client.exec_inspect.side_effect = [bad_exec, good_exec, bad_exec, good_exec]
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code)
+        fake_output, fake_return_code,
+    )
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 

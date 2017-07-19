@@ -167,10 +167,13 @@ def paasta_rerun(args):
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
-                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir)
+                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir,
+            )
             if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
-                paasta_print(("  Warning: \"%s\" uses time variables interpolation, "
-                              "please supply a `--execution_date` argument." % args.instance))
+                paasta_print((
+                    "  Warning: \"%s\" uses time variables interpolation, "
+                    "please supply a `--execution_date` argument." % args.instance
+                ))
                 continue
         except NoConfigurationForServiceError as e:
             paasta_print("  Warning: %s" % e)

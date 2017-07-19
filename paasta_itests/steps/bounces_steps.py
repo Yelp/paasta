@@ -43,14 +43,18 @@ def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
     given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints=str([]))
 
 
-@given('a new {state} app to be deployed, ' +
-       'with bounce strategy "{bounce_method}" ' +
-       'and drain method "{drain_method}" ' +
-       'and host_port {host_port:d} ' +
-       'and {net} networking ' +
-       'and {instances:d} instances')
-def given_a_new_app_to_be_deployed_host_port_net(context, state, bounce_method, drain_method, host_port, net,
-                                                 instances):
+@given(
+    'a new {state} app to be deployed, ' +
+    'with bounce strategy "{bounce_method}" ' +
+    'and drain method "{drain_method}" ' +
+    'and host_port {host_port:d} ' +
+    'and {net} networking ' +
+    'and {instances:d} instances',
+)
+def given_a_new_app_to_be_deployed_host_port_net(
+    context, state, bounce_method, drain_method, host_port, net,
+    instances,
+):
     given_a_new_app_to_be_deployed_constraints(
         context=context,
         state=state,
@@ -63,12 +67,16 @@ def given_a_new_app_to_be_deployed_host_port_net(context, state, bounce_method, 
     )
 
 
-@given('a new {state} app to be deployed, ' +
-       'with bounce strategy "{bounce_method}" ' +
-       'and drain method "{drain_method}" ' +
-       'and constraints {constraints}')
-def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints, host_port=0,
-                                               net='bridge', instances=2):
+@given(
+    'a new {state} app to be deployed, ' +
+    'with bounce strategy "{bounce_method}" ' +
+    'and drain method "{drain_method}" ' +
+    'and constraints {constraints}',
+)
+def given_a_new_app_to_be_deployed_constraints(
+    context, state, bounce_method, drain_method, constraints, host_port=0,
+    net='bridge', instances=2,
+):
     constraints = eval(constraints)
     if state == "healthy":
         cmd = "/bin/true"
@@ -180,7 +188,8 @@ def when_setup_service_initiated(context):
         # Wrap function call so we can select a subset of tasks or test
         # intermediate steps, like when an app is not completely up
         side_effect=lambda app, _, __, ___, **kwargs: get_happy_tasks(
-            app, context.service, "fake_nerve_ns", context.system_paasta_config)[:context.max_tasks],
+            app, context.service, "fake_nerve_ns", context.system_paasta_config,
+        )[:context.max_tasks],
     ), mock.patch(
         'paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True,
     ), mock.patch(
@@ -207,7 +216,7 @@ def when_setup_service_initiated(context):
         # 120 * 0.5 = 60 seconds
         for _ in range(120):
             try:
-                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_failures=True)
+                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_tasks=True)
                 (code, message, bounce_again) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
@@ -291,8 +300,10 @@ def should_be_discoverable_on_port(context, host_port):
             if discovered == [('bounce', 'test1', host_port)]:
                 return
 
-    raise Exception("Did not find bounce.test1 in marathon_services_running_here for any of our slaves: %r",
-                    all_discovered)
+    raise Exception(
+        "Did not find bounce.test1 in marathon_services_running_here for any of our slaves: %r",
+        all_discovered,
+    )
 
 
 @then('it should be discoverable on any port')

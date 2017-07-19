@@ -83,14 +83,20 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
-    parser.add_argument('service_instance_list', nargs='+',
-                        help="The list of marathon service instances to create or update",
-                        metavar="SERVICE%sINSTANCE" % SPACER)
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=marathon_tools.DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument(
+        'service_instance_list', nargs='+',
+        help="The list of marathon service instances to create or update",
+        metavar="SERVICE%sINSTANCE" % SPACER,
+    )
+    parser.add_argument(
+        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        default=marathon_tools.DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
     args = parser.parse_args()
     return args
 
@@ -131,8 +137,10 @@ def get_main_marathon_config():
     return marathon_config
 
 
-def drain_tasks_and_find_tasks_to_kill(tasks_to_drain, already_draining_tasks, drain_method, log_bounce_action,
-                                       bounce_method, at_risk_tasks):
+def drain_tasks_and_find_tasks_to_kill(
+    tasks_to_drain, already_draining_tasks, drain_method, log_bounce_action,
+    bounce_method, at_risk_tasks,
+):
     """Drain the tasks_to_drain, and return the set of tasks that are safe to kill."""
     all_draining_tasks = set(already_draining_tasks) | set(at_risk_tasks)
     tasks_to_kill = set()
@@ -241,8 +249,10 @@ def do_bounce(
                 bounce_lib.create_marathon_app(marathon_jobid, config, client)
             except MarathonHttpError as e:
                 if e.status_code == 409:
-                    log.warning("Failed to create, app %s already exists. This means another bounce beat us to it."
-                                " Skipping the rest of the bounce for this run" % marathon_jobid)
+                    log.warning(
+                        "Failed to create, app %s already exists. This means another bounce beat us to it."
+                        " Skipping the rest of the bounce for this run" % marathon_jobid,
+                    )
                     return 60
                 raise
 
@@ -314,8 +324,10 @@ def do_bounce(
         return None
 
 
-def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
-                               system_paasta_config, log_deploy_error, draining_hosts):
+def get_tasks_by_state_for_app(
+    app, drain_method, service, nerve_ns, bounce_health_params,
+    system_paasta_config, log_deploy_error, draining_hosts,
+):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
@@ -348,8 +360,10 @@ def get_tasks_by_state_for_app(app, drain_method, service, nerve_ns, bounce_heal
     return tasks_by_state
 
 
-def get_tasks_by_state(other_apps, drain_method, service, nerve_ns, bounce_health_params,
-                       system_paasta_config, log_deploy_error, draining_hosts):
+def get_tasks_by_state(
+    other_apps, drain_method, service, nerve_ns, bounce_health_params,
+    system_paasta_config, log_deploy_error, draining_hosts,
+):
     """Split tasks from old apps into 4 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -446,8 +460,10 @@ def deploy_service(
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, system_paasta_config,
-                                                     **bounce_health_params)
+        happy_new_tasks = bounce_lib.get_happy_tasks(
+            new_app, service, nerve_ns, system_paasta_config,
+            **bounce_health_params
+        )
     else:
         new_app_running = False
         happy_new_tasks = []
@@ -472,11 +488,12 @@ def deploy_service(
         errormsg = "ReadTimeout encountered trying to get draining hosts: %s" % e
         return (1, errormsg, 60)
 
-    (old_app_live_happy_tasks,
-     old_app_live_unhappy_tasks,
-     old_app_draining_tasks,
-     old_app_at_risk_tasks,
-     ) = get_tasks_by_state(
+    (
+        old_app_live_happy_tasks,
+        old_app_live_unhappy_tasks,
+        old_app_draining_tasks,
+        old_app_at_risk_tasks,
+    ) = get_tasks_by_state(
         other_apps=other_apps,
         drain_method=drain_method,
         service=service,
@@ -619,7 +636,8 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
 
     full_id = marathon_app_dict['id']
     service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=service_marathon_config.get_nerve_namespace(), soa_dir=soa_dir)
+        service=service, namespace=service_marathon_config.get_nerve_namespace(), soa_dir=soa_dir,
+    )
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(
@@ -663,9 +681,11 @@ def main():
     requests_cache.install_cache("setup_marathon_jobs", backend="memory")
 
     marathon_config = get_main_marathon_config()
-    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                                marathon_config.get_password())
-    marathon_apps = marathon_tools.get_all_marathon_apps(client, embed_failures=True)
+    client = marathon_tools.get_marathon_client(
+        marathon_config.get_url(), marathon_config.get_username(),
+        marathon_config.get_password(),
+    )
+    marathon_apps = marathon_tools.get_all_marathon_apps(client, embed_tasks=True)
 
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:
@@ -721,12 +741,14 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config,
                 return 1, None
 
             try:
-                status, output, bounce_again_in_seconds = setup_service(service,
-                                                                        instance,
-                                                                        client,
-                                                                        service_instance_config,
-                                                                        marathon_apps,
-                                                                        soa_dir)
+                status, output, bounce_again_in_seconds = setup_service(
+                    service,
+                    instance,
+                    client,
+                    service_instance_config,
+                    marathon_apps,
+                    soa_dir,
+                )
                 sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
                 send_event(service, instance, soa_dir, sensu_status, output)
                 return 0, bounce_again_in_seconds

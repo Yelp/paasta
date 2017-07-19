@@ -41,8 +41,10 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Cleans up forgotten maintenance cruft.')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        dest="verbose", default=False,
+    )
     args = parser.parse_args()
     return args
 

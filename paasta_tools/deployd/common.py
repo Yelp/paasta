@@ -17,12 +17,16 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDockerImageError
 
 BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
-ServiceInstance = namedtuple('ServiceInstance', ['service',
-                                                 'instance',
-                                                 'bounce_by',
-                                                 'watcher',
-                                                 'bounce_timers',
-                                                 'failures'])
+ServiceInstance = namedtuple(
+    'ServiceInstance', [
+        'service',
+        'instance',
+        'bounce_by',
+        'watcher',
+        'bounce_timers',
+        'failures',
+    ],
+)
 
 
 class PaastaThread(Thread):
@@ -57,12 +61,14 @@ def rate_limit_instances(instances, number_per_minute, watcher_name):
     time_step = int(60 / number_per_minute)
     bounce_time = time_now
     for service, instance in instances:
-        service_instances.append(ServiceInstance(service=service,
-                                                 instance=instance,
-                                                 watcher=watcher_name,
-                                                 bounce_by=bounce_time,
-                                                 bounce_timers=None,
-                                                 failures=0))
+        service_instances.append(ServiceInstance(
+            service=service,
+            instance=instance,
+            watcher=watcher_name,
+            bounce_by=bounce_time,
+            bounce_timers=None,
+            failures=0,
+        ))
         bounce_time += time_step
     return service_instances
 
@@ -77,10 +83,12 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
     for service, instance in instances:
-        config = load_marathon_service_config_no_cache(service=service,
-                                                       instance=instance,
-                                                       cluster=cluster,
-                                                       soa_dir=DEFAULT_SOA_DIR)
+        config = load_marathon_service_config_no_cache(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=DEFAULT_SOA_DIR,
+        )
         try:
             config_app = config.format_marathon_app_dict()
             app_id = '/{}'.format(config_app['id'])
@@ -97,6 +105,8 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
 
 def get_marathon_client_from_config():
     marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
-                                          marathon_config.get_password())
+    marathon_client = get_marathon_client(
+        marathon_config.get_url(), marathon_config.get_username(),
+        marathon_config.get_password(),
+    )
     return marathon_client

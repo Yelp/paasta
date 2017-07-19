@@ -23,8 +23,10 @@ MESOS_TASK_SPACER = '.'
 
 
 class NativeServiceConfig(LongRunningServiceConfig):
-    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir,
-                 service_namespace_config=None):
+    def __init__(
+        self, service, instance, cluster, config_dict, branch_dict, soa_dir,
+        service_namespace_config=None,
+    ):
         super(NativeServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
@@ -211,7 +213,8 @@ def read_service_config(service, instance, instance_type, cluster, soa_dir=DEFAU
     if instance not in config:
         raise UnknownNativeServiceError(
             'No job named "%s" in config file %s: \n%s' % (
-                instance, full_path, open(full_path).read()),
+                instance, full_path, open(full_path).read(),
+            ),
         )
 
     return config

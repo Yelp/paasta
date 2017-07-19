@@ -348,10 +348,12 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             if tail:
                 output.extend(tail[::-1])
             output.append(PaastaColors.blue("      %s EOF" % fobj.path))
-    except (mesos_exceptions.MasterNotAvailableException,
-            mesos_exceptions.SlaveDoesNotExist,
-            mesos_exceptions.TaskNotFoundException,
-            mesos_exceptions.FileNotFoundForTaskException) as e:
+    except (
+        mesos_exceptions.MasterNotAvailableException,
+        mesos_exceptions.SlaveDoesNotExist,
+        mesos_exceptions.TaskNotFoundException,
+        mesos_exceptions.FileNotFoundForTaskException,
+    ) as e:
         output.append(error_message % (get_short_task_id(task['id']), str(e)))
     except TimeoutError:
         output.append(error_message % (get_short_task_id(task['id']), 'timeout'))
@@ -705,9 +707,11 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
     for slave in slaves:
         log.debug("Slave: {}, running {} tasks, "
-                  "including {} chronos tasks".format(slave['task_counts'].slave['hostname'],
-                                                      slave['task_counts'].count,
-                                                      slave['task_counts'].chronos_count))
+                  "including {} chronos tasks".format(
+                      slave['task_counts'].slave['hostname'],
+                      slave['task_counts'].count,
+                      slave['task_counts'].chronos_count,
+                  ))
     return slaves
 
 
@@ -743,8 +747,10 @@ def get_all_frameworks(active_only=False):
 
 
 def terminate_framework(framework_id):
-    resp = requests.post('http://%s:%d/master/teardown' % (get_mesos_leader(), MESOS_MASTER_PORT),
-                         data={'frameworkId': framework_id})
+    resp = requests.post(
+        'http://%s:%d/master/teardown' % (get_mesos_leader(), MESOS_MASTER_PORT),
+        data={'frameworkId': framework_id},
+    )
     resp.raise_for_status()
 
 

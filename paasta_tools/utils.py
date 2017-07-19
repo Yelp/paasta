@@ -331,15 +331,19 @@ class InstanceConfig(object):
     def get_deploy_blacklist(self, system_deploy_blacklist):
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return (self.config_dict.get('deploy_blacklist', []) +
-                system_deploy_blacklist)
+        return (
+            self.config_dict.get('deploy_blacklist', []) +
+            system_deploy_blacklist
+        )
 
     def get_deploy_whitelist(self, system_deploy_whitelist):
         """The deploy whitelist is a list of lists, where the lists indicate
         which locations are explicitly allowed.  The blacklist will supersede
         this if a host matches both the white and blacklists."""
-        return (self.config_dict.get('deploy_whitelist', []) +
-                system_deploy_whitelist)
+        return (
+            self.config_dict.get('deploy_whitelist', []) +
+            system_deploy_whitelist
+        )
 
     def get_monitoring_blacklist(self, system_deploy_blacklist):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
@@ -542,7 +546,9 @@ def validate_service_instance(service, instance, cluster, soa_dir):
     else:
         raise NoConfigurationForServiceError(
             "Error: %s doesn't look like it has been configured to run on the %s cluster." % (
-                compose_job_id(service, instance), cluster))
+                compose_job_id(service, instance), cluster,
+            ),
+        )
 
 
 def compose(func_one, func_two):
@@ -645,45 +651,63 @@ class PaastaColors:
 
 
 LOG_COMPONENTS = OrderedDict([
-    ('build', {
-        'color': PaastaColors.blue,
-        'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-        'source_env': 'devc',
-    }),
-    ('deploy', {
-        'color': PaastaColors.cyan,
-        'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
-        'additional_source_envs': ['devc'],
-    }),
-    ('monitoring', {
-        'color': PaastaColors.green,
-        'help': 'Logs from Sensu checks for the service',
-    }),
-    ('marathon', {
-        'color': PaastaColors.magenta,
-        'help': 'Logs from Marathon for the service',
-    }),
-    ('chronos', {
-        'color': PaastaColors.red,
-        'help': 'Logs from Chronos for the service',
-    }),
-    ('app_output', {
-        'color': compose(PaastaColors.yellow, PaastaColors.bold),
-        'help': 'Stderr and stdout of the actual process spawned by Mesos. '
-                'Convenience alias for both the stdout and stderr components',
-    }),
-    ('stdout', {
-        'color': PaastaColors.yellow,
-        'help': 'Stdout from the process spawned by Mesos.',
-    }),
-    ('stderr', {
-        'color': PaastaColors.yellow,
-        'help': 'Stderr from the process spawned by Mesos.',
-    }),
-    ('security', {
-        'color': PaastaColors.red,
-        'help': 'Logs from security-related services such as firewall monitoring',
-    }),
+    (
+        'build', {
+            'color': PaastaColors.blue,
+            'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
+            'source_env': 'devc',
+        },
+    ),
+    (
+        'deploy', {
+            'color': PaastaColors.cyan,
+            'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
+            'additional_source_envs': ['devc'],
+        },
+    ),
+    (
+        'monitoring', {
+            'color': PaastaColors.green,
+            'help': 'Logs from Sensu checks for the service',
+        },
+    ),
+    (
+        'marathon', {
+            'color': PaastaColors.magenta,
+            'help': 'Logs from Marathon for the service',
+        },
+    ),
+    (
+        'chronos', {
+            'color': PaastaColors.red,
+            'help': 'Logs from Chronos for the service',
+        },
+    ),
+    (
+        'app_output', {
+            'color': compose(PaastaColors.yellow, PaastaColors.bold),
+            'help': 'Stderr and stdout of the actual process spawned by Mesos. '
+                    'Convenience alias for both the stdout and stderr components',
+        },
+    ),
+    (
+        'stdout', {
+            'color': PaastaColors.yellow,
+            'help': 'Stdout from the process spawned by Mesos.',
+        },
+    ),
+    (
+        'stderr', {
+            'color': PaastaColors.yellow,
+            'help': 'Stderr from the process spawned by Mesos.',
+        },
+    ),
+    (
+        'security', {
+            'color': PaastaColors.red,
+            'help': 'Logs from security-related services such as firewall monitoring',
+        },
+    ),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
@@ -815,15 +839,17 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
     if not timestamp:
         timestamp = _now()
     line = remove_ansi_escape_sequences(line)
-    message = json.dumps({
-        'timestamp': timestamp,
-        'level': level,
-        'cluster': cluster,
-        'service': service,
-        'instance': instance,
-        'component': component,
-        'message': line,
-    }, sort_keys=True)
+    message = json.dumps(
+        {
+            'timestamp': timestamp,
+            'level': level,
+            'cluster': cluster,
+            'service': service,
+            'instance': instance,
+            'component': component,
+            'message': line,
+        }, sort_keys=True,
+    )
     return message
 
 
@@ -1011,8 +1037,10 @@ class SystemPaastaConfig(dict):
         try:
             hosts = self['zookeeper']
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find zookeeper connection string in configuration directory: %s'
-                                           % self.directory)
+            raise PaastaNotConfiguredError(
+                'Could not find zookeeper connection string in configuration directory: %s'
+                % self.directory,
+            )
 
         # how do python strings not have a method for doing this
         if hosts.startswith('zk://'):
@@ -1027,8 +1055,10 @@ class SystemPaastaConfig(dict):
         try:
             return self['docker_registry']
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find docker registry in configuration directory: %s'
-                                           % self.directory)
+            raise PaastaNotConfiguredError(
+                'Could not find docker registry in configuration directory: %s'
+                % self.directory,
+            )
 
     def get_volumes(self):
         """Get the volumes defined in this host's volumes config file.
@@ -1243,8 +1273,10 @@ class SystemPaastaConfig(dict):
         return self.get("deployd_log_level", 'INFO')
 
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False,
-         stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs):
+def _run(
+    command, env=os.environ, timeout=None, log=False, stream=False,
+    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs
+):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1396,7 +1428,8 @@ def compose_job_id(name, instance, git_hash=None, config_hash=None, spacer=SPACE
     elif git_hash or config_hash:
         raise InvalidJobNameError(
             'invalid job id because git_hash (%s) and config_hash (%s) must '
-            'both be defined or neither can be defined' % (git_hash, config_hash))
+            'both be defined or neither can be defined' % (git_hash, config_hash),
+        )
     return composed
 
 
@@ -1649,10 +1682,12 @@ def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
-    return get_service_instance_list_no_cache(service=service,
-                                              cluster=cluster,
-                                              instance_type=instance_type,
-                                              soa_dir=soa_dir)
+    return get_service_instance_list_no_cache(
+        service=service,
+        cluster=cluster,
+        instance_type=instance_type,
+        soa_dir=soa_dir,
+    )
 
 
 def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
@@ -2041,7 +2076,8 @@ def prompt_pick_one(sequence, choosing):
 
     chooser = choice.Menu(choices=choices, global_actions=global_actions)
     chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
-        choosing=str(choosing))
+        choosing=str(choosing),
+    )
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
@@ -2071,6 +2107,7 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
+    f.flush()
 
 
 def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):
@@ -2112,9 +2149,11 @@ class _Timeout(object):
             self.control.put((False, sys.exc_info()))
 
     def __call__(self, *args, **kwargs):
-        self.func_thread = threading.Thread(target=self.run,
-                                            args=args,
-                                            kwargs=kwargs)
+        self.func_thread = threading.Thread(
+            target=self.run,
+            args=args,
+            kwargs=kwargs,
+        )
         self.func_thread.daemon = True
         self.timeout = self.seconds + time.time()
         self.func_thread.start()

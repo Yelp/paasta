@@ -38,9 +38,11 @@ from paasta_tools.utils import SystemPaastaConfig
 def add_start_args_to_parser(parser):
     parser.add_argument(
         '-C', '--cmd',
-        help=('Run Docker container with particular command, '
-              'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockerfile'),
+        help=(
+            'Run Docker container with particular command, '
+            'for example: "bash". By default will use the command or args specified by the '
+            'soa-configs or what was specified in the Dockerfile'
+        ),
         required=False,
         default=None,
     )
@@ -74,8 +76,10 @@ def add_common_args_to_parser(parser):
     ).completer = lazy_choices_completer(list_services)
     parser.add_argument(
         '-c', '--cluster',
-        help=("The name of the cluster you wish to run your task on. "
-              "If omitted, uses the default cluster defined in the paasta remote-run configs"),
+        help=(
+            "The name of the cluster you wish to run your task on. "
+            "If omitted, uses the default cluster defined in the paasta remote-run configs"
+        ),
     ).completer = lazy_choices_completer(list_clusters)
     parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -220,7 +224,8 @@ def paasta_remote_run(args):
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         args.cluster, system_paasta_config, cmd_parts,
-        graceful_exit=graceful_exit)
+        graceful_exit=graceful_exit,
+    )
 
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
