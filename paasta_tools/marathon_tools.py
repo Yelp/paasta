@@ -25,6 +25,7 @@ import json
 import logging
 import os
 from math import ceil
+from sys import exit
 
 import requests
 import service_configuration_lib
@@ -368,33 +369,38 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         net = get_mesos_network_for_net(self.get_net())
 
-        complete_config = {
-            'container': {
-                'docker': {
-                    'image': docker_url,
-                    'network': net,
-                    "parameters": self.format_docker_parameters(),
+        # jgl trycatch here
+        try:
+            complete_config = {
+                'container': {
+                    'docker': {
+                        'image': docker_url,
+                        'network': net,
+                        "parameters": self.format_docker_parameters(),
+                    },
+                    'type': 'DOCKER',
+                    'volumes': docker_volumes,
                 },
-                'type': 'DOCKER',
-                'volumes': docker_volumes,
-            },
-            'uris': [system_paasta_config.get_dockercfg_location(), ],
-            'backoff_seconds': self.get_backoff_seconds(),
-            'backoff_factor': self.get_backoff_factor(),
-            'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
-            'health_checks': self.get_healthchecks(service_namespace_config),
-            'env': self.get_env(),
-            'mem': float(self.get_mem()),
-            'cpus': float(self.get_cpus()),
-            'disk': float(self.get_disk()),
-            'constraints': self.get_calculated_constraints(
-                system_paasta_config=system_paasta_config,
-                service_namespace_config=service_namespace_config
-            ),
-            'instances': self.get_desired_instances(),
-            'cmd': self.get_cmd(),
-            'args': self.get_args(),
-        }
+                'uris': [system_paasta_config.get_dockercfg_location(), ],
+                'backoff_seconds': self.get_backoff_seconds(),
+                'backoff_factor': self.get_backoff_factor(),
+                'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
+                'health_checks': self.get_healthchecks(service_namespace_config),
+                'env': self.get_env(),
+                'mem': float(self.get_mem()),
+                'cpus': float(self.get_cpus()),
+                'disk': float(self.get_disk()),
+                'constraints': self.get_calculated_constraints(
+                    system_paasta_config=system_paasta_config,
+                    service_namespace_config=service_namespace_config
+                ),
+                'instances': self.get_desired_instances(),
+                'cmd': self.get_cmd(),
+                'args': self.get_args(),
+            }
+        except NoSlavesAvailableError as e:
+            paasta_print(e)
+            exit(1)
 
         if net == 'BRIDGE':
             complete_config['container']['docker']['portMappings'] = [

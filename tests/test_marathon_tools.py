@@ -1912,6 +1912,36 @@ def test_deformat_job_id():
     assert marathon_tools.deformat_job_id('ser--vice.in--stance.git--hash.config--hash') == expected
 
 
+def test_format_marathon_app_bad_whitelist(capfd):
+    service = "service"
+    instance = "instance"
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service=service,
+        cluster='clustername',
+        instance=instance,
+        config_dict={},
+        branch_dict={'docker_image': 'abcdef'},
+    )
+    exception_msg = (
+        "We do not believe any slaves on the cluster will match the constraints for fake_name.fake_instance. "
+        "If you believe this is incorrect, have your system administrator adjust the value of "
+        "expected_slave_attributes in the system paasta configs."
+    )
+
+    with mock.patch(
+        'paasta_tools.marathon_tools.MarathonServiceConfig.get_routing_constraints',
+        side_effect=NoSlavesAvailableError(exception_msg),
+        autospec=True
+    ):
+        # Fail if exit(1) does not get called
+        with raises(SystemExit) as sys_exit:
+            fake_marathon_service_config.format_marathon_app_dict()
+
+        output, _ = capfd.readouterr()
+        assert sys_exit.value.code == 1
+        assert output == exception_msg + "\n"
+
+
 def test_format_marathon_app_dict_no_smartstack():
     service = "service"
     instance = "instance"
