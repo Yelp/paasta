@@ -1,3 +1,11 @@
+paasta-tools (0.66.7) xenial; urgency=medium
+
+  * 0.66.7 tagged with 'make release'
+    Commit: Merge pull request #1386 from Yelp/PAASTA-12222  Use bytes
+    when zk.set and handle mesos read timeout exceptions
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 20 Jul 2017 13:41:55 -0700
+
 paasta-tools (0.66.6) xenial; urgency=medium
 
   * 0.66.6 tagged with 'make release'
