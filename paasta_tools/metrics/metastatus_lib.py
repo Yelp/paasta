@@ -381,6 +381,7 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
             disk=resource_total_dict['disk'],
             mem=resource_total_dict['mem'],
         ),
+        "slave_count": len(slaves),
     }
 
 
