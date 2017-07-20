@@ -445,10 +445,14 @@ class TestNativeServiceConfig(object):
 
         # launch a task
         offer = make_fake_offer(port_begin=31337, port_end=31337)
-        scheduler.launch_tasks_for_offers(
-            driver=fake_driver,
-            offers=[offer],
-        )
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
+            scheduler.launch_tasks_for_offers(
+                driver=fake_driver,
+                offers=[offer],
+            )
 
         expected = "http://super_big_slave:6666/spool/service_name.instance_name/31337/status"
         actual = scheduler.drain_method.spool_url(
