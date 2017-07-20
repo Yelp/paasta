@@ -155,8 +155,8 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
         with ZookeeperPool() as zk:
             zk.ensure_path(zk_iterm_path)
             zk.ensure_path(zk_last_error_path)
-            zk.set(zk_iterm_path, str(iterm))
-            zk.set(zk_last_error_path, str(error))
+            zk.set(zk_iterm_path, str(iterm).encode('utf8'))
+            zk.set(zk_last_error_path, str(error).encode('utf8'))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
@@ -168,9 +168,9 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
             zk.ensure_path(zk_iterm_path)
             zk.ensure_path(zk_last_error_path)
             zk.ensure_path(zk_last_time_path)
-            zk.set(zk_iterm_path, str(iterm))
-            zk.set(zk_last_error_path, str(error))
-            zk.set(zk_last_time_path, str(current_time))
+            zk.set(zk_iterm_path, str(iterm).encode('utf8'))
+            zk.set(zk_last_error_path, str(error).encode('utf8'))
+            zk.set(zk_last_time_path, str(current_time).encode('utf8'))
 
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
@@ -450,8 +450,8 @@ def mesos_cpu_metrics_provider(
         with ZookeeperPool() as zk:
             zk.ensure_path(zk_last_cpu_data)
             zk.ensure_path(zk_last_time_path)
-            zk.set(zk_last_cpu_data, str(cpu_data_csv))
-            zk.set(zk_last_time_path, str(current_time))
+            zk.set(zk_last_cpu_data, str(cpu_data_csv).encode('utf8'))
+            zk.set(zk_last_time_path, str(current_time).encode('utf8'))
 
     utilization = {}
     for datum in last_cpu_data:

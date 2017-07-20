@@ -185,11 +185,11 @@ def test_pid_decision_policy():
         ) == -3
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'.encode('utf8')),
+                mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'.encode('utf8')),
                 mock.call(
                     '/autoscaling/fake-service/fake-instance/pid_last_time',
-                    '%s' % current_time.strftime('%s'),
+                    current_time.strftime('%s').encode('utf8'),
                 ),
             ], any_order=True,
         )
@@ -251,7 +251,10 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
             )
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '480.0:fake-service.fake-instance'.encode('utf8'),
+                ),
             ], any_order=True,
         )
 
@@ -322,8 +325,14 @@ def test_mesos_cpu_metrics_provider():
         )
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_last_time', current_time.strftime('%s')),
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_last_time',
+                    current_time.strftime('%s').encode('utf8'),
+                ),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '480.0:fake-service.fake-instance'.encode('utf8'),
+                ),
             ], any_order=True,
         )
         assert log_utilization_data == {
