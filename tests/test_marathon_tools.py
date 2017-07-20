@@ -1912,34 +1912,77 @@ def test_deformat_job_id():
     assert marathon_tools.deformat_job_id('ser--vice.in--stance.git--hash.config--hash') == expected
 
 
-def test_format_marathon_app_bad_whitelist(capfd):
+def test_format_marathon_app_bad_whitelist():
     service = "service"
     instance = "instance"
+    fake_job_id = "service.instance.some.corned-beef-hash"
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service,
         cluster='clustername',
         instance=instance,
-        config_dict={},
+        config_dict={'constraints': [['this_is_impossible', 'GROUP_BY']]},
         branch_dict={'docker_image': 'abcdef'},
     )
-    exception_msg = (
-        "We do not believe any slaves on the cluster will match the constraints for fake_name.fake_instance. "
-        "If you believe this is incorrect, have your system administrator adjust the value of "
-        "expected_slave_attributes in the system paasta configs."
-    )
+    fake_system_paasta_config = SystemPaastaConfig({
+        'volumes': [],
+        'cluster': 'clustername',
+    }, '/fake/dir/')
+    fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
+    fake_docker_registry = 'fake_docker_registry:443'
 
     with mock.patch(
-        'paasta_tools.marathon_tools.MarathonServiceConfig.get_routing_constraints',
-        side_effect=NoSlavesAvailableError(exception_msg),
+        'paasta_tools.marathon_tools.load_service_namespace_config',
+        return_value=fake_service_namespace_config,
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.utils.get_service_docker_registry', return_value=fake_docker_registry, autospec=True,
+    ), mock.patch(
+        'paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id, autospec=True,
+    ), mock.patch(
+        'paasta_tools.marathon_tools.load_system_paasta_config',
+        return_value=fake_system_paasta_config, autospec=True,
+    ), mock.patch(
+        'paasta_tools.marathon_tools.MarathonServiceConfig.get_calculated_constraints',
+        side_effect=NoSlavesAvailableError(),  # test impossible constraints
         autospec=True
-    ):
-        # Fail if exit(1) does not get called
-        with raises(SystemExit) as sys_exit:
-            fake_marathon_service_config.format_marathon_app_dict()
-
-        output, _ = capfd.readouterr()
-        assert sys_exit.value.code == 1
-        assert output == exception_msg + "\n"
+    ), mock.patch(
+        'paasta_tools.monitoring_tools.send_event', autospec=True,
+    ) as mock_send_event:
+        actual = fake_marathon_service_config.format_marathon_app_dict()
+        expected = {
+            'container': {
+                'docker': {
+                    'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
+                    'image': 'fake_docker_registry:443/abcdef',
+                    'network': 'BRIDGE',
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1024m'},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '250000'},
+                        {"key": "label", "value": 'paasta_service=service'},
+                        {"key": "label", "value": 'paasta_instance=instance'},
+                    ]
+                },
+                'type': 'DOCKER',
+                'volumes': [],
+            },
+            'instances': 1,
+            'mem': 1024,
+            'cmd': None,
+            'args': [],
+            'backoff_factor': 2,
+            'backoff_seconds': mock.ANY,
+            'max_launch_delay_seconds': 300,
+            'cpus': 0.25,
+            'disk': 1024.0,
+            'uris': ['file:///root/.dockercfg'],
+            'health_checks': [],
+            'env': mock.ANY,
+            'id': fake_job_id,
+            'constraints': [],  # with impossible constraints, expect this to be empty
+        }
+        assert actual == expected  # expect to remove the impossible constraints
+        assert mock_send_event.called  # expect to send an alert to the service owner
 
 
 def test_format_marathon_app_dict_no_smartstack():

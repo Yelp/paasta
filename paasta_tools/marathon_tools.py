@@ -25,14 +25,15 @@ import json
 import logging
 import os
 from math import ceil
-from sys import exit
 
+import pysensu_yelp
 import requests
 import service_configuration_lib
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools import monitoring_tools
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -369,38 +370,52 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         net = get_mesos_network_for_net(self.get_net())
 
-        # jgl trycatch here
         try:
-            complete_config = {
-                'container': {
-                    'docker': {
-                        'image': docker_url,
-                        'network': net,
-                        "parameters": self.format_docker_parameters(),
-                    },
-                    'type': 'DOCKER',
-                    'volumes': docker_volumes,
-                },
-                'uris': [system_paasta_config.get_dockercfg_location(), ],
-                'backoff_seconds': self.get_backoff_seconds(),
-                'backoff_factor': self.get_backoff_factor(),
-                'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
-                'health_checks': self.get_healthchecks(service_namespace_config),
-                'env': self.get_env(),
-                'mem': float(self.get_mem()),
-                'cpus': float(self.get_cpus()),
-                'disk': float(self.get_disk()),
-                'constraints': self.get_calculated_constraints(
-                    system_paasta_config=system_paasta_config,
-                    service_namespace_config=service_namespace_config
-                ),
-                'instances': self.get_desired_instances(),
-                'cmd': self.get_cmd(),
-                'args': self.get_args(),
-            }
+            constraints = self.get_calculated_constraints(
+                system_paasta_config=system_paasta_config,
+                service_namespace_config=service_namespace_config
+            )
         except NoSlavesAvailableError as e:
-            paasta_print(e)
-            exit(1)
+            cluster = system_paasta_config.get_cluster()
+            error_msg = (
+                "There are no PaaSTA slaves that can run %s in cluster %s\n" % (self.instance, cluster) +
+                "Double check the cluster and the configured constraints/pool/whitelist.\n"
+                "Error was: %s" % str(e)
+            )
+            monitoring_tools.send_event(
+                service=self.service,
+                check_name="PaaSTA could not meet your specified constraints!",
+                overrides={},
+                status=pysensu_yelp.Status.CRITICAL,
+                output=error_msg,
+                soa_dir=self.soa_dir,
+            )
+            constraints = []
+
+        complete_config = {
+            'container': {
+                'docker': {
+                    'image': docker_url,
+                    'network': net,
+                    "parameters": self.format_docker_parameters(),
+                },
+                'type': 'DOCKER',
+                'volumes': docker_volumes,
+            },
+            'uris': [system_paasta_config.get_dockercfg_location(), ],
+            'backoff_seconds': self.get_backoff_seconds(),
+            'backoff_factor': self.get_backoff_factor(),
+            'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
+            'health_checks': self.get_healthchecks(service_namespace_config),
+            'env': self.get_env(),
+            'mem': float(self.get_mem()),
+            'cpus': float(self.get_cpus()),
+            'disk': float(self.get_disk()),
+            'constraints': constraints,
+            'instances': self.get_desired_instances(),
+            'cmd': self.get_cmd(),
+            'args': self.get_args(),
+        }
 
         if net == 'BRIDGE':
             complete_config['container']['docker']['portMappings'] = [
