@@ -158,14 +158,14 @@ def get_chronos_client(config, cached=False):
             servers=chronos_hostnames,
             username=config.get_username(),
             password=config.get_password(),
-            scheduler_api_version=None,
+            scheduler_api_version='v1',
         )
     else:
         return chronos.connect(
             servers=chronos_hostnames,
             username=config.get_username(),
             password=config.get_password(),
-            scheduler_api_version=None,
+            scheduler_api_version='v1',
         )
 
 
