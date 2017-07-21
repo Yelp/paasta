@@ -13,12 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import argparse
-import collections
 import datetime
 import json
 import logging
@@ -26,11 +23,11 @@ import os
 import sys
 import urllib
 
-
 from paasta_tools.utils import load_system_paasta_config
 
 MAX_ROWS_IN_SFX_RESULTS = 1000
 MAX_CONCURRENT_QUERIES = 10
+
 
 def sfx_token():
     try:
@@ -38,42 +35,44 @@ def sfx_token():
     except KeyError:
         logging.info(
             'SFX_TOKEN env variable not found:' +
-            ' looking in paasta system config')
+            ' looking in paasta system config',
+        )
     system_paasta_config = load_system_paasta_config()
     return system_paasta_config.get_monitoring_config()['signalfx_api_key']
 
+
 def format_timestamp(ts_millis):
     return datetime.datetime.fromtimestamp(
-        ts_millis/1000.
+        ts_millis / 1000.,
     ).isoformat() + 'Z'
 
-def make_requests(urls):
-    # grequests is sheltered inside this function to prevent it from polluting 
-    # all of paasta_tools with its monkey-patching mayhem.
-    import grequests
 
+def make_requests(urls):
+    import gevent
+    import gevent.monkey
+    gevent.monkey.patch_all()
+    import requests
     for url in urls:
         logging.info('GET %s', url)
     headers = {
         'Content-Type': 'application/json',
         'X-SF-TOKEN': sfx_token(),
-        }
-    def exception_handler(request, exception):
-        logging.warn('request failed: %s -> %s', request.url, exception)
-    unsent = (grequests.get(url, headers=headers) for url in urls)
-    responses = grequests.imap(
-            unsent, exception_handler=exception_handler,
-            size=MAX_CONCURRENT_QUERIES,
-            )
+    }
+    jobs = [gevent.spawn(requests.get, url, headers=headers) for url in urls]
+    gevent.joinall(jobs, timeout=60)
+    responses = [job.value for job in jobs]
     return responses
+
 
 def discover_detector_ids(detector_name):
     url = 'https://api.signalfx.com/v2/detector/?limit={}'.format(
-            MAX_ROWS_IN_SFX_RESULTS)
+        MAX_ROWS_IN_SFX_RESULTS,
+    )
     if detector_name != 'all':
         url += '&{}'.format(urllib.urlencode({'name': detector_name}))
     r = list(make_requests([url]))[0]
     return frozenset((result['id'] for result in r.json()['results']))
+
 
 def get_detector_incidents(detector_ids):
     urls = ['https://api.signalfx.com/v2/detector/{}/incidents'.format(id)
@@ -86,27 +85,33 @@ def get_detector_incidents(detector_ids):
             detector_name = events[0]['detectorName']
             severity = i['severity']
             since_timestamp = format_timestamp(
-                    sorted(e['timestamp'] for e in events)[0])
+                sorted(e['timestamp'] for e in events)[0],
+            )
             incident_data.append({
                 'detectorId': i['detectorId'],
                 'detector_name': detector_name,
                 'detectLabel': i['detectLabel'],
                 'since_timestamp': since_timestamp,
-                'severity': severity
+                'severity': severity,
             })
     return incident_data
+
 
 def add_subparser(subparsers):
     parser = subparsers.add_parser(
         'detector-status',
-        description=( 'Queries signalfx detector status, ' +
-                      'returning the number of live incidents.' ),
+        description=(
+            'Queries signalfx detector status, ' +
+            'returning the number of live incidents.'
+        ),
         help='Queries signalfx detector status.',
     )
     parser.add_argument(
-            '--detector_name',
-            help='example: "Kafka CPU Idle", or "all"')
+        '--detector_name',
+        help='example: "Kafka CPU Idle", or "all"',
+    )
     parser.set_defaults(command=detector_status)
+
 
 def detector_status(args):
     detector_ids = discover_detector_ids(args.detector_name)
