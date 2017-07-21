@@ -1,3 +1,11 @@
+paasta-tools (0.66.8) xenial; urgency=medium
+
+  * 0.66.8 tagged with 'make release'
+    Commit: Merge pull request #1390 from Yelp/hliu_zk_set_bytes  One
+    more zk.set to use bytes
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 21 Jul 2017 00:38:17 -0700
+
 paasta-tools (0.66.7) xenial; urgency=medium
 
   * 0.66.7 tagged with 'make release'
