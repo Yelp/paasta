@@ -8,6 +8,7 @@ from pytest import raises
 
 from paasta_tools.deployd.common import BounceTimers
 from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployd.workers import BounceResults
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
@@ -77,20 +78,20 @@ class TestPaastaDeployWorker(unittest.TestCase):
 
     def test_run(self):
         with mock.patch(
+            'time.time', autospec=True, return_value=1,
+        ), mock.patch(
             'time.sleep', autospec=True,
         ) as mock_sleep, mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True,
-        ) as mock_get_all_marathon_apps, mock.patch(
-            'paasta_tools.deployd.workers.PaastaDeployWorker.setup_timers', autospec=True,
-        ) as mock_setup_timers, mock.patch(
-            'paasta_tools.deployd.workers.deploy_marathon_service', autospec=True,
-        ) as mock_deploy_marathon_service, mock.patch(
-            'time.time', autospec=True, return_value=1,
-        ):
+            'paasta_tools.deployd.workers.PaastaDeployWorker.process_service_instance', autospec=True,
+        ) as mock_process_service_instance:
+            mock_timers = mock.Mock()
+            mock_bounce_results = BounceResults(
+                bounce_again_in_seconds=None,
+                return_code=0,
+                bounce_timers=mock_timers,
+            )
+            mock_process_service_instance.return_value = mock_bounce_results
             mock_sleep.side_effect = LoopBreak
-            self.worker.marathon_client = mock.Mock()
-            self.worker.marathon_config = mock.Mock()
-            mock_deploy_marathon_service.return_value = (0, None)
             mock_si = mock.Mock(
                 service='universe',
                 instance='c137',
@@ -99,6 +100,69 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.mock_bounce_q.get.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
+            mock_process_service_instance.assert_called_with(self.worker, mock_si)
+            assert not self.mock_inbox_q.put.called
+
+            mock_bounce_results = BounceResults(
+                bounce_again_in_seconds=60,
+                return_code=1,
+                bounce_timers=mock_timers,
+            )
+            mock_process_service_instance.return_value = mock_bounce_results
+            mock_queued_si = ServiceInstance(
+                service='universe',
+                instance='c137',
+                bounce_by=61,
+                watcher='Worker1',
+                bounce_timers=mock_timers,
+                failures=1,
+            )
+            with raises(LoopBreak):
+                self.worker.run()
+            mock_process_service_instance.assert_called_with(self.worker, mock_si)
+            self.mock_inbox_q.put.assert_called_with(mock_queued_si)
+
+            mock_si = mock.Mock(
+                service='universe',
+                instance='c137',
+                failures=0,
+            )
+            self.mock_bounce_q.get.return_value = mock_si
+            mock_process_service_instance.side_effect = Exception
+            mock_queued_si = ServiceInstance(
+                service='universe',
+                instance='c137',
+                bounce_by=61,
+                watcher='Worker1',
+                bounce_timers=mock_si.bounce_timers,
+                failures=1,
+            )
+            with raises(LoopBreak):
+                self.worker.run()
+            mock_process_service_instance.assert_called_with(self.worker, mock_si)
+            self.mock_inbox_q.put.assert_called_with(mock_queued_si)
+
+    def test_process_service_instance(self):
+        with mock.patch(
+            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True,
+        ) as mock_get_all_marathon_apps, mock.patch(
+            'paasta_tools.deployd.workers.PaastaDeployWorker.setup_timers', autospec=True,
+        ) as mock_setup_timers, mock.patch(
+            'paasta_tools.deployd.workers.deploy_marathon_service', autospec=True,
+        ) as mock_deploy_marathon_service, mock.patch(
+            'time.time', autospec=True, return_value=1,
+        ):
+            self.worker.marathon_client = mock.Mock()
+            self.worker.marathon_config = mock.Mock()
+            mock_deploy_marathon_service.return_value = (0, None)
+            mock_si = mock.Mock(
+                service='universe',
+                instance='c137',
+                failures=0,
+            )
+            ret = self.worker.process_service_instance(mock_si)
+            expected = BounceResults(None, 0, mock_setup_timers.return_value)
+            assert ret == expected
             mock_setup_timers.assert_called_with(self.worker, mock_si)
             assert mock_setup_timers.return_value.setup_marathon.start.called
             mock_deploy_marathon_service.assert_called_with(
@@ -111,13 +175,13 @@ class TestPaastaDeployWorker(unittest.TestCase):
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
             assert not mock_setup_timers.return_value.processed_by_worker.start.called
-            assert not self.mock_inbox_q.put.called
             assert mock_setup_timers.return_value.bounce_length.stop.called
 
             mock_deploy_marathon_service.return_value = (0, 60)
             mock_setup_timers.return_value.bounce_length.stop.reset_mock()
-            with raises(LoopBreak):
-                self.worker.run()
+            ret = self.worker.process_service_instance(mock_si)
+            expected = BounceResults(60, 0, mock_setup_timers.return_value)
+            assert ret == expected
             mock_setup_timers.assert_called_with(self.worker, mock_si)
             assert mock_setup_timers.return_value.setup_marathon.start.called
             mock_deploy_marathon_service.assert_called_with(
@@ -130,40 +194,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
             assert mock_setup_timers.return_value.processed_by_worker.start.called
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
-                service='universe',
-                instance='c137',
-                bounce_by=61,
-                watcher='Worker1',
-                bounce_timers=mock_setup_timers.return_value,
-                failures=0,
-            ))
-            assert not mock_setup_timers.return_value.bounce_length.stop.called
-
-            mock_deploy_marathon_service.side_effect = Exception()
-            mock_setup_timers.return_value.bounce_length.stop.reset_mock()
-            with raises(LoopBreak):
-                self.worker.run()
-            mock_setup_timers.assert_called_with(self.worker, mock_si)
-            assert mock_setup_timers.return_value.setup_marathon.start.called
-            mock_deploy_marathon_service.assert_called_with(
-                service='universe',
-                instance='c137',
-                client=self.worker.marathon_client,
-                soa_dir=DEFAULT_SOA_DIR,
-                marathon_config=self.worker.marathon_config,
-                marathon_apps=mock_get_all_marathon_apps.return_value,
-            )
-            assert mock_setup_timers.return_value.setup_marathon.stop.called
-            assert mock_setup_timers.return_value.processed_by_worker.start.called
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
-                service='universe',
-                instance='c137',
-                bounce_by=61,
-                watcher='Worker1',
-                bounce_timers=mock_setup_timers.return_value,
-                failures=1,
-            ))
             assert not mock_setup_timers.return_value.bounce_length.stop.called
 
 

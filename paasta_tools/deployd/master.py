@@ -29,6 +29,37 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
 
+class DedupedQueue(PaastaQueue):
+    """This class extends the python Queue class so that the Queue is
+    deduplicated. i.e. there can be only one copy of each service instance
+    in the queue at any one time
+    """
+
+    def __init__(self, name, *args, **kwargs):
+        PaastaQueue.__init__(self, name, *args, **kwargs)
+        self.bouncing = set()
+
+    def put(self, service_instance, *args, **kwargs):
+        service_instance_key = "{}.{}".format(
+            service_instance.service,
+            service_instance.instance,
+        )
+        if service_instance_key not in self.bouncing:
+            self.bouncing.add(service_instance_key)
+            PaastaQueue.put(self, service_instance, *args, **kwargs)
+        else:
+            self.log.debug("{} already present in {}, dropping extra message".format(service_instance_key, self.name))
+
+    def get(self, *args, **kwargs):
+        service_instance = PaastaQueue.get(self, *args, **kwargs)
+        service_instance_key = "{}.{}".format(
+            service_instance.service,
+            service_instance.instance,
+        )
+        self.bouncing.remove(service_instance_key)
+        return service_instance
+
+
 class Inbox(PaastaThread):
     def __init__(self, inbox_q, bounce_q):
         super(Inbox, self).__init__()
@@ -101,7 +132,7 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
-        self.bounce_q = PaastaQueue("BounceQueue")
+        self.bounce_q = DedupedQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)

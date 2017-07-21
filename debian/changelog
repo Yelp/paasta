@@ -1,3 +1,35 @@
+paasta-tools (0.66.8) xenial; urgency=medium
+
+  * 0.66.8 tagged with 'make release'
+    Commit: Merge pull request #1390 from Yelp/hliu_zk_set_bytes  One
+    more zk.set to use bytes
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 21 Jul 2017 00:38:17 -0700
+
+paasta-tools (0.66.7) xenial; urgency=medium
+
+  * 0.66.7 tagged with 'make release'
+    Commit: Merge pull request #1386 from Yelp/PAASTA-12222  Use bytes
+    when zk.set and handle mesos read timeout exceptions
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 20 Jul 2017 13:41:55 -0700
+
+paasta-tools (0.66.6) xenial; urgency=medium
+
+  * 0.66.6 tagged with 'make release'
+    Commit: Merge pull request #1383 from chriskuehl/flush-in-paasta-
+    print  Call flush() in paasta_print
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 18 Jul 2017 18:57:55 -0700
+
+paasta-tools (0.66.5) xenial; urgency=medium
+
+  * 0.66.5 tagged with 'make release'
+    Commit: Merge pull request #1376 from Yelp/python3_bytes  Python3
+    bytes
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Jul 2017 10:36:15 -0700
+
 paasta-tools (0.66.4) xenial; urgency=low
 
   * 0.66.4 tagged with 'make release'

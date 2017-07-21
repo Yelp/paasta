@@ -130,7 +130,7 @@ def test_update_instances_for_marathon_service():
             branch_dict={},
         )
         autoscaling_service_lib.set_instances_for_marathon_service('service', 'instance', instance_count=8)
-        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8')
+        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8'.encode('utf8'))
 
 
 def test_compose_autoscaling_zookeeper_root():
@@ -159,10 +159,9 @@ def test_pid_decision_policy():
     }
 
     with mock.patch(
-        'paasta_tools.utils.KazooClient', autospec=True,
-        return_value=mock.Mock(
+        'paasta_tools.utils.KazooClient', autospec=True, return_value=mock.Mock(
             get=mock.Mock(
-                side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
+                side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
             ),
         ),
     ) as mock_zk_client, mock.patch(
@@ -186,11 +185,11 @@ def test_pid_decision_policy():
         ) == -3
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'.encode('utf8')),
+                mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'.encode('utf8')),
                 mock.call(
                     '/autoscaling/fake-service/fake-instance/pid_last_time',
-                    '%s' % current_time.strftime('%s'),
+                    current_time.strftime('%s').encode('utf8'),
                 ),
             ], any_order=True,
         )
@@ -252,7 +251,10 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
             )
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '480.0:fake-service.fake-instance'.encode('utf8'),
+                ),
             ], any_order=True,
         )
 
@@ -305,7 +307,7 @@ def test_mesos_cpu_metrics_provider():
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
         return_value=mock.Mock(get=mock.Mock(
-            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
+            side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
         )),
     ) as mock_zk_client, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
@@ -323,8 +325,14 @@ def test_mesos_cpu_metrics_provider():
         )
         mock_zk_client.return_value.set.assert_has_calls(
             [
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_last_time', current_time.strftime('%s')),
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_last_time',
+                    current_time.strftime('%s').encode('utf8'),
+                ),
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '480.0:fake-service.fake-instance'.encode('utf8'),
+                ),
             ], any_order=True,
         )
         assert log_utilization_data == {
@@ -464,7 +472,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
         return_value=mock.Mock(get=mock.Mock(
-            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None),
+            side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
         )),
     ), mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,

@@ -815,7 +815,7 @@ def test_get_resource_utilization_per_slave():
         slaves=slaves,
         tasks=tasks,
     )
-    assert sorted(actual.keys()) == sorted(['total', 'free'])
+    assert sorted(actual.keys()) == sorted(['total', 'free', 'slave_count'])
     assert actual['total'] == metastatus_lib.ResourceInfo(
         cpus=575,
         disk=450,
@@ -826,6 +826,7 @@ def test_get_resource_utilization_per_slave():
         disk=430,
         mem=680,
     )
+    assert actual['slave_count'] == 2
 
 
 def test_calculate_resource_utilization_for_slaves():
