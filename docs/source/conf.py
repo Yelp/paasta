@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # paasta_tools documentation build configuration file, created by
 # sphinx-quickstart on Tue Aug  5 17:43:04 2014.
@@ -10,9 +9,6 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 import sys
 

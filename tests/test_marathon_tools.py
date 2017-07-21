@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 
 import marathon
@@ -141,7 +138,7 @@ class TestMarathonTools:
             instance=fake_instance,
             config_dict=dict(
                 self.fake_srv_config,
-                **self.fake_marathon_app_config.config_dict
+                **self.fake_marathon_app_config.config_dict,
             ),
             branch_dict={},
         )
@@ -205,7 +202,7 @@ class TestMarathonTools:
                 instance=fake_instance,
                 config_dict=dict(
                     self.fake_srv_config,
-                    **self.fake_marathon_app_config.config_dict
+                    **self.fake_marathon_app_config.config_dict,
                 ),
                 branch_dict=fake_branch_dict,
             )

@@ -15,9 +15,6 @@
 """Contains methods used by the paasta client to wait for deployment
 of a docker image to a cluster.instance.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 from argparse import ArgumentTypeError
 

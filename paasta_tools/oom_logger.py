@@ -33,9 +33,6 @@ log {
   destination(paasta_oom_logger);
 };
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import re
 import sys
 from collections import namedtuple

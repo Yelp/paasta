@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PaaSTA log reader for humans"""
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import datetime
 import logging
