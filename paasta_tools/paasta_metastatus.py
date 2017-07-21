@@ -156,7 +156,9 @@ def main(argv=None):
                 grouping_function,
                 mesos_state,
             )
-            all_rows = [[grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)']]
+            all_rows = [[
+                grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)', 'Agent count',
+            ]]
             table_rows = []
             for attribute_value, resource_info_dict in resource_info_dict.items():
                 resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
@@ -175,7 +177,7 @@ def main(argv=None):
                     attribute_value,
                     healthcheck_utilization_pairs,
                     args.humanize,
-                ))
+                ) + [str(resource_info_dict['slave_count'])])
             table_rows = sorted(table_rows, key=lambda x: x[0])
             all_rows.extend(table_rows)
             for line in format_table(all_rows):
