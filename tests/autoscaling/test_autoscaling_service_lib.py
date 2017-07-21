@@ -130,7 +130,7 @@ def test_update_instances_for_marathon_service():
             branch_dict={},
         )
         autoscaling_service_lib.set_instances_for_marathon_service('service', 'instance', instance_count=8)
-        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8')
+        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8'.encode('utf8'))
 
 
 def test_compose_autoscaling_zookeeper_root():

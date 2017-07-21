@@ -339,4 +339,4 @@ def set_instances_for_marathon_service(service, instance, instance_count, soa_di
     zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
     with ZookeeperPool() as zookeeper_client:
         zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count))
+        zookeeper_client.set(zookeeper_path, str(instance_count).encode('utf8'))
