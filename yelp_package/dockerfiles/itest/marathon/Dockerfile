@@ -32,7 +32,7 @@ RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update > /dev/null && apt-get -y install lsb-release oracle-java8-installer > /dev/null
 
-RUN apt-get update > /dev/null && apt-get -y install marathon=1.4.5-1.0.654.ubuntu1404 > /dev/null
+RUN apt-get update > /dev/null && apt-get -y install marathon=1.1.1-1.0.472.ubuntu1404 > /dev/null
 
 RUN echo -n "secret2" > /etc/marathon_framework_secret
 
