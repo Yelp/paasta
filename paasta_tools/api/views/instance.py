@@ -45,7 +45,7 @@ def adhoc_instance_status(instance_status, service, instance, verbose):
     return cstatus
 
 
-def marathon_job_status(mstatus, client, job_config):
+def marathon_job_status(mstatus, client, job_config, verbose):
     try:
         app_id = job_config.format_marathon_app_dict()['id']
     except NoDockerImageError:
@@ -54,7 +54,8 @@ def marathon_job_status(mstatus, client, job_config):
         return
 
     mstatus['app_id'] = app_id
-    mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_frameworks(app_id)})
+    if verbose is True:
+        mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_frameworks(app_id)})
     mstatus['expected_instance_count'] = job_config.get_instances()
 
     deploy_status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
@@ -83,7 +84,7 @@ def marathon_instance_status(instance_status, service, instance, verbose):
     mstatus['app_count'] = len(apps)
     mstatus['desired_state'] = job_config.get_desired_state()
     mstatus['bounce_method'] = job_config.get_bounce_method()
-    marathon_job_status(mstatus, settings.marathon_client, job_config)
+    marathon_job_status(mstatus, settings.marathon_client, job_config, verbose)
     return mstatus
 
 
