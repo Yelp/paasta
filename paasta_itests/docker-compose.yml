@@ -107,7 +107,7 @@ services:
     build:
       context: ../
       dockerfile: ./yelp_package/dockerfiles/itest/api/Dockerfile
-    command: '/bin/bash -c "pip install -e /work && /usr/local/bin/paasta-api -D 5054"'
+    command: paasta-api -D 5054
     ports:
       - 5054
     depends_on:
