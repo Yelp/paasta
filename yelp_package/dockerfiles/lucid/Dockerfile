@@ -28,11 +28,7 @@ RUN apt-get update > /dev/null && apt-get -y install \
         libffi-dev \
         debhelper \
         dh-virtualenv \
-        python-yaml \
         libyaml-dev \
-        python-pytest \
-        pyflakes \
-        python3.6 \
         python3.6-dev \
         help2man \
         zsh \
