@@ -35,11 +35,8 @@ RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         libssl-dev \
         libyaml-dev \
         python3.6-dev \
-        python-dev \
-        python-setuptools \
         python-tox \
         wget \
-        zip \
         zsh > /dev/null \
     && apt-get clean > /dev/null
 

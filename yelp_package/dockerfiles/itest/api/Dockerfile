@@ -14,37 +14,27 @@
 
 FROM ubuntu:trusty
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
-        debhelper \
-        dpkg-dev \
+RUN apt-get update > /dev/null && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
-        gdebi-core \
         git \
-        help2man \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
         python-dev \
         python-pip \
-        python-setuptools \
-        python-tox \
-        wget \
-        zip \
-        zsh > /dev/null \
+        python-setuptools > /dev/null \
     && apt-get clean > /dev/null
 
 WORKDIR /work
 
-RUN cd /work
-ADD requirements.txt /work
+ADD requirements.txt /work/
 RUN pip install -r requirements.txt
+
+ADD yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
+ADD yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
+ADD yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+ADD yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
+
 ADD . /work/
-RUN mkdir -p /nail/etc/
-RUN mkdir -p /etc/paasta/
-RUN cp /work/yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
-RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
-RUN cp /work/yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
-RUN cp /work/yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
 RUN pip install -e /work/
