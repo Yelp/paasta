@@ -1,3 +1,11 @@
+paasta-tools (0.66.9) xenial; urgency=medium
+
+  * 0.66.9 tagged with 'make release'
+    Commit: Merge pull request #1382 from Yelp/PAASTA-567-oom-logger
+    paasta_oom_logger
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 24 Jul 2017 14:55:36 -0700
+
 paasta-tools (0.66.8) xenial; urgency=medium
 
   * 0.66.8 tagged with 'make release'
