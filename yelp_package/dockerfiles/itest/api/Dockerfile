@@ -26,13 +26,10 @@ RUN apt-get update > /dev/null && apt-get install -y --no-install-recommends \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
-        pyflakes \
         python-dev \
         python-pip \
-        python-pytest \
         python-setuptools \
         python-tox \
-        python-yaml \
         wget \
         zip \
         zsh > /dev/null \
