@@ -61,7 +61,7 @@ def resources_utilization(request):
     response_body = []
     for k, v in resource_info_dict.items():
         group = {'groupings': {}}
-        for grouping, value in k:
+        for grouping, value in k.attributes.items():
             group['groupings'][grouping] = value
         for resource, value in v['total']._asdict().items():
             group[resource] = {'total': value}

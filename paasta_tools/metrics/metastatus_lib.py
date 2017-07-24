@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import copy
+import functools
 import itertools
 from collections import Counter
 from collections import namedtuple
@@ -322,6 +323,30 @@ def key_func_for_attribute(attribute):
     return key_func
 
 
+@functools.total_ordering
+class MultiKey():
+    def __init__(self, attributes):
+        self.attributes = attributes
+
+    def __lt__(self, other):
+        return self.__str__().__lt__(other.__str__())
+
+    def __eq__(self, other):
+        return self.__str__().__eq__(other.__str__())
+
+    def __hash__(self):
+        return self.__str__().__hash__()
+
+    def __len__(self):
+        return len(self.attributes)
+
+    def __iter__(self):
+        return iter(self.attributes)
+
+    def __str__(self):
+        return ",,".join(["%s::%s" % (a, v) for a, v in self.attributes.items()])
+
+
 def key_func_for_attribute_multi(attributes):
     """ Return a closure that given a slave, will return the value of a list of
     attributes, compiled into a hashable frozenset
@@ -330,7 +355,7 @@ def key_func_for_attribute_multi(attributes):
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
     def key_func(slave):
-        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
+        return MultiKey({a: slave['attributes'].get(a, 'unknown') for a in attributes})
     return key_func
 
 

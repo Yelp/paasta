@@ -753,8 +753,6 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
     assert(len(resp.keys()) == 4)
     # Each key should be a set with 2 items...
     assert(len(list(resp.keys())[0]) == 2)
-    # Each item in the set should have 2 values (original key, value)
-    assert(len(list(list(resp.keys())[0])[0]) == 2)
 
 
 def test_get_resource_utilization_per_slave():
