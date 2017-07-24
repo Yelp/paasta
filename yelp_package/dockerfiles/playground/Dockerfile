@@ -10,5 +10,6 @@ ADD ./requirements-dev.txt /paasta/requirements-dev.txt
 ADD ./requirements.txt /paasta/requirements.txt
 RUN pip install --upgrade pip==9.0.1
 RUN pip install --upgrade virtualenv==15.1.0
+RUN pip install --upgrade setuptools==36.2.0
 RUN pip install -r /paasta/requirements-dev.txt
 ADD ./yelp_package/dockerfiles/playground/start.sh /start.sh
