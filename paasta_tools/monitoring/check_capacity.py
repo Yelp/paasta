@@ -41,12 +41,12 @@ def parse_capacity_check_options():
     )
     parser.add_argument(
         '--overrides', dest='overrides', type=str,
-        help='json file of per-attribute overrides.',
+        help='json file of per-attribute overrides.\n'
+        'In the format {attribute_name: {value: {cpus: num, disk: num, mem: num}}}',
     )
     parser.add_argument(
         '--cluster', dest='cluster', type=str,
-        help='Cluster to check. Defaults to looking for the current cluster.\n'
-        'In the format {attribute_name: {value: {cpus: num, disk: num, mem: num}}}',
+        help='Cluster to check. Defaults to looking for the current cluster.',
     )
     parser.add_argument(
         '--attributes', dest='attributes', type=str,
