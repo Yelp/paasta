@@ -114,8 +114,8 @@ def main():
             hostname=hostname,
             container_id=container_id,
             cluster=cluster,
-            service=env_vars.get('PAASTA_SERVICE', ''),
-            instance=env_vars.get('PAASTA_INSTANCE', ''),
+            service=env_vars.get('PAASTA_SERVICE', 'unknown'),
+            instance=env_vars.get('PAASTA_INSTANCE', 'unknown'),
         )
         log_to_scribe(scribe_logger, log_line)
         log_to_paasta(log_line)
