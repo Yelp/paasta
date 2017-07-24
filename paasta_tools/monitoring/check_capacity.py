@@ -142,7 +142,7 @@ def run_capacity_check():
         paasta_print(result)
         sys.exit(2)
 
-    paasta_print("OK cluster %s is below critical capacity" % cluster)
+    paasta_print("OK cluster %s is below critical capacity in %s" % (cluster, value_to_check))
     sys.exit(0)
 
 
