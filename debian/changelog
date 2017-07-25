@@ -1,3 +1,10 @@
+paasta-tools (0.66.10) xenial; urgency=medium
+
+  * 0.66.10 tagged with 'make release'
+    Commit: more fixes for when firewall has no dependencies. added test
+
+ -- Benjamin Chess <bchess@yelp.com>  Tue, 25 Jul 2017 09:46:58 -0700
+
 paasta-tools (0.66.9) xenial; urgency=medium
 
   * 0.66.9 tagged with 'make release'
