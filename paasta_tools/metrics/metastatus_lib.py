@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import copy
-import functools
 import itertools
 from collections import Counter
 from collections import namedtuple
@@ -323,30 +322,6 @@ def key_func_for_attribute(attribute):
     return key_func
 
 
-@functools.total_ordering
-class MultiKey():
-    def __init__(self, attributes):
-        self.attributes = attributes
-
-    def __lt__(self, other):
-        return self.__str__().__lt__(other.__str__())
-
-    def __eq__(self, other):
-        return self.__str__().__eq__(other.__str__())
-
-    def __hash__(self):
-        return self.__str__().__hash__()
-
-    def __len__(self):
-        return len(self.attributes)
-
-    def __iter__(self):
-        return iter(self.attributes)
-
-    def __str__(self):
-        return ",,".join(["%s::%s" % (a, v) for a, v in self.attributes.items()])
-
-
 def key_func_for_attribute_multi(attributes):
     """ Return a closure that given a slave, will return the value of a list of
     attributes, compiled into a hashable frozenset
@@ -355,11 +330,17 @@ def key_func_for_attribute_multi(attributes):
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
     def key_func(slave):
-        return MultiKey({a: slave['attributes'].get(a, 'unknown') for a in attributes})
+        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in sorted(attributes)}.items())
     return key_func
 
 
-def group_slaves_by_key_func(key_func, slaves):
+def sort_key_func_for_attribute_multi(attributes):
+    def key_func(slave):
+        return "__".join(["%s::%s" % (a, slave['attributes'].get(a, 'unknown')) for a in sorted(attributes)])
+    return key_func
+
+
+def group_slaves_by_key_func(key_func, slaves, sort_key_func=None):
     """ Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
@@ -369,7 +350,10 @@ def group_slaves_by_key_func(key_func, slaves):
     :param slaves: a list of slaves
     :returns: a dict of key: [slaves]
     """
-    sorted_slaves = sorted(slaves, key=key_func)
+    if sort_key_func is None:
+        sort_key_func = key_func
+    sorted_slaves = sorted(slaves, key=sort_key_func)
+
     return {k: list(v) for k, v in itertools.groupby(sorted_slaves, key=key_func)}
 
 
@@ -444,7 +428,7 @@ def filter_slaves(slaves, filters):
     return [s for s in slaves if all([f(s) for f in filters])]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[]):
+def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[], sorting_func=None):
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
@@ -464,7 +448,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[])
 
     tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
     non_terminal_tasks = [task for task in tasks if not is_task_terminal(task)]
-    slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
+    slave_groupings = group_slaves_by_key_func(grouping_func, slaves, sorting_func)
 
     return {
         attribute_value: calculate_resource_utilization_for_slaves(

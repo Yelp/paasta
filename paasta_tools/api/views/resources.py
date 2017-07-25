@@ -45,6 +45,7 @@ def resources_utilization(request):
     if groupings is None:
         groupings = ['superregion']
     grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
+    sorting_function = metastatus_lib.sort_key_func_for_attribute_multi(groupings)
 
     filters = request.swagger_data.get('filter', [])
     filters = parse_filters(filters)
@@ -56,12 +57,13 @@ def resources_utilization(request):
         grouping_func=grouping_function,
         mesos_state=mesos_state,
         filters=filter_funcs,
+        sorting_func=sorting_function,
     )
 
     response_body = []
     for k, v in resource_info_dict.items():
         group = {'groupings': {}}
-        for grouping, value in k.attributes.items():
+        for grouping, value in k:
             group['groupings'][grouping] = value
         for resource, value in v['total']._asdict().items():
             group[resource] = {'total': value}
