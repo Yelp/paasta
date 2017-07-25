@@ -158,7 +158,7 @@ def _well_known_rules(conf):
         target_parameters=(),
     )
 
-    for dep in conf.get_dependencies():
+    for dep in conf.get_dependencies() or ():
         resource = dep.get('well-known')
         if resource == 'internet':
             yield iptables.Rule(

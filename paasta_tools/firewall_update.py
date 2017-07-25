@@ -135,7 +135,7 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
         if not outbound_firewall:
             continue
 
-        dependencies = config.get_dependencies()
+        dependencies = config.get_dependencies() or ()
 
         smartstack_dependencies = [d['smartstack'] for d in dependencies if d.get('smartstack')]
         for smartstack_dependency in smartstack_dependencies:

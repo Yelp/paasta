@@ -140,6 +140,27 @@ def mock_service_config():
         yield mock_instance_config
 
 
+def test_service_group_rules_no_dependencies(mock_service_config, service_group):
+    mock_service_config.return_value.get_dependencies.return_value = None
+    assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
+            ),
+            target_parameters=(
+                ('log-prefix', ('paasta.my_cool_service ',)),
+            ),
+        ),
+        EMPTY_RULE._replace(target='PAASTA-COMMON'),
+    )
+
+
 def test_service_group_rules_monitor(mock_service_config, service_group):
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(
