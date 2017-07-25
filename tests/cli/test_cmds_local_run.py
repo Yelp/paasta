@@ -1177,6 +1177,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.check_if_port_free', autospec=True)
 @mock.patch(
     'paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
     autospec=True,
@@ -1185,6 +1186,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
 def test_run_docker_container_with_user_specified_port(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
+    mock_check_if_port_free,
     mock_run,
     mock_execlp,
     mock_pick_random_port,
@@ -1209,6 +1211,7 @@ def test_run_docker_container_with_user_specified_port(
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
+    assert mock_check_if_port_free.call_count == 1
     mock_pick_random_port.assert_not_called()  # Don't pick a random port, use the user chosen one
     docker_run_args = mock_run.call_args[0][0]
     assert "--publish=1234:8888" in docker_run_args
