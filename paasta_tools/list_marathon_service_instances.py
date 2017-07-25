@@ -40,6 +40,7 @@ from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -90,7 +91,16 @@ def get_desired_marathon_configs(soa_dir):
                 soa_dir=soa_dir,
             ).format_marathon_app_dict()
             marathon_configs[marathon_config['id'].lstrip('/')] = marathon_config
-        except (NoDeploymentsAvailable, NoDockerImageError, NoSlavesAvailableError):
+        except NoSlavesAvailableError as errormsg:
+            _log(
+                service=service,
+                line=errormsg,
+                component='deploy',
+                level='event',
+                cluster=cluster,
+                instance=instance,
+            )
+        except (NoDeploymentsAvailable, NoDockerImageError):
             pass
     return marathon_configs
 
