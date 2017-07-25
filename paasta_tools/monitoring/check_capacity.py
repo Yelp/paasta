@@ -35,7 +35,7 @@ def parse_capacity_check_options():
         help='The resource to check.',
     )
     parser.add_argument(
-        '--warn', '-w', dest='warn', type=float, default=90,
+        '--warn', '-w', dest='warn', type=float, default=80,
         help='Level to emit a warning status.',
     )
     parser.add_argument(
@@ -45,7 +45,8 @@ def parse_capacity_check_options():
     parser.add_argument(
         '--overrides', dest='overrides', type=str,
         help='json file of per-attribute overrides.\n'
-        'In the format {attribute_name: {value: {cpus: num, disk: num, mem: num}}}',
+        'In the format {attribute_name: {value: {warn: {cpus: num, disk: num, mem: num}, '
+        'crit: {cpus: num, disk: num, mem: num}}}}',
     )
     parser.add_argument(
         '--cluster', dest='cluster', type=str,
