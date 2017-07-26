@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 import json
 
 from kazoo.client import KazooClient
+from kazoo.exceptions import BadVersionError
+from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.utils import _log
@@ -140,11 +142,16 @@ class ZKTaskStore(TaskStore):
         # TODO: call self.zk_client.stop() and .close()
 
     def get_task(self, task_id):
+        params, stat = self._get_task(task_id)
+        return params
+
+    def _get_task(self, task_id):
+        """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns """
         try:
             data, stat = self.zk_client.get('/%s' % task_id)
-            return MesosTaskParameters.deserialize(data)
+            return MesosTaskParameters.deserialize(data), stat
         except NoNodeError:
-            return None
+            return None, None
         except json.decoder.JSONDecodeError:
             _log(
                 service=self.service_name,
@@ -153,7 +160,7 @@ class ZKTaskStore(TaskStore):
                 component='deploy',
                 line='Warning: found non-json-decodable value in zookeeper for task %s: %s' % (task_id, data),
             )
-            return None
+            return None, None
 
     def get_all_tasks(self):
         all_tasks = {}
@@ -167,9 +174,31 @@ class ZKTaskStore(TaskStore):
 
         return all_tasks
 
-    def overwrite_task(self, task_id, params):
+    def update_task(self, task_id, **kwargs):
+        retry = True
+        while retry:
+            retry = False
+            existing_task, stat = self._get_task(task_id)
+
+            zk_path = self._zk_path_from_task_id(task_id)
+            if existing_task:
+                merged_params = existing_task.merge(**kwargs)
+                try:
+                    self.zk_client.set(zk_path, merged_params.serialize(), version=stat.version)
+                except BadVersionError:
+                    retry = True
+            else:
+                merged_params = MesosTaskParameters(**kwargs)
+                try:
+                    self.zk_client.create(zk_path, merged_params.serialize())
+                except NodeExistsError:
+                    retry = True
+
+        return merged_params
+
+    def overwrite_task(self, task_id, params, version=-1):
         try:
-            self.zk_client.set(self._zk_path_from_task_id(task_id), params.serialize())
+            self.zk_client.set(self._zk_path_from_task_id(task_id), params.serialize(), version=version)
         except NoNodeError:
             self.zk_client.create(self._zk_path_from_task_id(task_id), params.serialize())
 
