@@ -25,8 +25,11 @@ import string
 import sys
 from datetime import datetime
 
+<<<<<<< 2c350cc0d5ea9a01bbd3451efb74935d54ce02c5
 from boto3.session import Session
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
+=======
+>>>>>>> Make pre-commit happy
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
 
@@ -47,8 +50,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
-from task_processing.runners.sync import Sync
-from task_processing.task_processor import TaskProcessor
 
 MESOS_TASK_SPACER = '.'
 
