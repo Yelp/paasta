@@ -1,3 +1,11 @@
+paasta-tools (0.66.11) xenial; urgency=medium
+
+  * 0.66.11 tagged with 'make release'
+    Commit: Merge pull request #1402 from bchess/firewall_update_py36
+    Bug fixes to firewall_update related to py3 upgrade
+
+ -- bchess <bchess@squirt>  Wed, 26 Jul 2017 09:43:10 -0400
+
 paasta-tools (0.66.10) xenial; urgency=medium
 
   * 0.66.10 tagged with 'make release'
