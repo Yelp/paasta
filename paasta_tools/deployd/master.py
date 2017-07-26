@@ -255,15 +255,19 @@ class DeployDaemon(PaastaThread):
 
     def start_watchers(self):
         """ should block until all threads happy"""
-        watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
-                           obj[1].__bases__[0] == watchers.PaastaWatcher]
-        self.watcher_threads = [watcher(
-            inbox_q=self.inbox_q,
-            cluster=self.config.get_cluster(),
-            zookeeper_client=self.zk,
-            config=self.config,
-        )
-            for watcher in watcher_classes]
+        watcher_classes = [
+            obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
+            obj[1].__bases__[0] == watchers.PaastaWatcher
+        ]
+        self.watcher_threads = [
+            watcher(
+                inbox_q=self.inbox_q,
+                cluster=self.config.get_cluster(),
+                zookeeper_client=self.zk,
+                config=self.config,
+            )
+            for watcher in watcher_classes
+        ]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:
             watcher.start()

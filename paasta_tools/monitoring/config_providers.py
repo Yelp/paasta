@@ -32,8 +32,10 @@ monitoring_keys = [
 
 def extract_classic_monitoring_info(service_config):
     monitoring_config = copy.deepcopy(service_config.get('monitoring', {}))
-    info = {key: monitoring_config.pop(key, None) for
-            key in monitoring_keys}
+    info = {
+        key: monitoring_config.pop(key, None) for
+        key in monitoring_keys
+    }
     # Note, this will clobber whatever was in the extra key before, which
     # we need to do for extra to actually mean what we want.
     info['extra'] = monitoring_config
