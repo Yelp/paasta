@@ -1,3 +1,11 @@
+paasta-tools (0.66.12) xenial; urgency=medium
+
+  * 0.66.12 tagged with 'make release'
+    Commit: Merge pull request #1409 from Yelp/set-shm-size  Allow
+    setting the shm-size
+
+ -- Matthew Bentley <bentley@yelp.com>  Fri, 28 Jul 2017 07:10:25 -0700
+
 paasta-tools (0.66.11) xenial; urgency=medium
 
   * 0.66.11 tagged with 'make release'
