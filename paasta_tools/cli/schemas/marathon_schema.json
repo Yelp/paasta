@@ -284,6 +284,9 @@
                 "dependencies_reference": {
                     "type": "string"
                 },
+                "shm_size": {
+                    "type": "string"
+                },
                 "security": {
                     "type": "object",
                     "properties": {
