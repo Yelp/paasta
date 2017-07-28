@@ -21,8 +21,11 @@ import socket
 import docker
 import mock
 import requests
+import yaml
+from environment_tools import type_utils
 from pytest import mark
 from pytest import raises
+from pytest import yield_fixture
 
 from paasta_tools import mesos
 from paasta_tools import mesos_tools
@@ -224,6 +227,90 @@ def test_get_mesos_leader_no_hostname():
         mock_get_master.return_value = mock_master
         with raises(ValueError):
             mesos_tools.get_mesos_leader()
+
+
+@yield_fixture
+def mock_yamlload():
+    services = {
+        'fake_prefix_fake_cluster_fake_region': {
+            'host': 'fake_host',
+            'port': 'fake_port',
+        },
+    }
+
+    with mock.patch.object(
+        yaml,
+        'load',
+        return_value=services,
+    ) as mock_yamlload:
+        yield mock_yamlload
+
+
+@yield_fixture
+def mock_available_location_types():
+    types = ['region', 'habitat', 'superregion', 'ecosystem']
+    with mock.patch.object(
+        type_utils,
+        'available_location_types',
+        return_value=types,
+    ) as mock_available_location_types:
+        yield mock_available_location_types
+
+
+@yield_fixture
+def mock_convert_location_type():
+    def alt_convert(location, src, desired):
+        desired = 'fake_' + desired
+        if location == desired:
+            return [desired]
+        else:
+            raise KeyError
+
+    with mock.patch.object(
+        type_utils,
+        'convert_location_type',
+        side_effect=alt_convert,
+    ) as mock_convert_location_type:
+        yield mock_convert_location_type
+
+
+def test_get_mesos_proxy(
+    mock_yamlload,
+    mock_available_location_types,
+    mock_convert_location_type,
+):
+    proxy_addr = mesos_tools.get_mesos_proxy(
+        'fake_cluster',
+        'fake_region',
+        '/dev/null',
+        'fake_prefix_',
+    )
+
+    assert proxy_addr == 'fake_host:fake_port'
+
+
+@mark.parametrize(
+    'cluster,region',
+    [('wrong_cluster', 'fake_region'), ('fake_cluster', 'wrong_region')],
+)
+def test_get_mesos_proxy_no_proxy(
+    cluster,
+    region,
+    mock_yamlload,
+    mock_available_location_types,
+    mock_convert_location_type,
+):
+    mesos_tools.DEFAULT_SERVICES_LOCATION = '/dev/null'
+
+    with raises(KeyError) as exc_info:
+        mesos_tools.get_mesos_proxy(
+            cluster,
+            region,
+            '/dev/null',
+            'fake_prefix_',
+        )
+
+    assert isinstance(exc_info.value, KeyError)
 
 
 @mock.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True)

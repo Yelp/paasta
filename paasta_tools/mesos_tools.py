@@ -24,6 +24,8 @@ from collections import namedtuple
 
 import humanize
 import requests
+import yaml
+from environment_tools import type_utils
 from kazoo.client import KazooClient
 from six.moves.urllib_parse import urlparse
 
@@ -102,6 +104,44 @@ def get_mesos_leader():
         return fqdn
     else:
         raise ValueError('Expected to receive a valid URL, got: %s' % url)
+
+
+def get_mesos_proxy(cluster, location, services_file, proxy_prefix):
+    """Get the current mesos-master leader's haproxy address
+    Attempts to do so by reading the smartstack services file
+
+    :param cluster string: name of the cluster
+    :param location string: location string, convertable to region
+    :param services_file string: name of smartstack services file
+    :param proxy_prefix string: prefix in prefix_cluster_region (cluster name)
+
+    :returns: The current mesos-master ip:port string
+    """
+    with open(services_file, 'r') as istream:
+        services = yaml.load(istream)
+
+    region = None
+    for ltype in type_utils.available_location_types():
+        try:
+            region = type_utils.convert_location_type(
+                location,
+                ltype,
+                'region',
+            )[0]
+            break
+        except KeyError:
+            pass
+
+    if not region:
+        raise KeyError("Region {} does not exist".format(location))
+
+    proxy_name = proxy_prefix + '{}_{}'.format(cluster, region)
+
+    if proxy_name not in services:
+        raise KeyError('Mesos proxy {} was not found'.format(proxy_name))
+    else:
+        addr_info = services[proxy_name]
+        return addr_info['host'] + ':' + str(addr_info['port'])
 
 
 def is_mesos_leader(hostname=MY_HOSTNAME):
