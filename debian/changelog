@@ -1,3 +1,10 @@
+paasta-tools (0.66.13) xenial; urgency=medium
+
+  * 0.66.13 tagged with 'make release'
+    Commit: Fix schema to allow shm_size
+
+ -- Matthew Bentley <bentley@yelp.com>  Fri, 28 Jul 2017 09:04:52 -0700
+
 paasta-tools (0.66.12) xenial; urgency=medium
 
   * 0.66.12 tagged with 'make release'
