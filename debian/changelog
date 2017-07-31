@@ -1,3 +1,12 @@
+paasta-tools (0.66.14) xenial; urgency=medium
+
+  * 0.66.14 tagged with 'make release'
+    Commit: Merge pull request #1412 from
+    bchess/insecure_registry_fallback  When checking the registry,
+    fallback to trying http as well
+
+ -- bchess <bchess@squirt>  Mon, 31 Jul 2017 19:50:44 -0400
+
 paasta-tools (0.66.13) xenial; urgency=medium
 
   * 0.66.13 tagged with 'make release'
