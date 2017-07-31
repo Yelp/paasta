@@ -639,7 +639,7 @@ def test_list_clusters_ignores_bogus_clusters():
         assert actual == expected
 
 
-def test_get_instances_by_owner():
+def test_get_instances_by_owners():
     owners = ['me', 'you']
     clusters = ['fake_cluster']
     service_confs = {
@@ -685,7 +685,7 @@ def test_get_instances_by_owner():
         mock_get_all_service_configs.return_value = service_confs
         mock_get_all_instance_configs.return_value = instance_confs
 
-        return_value = utils.get_instances_by_owner(owners, clusters, '/fake/soa/dir')
+        return_value = utils.get_instances_by_owners(owners, clusters, '/fake/soa/dir')
         assert return_value['service1'] == {'instance1', 'instance2', 'instance3', 'instance5'}
         assert return_value['service2'] == {'instance6'}
         assert return_value['service3'] == {'instance7'}

@@ -1578,13 +1578,11 @@ def get_all_instance_configs(clusters, soa_dir=DEFAULT_SOA_DIR):
     :param clusters: The clusters to get configs for
     :returns: A dict in the format {cluster_name: {service_name: {instance_name: {instance_conf}, ...}, ...}, ...}
     """
-    confs = defaultdict(dict)
+    confs = defaultdict(lambda: defaultdict(dict))
     for t in INSTANCE_TYPES:
         for c in clusters:
             services = get_instance_configs(t, c, soa_dir)
             for service, instance in services.items():
-                if service not in confs[c].keys():
-                    confs[c][service] = {}
                 confs[c][service].update(instance)
     return confs
 
@@ -1604,8 +1602,8 @@ def get_all_service_configs(soa_dir=DEFAULT_SOA_DIR):
     return service_configs
 
 
-def get_instances_by_owner(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
-    """Get all service instances with onwer in a list
+def get_instances_by_owners(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
+    """Get all service instances with owner in a list
 
     :param owners: A list of owners to match against
     :param clusters: A list of clusters to look for services in

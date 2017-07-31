@@ -40,7 +40,7 @@ from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_instances_by_owner
+from paasta_tools.utils import get_instances_by_owners
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -87,7 +87,8 @@ def add_subparser(subparsers):
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
         '-o', '--owner',
-        help="Team name to filter instances by. Will get all service instances with that team listed in monitoring\n"
+        help="Team name to filter instances by. Will get all service instances with that team "
+             "listed in monitoring.yaml\n"
              "For example: --owner operations",
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
@@ -417,7 +418,7 @@ def paasta_status(args):
             clusters = args.clusters.split(',')
         else:
             clusters = list_clusters(soa_dir=soa_dir)
-        services_instances = get_instances_by_owner(args.owner.split(','), clusters, soa_dir=soa_dir)
+        services_instances = get_instances_by_owners(args.owner.split(','), clusters, soa_dir=soa_dir)
     else:
         service = figure_out_service_name(args, soa_dir)
         if args.instances is not None:
