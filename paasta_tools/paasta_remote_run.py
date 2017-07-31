@@ -25,6 +25,8 @@ import string
 import sys
 from datetime import datetime
 
+from boto3.session import Session
+from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
 
@@ -190,15 +192,17 @@ def paasta_to_task_config_kwargs(
 
 
 def build_executor_stack(
-        # TODO: rename to registry?
-        processor,
-        service,
-        instance,
-        # TODO: move run_id into task identifier?
-        run_id,
-        system_paasta_config,
-        framework_staging_timeout,
+    # TODO: rename to registry?
+    processor,
+    service,
+    instance,
+    cluster,
+    # TODO: move run_id into task identifier?
+    run_id,
+    system_paasta_config,
+    framework_staging_timeout,
 ):
+
     mesos_address = '{}:{}'.format(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
@@ -220,8 +224,34 @@ def build_executor_stack(
         framework_staging_timeout=framework_staging_timeout,
         initial_decline_delay=0.5,
     )
+
+    credentials_file = taskproc_config.get('boto_credential_file')
+    if credentials_file:
+        with open(credentials_file) as f:
+            credentials = json.loads(f.read())
+    else:
+        raise ValueError("Required aws credentials")
+
+    region = taskproc_config.get('aws_region')
+    session = Session(
+        region_name=region,
+        aws_access_key_id=credentials['accessKeyId'],
+        aws_secret_access_key=credentials['secretAccessKey'],
+    )
+
+    StatefulExecutor = processor.executor_cls(provider='stateful')
+    stateful_executor = StatefulExecutor(
+        downstream_executor=mesos_executor,
+        persister=DynamoDBPersister(
+            table_name="taskproc_events_%s" % cluster,
+            session=session,
+        ),
+    )
+
     RetryingExecutor = processor.executor_cls(provider='retrying')
-    return RetryingExecutor(mesos_executor)
+    retrying_executor = RetryingExecutor(stateful_executor)
+
+    return retrying_executor
 
 
 def remote_run_start(args):
@@ -266,6 +296,7 @@ def remote_run_start(args):
 
     processor = TaskProcessor()
     processor.load_plugin(provider_module='task_processing.plugins.mesos')
+    processor.load_plugin(provider_module='task_processing.plugins.stateful')
 
     MesosExecutor = processor.executor_cls(provider='mesos')
     task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
@@ -284,6 +315,7 @@ def remote_run_start(args):
         processor,
         service,
         instance,
+        cluster,
         run_id,
         system_paasta_config,
         args.staging_timeout,
