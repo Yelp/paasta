@@ -79,8 +79,10 @@ def parse_args():
 
 def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None):
     if deploy_group:
-        instances = [config for config in get_instance_configs_for_service(soa_dir=soa_dir, service=service)
-                     if config.get_deploy_group() == deploy_group]
+        instances = [
+            config for config in get_instance_configs_for_service(soa_dir=soa_dir, service=service)
+            if config.get_deploy_group() == deploy_group
+        ]
     else:
         instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
     cluster_map = {}
