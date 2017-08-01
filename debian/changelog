@@ -1,3 +1,10 @@
+paasta-tools (0.66.15) xenial; urgency=medium
+
+  * 0.66.15 tagged with 'make release'
+    Commit: fix precommit whitespace
+
+ -- bchess <bchess@squirt>  Mon, 31 Jul 2017 20:02:35 -0400
+
 paasta-tools (0.66.14) xenial; urgency=medium
 
   * 0.66.14 tagged with 'make release'
