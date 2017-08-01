@@ -221,6 +221,7 @@ def test_is_docker_image_already_in_registry_401_unauthorized(
     with raises(RequestException):
         is_docker_image_already_in_registry('fake_service', 'fake_soa_dir', 'fake_sha')
 
+
 @patch('paasta_tools.utils.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.requests.Session.get', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.read_docker_registy_creds', autospec=True)
