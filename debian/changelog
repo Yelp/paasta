@@ -1,3 +1,11 @@
+paasta-tools (0.66.16) xenial; urgency=medium
+
+  * 0.66.16 tagged with 'make release'
+    Commit: Merge pull request #1417 from chriskuehl/whitelist-google-
+    public-dns  Always whitelist Google Public DNS
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 01 Aug 2017 18:31:00 -0700
+
 paasta-tools (0.66.15) xenial; urgency=medium
 
   * 0.66.15 tagged with 'make release'
