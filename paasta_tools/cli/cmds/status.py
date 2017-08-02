@@ -426,6 +426,7 @@ def paasta_status(args):
     clusters_services_instances = paasta_args_mixer(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
+            paasta_print("Service: %s" % service)
             actual_deployments = get_actual_deployments(service, soa_dir)
             if actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
