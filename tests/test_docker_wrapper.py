@@ -211,6 +211,15 @@ class TestGenerateHostname(object):
         )
         assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
 
+    def test_no_dashes_on_end(self):
+        assert docker_wrapper.generate_hostname('beep', 'foobar-') == 'beep-foobar'
+
+        hostname = docker_wrapper.generate_hostname(
+            'reallllllllllllllylooooooooooooooong',
+            'reallyreallylongid012345--abc')
+        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongid012345'
+        assert len(hostname) == 61
+
 
 @pytest.mark.parametrize(
     'input_args,expected_args', [
