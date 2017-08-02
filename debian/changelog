@@ -1,3 +1,11 @@
+paasta-tools (0.66.18) xenial; urgency=medium
+
+  * 0.66.18 tagged with 'make release'
+    Commit: Merge pull request #1423 from bchess/rstrip_hostname_dashes
+    strip trailing hostname dashes
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:31:22 -0400
+
 paasta-tools (0.66.17) xenial; urgency=medium
 
   * 0.66.17 tagged with 'make release'
