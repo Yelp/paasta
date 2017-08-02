@@ -360,49 +360,48 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def apply_args_filters(args):
+def get_filters(args):
     if args.clusters is not None:
         clusters = args.clusters.split(',')
     else:
         clusters = list_clusters(soa_dir=args.soa_dir)
-    if args.owner is not None:
-        owner_clusters_services_instances = get_instances_by_owners(
+
+    if not any([args.clusters, args.instances, args.owner, args.deploy_group]):
+        service = figure_out_service_name(args, soa_dir=args.soa_dir)
+    else:
+        service = args.service
+
+    filters = []
+
+    if args.clusters:
+        filters.append(lambda conf: conf.get_cluster() in args.clusters.split(','))
+
+    if args.instances:
+        filters.append(lambda conf: conf.get_instance() in args.instances.split(','))
+
+    if args.service:
+        filters.append(lambda conf: conf.get_service() in service.split(','))
+
+    if args.owner:
+        i_by_owner = get_instances_by_owners(
             owners=args.owner.split(','),
             clusters=clusters,
             soa_dir=args.soa_dir,
         )
-    if args.owner is None:
-        service = figure_out_service_name(args, args.soa_dir)
+        filters.append(
+            lambda conf: conf.get_instance() in i_by_owner.get(conf.get_cluster(), {}).get(conf.get_service(), []),
+        )
 
-    def filter_clusters(conf):
-        return conf.get_cluster() in args.clusters.split(',')
+    if args.deploy_group:
+        filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
 
-    def filter_instances(conf):
-        return conf.get_instance() in args.instances.split(',')
+    return filters
 
-    def filter_service(conf):
-        return conf.get_service() == service
 
-    def filter_owner(conf):
-        return conf.get_instance() \
-            in owner_clusters_services_instances.get(conf.get_cluster(), {}).get(conf.get_service(), [])
-
-    def filter_deploy_group(conf):
-        return conf.get_deploy_group() in args.deploy_group.split(',')
-
+def apply_args_filters(args):
     clusters_services_instances = defaultdict(lambda: defaultdict(set))
 
-    filters = []
-    if args.clusters:
-        filters.append(filter_clusters)
-    if args.instances:
-        filters.append(filter_instances)
-    if args.service or not args.owner:
-        filters.append(filter_service)
-    if args.owner:
-        filters.append(filter_owner)
-    if args.deploy_group:
-        filters.append(filter_deploy_group)
+    filters = get_filters(args)
 
     for service in list_services(soa_dir=args.soa_dir):
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):

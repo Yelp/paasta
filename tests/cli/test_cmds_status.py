@@ -66,20 +66,26 @@ def test_figure_out_service_name_not_found(
     assert output == expected_output
 
 
+@patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
 def test_status_arg_service_not_found(
-    mock_guess_service_name, mock_validate_service_name, capfd,
+    mock_guess_service_name, mock_validate_service_name, mock_list_clusters, capfd,
 ):
     # paasta_status with no args and non-service directory results in error
     mock_guess_service_name.return_value = 'not_a_service'
     error = NoSuchService('fake_service')
     mock_validate_service_name.side_effect = error
+    mock_list_clusters.return_value = ['cluster1']
     expected_output = str(error) + "\n"
 
     args = MagicMock()
     args.service = False
     args.owner = None
+    args.clusters = None
+    args.instances = None
+    args.owner = None
+    args.deploy_group = None
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
