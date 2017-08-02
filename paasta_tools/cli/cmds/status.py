@@ -324,7 +324,7 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def paasta_args_mixer(args):
+def apply_args_filters(args):
     service = figure_out_service_name(args, args.soa_dir)
 
     def filter_clusters(conf):
@@ -370,7 +370,7 @@ def paasta_status(args):
         use_api_endpoint = False
 
     return_codes = [0]
-    clusters_services_instances = paasta_args_mixer(args)
+    clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             actual_deployments = get_actual_deployments(service, soa_dir)
