@@ -1,3 +1,10 @@
+paasta-tools (0.66.19) xenial; urgency=medium
+
+  * 0.66.19 tagged with 'make release'
+    Commit: precommit fix
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:39:59 -0400
+
 paasta-tools (0.66.18) xenial; urgency=medium
 
   * 0.66.18 tagged with 'make release'
