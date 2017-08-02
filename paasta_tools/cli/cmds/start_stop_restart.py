@@ -177,7 +177,6 @@ def paasta_start_or_stop(args, desired_state):
     soa_dir = args.soa_dir
 
     pargs = paasta_args_mixer(args)
-    print(pargs)
     if len(pargs) == 0:
         return 1
 
@@ -198,7 +197,6 @@ def paasta_start_or_stop(args, desired_state):
                 paasta_print(msg)
                 return 1
 
-            print(instances)
             for instance in instances:
                 service_config = get_instance_config(
                     service=service,
