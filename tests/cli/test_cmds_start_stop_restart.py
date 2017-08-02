@@ -123,7 +123,7 @@ def test_log_event():
         )
 
 
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
@@ -141,7 +141,7 @@ def test_paasta_start_or_stop(
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
-    mock_paasta_args_mixer,
+    mock_apply_args_filters,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-i', 'main1,canary',
@@ -154,7 +154,7 @@ def test_paasta_start_or_stop(
     mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': ['main1', 'canary']},
         'cluster2': {'fake_service': ['main1', 'canary']},
     }
@@ -209,7 +209,7 @@ def test_paasta_start_or_stop(
     assert(ret == 0)
 
 
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
@@ -227,7 +227,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
-    mock_paasta_args_mixer,
+    mock_apply_args_filters,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-c', 'cluster1',
@@ -240,7 +240,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': ['instance1']},
     }
     ret = args.command(args)
@@ -264,7 +264,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     assert ret == 0
 
 
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
@@ -282,7 +282,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
-    mock_paasta_args_mixer,
+    mock_apply_args_filters,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-i', 'main1,canary',
@@ -295,7 +295,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': ['main1']},
         'cluster2': {'fake_service': ['main1', 'canary']},
     }
@@ -341,7 +341,7 @@ def test_stop_or_start_figures_out_correct_instances(
     assert(ret == 0)
 
 
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
@@ -351,7 +351,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_git_url,
     mock_get_instance_config,
     mock_list_remote_refs,
-    mock_paasta_args_mixer,
+    mock_apply_args_filters,
     capfd,
 ):
     args, _ = parse_args([
@@ -363,7 +363,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = None
     mock_list_remote_refs.side_effect = remote_git.LSRemoteException
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': ['instance1']},
     }
 
@@ -371,7 +371,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     assert "may be down" in capfd.readouterr()[0]
 
 
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
@@ -379,7 +379,7 @@ def test_start_or_stop_bad_refs(
     mock_list_clusters,
     mock_list_remote_refs,
     mock_get_instance_config,
-    mock_paasta_args_mixer,
+    mock_apply_args_filters,
     capfd,
 ):
     args, _ = parse_args([
@@ -398,7 +398,7 @@ def test_start_or_stop_bad_refs(
     mock_list_remote_refs.return_value = {
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783",
     }
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'fake_cluster1': {'fake_service': ['fake_instance']},
         'fake_cluster2': {'fake_service': ['fake_instance']},
     }
@@ -411,11 +411,11 @@ def test_cluster_list_defaults_to_all():
 
 
 @pytest.mark.xfail(reason='This functionality will be moved')
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_for_invalid_cluster_no_instances(
         mock_list_clusters,
-        mock_paasta_args_mixer,
+        mock_apply_args_filters,
         capfd,
 ):
     args, _ = parse_args([
@@ -424,7 +424,7 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
     ])
 
     mock_list_clusters.return_value = ['fake_cluster_2']
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'fake_cluster_2': {'fake_service': ['i1']},
     }
 
@@ -435,11 +435,11 @@ def test_cluster_throws_exception_for_invalid_cluster_no_instances(
 
 
 @pytest.mark.xfail(reason='This functionality will be moved')
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
 def test_cluster_throws_exception_no_matching_instance_clusters(
         mock_list_clusters,
-        mock_paasta_args_mixer,
+        mock_apply_args_filters,
         capfd,
 ):
     args, _ = parse_args([
@@ -450,7 +450,7 @@ def test_cluster_throws_exception_no_matching_instance_clusters(
     # this is called twice: once for each of the instances.
     # the code should flatten these out to be one list.
     mock_list_clusters.return_value = ['fake_cluster_1', 'fake_cluster_2']
-    mock_paasta_args_mixer.return_value = {
+    mock_apply_args_filters.return_value = {
         'fake_cluster_2': {'fake_service': ['i1']},
     }
 

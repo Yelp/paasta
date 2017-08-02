@@ -360,7 +360,7 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def paasta_args_mixer(args):
+def apply_args_filters(args):
     if args.clusters is not None:
         clusters = args.clusters.split(',')
     else:
@@ -423,7 +423,7 @@ def paasta_status(args):
         use_api_endpoint = False
 
     return_codes = [0]
-    clusters_services_instances = paasta_args_mixer(args)
+    clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             paasta_print("Service: %s" % service)

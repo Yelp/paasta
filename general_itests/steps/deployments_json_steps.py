@@ -107,7 +107,7 @@ def step_paasta_stop_when(context):
         'paasta_tools.utils.format_timestamp', autospec=True,
         return_value=context.force_bounce_timestamp,
     ), mock.patch(
-        'paasta_tools.cli.cmds.start_stop_restart.paasta_args_mixer', autospec=True,
+        'paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True,
         return_value={fake_args.clusters: {fake_args.service: [fake_args.instances]}},
     ):
         try:

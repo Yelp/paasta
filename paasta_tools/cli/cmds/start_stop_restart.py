@@ -21,7 +21,7 @@ import socket
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
-from paasta_tools.cli.cmds.status import paasta_args_mixer
+from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -176,7 +176,7 @@ def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
     soa_dir = args.soa_dir
 
-    pargs = paasta_args_mixer(args)
+    pargs = apply_args_filters(args)
     if len(pargs) == 0:
         return 1
 
