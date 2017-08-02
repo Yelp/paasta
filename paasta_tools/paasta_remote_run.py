@@ -248,10 +248,7 @@ def build_executor_stack(
         ),
     )
 
-    RetryingExecutor = processor.executor_cls(provider='retrying')
-    retrying_executor = RetryingExecutor(stateful_executor)
-
-    return retrying_executor
+    return stateful_executor
 
 
 def remote_run_start(args):
