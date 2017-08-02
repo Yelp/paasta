@@ -59,13 +59,3 @@
         entry: except:$
         language: pcre
         files: \.py$
--   repo: https://github.com/EvanKrall/pre-commit-mypy.git
-    sha: e86284641bebd8d66eaf302f95b38a4f66b44d40
-    hooks:
-    -   id: mypy
-        args:
-        -   --python-version=3.6
-        -   --check-untyped-defs
-        -   --warn-incomplete-stub
-        -   --ignore-missing-imports
-        -   --follow-imports=skip
