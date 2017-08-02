@@ -1,3 +1,11 @@
+paasta-tools (0.66.17) xenial; urgency=medium
+
+  * 0.66.17 tagged with 'make release'
+    Commit: Merge pull request #1419 from Yelp/add-drain-timeouts  Add a
+    sane timeout when talking to hacheck
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 02 Aug 2017 06:56:30 -0700
+
 paasta-tools (0.66.16) xenial; urgency=medium
 
   * 0.66.16 tagged with 'make release'
