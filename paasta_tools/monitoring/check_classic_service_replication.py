@@ -17,6 +17,10 @@ from __future__ import unicode_literals
 
 import logging
 import sys
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 import pysensu_yelp
 import requests
@@ -26,9 +30,8 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.monitoring.check_synapse_replication import (
     check_replication,
 )
-from paasta_tools.monitoring.config_providers import (
-    extract_monitoring_info
-)
+from paasta_tools.monitoring.config_providers import extract_monitoring_info
+from paasta_tools.monitoring.config_providers import MonitoringInfo
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.utils import load_system_paasta_config
 
@@ -43,7 +46,7 @@ def report_event(event_dict):
     pysensu_yelp.send_event(**event_dict)
 
 
-def do_replication_check(service, monitoring_config, service_replication):
+def do_replication_check(service: str, monitoring_config: MonitoringInfo, service_replication: int) -> Dict[str, Any]:
     """Do a replication check on the provided service and generate
     notification events based on the information in monitoring_config and
     service_replication. Note that the caller must provide replication data
@@ -109,7 +112,7 @@ def do_replication_check(service, monitoring_config, service_replication):
     }
 
 
-def extract_replication_info(service_config):
+def extract_replication_info(service_config) -> Tuple[bool, Optional[MonitoringInfo]]:
     """Extract monitoring information from yelpsoa-configs
 
     To be monitored a service *must* supply a team.
@@ -132,7 +135,7 @@ def extract_replication_info(service_config):
         monitoring_config['team'] and
         monitoring_config.get('service_type') == 'classic'
     ):
-        return False, {}
+        return False, None
     return True, monitoring_config
 
 
@@ -160,7 +163,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             "Gathering replication information from {}".
             format(synapse_host_port),
         )
-        service_replication = {}
+        service_replication: Dict[str, int] = {}
         try:
             service_replication = get_replication_for_services(
                 synapse_host,

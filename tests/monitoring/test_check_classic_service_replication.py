@@ -24,6 +24,7 @@ from paasta_tools.monitoring.check_classic_service_replication import ClassicSer
 from paasta_tools.monitoring.check_classic_service_replication import do_replication_check
 from paasta_tools.monitoring.check_classic_service_replication import extract_replication_info
 from paasta_tools.monitoring.check_classic_service_replication import report_event
+from paasta_tools.monitoring.config_providers import MonitoringInfo  # noqa
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -63,10 +64,10 @@ def test_do_replication_check():
         'alert_after', 'realert_every',
     ]
 
-    mock_default_data = {key: None for key in mock_keys}
+    mock_default_data: MonitoringInfo = {key: None for key in mock_keys}
     mock_default_data['team'] = 'test_team'
 
-    mock_specific_data = {
+    mock_specific_data: MonitoringInfo = {
         key: "test_{}".format(key) for key in mock_keys
     }
     mock_specific_data['extra'] = {
@@ -145,7 +146,7 @@ def test_extract_replication_info_non_classic_data():
         'service_type': 'not_classic',
     }
     with mock.patch(extract_method, return_value=mock_valid_non_classic_data, autospec=True):
-        expected = (False, {})
+        expected = (False, None)
         result = extract_replication_info({})
         assert expected == result
 
@@ -174,7 +175,7 @@ def test_extract_replication_info_invalid_data():
         'service_type': None,
     }
     with mock.patch(extract_method, return_value=mock_invalid_data, autospec=True):
-        expected = (False, {})
+        expected = (False, None)
         result = extract_replication_info({})
         assert expected == result
 
