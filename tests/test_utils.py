@@ -646,7 +646,7 @@ def test_get_instances_by_owners():
         'service1': {'monitoring': {'team': 'me'}},
         'service2': {'monitoring': {'team': 'you'}},
         'service3': {'monitoring': {'team': 'thatotherguy'}},
-        'service4': {'monitorying': {}},
+        'service4': {'monitoring': {}},
         'service5': {},
     }
     instance_confs = {
@@ -686,9 +686,10 @@ def test_get_instances_by_owners():
         mock_get_all_instance_configs.return_value = instance_confs
 
         return_value = utils.get_instances_by_owners(owners, clusters, '/fake/soa/dir')
-        assert return_value['service1'] == {'instance1', 'instance2', 'instance3', 'instance5'}
-        assert return_value['service2'] == {'instance6'}
-        assert return_value['service3'] == {'instance7'}
+        print(return_value)
+        assert return_value['fake_cluster']['service1'] == {'instance1', 'instance2', 'instance3', 'instance5'}
+        assert return_value['fake_cluster']['service2'] == {'instance6'}
+        assert return_value['fake_cluster']['service3'] == {'instance7'}
 
 
 def test_get_all_instance_configs():

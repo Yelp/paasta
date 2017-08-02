@@ -158,6 +158,9 @@ class InstanceConfig(object):
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
 
+    def get_instance_owner(self):
+        return self.config_dict.get('monitoring', {}).get('team', None)
+
     def get_mem(self):
         """Gets the memory required from the service's configuration.
 
@@ -1607,21 +1610,22 @@ def get_instances_by_owners(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
 
     :param owners: A list of owners to match against
     :param clusters: A list of clusters to look for services in
-    :returns: A dict of service_instances, in the format {service_name: [instance1, instance2, ...], ...}
+    :returns: A dict of service_instances, in the format {cluster: {service_name: [instance1, instance2, ...], ...}}
     """
-    all_instances = {s for c in clusters for s in get_services_for_cluster(cluster=c, soa_dir=soa_dir)}
+    all_instances = {c: get_services_for_cluster(cluster=c, soa_dir=soa_dir) for c in clusters}
     service_confs = get_all_service_configs(soa_dir)
     instance_confs = get_all_instance_configs(clusters, soa_dir)
 
-    service_instances = defaultdict(set)
-    for service, instance in all_instances:
-        service_team = service_confs.get(service, {}).get('monitoring', {}).get('team', None)
-        for service_conf in instance_confs.values():
-            instance_team = service_conf.get(service, {}).get(instance, {}).get('monitoring', {}).get('team', None)
+    cluster_services_instances = defaultdict(lambda: defaultdict(set))
+    for cluster, services_instances in all_instances.items():
+        for service, instance in services_instances:
+            service_team = service_confs.get(service, {}).get('monitoring', {}).get('team', None)
+            instance_conf = instance_confs.get(cluster, {}).get(service, {}).get(instance, {})
+            instance_team = instance_conf.get('monitoring', {}).get('team', None)
             if instance_team in owners or (instance_team is None and service_team in owners):
-                service_instances[service].add(instance)
+                cluster_services_instances[cluster][service].add(instance)
 
-    return service_instances
+    return cluster_services_instances
 
 
 def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):

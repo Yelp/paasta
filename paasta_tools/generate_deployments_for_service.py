@@ -45,6 +45,7 @@ import json
 import logging
 import os
 import re
+from collections import defaultdict
 
 import six
 
@@ -83,13 +84,9 @@ def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None):
                      if config.get_deploy_group() == deploy_group]
     else:
         instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
-    cluster_map = {}
+    cluster_map = defaultdict(lambda: defaultdict(list))
     for instance_config in instances:
-        try:
-            cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
-        except KeyError:
-            cluster_map[instance_config.get_cluster()] = {'instances': []}
-            cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
+        cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
     return cluster_map
 
 
