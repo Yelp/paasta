@@ -508,7 +508,6 @@ def test_status_calls_sergeants(
 
     assert return_value == 1776
 
-    mock_figure_out_service_name.assert_called_once_with(args, '/fake/soa/dir')
     mock_get_actual_deployments.assert_called_once_with(service, '/fake/soa/dir')
     mock_report_status.assert_called_once_with(
         service=service,

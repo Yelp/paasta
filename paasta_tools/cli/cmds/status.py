@@ -366,7 +366,7 @@ def get_filters(args):
     else:
         clusters = list_clusters(soa_dir=args.soa_dir)
 
-    if not any([args.clusters, args.instances, args.owner, args.deploy_group]):
+    if not any([args.service, args.clusters, args.instances, args.owner, args.deploy_group]):
         service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
         service = args.service
