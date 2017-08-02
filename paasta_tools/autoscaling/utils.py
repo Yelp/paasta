@@ -15,10 +15,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from typing import Callable
+from typing import Dict
+
 from collections import defaultdict
 
 
-_autoscaling_components = defaultdict(dict)
+_autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)
 
 
 def register_autoscaling_component(name, method_type):

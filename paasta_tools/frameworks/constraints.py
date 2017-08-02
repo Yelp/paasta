@@ -4,11 +4,18 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import re
+from typing import Any
+from typing import Callable
+from typing import Dict
 
 from paasta_tools.utils import paasta_print
 
 
-def max_per(constraint_value, offer_value, attribute, state):
+State = Dict[str, Dict[str, Any]]
+ConstraintOp = Callable[[str, str, str, State], bool]
+
+
+def max_per(constraint_value, offer_value, attribute, state: State):
     if not constraint_value:
         constraint_value = 1
     state_value = state.get('MAX_PER', {}).get(attribute, {}).get(offer_value, 0)
@@ -21,9 +28,9 @@ def max_per(constraint_value, offer_value, attribute, state):
 #   offer value:      default
 #   attribute:        pool
 #   state:            {'MAX_PER' => {'pool' => {'default' => 6}}}
-CONS_OPS = {
+CONS_OPS: Dict[str, ConstraintOp] = {
     'EQUALS': lambda cv, ov, *_: cv == ov,
-    'LIKE': lambda cv, ov, *_: re.match(cv, ov),
+    'LIKE': lambda cv, ov, *_: bool(re.match(cv, ov)),
     'UNLIKE': lambda cv, ov, *_: not(re.match(cv, ov)),
     'MAX_PER': max_per,
     'UNIQUE': max_per,

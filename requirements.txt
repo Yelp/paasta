@@ -26,6 +26,7 @@ isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.2
 lockfile==0.9.1
+mypy_extensions
 path.py==8.1
 ply==3.4
 prettytable==0.7.2

@@ -123,7 +123,7 @@ def extract_replication_info(service_config):
 
     :returns (do_monitoring, monitoring_config): Which is a tuple of a bool
         and a monitoring dictionary that has keys specified by
-        config_providers.monitoring_keys
+        config_providers.MonitoringInfo
     """
     monitoring_config = extract_monitoring_info('classic', service_config)
 

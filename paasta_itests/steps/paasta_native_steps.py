@@ -11,7 +11,10 @@ import yaml
 from behave import given
 from behave import then
 from behave import when
+from requests import HTTPError
+
 from itest_utils import clear_mesos_tools_cache
+from typing import List, Tuple  # noqa
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
@@ -87,7 +90,7 @@ def start_paasta_native_framework(context, scheduler, reconcile_backoff, framewo
     elif scheduler == 'adhoc':
         scheduler_class = AdhocScheduler
     else:
-        raise "unknown scheduler: %s" % scheduler
+        raise Exception("unknown scheduler: %s" % scheduler)
 
     context.framework_name = framework_name
     context.scheduler = scheduler_class(
@@ -193,7 +196,7 @@ def terminate_that_framework(context):
     try:
         paasta_print("terminating framework %s" % context.scheduler.framework_id)
         mesos_tools.terminate_framework(context.scheduler.framework_id)
-    except Exception as e:
+    except HTTPError as e:
         raise Exception(e.response.text)
 
 
@@ -315,7 +318,7 @@ def periodic_should_eventually_be_called(context):
 def service_should_show_up_in_pnsrh_n_times(context, expected_num):
     mesosslave_ips = {x[4][0] for x in socket.getaddrinfo('mesosslave', 5051)}
 
-    results = []
+    results: List[Tuple[str, str, int]] = []
     for mesosslave_ip in mesosslave_ips:
         results.extend(
             paasta_native_services_running_here(

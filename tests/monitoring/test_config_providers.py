@@ -19,16 +19,27 @@ import pytest
 
 from paasta_tools.monitoring.config_providers import extract_classic_monitoring_info
 from paasta_tools.monitoring.config_providers import extract_monitoring_info
-from paasta_tools.monitoring.config_providers import monitoring_keys
 
 
 def test_extract_classic_monitoring_info():
-    test_dict = {}
-    for key in monitoring_keys:
-        test_dict[key] = 'testing'
-    test_dict['this_is_extra'] = 'so extra'
-    test_dict['also_extra'] = 'moar extra'
-    test_dict = {'monitoring': test_dict}
+    test_dict = {
+        'monitoring': {
+            "team": "testing",
+            "notification_email": "testing",
+            "service_type": "testing",
+            "runbook": "testing",
+            "tip": "testing",
+            "page": "testing",
+            "alert_after": "testing",
+            "realert_every": "testing",
+            "extra": "testing",
+            "this_is_extra": "so extra",
+            "also_extra": "moar extra",
+        }
+    }
+
+    extra_keys = set(["this_is_extra", "also_extra"])
+    monitoring_keys = set(test_dict['monitoring'].keys()) - extra_keys
 
     extracted = extract_classic_monitoring_info(test_dict)
     for key in monitoring_keys:

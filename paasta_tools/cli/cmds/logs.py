@@ -26,11 +26,15 @@ from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
 from time import sleep
+from typing import Any  # noqa
+from typing import Dict  # noqa
+from typing import List  # noqa
+from typing import Set  # noqa
 
-import dateutil
 import isodate
 import pytz
 import ujson as json
+from dateutil import tz
 from six.moves.queue import Empty
 
 from paasta_tools.utils import paasta_print
@@ -280,7 +284,7 @@ def extract_utc_timestamp_from_log_line(line):
         return None
     timestamp = tokens.group(0).strip()
     dt = isodate.parse_datetime(timestamp)
-    utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, dateutil.tz.tzutc())
+    utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, tz.tzutc())
     return utc_timestamp
 
 
@@ -544,7 +548,7 @@ class ScribeLogReader(LogReader):
         :param callback: The callback function. Gets called with (component_name, stream_info, scribe_env, cluster)
                          The cluster field will only be set if the componenet is set to per_cluster
         """
-        scribe_envs = set()
+        scribe_envs: Set[str] = set()
         for cluster in clusters:
             scribe_envs.update(self.determine_scribereader_envs(components, cluster))
         log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
@@ -697,7 +701,7 @@ class ScribeLogReader(LogReader):
                 break
 
     def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, instances, raw_mode):
-        aggregated_logs = []
+        aggregated_logs: List[Dict[str, Any]] = []
 
         if 'marathon' in components or 'chronos' in components:
             paasta_print(
@@ -743,7 +747,7 @@ class ScribeLogReader(LogReader):
             print_log(line['raw_line'], levels, raw_mode)
 
     def print_last_n_logs(self, service, line_count, levels, components, clusters, instances, raw_mode):
-        aggregated_logs = []
+        aggregated_logs: List[Dict[str, Any]] = []
 
         def callback(component, stream_info, scribe_env, cluster):
             stream_info = self.get_stream_info(component)
@@ -795,7 +799,7 @@ class ScribeLogReader(LogReader):
                                 if not timestamp.tzinfo:
                                     timestamp = pytz.utc.localize(timestamp)
                             except ValueError:
-                                timestamp = pytz.utc.localize(datetime.datetime.min())
+                                timestamp = pytz.utc.localize(datetime.datetime.min)
 
                             line = {'raw_line': line, 'sort_key': timestamp}
                             aggregated_logs.append(line)
@@ -893,7 +897,7 @@ class ScribeLogReader(LogReader):
         Some components are in certain environments, regardless of the cluster.
         Some clusters do not match up with the scribe environment names, so
         we figure that out here"""
-        envs = []
+        envs: List[str] = []
         for component in components:
             # If a component has a 'source_env', we use that
             # otherwise we lookup what scribe env is associated with a given cluster

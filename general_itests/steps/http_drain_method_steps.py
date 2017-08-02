@@ -21,6 +21,7 @@ from behave import given
 from behave import then
 from behave import when
 from six.moves import BaseHTTPServer
+from typing import List
 
 from paasta_tools import drain_lib
 from paasta_tools.utils import paasta_print
@@ -74,7 +75,7 @@ def check_retval(context, expected_retval):
 
 
 class FakeHTTPServer(object):
-    paths = []
+    paths: List[str] = []
 
     def start(self):
         self.server = BaseHTTPServer.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)
