@@ -83,7 +83,7 @@ def parse_range(str_range):
     try:
         return tuple(map(int, int_range))
     except Exception:
-        fail("Failed to parse range {}".format(str_range))
+        fail("Failed to parse range {}".format(str_range), 2)
 
 
 def parse_synapse_check_options(system_paasta_config):
