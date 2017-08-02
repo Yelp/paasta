@@ -22,10 +22,10 @@ from paasta_tools import chronos_tools
 from paasta_tools.chronos_tools import get_related_jobs_configs
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.cmds.status import get_planned_deployments
-from paasta_tools.cli.cmds.status import list_deployed_clusters
 from paasta_tools.cli.utils import execute_chronos_rerun_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_deployed_clusters
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR

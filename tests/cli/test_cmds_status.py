@@ -16,7 +16,6 @@ from __future__ import unicode_literals
 
 from collections import namedtuple
 
-from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
@@ -30,8 +29,6 @@ from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
-from paasta_tools.cli.cmds.status import report_status
-from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import PaastaColors
@@ -588,158 +585,6 @@ def test_report_invalid_whitelist_values_with_whitelists():
     assert 'bogus1' in actual
 
 
-@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-def test_report_status_returns_zero_when_clusters_pass(
-    mock_report_invalid_whitelist_values,
-    mock_report_status_for_cluster,
-    capfd,
-):
-    service = 'fake_service'
-    cluster_whitelist = []
-    instance_whitelist = []
-    deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main',
-    ]
-    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
-
-    mock_report_status_for_cluster.side_effect = [0, 0, 0]
-
-    return_value = report_status(
-        service=service,
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        cluster_whitelist=cluster_whitelist,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-    )
-
-    assert return_value == 0
-    assert mock_report_status_for_cluster.call_count == 3
-
-
-@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-def test_report_status_returns_one_when_clusters_pass(
-    mock_report_invalid_whitelist_values,
-    mock_report_status_for_cluster,
-    capfd,
-):
-    service = 'fake_service'
-    cluster_whitelist = []
-    instance_whitelist = []
-    deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main',
-    ]
-    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
-
-    mock_report_status_for_cluster.side_effect = [0, 0, 255]
-
-    return_value = report_status(
-        service=service,
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        cluster_whitelist=cluster_whitelist,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-    )
-
-    assert return_value == 1
-    assert mock_report_status_for_cluster.call_count == 3
-
-
-@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-def test_report_status_obeys_cluster_whitelist(
-    mock_report_invalid_whitelist_values,
-    mock_report_status_for_cluster,
-    capfd,
-):
-    service = 'fake_service'
-    cluster_whitelist = ['cluster1']
-    instance_whitelist = []
-    deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main',
-    ]
-    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
-    report_status(
-        service=service,
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        cluster_whitelist=cluster_whitelist,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-    )
-    mock_report_invalid_whitelist_values.assert_called_once_with(
-        cluster_whitelist, ['cluster1', 'cluster2', 'cluster3'], 'cluster',
-    )
-    mock_report_status_for_cluster.assert_called_once_with(
-        service=service,
-        cluster='cluster1',
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-        verbose=0,
-        use_api_endpoint=False,
-    )
-
-
-@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
-def test_report_status_handle_none_whitelist(
-    mock_report_invalid_whitelist_values,
-    mock_report_status_for_cluster,
-    capfd,
-):
-    service = 'fake_service'
-    cluster_whitelist = []
-    instance_whitelist = []
-    deploy_pipeline = actual_deployments = [
-        'cluster1.main', 'cluster2.main', 'cluster3.main',
-    ]
-    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
-    report_status(
-        service=service,
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        cluster_whitelist=cluster_whitelist,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-    )
-
-    mock_report_status_for_cluster.assert_any_call(
-        service=service,
-        cluster='cluster1',
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-        verbose=0,
-        use_api_endpoint=False,
-    )
-    mock_report_status_for_cluster.assert_any_call(
-        service=service,
-        cluster='cluster2',
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-        verbose=0,
-        use_api_endpoint=False,
-    )
-    mock_report_status_for_cluster.assert_any_call(
-        service=service,
-        cluster='cluster3',
-        deploy_pipeline=deploy_pipeline,
-        actual_deployments=actual_deployments,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=fake_system_paasta_config,
-        verbose=0,
-        use_api_endpoint=False,
-    )
-
-
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
 @patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
@@ -909,39 +754,3 @@ def test_apply_args_filters_clusters_and_instances(
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ['cluster1']
     assert pargs['cluster1']['fake_service'] == {'instance1', 'instance3'}
-
-
-@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.cli.cmds.status.paasta_print', autospec=True)
-def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
-
-    assert verify_instances(['west', 'esst'], 'fake_service', []) == ['west', 'esst']
-    assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls([
-        call("\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"),
-        call("Did you mean any of these?"),
-        call("  east"),
-        call("  west"),
-    ])
-
-
-@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.cli.cmds.status.paasta_print', autospec=True)
-def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = ['east', 'west', 'north']
-
-    assert verify_instances(
-        ['west', 'esst', 'fake'], 'fake_service',
-        ['fake_cluster1', 'fake_cluster2'],
-    ) == ['west', 'esst', 'fake']
-    assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls([
-        call(
-            "\x1b[31mfake_service doesn't have any instances matching esst,"
-            " fake on fake_cluster1, fake_cluster2.\x1b[0m",
-        ),
-        call("Did you mean any of these?"),
-        call("  east"),
-        call("  west"),
-    ])

@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import difflib
 import os
 import sys
 from collections import defaultdict
@@ -42,7 +41,6 @@ from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_instances_by_owners
 from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -131,18 +129,6 @@ def get_planned_deployments(service, soa_dir):
     ):
         for instance in get_deploy_info(cluster_deploy_file):
             yield '%s.%s' % (cluster, instance)
-
-
-def list_deployed_clusters(pipeline, actual_deployments):
-    """Returns a list of clusters that a service is deployed to given
-    an input deploy pipeline and the actual deployments"""
-    deployed_clusters = []
-    for namespace in pipeline:
-        cluster, instance = namespace.split('.')
-        if namespace in actual_deployments:
-            if cluster not in deployed_clusters:
-                deployed_clusters.append(cluster)
-    return deployed_clusters
 
 
 def get_actual_deployments(service, soa_dir):
@@ -292,72 +278,6 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
             "Warning: This service does not have any %s matching these names:\n%s"
         ) % (item_type, ",".join(bogus_entries))
     return return_string
-
-
-def report_status(
-    service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-    system_paasta_config, verbose=0, use_api_endpoint=False,
-):
-
-    deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
-    return_codes = [
-        report_status_for_cluster(
-            service=service,
-            cluster=cluster,
-            deploy_pipeline=deploy_pipeline,
-            actual_deployments=actual_deployments,
-            instance_whitelist=instance_whitelist,
-            system_paasta_config=system_paasta_config,
-            verbose=verbose,
-            use_api_endpoint=use_api_endpoint,
-        )
-        for cluster in deployed_clusters
-        if not cluster_whitelist or cluster in cluster_whitelist
-    ]
-
-    paasta_print(report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster'))
-    return 0 if all([return_code == 0 for return_code in return_codes]) else 1
-
-
-def verify_instances(args_instances, service, clusters):
-    """Verify that a list of instances specified by user is correct for this service.
-
-    :param args_instances: a list of instances.
-    :param service: the service name
-    :param cluster: a list of clusters
-    :returns: a list of instances specified in args_instances without any exclusions.
-    """
-    unverified_instances = args_instances
-    service_instances = list_all_instances_for_service(service, clusters=clusters)
-
-    misspelled_instances = [i for i in unverified_instances if i not in service_instances]
-
-    if misspelled_instances:
-        suggestions = []
-        for instance in misspelled_instances:
-            suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
-
-        if clusters:
-            message = (
-                "%s doesn't have any instances matching %s on %s."
-                % (
-                    service,
-                    ', '.join(sorted(misspelled_instances)),
-                    ', '.join(sorted(clusters)),
-                )
-            )
-        else:
-            message = ("%s doesn't have any instances matching %s."
-                       % (service, ', '.join(sorted(misspelled_instances))))
-
-        paasta_print(PaastaColors.red(message))
-
-        if suggestions:
-            paasta_print("Did you mean any of these?")
-            for instance in sorted(suggestions):
-                paasta_print("  %s" % instance)
-
-    return unverified_instances
 
 
 def get_filters(args):
