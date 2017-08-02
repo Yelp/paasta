@@ -216,7 +216,8 @@ class TestGenerateHostname(object):
 
         hostname = docker_wrapper.generate_hostname(
             'reallllllllllllllylooooooooooooooong',
-            'reallyreallylongid012345--abc')
+            'reallyreallylongid012345--abc',
+        )
         assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongid012345'
         assert len(hostname) == 61
 
