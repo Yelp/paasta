@@ -172,6 +172,7 @@ instance MAY have:
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
+    * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
 
     Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
     See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
