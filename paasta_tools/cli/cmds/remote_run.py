@@ -198,6 +198,7 @@ def paasta_remote_run(args):
         'run_id': None,
         'framework_id': None,
         'instances': None,
+        'instance': None,
     }
     for key in args_vars:
         # skip args we don't know about
