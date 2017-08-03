@@ -15,13 +15,13 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import threading
+from typing import List
 
 import mock
 from behave import given
 from behave import then
 from behave import when
 from six.moves import BaseHTTPServer
-from typing import List
 
 from paasta_tools import drain_lib
 from paasta_tools.utils import paasta_print

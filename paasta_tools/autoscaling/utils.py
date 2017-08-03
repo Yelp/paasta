@@ -15,10 +15,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from collections import defaultdict
 from typing import Callable
 from typing import Dict
-
-from collections import defaultdict
 
 
 _autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)

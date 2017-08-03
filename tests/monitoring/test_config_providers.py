@@ -35,10 +35,10 @@ def test_extract_classic_monitoring_info():
             "extra": "testing",
             "this_is_extra": "so extra",
             "also_extra": "moar extra",
-        }
+        },
     }
 
-    extra_keys = set(["this_is_extra", "also_extra"])
+    extra_keys = {"this_is_extra", "also_extra"}
     monitoring_keys = set(test_dict['monitoring'].keys()) - extra_keys
 
     extracted = extract_classic_monitoring_info(test_dict)

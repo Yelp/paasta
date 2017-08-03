@@ -5,16 +5,16 @@ import json
 import os
 import socket
 import time
+from typing import List  # noqa
+from typing import Tuple  # noqa
 
 import mock
 import yaml
 from behave import given
 from behave import then
 from behave import when
-from requests import HTTPError
-
 from itest_utils import clear_mesos_tools_cache
-from typing import List, Tuple  # noqa
+from requests import HTTPError
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
