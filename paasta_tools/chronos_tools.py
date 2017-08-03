@@ -273,17 +273,18 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_calculated_constraints(self, system_paasta_config):
         constraints = self.get_constraints()
-        blacklist = self.get_deploy_blacklist(
-            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
-        )
-        whitelist = self.get_deploy_whitelist(
-            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
-        )
         if constraints is not None:
             return constraints
         else:
             constraints = self.get_extra_constraints()
-            constraints.extend(self.get_deploy_constraints(blacklist, whitelist))
+            constraints.extend(
+                self.get_deploy_constraints(
+                    blacklist=self.get_deploy_blacklist(),
+                    whitelist=self.get_deploy_whitelist(),
+                    system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
+                    system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
+                ),
+            )
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
         return [[str(val) for val in constraint] for constraint in constraints]

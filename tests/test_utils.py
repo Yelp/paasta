@@ -177,7 +177,7 @@ def test_load_system_paasta_config():
     ) as json_patch, mock.patch(
         'paasta_tools.utils.deep_merge_dictionaries', autospec=True, return_value=json_load_return_value,
     ) as mock_deep_merge:
-        actual = utils.load_system_paasta_config()
+        actual = utils.load_system_paasta_config(path='/some/fake/dir')
         assert actual == expected
         # Kinda weird but without this load_system_paasta_config() can (and
         # did! during development) return a plain dict without the test
@@ -244,7 +244,7 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b],
     ):
-        actual = utils.load_system_paasta_config()
+        actual = utils.load_system_paasta_config(path='/some/fake/dir')
         assert actual == expected
 
 
@@ -1223,7 +1223,7 @@ class TestInstanceConfig:
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == []
+        assert fake_conf.get_deploy_blacklist() == []
 
     def test_deploy_blacklist_reads_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
@@ -1234,7 +1234,7 @@ class TestInstanceConfig:
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
+        assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
         fake_conf = utils.InstanceConfig(

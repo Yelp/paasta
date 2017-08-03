@@ -263,6 +263,7 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             load_system_paasta_config_patch.return_value.get_volumes.return_value = []
+            load_system_paasta_config_patch.return_value.get_deploy_whitelist.return_value = None
             load_system_paasta_config_patch.return_value.get_dockercfg_location.return_value = \
                 'file:///root/.dockercfg'
             complete_config = chronos_tools.create_complete_config(
@@ -310,6 +311,7 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             load_system_paasta_config_patch.return_value.get_volumes.return_value = []
+            load_system_paasta_config_patch.return_value.get_deploy_whitelist.return_value = None
             load_system_paasta_config_patch.return_value.get_dockercfg_location.return_value = \
                 "file:///root/.dockercfg"
             complete_config = chronos_tools.create_complete_config(

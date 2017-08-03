@@ -1349,8 +1349,15 @@ class TestChronosTools:
         fake_owner = 'test_team'
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=self.fake_chronos_job_config,
@@ -1404,8 +1411,15 @@ class TestChronosTools:
         fake_owner = 'test_team'
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=self.fake_dependent_chronos_job_config,
@@ -1425,8 +1439,15 @@ class TestChronosTools:
 
     def test_create_complete_config_considers_disabled(self):
         fake_owner = 'test_team'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
         ), mock.patch(
@@ -1469,8 +1490,15 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,
@@ -1534,8 +1562,15 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,
@@ -1615,8 +1650,15 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
+        fake_system_paasta_config = SystemPaastaConfig(
+            {
+                "cluster": "cluster",
+            },
+            '/some/path',
+        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
+            return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,

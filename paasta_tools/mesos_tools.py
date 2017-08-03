@@ -32,6 +32,8 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools.mesos.cfg import Config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
+from paasta_tools.utils import DeployBlacklist
+from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
@@ -538,7 +540,7 @@ def get_number_of_mesos_masters(host, path):
     return len(result)
 
 
-def get_all_slaves_for_blacklist_whitelist(blacklist, whitelist):
+def get_all_slaves_for_blacklist_whitelist(blacklist: DeployBlacklist, whitelist: DeployWhitelist):
     """
     A wrapper function to get all slaves and filter according to
     provided blacklist and whitelist.
@@ -575,7 +577,7 @@ def get_slaves():
     return get_mesos_master().fetch("/master/slaves").json()['slaves']
 
 
-def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
+def filter_mesos_slaves_by_blacklist(slaves, blacklist: DeployBlacklist, whitelist: DeployWhitelist):
     """Takes an input list of slaves and filters them based on the given blacklist.
     The blacklist is in the form of:
 
@@ -592,7 +594,7 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
     return filtered_slaves
 
 
-def slave_passes_blacklist(slave, blacklist):
+def slave_passes_blacklist(slave, blacklist: DeployBlacklist) -> bool:
     """
     :param slave: A single mesos slave with attributes
     :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
@@ -610,14 +612,14 @@ def slave_passes_blacklist(slave, blacklist):
     return True
 
 
-def slave_passes_whitelist(slave, whitelist):
+def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
     """
     :param slave: A single mesos slave with attributes.
     :param whitelist: A list of lists like ["location_type", ["location1", 'location2']]
     :returns: boolean, True if the slave gets past the whitelist
     """
     # No whitelist, so disable whitelisting behaviour.
-    if len(whitelist) == 0:
+    if whitelist is None:
         return True
     try:
         attributes = slave["attributes"]

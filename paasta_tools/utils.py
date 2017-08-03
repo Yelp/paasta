@@ -41,6 +41,13 @@ from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
+from typing import Any
+from typing import Dict
+from typing import Iterable
+from typing import List  # noqa
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 import choice
 import dateutil.tz
@@ -51,6 +58,7 @@ import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
+from mypy_extensions import TypedDict
 
 import paasta_tools.cli.fsm
 
@@ -86,9 +94,18 @@ log.addHandler(logging.NullHandler())
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
 
+TimeCacheEntry = TypedDict(
+    'TimeCacheEntry',
+    {
+        'data': Any,
+        'fetch_time': float,
+    },
+)
+
+
 class time_cache:
     def __init__(self, ttl=0):
-        self.configs = {}
+        self.configs: Dict[List, TimeCacheEntry] = {}
         self.ttl = ttl
 
     def __call__(self, f):
@@ -117,9 +134,61 @@ class InvalidInstanceConfig(Exception):
     pass
 
 
+DeployBlacklist = List[Tuple[str, str]]
+DeployWhitelist = Optional[Tuple[str, List[str]]]
+
+InstanceConfigDict = TypedDict(
+    'InstanceConfigDict',
+    {
+        'deploy_group': str,
+        'mem': float,
+        'cpus': float,
+        'disk': float,
+        'cmd': str,
+        'args': List[str],
+        'cfs_period_us': float,
+        'cpu_burst_pct': float,
+        'shm_size': str,
+        'ulimit': Dict[str, Dict[str, Any]],
+        'cap_add': List,
+        'env': Dict[str, str],
+        'monitoring': Dict[str, str],
+        'deploy_blacklist': DeployBlacklist,
+        'deploy_whitelist': DeployWhitelist,
+        'monitoring_blacklist': DeployBlacklist,
+    },
+    total=False,
+)
+
+
+BranchDict = TypedDict(
+    'BranchDict',
+    {
+        'docker_image': str,
+        'desired_state': str,
+        'force_bounce': Optional[str],
+    },
+)
+
+
+DockerParameter = TypedDict(
+    'DockerParameter',
+    {
+        'key': str,
+        'value': str,
+    },
+)
+
+
+Constraint = Sequence[str]
+
+
 class InstanceConfig(object):
 
-    def __init__(self, cluster, instance, service, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(
+        self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
+        branch_dict: BranchDict, soa_dir=DEFAULT_SOA_DIR,
+    ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
         self.cluster = cluster
@@ -130,7 +199,7 @@ class InstanceConfig(object):
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
             if key in self.config_dict:
-                self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)
+                self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
     def __get_interpolation_facts(self):
         return {
@@ -139,13 +208,13 @@ class InstanceConfig(object):
             'service': self.service,
         }
 
-    def get_cluster(self):
+    def get_cluster(self) -> str:
         return self.cluster
 
-    def get_instance(self):
+    def get_instance(self) -> str:
         return self.instance
 
-    def get_service(self):
+    def get_service(self) -> str:
         return self.service
 
     def get_docker_registry(self):
@@ -154,10 +223,10 @@ class InstanceConfig(object):
     def get_branch(self):
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
 
-    def get_deploy_group(self):
+    def get_deploy_group(self) -> str:
         return self.config_dict.get('deploy_group', self.get_branch())
 
-    def get_mem(self):
+    def get_mem(self) -> float:
         """Gets the memory required from the service's configuration.
 
         Defaults to 1024 (1G) if no value specified in the config.
@@ -166,7 +235,7 @@ class InstanceConfig(object):
         mem = self.config_dict.get('mem', 1024)
         return mem
 
-    def get_mem_swap(self):
+    def get_mem_swap(self) -> str:
         """Gets the memory-swap value. This value is passed to the docker
         container to ensure that the total memory limit (memory + swap) is the
         same value as the 'mem' key in soa-configs. Note - this value *has* to
@@ -176,7 +245,7 @@ class InstanceConfig(object):
         mem_swap = int(math.ceil(mem))
         return "%sm" % mem_swap
 
-    def get_cpus(self):
+    def get_cpus(self) -> float:
         """Gets the number of cpus required from the service's configuration.
 
         Defaults to .25 (1/4 of a cpu) if no value specified in the config.
@@ -185,14 +254,14 @@ class InstanceConfig(object):
         cpus = self.config_dict.get('cpus', .25)
         return cpus
 
-    def get_cpu_period(self):
+    def get_cpu_period(self) -> float:
         """The --cpu-period option to be passed to docker
         Comes from the cfs_period_us configuration option
 
         :returns: The number to be passed to the --cpu-period docker flag"""
         return self.config_dict.get('cfs_period_us', DEFAULT_CPU_PERIOD)
 
-    def get_cpu_quota(self):
+    def get_cpu_quota(self) -> float:
         """Gets the --cpu-quota option to be passed to docker
         Calculated from the cpu_burst_pct configuration option, which is the percent
         over its declared cpu usage that a container will be allowed to go.
@@ -203,12 +272,12 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_shm_size(self):
+    def get_shm_size(self) -> str:
         """Get's the shm_size to pass to docker
         See --shm-size in the docker docs"""
         return self.config_dict.get('shm_size', None)
 
-    def get_ulimit(self):
+    def get_ulimit(self) -> Iterable[DockerParameter]:
         """Get the --ulimit options to be passed to docker
         Generated from the ulimit configuration option, which is a dictionary
         of ulimit values. Each value is a dictionary itself, with the soft
@@ -230,7 +299,7 @@ class InstanceConfig(object):
                 combined_val += ':%i' % hard
             yield {"key": "ulimit", "value": "{}={}".format(key, combined_val)}
 
-    def get_cap_add(self):
+    def get_cap_add(self) -> Iterable[DockerParameter]:
         """Get the --cap-add options to be passed to docker
         Generated from the cap_add configuration option, which is a list of
         capabilities.
@@ -241,14 +310,14 @@ class InstanceConfig(object):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self, with_labels=True):
+    def format_docker_parameters(self, with_labels=True) -> Iterable[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
 
         :param with_labels: Whether to build docker parameters with or without labels
         :returns: A list of parameters to be added to docker run"""
-        parameters = [
+        parameters: List[DockerParameter] = [
             {"key": "memory-swap", "value": self.get_mem_swap()},
             {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
             {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
@@ -267,7 +336,7 @@ class InstanceConfig(object):
         parameters.extend(self.get_cap_add())
         return parameters
 
-    def get_disk(self, default=1024):
+    def get_disk(self, default=1024) -> float:
         """Gets the  amount of disk space required from the service's configuration.
 
         Defaults to 1024 (1G) if no value is specified in the config.
@@ -276,7 +345,7 @@ class InstanceConfig(object):
         disk = self.config_dict.get('disk', default)
         return disk
 
-    def get_cmd(self):
+    def get_cmd(self) -> Optional[str]:
         """Get the docker cmd specified in the service's configuration.
 
         Defaults to None if not specified in the config.
@@ -284,7 +353,7 @@ class InstanceConfig(object):
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
 
-    def get_env_dictionary(self):
+    def get_env_dictionary(self) -> Dict[str, str]:
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
         env = {
@@ -297,13 +366,13 @@ class InstanceConfig(object):
         env.update(user_env)
         return env
 
-    def get_env(self):
+    def get_env(self) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
         might need to override this getter for more implementation-specific
         env getting"""
         return self.get_env_dictionary()
 
-    def get_args(self):
+    def get_args(self) -> Optional[List[str]]:
         """Get the docker args specified in the service's configuration.
 
         If not specified in the config and if cmd is not specified, defaults to an empty array.
@@ -324,42 +393,45 @@ class InstanceConfig(object):
                 # TODO validation stuff like this should be moved into a check_* like in chronos tools
                 raise InvalidInstanceConfig('Instance configuration can specify cmd or args, but not both.')
 
-    def get_monitoring(self):
+    def get_monitoring(self) -> Dict[str, Any]:
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
-    def get_deploy_constraints(self, blacklist, whitelist):
+    def get_deploy_constraints(
+        self,
+        blacklist: DeployBlacklist,
+        whitelist: DeployWhitelist,
+        system_deploy_blacklist: DeployBlacklist,
+        system_deploy_whitelist: DeployWhitelist,
+    ) -> List[Constraint]:
         """Return the combination of deploy_blacklist and deploy_whitelist
         as a list of constraints.
         """
         return (
             deploy_blacklist_to_constraints(blacklist) +
-            deploy_whitelist_to_constraints(whitelist)
+            deploy_whitelist_to_constraints(whitelist) +
+            deploy_blacklist_to_constraints(system_deploy_blacklist) +
+            deploy_whitelist_to_constraints(system_deploy_whitelist)
         )
 
-    def get_deploy_blacklist(self, system_deploy_blacklist):
+    def get_deploy_blacklist(self) -> DeployBlacklist:
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return (
-            self.config_dict.get('deploy_blacklist', []) +
-            system_deploy_blacklist
-        )
+        return self.config_dict.get('deploy_blacklist', [])
 
-    def get_deploy_whitelist(self, system_deploy_whitelist):
-        """The deploy whitelist is a list of lists, where the lists indicate
-        which locations are explicitly allowed.  The blacklist will supersede
-        this if a host matches both the white and blacklists."""
-        return (
-            self.config_dict.get('deploy_whitelist', []) +
-            system_deploy_whitelist
-        )
+    def get_deploy_whitelist(self) -> DeployWhitelist:
+        """The deploy whitelist is a tuple of (location_type, [allowed value, allowed value, ...]).
+        To have tasks scheduled on it, a host must be covered by the deploy whitelist (if present) and not excluded by
+        the deploy blacklist."""
+        return self.config_dict.get('deploy_whitelist', None)
 
-    def get_monitoring_blacklist(self, system_deploy_blacklist):
-        """The monitoring_blacklist is a list of tuples, where the tuples indicate
+    def get_monitoring_blacklist(self, system_deploy_blacklist: DeployBlacklist) -> DeployBlacklist:
+        """The monitoring_blacklist is a list of tuples of (location type, location value), where the tuples indicate
         which locations the user doesn't care to be monitored"""
         return (
             self.config_dict.get('monitoring_blacklist', []) +
-            self.get_deploy_blacklist(system_deploy_blacklist)
+            self.get_deploy_blacklist() +
+            system_deploy_blacklist
         )
 
     def get_docker_image(self):
@@ -793,6 +865,23 @@ class NoSuchLogLevel(Exception):
     pass
 
 
+LogWriterConfig = TypedDict(
+    'LogWriterConfig',
+    {
+        'driver': str,
+        'options': Dict,
+    },
+)
+
+LogReaderConfig = TypedDict(
+    'LogReaderConfig',
+    {
+        'driver': str,
+        'options': Dict,
+    },
+)
+
+
 # The active log writer.
 _log_writer = None
 # The map of name -> LogWriter subclasses, used by configure_log.
@@ -1037,20 +1126,119 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     return SystemPaastaConfig(config, path)
 
 
-class SystemPaastaConfig(dict):
+DockerVolume = TypedDict(
+    'DockerVolume',
+    {
+        'hostPath': str,
+        'containerPath': str,
+        'mode': str,
+    },
+)
+ClusterAutoscalingResources = Dict[str, Dict]
 
-    def __init__(self, config, directory):
+ResourcePoolSettings = Dict[str, Dict]
+
+ChronosConfig = TypedDict(
+    'ChronosConfig',
+    {
+        'user': str,
+        'password': str,
+        'url': List[str],
+    },
+    total=False,
+)
+MarathonConfig = TypedDict(
+    'MarathonConfig',
+    {
+        'user': str,
+        'password': str,
+        'url': List[str],
+    },
+    total=False,
+)
+LocalRunConfig = TypedDict(
+    'LocalRunConfig',
+    {
+        'default_cluster': str,
+    },
+    total=False,
+)
+PaastaNativeConfig = TypedDict(
+    'PaastaNativeConfig',
+    {
+        'principal': str,
+        'secret': str,
+    },
+    total=False,
+)
+
+ExpectedSlaveAttributes = List[Dict[str, Any]]
+
+
+SystemPaastaConfigDict = TypedDict(
+    'SystemPaastaConfigDict',
+    {
+        'zookeeper': str,
+        'docker_registry': str,
+        'volumes': List[DockerVolume],
+        'cluster': str,
+        'dashboard_links': Dict[str, Dict[str, str]],
+        'api_endpoints': Dict[str, str],
+        'fsm_template': str,
+        'log_reader': LogReaderConfig,
+        'log_writer': LogWriterConfig,
+        'deployd_metrics_provider': str,
+        'deployd_worker_failure_backoff_factor': int,
+        'deployd_maintenance_polling_frequency': int,
+        'sensu_host': str,
+        'sensu_port': int,
+        'dockercfg_location': str,
+        'synapse_port': int,
+        'synapse_host': str,
+        'synapse_haproxy_url_format': str,
+        'cluster_autoscaling_resources': ClusterAutoscalingResources,
+        'resource_pool_settings': ResourcePoolSettings,
+        'cluster_fqdn_format': str,
+        'chronos_config': ChronosConfig,
+        'marathon_config': MarathonConfig,
+        'local_run_config': LocalRunConfig,
+        'paasta_native': PaastaNativeConfig,
+        'mesos_config': Dict,
+        'deploy_blacklist': DeployBlacklist,
+        'deploy_whitelist': DeployWhitelist,
+        'expected_slave_attributes': ExpectedSlaveAttributes,
+        'security_check_command': str,
+        'deployd_number_workers': int,
+        'deployd_big_bounce_rate': int,
+        'deployd_startup_bounce_rate': int,
+        'deployd_log_level': str,
+    },
+    total=False,
+)
+
+
+class SystemPaastaConfig(object):
+
+    def __init__(self, config: SystemPaastaConfigDict, directory: str) -> None:
         self.directory = directory
-        super(SystemPaastaConfig, self).__init__(config)
+        self.config_dict = config
 
-    def get_zk_hosts(self):
+    def __eq__(self, other):
+        if isinstance(other, SystemPaastaConfig):
+            return self.directory == other.directory and self.config_dict == other.config_dict
+        return False
+
+    def __repr__(self):
+        return "SystemPaastaConfig(%r, %r)" % (self.config_dict, self.directory)
+
+    def get_zk_hosts(self) -> str:
         """Get the zk_hosts defined in this hosts's cluster config file.
         Strips off the zk:// prefix, if it exists, for use with Kazoo.
 
         :returns: The zk_hosts specified in the paasta configuration
         """
         try:
-            hosts = self['zookeeper']
+            hosts = self.config_dict['zookeeper']
         except KeyError:
             raise PaastaNotConfiguredError(
                 'Could not find zookeeper connection string in configuration directory: %s'
@@ -1062,230 +1250,230 @@ class SystemPaastaConfig(dict):
             return hosts[len('zk://'):]
         return hosts
 
-    def get_system_docker_registry(self):
+    def get_system_docker_registry(self) -> str:
         """Get the docker_registry defined in this host's cluster config file.
 
         :returns: The docker_registry specified in the paasta configuration
         """
         try:
-            return self['docker_registry']
+            return self.config_dict['docker_registry']
         except KeyError:
             raise PaastaNotConfiguredError(
                 'Could not find docker registry in configuration directory: %s'
                 % self.directory,
             )
 
-    def get_volumes(self):
+    def get_volumes(self) -> List[DockerVolume]:
         """Get the volumes defined in this host's volumes config file.
 
         :returns: The list of volumes specified in the paasta configuration
         """
         try:
-            return self['volumes']
+            return self.config_dict['volumes']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
 
-    def get_cluster(self):
+    def get_cluster(self) -> str:
         """Get the cluster defined in this host's cluster config file.
 
         :returns: The name of the cluster defined in the paasta configuration
         """
         try:
-            return self['cluster']
+            return self.config_dict['cluster']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
-    def get_dashboard_links(self):
-        return self['dashboard_links']
+    def get_dashboard_links(self) -> Dict[str, Dict[str, str]]:
+        return self.config_dict['dashboard_links']
 
-    def get_api_endpoints(self):
-        return self['api_endpoints']
+    def get_api_endpoints(self) -> Dict[str, str]:
+        return self.config_dict['api_endpoints']
 
-    def get_fsm_template(self):
+    def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
         template_path = os.path.join(fsm_path, "template")
-        return self.get('fsm_template', template_path)
+        return self.config_dict.get('fsm_template', template_path)
 
-    def get_log_writer(self):
+    def get_log_writer(self) -> LogWriterConfig:
         """Get the log_writer configuration out of global paasta config
 
         :returns: The log_writer dictionary.
         """
         try:
-            return self['log_writer']
+            return self.config_dict['log_writer']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_writer in configuration directory: %s' % self.directory)
 
-    def get_log_reader(self):
+    def get_log_reader(self) -> LogReaderConfig:
         """Get the log_reader configuration out of global paasta config
 
         :returns: the log_reader dictionary.
         """
         try:
-            return self['log_reader']
+            return self.config_dict['log_reader']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
 
-    def get_deployd_metrics_provider(self):
+    def get_deployd_metrics_provider(self) -> str:
         """Get the metrics_provider configuration out of global paasta config
 
         :returns: A string identifying the metrics_provider
         """
-        return self.get('deployd_metrics_provider')
+        return self.config_dict.get('deployd_metrics_provider')
 
-    def get_deployd_worker_failure_backoff_factor(self):
+    def get_deployd_worker_failure_backoff_factor(self) -> int:
         """Get the factor for calculating exponential backoff when a deployd worker
         fails to bounce a service
 
         :returns: An integer
         """
-        return self.get('deployd_worker_failure_backoff_factor', 30)
+        return self.config_dict.get('deployd_worker_failure_backoff_factor', 30)
 
-    def get_deployd_maintenance_polling_frequency(self):
+    def get_deployd_maintenance_polling_frequency(self) -> int:
         """Get the frequency in seconds that the deployd maintenance watcher should
         poll mesos's api for new draining hosts
 
         :returns: An integer
         """
-        return self.get('deployd_maintenance_polling_frequency', 30)
+        return self.config_dict.get('deployd_maintenance_polling_frequency', 30)
 
-    def get_sensu_host(self):
+    def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.
 
         :returns: the sensu_host string, or localhost if not specified.
         """
-        return self.get('sensu_host', 'localhost')
+        return self.config_dict.get('sensu_host', 'localhost')
 
-    def get_sensu_port(self):
+    def get_sensu_port(self) -> int:
         """Get the port that we should send sensu events to.
 
         :returns: the sensu_port value as an integer, or 3030 if not specified.
         """
-        return int(self.get('sensu_port', 3030))
+        return int(self.config_dict.get('sensu_port', 3030))
 
-    def get_dockercfg_location(self):
+    def get_dockercfg_location(self) -> str:
         """Get the location of the dockerfile, as a URI.
 
         :returns: the URI specified, or file:///root/.dockercfg if not specified.
         """
-        return self.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
+        return self.config_dict.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
 
-    def get_synapse_port(self):
+    def get_synapse_port(self) -> int:
         """Get the port that haproxy-synapse exposes its status on. Defaults to 3212.
 
         :returns: the haproxy-synapse status port."""
-        return int(self.get('synapse_port', 3212))
+        return int(self.config_dict.get('synapse_port', 3212))
 
-    def get_default_synapse_host(self):
+    def get_default_synapse_host(self) -> str:
         """Get the default host we should interrogate for haproxy-synapse state.
 
         :returns: A hostname that is running haproxy-synapse."""
-        return self.get('synapse_host', 'localhost')
+        return self.config_dict.get('synapse_host', 'localhost')
 
-    def get_synapse_haproxy_url_format(self):
+    def get_synapse_haproxy_url_format(self) -> str:
         """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
         arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
 
         :returns: A format string for constructing the URL of haproxy-synapse's status page."""
-        return self.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
+        return self.config_dict.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
 
-    def get_cluster_autoscaling_resources(self):
-        return self.get('cluster_autoscaling_resources', {})
+    def get_cluster_autoscaling_resources(self) -> ClusterAutoscalingResources:
+        return self.config_dict.get('cluster_autoscaling_resources', {})
 
-    def get_resource_pool_settings(self):
-        return self.get('resource_pool_settings', {})
+    def get_resource_pool_settings(self) -> ResourcePoolSettings:
+        return self.config_dict.get('resource_pool_settings', {})
 
-    def get_cluster_fqdn_format(self):
+    def get_cluster_fqdn_format(self) -> str:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
 
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
-        return self.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
+        return self.config_dict.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
 
-    def get_chronos_config(self):
+    def get_chronos_config(self) -> ChronosConfig:
         """Get the chronos config
 
         :returns: The chronos config dictionary"""
-        return self.get('chronos_config', {})
+        return self.config_dict.get('chronos_config', {})
 
-    def get_marathon_config(self):
+    def get_marathon_config(self) -> MarathonConfig:
         """Get the marathon config
 
         :returns: The marathon config dictionary"""
-        return self.get('marathon_config', {})
+        return self.config_dict.get('marathon_config', {})
 
-    def get_local_run_config(self):
+    def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
 
         :returns: The local-run job config dictionary"""
-        return self.get('local_run_config', {})
+        return self.config_dict.get('local_run_config', {})
 
-    def get_paasta_native_config(self):
-        return self.get('paasta_native', {})
+    def get_paasta_native_config(self) -> PaastaNativeConfig:
+        return self.config_dict.get('paasta_native', {})
 
-    def get_mesos_cli_config(self):
+    def get_mesos_cli_config(self) -> Dict:
         """Get the config for mesos-cli
 
         :returns: The mesos cli config
         """
-        return self.get("mesos_config", {})
+        return self.config_dict.get("mesos_config", {})
 
-    def get_deploy_blacklist(self):
+    def get_deploy_blacklist(self) -> DeployBlacklist:
         """Get global blacklist. This applies to all services
         in the cluster
 
         :returns: The blacklist
         """
-        return self.get("deploy_blacklist", [])
+        return self.config_dict.get("deploy_blacklist", [])
 
-    def get_deploy_whitelist(self):
+    def get_deploy_whitelist(self) -> DeployWhitelist:
         """Get global whitelist. This applies to all services
         in the cluster
 
         :returns: The whitelist
         """
-        return self.get("deploy_whitelist", [])
+        return self.config_dict.get("deploy_whitelist", None)
 
-    def get_expected_slave_attributes(self):
+    def get_expected_slave_attributes(self) -> ExpectedSlaveAttributes:
         """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
         calculating the default routing constraints."""
-        return self.get('expected_slave_attributes')
+        return self.config_dict.get('expected_slave_attributes')
 
-    def get_security_check_command(self):
+    def get_security_check_command(self) -> Optional[str]:
         """Get the script to be executed during the security-check build step
 
         :return: The name of the file
         """
-        return self.get("security_check_command", None)
+        return self.config_dict.get("security_check_command", None)
 
-    def get_deployd_number_workers(self):
+    def get_deployd_number_workers(self) -> int:
         """Get the number of workers to consume deployment q
 
         :return: integer
         """
-        return self.get("deployd_number_workers", 4)
+        return self.config_dict.get("deployd_number_workers", 4)
 
-    def get_deployd_big_bounce_rate(self):
+    def get_deployd_big_bounce_rate(self) -> int:
         """Get the number of deploys to do per minute when deployd starts
         or determines it needs to bounce all services
 
         :return: integer
         """
-        return self.get("deployd_big_bounce_rate", 2)
+        return self.config_dict.get("deployd_big_bounce_rate", 2)
 
-    def get_deployd_startup_bounce_rate(self):
+    def get_deployd_startup_bounce_rate(self) -> int:
         """Get the number of deploys to do per minute when deployd starts
 
         :return: integer
         """
-        return self.get("deployd_startup_bounce_rate", 5)
+        return self.config_dict.get("deployd_startup_bounce_rate", 5)
 
-    def get_deployd_log_level(self):
+    def get_deployd_log_level(self) -> str:
         """Get the log level for paasta-deployd
 
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
-        return self.get("deployd_log_level", 'INFO')
+        return self.config_dict.get("deployd_log_level", 'INFO')
 
 
 def _run(
@@ -1840,7 +2028,7 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
         return (False, ratio)
 
 
-def deploy_blacklist_to_constraints(deploy_blacklist):
+def deploy_blacklist_to_constraints(deploy_blacklist: DeployBlacklist) -> List[Constraint]:
     """Converts a blacklist of locations into marathon appropriate constraints.
 
     https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
@@ -1849,14 +2037,14 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
     """
-    constraints = []
+    constraints: List[Constraint] = []
     for blacklisted_location in deploy_blacklist:
         constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
 
     return constraints
 
 
-def deploy_whitelist_to_constraints(deploy_whitelist):
+def deploy_whitelist_to_constraints(deploy_whitelist: DeployWhitelist) -> List[Constraint]:
     """Converts a whitelist of locations into marathon appropriate constraints
 
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
@@ -1865,7 +2053,7 @@ def deploy_whitelist_to_constraints(deploy_whitelist):
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
     """
-    if len(deploy_whitelist) > 0:
+    if deploy_whitelist is not None:
         (region_type, regions) = deploy_whitelist
         regionstr = '|'.join(regions)
 
