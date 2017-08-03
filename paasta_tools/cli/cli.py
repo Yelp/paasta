@@ -115,11 +115,11 @@ def main(argv=None):
     logging.basicConfig()
     try:
         args, parser = parse_args(argv)
-        if args.command is None:
+        if hasattr(args, 'command'):
+            return_code = args.command(args)
+        else:
             parser.print_help()
             return_code = 0
-        else:
-            return_code = args.command(args)
     except KeyboardInterrupt:
         return_code = 1
     sys.exit(return_code)
