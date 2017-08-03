@@ -517,7 +517,7 @@ def test_ensure_dns_chain(tmpdir):
     path = tmpdir.join('resolv.conf')
     path.write(
         'nameserver 8.8.8.8\n'
-        'nameserver 8.8.4.4\n',
+        'nameserver 169.229.226.22\n',
     )
     with mock.patch.object(
         iptables, 'ensure_chain', autospec=True,
@@ -530,7 +530,7 @@ def test_ensure_dns_chain(tmpdir):
     assert args[0] == 'PAASTA-DNS'
     assert args[1] == (
         EMPTY_RULE._replace(
-            dst='8.8.8.8/255.255.255.255',
+            dst='169.229.226.22/255.255.255.255',
             target='ACCEPT',
             protocol='udp',
             matches=(
@@ -538,7 +538,25 @@ def test_ensure_dns_chain(tmpdir):
             ),
         ),
         EMPTY_RULE._replace(
-            dst='8.8.8.8/255.255.255.255',
+            dst='169.229.226.22/255.255.255.255',
+            target='ACCEPT',
+            protocol='tcp',
+            matches=(
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        # 8.8.4.4 wasn't included in the resolv.conf, but Docker inserts it as
+        # a default nameserver, so we always whitelist it.
+        EMPTY_RULE._replace(
+            dst='8.8.4.4/255.255.255.255',
+            target='ACCEPT',
+            protocol='udp',
+            matches=(
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            dst='8.8.4.4/255.255.255.255',
             target='ACCEPT',
             protocol='tcp',
             matches=(
@@ -546,7 +564,7 @@ def test_ensure_dns_chain(tmpdir):
             ),
         ),
         EMPTY_RULE._replace(
-            dst='8.8.4.4/255.255.255.255',
+            dst='8.8.8.8/255.255.255.255',
             target='ACCEPT',
             protocol='udp',
             matches=(
@@ -554,7 +572,7 @@ def test_ensure_dns_chain(tmpdir):
             ),
         ),
         EMPTY_RULE._replace(
-            dst='8.8.4.4/255.255.255.255',
+            dst='8.8.8.8/255.255.255.255',
             target='ACCEPT',
             protocol='tcp',
             matches=(

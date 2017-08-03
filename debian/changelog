@@ -1,3 +1,34 @@
+paasta-tools (0.66.19) xenial; urgency=medium
+
+  * 0.66.19 tagged with 'make release'
+    Commit: precommit fix
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:39:59 -0400
+
+paasta-tools (0.66.18) xenial; urgency=medium
+
+  * 0.66.18 tagged with 'make release'
+    Commit: Merge pull request #1423 from bchess/rstrip_hostname_dashes
+    strip trailing hostname dashes
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:31:22 -0400
+
+paasta-tools (0.66.17) xenial; urgency=medium
+
+  * 0.66.17 tagged with 'make release'
+    Commit: Merge pull request #1419 from Yelp/add-drain-timeouts  Add a
+    sane timeout when talking to hacheck
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 02 Aug 2017 06:56:30 -0700
+
+paasta-tools (0.66.16) xenial; urgency=medium
+
+  * 0.66.16 tagged with 'make release'
+    Commit: Merge pull request #1417 from chriskuehl/whitelist-google-
+    public-dns  Always whitelist Google Public DNS
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 01 Aug 2017 18:31:00 -0700
+
 paasta-tools (0.66.15) xenial; urgency=medium
 
   * 0.66.15 tagged with 'make release'

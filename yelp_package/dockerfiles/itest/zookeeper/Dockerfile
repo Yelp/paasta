@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:trusty
+FROM ubuntu:xenial
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update > /dev/null && apt-get -y install zookeeper > /dev/null
+RUN apt-get update > /dev/null && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+         zookeeper > /dev/null && \
+    apt-get clean
 
 EXPOSE 2181
-CMD /usr/share/zookeeper/bin/zkServer.sh start-foreground
+CMD ["/usr/share/zookeeper/bin/zkServer.sh", "start-foreground"]

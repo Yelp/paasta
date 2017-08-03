@@ -329,8 +329,10 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
 
     monkey.patch_socket()
     gevent_pool = pool.Pool(20)
-    jobs = [gevent_pool.spawn(get_http_utilization_for_a_task, task, service, endpoint, json_mapper)
-            for task in marathon_tasks]
+    jobs = [
+        gevent_pool.spawn(get_http_utilization_for_a_task, task, service, endpoint, json_mapper)
+        for task in marathon_tasks
+    ]
     gevent.joinall(jobs)
 
     for job in jobs:

@@ -567,10 +567,12 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
         slaves,
         key=lambda slave: slave['attributes'].get(attribute),
     )
-    return {key: list(group) for key, group in itertools.groupby(
-        sorted_slaves,
-        key=lambda slave: slave['attributes'].get(attribute),
-    ) if key}
+    return {
+        key: list(group) for key, group in itertools.groupby(
+            sorted_slaves,
+            key=lambda slave: slave['attributes'].get(attribute),
+        ) if key
+    }
 
 
 def get_slaves():
@@ -703,8 +705,10 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
         slaves = slaves_list
     elif pool:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
-                  if slave_counts['slave']['attributes'].get('pool', 'default') == pool]
+        slaves = [
+            {'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
+            if slave_counts['slave']['attributes'].get('pool', 'default') == pool
+        ]
     else:
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
     for slave in slaves:

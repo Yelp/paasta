@@ -20,11 +20,12 @@ interface with a different provider.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-
-from typing import Dict, Any, Union
-from mypy_extensions import TypedDict
-
 import copy
+from typing import Any
+from typing import Dict
+from typing import Union
+
+from mypy_extensions import TypedDict
 
 
 MonitoringInfo = TypedDict(
