@@ -83,7 +83,7 @@ def new_paasta_native_config(context, num):
 def start_paasta_native_framework(context, scheduler, reconcile_backoff, framework_name):
     clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
-    system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
+    system_paasta_config.config_dict['docker_registry'] = 'docker.io'  # so busybox runs.
 
     if scheduler == 'paasta_native':
         scheduler_class = NativeScheduler
