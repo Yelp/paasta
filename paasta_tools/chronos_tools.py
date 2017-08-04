@@ -34,6 +34,7 @@ from six import iterkeys
 from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
+from paasta_tools.config import InstanceConfig
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.tron import tron_command_context
@@ -43,7 +44,6 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
