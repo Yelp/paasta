@@ -811,7 +811,12 @@ def get_classic_service_information_for_nerve(name, soa_dir):
 def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_dir):
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
-    nerve_dict['port'] = service_configuration_lib.read_port(port_file)
+    # If the namespace defines a port, prefer that, otherwise use the
+    # service wide port file.
+    nerve_dict['port'] = (
+        nerve_dict.get('port', None) or
+        service_configuration_lib.read_port(port_file)
+    )
     nerve_name = compose_job_id(name, namespace)
     return (nerve_name, nerve_dict)
 
