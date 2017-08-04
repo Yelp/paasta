@@ -25,6 +25,7 @@ import mock
 import pytest
 from pytest import raises
 
+from paasta_tools import config
 from paasta_tools import utils
 
 
@@ -827,7 +828,7 @@ class TestInstanceConfig:
 
     def test_get_monitoring(self):
         fake_info = 'fake_info'
-        assert utils.InstanceConfig(
+        assert config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -836,7 +837,7 @@ class TestInstanceConfig:
         ).get_monitoring() == fake_info
 
     def test_get_cpus_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -846,7 +847,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cpus() == -5
 
     def test_get_cpus_in_config_float(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -856,7 +857,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cpus() == .66
 
     def test_get_cpus_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -866,7 +867,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cpus() == .25
 
     def test_get_mem_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -876,7 +877,7 @@ class TestInstanceConfig:
         assert fake_conf.get_mem() == -999
 
     def test_get_mem_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -886,7 +887,7 @@ class TestInstanceConfig:
         assert fake_conf.get_mem() == 1024
 
     def test_zero_cpu_burst(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='fake_name',
             cluster='',
             instance='fake_instance',
@@ -896,7 +897,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cpu_quota() == 100000
 
     def test_format_docker_parameters_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='fake_name',
             cluster='',
             instance='fake_instance',
@@ -915,7 +916,7 @@ class TestInstanceConfig:
         ]
 
     def test_format_docker_parameters_non_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='fake_name',
             cluster='',
             instance='fake_instance',
@@ -945,7 +946,7 @@ class TestInstanceConfig:
         ]
 
     def test_full_cpu_burst(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='fake_name',
             cluster='',
             instance='fake_instance',
@@ -955,7 +956,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cpu_quota() == 200000
 
     def test_get_mem_swap_int(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -967,7 +968,7 @@ class TestInstanceConfig:
         assert fake_conf.get_mem_swap() == "50m"
 
     def test_get_mem_swap_float_rounds_up(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -979,7 +980,7 @@ class TestInstanceConfig:
         assert fake_conf.get_mem_swap() == "51m"
 
     def test_get_disk_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -989,7 +990,7 @@ class TestInstanceConfig:
         assert fake_conf.get_disk() == -999
 
     def test_get_disk_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -999,7 +1000,7 @@ class TestInstanceConfig:
         assert fake_conf.get_disk() == 1024
 
     def test_get_ulimit_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -1017,7 +1018,7 @@ class TestInstanceConfig:
         ]
 
     def test_get_ulimit_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -1027,7 +1028,7 @@ class TestInstanceConfig:
         assert list(fake_conf.get_ulimit()) == []
 
     def test_get_cap_add_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -1042,7 +1043,7 @@ class TestInstanceConfig:
         ]
 
     def test_get_cap_add_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -1052,7 +1053,7 @@ class TestInstanceConfig:
         assert list(fake_conf.get_cap_add()) == []
 
     def test_deploy_group_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='fake_instance',
             cluster='fake_cluster',
@@ -1062,7 +1063,7 @@ class TestInstanceConfig:
         assert fake_conf.get_deploy_group() == 'fake_cluster.fake_instance'
 
     def test_deploy_group_if_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='',
@@ -1072,7 +1073,7 @@ class TestInstanceConfig:
         assert fake_conf.get_deploy_group() == 'fake_deploy_group'
 
     def test_deploy_group_string_interpolation(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             instance='',
             cluster='fake_cluster',
@@ -1082,7 +1083,7 @@ class TestInstanceConfig:
         assert fake_conf.get_deploy_group() == 'cluster_is_fake_cluster'
 
     def test_get_cmd_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1092,7 +1093,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cmd() is None
 
     def test_get_cmd_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1102,7 +1103,7 @@ class TestInstanceConfig:
         assert fake_conf.get_cmd() == 'FAKECMD'
 
     def test_get_env_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='fake_service',
             cluster='fake_cluster',
             instance='fake_instance',
@@ -1118,7 +1119,7 @@ class TestInstanceConfig:
         }
 
     def test_get_env_with_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1135,7 +1136,7 @@ class TestInstanceConfig:
         }
 
     def test_get_args_default_no_cmd(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1145,7 +1146,7 @@ class TestInstanceConfig:
         assert fake_conf.get_args() == []
 
     def test_get_args_default_with_cmd(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1155,7 +1156,7 @@ class TestInstanceConfig:
         assert fake_conf.get_args() is None
 
     def test_get_args_in_config(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1165,7 +1166,7 @@ class TestInstanceConfig:
         assert fake_conf.get_args() == ['arg1', 'arg2']
 
     def test_get_args_in_config_with_cmd(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1173,11 +1174,11 @@ class TestInstanceConfig:
             branch_dict={},
         )
         fake_conf.get_cmd()
-        with raises(utils.InvalidInstanceConfig):
+        with raises(config.InvalidInstanceConfig):
             fake_conf.get_args()
 
     def test_get_force_bounce(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1187,7 +1188,7 @@ class TestInstanceConfig:
         assert fake_conf.get_force_bounce() == 'blurp'
 
     def test_get_desired_state(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1197,7 +1198,7 @@ class TestInstanceConfig:
         assert fake_conf.get_desired_state() == 'stop'
 
     def test_monitoring_blacklist_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1208,7 +1209,7 @@ class TestInstanceConfig:
 
     def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1218,7 +1219,7 @@ class TestInstanceConfig:
         assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
 
     def test_deploy_blacklist_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1229,7 +1230,7 @@ class TestInstanceConfig:
 
     def test_deploy_blacklist_reads_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1239,7 +1240,7 @@ class TestInstanceConfig:
         assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1256,7 +1257,7 @@ class TestInstanceConfig:
                 "mode": "RO",
             },
         ]
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1267,7 +1268,7 @@ class TestInstanceConfig:
 
     def test_get_pool(self):
         pool = "poolname"
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1277,7 +1278,7 @@ class TestInstanceConfig:
         assert fake_conf.get_pool() == pool
 
     def test_get_pool_default(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1287,7 +1288,7 @@ class TestInstanceConfig:
         assert fake_conf.get_pool() == 'default'
 
     def test_get_volumes_dedupes_correctly_when_mode_differs_last_wins(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1305,7 +1306,7 @@ class TestInstanceConfig:
         ]
 
     def test_get_volumes_dedupes_respects_hostpath(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1324,7 +1325,7 @@ class TestInstanceConfig:
         ]
 
     def test_get_volumes_handles_dupes_everywhere(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1350,7 +1351,7 @@ class TestInstanceConfig:
         ]
 
     def test_get_volumes_prefers_extra_volumes_over_system(self):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1372,7 +1373,7 @@ class TestInstanceConfig:
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"
 
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1381,10 +1382,10 @@ class TestInstanceConfig:
         )
 
         with mock.patch(
-            'paasta_tools.utils.InstanceConfig.get_docker_registry', autospec=True,
+            'paasta_tools.config.InstanceConfig.get_docker_registry', autospec=True,
             return_value=fake_registry,
         ), mock.patch(
-            'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
+            'paasta_tools.config.InstanceConfig.get_docker_image', autospec=True,
             return_value=fake_image,
         ):
             expected_url = "%s/%s" % (fake_registry, fake_image)
@@ -1400,7 +1401,7 @@ class TestInstanceConfig:
         ],
     )
     def test_get_dependencies(self, dependencies_reference, dependencies, expected):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1421,7 +1422,7 @@ class TestInstanceConfig:
         ],
     )
     def test_get_outbound_firewall(self, security, expected):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1443,7 +1444,7 @@ class TestInstanceConfig:
         ],
     )
     def test_check_security(self, security, expected):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
@@ -1461,7 +1462,7 @@ class TestInstanceConfig:
         ],
     )
     def test_check_dependencies_reference(self, dependencies_reference, dependencies, expected):
-        fake_conf = utils.InstanceConfig(
+        fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
