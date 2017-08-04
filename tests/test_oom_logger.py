@@ -15,11 +15,11 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import io
+import json
 import sys
 from collections import namedtuple
 
 import pytest
-import simplejson as json
 from mock import Mock
 from mock import patch
 
