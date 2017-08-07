@@ -107,7 +107,7 @@ def test_instances_status_adhoc(
 
 @mock.patch('paasta_tools.api.views.instance.get_running_tasks_from_frameworks', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.marathon_tools.is_app_id_running', autospec=True)
-def test_marathon_job_status(
+def test_marathon_job_status_verbose(
     mock_is_app_id_running,
     mock_get_running_tasks_from_frameworks,
 ):
@@ -132,7 +132,7 @@ def test_marathon_job_status(
     job_config.get_instances.return_value = 5
 
     mstatus = {}
-    instance.marathon_job_status(mstatus, client, job_config)
+    instance.marathon_job_status(mstatus, client, job_config, verbose=True)
     expected = {
         'deploy_status': 'Running',
         'running_instance_count': 5,

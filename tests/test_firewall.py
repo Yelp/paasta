@@ -130,6 +130,8 @@ def mock_service_config():
         mock_instance_config.return_value.get_dependencies.return_value = [
             {'well-known': 'internet'},
             {'smartstack': 'example_happyhour.main'},
+            {'cidr': '169.229.226.0/24'},
+            {'cidr': '8.8.8.8', 'port': 53},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
 
@@ -138,6 +140,27 @@ def mock_service_config():
             {'host': '5.6.7.8', 'port': 567},
         ]
         yield mock_instance_config
+
+
+def test_service_group_rules_no_dependencies(mock_service_config, service_group):
+    mock_service_config.return_value.get_dependencies.return_value = None
+    assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
+        EMPTY_RULE._replace(
+            target='LOG',
+            matches=(
+                (
+                    'limit', (
+                        ('limit', ('1/sec',)),
+                        ('limit-burst', ('1',)),
+                    ),
+                ),
+            ),
+            target_parameters=(
+                ('log-prefix', ('paasta.my_cool_service ',)),
+            ),
+        ),
+        EMPTY_RULE._replace(target='PAASTA-COMMON'),
+    )
 
 
 def test_service_group_rules_monitor(mock_service_config, service_group):
@@ -183,6 +206,32 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
             matches=(
                 ('comment', (('comment', ('proxy_port example_happyhour.main',)),)),
                 ('tcp', (('dport', ('20000',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='169.229.226.0/255.255.255.0',
+            matches=(
+                ('comment', (('comment', ('allow 169.229.226.0/24:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('udp', (('dport', ('53',)),)),
             ),
         ),
     )
@@ -241,10 +290,39 @@ def test_service_group_rules_block(mock_service_config, service_group):
                 ('tcp', (('dport', ('20000',)),)),
             ),
         ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='169.229.226.0/255.255.255.0',
+            matches=(
+                ('comment', (('comment', ('allow 169.229.226.0/24:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
     )
 
 
 def test_service_group_rules_synapse_backend_error(mock_service_config, service_group):
+    mock_service_config.return_value.get_dependencies.return_value = [
+        {'smartstack': 'example_happyhour.main'},
+    ]
     firewall._synapse_backends.side_effect = IOError('Error loading file')
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(
@@ -262,7 +340,6 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
             ),
         ),
         EMPTY_RULE._replace(target='PAASTA-COMMON'),
-        EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
             target='ACCEPT',

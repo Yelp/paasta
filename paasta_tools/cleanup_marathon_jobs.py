@@ -164,9 +164,11 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
             log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
             continue
         running_apps.append(app_id)
-    apps_to_kill = [(service, instance, git_sha, config_sha)
-                    for service, instance, git_sha, config_sha in running_apps
-                    if (service, instance) not in valid_services]
+    apps_to_kill = [
+        (service, instance, git_sha, config_sha)
+        for service, instance, git_sha, config_sha in running_apps
+        if (service, instance) not in valid_services
+    ]
 
     log.debug("Running apps: %s" % running_apps)
     log.debug("Valid apps: %s" % valid_services)

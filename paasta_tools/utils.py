@@ -203,6 +203,11 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
+    def get_shm_size(self):
+        """Get's the shm_size to pass to docker
+        See --shm-size in the docker docs"""
+        return self.config_dict.get('shm_size', None)
+
     def get_ulimit(self):
         """Get the --ulimit options to be passed to docker
         Generated from the ulimit configuration option, which is a dictionary
@@ -252,6 +257,11 @@ class InstanceConfig(object):
             parameters.extend([
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
+            ])
+        shm = self.get_shm_size()
+        if shm:
+            parameters.extend([
+                {"key": "shm-size", "value": "%s" % shm},
             ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
@@ -705,6 +715,12 @@ LOG_COMPONENTS = OrderedDict([
         'security', {
             'color': PaastaColors.red,
             'help': 'Logs from security-related services such as firewall monitoring',
+        },
+    ),
+    (
+        'oom', {
+            'color': PaastaColors.red,
+            'help': 'Kernel OOM events.',
         },
     ),
     # I'm leaving these planned components here since they provide some hints
@@ -2032,6 +2048,7 @@ def paasta_print(*args, **kwargs):
     assert not kwargs, kwargs
     to_print = sep.join(to_bytes(x) for x in args) + end
     f.write(to_print)
+    f.flush()
 
 
 def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):

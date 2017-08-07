@@ -18,6 +18,7 @@ from mock import MagicMock
 from mock import patch
 from pytest import raises
 from requests.exceptions import RequestException
+from requests.exceptions import SSLError
 
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds.push_to_registry import build_command
@@ -219,3 +220,25 @@ def test_is_docker_image_already_in_registry_401_unauthorized(
     mock_request_get.side_effect = RequestException()
     with raises(RequestException):
         is_docker_image_already_in_registry('fake_service', 'fake_soa_dir', 'fake_sha')
+
+
+@patch('paasta_tools.utils.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.requests.Session.get', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.read_docker_registy_creds', autospec=True)
+def test_is_docker_image_already_in_registry_http(
+        mock_read_docker_registy_creds,
+        mock_request_get,
+        mock_load_system_paasta_config,
+):
+    def mock_get(session, url, timeout):
+        if url.startswith('https'):
+            raise SSLError("Uh oh")
+        return MagicMock(
+            status_code=200,
+            json=MagicMock(return_value={'tags': None}),
+        )
+
+    mock_request_get.side_effect = mock_get
+
+    mock_read_docker_registy_creds.return_value = (None, None)
+    assert not is_docker_image_already_in_registry('fake_service', 'fake_soa_dir', 'fake_sha')

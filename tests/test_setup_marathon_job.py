@@ -26,6 +26,7 @@ from paasta_tools import setup_marathon_job
 from paasta_tools import utils
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.bounce_lib import LockHeldException
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -1595,6 +1596,29 @@ class TestSetupMarathonJob:
             )
             assert not mock_setup_service.called
             assert ret == (0, None)
+
+    def test_deploy_marathon_service_with_noslavesavailable(self):
+        with mock.patch(
+            'paasta_tools.marathon_tools.MarathonServiceConfig.format_marathon_app_dict', autospec=True,
+            side_effect=NoSlavesAvailableError(),  # test impossible constraints
+        ), mock.patch(
+            'paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True,
+        ) as load_system_paasta_config_patch, mock.patch(
+            'paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True,
+        ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
+            mock_client = mock.Mock()
+            mock_marathon_config = {}
+            mock_marathon_apps = []
+            ret = setup_marathon_job.deploy_marathon_service(
+                'something',
+                'main',
+                mock_client,
+                'fake_soa',
+                mock_marathon_config,
+                mock_marathon_apps,
+            )
+            assert ret == (1, None)
 
 
 class TestGetOldHappyUnhappyDrainingTasks(object):
