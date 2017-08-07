@@ -45,8 +45,8 @@ def parse_capacity_check_options():
     parser.add_argument(
         '--overrides', dest='overrides', type=str,
         help='json file of per-attribute overrides.\n'
-        'In the format {attribute_name: {value: {warn: {cpus: num, disk: num, mem: num}, '
-        'crit: {cpus: num, disk: num, mem: num}}}}',
+        'In the format [{groupings: {attribute: value, ...}, warn: {cpus: num, disk: num, mem: num}, '
+        'crit: {cpus: num, disk: num, mem: num}}, ...]',
     )
     parser.add_argument(
         '--cluster', dest='cluster', type=str,
@@ -56,13 +56,6 @@ def parse_capacity_check_options():
         '--attributes', dest='attributes', type=str, default='pool',
         help='Comma separated list of attributes to check.\n'
         'By default, only checks attributes individually; see --cross-product-check',
-    )
-    parser.add_argument(
-        '--cross-product-check', dest='cpc', action='store_true',
-        help='When specified, --cross-product-check will check combinations of '
-        'attributes instead of individual attributes. \n'
-        'eg if attributes is \'pool,region\', this will cause the check to fail '
-        'if any region-pool combination is below the threashold, or either\'s override',
     )
     options = parser.parse_args()
 
@@ -93,6 +86,20 @@ def error_message(failures, level, cluster, value_to_check):
     return result
 
 
+def get_check_from_overrides(overrides, default_check, groupings):
+    """Get the overrides dict from overrides with the same groupings as groupings,
+    or return the default"""
+    checks = [o for o in overrides if o == groupings]
+    if len(checks) == 0:
+        return default_check
+    elif len(checks) == 1:
+        return checks[0]
+    else:
+        group_string = ', '.join(["%s: %s" % (k, v) for k, v in groupings.items()])
+        paasta_print("UNKNOWN Multiple overrides specified for %s" % group_string)
+        sys.exit(3)
+
+
 def run_capacity_check():
     options = parse_capacity_check_options()
     system_paasta_config = load_system_paasta_config()
@@ -112,10 +119,7 @@ def run_capacity_check():
 
     attributes = options.attributes.split(',')
 
-    if options.cpc:
-        resource_use = {'all': client.resources.resources(groupings=attributes).result()}
-    else:
-        resource_use = {a: client.resources.resources(groupings=[a]).result() for a in attributes}
+    resource_use = client.resources.resources(groupings=attributes).result()
 
     default_check = {
         'warn': {
@@ -131,18 +135,16 @@ def run_capacity_check():
     }
 
     failures = defaultdict(list)
-    for attribute, values in resource_use.items():
-        for usage_value in values:
-            attribute_value = usage_value['groupings'].get(attribute, 'unknown')
-            check = overrides.get('attribute', {}).get(attribute_value, default_check)
-            usage_percent = calc_percent_usage(usage_value, value_to_check)
-            for c in ['crit', 'warn']:
-                if usage_percent > check[c][value_to_check]:
-                    failures[c].append({
-                        'attrs': [{'attr': a, 'value': v} for a, v in usage_value['groupings'].items()],
-                        'maximum': check[c][value_to_check], 'current': usage_percent,
-                    })
-                    break
+    for usage_value in resource_use:
+        check = get_check_from_overrides(overrides, default_check, usage_value['groupings'])
+        usage_percent = calc_percent_usage(usage_value, value_to_check)
+        for c in ['crit', 'warn']:
+            if usage_percent > check[c][value_to_check]:
+                failures[c].append({
+                    'attrs': [{'attr': a, 'value': v} for a, v in usage_value['groupings'].items()],
+                    'maximum': check[c][value_to_check], 'current': usage_percent,
+                })
+                break
 
     return_value = [0]
     if len(failures['crit']) > 0:
