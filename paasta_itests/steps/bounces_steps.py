@@ -203,7 +203,7 @@ def when_setup_service_initiated(context):
     ), mock.patch(
         'paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp',
     ), mock.patch(
-        'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value='busybox',
+        'paasta_tools.config.InstanceConfig.get_docker_url', autospec=True, return_value='busybox',
     ), mock.patch(
         'paasta_tools.mesos_maintenance.get_principal', autospec=True,
     ) as mock_get_principal, mock.patch(
