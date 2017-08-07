@@ -286,4 +286,25 @@ def marathon_app_task_count(context, job_id, task_count):
     assert len(tasks) == task_count
 
 
+@then('capacity_check "{check_type}" --crit "{crit:d}" --warn "{warn:d}" should return "{status}" with code "{code:d}"')
+def capacity_check_status_crit_warn(context, check_type, crit, warn, status, code):
+    paasta_print(check_type, crit, warn)
+    cmd = '../paasta_tools/monitoring/check_capacity.py %s --crit %s --warn %s' % (check_type, crit, warn)
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, output = _run(cmd)
+    paasta_print(output)
+    assert exit_code == code
+    assert status in output
+
+
+@then('capacity_check "{check_type}" should return "{status}" with code "{code:d}"')
+def capacity_check_type_status(context, check_type, status, code):
+    cmd = '../paasta_tools/monitoring/check_capacity.py %s' % check_type
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, output = _run(cmd)
+    paasta_print(output)
+    assert exit_code == code
+    assert status in output
+
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

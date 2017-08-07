@@ -75,7 +75,7 @@ def chronos_job_launched(context, job_name):
 def run_paasta_metastatus_high_cpu(context, app_id):
     context.marathon_client.create_app(
         app_id, MarathonApp(
-            cmd='/bin/sleep 100000', cpus=9, instances=3,
+            cmd='/bin/sleep 100000', cpus=9.1, instances=3,
             container=CONTAINER,
         ),
     )
