@@ -136,12 +136,13 @@ def build_service_job_mapping(client, configured_jobs):
         or None if there is no such job
     """
     service_job_mapping = {}
+    all_chronos_jobs = client.list()
     for job in configured_jobs:
         # find all the jobs belonging to each service
-        matching_jobs = chronos_tools.lookup_chronos_jobs(
+        matching_jobs = chronos_tools.filter_chronos_jobs(
+            jobs=all_chronos_jobs,
             service=job[0],
             instance=job[1],
-            client=client,
             include_disabled=True,
             include_temporary=True,
         )
@@ -185,17 +186,19 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
 
 
-def job_is_stuck(last_run_iso_time, interval_in_seconds):
+def job_is_stuck(last_run_iso_time, interval_in_seconds, expected_runtime):
     """Considers that the job is stuck when it hasn't run on time
 
     :param last_run_iso_time: ISO date and time of the last job run as a string
     :param interval_in_seconds: the job interval in seconds
+    :param expected_runtime: the expected runtime of the job in seconds
     :returns: True or False
     """
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
     last_run_datatime = isodate.parse_datetime(last_run_iso_time)
-    return last_run_datatime + timedelta(seconds=interval_in_seconds) < datetime.now(pytz.utc)
+    return (last_run_datatime + timedelta(seconds=interval_in_seconds) +
+            timedelta(seconds=expected_runtime) < datetime.now(pytz.utc))
 
 
 def message_for_stuck_job(
@@ -229,7 +232,10 @@ def message_for_stuck_job(
     }
 
 
-def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job):
+def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, chronos_job, expected_runtime):
+    """
+    :param expected_runtime: the expected runtime of the job in seconds
+    """
     if not chronos_job:
         if chronos_job_config.get_disabled():
             sensu_status = pysensu_yelp.Status.OK
@@ -247,7 +253,7 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
         else:
             last_run_time, state = chronos_tools.get_status_last_run(chronos_job)
             interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
-            if job_is_stuck(last_run_time, interval_in_seconds):
+            if job_is_stuck(last_run_time, interval_in_seconds, expected_runtime):
                 sensu_status = pysensu_yelp.Status.CRITICAL
                 output = message_for_stuck_job(
                     service=service,
@@ -289,12 +295,19 @@ def main():
             except utils.NoDeploymentsAvailable:
                 paasta_print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
                 continue
+            job_expected_runtime = 0
+            if chronos_job:
+                try:
+                    job_expected_runtime = int(client.job_stat(chronos_job['name'])['histogram']['99thPercentile'])
+                except KeyError:
+                    pass
             sensu_output, sensu_status = sensu_message_status_for_jobs(
                 chronos_job_config=chronos_job_config,
                 service=service,
                 instance=instance,
                 cluster=cluster,
                 chronos_job=chronos_job,
+                expected_runtime=job_expected_runtime,
             )
             if sensu_status is not None:
                 monitoring_overrides = compose_monitoring_overrides_for_service(

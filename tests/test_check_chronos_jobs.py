@@ -170,23 +170,24 @@ def test_sensu_event_for_last_run_state_invalid():
         check_chronos_jobs.sensu_event_for_last_run_state(100)
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
-def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_chronos_jobs', autospec=True)
+def test_respect_latest_run_after_rerun(mock_filter_chronos_jobs):
     fake_job = {
         'name': 'service1 test-job',
         'lastSuccess': '2016-07-26T22:00:00+00:00',
         'lastError': '2016-07-26T22:01:00+00:00',
     }
-    mock_lookup_chronos_jobs.side_effect = [[
+    mock_filter_chronos_jobs.side_effect = [[
         fake_job,
     ]]
 
     fake_configured_jobs = [('service1', 'chronos_job')]
-    fake_client = Mock(list=Mock(return_value=[('service1', 'chronos_job')]))
+    fake_client = Mock()
 
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
         ('service1', 'chronos_job'): fake_job,
     }
+    fake_client.list.assert_called_once_with()
 
     # simulate a re-run where we now pass
     reran_job = {
@@ -194,18 +195,20 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
         'lastSuccess': '2016-07-26T22:12:00+00:00',
     }
     reran_job = chronos_rerun.set_tmp_naming_scheme(reran_job)
-    mock_lookup_chronos_jobs.side_effect = [[
+    mock_filter_chronos_jobs.side_effect = [[
         fake_job,
         reran_job,
     ]]
+    fake_client = Mock()
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == {
         ('service1', 'chronos_job'): reran_job,
     }
+    fake_client.list.assert_called_once_with()
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_chronos_jobs', autospec=True)
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
-def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
+def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_filter_chronos_jobs):
     services = ['service1', 'service2', 'service3']
     latest_time = '2016-07-26T22:03:00+00:00'
     fake_jobs = [
@@ -236,7 +239,7 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
             'name': 'service4 foo',
         },
     ])
-    mock_lookup_chronos_jobs.side_effect = fake_jobs
+    mock_filter_chronos_jobs.side_effect = fake_jobs
     mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for _ in range(0, 4)]
 
     fake_configured_jobs = [
@@ -245,12 +248,7 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
         ('service3', 'main'),
         ('service4', 'main'),
     ]
-    fake_client = Mock(list=Mock(return_value=[
-        ('service1', 'main'),
-        ('service2', 'main'),
-        ('service3', 'main'),
-        ('service4', 'main'),
-    ]))
+    fake_client = Mock()
 
     expected = {
         ('service1', 'main'): {'name': 'service1 foo', 'lastError': latest_time},
@@ -259,6 +257,7 @@ def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos
         ('service4', 'main'): {'name': 'tmp-2017-06-13T123738942755 service4 foo', 'lastError': latest_time},
     }
     assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == expected
+    fake_client.list.assert_called_once_with()
 
 
 def test_message_for_status_fail():
@@ -294,10 +293,10 @@ def test_sensu_message_status_ok(mock_job_is_stuck):
         'lastSuccess': '2016-07-26T22:02:00+00:00',
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job,
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)),
+        'myservice', 'myinstance', 'cluster', fake_job, 0,
     )
-    expected_output = "Last run of job myservice.myinstance Succeded"
-    assert output == expected_output
+    assert output == "Last run of job myservice.myinstance Succeded"
     assert status == pysensu_yelp.Status.OK
 
 
@@ -310,10 +309,10 @@ def test_sensu_message_rerun_status_ok(mock_job_is_stuck):
         'lastSuccess': '2016-07-26T22:02:00+00:00',
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'cluster', fake_job,
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)),
+        'myservice', 'myinstance', 'cluster', fake_job, 0,
     )
-    expected_output = "Last run of job myservice.myinstance Succeded"
-    assert output == expected_output
+    assert output == "Last run of job myservice.myinstance Succeded"
     assert status == pysensu_yelp.Status.OK
 
 
@@ -328,7 +327,8 @@ def test_sensu_message_status_fail(mock_message_for_status, mock_job_is_stuck):
         'lastError': '2016-07-26T22:03:00+00:00',
     }
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)), 'myservice', 'myinstance', 'mycluster', fake_job,
+        Mock(get_schedule_interval_in_seconds=Mock(return_value=1)),
+        'myservice', 'myinstance', 'mycluster', fake_job, 0,
     )
     assert output == 'my failure message'
     assert status == pysensu_yelp.Status.CRITICAL
@@ -341,7 +341,8 @@ def test_sensu_message_status_no_run():
         return_value=Mock(get_disabled=Mock(return_value=False)),
     ):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            Mock(get_disabled=Mock(return_value=False)), 'myservice', 'myinstance', 'mycluster', fake_job,
+            Mock(get_disabled=Mock(return_value=False)),
+            'myservice', 'myinstance', 'mycluster', fake_job, 0,
         )
     expected_output = "Warning: myservice.myinstance isn't in chronos at all, which means it may not be deployed yet"
     assert output == expected_output
@@ -350,34 +351,36 @@ def test_sensu_message_status_no_run():
 
 def test_sensu_message_status_no_run_disabled():
     fake_job = None
+    expected_runtime = 0
     with patch(
         'paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
         return_value=Mock(get_disabled=Mock(return_value=True)),
     ):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job,
+            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job, expected_runtime,
         )
-    expected_output = "Job myservice.myinstance is disabled - ignoring status."
-    assert output == expected_output
+    assert output == "Job myservice.myinstance is disabled - ignoring status."
     assert status == pysensu_yelp.Status.OK
 
 
 def test_sensu_message_status_disabled():
     fake_job = {'name': 'fake_job_id', 'disabled': True}
+    expected_runtime = 0
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         chronos_job_config=Mock(),
         service='myservice',
         instance='myinstance',
         cluster='mycluster',
         chronos_job=fake_job,
+        expected_runtime=expected_runtime,
     )
-    expected_output = "Job myservice.myinstance is disabled - ignoring status."
-    assert output == expected_output
+    assert output == "Job myservice.myinstance is disabled - ignoring status."
     assert status == pysensu_yelp.Status.OK
 
 
 def test_sensu_message_status_stuck():
     fake_schedule = '* 1 * * *'
+    expected_runtime = 60 * 30
     fake_job = {
         'name': 'fake_job_id',
         'disabled': False,
@@ -394,6 +397,7 @@ def test_sensu_message_status_stuck():
         instance='myinstance',
         cluster='mycluster',
         chronos_job=fake_job,
+        expected_runtime=expected_runtime,
     )
     assert status == pysensu_yelp.Status.CRITICAL
     assert (
@@ -405,21 +409,46 @@ def test_sensu_message_status_stuck():
 
 
 def test_job_is_stuck_when_no_interval():
-    assert not check_chronos_jobs.job_is_stuck('2016-07-26T22:03:00+00:00', None)
+    interval = None
+    expected_runtime = 60 * 60 * 8
+    assert not check_chronos_jobs.job_is_stuck(
+        '2016-07-26T22:03:00+00:00',
+        interval, expected_runtime,
+    )
 
 
 def test_job_is_stuck_when_no_last_run():
-    assert not check_chronos_jobs.job_is_stuck(None, 2440)
+    assert not check_chronos_jobs.job_is_stuck(None, 2440, 0)
 
 
-def test_job_is_stuck_when_not_stuck():
+def test_job_is_stuck_when_not_running_yet():
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
-    assert not check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
+    interval = 60 * 60 * 24
+    expected_runtime = 60 * 60 * 8
+    assert not check_chronos_jobs.job_is_stuck(
+        last_time_run.isoformat(),
+        interval, expected_runtime,
+    )
+
+
+def test_job_is_stuck_when_still_running():
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
+    interval = 60 * 60 * 24
+    expected_runtime = 60 * 60 * 8
+    assert not check_chronos_jobs.job_is_stuck(
+        last_time_run.isoformat(),
+        interval, expected_runtime,
+    )
 
 
 def test_job_is_stuck_when_stuck():
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
-    assert check_chronos_jobs.job_is_stuck(last_time_run.isoformat(), 60 * 60 * 24)
+    interval = 60 * 60 * 24
+    expected_runtime = 60 * 30
+    assert check_chronos_jobs.job_is_stuck(
+        last_time_run.isoformat(),
+        interval, expected_runtime,
+    )
 
 
 def test_guess_realert_every():
