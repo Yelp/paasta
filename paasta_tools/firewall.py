@@ -266,29 +266,48 @@ def _cidr_rules(conf):
         cidr = dep.get('cidr')
         port = dep.get('port')
 
-        if cidr is not None:
+        if cidr is None:
+            continue
+
+        try:
+            network = ipaddress.IPv4Network(cidr)
+        except ipaddress.AddressValueError:
+            log.exception(f'Unable to parse IP network: {cidr}')
+            continue
+
+        if port is not None:
             try:
-                network = ipaddress.IPv4Network(cidr)
-            except ipaddress.AddressValueError:
-                # TODO: surface this error to the user?
+                port = int(port)
+            except ValueError:
+                log.exception(f'Unable to parse port: {port}')
                 continue
 
-            if port is not None:
-                try:
-                    port = int(port)
-                except ValueError:
-                    # TODO: surface this error to the user?
-                    continue
+            if not 1 <= port <= 65535:
+                log.error(f'Bogus port number: {port}')
+                continue
 
-                if not 1 <= port <= 65535:
-                    # TODO: surface this error to the user?
-                    continue
-
-            # Set up an ip rule if no port, or a tcp/udp rule if there is a port
-            dst = f'{network.network_address.exploded}/{network.netmask}'
-            if port is None:
+        # Set up an ip rule if no port, or a tcp/udp rule if there is a port
+        dst = f'{network.network_address.exploded}/{network.netmask}'
+        if port is None:
+            yield iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst=dst,
+                target='ACCEPT',
+                matches=(
+                    (
+                        'comment',
+                        (
+                            ('comment', (f'allow {network}:*',)),
+                        ),
+                    ),
+                ),
+                target_parameters=(),
+            )
+        else:
+            for proto in ('tcp', 'udp'):
                 yield iptables.Rule(
-                    protocol='ip',
+                    protocol=proto,
                     src='0.0.0.0/0.0.0.0',
                     dst=dst,
                     target='ACCEPT',
@@ -296,35 +315,18 @@ def _cidr_rules(conf):
                         (
                             'comment',
                             (
-                                ('comment', (f'allow {network}:*',)),
+                                ('comment', (f'allow {network}:{port}',)),
+                            ),
+                        ),
+                        (
+                            proto,
+                            (
+                                ('dport', (str(port),)),
                             ),
                         ),
                     ),
                     target_parameters=(),
                 )
-            else:
-                for proto in ('tcp', 'udp'):
-                    yield iptables.Rule(
-                        protocol=proto,
-                        src='0.0.0.0/0.0.0.0',
-                        dst=dst,
-                        target='ACCEPT',
-                        matches=(
-                            (
-                                'comment',
-                                (
-                                    ('comment', (f'allow {network}:{port}',)),
-                                ),
-                            ),
-                            (
-                                proto,
-                                (
-                                    ('dport', (str(port),)),
-                                ),
-                            ),
-                        ),
-                        target_parameters=(),
-                    )
 
 
 def services_running_here():
