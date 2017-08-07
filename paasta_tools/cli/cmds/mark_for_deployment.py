@@ -48,6 +48,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
@@ -175,6 +176,17 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     return return_code
 
 
+def report_waiting_aborted(service, deploy_group):
+    paasta_print(PaastaColors.red(
+        "Waiting for deployment aborted."
+        " PaaSTA will continue trying to deploy this code.",
+    ))
+    paasta_print("If you wish to see the status, run:")
+    paasta_print()
+    paasta_print("    paasta status -s %s -l %s -v" % (service, deploy_group))
+    paasta_print()
+
+
 def paasta_mark_for_deployment(args):
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -264,12 +276,10 @@ def paasta_mark_for_deployment(args):
                         commit=old_git_sha,
                     )
             else:
-                paasta_print("Waiting for deployment aborted. PaaSTA will continue to try to deploy this code.")
-                paasta_print("If you wish to see the status, run:")
-                paasta_print()
-                paasta_print("    paasta status -s %s -v" % service)
-                paasta_print()
+                report_waiting_aborted(service, args.deploy_group)
             ret = 1
+        except NoSuchCluster:
+            report_waiting_aborted(service, args.deploy_group)
         except NoInstancesFound:
             return 1
     if old_git_sha is not None and old_git_sha != args.commit and not args.auto_rollback:
@@ -527,7 +537,14 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
 
     total_instances = 0
     clusters_data = []
+    api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in cluster_map:
+        if cluster not in api_endpoints:
+            paasta_print(PaastaColors.red(
+                'Cluster %s is NOT in paasta-api endpoints config.' %
+                cluster,
+            ))
+            raise NoSuchCluster
         clusters_data.append(ClusterData(
             cluster=cluster, service=service,
             git_sha=git_sha,
@@ -614,4 +631,11 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
 
 
 class NoInstancesFound(Exception):
+    pass
+
+
+class NoSuchCluster(Exception):
+    """To be raised by wait_for_deployment() when a service has a marathon config for
+    a cluster that is not listed in /etc/paasta/api_endpoints.json.
+    """
     pass
