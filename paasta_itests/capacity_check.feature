@@ -38,10 +38,10 @@ Feature: capacity_check
 
   Scenario: High cpu usage crit empty overrides
     Given a working paasta cluster
-      And a capacity check overrides file with contents "{}"
+      And a capacity check overrides file with contents "[]"
      When an app with id "cputest" using high cpu is launched
       And 3 tasks belonging to the app with id "cputest" are in the task list
-     Then capacity_check with override file "cpus" should return "CRITICAL" with code "2"
+     Then capacity_check with override file "cpus" and attributes "notreal" should return "CRITICAL" with code "2"
 
   Scenario: High cpu usage warn real overrides
     Given a working paasta cluster
