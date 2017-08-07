@@ -523,22 +523,30 @@ class TestInstanceConfig:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict={'team': 'foobar'},
         )
-        assert fake_conf.get_env() == {
-            'PAASTA_SERVICE': 'fake_service',
-            'PAASTA_INSTANCE': 'fake_instance',
-            'PAASTA_CLUSTER': 'fake_cluster',
-            'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
-            'PAASTA_DOCKER_IMAGE': '',
-        }
+        with mock.patch(
+            'paasta_tools.monitoring_tools.get_team', autospec=True,
+            return_value='fake_team',
+        ):
+            assert fake_conf.get_env() == {
+                'PAASTA_SERVICE': 'fake_service',
+                'PAASTA_INSTANCE': 'fake_instance',
+                'PAASTA_CLUSTER': 'fake_cluster',
+                'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
+                'PAASTA_DOCKER_IMAGE': '',
+                'PAASTA_TEAM': 'fake_team',
+            }
 
     def test_get_env_with_config(self):
         fake_conf = config.InstanceConfig(
             service='',
             cluster='',
             instance='',
-            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}, 'deploy_group': 'fake_deploy_group'},
+            config_dict={
+                'env': {'SPECIAL_ENV': 'TRUE', 'PAASTA_TEAM': 'fake_team'},
+                'deploy_group': 'fake_deploy_group',
+            },
             branch_dict={'docker_image': 'something', 'deploy_group': 'nothing'},
         )
         assert fake_conf.get_env() == {
@@ -548,6 +556,7 @@ class TestInstanceConfig:
             'PAASTA_CLUSTER': '',
             'PAASTA_DEPLOY_GROUP': 'fake_deploy_group',
             'PAASTA_DOCKER_IMAGE': 'something',
+            'PAASTA_TEAM': 'fake_team',
         }
 
     def test_get_args_default_no_cmd(self):

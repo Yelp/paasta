@@ -863,7 +863,7 @@ class TestMarathonTools:
             },
         ]
         fake_mem = 1000000000000000000000
-        fake_env = {'FAKEENV': 'FAKEVALUE'}
+        fake_env = {'FAKEENV': 'FAKEVALUE', 'PAASTA_TEAM': 'fake_team'}
         expected_env = {
             'FAKEENV': 'FAKEVALUE',
             'PAASTA_CLUSTER': 'fake_cluster',
@@ -871,6 +871,7 @@ class TestMarathonTools:
             'PAASTA_SERVICE': 'can_you_dig_it',
             'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
             'PAASTA_DOCKER_IMAGE': '',
+            'PAASTA_TEAM': 'fake_team',
         }
         fake_cpus = .42
         fake_disk = 1234.5

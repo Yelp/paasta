@@ -23,8 +23,8 @@ import re
 import service_configuration_lib
 
 import paasta_tools.cli.fsm
+import paasta_tools.monitoring_tools
 import paasta_tools.utils
-# from paasta_tools.monitoring_tools import get_team
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -233,7 +233,7 @@ class InstanceConfig(object):
             "PAASTA_CLUSTER": self.cluster,
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
-            # "PAASTA_TEAM": get_team(service=self.service, overrides={}, soa_dir="fake"),
+            "PAASTA_TEAM": paasta_tools.monitoring_tools.get_team(service=self.service, overrides={}),
         }
         user_env = self.config_dict.get('env', {})
         env.update(user_env)

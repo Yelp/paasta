@@ -390,7 +390,7 @@ class TestChronosTools:
         assert fake_conf.get_shell() is True
 
     def test_get_env(self):
-        input_env = {'foo': 'bar', 'biz': 'baz'}
+        input_env = {'foo': 'bar', 'biz': 'baz', 'PAASTA_TEAM': 'fake_team'}
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -404,6 +404,7 @@ class TestChronosTools:
             {"name": "PAASTA_INSTANCE", "value": "fake_instance"},
             {"name": "PAASTA_DEPLOY_GROUP", "value": "fake_cluster.fake_instance"},
             {"name": "PAASTA_DOCKER_IMAGE", "value": ""},
+            {"name": "PAASTA_TEAM", "value": "fake_team"},
             {"name": "foo", "value": "bar"},
             {"name": "biz", "value": "baz"},
         ]
