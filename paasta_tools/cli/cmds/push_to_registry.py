@@ -20,10 +20,10 @@ from __future__ import unicode_literals
 
 import base64
 import binascii
+import json
 import os
 
 import requests
-import simplejson as json
 from requests.exceptions import RequestException
 from requests.exceptions import SSLError
 
