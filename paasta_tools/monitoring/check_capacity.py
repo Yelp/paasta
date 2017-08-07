@@ -89,7 +89,7 @@ def error_message(failures, level, cluster, value_to_check):
 def get_check_from_overrides(overrides, default_check, groupings):
     """Get the overrides dict from overrides with the same groupings as groupings,
     or return the default"""
-    checks = [o for o in overrides if o == groupings]
+    checks = [o for o in overrides if o['groupings'] == groupings]
     if len(checks) == 0:
         return default_check
     elif len(checks) == 1:
@@ -100,22 +100,26 @@ def get_check_from_overrides(overrides, default_check, groupings):
         sys.exit(3)
 
 
+def read_overrides(override_file):
+    if override_file:
+        with open(override_file, 'r') as f:
+            return json.loads(f.read())
+    else:
+        return {}
+
+
 def run_capacity_check():
     options = parse_capacity_check_options()
     system_paasta_config = load_system_paasta_config()
     cluster = options.cluster if options.cluster is not None else system_paasta_config.get_cluster()
     value_to_check = options.type
 
-    client = get_paasta_api_client(cluster=options.cluster)
+    client = get_paasta_api_client(cluster=cluster)
     if client is None:
         paasta_print('UNKNOWN Failed to load paasta api client')
         sys.exit(3)
 
-    if options.overrides:
-        with open(options.overrides, 'r') as f:
-            overrides = json.loads(f.read())
-    else:
-        overrides = {}
+    overrides = read_overrides(options.overrides)
 
     attributes = options.attributes.split(',')
 
