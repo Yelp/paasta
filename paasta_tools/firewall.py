@@ -31,12 +31,6 @@ PRIVATE_IP_RANGES = (
     '192.168.0.0/255.255.0.0',
     '169.254.0.0/255.255.0.0',
 )
-DEFAULT_DNS = frozenset((
-    # If Docker can't find any usable DNS servers on the host, it inserts these records.
-    # https://docs.docker.com/engine/userguide/networking/default_network/configure-dns/:
-    '8.8.8.8',
-    '8.8.4.4',
-))
 DEFAULT_SYNAPSE_SERVICE_DIR = '/var/run/synapse/services'
 DEFAULT_FIREWALL_FLOCK_PATH = '/var/lib/paasta/firewall.flock'
 DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
@@ -435,7 +429,7 @@ def _ensure_dns_chain():
                     target_parameters=(),
                 ),
             )
-            for dns_server in sorted(set(_dns_servers()) | DEFAULT_DNS)
+            for dns_server in _dns_servers()
         )),
     )
 
