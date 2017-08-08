@@ -56,7 +56,7 @@ Submodules
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.native_mesos_scheduler
-   paasta_tools.oom_finder
+   paasta_tools.oom_logger
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus

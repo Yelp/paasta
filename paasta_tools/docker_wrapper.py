@@ -147,6 +147,10 @@ def generate_hostname(fqdn, mesos_task_id):
     # hostnames can only contain alphanumerics and dashes and must be no more
     # than 63 characters
     hostname = re.sub('[^a-zA-Z0-9-]+', '-', hostname)[:MAX_HOSTNAME_LENGTH]
+
+    # hostnames can also not end with dashes as per RFC952
+    hostname = hostname.rstrip('-')
+
     return hostname
 
 

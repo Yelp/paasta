@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 import mock
 
 from paasta_tools import list_marathon_service_instances
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 
 
 def test_get_desired_marathon_configs():
@@ -35,6 +36,22 @@ def test_get_desired_marathon_configs():
         assert list_marathon_service_instances.get_desired_marathon_configs(
             '/fake/soa/dir',
         ) == {'service.instance.git.configs': mock_app_dict}
+
+
+def test_get_desired_marathon_configs_handles_no_slaves():
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_services_for_cluster', autospec=True,
+    ), mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_marathon_service_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True,
+    ) as mock_load_marathon_service_config:
+        mock_load_marathon_service_config.return_value = mock.MagicMock(
+            format_marathon_app_dict=mock.MagicMock(side_effect=NoSlavesAvailableError()),
+        )
+        assert list_marathon_service_instances.get_desired_marathon_configs(
+            '/fake/soadir/',
+        ) == {}
 
 
 def test_get_service_instances_that_need_bouncing():

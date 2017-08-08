@@ -688,8 +688,10 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
     :param humanize: a boolean indicating if the strings should be humanized.
     :returns: a list containing a string representation of each (HealthCheckResult, ResourceUtilization) tuple.
     """
-    return [format_table_column_for_healthcheck_resource_utilization_pair(pair, humanize)
-            for pair in healthcheck_utilization_pairs]
+    return [
+        format_table_column_for_healthcheck_resource_utilization_pair(pair, humanize)
+        for pair in healthcheck_utilization_pairs
+    ]
 
 
 def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, humanize):

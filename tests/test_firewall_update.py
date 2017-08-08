@@ -177,14 +177,14 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
     soa_dir = mock.Mock()
     synapse_service_dir = mock.Mock()
     firewall_update.process_inotify_event(
-        (None, None, None, 'mydep.depinstance.json'),
+        (None, None, None, b'mydep.depinstance.json'),
         services_by_dependencies,
         soa_dir,
         synapse_service_dir,
     )
-    assert log_mock.debug.call_count == 2
-    log_mock.debug.assert_any_call('Updated ', ('myservice', 'myinstance'))
-    log_mock.debug.assert_any_call('Updated ', ('anotherservice', 'instance'))
+    assert log_mock.debug.call_count == 3
+    log_mock.debug.assert_any_call("Updated ('myservice', 'myinstance')")
+    log_mock.debug.assert_any_call("Updated ('anotherservice', 'instance')")
     assert ensure_service_chains_mock.mock_calls == [
         mock.call(
             {
@@ -202,12 +202,12 @@ def test_process_inotify_event(firewall_flock_mock, active_service_groups_mock, 
     log_mock.reset_mock()
     ensure_service_chains_mock.reset_mock()
     firewall_update.process_inotify_event(
-        (None, None, None, 'mydep.depinstance.tmp'),
+        (None, None, None, b'mydep.depinstance.tmp'),
         services_by_dependencies,
         soa_dir,
         synapse_service_dir,
     )
-    assert log_mock.debug.call_count == 0
+    assert log_mock.debug.call_count == 1
     assert ensure_service_chains_mock.call_count == 0
 
 
@@ -233,12 +233,12 @@ def test_process_inotify_event_flock_error(
     soa_dir = mock.Mock()
     synapse_service_dir = mock.Mock()
     firewall_update.process_inotify_event(
-        (None, None, None, 'mydep.depinstance.json'),
+        (None, None, None, b'mydep.depinstance.json'),
         services_by_dependencies,
         soa_dir,
         synapse_service_dir,
     )
-    assert log_mock.debug.call_count == 0
+    assert log_mock.debug.call_count == 1
     assert log_mock.error.call_count == 1
 
 

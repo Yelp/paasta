@@ -1,7 +1,23 @@
 # Change Log
 
-## [0.66.7](https://github.com/Yelp/paasta/tree/0.66.7) (2017-07-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.66.6...0.66.7)
+## [0.66.9](https://github.com/Yelp/paasta/tree/0.66.9) (2017-07-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.66.8...0.66.9)
+
+**Merged pull requests:**
+
+- Only get slave data from the paasta api on verbose mode [\#1392](https://github.com/Yelp/paasta/pull/1392) ([solarkennedy](https://github.com/solarkennedy))
+- Add agent count to paasta metastatus -vv [\#1387](https://github.com/Yelp/paasta/pull/1387) ([matthewbentley](https://github.com/matthewbentley))
+- paasta\_oom\_logger [\#1382](https://github.com/Yelp/paasta/pull/1382) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.66.8](https://github.com/Yelp/paasta/tree/v0.66.8) (2017-07-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.66.7...v0.66.8)
+
+**Merged pull requests:**
+
+- One more zk.set to use bytes [\#1390](https://github.com/Yelp/paasta/pull/1390) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.66.7](https://github.com/Yelp/paasta/tree/v0.66.7) (2017-07-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.66.6...v0.66.7)
 
 **Merged pull requests:**
 

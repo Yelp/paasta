@@ -18,7 +18,6 @@ from __future__ import unicode_literals
 from mock import Mock
 from mock import patch
 from pytest import raises
-from simplejson import JSONDecodeError
 
 from paasta_tools import paasta_metastatus
 
@@ -127,7 +126,7 @@ def test_main_marathon_jsondecode_error():
         load_marathon_config_patch.return_value = {"url": "http://foo"}
         get_marathon_client_patch.return_value = Mock()
 
-        get_marathon_status_patch.side_effect = JSONDecodeError("y", "x", 100)
+        get_marathon_status_patch.side_effect = ValueError('could not decode json')
 
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
