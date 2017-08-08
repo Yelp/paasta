@@ -351,13 +351,14 @@ def test_sensu_message_status_no_run():
 
 def test_sensu_message_status_no_run_disabled():
     fake_job = None
-    expected_runtime = 0
+
+    def expected_runtime_callback(): return 0
     with patch(
         'paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
         return_value=Mock(get_disabled=Mock(return_value=True)),
     ):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job, expected_runtime,
+            Mock(), 'myservice', 'myinstance', 'mycluster', fake_job, expected_runtime_callback,
         )
     assert output == "Job myservice.myinstance is disabled - ignoring status."
     assert status == pysensu_yelp.Status.OK
@@ -365,14 +366,15 @@ def test_sensu_message_status_no_run_disabled():
 
 def test_sensu_message_status_disabled():
     fake_job = {'name': 'fake_job_id', 'disabled': True}
-    expected_runtime = 0
+
+    def expected_runtime_callback(): return 0
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         chronos_job_config=Mock(),
         service='myservice',
         instance='myinstance',
         cluster='mycluster',
         chronos_job=fake_job,
-        expected_runtime=expected_runtime,
+        expected_runtime_callback=expected_runtime_callback,
     )
     assert output == "Job myservice.myinstance is disabled - ignoring status."
     assert status == pysensu_yelp.Status.OK
@@ -380,7 +382,8 @@ def test_sensu_message_status_disabled():
 
 def test_sensu_message_status_stuck():
     fake_schedule = '* 1 * * *'
-    expected_runtime = 60 * 30
+
+    def expected_runtime_callback(): return 60 * 30
     fake_job = {
         'name': 'fake_job_id',
         'disabled': False,
@@ -397,7 +400,7 @@ def test_sensu_message_status_stuck():
         instance='myinstance',
         cluster='mycluster',
         chronos_job=fake_job,
-        expected_runtime=expected_runtime,
+        expected_runtime_callback=expected_runtime_callback,
     )
     assert status == pysensu_yelp.Status.CRITICAL
     assert (
@@ -410,44 +413,48 @@ def test_sensu_message_status_stuck():
 
 def test_job_is_stuck_when_no_interval():
     interval = None
-    expected_runtime = 60 * 60 * 8
+
+    def expected_runtime_callback(): return 60 * 60 * 8
     assert not check_chronos_jobs.job_is_stuck(
         '2016-07-26T22:03:00+00:00',
-        interval, expected_runtime,
+        interval, expected_runtime_callback,
     )
 
 
 def test_job_is_stuck_when_no_last_run():
-    assert not check_chronos_jobs.job_is_stuck(None, 2440, 0)
+    assert not check_chronos_jobs.job_is_stuck(None, 2440, lambda: 0)
 
 
 def test_job_is_stuck_when_not_running_yet():
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=4)
     interval = 60 * 60 * 24
-    expected_runtime = 60 * 60 * 8
+
+    def expected_runtime_callback(): return 60 * 60 * 8
     assert not check_chronos_jobs.job_is_stuck(
         last_time_run.isoformat(),
-        interval, expected_runtime,
+        interval, expected_runtime_callback,
     )
 
 
 def test_job_is_stuck_when_still_running():
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     interval = 60 * 60 * 24
-    expected_runtime = 60 * 60 * 8
+
+    def expected_runtime_callback(): return 60 * 60 * 8
     assert not check_chronos_jobs.job_is_stuck(
         last_time_run.isoformat(),
-        interval, expected_runtime,
+        interval, expected_runtime_callback,
     )
 
 
 def test_job_is_stuck_when_stuck():
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     interval = 60 * 60 * 24
-    expected_runtime = 60 * 30
+
+    def expected_runtime_callback(): return 60 * 30
     assert check_chronos_jobs.job_is_stuck(
         last_time_run.isoformat(),
-        interval, expected_runtime,
+        interval, expected_runtime_callback,
     )
 
 
