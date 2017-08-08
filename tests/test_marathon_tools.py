@@ -863,13 +863,15 @@ class TestMarathonTools:
             },
         ]
         fake_mem = 1000000000000000000000
-        fake_env = {'FAKEENV': 'FAKEVALUE'}
+        fake_env = {'FAKEENV': 'FAKEVALUE', 'PAASTA_TEAM': 'fake_team'}
         expected_env = {
             'FAKEENV': 'FAKEVALUE',
-            'PAASTA_CLUSTER': '',
+            'PAASTA_CLUSTER': 'fake_cluster',
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
+            'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
             'PAASTA_DOCKER_IMAGE': '',
+            'PAASTA_TEAM': 'fake_team',
         }
         fake_cpus = .42
         fake_disk = 1234.5
@@ -937,7 +939,7 @@ class TestMarathonTools:
         }
         config = marathon_tools.MarathonServiceConfig(
             service='can_you_dig_it',
-            cluster='',
+            cluster='fake_cluster',
             instance='yes_i_can',
             config_dict={
                 'env': fake_env,
@@ -958,7 +960,7 @@ class TestMarathonTools:
             branch_dict={'desired_state': 'start'},
         )
         with mock.patch(
-            'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
+            'paasta_tools.config.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
         ), mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
             return_value=fake_service_namespace_config,
@@ -1509,7 +1511,7 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.load_system_paasta_config',
             autospec=True, return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
-            'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
+            'paasta_tools.config.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
         ), mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
             return_value=self.fake_service_namespace_config,

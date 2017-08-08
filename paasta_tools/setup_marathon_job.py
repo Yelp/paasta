@@ -59,6 +59,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.config import InvalidInstanceConfig
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import kill_given_tasks
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -67,7 +68,6 @@ from paasta_tools.mesos_maintenance import reserve_all_resources
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError

@@ -7,11 +7,11 @@ import socket
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 
+from paasta_tools.config import InstanceConfig
+from paasta_tools.config import InvalidInstanceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import ZookeeperPool
 
