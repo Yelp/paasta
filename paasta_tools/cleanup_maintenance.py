@@ -18,9 +18,6 @@ Usage: ./cleanup_maintenance.py
 Clean up boxes that should no longer be marked as 'draining' or 'down' for
 maintenance. Also cleanup the associated dynamic reservations.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import sys

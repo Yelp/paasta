@@ -14,9 +14,6 @@
 # limitations under the License.
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 import re
 

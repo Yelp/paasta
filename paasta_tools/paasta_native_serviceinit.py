@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from paasta_tools.frameworks.native_scheduler import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import calculate_tail_lines

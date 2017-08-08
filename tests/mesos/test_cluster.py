@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from mock import MagicMock
 from mock import Mock
 from pytest import raises

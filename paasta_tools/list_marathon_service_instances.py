@@ -27,9 +27,6 @@ Command line options:
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 - -m, --minimal: Only show service instances that need bouncing
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import sys
 

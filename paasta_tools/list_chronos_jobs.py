@@ -26,9 +26,6 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import sys
 

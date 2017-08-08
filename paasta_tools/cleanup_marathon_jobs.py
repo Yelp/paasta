@@ -31,9 +31,6 @@ Command line options:
     is sane to kill when this job runs
 - -f, --force: Force the killing of apps if we breach the threshold
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import sys

@@ -40,9 +40,6 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import sys
@@ -462,7 +459,7 @@ def deploy_service(
         new_app_running = True
         happy_new_tasks = bounce_lib.get_happy_tasks(
             new_app, service, nerve_ns, system_paasta_config,
-            **bounce_health_params
+            **bounce_health_params,
         )
     else:
         new_app_running = False

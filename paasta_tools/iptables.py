@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
 """iptables helper functions.
 
 Unlike the `firewall` module, these functions know nothing about PaaSTA and
 could effectively be a third-party library. They just make working with
 iptables a little bit easier.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import collections
 import contextlib
 import logging

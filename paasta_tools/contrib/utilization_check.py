@@ -2,9 +2,6 @@
 """Reads a list of hosts to stdin and produces
 a utilization report for those hosts.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import functools
 import json
 import sys

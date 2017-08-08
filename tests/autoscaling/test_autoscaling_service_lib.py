@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from datetime import datetime
 from datetime import timedelta
 
@@ -495,7 +492,7 @@ def test_autoscale_marathon_instance():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0}
+        **{'return_value.return_value': 0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=1),
@@ -524,7 +521,7 @@ def test_autoscale_marathon_instance_up_to_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0}
+        **{'return_value.return_value': 0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-3),
@@ -571,7 +568,7 @@ def test_autoscale_marathon_instance_below_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0}
+        **{'return_value.return_value': 0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-3),
@@ -607,7 +604,7 @@ def test_autoscale_marathon_instance_above_max_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0}
+        **{'return_value.return_value': 0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=5),
@@ -643,7 +640,7 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0}
+        **{'return_value.return_value': 0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock.Mock(return_value=-50),
@@ -775,7 +772,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         'paasta_tools.autoscaling.autoscaling_service_lib.is_task_data_insufficient', autospec=True,
     ) as mock_is_task_data_insufficient, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0.0}
+        **{'return_value.return_value': 0.0},
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock_autoscaling_decision,
@@ -1410,45 +1407,45 @@ def test_proportional_decision_policy(mock_save_historical_load, mock_fetch_hist
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.5,
-        **common_kwargs
+        **common_kwargs,
     )
 
     # if utilization is fairly close to setpoint, delta should be 0.
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.524,  # Just under 0.525 = 0.5 * 1.05
-        **common_kwargs
+        **common_kwargs,
     )
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.476,  # Just over 0.475 = 0.5 * 0.95
-        **common_kwargs
+        **common_kwargs,
     )
 
     assert 1 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.526,  # Just over 0.525 = 0.5 * 1.05
-        **common_kwargs
+        **common_kwargs,
     )
 
     assert -1 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.474,  # Just under 0.475 = 0.5 * 0.95
-        **common_kwargs
+        **common_kwargs,
     )
 
     # If we're 50% overutilized, scale up by 50%
     assert 5 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.75,
-        **common_kwargs
+        **common_kwargs,
     )
 
     # If we're 50% underutilized, scale down by 50%
     assert -5 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.25,
-        **common_kwargs
+        **common_kwargs,
     )
 
 
@@ -1469,45 +1466,45 @@ def test_proportional_decision_policy_nonzero_offset(mock_save_historical_load, 
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.5,
-        **common_kwargs
+        **common_kwargs,
     )
 
     # if utilization is fairly close to setpoint, delta should be 0.
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.514,  # Just under 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs
+        **common_kwargs,
     )
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.486,  # Just over 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs
+        **common_kwargs,
     )
 
     assert 1 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.516,  # Just over 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs
+        **common_kwargs,
     )
 
     assert -1 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.484,  # Just under 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs
+        **common_kwargs,
     )
 
     # If we're 50% overutilized, scale up by 50%
     assert 5 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.65,
-        **common_kwargs
+        **common_kwargs,
     )
 
     # If we're 50% underutilized, scale down by 50%
     assert -5 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5,
         utilization=0.35,
-        **common_kwargs
+        **common_kwargs,
     )
 
 

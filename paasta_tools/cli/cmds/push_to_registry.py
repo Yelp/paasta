@@ -15,9 +15,6 @@
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import base64
 import binascii
 import json
