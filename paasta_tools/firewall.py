@@ -7,6 +7,7 @@ import json
 import logging
 import os.path
 import re
+import socket
 from contextlib import contextmanager
 
 import six
@@ -91,6 +92,7 @@ class ServiceGroup(collections.namedtuple(
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
         rules.extend(_cidr_rules(conf))
+        rules.extend(_fqdn_rules(conf))
         return tuple(rules)
 
     def update_rules(self, soa_dir, synapse_service_dir):
@@ -251,6 +253,19 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         yield _yocalhost_rule(port, 'proxy_port ' + namespace)
 
 
+def _get_port(port):
+    """Return a validated port, or None."""
+    try:
+        port = int(port)
+    except ValueError:
+        log.exception(f'Unable to parse port: {port}')
+    else:
+        if not 1 <= port <= 65535:
+            log.error(f'Bogus port number: {port}')
+        else:
+            return port
+
+
 def _cidr_rules(conf):
     for dep in conf.get_dependencies() or ():
         cidr = dep.get('cidr')
@@ -259,28 +274,71 @@ def _cidr_rules(conf):
         if cidr is None:
             continue
 
+        if port is not None:
+            port = _get_port(port)
+            if port is None:
+                continue
+
         try:
             network = ipaddress.IPv4Network(cidr)
         except ipaddress.AddressValueError:
             log.exception(f'Unable to parse IP network: {cidr}')
             continue
 
+        yield from _ip_port_rule(network, port)
+
+
+def _fqdn_rules(conf):
+    for dep in conf.get_dependencies() or ():
+        fqdn = dep.get('fqdn')
+        port = dep.get('port')
+
+        if fqdn is None:
+            continue
+
         if port is not None:
-            try:
-                port = int(port)
-            except ValueError:
-                log.exception(f'Unable to parse port: {port}')
+            port = _get_port(port)
+            if port is None:
                 continue
 
-            if not 1 <= port <= 65535:
-                log.error(f'Bogus port number: {port}')
-                continue
+        try:
+            _, _, ipv4_records = socket.gethostbyname_ex(fqdn)
+        except socket.gaierror:
+            log.exception(f'Unable to resolve DNS name: {fqdn}')
+            continue
 
-        # Set up an ip rule if no port, or a tcp/udp rule if there is a port
-        dst = f'{network.network_address.exploded}/{network.netmask}'
-        if port is None:
+        for ip in ipv4_records:
+            network = ipaddress.ip_network(f'{ip}/32')
+            yield from _ip_port_rule(network, port, comment=str(fqdn))
+
+
+def _ip_port_rule(network, port, comment=None):
+    # Set up an ip rule if no port, or a tcp/udp rule if there is a port
+    dst = f'{network.network_address.exploded}/{network.netmask}'
+
+    if comment is None:
+        comment = str(network)
+
+    if port is None:
+        yield iptables.Rule(
+            protocol='ip',
+            src='0.0.0.0/0.0.0.0',
+            dst=dst,
+            target='ACCEPT',
+            matches=(
+                (
+                    'comment',
+                    (
+                        ('comment', (f'allow {comment}:*',)),
+                    ),
+                ),
+            ),
+            target_parameters=(),
+        )
+    else:
+        for proto in ('tcp', 'udp'):
             yield iptables.Rule(
-                protocol='ip',
+                protocol=proto,
                 src='0.0.0.0/0.0.0.0',
                 dst=dst,
                 target='ACCEPT',
@@ -288,35 +346,18 @@ def _cidr_rules(conf):
                     (
                         'comment',
                         (
-                            ('comment', (f'allow {network}:*',)),
+                            ('comment', (f'allow {comment}:{port}',)),
+                        ),
+                    ),
+                    (
+                        proto,
+                        (
+                            ('dport', (str(port),)),
                         ),
                     ),
                 ),
                 target_parameters=(),
             )
-        else:
-            for proto in ('tcp', 'udp'):
-                yield iptables.Rule(
-                    protocol=proto,
-                    src='0.0.0.0/0.0.0.0',
-                    dst=dst,
-                    target='ACCEPT',
-                    matches=(
-                        (
-                            'comment',
-                            (
-                                ('comment', (f'allow {network}:{port}',)),
-                            ),
-                        ),
-                        (
-                            proto,
-                            (
-                                ('dport', (str(port),)),
-                            ),
-                        ),
-                    ),
-                    target_parameters=(),
-                )
 
 
 def services_running_here():
