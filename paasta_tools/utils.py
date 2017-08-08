@@ -74,6 +74,7 @@ ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
+no_escape_b = re.compile(b'\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
@@ -841,7 +842,7 @@ def _now():
 
 def remove_ansi_escape_sequences(line):
     """Removes ansi escape sequences from the given line."""
-    return no_escape.sub('', line)
+    return no_escape.sub('', line) if type(line) is str else no_escape_b.sub('', line)
 
 
 def format_log_line(level, cluster, service, instance, component, line, timestamp=None):
@@ -862,7 +863,7 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
             'service': service,
             'instance': instance,
             'component': component,
-            'message': line,
+            'message': str(line),
         }, sort_keys=True,
     )
     return message

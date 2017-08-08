@@ -269,17 +269,17 @@ def extract_utc_timestamp_from_log_line(line):
     or None if it could not parse the line
     """
     # Extract ISO 8601 date per http://www.pelagodesign.com/blog/2009/05/20/iso-8601-date-validation-that-doesnt-suck/
-    iso_re = r'^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|' \
-        r'(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+' \
-        r'(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)? '
-
+    iso_re = br'^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|' \
+        br'(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+' \
+        br'(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)? '
+    line = line if type(line) is bytes else line.encode() 
     tokens = re.match(iso_re, line)
 
     if not tokens:
         # Could not parse line
         return None
     timestamp = tokens.group(0).strip()
-    dt = isodate.parse_datetime(timestamp)
+    dt = isodate.parse_datetime(timestamp.decode())
     utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, dateutil.tz.tzutc())
     return utc_timestamp
 

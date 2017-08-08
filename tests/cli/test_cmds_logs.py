@@ -325,11 +325,13 @@ def test_extract_utc_timestamp_from_log_line_ok():
     line = '%s this is a fake syslog test message' % fake_timestamp
     assert logs.extract_utc_timestamp_from_log_line(line) == fake_utc_timestamp
 
-
 def test_extract_utc_timestamp_from_log_line_when_missing_date():
     line = 'this is a fake invalid syslog message'
     assert not logs.extract_utc_timestamp_from_log_line(line)
 
+def test_extract_utc_timestamp_from_log_line_when_missing_date_with_bytes_object():
+    line = 'this is a fake invalid syslog message'
+    assert not logs.extract_utc_timestamp_from_log_line(line)
 
 def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     line = 'Jul 22 10:39:08 this is a fake invalid syslog message'
