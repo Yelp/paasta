@@ -346,6 +346,18 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
     return True
 
 
+def list_deployed_clusters(pipeline, actual_deployments):
+    """Returns a list of clusters that a service is deployed to given
+    an input deploy pipeline and the actual deployments"""
+    deployed_clusters = []
+    for namespace in pipeline:
+        cluster, instance = namespace.split('.')
+        if namespace in actual_deployments:
+            if cluster not in deployed_clusters:
+                deployed_clusters.append(cluster)
+    return deployed_clusters
+
+
 def list_services(**kwargs):
     """Returns a sorted list of all services"""
     return sorted(read_services_configuration().keys())

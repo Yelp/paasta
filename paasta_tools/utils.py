@@ -35,6 +35,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import wraps
@@ -156,6 +157,9 @@ class InstanceConfig(object):
 
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
+
+    def get_instance_owner(self):
+        return self.config_dict.get('monitoring', {}).get('team', None)
 
     def get_mem(self):
         """Gets the memory required from the service's configuration.
@@ -1565,6 +1569,79 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     ):
         clusters.add(cluster)
     return sorted(clusters)
+
+
+def get_instance_configs(instance_type, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns instance configs associated with an instance type and cluster
+
+    :param instance_type: The instance type, eg chronos or marathong
+    :param cluster: The cluster to look in.  If not specified will lookup the current cluster
+    :returns: dict in format {service_name: {instance_name: {instance_conf}, ...}, ...}
+    """
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    rootdir = os.path.abspath(soa_dir)
+    service_instance_configs = {}
+    for srv_dir in os.listdir(rootdir):
+        service_instance_configs[srv_dir] = service_configuration_lib.read_extra_service_information(
+            srv_dir,
+            "%s-%s" % (instance_type, cluster),
+            soa_dir=soa_dir,
+        )
+    return service_instance_configs
+
+
+def get_all_instance_configs(clusters, soa_dir=DEFAULT_SOA_DIR):
+    """Get all instance configs for all instance types for a list of clusters
+
+    :param clusters: The clusters to get configs for
+    :returns: A dict in the format {cluster_name: {service_name: {instance_name: {instance_conf}, ...}, ...}, ...}
+    """
+    confs = defaultdict(lambda: defaultdict(dict))
+    for t in INSTANCE_TYPES:
+        for c in clusters:
+            services = get_instance_configs(t, c, soa_dir)
+            for service, instance in services.items():
+                confs[c][service].update(instance)
+    return confs
+
+
+def get_all_service_configs(soa_dir=DEFAULT_SOA_DIR):
+    """Get the service config for all services
+
+    :returns: A dict in the format {service_name: {service_conf}, ...}
+    """
+    rootdir = os.path.abspath(soa_dir)
+    service_configs = {}
+    for srv_dir in os.listdir(rootdir):
+        service_configs[srv_dir] = service_configuration_lib.read_service_configuration(
+            srv_dir,
+            soa_dir=soa_dir,
+        )
+    return service_configs
+
+
+def get_instances_by_owners(owners, clusters, soa_dir=DEFAULT_SOA_DIR):
+    """Get all service instances with owner in a list
+
+    :param owners: A list of owners to match against
+    :param clusters: A list of clusters to look for services in
+    :returns: A dict of service_instances, in the format {cluster: {service_name: [instance1, instance2, ...], ...}}
+    """
+    all_instances = {c: get_services_for_cluster(cluster=c, soa_dir=soa_dir) for c in clusters}
+    service_confs = get_all_service_configs(soa_dir)
+    instance_confs = get_all_instance_configs(clusters, soa_dir)
+
+    cluster_services_instances = defaultdict(lambda: defaultdict(set))
+    for cluster, services_instances in all_instances.items():
+        for service, instance in services_instances:
+            service_team = service_confs.get(service, {}).get('monitoring', {}).get('team', None)
+            instance_conf = instance_confs.get(cluster, {}).get(service, {}).get(instance, {})
+            instance_team = instance_conf.get('monitoring', {}).get('team', None)
+            if instance_team in owners or (instance_team is None and service_team in owners):
+                cluster_services_instances[cluster][service].add(instance)
+
+    return cluster_services_instances
 
 
 def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):
