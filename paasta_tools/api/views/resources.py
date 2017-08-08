@@ -45,7 +45,7 @@ def resources_utilization(request):
     if groupings is None:
         groupings = ['superregion']
     grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
-    sorting_function = metastatus_lib.sort_key_func_for_attribute_multi(groupings)
+    sorting_function = metastatus_lib.sort_func_for_attributes(groupings)
 
     filters = request.swagger_data.get('filter', [])
     filters = parse_filters(filters)
@@ -57,7 +57,7 @@ def resources_utilization(request):
         grouping_func=grouping_function,
         mesos_state=mesos_state,
         filters=filter_funcs,
-        sorting_func=sorting_function,
+        sort_func=sorting_function,
     )
 
     response_body = []
