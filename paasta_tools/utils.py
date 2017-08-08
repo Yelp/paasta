@@ -287,6 +287,7 @@ class InstanceConfig(object):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
