@@ -511,7 +511,7 @@ def get_master_flags():
 
 
 def get_zookeeper_host_path():
-    zk_url = load_system_paasta_config().get_zk_hosts()
+    zk_url = 'zk://%s' % load_system_paasta_config().get_zk_hosts()
     parsed = urlparse(zk_url)
     return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
 
