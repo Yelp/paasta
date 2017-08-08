@@ -17,9 +17,6 @@ This is abstracted so that the new marathon system can use the same
 interface with a different provider.
 
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import copy
 from typing import Any
 from typing import Dict

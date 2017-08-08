@@ -24,7 +24,7 @@ destination paasta_oom_logger {
 };
 
 filter f_cgroup_oom {
-  match("killed as a result of limit of");
+  match(" killed as a result of limit of ") or match(" invoked oom-killer: ");
 };
 
 log {
@@ -33,9 +33,6 @@ log {
   destination(paasta_oom_logger);
 };
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import re
 import sys
 from collections import namedtuple
@@ -49,16 +46,31 @@ from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import load_system_paasta_config
 
 
+LogLine = namedtuple(
+    'LogLine', [
+        'timestamp', 'hostname', 'container_id',
+        'cluster', 'service', 'instance', 'process_name',
+    ],
+)
+
+
 def capture_oom_events_from_stdin():
+    process_name_regex = re.compile('^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(\w+) invoked oom-killer:')
     oom_regex = re.compile('^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a')
+    process_name = ''
 
     while True:
         syslog = sys.stdin.readline()
         if not syslog:
             break
+        print(syslog)
+        r = process_name_regex.search(syslog)
+        if r:
+            process_name = r.group(1)
         r = oom_regex.search(syslog)
         if r:
-            yield (int(r.group(1)), r.group(2), r.group(3))
+            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
+            process_name = ''
 
 
 def get_container_env_as_dict(docker_inspect):
@@ -75,17 +87,21 @@ def get_container_env_as_dict(docker_inspect):
 def log_to_scribe(logger, log_line):
     """Send the event to 'tmp_paasta_oom_events'."""
     line = ('{"timestamp": %d, "hostname": "%s", "container_id": "%s", "cluster": "%s", '
-            '"service": "%s", "instance": "%s"}' % (
-                log_line.timestamp, log_line.hostname,
-                log_line.container_id, log_line.cluster, log_line.service, log_line.instance,
+            '"service": "%s", "instance": "%s", "process_name": "%s"}' % (
+                log_line.timestamp, log_line.hostname, log_line.container_id,
+                log_line.cluster, log_line.service, log_line.instance,
+                log_line.process_name,
             ))
     logger.log_line('tmp_paasta_oom_events', line)
 
 
 def log_to_paasta(log_line):
     """Add the event to the standard PaaSTA logging backend."""
-    line = ('A process in the container %s on %s killed by OOM.'
-            % (log_line.container_id, log_line.hostname))
+    line = ('oom-killer killed %s on %s (container_id: %s).'
+            % (
+                'a %s process' % log_line.process_name if log_line.process_name else 'a process',
+                log_line.hostname, log_line.container_id,
+            ))
     _log(
         service=log_line.service, instance=log_line.instance, component='oom',
         cluster=log_line.cluster, level=DEFAULT_LOGLEVEL, line=line,
@@ -93,17 +109,10 @@ def log_to_paasta(log_line):
 
 
 def main():
-    LogLine = namedtuple(
-        'LogLine', [
-            'timestamp', 'hostname', 'container_id',
-            'cluster', 'service', 'instance',
-        ],
-    )
-
     scribe_logger = ScribeLogger(host='169.254.255.254', port=1463, retry_interval=5)
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
-    for timestamp, hostname, container_id in capture_oom_events_from_stdin():
+    for timestamp, hostname, container_id, process_name in capture_oom_events_from_stdin():
         try:
             docker_inspect = client.inspect_container(resource_id=container_id)
         except (APIError):
@@ -116,6 +125,7 @@ def main():
             cluster=cluster,
             service=env_vars.get('PAASTA_SERVICE', 'unknown'),
             instance=env_vars.get('PAASTA_INSTANCE', 'unknown'),
+            process_name=process_name,
         )
         log_to_scribe(scribe_logger, log_line)
         log_to_paasta(log_line)

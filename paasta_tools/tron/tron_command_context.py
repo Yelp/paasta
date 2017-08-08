@@ -2,9 +2,6 @@
 have variables that need to be rendered.
 This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/command_context.py.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import functools
 import operator
 

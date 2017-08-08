@@ -20,9 +20,6 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 import logging
 import os
@@ -208,7 +205,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     if sensu_host is not None:
         pysensu_yelp.send_event(
             check_name, runbook, status, output, team, sensu_host=sensu_host, sensu_port=sensu_port,
-            **result_dict
+            **result_dict,
         )
 
 

@@ -7,10 +7,9 @@ chmod 700 /root/.ssh
 chmod 600 /root/.ssh/*
 /usr/sbin/sshd
 
-pip install -e /work/extra-linux-requirements.txt
-pip install -e /work
+pip install -r /work/extra-linux-requirements.txt -e /work
 # This is a hack because we're not creating a real package which would create symlinks for the .py scripts
-while read link; do echo $link|sed -e 's/opt\/venvs\/paasta-tools\//\/usr\/local\//'| sed -e 's/\ usr/\ \/usr/'| xargs ln -s; done < /work/debian/paasta-tools.links
+while read link; do echo $link|sed -e 's|opt/venvs/paasta-tools/|/venv/|'| sed -e 's/\ usr/\ \/usr/'| xargs ln -s; done < /work/debian/paasta-tools.links
 /usr/sbin/rsyslogd
 cron
 mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets --hostname=$(hostname) &

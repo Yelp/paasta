@@ -12,10 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import logging
 import struct
 import time
@@ -179,7 +175,7 @@ def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_in
 def proportional_decision_policy(
     zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
     num_healthy_instances, noop=False, offset=0.0, forecast_policy='current',
-    good_enough_window=None, **kwargs
+    good_enough_window=None, **kwargs,
 ):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
     the setpoint, scales up by 10%. Includes correction for an offset, if your containers have a baseline utilization
@@ -392,7 +388,7 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='sta
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
 def mesos_cpu_metrics_provider(
     marathon_service_config, marathon_tasks, mesos_tasks, log_utilization_data={},
-    noop=False, **kwargs
+    noop=False, **kwargs,
 ):
     """
     Gets the mean cpu utilization of a service across all of its tasks.
@@ -557,7 +553,7 @@ def get_new_instance_count(
         current_instances=current_instances,
         zookeeper_path=zookeeper_path,
         num_healthy_instances=num_healthy_instances,
-        **autoscaling_params
+        **autoscaling_params,
     )
 
     # Limit downscaling by 30% of current_instances until we find out what is
@@ -577,7 +573,7 @@ def get_utilization(marathon_service_config, autoscaling_params, log_utilization
         marathon_tasks=marathon_tasks,
         mesos_tasks=mesos_tasks,
         log_utilization_data=log_utilization_data,
-        **autoscaling_params
+        **autoscaling_params,
     )
 
 

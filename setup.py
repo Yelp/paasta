@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import glob
 
 from setuptools import find_packages
@@ -46,13 +42,11 @@ setup(
         'ephemeral-port-reserve >= 1.0.1',
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
-        'httplib2 >= 0.9,<= 1.0',
         'inotify >= 0.2.8',
         'isodate >= 0.5.0',
         'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.9.0',
-        'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid >= 1.8',
         'pymesos >= 0.2.0',

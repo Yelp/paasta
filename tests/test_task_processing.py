@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # We just want to test that task_processing is available in the virtualenv
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 
 def test_import():

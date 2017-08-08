@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import mock
 import pytest
 
@@ -130,6 +126,8 @@ def mock_service_config():
         mock_instance_config.return_value.get_dependencies.return_value = [
             {'well-known': 'internet'},
             {'smartstack': 'example_happyhour.main'},
+            {'cidr': '169.229.226.0/24'},
+            {'cidr': '8.8.8.8', 'port': 53},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
 
@@ -206,6 +204,32 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
                 ('tcp', (('dport', ('20000',)),)),
             ),
         ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='169.229.226.0/255.255.255.0',
+            matches=(
+                ('comment', (('comment', ('allow 169.229.226.0/24:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
     )
 
 
@@ -262,10 +286,39 @@ def test_service_group_rules_block(mock_service_config, service_group):
                 ('tcp', (('dport', ('20000',)),)),
             ),
         ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='169.229.226.0/255.255.255.0',
+            matches=(
+                ('comment', (('comment', ('allow 169.229.226.0/24:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('tcp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.8.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
+                ('udp', (('dport', ('53',)),)),
+            ),
+        ),
     )
 
 
 def test_service_group_rules_synapse_backend_error(mock_service_config, service_group):
+    mock_service_config.return_value.get_dependencies.return_value = [
+        {'smartstack': 'example_happyhour.main'},
+    ]
     firewall._synapse_backends.side_effect = IOError('Error loading file')
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(
@@ -283,7 +336,6 @@ def test_service_group_rules_synapse_backend_error(mock_service_config, service_
             ),
         ),
         EMPTY_RULE._replace(target='PAASTA-COMMON'),
-        EMPTY_RULE._replace(target='PAASTA-INTERNET'),
         EMPTY_RULE._replace(
             protocol='tcp',
             target='ACCEPT',
@@ -517,7 +569,7 @@ def test_ensure_dns_chain(tmpdir):
     path = tmpdir.join('resolv.conf')
     path.write(
         'nameserver 8.8.8.8\n'
-        'nameserver 169.229.226.22\n',
+        'nameserver 8.8.4.4\n',
     )
     with mock.patch.object(
         iptables, 'ensure_chain', autospec=True,
@@ -530,7 +582,7 @@ def test_ensure_dns_chain(tmpdir):
     assert args[0] == 'PAASTA-DNS'
     assert args[1] == (
         EMPTY_RULE._replace(
-            dst='169.229.226.22/255.255.255.255',
+            dst='8.8.8.8/255.255.255.255',
             target='ACCEPT',
             protocol='udp',
             matches=(
@@ -538,15 +590,13 @@ def test_ensure_dns_chain(tmpdir):
             ),
         ),
         EMPTY_RULE._replace(
-            dst='169.229.226.22/255.255.255.255',
+            dst='8.8.8.8/255.255.255.255',
             target='ACCEPT',
             protocol='tcp',
             matches=(
                 ('tcp', (('dport', ('53',)),)),
             ),
         ),
-        # 8.8.4.4 wasn't included in the resolv.conf, but Docker inserts it as
-        # a default nameserver, so we always whitelist it.
         EMPTY_RULE._replace(
             dst='8.8.4.4/255.255.255.255',
             target='ACCEPT',
@@ -557,22 +607,6 @@ def test_ensure_dns_chain(tmpdir):
         ),
         EMPTY_RULE._replace(
             dst='8.8.4.4/255.255.255.255',
-            target='ACCEPT',
-            protocol='tcp',
-            matches=(
-                ('tcp', (('dport', ('53',)),)),
-            ),
-        ),
-        EMPTY_RULE._replace(
-            dst='8.8.8.8/255.255.255.255',
-            target='ACCEPT',
-            protocol='udp',
-            matches=(
-                ('udp', (('dport', ('53',)),)),
-            ),
-        ),
-        EMPTY_RULE._replace(
-            dst='8.8.8.8/255.255.255.255',
             target='ACCEPT',
             protocol='tcp',
             matches=(

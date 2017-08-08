@@ -1,7 +1,4 @@
 #!/usr/bin/env python3.6
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import itertools
 import json
 import sys

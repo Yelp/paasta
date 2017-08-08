@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 
 import marathon
@@ -141,7 +138,7 @@ class TestMarathonTools:
             instance=fake_instance,
             config_dict=dict(
                 self.fake_srv_config,
-                **self.fake_marathon_app_config.config_dict
+                **self.fake_marathon_app_config.config_dict,
             ),
             branch_dict={},
         )
@@ -205,7 +202,7 @@ class TestMarathonTools:
                 instance=fake_instance,
                 config_dict=dict(
                     self.fake_srv_config,
-                    **self.fake_marathon_app_config.config_dict
+                    **self.fake_marathon_app_config.config_dict,
                 ),
                 branch_dict=fake_branch_dict,
             )
@@ -866,9 +863,10 @@ class TestMarathonTools:
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         expected_env = {
             'FAKEENV': 'FAKEVALUE',
-            'PAASTA_CLUSTER': '',
+            'PAASTA_CLUSTER': 'fake_cluster',
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
+            'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
             'PAASTA_DOCKER_IMAGE': '',
         }
         fake_cpus = .42
@@ -937,7 +935,7 @@ class TestMarathonTools:
         }
         config = marathon_tools.MarathonServiceConfig(
             service='can_you_dig_it',
-            cluster='',
+            cluster='fake_cluster',
             instance='yes_i_can',
             config_dict={
                 'env': fake_env,

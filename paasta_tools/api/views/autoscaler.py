@@ -15,9 +15,6 @@
 """
 PaaSTA service list (instances) etc.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from pyramid.response import Response
 from pyramid.view import view_config
 

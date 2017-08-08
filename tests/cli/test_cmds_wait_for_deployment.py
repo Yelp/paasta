@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from threading import Event
 
 from bravado.exception import HTTPError
@@ -23,6 +20,7 @@ from pytest import raises
 from six.moves.queue import Queue
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha
@@ -222,16 +220,22 @@ def instances_deployed_side_effect(cluster_data, instances_out, green_light):  #
         cluster_data.instances_queue.task_done()
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 def test_wait_for_deployment(
-    mock_instances_deployed, mock__log,
+    mock_instances_deployed,
+    mock__log,
     mock_get_cluster_instance_map_for_service,
+    mock_load_system_paasta_config,
 ):
     mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2', 'instance3']}}
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     mock_instances_deployed.side_effect = instances_deployed_side_effect
+
+    mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = \
+        {'cluster1': 'some_url_1', 'cluster2': 'some_url_2'}
 
     with raises(TimeoutError):
         with patch('time.time', side_effect=[0, 0, 2], autospec=True):
@@ -253,6 +257,24 @@ def test_wait_for_deployment(
     }
     mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
     with raises(TimeoutError):
+        mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
+def test_wait_for_deployment_raise_no_such_cluster(
+    mock_instances_deployed,
+    mock__log,
+    mock_get_cluster_instance_map_for_service,
+    mock_load_system_paasta_config,
+):
+    mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = \
+        {'cluster1': 'some_url_1', 'cluster2': 'some_url_2'}
+
+    mock_get_cluster_instance_map_for_service.return_value = {'cluster3': {'instances': ['instance3']}}
+    with raises(NoSuchCluster):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
 
 

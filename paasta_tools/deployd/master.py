@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import inspect
 import logging
 import logging.handlers

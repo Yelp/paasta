@@ -16,9 +16,6 @@
 A simple script to enumerate all smartstack namespaces and output
 a /etc/services compatible file
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import json
 import os

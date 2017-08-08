@@ -1,10 +1,7 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import collections
 import hashlib
 import io
+import ipaddress
 import itertools
 import json
 import logging
@@ -30,12 +27,6 @@ PRIVATE_IP_RANGES = (
     '192.168.0.0/255.255.0.0',
     '169.254.0.0/255.255.0.0',
 )
-DEFAULT_DNS = frozenset((
-    # If Docker can't find any usable DNS servers on the host, it inserts these records.
-    # https://docs.docker.com/engine/userguide/networking/default_network/configure-dns/:
-    '8.8.8.8',
-    '8.8.4.4',
-))
 DEFAULT_SYNAPSE_SERVICE_DIR = '/var/run/synapse/services'
 DEFAULT_FIREWALL_FLOCK_PATH = '/var/lib/paasta/firewall.flock'
 DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
@@ -99,6 +90,7 @@ class ServiceGroup(collections.namedtuple(
         rules = list(_default_rules(conf, self.log_prefix))
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
+        rules.extend(_cidr_rules(conf))
         return tuple(rules)
 
     def update_rules(self, soa_dir, synapse_service_dir):
@@ -259,6 +251,74 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         yield _yocalhost_rule(port, 'proxy_port ' + namespace)
 
 
+def _cidr_rules(conf):
+    for dep in conf.get_dependencies() or ():
+        cidr = dep.get('cidr')
+        port = dep.get('port')
+
+        if cidr is None:
+            continue
+
+        try:
+            network = ipaddress.IPv4Network(cidr)
+        except ipaddress.AddressValueError:
+            log.exception(f'Unable to parse IP network: {cidr}')
+            continue
+
+        if port is not None:
+            try:
+                port = int(port)
+            except ValueError:
+                log.exception(f'Unable to parse port: {port}')
+                continue
+
+            if not 1 <= port <= 65535:
+                log.error(f'Bogus port number: {port}')
+                continue
+
+        # Set up an ip rule if no port, or a tcp/udp rule if there is a port
+        dst = f'{network.network_address.exploded}/{network.netmask}'
+        if port is None:
+            yield iptables.Rule(
+                protocol='ip',
+                src='0.0.0.0/0.0.0.0',
+                dst=dst,
+                target='ACCEPT',
+                matches=(
+                    (
+                        'comment',
+                        (
+                            ('comment', (f'allow {network}:*',)),
+                        ),
+                    ),
+                ),
+                target_parameters=(),
+            )
+        else:
+            for proto in ('tcp', 'udp'):
+                yield iptables.Rule(
+                    protocol=proto,
+                    src='0.0.0.0/0.0.0.0',
+                    dst=dst,
+                    target='ACCEPT',
+                    matches=(
+                        (
+                            'comment',
+                            (
+                                ('comment', (f'allow {network}:{port}',)),
+                            ),
+                        ),
+                        (
+                            proto,
+                            (
+                                ('dport', (str(port),)),
+                            ),
+                        ),
+                    ),
+                    target_parameters=(),
+                )
+
+
 def services_running_here():
     """Generator helper that yields (service, instance, mac address) of both
     marathon and chronos tasks.
@@ -365,7 +425,7 @@ def _ensure_dns_chain():
                     target_parameters=(),
                 ),
             )
-            for dns_server in sorted(set(_dns_servers()) | DEFAULT_DNS)
+            for dns_server in _dns_servers()
         )),
     )
 
