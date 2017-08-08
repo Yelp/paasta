@@ -20,6 +20,7 @@ import logging
 
 import humanize
 import isodate
+from requests.exceptions import ReadTimeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
@@ -398,18 +399,21 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
-    count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
-    if count >= normal_instance_count:
-        status = PaastaColors.green("Healthy")
-        count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
-    elif count == 0:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
-    else:
-        status = PaastaColors.yellow("Warning")
-        count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
-    running_string = PaastaColors.bold('TASK_RUNNING')
-    return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
+    try:
+        count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
+        if count >= normal_instance_count:
+            status = PaastaColors.green("Healthy")
+            count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
+        elif count == 0:
+            status = PaastaColors.red("Critical")
+            count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
+        else:
+            status = PaastaColors.yellow("Warning")
+            count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
+        running_string = PaastaColors.bold('TASK_RUNNING')
+        return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
+    except ReadTimeout:
+        return "Error: talking to Mesos timed out. It may be overloaded."
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, client=None):
