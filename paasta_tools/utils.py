@@ -842,7 +842,7 @@ def _now():
 
 def remove_ansi_escape_sequences(line):
     """Removes ansi escape sequences from the given line."""
-    return no_escape.sub('', line) if type(line) is str else no_escape_b.sub('', line)
+    return no_escape.sub('', line) if type(line) is str else no_escape_b.sub(b'', line)
 
 
 def format_log_line(level, cluster, service, instance, component, line, timestamp=None):

@@ -582,6 +582,11 @@ def test_remove_ansi_escape_sequences():
     colored_string = '\033[34m' + plain_string + '\033[0m'
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
+def test_remove_ansi_escape_sequences_with_bytes_object():
+    plain_string = 'blackandwhite'
+    colored_string = '\033[34m' + plain_string + '\033[0m'
+    assert utils.remove_ansi_escape_sequences(colored_string.encode()) == plain_string.encode()
+
 
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = '/nail/etc/services'
