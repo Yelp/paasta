@@ -1,3 +1,10 @@
+paasta-tools (0.66.24) xenial; urgency=medium
+
+  * 0.66.24 tagged with 'make release'
+    Commit: Actually add check_capacity script
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 06:50:40 -0700
+
 paasta-tools (0.66.23) xenial; urgency=medium
 
   * 0.66.23 tagged with 'make release'
