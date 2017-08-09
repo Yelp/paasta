@@ -52,7 +52,7 @@ def parse_capacity_check_options():
     parser.add_argument(
         '--attributes', dest='attributes', type=str, default='pool',
         help='Comma separated list of attributes to check.\n'
-        'By default, only checks attributes individually; see --cross-product-check',
+        'Checks combinations of attributes',
     )
     options = parser.parse_args()
 
