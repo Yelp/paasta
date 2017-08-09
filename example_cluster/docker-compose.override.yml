@@ -50,6 +50,7 @@ services:
     volumes:
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
+      - ./boto:/etc/boto:rw
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - ssh-data:/root/.ssh
@@ -62,6 +63,7 @@ services:
       - git
       - mesosslave
       - marathon
+      - dynamodb
   chronos:
     ports:
       - '8081:8081'
@@ -78,3 +80,7 @@ services:
       - ssh-data:/root/.ssh
     ports:
       - 22
+  dynamodb:
+    image: deangiberson/aws-dynamodb-local
+    ports:
+        - '8000:8000'

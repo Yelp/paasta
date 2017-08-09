@@ -230,6 +230,8 @@ def build_executor_stack(
         raise ValueError("Required aws credentials")
 
     region = taskproc_config.get('aws_region')
+
+    endpoint = taskproc_config.get('endpoint')
     session = Session(
         region_name=region,
         aws_access_key_id=credentials['accessKeyId'],
@@ -242,6 +244,7 @@ def build_executor_stack(
         persister=DynamoDBPersister(
             table_name="taskproc_events_%s" % cluster,
             session=session,
+            endpoint_url=endpoint
         ),
     )
 
