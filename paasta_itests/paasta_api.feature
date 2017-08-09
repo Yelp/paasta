@@ -25,7 +25,7 @@ Feature: paasta_api
     Given a working paasta cluster
      When an app with id "cputest" using high cpu is launched
       And 3 tasks belonging to the app with id "cputest" are in the task list
-     Then resources GET should show "cpus" has 27 used
+     Then resources GET should show "cpus" has 27.3 used
 
   # Note that the following tests depend on the configuration of docker-compose.yml
   #  in paasta_itests.  This is unfortunate, but seems to be the easiest way to launch
