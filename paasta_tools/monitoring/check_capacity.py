@@ -72,7 +72,7 @@ def error_message(failures, level, cluster, value_to_check):
     for f in failures:
         attrs = ", ".join(["%s: %s" % (e['attr'], e['value']) for e in f['attrs']])
         results.append(
-            "    %s is at %s percent %s, maximum %s percent" % (
+            "    %s is at %.2f percent %s, maximum %.2f percent" % (
                 attrs, f['current'], value_to_check,
                 f['maximum'],
             ),
