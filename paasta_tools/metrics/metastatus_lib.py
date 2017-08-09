@@ -39,6 +39,7 @@ ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'fre
 EXPECTED_HEALTHY_FRAMEWORKS = 2
 HIGH_QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.highQueueSize'
 QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.queueSize'
+MAINTENANCE_RESOURCE = 'maintenance'
 
 
 def get_num_masters():
@@ -58,8 +59,7 @@ def get_mesos_cpu_status(metrics, mesos_state):
     used = metrics['master/cpus_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['cpus']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['cpus']
 
     available = total - used
     return total, used, available
@@ -149,8 +149,7 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
     used = metrics['master/mem_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['mem']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['mem']
 
     used /= float(1024)
 
@@ -181,8 +180,7 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
     used = metrics['master/disk_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['disk']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['disk']
 
     used /= float(1024)
 
@@ -376,9 +374,10 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
         task_resources = task['resources']
         resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
     for slave in slaves:
-        for role in slave['reserved_resources']:
-            filtered_resources = filter_mesos_state_metrics(slave['reserved_resources'][role])
-            resource_free_dict.subtract(Counter(filtered_resources))
+        filtered_resources = filter_mesos_state_metrics(
+            reserved_maintenence_resources(slave['reserved_resources']),
+        )
+        resource_free_dict.subtract(Counter(filtered_resources))
     return {
         "free": ResourceInfo(
             cpus=resource_free_dict['cpus'],
@@ -708,3 +707,13 @@ def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilizati
     row = [attribute_value]
     row.extend(format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize))
     return row
+
+
+def reserved_maintenence_resources(resources):
+    return resources.get(
+        MAINTENANCE_RESOURCE, {
+            'cpus': 0,
+            'mem': 0,
+            'disk': 0,
+        },
+    )
