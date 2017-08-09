@@ -106,14 +106,18 @@ def extract_args(args):
         os._exit(1)
 
     soa_dir = args.yelpsoa_config_root
-    instance = args.instance
-    if instance is None:
-        instance_type = 'adhoc'
-        instance = 'remote'
+    instance_list = args.instance
+    instance_pairs = []
+    if instance_list is None:
+        instance_pairs.append(('remote', 'adhoc'))
     else:
-        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+        for instance in instance_list.split(','):
+            instance_type = validate_service_instance(
+                service, instance, cluster, soa_dir,
+            )
+            instance_pairs.append((instance, instance_type))
 
-    return (system_paasta_config, service, cluster, soa_dir, instance, instance_type)
+    return (system_paasta_config, service, cluster, soa_dir, instance_pairs)
 
 
 def paasta_to_task_config_kwargs(
@@ -249,7 +253,10 @@ def build_executor_stack(
 
 
 def remote_run_start(args):
-    system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
+    system_paasta_config, service, cluster, soa_dir, instance_pairs = \
+        extract_args(args)
+
+    instance, instance_type = instance_pairs[0]
     overrides_dict = {}
 
     constraints_json = args.constraints_json
@@ -342,7 +349,9 @@ def remote_run_start(args):
 
 # TODO: reimplement using build_executor_stack and task uuid instead of run_id
 def remote_run_stop(args):
-    _, service, cluster, _, instance, _ = extract_args(args)
+    _, service, cluster, _, instance_pairs = extract_args(args)
+    instance, _ = instance_pairs[0]
+
     if args.framework_id is None and args.run_id is None:
         paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
         os._exit(1)
@@ -385,19 +394,32 @@ def remote_run_stop(args):
 
 
 def remote_run_list(args):
-    _, service, cluster, _, instance, _ = extract_args(args)
+    _, service, cluster, _, instance_pairs = extract_args(args)
+    instances = [instance for (instance, _) in instance_pairs]
     frameworks = get_all_frameworks(active_only=True)
-    prefix = "paasta-remote %s.%s" % (service, instance)
-    filtered = [f for f in frameworks if f.name.startswith(prefix)]
+    prefixes = ["paasta-remote %s.%s" % (service, i) for i in instances]
+    filtered = [f
+                for f in frameworks
+                for p in prefixes
+                if f.name.startswith(p)]
     filtered.sort(key=lambda x: x.name)
+
     for f in filtered:
-        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f.name).groups()
-        paasta_print("Launch time: %s, run id: %s, framework id: %s" %
-                     (launch_time, run_id, f.id))
+        instance, launch_time, run_id = re.match(
+            'paasta-remote [^\s]+\.([^\s]+) (\w+) (\w+)', f.name,
+        ).groups()
+        paasta_print(
+            "Instance: %s, Launch time: %s, run id: %s, framework id: %s" %
+            (instance, launch_time, run_id, f.id),
+        )
+
     if len(filtered) > 0:
         paasta_print(
-            "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance),
+            (
+                "Use `paasta remote-run stop -s %s -c %s -i <instance> "
+                "[-R <run id> | -F <framework id>]` to stop."
+            ) %
+            (service, cluster),
         )
     else:
         paasta_print("Nothing found.")
