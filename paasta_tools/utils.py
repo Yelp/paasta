@@ -1146,6 +1146,15 @@ class SystemPaastaConfig(dict):
         """
         return self.get('deployd_maintenance_polling_frequency', 30)
 
+    def get_deployd_startup_oracle_enabled(self):
+        """This controls whether deployd will add all services that need a bounce on
+        startup. Generally this is desirable behaviour. If you are performing a bounce
+        of *all* services you will want to disable this.
+
+        :returns: A boolean
+        """
+        return self.get('deployd_startup_oracle_enabled', True)
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 
