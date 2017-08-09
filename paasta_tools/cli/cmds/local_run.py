@@ -799,12 +799,7 @@ def configure_and_run_docker_container(
     if pull_image:
         docker_pull_image(docker_url)
 
-    # if only one volume specified, extra_volumes should be converted to a list
-    extra_volumes = instance_config.get_extra_volumes()
-    if type(extra_volumes) == dict:
-        extra_volumes = [extra_volumes]
-
-    for volume in system_paasta_config.get_volumes() + extra_volumes:
+    for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if interactive is True and args.cmd is None:
