@@ -1,3 +1,10 @@
+paasta-tools (0.66.22) xenial; urgency=medium
+
+  * 0.66.22 tagged with 'make release'
+    Commit: Fix more imports
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 04:46:18 -0700
+
 paasta-tools (0.66.21) xenial; urgency=medium
 
   * 0.66.21 tagged with 'make release'
