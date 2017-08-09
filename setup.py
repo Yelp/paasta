@@ -80,6 +80,7 @@ setup(
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/get_mesos_leader.py',
         'paasta_tools/list_marathon_service_instances.py',
+        'paasta_tools/monitoring/check_capacity.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
         'paasta_tools/monitoring/kill_orphaned_docker_containers.py',
