@@ -500,7 +500,8 @@ class InstanceConfig(object):
 
     def get_volumes(self, system_volumes):
         volumes = system_volumes + self.get_extra_volumes()
-        deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
+        deslashed = [{k: v.rstrip('/') for k, v in vol.items()} for vol in volumes]  # remove trailing / on volumes
+        deduped = {v['containerPath'] + v['hostPath']: v for v in deslashed}.values()
         return sort_dicts(deduped)
 
     def get_dependencies_reference(self):
