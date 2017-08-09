@@ -1,3 +1,10 @@
+paasta-tools (0.66.21) xenial; urgency=medium
+
+  * 0.66.21 tagged with 'make release'
+    Commit: Merge branch "fix_local_run_volume_dedupe"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 08 Aug 2017 20:01:57 -0700
+
 paasta-tools (0.66.20) xenial; urgency=medium
 
   * 0.66.20 tagged with 'make release'
