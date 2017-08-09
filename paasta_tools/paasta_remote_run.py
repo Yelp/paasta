@@ -410,7 +410,7 @@ def remote_run_list(args):
         ).groups()
         paasta_print(
             "Instance: %s, Launch time: %s, run id: %s, framework id: %s" %
-            (instance, launch_time, run_id, f.id),
+            (instance, launch_time[0:13], run_id, f.id),
         )
 
     if len(filtered) > 0:
