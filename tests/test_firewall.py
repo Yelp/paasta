@@ -1,3 +1,5 @@
+import socket
+
 import mock
 import pytest
 
@@ -128,6 +130,7 @@ def mock_service_config():
             {'smartstack': 'example_happyhour.main'},
             {'cidr': '169.229.226.0/24'},
             {'cidr': '8.8.8.8', 'port': 53},
+            {'fqdn': 'yelp.com'},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
 
@@ -159,7 +162,19 @@ def test_service_group_rules_no_dependencies(mock_service_config, service_group)
     )
 
 
-def test_service_group_rules_monitor(mock_service_config, service_group):
+@pytest.yield_fixture
+def mock_dns_lookup():
+    with mock.patch.object(
+        socket,
+        'gethostbyname_ex',
+        return_value=('yelp.com', [], ['1.2.3.4', '5.6.7.8']),
+    ):
+        yield
+
+
+def test_service_group_rules_monitor(
+    mock_service_config, mock_dns_lookup, service_group,
+):
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(
             target='LOG',
@@ -230,10 +245,28 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
                 ('udp', (('dport', ('53',)),)),
             ),
         ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='1.2.3.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow yelp.com:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='5.6.7.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow yelp.com:*',)),)),
+            ),
+        ),
     )
 
 
-def test_service_group_rules_block(mock_service_config, service_group):
+def test_service_group_rules_block(
+    mock_service_config, mock_dns_lookup, service_group,
+):
     mock_service_config.return_value.get_outbound_firewall.return_value = 'block'
     assert service_group.get_rules(DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR) == (
         EMPTY_RULE._replace(
@@ -310,6 +343,22 @@ def test_service_group_rules_block(mock_service_config, service_group):
             matches=(
                 ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
                 ('udp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='1.2.3.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow yelp.com:*',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='ip',
+            target='ACCEPT',
+            dst='5.6.7.8/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow yelp.com:*',)),)),
             ),
         ),
     )
