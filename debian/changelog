@@ -1,3 +1,11 @@
+paasta-tools (0.66.23) xenial; urgency=medium
+
+  * 0.66.23 tagged with 'make release'
+    Commit: Merge pull request #1446 from Yelp/add-check-capacity-script
+    check_capacity should be added as a script
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 06:01:58 -0700
+
 paasta-tools (0.66.22) xenial; urgency=medium
 
   * 0.66.22 tagged with 'make release'
