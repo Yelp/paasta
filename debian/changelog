@@ -1,3 +1,11 @@
+paasta-tools (0.66.25) xenial; urgency=low
+
+  * 0.66.25 tagged with 'make release'
+    Commit: Merge pull request #1447 from Yelp/dynamo-in-example-cluster
+    add dynamodb deps to example cluster
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Thu, 10 Aug 2017 10:46:07 -0700
+
 paasta-tools (0.66.24) xenial; urgency=medium
 
   * 0.66.24 tagged with 'make release'
