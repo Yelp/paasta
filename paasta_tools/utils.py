@@ -272,6 +272,15 @@ class InstanceConfig(object):
         disk = self.config_dict.get('disk', default)
         return disk
 
+    def get_gpus(self, default=0):
+        """Gets the number of gpus required from the service's configuration.
+
+        Default to 0 if no value is specified in the config.
+
+        :returns: The number of gpus specified by the config, 0 if not specified"""
+        gpus = self.config_dict.get('gpus', default)
+        return gpus
+
     def get_cmd(self):
         """Get the docker cmd specified in the service's configuration.
 
@@ -408,6 +417,12 @@ class InstanceConfig(object):
         if disk is not None:
             if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
+        return True, ''
+
+    def check_gpus(self):
+        gpus = self.get_gpus()
+        if gpus is not None and not isinstance(gpus, (float, int)):
+            return False, 'The specified gpus value "%s" is not a valid float or int.' % gpus
         return True, ''
 
     def check_security(self):

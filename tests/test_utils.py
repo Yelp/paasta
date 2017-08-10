@@ -995,6 +995,26 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_disk() == 1024
 
+    def test_get_gpus_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={'gpus': -123},
+            branch_dict={},
+        )
+        assert fake_conf.get_gpus() == -123
+
+    def test_get_gpus_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_gpus() == 0
+
     def test_get_ulimit_in_config(self):
         fake_conf = utils.InstanceConfig(
             service='',
