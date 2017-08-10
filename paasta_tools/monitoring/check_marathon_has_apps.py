@@ -23,7 +23,7 @@ from paasta_tools.metrics.metastatus_lib import get_marathon_client
 from paasta_tools.utils import paasta_print
 
 
-def check_mesos_no_duplicate_frameworks():
+def check_marathon_apps():
     config = marathon_tools.load_marathon_config()
     if not config:
         paasta_print("UNKNOWN: Failed to load marathon config")
@@ -35,6 +35,7 @@ def check_mesos_no_duplicate_frameworks():
     except (MarathonError, InternalServerError, ValueError) as e:
         paasta_print("CRITICAL: Unable to connect to Marathon cluster: %s" % e.message)
         sys.exit(2)
+
     if result.healthy:
         paasta_print("OK: " + result.message)
         sys.exit(0)
@@ -44,4 +45,4 @@ def check_mesos_no_duplicate_frameworks():
 
 
 if __name__ == '__main__':
-    check_mesos_no_duplicate_frameworks()
+    check_marathon_apps()
