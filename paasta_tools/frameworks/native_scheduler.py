@@ -215,21 +215,19 @@ class NativeScheduler(Scheduler):
 
         return num_have < self.service_config.get_desired_instances()
 
-    def get_new_tasks(self, name, tasks):
-        return set(filter(
-            lambda tid:
-                self.is_task_new(name, tid) and
-                self.task_store.get_task(tid).mesos_task_state in LIVE_TASK_STATES,
-            tasks,
-        ))
+    def get_new_tasks(self, name, tasks_with_params):
+        return {
+            tid: params for tid, params in tasks_with_params.items() if (
+                self.is_task_new(name, tid) and (params.mesos_task_state in LIVE_TASK_STATES)
+            )
+        }
 
-    def get_old_tasks(self, name, tasks):
-        return set(filter(
-            lambda tid:
-                not(self.is_task_new(name, tid)) and
-                self.task_store.get_task(tid).mesos_task_state in LIVE_TASK_STATES,
-            tasks,
-        ))
+    def get_old_tasks(self, name, tasks_with_params):
+        return {
+            tid: params for tid, params in tasks_with_params.items() if (
+                (not self.is_task_new(name, tid)) and (params.mesos_task_state in LIVE_TASK_STATES)
+            )
+        }
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
@@ -362,11 +360,11 @@ class NativeScheduler(Scheduler):
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
 
-    def make_healthiness_sorter(self, base_task_name):
+    def make_healthiness_sorter(self, base_task_name, all_tasks_with_params):
         def healthiness_score(task_id):
             """Return a tuple that can be used as a key for sorting, that expresses our desire to keep this task around.
             Higher values (things that sort later) are more desirable."""
-            params = self.task_store.get_task(task_id)
+            params = all_tasks_with_params[task_id]
 
             state_score = {
                 TASK_KILLING: 0,
@@ -389,56 +387,61 @@ class NativeScheduler(Scheduler):
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
-        new_tasks = self.get_new_tasks(base_task.name, self.task_store.get_all_tasks().keys())
-        happy_new_tasks = self.get_happy_tasks(new_tasks)
+        all_tasks_with_params = self.task_store.get_all_tasks()
+
+        new_tasks_with_params = self.get_new_tasks(base_task.name, all_tasks_with_params)
+        happy_new_tasks_with_params = self.get_happy_tasks(new_tasks_with_params)
 
         desired_instances = self.service_config.get_desired_instances()
         # this puts the most-desired tasks first. I would have left them in order of bad->good and used
         # new_tasks_by_desirability[:-desired_instances] instead, but list[:-0] is an empty list, rather than the full
         # list.
-        new_tasks_by_desirability = sorted(
-            list(new_tasks),
-            key=self.make_healthiness_sorter(base_task.name),
+        new_task_ids_by_desirability = sorted(
+            list(new_tasks_with_params.keys()),
+            key=self.make_healthiness_sorter(base_task.name, all_tasks_with_params),
             reverse=True,
         )
-        new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
+        new_task_ids_to_kill = new_task_ids_by_desirability[desired_instances:]
 
-        old_tasks = self.get_old_tasks(base_task.name, self.task_store.get_all_tasks().keys())
-        old_happy_tasks = self.get_happy_tasks(old_tasks)
-        old_draining_tasks = self.get_draining_tasks(old_tasks)
-        old_unhappy_tasks = set(old_tasks) - set(old_happy_tasks) - set(old_draining_tasks)
+        old_tasks_with_params = self.get_old_tasks(base_task.name, all_tasks_with_params)
+        old_happy_tasks_with_params = self.get_happy_tasks(old_tasks_with_params)
+        old_draining_tasks_with_params = self.get_draining_tasks(old_tasks_with_params)
+
+        old_unhappy_task_ids = set(old_tasks_with_params.keys()) - set(old_happy_tasks_with_params.keys()) - \
+            set(old_draining_tasks_with_params)
 
         actions = bounce_lib.crossover_bounce(
             new_config={"instances": desired_instances},
             new_app_running=True,
-            happy_new_tasks=happy_new_tasks,
-            old_app_live_happy_tasks=self.group_tasks_by_version(old_happy_tasks + new_tasks_to_kill),
-            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_tasks),
+            happy_new_tasks=happy_new_tasks_with_params.keys(),
+            old_app_live_happy_tasks=self.group_tasks_by_version(
+                list(old_happy_tasks_with_params.keys()) + new_task_ids_to_kill,
+            ),
+            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_task_ids),
         )
 
-        for task in set(new_tasks) - set(actions['tasks_to_drain']):
+        for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
             self.undrain_task(task)
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task, parameters in self.task_store.get_all_tasks().items():
+        for task, parameters in all_tasks_with_params.items():
             if parameters.is_draining and \
                     self.drain_method.is_safe_to_kill(self.make_drain_task(task)) and \
                     parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
-    def get_happy_tasks(self, tasks):
-        """Filter a list of tasks to those that are happy."""
-        happy_tasks = []
-        for task in tasks:
-            params = self.task_store.get_task(task)
+    def get_happy_tasks(self, tasks_with_params):
+        """Filter a dictionary of tasks->params to those that are running and not draining."""
+        happy_tasks = {}
+        for tid, params in tasks_with_params.items():
             if params.mesos_task_state == TASK_RUNNING and not params.is_draining:
-                happy_tasks.append(task)
+                happy_tasks[tid] = params
         return happy_tasks
 
-    def get_draining_tasks(self, task_ids):
-        """Filter a list of tasks to those that are draining."""
-        return [t for t in task_ids if self.task_store.get_task(t).is_draining]
+    def get_draining_tasks(self, tasks_with_params):
+        """Filter a dictionary of tasks->params to those that are draining."""
+        return {t: p for t, p in tasks_with_params.items() if p.is_draining}
 
     def make_drain_task(self, task_id):
         """Return a DrainTask object, which is suitable for passing to drain methods."""
