@@ -22,6 +22,7 @@ from humanize import naturalsize
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -39,7 +40,6 @@ ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'fre
 EXPECTED_HEALTHY_FRAMEWORKS = 2
 HIGH_QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.highQueueSize'
 QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.queueSize'
-MAINTENANCE_RESOURCE = 'maintenance'
 
 
 def get_num_masters():
@@ -711,7 +711,7 @@ def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilizati
 
 def reserved_maintenence_resources(resources):
     return resources.get(
-        MAINTENANCE_RESOURCE, {
+        MAINTENANCE_ROLE, {
             'cpus': 0,
             'mem': 0,
             'disk': 0,

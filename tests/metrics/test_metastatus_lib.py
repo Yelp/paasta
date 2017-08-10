@@ -1053,3 +1053,19 @@ def test_reserved_maintenence_resources():
         },
     })
     assert all([actual[x] == 5 for x in ['cpus', 'mem', 'disk']])
+
+
+def test_reserved_maintenence_resources_ignores_non_maintenance():
+    actual = metastatus_lib.reserved_maintenence_resources({
+        'maintenance': {
+            'cpus': 5,
+            'mem': 5,
+            'disk': 5,
+        },
+        'myotherole': {
+            'cpus': 5,
+            'mem': 5,
+            'disk': 5,
+        },
+    })
+    assert all([actual[x] == 5 for x in ['cpus', 'mem', 'disk']])
