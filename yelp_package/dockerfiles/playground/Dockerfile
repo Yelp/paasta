@@ -17,5 +17,6 @@ ADD requirements.txt requirements-dev.txt /paasta/
 RUN virtualenv /venv -ppython3.6
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements-dev.txt
+RUN pip install -r /paasta/requirements.txt
 
 ADD ./yelp_package/dockerfiles/playground/start.sh /start.sh
