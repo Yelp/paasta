@@ -249,6 +249,28 @@ def assert_no_duplicate_frameworks(state, ignore=[]):
     )
 
 
+def assert_frameworks_exist(state, expected):
+    frameworks = [f['name'] for f in state['frameworks']]
+    not_found = []
+    ok = True
+
+    for f in expected:
+        if f not in frameworks:
+            ok = False
+            not_found.append(f)
+
+    if ok:
+        return HealthCheckResult(
+            message="all expected frameworks found",
+            healthy=ok,
+        )
+    else:
+        return HealthCheckResult(
+            message="CRITICAL: framework(s) %s not found" % ', '.join(not_found),
+            healthy=ok,
+        )
+
+
 def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
     return HealthCheckResult(
