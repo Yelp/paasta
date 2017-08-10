@@ -244,7 +244,7 @@ def build_executor_stack(
         persister=DynamoDBPersister(
             table_name="taskproc_events_%s" % cluster,
             session=session,
-            endpoint_url=endpoint
+            endpoint_url=endpoint,
         ),
     )
 
