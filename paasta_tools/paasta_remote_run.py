@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import json
 import os
@@ -233,6 +230,8 @@ def build_executor_stack(
         raise ValueError("Required aws credentials")
 
     region = taskproc_config.get('aws_region')
+
+    endpoint = taskproc_config.get('dynamodb_endpoint')
     session = Session(
         region_name=region,
         aws_access_key_id=credentials['accessKeyId'],
@@ -245,6 +244,7 @@ def build_executor_stack(
         persister=DynamoDBPersister(
             table_name="taskproc_events_%s" % cluster,
             session=session,
+            endpoint_url=endpoint,
         ),
     )
 
@@ -305,7 +305,7 @@ def remote_run_start(args):
             instance_type=instance_type,
             soa_dir=soa_dir,
             config_overrides=overrides_dict,
-        )
+        ),
     )
 
     executor_stack = build_executor_stack(

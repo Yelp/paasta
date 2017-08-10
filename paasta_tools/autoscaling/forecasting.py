@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 
@@ -54,7 +50,7 @@ def moving_average_forecast_policy(historical_load, moving_average_window_second
 @register_autoscaling_component('linreg', FORECAST_POLICY_KEY)
 def linreg_forecast_policy(
     historical_load, linreg_window_seconds, linreg_extrapolation_seconds,
-    linreg_default_slope=0, **kwargs
+    linreg_default_slope=0, **kwargs,
 ):
     """Does a linear regression on the load data within the last linreg_window_seconds. For every time delta in
     linreg_extrapolation_seconds, forecasts the value at that time delta from now, and returns the maximum of these

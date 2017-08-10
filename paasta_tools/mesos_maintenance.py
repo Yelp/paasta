@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import datetime
 import json
@@ -40,6 +37,7 @@ log = logging.getLogger(__name__)
 Hostname = namedtuple('Hostname', ['host', 'ip'])
 Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
 Resource = namedtuple('Resource', ['name', 'amount'])
+MAINTENANCE_ROLE = 'maintenance'
 
 
 def base_api():
@@ -381,7 +379,7 @@ def build_reservation_payload(resources):
                 'scalar': {
                     'value': resource.amount,
                 },
-                'role': 'maintenance',
+                'role': MAINTENANCE_ROLE,
                 'reservation': {
                     'principal': get_principal(),
                 },

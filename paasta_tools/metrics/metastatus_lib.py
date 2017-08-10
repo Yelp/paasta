@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import copy
 import itertools
 from collections import Counter
@@ -25,6 +22,7 @@ from humanize import naturalsize
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -61,8 +59,7 @@ def get_mesos_cpu_status(metrics, mesos_state):
     used = metrics['master/cpus_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['cpus']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['cpus']
 
     available = total - used
     return total, used, available
@@ -152,8 +149,7 @@ def assert_memory_health(metrics, mesos_state, threshold=10):
     used = metrics['master/mem_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['mem']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['mem']
 
     used /= float(1024)
 
@@ -184,8 +180,7 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
     used = metrics['master/disk_used']
 
     for slave in mesos_state['slaves']:
-        for role in slave['reserved_resources']:
-            used += slave['reserved_resources'][role]['disk']
+        used += reserved_maintenence_resources(slave['reserved_resources'])['disk']
 
     used /= float(1024)
 
@@ -330,11 +325,19 @@ def key_func_for_attribute_multi(attributes):
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
     def key_func(slave):
-        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in attributes}.items())
+        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in sorted(attributes)}.items())
     return key_func
 
 
-def group_slaves_by_key_func(key_func, slaves):
+def sort_func_for_attributes(attributes):
+    def sort(slaves):
+        for attribute in attributes:
+            slaves = sorted(slaves, key=key_func_for_attribute(attribute))
+        return slaves
+    return sort
+
+
+def group_slaves_by_key_func(key_func, slaves, sort_func=None):
     """ Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
@@ -344,7 +347,11 @@ def group_slaves_by_key_func(key_func, slaves):
     :param slaves: a list of slaves
     :returns: a dict of key: [slaves]
     """
-    sorted_slaves = sorted(slaves, key=key_func)
+    if sort_func is None:
+        sorted_slaves = sorted(slaves, key=key_func)
+    else:
+        sorted_slaves = sort_func(slaves)
+
     return {k: list(v) for k, v in itertools.groupby(sorted_slaves, key=key_func)}
 
 
@@ -367,9 +374,10 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
         task_resources = task['resources']
         resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
     for slave in slaves:
-        for role in slave['reserved_resources']:
-            filtered_resources = filter_mesos_state_metrics(slave['reserved_resources'][role])
-            resource_free_dict.subtract(Counter(filtered_resources))
+        filtered_resources = filter_mesos_state_metrics(
+            reserved_maintenence_resources(slave['reserved_resources']),
+        )
+        resource_free_dict.subtract(Counter(filtered_resources))
     return {
         "free": ResourceInfo(
             cpus=resource_free_dict['cpus'],
@@ -419,7 +427,7 @@ def filter_slaves(slaves, filters):
     return [s for s in slaves if all([f(s) for f in filters])]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[]):
+def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[], sort_func=None):
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
@@ -439,7 +447,7 @@ def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[])
 
     tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
     non_terminal_tasks = [task for task in tasks if not is_task_terminal(task)]
-    slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
+    slave_groupings = group_slaves_by_key_func(grouping_func, slaves, sort_func)
 
     return {
         attribute_value: calculate_resource_utilization_for_slaves(
@@ -699,3 +707,13 @@ def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilizati
     row = [attribute_value]
     row.extend(format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize))
     return row
+
+
+def reserved_maintenence_resources(resources):
+    return resources.get(
+        MAINTENANCE_ROLE, {
+            'cpus': 0,
+            'mem': 0,
+            'disk': 0,
+        },
+    )

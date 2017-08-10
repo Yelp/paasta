@@ -11,10 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import contextlib
 import copy
 import datetime
@@ -291,6 +287,7 @@ class InstanceConfig(object):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
@@ -1290,7 +1287,7 @@ class SystemPaastaConfig(dict):
 
 def _run(
     command, env=os.environ, timeout=None, log=False, stream=False,
-    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs
+    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs,
 ):
     """Given a command, run it. Return a tuple of the return code and any
     output.

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import glob
 
 from setuptools import find_packages
@@ -84,6 +80,7 @@ setup(
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/get_mesos_leader.py',
         'paasta_tools/list_marathon_service_instances.py',
+        'paasta_tools/monitoring/check_capacity.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
         'paasta_tools/monitoring/kill_orphaned_docker_containers.py',

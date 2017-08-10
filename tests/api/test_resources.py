@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 
 import mock
@@ -77,7 +74,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'default', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar1',
@@ -87,7 +84,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'default', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'foo2',
@@ -97,7 +94,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar2',
@@ -107,7 +104,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'foo3',
@@ -117,7 +114,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar2',
@@ -127,7 +124,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
     ],
     'frameworks': [

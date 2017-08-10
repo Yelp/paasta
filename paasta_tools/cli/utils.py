@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import fnmatch
 import logging
@@ -528,7 +525,7 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
 
 def execute_paasta_serviceinit_on_remote_master(
     subcommand, cluster, service, instances, system_paasta_config,
-    stream=False, ignore_ssh_output=False, **kwargs
+    stream=False, ignore_ssh_output=False, **kwargs,
 ):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
@@ -541,7 +538,7 @@ def execute_paasta_serviceinit_on_remote_master(
     if ignore_ssh_output:
         return run_paasta_serviceinit(
             subcommand, master, service, instances, cluster, stream,
-            ssh_flags='-o LogLevel=QUIET', **kwargs
+            ssh_flags='-o LogLevel=QUIET', **kwargs,
         )
     else:
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
@@ -607,7 +604,7 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, syste
     try:
         return run_chronos_rerun(
             connectable_master(cluster, system_paasta_config),
-            service, instancename, **kwargs
+            service, instancename, **kwargs,
         )
     except NoMasterError as e:
         return (-1, str(e))

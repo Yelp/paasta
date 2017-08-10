@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from mock import call
 from mock import Mock
 from mock import patch

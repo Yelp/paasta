@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import re
 import time
+from tempfile import NamedTemporaryFile
 
 import itest_utils
 import mock
 import requests_cache
+from behave import given
 from behave import then
 from behave import when
 
@@ -277,6 +276,13 @@ def wait_launch_tasks_native(context, task_count):
         time.sleep(0.5)
 
 
+@given('a capacity check overrides file with contents "{contents}"')
+def write_overrides_file(context, contents):
+    with NamedTemporaryFile(mode='w', delete=False) as f:
+        f.write(contents)
+        context.overridefile = f.name
+
+
 @then('"{job_id}" has exactly {task_count:d} requested tasks in marathon')
 def marathon_app_task_count(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
@@ -284,6 +290,42 @@ def marathon_app_task_count(context, job_id, task_count):
 
     tasks = context.marathon_client.get_app(app_id).tasks
     assert len(tasks) == task_count
+
+
+@then('capacity_check "{check_type}" --crit "{crit:d}" --warn "{warn:d}" should return "{status}" with code "{code:d}"')
+def capacity_check_status_crit_warn(context, check_type, crit, warn, status, code):
+    paasta_print(check_type, crit, warn)
+    cmd = '../paasta_tools/monitoring/check_capacity.py %s --crit %s --warn %s' % (check_type, crit, warn)
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, output = _run(cmd)
+    paasta_print(output)
+    assert exit_code == code
+    assert status in output
+
+
+@then('capacity_check "{check_type}" should return "{status}" with code "{code:d}"')
+def capacity_check_type_status(context, check_type, status, code):
+    cmd = '../paasta_tools/monitoring/check_capacity.py %s' % check_type
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, output = _run(cmd)
+    paasta_print(output)
+    assert exit_code == code
+    assert status in output
+
+
+@then(
+    'capacity_check with override file "{check_type}" and attributes "{attrs}" '
+    'should return "{status}" with code "{code:d}"',
+)
+def capacity_check_type_status_overrides(context, check_type, attrs, status, code):
+    cmd = '../paasta_tools/monitoring/check_capacity.py %s --overrides %s --attributes %s' % (
+        check_type, context.overridefile, attrs,
+    )
+    paasta_print('Running cmd %s' % cmd)
+    exit_code, output = _run(cmd)
+    paasta_print(output)
+    assert exit_code == code
+    assert status in output
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

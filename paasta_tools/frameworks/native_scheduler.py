@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # Without this, the import of mesos.interface breaks because paasta_tools.mesos exists
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import copy
 import getpass
 import logging
@@ -507,7 +504,7 @@ class NativeScheduler(Scheduler):
             service=self.service_name,
             instance=self.instance_name,
             nerve_ns=self.service_config.get_nerve_namespace(),
-            **self.service_config.get_drain_method_params(self.service_config.service_namespace_config)
+            **self.service_config.get_drain_method_params(self.service_config.service_namespace_config),
         )
 
     def reload_constraints(self):

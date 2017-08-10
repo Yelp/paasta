@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 import json
 import os
@@ -1113,6 +1110,7 @@ class TestInstanceConfig:
             'PAASTA_SERVICE': 'fake_service',
             'PAASTA_INSTANCE': 'fake_instance',
             'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
             'PAASTA_DOCKER_IMAGE': '',
         }
 
@@ -1121,14 +1119,15 @@ class TestInstanceConfig:
             service='',
             cluster='',
             instance='',
-            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
-            branch_dict={'docker_image': 'something'},
+            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}, 'deploy_group': 'fake_deploy_group'},
+            branch_dict={'docker_image': 'something', 'deploy_group': 'nothing'},
         )
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
             'PAASTA_SERVICE': '',
             'PAASTA_INSTANCE': '',
             'PAASTA_CLUSTER': '',
+            'PAASTA_DEPLOY_GROUP': 'fake_deploy_group',
             'PAASTA_DOCKER_IMAGE': 'something',
         }
 

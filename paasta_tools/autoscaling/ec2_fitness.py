@@ -4,8 +4,6 @@ of ec2 instances. This module really just provides
 functions for deciding which instance is best to be
 killed by the autoscaler.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 
 def sort_by_system_instance_health(instances):

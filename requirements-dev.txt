@@ -5,7 +5,7 @@ flake8==2.5.0
 mock==2.0.0
 path.py==8.1
 pep8==1.5.7
-pre-commit==0.15.2
+pre-commit==0.16.0
 pylint==1.7.2
 pytest==2.7.3
 sphinx==1.4.1
