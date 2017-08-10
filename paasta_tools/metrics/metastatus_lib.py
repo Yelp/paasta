@@ -550,12 +550,13 @@ def get_marathon_status(client):
     )
 
 
-def assert_chronos_scheduled_jobs(client):
+def assert_chronos_scheduled_jobs(client, can_fail=False):
     """
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=True)
+    healthy = (not can_fail) or (num_jobs != 0)
+    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=healthy)
 
 
 def assert_chronos_queued_jobs(client):

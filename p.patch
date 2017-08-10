@@ -1,0 +1,20 @@
+diff --git a/paasta_tools/metrics/metastatus_lib.py b/paasta_tools/metrics/metastatus_lib.py
+index c07a210..fdb4e2f 100755
+--- a/paasta_tools/metrics/metastatus_lib.py
++++ b/paasta_tools/metrics/metastatus_lib.py
+@@ -550,12 +550,13 @@ def get_marathon_status(client):
+     )
+
+
+-def assert_chronos_scheduled_jobs(client):
++def assert_chronos_scheduled_jobs(client, can_fail=False):
+     """
+     :returns: a tuple of a string and a bool containing representing if it is ok or not
+     """
+     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
+-    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=True)
++    healthy = (not can_fail) or (num_jobs != 0)
++    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=healthy)
+
+
+ def assert_chronos_queued_jobs(client):
