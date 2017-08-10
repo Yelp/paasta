@@ -215,7 +215,7 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_no_duplicate_frameworks(state):
+def assert_no_duplicate_frameworks(state, ignore=[]):
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
@@ -235,7 +235,9 @@ def assert_no_duplicate_frameworks(state):
     ok = True
 
     for framework, count in framework_counts.items():
-        if count > 1:
+        if framework in ignore:
+            output.append("    Framework: ignoring %s count: %d" % (framework, count))
+        elif count > 1:
             ok = False
             output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."
                           % (framework, count))
