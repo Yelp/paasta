@@ -21,6 +21,7 @@ import pysensu_yelp
 from scribereader import scribereader
 
 from paasta_tools import monitoring_tools
+from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -37,22 +38,21 @@ def parse_args():
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    parser.add_argument(
+        '-s', '--superregion', dest="superregion", required=True,
+        help="The superregion to use",
+    )
     return parser.parse_args()
 
 
-def get_superregion_from_file():
-    with open("/nail/etc/superregion") as f:
-        return f.read().strip()
-
-
-def oom_events(cluster, num_lines=1000):
+def oom_events(cluster, superregion, num_lines=1000):
     """Iterate over latest 'num_lines' lines in the tmp_paasta_oom_events stream"""
     host_and_port = choice(scribereader.get_default_scribe_hosts(tail=True))
     host = host_and_port['host']
     port = host_and_port['port']
     stream = scribereader.get_stream_tailer(
         'tmp_paasta_oom_events', host, port, True,
-        num_lines, superregion=get_superregion_from_file(),
+        num_lines, superregion=superregion,
     )
     for line in stream:
         try:
@@ -63,21 +63,30 @@ def oom_events(cluster, num_lines=1000):
             pass
 
 
-def latest_oom_events(cluster, interval=60):
+def latest_oom_events(cluster, superregion, interval=60):
     """
-    :returns: {(service, instance): number_of_oom_events, ... } if number_of_oom_events > 0
+    :returns: {(service, instance): [(hostname, container_id, process_name), ...] }
+              if the number of events > 0
     """
     start_timestamp = int(time.time()) - interval
     res = {}
-    for e in oom_events(cluster):
+    for e in oom_events(cluster, superregion):
         if e['timestamp'] > start_timestamp:
             key = (e['service'], e['instance'])
-            res[key] = res.get(key, 0) + 1
+            res.setdefault(key, []).append((
+                e.get('hostname', ''),
+                e.get('container_id', ''),
+                e.get('process_name', ''),
+            ))
     return res
 
 
-def compose_sensu_status(service_instance, num_oom_events):
-    if num_oom_events == 0:
+def compose_sensu_status(service_instance, events):
+    """
+    :param service_instance: a tuple (service, instance)
+    :param events: a list of tuples (hostname, container_id, process_name)
+    """
+    if len(events) == 0:
         return (
             pysensu_yelp.Status.OK,
             'oom-killer is not killing processes in %s.%s containers.' %
@@ -87,11 +96,16 @@ def compose_sensu_status(service_instance, num_oom_events):
         return (
             pysensu_yelp.Status.CRITICAL,
             'oom-killer is killing %d processes a minute in %s.%s containers.' %
-            (num_oom_events, service_instance[0], service_instance[1]),
+            (len(events), service_instance[0], service_instance[1]),
         )
 
 
 def send_sensu_event(instance, status):
+    check_name = compose_check_name_for_service_instance(
+        'check_oom_events',
+        instance.service,
+        instance.instance,
+    )
     monitoring_overrides = instance.get_monitoring()
     monitoring_overrides['page'] = False
     monitoring_overrides['ticket'] = False
@@ -100,7 +114,7 @@ def send_sensu_event(instance, status):
     monitoring_overrides['runbook'] = ['http://y/none']
     monitoring_tools.send_event(
         service=instance.service,
-        check_name='check_oom_events',
+        check_name=check_name,
         overrides=monitoring_overrides,
         status=status[0],
         output=status[1],
@@ -109,15 +123,15 @@ def send_sensu_event(instance, status):
 
 
 def main():
-    soa_dir = parse_args().soa_dir
+    args = parse_args()
     cluster = load_system_paasta_config().get_cluster()
-    victims = latest_oom_events(cluster)
+    victims = latest_oom_events(cluster, args.superregion)
     for s_i in get_services_for_cluster(cluster):
         instance = get_instance_config(
             s_i[0], s_i[1], cluster,
-            load_deployments=False, soa_dir=soa_dir,
+            load_deployments=False, soa_dir=args.soa_dir,
         )
-        send_sensu_event(instance, compose_sensu_status(s_i, victims.get(s_i, 0)))
+        send_sensu_event(instance, compose_sensu_status(s_i, victims.get(s_i, [])))
 
 
 if __name__ == '__main__':
