@@ -7,6 +7,7 @@ a CRITICAL event to sensu.
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
 import argparse
+import logging
 import sys
 from datetime import datetime
 from datetime import timedelta
@@ -22,7 +23,9 @@ from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.chronos_tools import load_chronos_job_config
-from paasta_tools.utils import paasta_print
+
+
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -52,28 +55,54 @@ def guess_realert_every(chronos_job_config):
     return min(interval // 60, 24 * 60) if interval is not None else None
 
 
-def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
+def compose_monitoring_overrides_for_service(chronos_job_config):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
     if 'alert_after' not in monitoring_overrides:
         monitoring_overrides['alert_after'] = '15m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
-        monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+        monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
     )
 
     if 'realert_every' not in monitoring_overrides:
         guessed_realert_every = guess_realert_every(chronos_job_config)
         if guessed_realert_every is not None:
             monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+                monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
                 monitoring_defaults=lambda x: {'realert_every': guessed_realert_every}.get(x),
             )
         else:
             monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-                monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir,
+                monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
             )
     return monitoring_overrides
+
+
+def check_chronos_job_name(service, instance):
+    return compose_check_name_for_service_instance('check_chronos_jobs', service, instance)
+
+
+def send_event(chronos_job_config, status_code, output):
+    """Compose monitoring overrides and send the evernt to sensu.
+
+    :param chronos_job_config: an instance of ChronosJobConfig
+    :param status_code: Sensu status code
+    :param output: An event message
+    """
+    monitoring_overrides = compose_monitoring_overrides_for_service(chronos_job_config)
+
+    return monitoring_tools.send_event(
+        service=chronos_job_config.service,
+        check_name=check_chronos_job_name(
+            chronos_job_config.service,
+            chronos_job_config.instance,
+        ),
+        overrides=monitoring_overrides,
+        status=status_code,
+        output=add_realert_status(output, monitoring_overrides.get('realert_every')),
+        soa_dir=chronos_job_config.soa_dir,
+    )
 
 
 def human_readable_time_interval(minutes):
@@ -89,24 +118,6 @@ def add_realert_status(sensu_output, realert_every_in_minutes):
         interval_string = human_readable_time_interval(realert_every_in_minutes)
         return ("{}\n\nThis check realerts every {}."
                 .format(sensu_output, interval_string))
-
-
-def send_event(service, instance, monitoring_overrides, soa_dir, status_code, message):
-    check_name = compose_check_name_for_service_instance('check_chronos_jobs', service, instance)
-
-    monitoring_tools.send_event(
-        service=service,
-        check_name=check_name,
-        overrides=monitoring_overrides,
-        status=status_code,
-        output=add_realert_status(message, monitoring_overrides.get('realert_every')),
-        soa_dir=soa_dir,
-    )
-
-
-def compose_check_name_for_job(service, instance):
-    """Compose a sensu check name for a given job"""
-    return 'check-chronos-jobs.%s%s%s' % (service, utils.SPACER, instance)
 
 
 def sensu_event_for_last_run_state(state):
@@ -152,7 +163,10 @@ def build_service_job_mapping(client, configured_jobs):
     return service_job_mapping
 
 
-def message_for_status(status, service, instance, cluster):
+def message_for_status(status, chronos_job_config):
+    """
+    :param chronos_job_config: an instance of ChronosJobConfig
+    """
     if status == pysensu_yelp.Status.CRITICAL:
         return (
             "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
@@ -171,28 +185,30 @@ def message_for_status(status, service, instance, cluster):
             "See the docs on paasta rerun here:\n"
             "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
         ) % {
-            'service': service,
-            'instance': instance,
-            'cluster': cluster,
+            'service': chronos_job_config.service,
+            'instance': chronos_job_config.instance,
+            'cluster': chronos_job_config.cluster,
             'separator': utils.SPACER,
         }
     elif status == pysensu_yelp.Status.UNKNOWN:
-        return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
+        return ('Last run of job %s%s%s Unknown' %
+                (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
     elif status == pysensu_yelp.Status.OK:
-        return 'Last run of job %s%s%s Succeded' % (service, utils.SPACER, instance)
+        return ('Last run of job %s%s%s Succeded' %
+                (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
     elif status is None:
         return None
     else:
         raise ValueError('unknown sensu status: %s' % status)
 
 
-def job_is_stuck(last_run_iso_time, interval_in_seconds, expected_runtime_callback):
+def job_is_stuck(last_run_iso_time, interval_in_seconds, client, job_name):
     """Considers that the job is stuck when it hasn't run on time
 
     :param last_run_iso_time: ISO date and time of the last job run as a string
     :param interval_in_seconds: the job interval in seconds
-    :param expected_runtime_callback: a function that returns the expected runtime of the job
-                                      in seconds. See job_expected_runtime_callback()
+    :param client: configured Chronos client
+    :param job_name: Chronos job name
     :returns: True or False
     """
     if last_run_iso_time is None or interval_in_seconds is None:
@@ -201,7 +217,12 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds, expected_runtime_callba
     dt_now_utc = datetime.now(pytz.utc)
     if dt_next_run >= dt_now_utc:
         return False
-    return (dt_next_run + timedelta(seconds=expected_runtime_callback()) < dt_now_utc)
+    try:
+        expected_runtime = int(client.job_stat(job_name)['histogram']['99thPercentile'])
+    except KeyError:
+        log.warn("Can't get 99thPercentile for %s." % job_name)
+        expected_runtime = interval_in_seconds
+    return (dt_next_run + timedelta(seconds=expected_runtime) < dt_now_utc)
 
 
 def message_for_stuck_job(
@@ -235,37 +256,35 @@ def message_for_stuck_job(
     }
 
 
-def sensu_message_status_for_jobs(
-    chronos_job_config, service, instance, cluster, chronos_job,
-    expected_runtime_callback,
-):
+def sensu_message_status_for_jobs(chronos_job_config, chronos_job, client):
     """
-    :param expected_runtime_callback: a function that returns the expected runtime of the job
-                                      in seconds. See job_expected_runtime_callback()
+    :param chronos_job_config: an instance of ChronosJobConfig
+    :param client: configured Chronos client
     """
     if not chronos_job:
         if chronos_job_config.get_disabled():
             sensu_status = pysensu_yelp.Status.OK
             output = ("Job %s%s%s is disabled - ignoring status."
-                      % (service, utils.SPACER, instance))
+                      % (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
         else:
             sensu_status = pysensu_yelp.Status.WARNING
             output = ("Warning: %s%s%s isn't in chronos at all, "
                       "which means it may not be deployed yet"
-                      % (service, utils.SPACER, instance))
+                      % (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
     else:
         if chronos_job.get('disabled') and not chronos_tools.is_temporary_job(chronos_job):
             sensu_status = pysensu_yelp.Status.OK
-            output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
+            output = ("Job %s%s%s is disabled - ignoring status." %
+                      (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
         else:
             last_run_time, state = chronos_tools.get_status_last_run(chronos_job)
             interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
-            if job_is_stuck(last_run_time, interval_in_seconds, expected_runtime_callback):
+            if job_is_stuck(last_run_time, interval_in_seconds, client, chronos_job['name']):
                 sensu_status = pysensu_yelp.Status.CRITICAL
                 output = message_for_stuck_job(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
+                    service=chronos_job_config.service,
+                    instance=chronos_job_config.instance,
+                    cluster=chronos_job_config.cluster,
                     last_run_iso_time=last_run_time,
                     interval_in_seconds=interval_in_seconds,
                     schedule=chronos_job_config.get_schedule(),
@@ -273,21 +292,8 @@ def sensu_message_status_for_jobs(
                 )
             else:
                 sensu_status = sensu_event_for_last_run_state(state)
-                output = message_for_status(sensu_status, service, instance, cluster)
+                output = message_for_status(sensu_status, chronos_job_config)
     return output, sensu_status
-
-
-def job_expected_runtime_callback(client, chronos_job):
-    """Returns a function that is supposed to be called from job_is_stuck() to get the job expected runtime."""
-    def f():
-        job_expected_runtime = 0
-        if chronos_job:
-            try:
-                job_expected_runtime = int(client.job_stat(chronos_job['name'])['histogram']['99thPercentile'])
-            except KeyError:
-                paasta_print(utils.PaastaColors.yellow("Can't get 99thPercentile for %s." % chronos_job['name']))
-        return job_expected_runtime
-    return f
 
 
 def main():
@@ -313,31 +319,17 @@ def main():
                     soa_dir=soa_dir,
                 )
             except utils.NoDeploymentsAvailable:
-                paasta_print(utils.PaastaColors.cyan("Skipping %s because no deployments are available" % service))
+                log.info("Skipping %s because no deployments are available" % service)
                 continue
             sensu_output, sensu_status = sensu_message_status_for_jobs(
                 chronos_job_config=chronos_job_config,
-                service=service,
-                instance=instance,
-                cluster=cluster,
                 chronos_job=chronos_job,
-                expected_runtime_callback=job_expected_runtime_callback(client, chronos_job),
+                client=client,
             )
             if sensu_status is not None:
-                monitoring_overrides = compose_monitoring_overrides_for_service(
-                    chronos_job_config=chronos_job_config,
-                    soa_dir=soa_dir,
-                )
-                send_event(
-                    service=service,
-                    instance=instance,
-                    monitoring_overrides=monitoring_overrides,
-                    status_code=sensu_status,
-                    message=sensu_output,
-                    soa_dir=soa_dir,
-                )
+                send_event(chronos_job_config, sensu_status, sensu_output)
     except (chronos.ChronosAPIError) as e:
-        paasta_print(utils.PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
+        log.error("CRITICAL: Unable to contact Chronos! Error: %s" % e)
         sys.exit(2)
 
 
