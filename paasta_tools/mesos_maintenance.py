@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 Hostname = namedtuple('Hostname', ['host', 'ip'])
 Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
 Resource = namedtuple('Resource', ['name', 'amount'])
+MAINTENANCE_ROLE = 'maintenance'
 
 
 def base_api():
@@ -378,7 +379,7 @@ def build_reservation_payload(resources):
                 'scalar': {
                     'value': resource.amount,
                 },
-                'role': 'maintenance',
+                'role': MAINTENANCE_ROLE,
                 'reservation': {
                     'principal': get_principal(),
                 },

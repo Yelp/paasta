@@ -90,8 +90,12 @@ def setup_chronos_config():
     return chronos_config
 
 
+def get_paasta_api_url():
+    return "http://%s/%s" % (get_service_connection_string('api'), 'swagger.json')
+
+
 def setup_paasta_api_client():
-    return SwaggerClient.from_url("http://%s/%s" % (get_service_connection_string('api'), 'swagger.json'))
+    return SwaggerClient.from_url(get_paasta_api_url())
 
 
 def _generate_mesos_cli_config(zk_host_and_port):
@@ -197,6 +201,13 @@ def working_paasta_cluster_with_registry(context, docker_registry):
                 "path": mesos_cli_config_filename,
             },
         }, 'mesos.json',
+    )
+    write_etc_paasta(
+        context, {
+            'api_endpoints': {
+                'testcluster': get_paasta_api_url(),
+            },
+        }, 'api_endpoints.json',
     )
 
 

@@ -41,7 +41,7 @@ def test_get_mesos_cpu_status():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'cpus': 1,
                     },
                 },
@@ -63,7 +63,7 @@ def test_ok_cpu_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'cpus': 0.5,
                     },
                 },
@@ -84,7 +84,7 @@ def test_bad_cpu_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'cpus': 1,
                     },
                 },
@@ -105,7 +105,7 @@ def test_assert_memory_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'mem': 256,
                     },
                 },
@@ -126,7 +126,7 @@ def test_failing_memory_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'mem': 500,
                     },
                 },
@@ -147,7 +147,7 @@ def test_assert_disk_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'disk': 256,
                     },
                 },
@@ -168,7 +168,7 @@ def test_failing_disk_health():
         'slaves': [
             {
                 'reserved_resources': {
-                    'some-role': {
+                    'maintenance': {
                         'disk': 500,
                     },
                 },
@@ -644,7 +644,7 @@ def test_get_resource_utilization_by_grouping_correctly_groups():
                     'cpus': 10,
                     'mem': 50,
                 },
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
             {
                 'id': 'bar',
@@ -653,7 +653,7 @@ def test_get_resource_utilization_by_grouping_correctly_groups():
                     'cpus': 10,
                     'mem': 50,
                 },
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
         ],
         'frameworks': [
@@ -691,7 +691,7 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
                     'mem': 50,
                 },
                 'attributes': {'one': 'yes', 'two': 'yes'},
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
             {
                 'id': 'bar1',
@@ -701,7 +701,7 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
                     'mem': 50,
                 },
                 'attributes': {'one': 'yes', 'two': 'no'},
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
             {
                 'id': 'foo2',
@@ -711,7 +711,7 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
                     'mem': 50,
                 },
                 'attributes': {'one': 'no', 'two': 'yes'},
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
             {
                 'id': 'bar2',
@@ -721,7 +721,7 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
                     'mem': 50,
                 },
                 'attributes': {'one': 'no', 'two': 'no'},
-                'reserved_resources': [],
+                'reserved_resources': {},
             },
         ],
         'frameworks': [
@@ -797,7 +797,7 @@ def test_get_resource_utilization_per_slave():
                 'mem': 750,
             },
             'reserved_resources': {
-                'some-role': {
+                'maintenance': {
                     'cpus': 10,
                     'disk': 0,
                     'mem': 150,
@@ -1037,3 +1037,35 @@ def test_get_mesos_disk_status():
     }
     actual = metastatus_lib.get_mesos_disk_status(metrics)
     assert actual == (100, 50, 50)
+
+
+def test_reserved_maintenence_resources_no_maintenenance():
+    actual = metastatus_lib.reserved_maintenence_resources({})
+    assert all([actual[x] == 0 for x in ['cpus', 'mem', 'disk']])
+
+
+def test_reserved_maintenence_resources():
+    actual = metastatus_lib.reserved_maintenence_resources({
+        'maintenance': {
+            'cpus': 5,
+            'mem': 5,
+            'disk': 5,
+        },
+    })
+    assert all([actual[x] == 5 for x in ['cpus', 'mem', 'disk']])
+
+
+def test_reserved_maintenence_resources_ignores_non_maintenance():
+    actual = metastatus_lib.reserved_maintenence_resources({
+        'maintenance': {
+            'cpus': 5,
+            'mem': 5,
+            'disk': 5,
+        },
+        'myotherole': {
+            'cpus': 5,
+            'mem': 5,
+            'disk': 5,
+        },
+    })
+    assert all([actual[x] == 5 for x in ['cpus', 'mem', 'disk']])
