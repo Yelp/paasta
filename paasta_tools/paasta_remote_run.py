@@ -231,7 +231,7 @@ def build_executor_stack(
 
     region = taskproc_config.get('aws_region')
 
-    endpoint = taskproc_config.get('endpoint')
+    endpoint = taskproc_config.get('dynamodb_endpoint')
     session = Session(
         region_name=region,
         aws_access_key_id=credentials['accessKeyId'],
