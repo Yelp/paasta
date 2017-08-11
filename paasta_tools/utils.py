@@ -38,18 +38,23 @@ from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Iterable
+from typing import Iterator
 from typing import List  # noqa
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import TypeVar
+from typing import Union  # noqa
 
 import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
 import six
+import six.moves
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -1012,7 +1017,9 @@ class NullLogWriter(LogWriter):
         pass
 
 
-_empty_context = contextlib.contextmanager(lambda: (yield))
+@contextlib.contextmanager
+def _empty_context() -> Iterator[None]:
+    yield
 
 
 @register_log_writer('file')
@@ -1052,7 +1059,8 @@ class FileLogWriter(LogWriter):
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
                 with self.maybe_flock(f):
-                    f.write(to_write.encode('UTF-8'))
+                    # remove type ignore comment below once https://github.com/python/typeshed/pull/1541 is merged.
+                    f.write(to_write.encode('UTF-8'))  # type: ignore
         except IOError as e:
             paasta_print(
                 "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
@@ -1121,27 +1129,6 @@ def get_readable_files_in_glob(glob, path):
     return sorted(globbed_files)
 
 
-def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
-    """
-    Reads Paasta configs in specified directory in lexicographical order and deep merges
-    the dictionaries (last file wins).
-    """
-    config = {}
-    if not os.path.isdir(path):
-        raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
-
-    if not os.access(path, os.R_OK):
-        raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
-
-    try:
-        for config_file in get_readable_files_in_glob(glob="*.json", path=path):
-            with open(config_file) as f:
-                config = deep_merge_dictionaries(json.load(f), config)
-    except IOError as e:
-        raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
-    return SystemPaastaConfig(config, path)
-
-
 ClusterAutoscalingResources = Dict[str, Dict]
 
 ResourcePoolSettings = Dict[str, Dict]
@@ -1155,8 +1142,8 @@ ChronosConfig = TypedDict(
     },
     total=False,
 )
-MarathonConfig = TypedDict(
-    'MarathonConfig',
+MarathonConfigDict = TypedDict(
+    'MarathonConfigDict',
     {
         'user': str,
         'password': str,
@@ -1208,7 +1195,7 @@ SystemPaastaConfigDict = TypedDict(
         'resource_pool_settings': ResourcePoolSettings,
         'cluster_fqdn_format': str,
         'chronos_config': ChronosConfig,
-        'marathon_config': MarathonConfig,
+        'marathon_config': MarathonConfigDict,
         'local_run_config': LocalRunConfig,
         'paasta_native': PaastaNativeConfig,
         'mesos_config': Dict,
@@ -1223,6 +1210,27 @@ SystemPaastaConfigDict = TypedDict(
     },
     total=False,
 )
+
+
+def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
+    """
+    Reads Paasta configs in specified directory in lexicographical order and deep merges
+    the dictionaries (last file wins).
+    """
+    config: SystemPaastaConfigDict = {}
+    if not os.path.isdir(path):
+        raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
+
+    if not os.access(path, os.R_OK):
+        raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
+
+    try:
+        for config_file in get_readable_files_in_glob(glob="*.json", path=path):
+            with open(config_file) as f:
+                config = deep_merge_dictionaries(json.load(f), config)
+    except IOError as e:
+        raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+    return SystemPaastaConfig(config, path)
 
 
 class SystemPaastaConfig(object):
@@ -1404,7 +1412,7 @@ class SystemPaastaConfig(object):
         :returns: The chronos config dictionary"""
         return self.config_dict.get('chronos_config', {})
 
-    def get_marathon_config(self) -> MarathonConfig:
+    def get_marathon_config(self) -> MarathonConfigDict:
         """Get the marathon config
 
         :returns: The marathon config dictionary"""
@@ -1525,13 +1533,12 @@ def _run(
             signal.signal(signal.SIGINT, signal_handler)
             signal.signal(signal.SIGTERM, signal_handler)
 
-        process.name = command
         # start the timer if we specified a timeout
         if timeout:
-            proctimer = threading.Timer(timeout, _timeout, (process,))
+            proctimer = threading.Timer(timeout, _timeout, [process])
             proctimer.start()
-        for line in iter(process.stdout.readline, b''):
-            line = line.decode('utf-8')
+        for linestr in iter(process.stdout.readline, b''):
+            line = linestr.decode('utf-8')
             # additional indentation is for the paasta status command only
             if stream:
                 if ('paasta_serviceinit status' in command):
@@ -1780,7 +1787,12 @@ def list_all_instances_for_service(service, clusters=None, instance_type=None, s
     return instances
 
 
-def get_service_instance_list_no_cache(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list_no_cache(
+    service: str,
+    cluster: Optional[str]=None,
+    instance_type: str=None,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> List[Tuple[str, str]]:
     """Enumerate the instances defined for a service as a list of tuples.
 
     :param service: The service name
@@ -1789,6 +1801,8 @@ def get_service_instance_list_no_cache(service, cluster=None, instance_type=None
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
+
+    instance_types: Tuple[str, ...]
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     if instance_type in INSTANCE_TYPES:
@@ -1813,7 +1827,12 @@ def get_service_instance_list_no_cache(service, cluster=None, instance_type=None
 
 
 @time_cache(ttl=5)
-def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list(
+    service: str,
+    cluster: Optional[str]=None,
+    instance_type: str=None,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> List[Tuple[str, str]]:
     """Enumerate the instances defined for a service as a list of tuples.
 
     :param service: The service name
@@ -1842,7 +1861,7 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
-    instance_list = []
+    instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
         instance_list.extend(get_service_instance_list(srv_dir, cluster, instance_type, soa_dir))
     return instance_list
@@ -2267,15 +2286,18 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True
 
             return wraps(func)(wrapper)
     else:
-        def decorate(function):
-            return _Timeout(function, seconds, error_message)
+        def decorate(func):
+            return _Timeout(func, seconds, error_message)
     return decorate
 
 
+_TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
+
+
 class _Timeout(object):
-    def __init__(self, function, seconds, error_message):
+    def __init__(self, function: Callable[..., _TimeoutFuncRetType], seconds: float, error_message: str) -> None:
         self.seconds = seconds
-        self.control = six.moves.queue.Queue()
+        self.control: six.moves.queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = six.moves.queue.Queue()
         self.function = function
         self.error_message = error_message
 
