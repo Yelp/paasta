@@ -20,8 +20,8 @@ import os
 import time
 from contextlib import contextmanager
 from typing import Callable
-from typing import Collection
 from typing import Dict
+from typing import List
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
@@ -53,7 +53,7 @@ BounceMethodResult = TypedDict(
     'BounceMethodResult',
     {
         "create_app": bool,
-        "tasks_to_drain": Collection,
+        "tasks_to_drain": List,
     },
 )
 
@@ -63,9 +63,9 @@ BounceMethod = Callable[
     [
         Arg(NewConfig, 'new_config'),
         Arg(bool, 'new_app_running'),
-        Arg(Collection, 'happy_new_tasks'),
-        Arg(Dict[str, Collection], 'old_app_live_happy_tasks'),
-        Arg(Dict[str, Collection], 'old_app_live_unhappy_tasks'),
+        Arg(List, 'happy_new_tasks'),
+        Arg(Dict[str, List], 'old_app_live_happy_tasks'),
+        Arg(Dict[str, List], 'old_app_live_unhappy_tasks'),
         DefaultArg(float, 'margin_factor'),
     ],
     BounceMethodResult
@@ -88,7 +88,7 @@ def get_bounce_method_func(name) -> BounceMethod:
     return _bounce_method_funcs[name]
 
 
-def list_bounce_methods() -> Collection[str]:
+def list_bounce_methods() -> List[str]:
     return _bounce_method_funcs.keys()
 
 
@@ -271,9 +271,9 @@ def flatten_tasks(tasks_by_app_id):
 def brutal_bounce(
     new_config: NewConfig,
     new_app_running: bool,
-    happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Dict[str, Collection],
-    old_app_live_unhappy_tasks: Dict[str, Collection],
+    happy_new_tasks: List,
+    old_app_live_happy_tasks: Dict[str, List],
+    old_app_live_unhappy_tasks: Dict[str, List],
     margin_factor=1.0,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
@@ -302,9 +302,9 @@ def brutal_bounce(
 def upthendown_bounce(
     new_config: NewConfig,
     new_app_running: bool,
-    happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Dict[str, Collection],
-    old_app_live_unhappy_tasks: Dict[str, Collection],
+    happy_new_tasks: List,
+    old_app_live_happy_tasks: Dict[str, List],
+    old_app_live_unhappy_tasks: Dict[str, List],
     margin_factor=1.0,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
@@ -328,9 +328,9 @@ def upthendown_bounce(
 def crossover_bounce(
     new_config: NewConfig,
     new_app_running: bool,
-    happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Dict[str, Collection],
-    old_app_live_unhappy_tasks: Dict[str, Collection],
+    happy_new_tasks: List,
+    old_app_live_happy_tasks: Dict[str, List],
+    old_app_live_unhappy_tasks: Dict[str, List],
     margin_factor=1.0,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
@@ -365,9 +365,9 @@ def crossover_bounce(
 def downthenup_bounce(
     new_config: NewConfig,
     new_app_running: bool,
-    happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Dict[str, Collection],
-    old_app_live_unhappy_tasks: Dict[str, Collection],
+    happy_new_tasks: List,
+    old_app_live_happy_tasks: Dict[str, List],
+    old_app_live_unhappy_tasks: Dict[str, List],
     margin_factor=1.0,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
@@ -385,9 +385,9 @@ def downthenup_bounce(
 def down_bounce(
     new_config: NewConfig,
     new_app_running: bool,
-    happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Dict[str, Collection],
-    old_app_live_unhappy_tasks: Dict[str, Collection],
+    happy_new_tasks: List,
+    old_app_live_happy_tasks: Dict[str, List],
+    old_app_live_unhappy_tasks: Dict[str, List],
     margin_factor=1.0,
 ):
     """

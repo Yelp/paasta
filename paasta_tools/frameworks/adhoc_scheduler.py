@@ -12,8 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
+from typing import List
+from typing import Tuple
+
+from pymesos import MesosSchedulerDriver
+
+from paasta_tools.frameworks.constraints import ConstraintState  # noqa; imported for typing
 from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
+from paasta_tools.frameworks.native_service_config import TaskInfo  # noqa; imported for typing
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
 from paasta_tools.utils import paasta_print
 
@@ -33,17 +41,22 @@ class AdhocScheduler(NativeScheduler):
         # Is used to decide whether to stop the driver or try to start more tasks.
         return self.finished_countdown == 0
 
-    def statusUpdate(self, driver, update):
+    def statusUpdate(self, driver: MesosSchedulerDriver, update: Dict):
         super(AdhocScheduler, self).statusUpdate(driver, update)
 
-        if update.state not in LIVE_TASK_STATES:
+        if update['state'] not in LIVE_TASK_STATES:
             self.finished_countdown -= 1
 
         # Stop if task ran and finished
         if self.need_to_stop():
             driver.stop()
 
-    def tasks_and_state_for_offer(self, driver, offer, state):
+    def tasks_and_state_for_offer(
+        self,
+        driver: MesosSchedulerDriver,
+        offer,
+        state: ConstraintState,
+    ) -> Tuple[List[TaskInfo], ConstraintState]:
         # In dry run satisfy exit-conditions after we got the offer
         if self.dry_run or self.need_to_stop():
             if self.dry_run:

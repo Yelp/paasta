@@ -1,13 +1,19 @@
 import logging
 import socket
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 
+from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import ZookeeperPool
@@ -20,8 +26,64 @@ logging.getLogger('marathon').setLevel(logging.WARNING)
 AUTOSCALING_ZK_ROOT = '/autoscaling'
 
 
+class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
+    drain_method: str
+    container_port: int
+    drain_method_params: Dict
+    healthcheck_cmd: str
+    healthcheck_grace_period_seconds: float
+    healthcheck_interval_seconds: float
+    healthcheck_max_consecutive_failures: int
+    healthcheck_mode: str
+    healthcheck_timeout_seconds: float
+    healthcheck_uri: str
+    instances: int
+    max_instances: int
+    min_instances: int
+    nerve_ns: str
+    registrations: List[str]
+
+
+class ServiceNamespaceConfig(dict):
+
+    def get_mode(self) -> str:
+        """Get the mode that the service runs in and check that we support it.
+        If the mode is not specified, we check whether the service uses smartstack
+        in order to determine the appropriate default value. If proxy_port is specified
+        in the config, the service uses smartstack, and we can thus safely assume its mode is http.
+        If the mode is not defined and the service does not use smartstack, we set the mode to None.
+        """
+        mode = self.get('mode', None)
+        if mode is None:
+            if not self.is_in_smartstack():
+                return None
+            else:
+                return 'http'
+        elif mode in ['http', 'tcp', 'https']:
+            return mode
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+
+    def get_healthcheck_uri(self):
+        return self.get('healthcheck_uri', '/status')
+
+    def get_discover(self):
+        return self.get('discover', 'region')
+
+    def is_in_smartstack(self):
+        if self.get('proxy_port') is not None:
+            return True
+        else:
+            return False
+
+
 class LongRunningServiceConfig(InstanceConfig):
-    def __init__(self, service, cluster, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    config_dict: LongRunningServiceConfigDict
+
+    def __init__(
+        self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
+        branch_dict: BranchDict, soa_dir=DEFAULT_SOA_DIR,
+    ) -> None:
         super(LongRunningServiceConfig, self).__init__(
             cluster=cluster,
             instance=instance,
@@ -31,7 +93,7 @@ class LongRunningServiceConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
 
-    def get_drain_method(self, service_namespace_config):
+    def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         """Get the drain method specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
@@ -42,21 +104,21 @@ class LongRunningServiceConfig(InstanceConfig):
             default = 'hacheck'
         return self.config_dict.get('drain_method', default)
 
-    def get_drain_method_params(self, service_namespace_config):
+    def get_drain_method_params(self, service_namespace_config: ServiceNamespaceConfig) -> Dict:
         """Get the drain method parameters specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
-        default = {}
+        default: Dict = {}
         if service_namespace_config.is_in_smartstack():
             default = {'delay': 60}
         return self.config_dict.get('drain_method_params', default)
 
     # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
-    def get_nerve_namespace(self):
+    def get_nerve_namespace(self) -> str:
         return decompose_job_id(self.get_registrations()[0])[1]
 
-    def get_registrations(self):
+    def get_registrations(self) -> List[str]:
         registrations = self.config_dict.get('registrations', [])
         for registration in registrations:
             try:
@@ -76,30 +138,30 @@ class LongRunningServiceConfig(InstanceConfig):
 
         return registrations or [compose_job_id(self.service, self.instance)]
 
-    def get_healthcheck_uri(self, service_namespace_config):
+    def get_healthcheck_uri(self, service_namespace_config) -> str:
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
-    def get_healthcheck_cmd(self):
+    def get_healthcheck_cmd(self) -> str:
         cmd = self.config_dict.get('healthcheck_cmd', None)
         if cmd is None:
             raise InvalidInstanceConfig("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
         else:
             return cmd
 
-    def get_healthcheck_grace_period_seconds(self):
+    def get_healthcheck_grace_period_seconds(self) -> float:
         """How long Marathon should give a service to come up before counting failed healthchecks."""
         return self.config_dict.get('healthcheck_grace_period_seconds', 60)
 
-    def get_healthcheck_interval_seconds(self):
+    def get_healthcheck_interval_seconds(self) -> float:
         return self.config_dict.get('healthcheck_interval_seconds', 10)
 
-    def get_healthcheck_timeout_seconds(self):
+    def get_healthcheck_timeout_seconds(self) -> float:
         return self.config_dict.get('healthcheck_timeout_seconds', 10)
 
-    def get_healthcheck_max_consecutive_failures(self):
+    def get_healthcheck_max_consecutive_failures(self) -> int:
         return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
-    def get_healthcheck_mode(self, service_namespace_config):
+    def get_healthcheck_mode(self, service_namespace_config) -> str:
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
@@ -107,7 +169,7 @@ class LongRunningServiceConfig(InstanceConfig):
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
-    def get_instances(self):
+    def get_instances(self) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
         if self.get_max_instances() is not None:
@@ -132,13 +194,13 @@ class LongRunningServiceConfig(InstanceConfig):
             log.debug("Autoscaling not enabled, returning %d instances" % instances)
             return instances
 
-    def get_min_instances(self):
+    def get_min_instances(self) -> int:
         return self.config_dict.get('min_instances', 1)
 
-    def get_max_instances(self):
+    def get_max_instances(self) -> int:
         return self.config_dict.get('max_instances', None)
 
-    def get_desired_instances(self):
+    def get_desired_instances(self) -> int:
         """Get the number of instances specified in zookeeper or the service's marathon configuration.
         If the number of instances in zookeeper is less than min_instances, returns min_instances.
         If the number of instances in zookeeper is greater than max_instances, returns max_instances.
@@ -154,7 +216,7 @@ class LongRunningServiceConfig(InstanceConfig):
             log.debug("Instance is set to stop. Returning '0' instances")
             return 0
 
-    def limit_instance_count(self, instances):
+    def limit_instance_count(self, instances: int) -> int:
         """
         Returns param instances if it is between min_instances and max_instances.
         Returns max_instances if instances > max_instances
@@ -165,7 +227,7 @@ class LongRunningServiceConfig(InstanceConfig):
             min(self.get_max_instances(), instances),
         )
 
-    def get_container_port(self):
+    def get_container_port(self) -> int:
         return self.config_dict.get('container_port', DEFAULT_CONTAINER_PORT)
 
 
@@ -173,7 +235,13 @@ class InvalidHealthcheckMode(Exception):
     pass
 
 
-def get_healthcheck_for_instance(service, instance, service_manifest, random_port, soa_dir=DEFAULT_SOA_DIR):
+def get_healthcheck_for_instance(
+    service: str,
+    instance: str,
+    service_manifest: LongRunningServiceConfig,
+    random_port: int,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> Tuple[Optional[str], Optional[str]]:
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
@@ -200,7 +268,7 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
     return (mode, healthcheck_command)
 
 
-def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
+def load_service_namespace_config(service: str, namespace: str, soa_dir: str=DEFAULT_SOA_DIR) -> ServiceNamespaceConfig:
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
     Retrevies the following keys:
@@ -285,54 +353,26 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     return service_namespace_config
 
 
-class ServiceNamespaceConfig(dict):
-
-    def get_mode(self):
-        """Get the mode that the service runs in and check that we support it.
-        If the mode is not specified, we check whether the service uses smartstack
-        in order to determine the appropriate default value. If proxy_port is specified
-        in the config, the service uses smartstack, and we can thus safely assume its mode is http.
-        If the mode is not defined and the service does not use smartstack, we set the mode to None.
-        """
-        mode = self.get('mode', None)
-        if mode is None:
-            if not self.is_in_smartstack():
-                return None
-            else:
-                return 'http'
-        elif mode in ['http', 'tcp', 'https']:
-            return mode
-        else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
-
-    def get_healthcheck_uri(self):
-        return self.get('healthcheck_uri', '/status')
-
-    def get_discover(self):
-        return self.get('discover', 'region')
-
-    def is_in_smartstack(self):
-        if self.get('proxy_port') is not None:
-            return True
-        else:
-            return False
-
-
 class InvalidSmartstackMode(Exception):
     pass
 
 
-def get_instances_from_zookeeper(service, instance):
+def get_instances_from_zookeeper(service: str, instance: str) -> int:
     with ZookeeperPool() as zookeeper_client:
         (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
         return int(instances)
 
 
-def compose_autoscaling_zookeeper_root(service, instance):
+def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
     return '%s/%s/%s' % (AUTOSCALING_ZK_ROOT, service, instance)
 
 
-def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
+def set_instances_for_marathon_service(
+    service: str,
+    instance: str,
+    instance_count: int,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> None:
     zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
     with ZookeeperPool() as zookeeper_client:
         zookeeper_client.ensure_path(zookeeper_path)

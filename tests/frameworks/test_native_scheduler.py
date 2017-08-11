@@ -104,7 +104,7 @@ class TestNativeScheduler(object):
             assert len(scheduler.task_store.get_all_tasks()) == 3
             # and mark the old tasks as up
             for task in old_tasks:
-                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
+                scheduler.statusUpdate(fake_driver, dict(task_id=task['task_id'], state=TASK_RUNNING))
             assert len(scheduler.drain_method.downed_task_ids) == 0
 
             # Now, change force_bounce
@@ -120,7 +120,7 @@ class TestNativeScheduler(object):
 
             # Now we mark the new tasks as up.
             for i, task in enumerate(new_tasks):
-                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
+                scheduler.statusUpdate(fake_driver, dict(task_id=task['task_id'], state=TASK_RUNNING))
                 # As each of these new tasks come up, we should drain an old one.
                 assert len(scheduler.drain_method.downed_task_ids) == i + 1
 
@@ -129,7 +129,7 @@ class TestNativeScheduler(object):
             scheduler.kill_tasks_if_necessary(fake_driver)
             assert scheduler.drain_method.downed_task_ids == set()
             scheduler.kill_tasks_if_necessary(fake_driver)
-            assert scheduler.drain_method.downed_task_ids == {t.task_id.value for t in new_tasks}
+            assert scheduler.drain_method.downed_task_ids == {t['task_id']['value'] for t in new_tasks}
 
             # Once we drain the new tasks, it should kill them.
             assert fake_driver.killTask.call_count == 0
@@ -139,7 +139,7 @@ class TestNativeScheduler(object):
             killed_tasks = set()
 
             def killTask_side_effect(task_id):
-                killed_tasks.add(task_id.value)
+                killed_tasks.add(task_id['value'])
 
             fake_driver.killTask.side_effect = killTask_side_effect
 
@@ -151,15 +151,15 @@ class TestNativeScheduler(object):
             assert len(killed_tasks) == 2
             scheduler.drain_method.mark_arbitrary_task_as_safe_to_kill()
             scheduler.kill_tasks_if_necessary(fake_driver)
-            assert scheduler.drain_method.safe_to_kill_task_ids == {t.task_id.value for t in new_tasks}
+            assert scheduler.drain_method.safe_to_kill_task_ids == {t['task_id']['value'] for t in new_tasks}
             assert len(killed_tasks) == 3
 
             for task in new_tasks:
-                fake_driver.killTask.assert_any_call(task.task_id)
+                fake_driver.killTask.assert_any_call(task['task_id'])
 
             # Now tell the scheduler those tasks have died.
             for task in new_tasks:
-                scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_KILLED))
+                scheduler.statusUpdate(fake_driver, dict(task_id=task['task_id'], state=TASK_KILLED))
 
             # Clean up the TestDrainMethod for the rest of this test.
             assert not list(scheduler.drain_method.downed_task_ids)
@@ -224,15 +224,11 @@ class TestNativeScheduler(object):
                 mock.Mock(), make_fake_offer(port_begin=12345, port_end=12345), {},
             )
 
-        assert len(tasks) == 1
-        for task in tasks:
-            for resource in task.resources:
-                if resource.name == "ports":
-                    assert resource.ranges.range[0].begin == 12345
-                    assert resource.ranges.range[0].end == 12345
-                    break
-            else:
-                raise AssertionError("never saw a ports resource")
+        assert {
+            'name': 'ports',
+            'ranges': {'range': [{'begin': 12345, 'end': 12345}]},
+            'type': 'RANGES',
+        } in tasks[0]['resources']
 
     def test_offer_matches_pool(self):
         service_name = "service_name"
@@ -311,46 +307,48 @@ class TestNativeServiceConfig(object):
         ):
             task = service_config.base_task(system_paasta_config)
 
-        assert task.container.type == 'DOCKER'
-        assert task.container.docker.image == "fake/busybox"
-        parameters = [(p.key, p.value) for p in task.container.docker.parameters]
-        assert parameters == [
-            ("memory-swap", mock.ANY),
-            ("cpu-period", mock.ANY),
-            ("cpu-quota", mock.ANY),
-            ("label", mock.ANY),  # service
-            ("label", mock.ANY),  # instance
-        ]
+        assert task == {
+            'container': {
+                'type': 'DOCKER',
+                'docker': {
+                    'image': 'fake/busybox',
+                    'parameters': [
+                        {"key": "memory-swap", "value": mock.ANY},
+                        {"key": "cpu-period", "value": mock.ANY},
+                        {"key": "cpu-quota", "value": mock.ANY},
+                        {"key": "label", "value": mock.ANY},  # service
+                        {"key": "label", "value": mock.ANY},  # instance
+                    ],
+                    'network': 'BRIDGE',
+                    'port_mappings': [{
+                        'container_port': 8888,
+                        'host_port': 0,
+                        'protocol': "tcp",
+                    }],
+                },
+                'volumes': [{
+                    'mode': 'RW',
+                    'container_path': "/foo",
+                    'host_path': "/bar",
+                }],
+            },
+            'command': {
+                'value': 'sleep 50',
+                'uris': [
+                    {'value': system_paasta_config.get_dockercfg_location(), 'extract': False},
+                ],
+            },
+            'resources': [
+                {'name': 'cpus', 'scalar': {'value': 0.1}, 'type': 'SCALAR'},
+                {'name': 'mem', 'scalar': {'value': 50}, 'type': 'SCALAR'},
+                {'name': 'ports', 'ranges': mock.ANY, 'type': 'RANGES'},
+            ],
+            'name': mock.ANY,
+            'agent_id': {'value': ''},
+            'task_id': {'value': ''},
+        }
 
-        assert task.container.docker.network == 'BRIDGE'
-
-        assert len(task.container.volumes) == 1
-        assert task.container.volumes[0].mode == 'RW'
-        assert task.container.volumes[0].container_path == "/foo"
-        assert task.container.volumes[0].host_path == "/bar"
-
-        assert len(task.container.docker.port_mappings) == 1
-        assert task.container.docker.port_mappings[0].container_port == 8888
-        assert task.container.docker.port_mappings[0].host_port == 0
-        assert task.container.docker.port_mappings[0].protocol == "tcp"
-
-        assert task.command.value == "sleep 50"
-
-        assert len(task.resources) == 3
-
-        for resource in task.resources:
-            if resource.name == "cpus":
-                assert resource.scalar.value == 0.1
-            elif resource.name == "mem":
-                assert resource.scalar.value == 50
-            elif resource.name == 'ports':
-                pass
-            else:
-                raise AssertionError('Unreachable: {}'.format(resource.name))
-
-        assert task.name.startswith("service_name.instance_name.gitbusybox.config")
-
-        assert task.command.uris[0].value == system_paasta_config.get_dockercfg_location()
+        assert task['name'].startswith("service_name.instance_name.gitbusybox.config")
 
     def test_resource_offers_ignores_blacklisted_slaves(self, system_paasta_config):
         service_name = "service_name"

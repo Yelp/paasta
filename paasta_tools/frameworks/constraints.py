@@ -8,11 +8,11 @@ from typing import Dict
 from paasta_tools.utils import paasta_print
 
 
-State = Dict[str, Dict[str, Any]]
-ConstraintOp = Callable[[str, str, str, State], bool]
+ConstraintState = Dict[str, Dict[str, Any]]
+ConstraintOp = Callable[[str, str, str, ConstraintState], bool]
 
 
-def max_per(constraint_value, offer_value, attribute, state: State):
+def max_per(constraint_value, offer_value, attribute, state: ConstraintState):
     if not constraint_value:
         constraint_value = 1
     state_value = state.get('MAX_PER', {}).get(attribute, {}).get(offer_value, 0)

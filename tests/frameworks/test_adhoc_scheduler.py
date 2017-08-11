@@ -150,8 +150,8 @@ class TestAdhocScheduler(object):
             assert len(tasks) == 0
 
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            task_id = tasks[0].task_id.value
-            task_name = tasks[0].name
+            task_id = tasks[0]['task_id']['value']
+            task_name = tasks[0]['name']
             assert len(scheduler.task_store.get_all_tasks()) == 1
             assert len(tasks) == 1
             assert scheduler.need_more_tasks(task_name, scheduler.task_store.get_all_tasks(), []) is False
@@ -164,7 +164,7 @@ class TestAdhocScheduler(object):
 
             scheduler.statusUpdate(
                 fake_driver,
-                mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
+                {'task_id': {'value': task_id}, 'state': native_scheduler.TASK_FINISHED},
             )
             assert len(scheduler.task_store.get_all_tasks()) == 1
             assert scheduler.need_to_stop() is True
@@ -221,8 +221,8 @@ class TestAdhocScheduler(object):
             return_value=system_paasta_config,
         ):
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            task_name = tasks[0].name
-            task_ids = [t.task_id.value for t in tasks]
+            task_name = tasks[0]['name']
+            task_ids = [t['task_id']['value'] for t in tasks]
 
             assert len(scheduler.task_store.get_all_tasks()) == 5
             assert len(tasks) == 5
@@ -237,6 +237,6 @@ class TestAdhocScheduler(object):
             for idx, task_id in enumerate(task_ids):
                 scheduler.statusUpdate(
                     fake_driver,
-                    mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
+                    {'task_id': {'value': task_id}, 'state': native_scheduler.TASK_FINISHED},
                 )
                 assert scheduler.need_to_stop() is (idx == 4)

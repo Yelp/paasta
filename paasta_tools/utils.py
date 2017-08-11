@@ -133,6 +133,19 @@ class InvalidInstanceConfig(Exception):
 DeployBlacklist = List[Tuple[str, str]]
 DeployWhitelist = Optional[Tuple[str, List[str]]]
 
+Constraint = Sequence[str]
+
+SecurityConfigDict = Dict  # Todo: define me.
+
+DockerVolume = TypedDict(
+    'DockerVolume',
+    {
+        'hostPath': str,
+        'containerPath': str,
+        'mode': str,
+    },
+)
+
 InstanceConfigDict = TypedDict(
     'InstanceConfigDict',
     {
@@ -152,6 +165,14 @@ InstanceConfigDict = TypedDict(
         'deploy_blacklist': DeployBlacklist,
         'deploy_whitelist': DeployWhitelist,
         'monitoring_blacklist': DeployBlacklist,
+        'pool': str,
+        'extra_volumes': List[DockerVolume],
+        'security': SecurityConfigDict,
+        'dependencies_reference': str,
+        'dependencies': Dict[str, Dict],
+        'constraints': List[Constraint],
+        'extra_constraints': List[Constraint],
+        'net': str,
     },
     total=False,
 )
@@ -164,6 +185,7 @@ BranchDict = TypedDict(
         'desired_state': str,
         'force_bounce': Optional[str],
     },
+    total=False,
 )
 
 
@@ -174,9 +196,6 @@ DockerParameter = TypedDict(
         'value': str,
     },
 )
-
-
-Constraint = Sequence[str]
 
 
 class InstanceConfig(object):
@@ -431,12 +450,12 @@ class InstanceConfig(object):
             system_deploy_blacklist
         )
 
-    def get_docker_image(self):
+    def get_docker_image(self) -> str:
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
         return self.branch_dict.get('docker_image', '')
 
-    def get_docker_url(self):
+    def get_docker_url(self) -> str:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
@@ -447,12 +466,12 @@ class InstanceConfig(object):
         docker_url = '%s/%s' % (registry_uri, docker_image)
         return docker_url
 
-    def get_desired_state(self):
+    def get_desired_state(self) -> str:
         """Get the desired state (either 'start' or 'stop') for a given service
         branch from a generated deployments.json file."""
         return self.branch_dict.get('desired_state', 'start')
 
-    def get_force_bounce(self):
+    def get_force_bounce(self) -> Optional[str]:
         """Get the force_bounce token for a given service branch from a generated
         deployments.json file. This is a token that, when changed, indicates that
         the instance should be recreated and bounced, even if no other
@@ -461,28 +480,28 @@ class InstanceConfig(object):
         """
         return self.branch_dict.get('force_bounce', None)
 
-    def check_cpus(self):
+    def check_cpus(self) -> Tuple[bool, str]:
         cpus = self.get_cpus()
         if cpus is not None:
             if not isinstance(cpus, (float, int)):
                 return False, 'The specified cpus value "%s" is not a valid float or int.' % cpus
         return True, ''
 
-    def check_mem(self):
+    def check_mem(self) -> Tuple[bool, str]:
         mem = self.get_mem()
         if mem is not None:
             if not isinstance(mem, (float, int)):
                 return False, 'The specified mem value "%s" is not a valid float or int.' % mem
         return True, ''
 
-    def check_disk(self):
+    def check_disk(self) -> Tuple[bool, str]:
         disk = self.get_disk()
         if disk is not None:
             if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
         return True, ''
 
-    def check_security(self):
+    def check_security(self) -> Tuple[bool, str]:
         security = self.config_dict.get('security')
         if security is None:
             return True, ''
@@ -500,7 +519,7 @@ class InstanceConfig(object):
 
         return True, ''
 
-    def check_dependencies_reference(self):
+    def check_dependencies_reference(self) -> Tuple[bool, str]:
         dependencies_reference = self.config_dict.get('dependencies_reference')
         if dependencies_reference is None:
             return True, ''
@@ -514,7 +533,7 @@ class InstanceConfig(object):
 
         return True, ''
 
-    def check(self, param):
+    def check(self, param: str) -> Tuple[bool, str]:
         check_methods = {
             'cpus': self.check_cpus,
             'mem': self.check_mem,
@@ -527,7 +546,7 @@ class InstanceConfig(object):
         else:
             return False, 'Your service config specifies "%s", an unsupported parameter.' % param
 
-    def validate(self):
+    def validate(self) -> List[str]:
         error_msgs = []
         for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
             check_passed, check_msg = self.check(param)
@@ -535,14 +554,14 @@ class InstanceConfig(object):
                 error_msgs.append(check_msg)
         return error_msgs
 
-    def get_extra_volumes(self):
+    def get_extra_volumes(self) -> List[DockerVolume]:
         """Extra volumes are a specially formatted list of dictionaries that should
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
         return self.config_dict.get('extra_volumes', [])
 
-    def get_pool(self):
+    def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
 
@@ -554,28 +573,28 @@ class InstanceConfig(object):
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
 
-    def get_pool_constraints(self):
+    def get_pool_constraints(self) -> List[Constraint]:
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
-    def get_constraints(self):
+    def get_constraints(self) -> List[Constraint]:
         return self.config_dict.get('constraints', None)
 
-    def get_extra_constraints(self):
+    def get_extra_constraints(self) -> List[Constraint]:
         return self.config_dict.get('extra_constraints', [])
 
-    def get_net(self):
+    def get_net(self) -> str:
         """
         :returns: the docker networking mode the container should be started with.
         """
         return self.config_dict.get('net', 'bridge')
 
-    def get_volumes(self, system_volumes):
+    def get_volumes(self, system_volumes: List[DockerVolume]) -> List[DockerVolume]:
         volumes = system_volumes + self.get_extra_volumes()
         deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
         return sort_dicts(deduped)
 
-    def get_dependencies_reference(self):
+    def get_dependencies_reference(self) -> Optional[str]:
         """Get the reference to an entry in dependencies.yaml
 
         Defaults to None if not specified in the config.
@@ -583,7 +602,7 @@ class InstanceConfig(object):
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('dependencies_reference')
 
-    def get_dependencies(self):
+    def get_dependencies(self) -> Optional[Dict]:
         """Get the contents of the dependencies_dict pointed to by the dependency_reference
 
         Defaults to None if not specified in the config.
@@ -594,7 +613,7 @@ class InstanceConfig(object):
             return None
         return dependencies.get(self.get_dependencies_reference())
 
-    def get_outbound_firewall(self):
+    def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
 
         Defaults to None if not specified in the config
@@ -1123,14 +1142,6 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     return SystemPaastaConfig(config, path)
 
 
-DockerVolume = TypedDict(
-    'DockerVolume',
-    {
-        'hostPath': str,
-        'containerPath': str,
-        'mode': str,
-    },
-)
 ClusterAutoscalingResources = Dict[str, Dict]
 
 ResourcePoolSettings = Dict[str, Dict]
@@ -1609,7 +1620,10 @@ class InvalidJobNameError(Exception):
     pass
 
 
-def compose_job_id(name, instance, git_hash=None, config_hash=None, spacer=SPACER):
+def compose_job_id(
+    name: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None,
+    spacer=SPACER,
+) -> str:
     """Compose a job/app id by concatenating its name, instance, git hash, and config hash.
 
     :param name: The name of the service
@@ -1778,7 +1792,7 @@ def get_service_instance_list_no_cache(service, cluster=None, instance_type=None
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     if instance_type in INSTANCE_TYPES:
-        instance_types = [instance_type]
+        instance_types = (instance_type,)
     else:
         instance_types = INSTANCE_TYPES
 
@@ -1979,7 +1993,7 @@ class NoDockerImageError(Exception):
     pass
 
 
-def get_config_hash(config, force_bounce=None):
+def get_config_hash(config: Any, force_bounce=None) -> str:
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
