@@ -7,6 +7,7 @@ from paasta_tools.frameworks import adhoc_scheduler
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
+from paasta_tools.frameworks.task_store import DictTaskStore
 
 
 @pytest.fixture
@@ -84,9 +85,11 @@ class TestAdhocScheduler(object):
                 dry_run=False,
                 reconcile_start_time=0,
                 staging_timeout=30,
+                task_store_type=DictTaskStore,
             )
 
-    def test_can_only_launch_task_once(self, system_paasta_config):
+    @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
+    def test_can_only_launch_task_once(self, mock_log, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -120,9 +123,16 @@ class TestAdhocScheduler(object):
             dry_run=False,
             reconcile_start_time=0,
             staging_timeout=30,
+            task_store_type=DictTaskStore,
         )
 
         fake_driver = mock.Mock()
+
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -142,13 +152,13 @@ class TestAdhocScheduler(object):
             tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
             task_id = tasks[0].task_id.value
             task_name = tasks[0].name
-            assert len(scheduler.tasks_with_flags) == 1
+            assert len(scheduler.task_store.get_all_tasks()) == 1
             assert len(tasks) == 1
-            assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
+            assert scheduler.need_more_tasks(task_name, scheduler.task_store.get_all_tasks(), []) is False
             assert scheduler.need_to_stop() is False
 
             no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 1
+            assert len(scheduler.task_store.get_all_tasks()) == 1
             assert len(no_tasks) == 0
             assert scheduler.need_to_stop() is False
 
@@ -156,11 +166,11 @@ class TestAdhocScheduler(object):
                 fake_driver,
                 mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
             )
-            assert len(scheduler.tasks_with_flags) == 1
-            assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
+            assert len(scheduler.task_store.get_all_tasks()) == 1
             assert scheduler.need_to_stop() is True
 
-    def test_can_run_multiple_copies(self, system_paasta_config):
+    @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
+    def test_can_run_multiple_copies(self, mock_log, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -195,9 +205,16 @@ class TestAdhocScheduler(object):
             reconcile_start_time=0,
             staging_timeout=30,
             service_config_overrides={'instances': 5},
+            task_store_type=DictTaskStore,
         )
 
         fake_driver = mock.Mock()
+
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -207,13 +224,13 @@ class TestAdhocScheduler(object):
             task_name = tasks[0].name
             task_ids = [t.task_id.value for t in tasks]
 
-            assert len(scheduler.tasks_with_flags) == 5
+            assert len(scheduler.task_store.get_all_tasks()) == 5
             assert len(tasks) == 5
-            assert scheduler.need_more_tasks(task_name, scheduler.tasks_with_flags, []) is False
+            assert scheduler.need_more_tasks(task_name, scheduler.task_store.get_all_tasks(), []) is False
             assert scheduler.need_to_stop() is False
 
             no_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 5
+            assert len(scheduler.task_store.get_all_tasks()) == 5
             assert len(no_tasks) == 0
             assert scheduler.need_to_stop() is False
 
@@ -222,6 +239,4 @@ class TestAdhocScheduler(object):
                     fake_driver,
                     mock.Mock(task_id=mock.Mock(value=task_id), state=native_scheduler.TASK_FINISHED),
                 )
-                assert len(scheduler.tasks_with_flags) == 5 - idx
-                assert scheduler.tasks_with_flags[task_id].marked_for_gc is True
                 assert scheduler.need_to_stop() is (idx == 4)
