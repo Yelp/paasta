@@ -43,8 +43,6 @@ import logging
 import os
 import re
 
-import six
-
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.utils import atomic_file_write
@@ -233,7 +231,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     except KeyError:
         deploy_group_mappings = {}
         for deploy_group, image in deployments_dict.items():
-            if isinstance(image, six.string_types):
+            if isinstance(image, str):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',

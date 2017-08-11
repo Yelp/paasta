@@ -19,14 +19,14 @@ import logging
 import sys
 import time
 from argparse import ArgumentTypeError
+from queue import Empty
+from queue import Queue
 from threading import Event
 from threading import Thread
 
 import progressbar
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
-from six.moves.queue import Empty
-from six.moves.queue import Queue
 
 from paasta_tools import remote_git
 from paasta_tools.api import client

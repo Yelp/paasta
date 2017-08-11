@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import http.server
 import threading
 
 import mock
 from behave import given
 from behave import then
 from behave import when
-from six.moves import BaseHTTPServer
 
 from paasta_tools import drain_lib
 from paasta_tools.utils import paasta_print
@@ -74,7 +74,7 @@ class FakeHTTPServer(object):
     paths = []
 
     def start(self):
-        self.server = BaseHTTPServer.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)
+        self.server = http.server.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)
         self.server_thread = threading.Thread(target=self.serve)
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -88,7 +88,7 @@ class FakeHTTPServer(object):
         self.server_thread.join()
 
 
-class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     status_code = 200
 
     def do_GET(self):
