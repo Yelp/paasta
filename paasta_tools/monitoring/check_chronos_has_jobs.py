@@ -39,7 +39,7 @@ def check_chronos_jobs():
         paasta_print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print(result.message)
+        paasta_print("CRITICAL: " + result.message)
         sys.exit(2)
 
 

@@ -17,14 +17,14 @@ import sys
 from marathon.exceptions import InternalServerError
 from marathon.exceptions import MarathonError
 
-from paasta_tools import marathon_tools
+from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.metrics.metastatus_lib import assert_marathon_apps
 from paasta_tools.metrics.metastatus_lib import get_marathon_client
 from paasta_tools.utils import paasta_print
 
 
 def check_marathon_apps():
-    config = marathon_tools.load_marathon_config()
+    config = load_marathon_config()
     if not config:
         paasta_print("UNKNOWN: Failed to load marathon config")
         sys.exit(3)
