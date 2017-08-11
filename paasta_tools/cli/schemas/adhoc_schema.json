@@ -27,7 +27,7 @@
                 "default": 1024
             },
             "gpus": {
-                "type": "number",
+                "type": "integer",
                 "minimum": 0,
                 "exclusiveMinimum": true,
                 "default": 0

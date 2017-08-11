@@ -171,9 +171,11 @@ def paasta_to_task_config_kwargs(
         # 'ulimit'
         'uris': [uris],
         'docker_parameters': docker_parameters,
+        'containerizer': 'DOCKER',
     }
     if gpus > 0:
-        kwargs['gpus'] = float(gpus)
+        kwargs['gpus'] = int(gpus)
+        kwargs['containerizer'] = 'MESOS'
 
     config_hash = get_config_hash(
         kwargs,
