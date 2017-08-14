@@ -215,7 +215,7 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_no_duplicate_frameworks(state, ignore=[]):
+def assert_no_duplicate_frameworks(state, frameworks_list):
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
@@ -230,14 +230,14 @@ def assert_no_duplicate_frameworks(state, ignore=[]):
         indicating if there are any duplicate frameworks.
     """
     frameworks = state['frameworks']
-    framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))
+    framework_counts = OrderedDict(
+        sorted(Counter([fw['name'] for fw in frameworks if fw['name'] in frameworks_list]).items()),
+    )
     output = ["Frameworks:"]
     ok = True
 
     for framework, count in framework_counts.items():
-        if framework in ignore:
-            output.append("    Framework: ignoring %s count: %d" % (framework, count))
-        elif count > 1:
+        if count > 1:
             ok = False
             output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."
                           % (framework, count))
@@ -534,7 +534,7 @@ def get_mesos_state_status(mesos_state):
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
     :returns: a list of HealthCheckResult tuples
     """
-    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state)]
+    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state, ['marathon', 'chronos'])]
 
 
 def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
@@ -574,12 +574,12 @@ def get_marathon_status(client):
     )
 
 
-def assert_chronos_scheduled_jobs(client, can_fail=False):
+def assert_chronos_scheduled_jobs(client):
     """
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    healthy = (not can_fail) or (num_jobs != 0)
+    healthy = num_jobs != 0
     return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=healthy)
 
 

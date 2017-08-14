@@ -30,7 +30,7 @@ def check_chronos_jobs():
     client = get_chronos_client(config)
 
     try:
-        result = assert_chronos_scheduled_jobs(client, can_fail=True)
+        result = assert_chronos_scheduled_jobs(client)
     except (ChronosAPIError) as e:
         paasta_print("CRITICAL: Unable to connect to Chronos: %s" % e.message)
         sys.exit(2)

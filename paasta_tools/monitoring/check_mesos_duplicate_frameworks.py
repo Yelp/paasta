@@ -25,14 +25,14 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--ignore', '-i', dest='ignore', type=str, default='',
-        help='Comma separated list of frameworks to ignore',
+        '--check', '-C', dest='check', type=str, default='',
+        help='Comma separated list of frameworks to check for duplicates',
     )
 
 
 def check_mesos_no_duplicate_frameworks():
     options = parse_args()
-    ignore = options.ignore.split(',')
+    check = options.check.split(',')
     master = get_mesos_master()
     try:
         state = master.state
@@ -40,7 +40,7 @@ def check_mesos_no_duplicate_frameworks():
         paasta_print("CRITICAL: %s" % e.message)
         sys.exit(2)
 
-    result = assert_no_duplicate_frameworks(state, ignore=ignore)
+    result = assert_no_duplicate_frameworks(state, check)
     if result.healthy:
         paasta_print("OK: " + result.message)
         sys.exit(0)
