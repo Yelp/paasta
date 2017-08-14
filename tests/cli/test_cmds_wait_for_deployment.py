@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from queue import Queue
 from threading import Event
 
 from bravado.exception import HTTPError
 from mock import Mock
 from mock import patch
 from pytest import raises
-from six.moves.queue import Queue
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster

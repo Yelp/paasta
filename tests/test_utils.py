@@ -165,7 +165,7 @@ def test_load_system_paasta_config():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_file_patch, mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
         return_value=['/some/fake/dir/some_file.json'],
@@ -215,7 +215,7 @@ def test_load_system_paasta_config_file_dne():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', side_effect=IOError(2, 'a', 'b'), autospec=None,
+        'builtins.open', side_effect=IOError(2, 'a', 'b'), autospec=None,
     ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path],
     ):
@@ -234,7 +234,7 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
         return_value=['a', 'b'],
@@ -744,7 +744,7 @@ def test_DeploymentsJson_read():
         },
     }
     with mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_patch, mock.patch(
         'json.load', autospec=True, return_value=fake_json,
     ) as json_patch, mock.patch(

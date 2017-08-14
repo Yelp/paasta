@@ -1,3 +1,12 @@
+paasta-tools (0.66.26) xenial; urgency=medium
+
+  * 0.66.26 tagged with 'make release'
+    Commit: Merge pull request #1433 from
+    Yelp/jlynch_support_multiple_classic_ports  Support multiple puppet
+    service ports
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 14 Aug 2017 13:21:56 -0700
+
 paasta-tools (0.66.25) xenial; urgency=low
 
   * 0.66.25 tagged with 'make release'

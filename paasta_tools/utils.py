@@ -24,6 +24,7 @@ import logging
 import math
 import os
 import pwd
+import queue
 import re
 import shlex
 import signal
@@ -53,8 +54,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import six
-import six.moves
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -1207,6 +1206,7 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_big_bounce_rate': int,
         'deployd_startup_bounce_rate': int,
         'deployd_log_level': str,
+        'deployd_startup_oracle_enabled': bool,
     },
     total=False,
 )
@@ -1352,6 +1352,15 @@ class SystemPaastaConfig(object):
         :returns: An integer
         """
         return self.config_dict.get('deployd_maintenance_polling_frequency', 30)
+
+    def get_deployd_startup_oracle_enabled(self) -> bool:
+        """This controls whether deployd will add all services that need a bounce on
+        startup. Generally this is desirable behaviour. If you are performing a bounce
+        of *all* services you will want to disable this.
+
+        :returns: A boolean
+        """
+        return self.config_dict.get('deployd_startup_oracle_enabled', True)
 
     def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.
@@ -2105,7 +2114,7 @@ def format_table(rows, min_spacing=2):
     :returns: A string containing rows formatted as a table.
     """
 
-    list_rows = [r for r in rows if not isinstance(r, six.string_types)]
+    list_rows = [r for r in rows if not isinstance(r, str)]
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
@@ -2252,10 +2261,10 @@ def prompt_pick_one(sequence, choosing):
 def to_bytes(obj):
     if isinstance(obj, bytes):
         return obj
-    elif isinstance(obj, six.text_type):
+    elif isinstance(obj, str):
         return obj.encode('UTF-8')
     else:
-        return six.text_type(obj).encode('UTF-8')
+        return str(obj).encode('UTF-8')
 
 
 def paasta_print(*args, **kwargs):
@@ -2297,7 +2306,7 @@ _TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
 class _Timeout(object):
     def __init__(self, function: Callable[..., _TimeoutFuncRetType], seconds: float, error_message: str) -> None:
         self.seconds = seconds
-        self.control: six.moves.queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = six.moves.queue.Queue()
+        self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = queue.Queue()
         self.function = function
         self.error_message = error_message
 
@@ -2329,6 +2338,6 @@ class _Timeout(object):
                 if ret[0]:
                     return ret[1]
                 else:
-                    exc_info = ret[1]
-                    six.reraise(*exc_info)
+                    _, e, tb = ret[1]
+                    raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)

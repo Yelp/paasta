@@ -22,6 +22,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
+from queue import Empty
 from time import sleep
 from typing import Any  # noqa
 from typing import Dict  # noqa
@@ -32,7 +33,6 @@ import isodate
 import pytz
 import ujson as json
 from dateutil import tz
-from six.moves.queue import Empty
 
 from paasta_tools.utils import paasta_print
 

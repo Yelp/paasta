@@ -1,9 +1,8 @@
 import logging
 import time
 from collections import namedtuple
+from queue import Queue
 from threading import Thread
-
-from six.moves.queue import Queue
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps

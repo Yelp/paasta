@@ -3,10 +3,10 @@ import logging
 import os
 import signal
 import socket
+import socketserver
 import sys
 
 import syslogmp
-from six.moves import socketserver
 
 from paasta_tools.firewall import services_running_here
 from paasta_tools.utils import _log

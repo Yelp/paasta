@@ -9,8 +9,6 @@ import os.path
 import re
 from contextlib import contextmanager
 
-import six
-
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
@@ -197,7 +195,7 @@ def _yocalhost_rule(port, comment, protocol='tcp'):
             (
                 protocol,
                 (
-                    ('dport', (six.text_type(port),)),
+                    ('dport', (str(port),)),
                 ),
             ),
         ),
@@ -237,7 +235,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
                     (
                         'tcp',
                         (
-                            ('dport', (six.text_type(backend['port']),)),
+                            ('dport', (str(backend['port']),)),
                         ),
                     ),
                 ),

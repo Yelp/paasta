@@ -15,12 +15,12 @@ import contextlib
 import datetime
 import json
 from multiprocessing import Queue
+from queue import Empty
 
 import isodate
 import mock
 import pytest
 from pytest import raises
-from six.moves.queue import Empty
 
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import logs

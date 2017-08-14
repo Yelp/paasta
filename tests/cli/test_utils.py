@@ -15,7 +15,6 @@ import argparse
 from socket import gaierror
 
 import mock
-import six
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
 from mock import patch
@@ -439,7 +438,7 @@ def test_execute_chronos_rerun_on_remote_master(test_case):
         assert type(outcome) == tuple and \
             len(outcome) == 2 and \
             type(outcome[0]) == int and \
-            isinstance(outcome[1], six.string_types)
+            isinstance(outcome[1], str)
         assert bool(mock_find_connectable_master.return_value) == mock_find_connectable_master.called
         assert bool(mock_run_chronos_rerun.return_value) == mock_run_chronos_rerun.called
 

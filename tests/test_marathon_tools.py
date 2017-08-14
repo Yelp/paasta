@@ -229,7 +229,7 @@ class TestMarathonTools:
         from_file = {'marathon_config': {'foo': 'bar'}}
         open_mock = mock.mock_open()
         with mock.patch(
-            'six.moves.builtins.open', open_mock, autospec=None,
+            'builtins.open', open_mock, autospec=None,
         ) as open_file_patch, mock.patch(
             'json.load', autospec=True, return_value=from_file,
         ) as json_patch, mock.patch(
@@ -1750,7 +1750,6 @@ class TestMarathonServiceConfig(object):
         ]
 
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
-
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
@@ -1765,6 +1764,29 @@ class TestMarathonServiceConfig(object):
         expected = [
             {
                 "protocol": "HTTP",
+                "path": '/status',
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 30,
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_https(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
+        expected = [
+            {
+                "protocol": "HTTPS",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,

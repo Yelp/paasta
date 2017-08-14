@@ -15,8 +15,7 @@
 import shlex
 import subprocess
 import sys
-
-from six.moves.urllib_parse import urlparse
+from urllib.parse import urlparse
 
 from paasta_tools.cli.utils import calculate_remote_masters
 from paasta_tools.cli.utils import find_connectable_master
