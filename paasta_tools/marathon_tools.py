@@ -468,11 +468,12 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         timeoutseconds = self.get_healthcheck_timeout_seconds()
         maxconsecutivefailures = self.get_healthcheck_max_consecutive_failures()
 
-        if mode == 'http':
+        if mode == 'http' or mode == 'https':
             http_path = self.get_healthcheck_uri(service_namespace_config)
+            protocol = mode.upper()
             healthchecks = [
                 {
-                    "protocol": "HTTP",
+                    "protocol": protocol,
                     "path": http_path,
                     "gracePeriodSeconds": graceperiodseconds,
                     "intervalSeconds": intervalseconds,
@@ -507,7 +508,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             healthchecks = []
         else:
             raise InvalidHealthcheckMode(
-                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode,
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp/cmd" % mode,
             )
         return healthchecks
 
