@@ -81,6 +81,8 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
+DOCKER_ARGS_WHITELIST = ('shm-size')
+
 
 class time_cache:
     def __init__(self, ttl=0):
@@ -199,10 +201,8 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_shm_size(self):
-        """Get's the shm_size to pass to docker
-        See --shm-size in the docker docs"""
-        return self.config_dict.get('shm_size', None)
+    def get_extra_docker_args(self):
+        return self.config_dict.get('extra_docker_args', {})
 
     def get_ulimit(self):
         """Get the --ulimit options to be passed to docker
@@ -442,12 +442,23 @@ class InstanceConfig(object):
 
         return True, ''
 
+    def check_extra_docker_args(self):
+        extra_docker_args = self.get_extra_docker_args()
+        valid = True
+        err = []
+        for arg in extra_docker_args.keys():
+            if arg not in DOCKER_ARGS_WHITELIST:
+                err.append('"%s" is not a whitelisted key for extra_docker_args' % arg)
+
+        return valid, ', '.join(err)
+
     def check(self, param):
         check_methods = {
             'cpus': self.check_cpus,
             'mem': self.check_mem,
             'security': self.check_security,
             'dependencies_reference': self.check_dependencies_reference,
+            'extra_docker_args': self.check_extra_docker_args,
         }
         check_method = check_methods.get(param)
         if check_method is not None:
@@ -457,7 +468,7 @@ class InstanceConfig(object):
 
     def validate(self):
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
+        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'extra_docker_args']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
