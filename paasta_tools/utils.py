@@ -254,11 +254,12 @@ class InstanceConfig(object):
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
             ])
-        shm = self.get_shm_size()
-        if shm:
-            parameters.extend([
-                {"key": "shm-size", "value": "%s" % shm},
-            ])
+        extra_docker_args = self.get_extra_docker_args()
+        if extra_docker_args:
+            for key, value in extra_docker_args.items():
+                parameters.extend([
+                    {"key": key, "value": value},
+                ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
