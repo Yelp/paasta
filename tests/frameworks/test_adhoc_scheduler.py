@@ -130,7 +130,7 @@ class TestAdhocScheduler(object):
 
         scheduler.registered(
             driver=fake_driver,
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
@@ -212,7 +212,7 @@ class TestAdhocScheduler(object):
 
         scheduler.registered(
             driver=fake_driver,
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 

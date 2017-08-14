@@ -136,8 +136,8 @@ class NativeScheduler(Scheduler):
                 self.kill_task(driver, task)
 
     def registered(self, driver: MesosSchedulerDriver, frameworkId, masterInfo):
-        self.framework_id = frameworkId.value
-        self.log("Registered with framework ID %s" % frameworkId.value)
+        self.framework_id = frameworkId['value']
+        self.log("Registered with framework ID %s" % frameworkId['value'])
 
         self.task_store = self.task_store_type(
             service_name=self.service_name,

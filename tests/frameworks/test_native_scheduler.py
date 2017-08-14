@@ -91,7 +91,7 @@ class TestNativeScheduler(object):
         fake_driver = mock.Mock()
         scheduler.registered(
             driver=fake_driver,
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
@@ -212,7 +212,7 @@ class TestNativeScheduler(object):
         )
         scheduler.registered(
             driver=mock.Mock(),
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
@@ -266,7 +266,7 @@ class TestNativeScheduler(object):
         )
         scheduler.registered(
             driver=mock.Mock(),
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
@@ -387,7 +387,7 @@ class TestNativeServiceConfig(object):
         fake_driver = mock.Mock()
         scheduler.registered(
             driver=fake_driver,
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
@@ -434,7 +434,7 @@ class TestNativeServiceConfig(object):
         fake_driver = mock.Mock()
         scheduler.registered(
             driver=fake_driver,
-            frameworkId=mock.Mock(value='foo'),
+            frameworkId={'value': 'foo'},
             masterInfo=mock.Mock(),
         )
 
