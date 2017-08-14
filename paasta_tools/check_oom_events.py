@@ -14,11 +14,11 @@
 # limitations under the License.
 import argparse
 import json
+import sys
 import time
 from random import choice
 
-import pysensu_yelp
-from scribereader import scribereader
+from pysensu_yelp import Status
 
 from paasta_tools import monitoring_tools
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
@@ -27,31 +27,40 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 
+try:
+    from scribereader import scribereader
+except ImportError:
+    scribereader = None
 
-def parse_args():
+
+OOM_EVENTS_STREAM = 'tmp_paasta_oom_events'
+
+
+def parse_args(args):
     parser = argparse.ArgumentParser(description=(
-        'Check the tmp_paasta_oom_events stream and report to Sensu '
-        'if there are any OOM events.',
+        'Check the %s stream and report to Sensu if'
+        ' there are any OOM events.' % OOM_EVENTS_STREAM
     ))
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
+        '-d', '--soa-dir', dest="soa_dir", default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-s', '--superregion', dest="superregion", required=True,
-        help="The superregion to use",
+        '-r', '--realert-every', dest="realert_every", type=int, default=1,
+        help="Sensu 'realert_every' to use.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        '-s', '--superregion', dest="superregion", required=True,
+        help="The superregion to read OOM events from.",
+    )
+    return parser.parse_args(args)
 
 
 def oom_events(cluster, superregion, num_lines=1000):
-    """Iterate over latest 'num_lines' lines in the tmp_paasta_oom_events stream"""
-    host_and_port = choice(scribereader.get_default_scribe_hosts(tail=True))
-    host = host_and_port['host']
-    port = host_and_port['port']
+    """Read the latest 'num_lines' lines from OOM_EVENTS_STREAM and iterate over them."""
+    host_port = choice(scribereader.get_default_scribe_hosts(tail=True))
     stream = scribereader.get_stream_tailer(
-        'tmp_paasta_oom_events', host, port, True,
+        OOM_EVENTS_STREAM, host_port['host'], host_port['port'], True,
         num_lines, superregion=superregion,
     )
     for line in stream:
@@ -87,52 +96,51 @@ def compose_sensu_status(service_instance, events):
     :param events: a list of tuples (hostname, container_id, process_name)
     """
     if len(events) == 0:
-        return (
-            pysensu_yelp.Status.OK,
-            'oom-killer is not killing processes in %s.%s containers.' %
-            (service_instance[0], service_instance[1]),
-        )
+        return (Status.OK, 'oom-killer is calm.')
+    elif len(events) == 1:
+        return (Status.CRITICAL, 'killing 1 process/min (%s).' % events[0][2])
     else:
         return (
-            pysensu_yelp.Status.CRITICAL,
-            'oom-killer is killing %d processes a minute in %s.%s containers.' %
-            (len(events), service_instance[0], service_instance[1]),
+            Status.CRITICAL, 'killing %d processes/min (%s).' %
+            (len(events), ','.join(sorted(e[2] for e in events if e[2]))),
         )
 
 
-def send_sensu_event(instance, status):
+def send_sensu_event(instance, status, args):
     check_name = compose_check_name_for_service_instance(
-        'check_oom_events',
+        'oom-killer',
         instance.service,
         instance.instance,
     )
     monitoring_overrides = instance.get_monitoring()
     monitoring_overrides['page'] = False
     monitoring_overrides['ticket'] = False
-    monitoring_overrides['team'] = 'noop'
-    monitoring_overrides['irc_channels'] = ['#adudkotest']
-    monitoring_overrides['runbook'] = ['http://y/none']
-    monitoring_tools.send_event(
-        service=instance.service,
-        check_name=check_name,
-        overrides=monitoring_overrides,
-        status=status[0],
-        output=status[1],
-        soa_dir=instance.soa_dir,
-    )
+    monitoring_overrides['alert_after'] = '1m'
+    monitoring_overrides['runbook'] = ['http://y/none']  # TODO: needs a link
+    monitoring_overrides['realert_every'] = args.realert_every
+    monitoring_overrides['tip'] = 'Increase memory limit.'
+    if monitoring_overrides['team'] == 'operations':  # TODO: remove after initial testing
+        return monitoring_tools.send_event(
+            service=instance.service,
+            check_name=check_name,
+            overrides=monitoring_overrides,
+            status=status[0],
+            output=status[1],
+            soa_dir=instance.soa_dir,
+        )
 
 
-def main():
-    args = parse_args()
+def main(sys_argv):
+    args = parse_args(sys_argv[1:])
     cluster = load_system_paasta_config().get_cluster()
     victims = latest_oom_events(cluster, args.superregion)
-    for s_i in get_services_for_cluster(cluster):
+    for s_i in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
         instance = get_instance_config(
             s_i[0], s_i[1], cluster,
             load_deployments=False, soa_dir=args.soa_dir,
         )
-        send_sensu_event(instance, compose_sensu_status(s_i, victims.get(s_i, [])))
+        send_sensu_event(instance, compose_sensu_status(s_i, victims.get(s_i, [])), args)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
