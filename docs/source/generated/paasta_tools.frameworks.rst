@@ -10,6 +10,7 @@ Submodules
    paasta_tools.frameworks.constraints
    paasta_tools.frameworks.native_scheduler
    paasta_tools.frameworks.native_service_config
+   paasta_tools.frameworks.task_store
 
 Module contents
 ---------------
