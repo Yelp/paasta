@@ -1,9 +1,9 @@
 import sys
 import unittest
+from queue import Empty
 
 import mock
 from pytest import raises
-from six.moves.queue import Empty
 
 from paasta_tools.deployd.common import ServiceInstance
 

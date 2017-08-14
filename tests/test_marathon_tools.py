@@ -229,7 +229,7 @@ class TestMarathonTools:
         from_file = {'marathon_config': {'foo': 'bar'}}
         open_mock = mock.mock_open()
         with mock.patch(
-            'six.moves.builtins.open', open_mock, autospec=None,
+            'builtins.open', open_mock, autospec=None,
         ) as open_file_patch, mock.patch(
             'json.load', autospec=True, return_value=from_file,
         ) as json_patch, mock.patch(

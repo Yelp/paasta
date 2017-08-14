@@ -22,13 +22,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
+from queue import Empty
 from time import sleep
 
 import dateutil
 import isodate
 import pytz
 import ujson as json
-from six.moves.queue import Empty
 
 from paasta_tools.utils import paasta_print
 

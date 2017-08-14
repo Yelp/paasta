@@ -21,12 +21,11 @@ import sys
 import time
 from os import execlp
 from random import randint
+from urllib.parse import urlparse
 
 import ephemeral_port_reserve
 import requests
-import six
 from docker import errors
-from six.moves.urllib_parse import urlparse
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.chronos_tools import parse_time_variables
@@ -401,7 +400,7 @@ def get_docker_run_cmd(
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        if isinstance(command, six.string_types):
+        if isinstance(command, str):
             cmd.extend(('sh', '-c', command))
         else:
             cmd.extend(command)

@@ -19,13 +19,13 @@ import json
 import logging
 import os
 import re
+from urllib.parse import urljoin
 
 import requests
 import requests.exceptions
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
 from retry import retry
-from six.moves.urllib_parse import urljoin
 
 from . import exceptions
 from . import framework

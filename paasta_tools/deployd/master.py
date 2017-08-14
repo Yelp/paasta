@@ -5,9 +5,9 @@ import logging.handlers
 import socket
 import sys
 import time
+from queue import Empty
 
 import service_configuration_lib
-from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import get_marathon_client_from_config
