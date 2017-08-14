@@ -1776,6 +1776,29 @@ class TestMarathonServiceConfig(object):
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
+    def test_get_healthchecks_https(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
+        expected = [
+            {
+                "protocol": "HTTPS",
+                "path": "/status",
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 30,
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
     def test_get_healthchecks_tcp(self):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
             service='service',
