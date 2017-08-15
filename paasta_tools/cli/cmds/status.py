@@ -283,31 +283,6 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def report_status(
-    service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-    system_paasta_config, verbose=0, use_api_endpoint=False,
-):
-
-    deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
-    return_codes = [
-        report_status_for_cluster(
-            service=service,
-            cluster=cluster,
-            deploy_pipeline=deploy_pipeline,
-            actual_deployments=actual_deployments,
-            instance_whitelist=instance_whitelist,
-            system_paasta_config=system_paasta_config,
-            verbose=verbose,
-            use_api_endpoint=use_api_endpoint,
-        )
-        for cluster in deployed_clusters
-        if not cluster_whitelist or cluster in cluster_whitelist
-    ]
-
-    paasta_print(report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster'))
-    return 0 if all([return_code == 0 for return_code in return_codes]) else 1
-
-
 def verify_instances(args_instances, service, clusters):
     """Verify that a list of instances specified by user is correct for this service.
 
