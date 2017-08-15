@@ -1147,7 +1147,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
 
-        colorstripped_actual = [remove_ansi_escape_sequences(l) for l in actual]
+        colorstripped_actual = [remove_ansi_escape_sequences(l.encode()).decode() for l in actual]
         assert colorstripped_actual == [
             '      Name        LastCheck        LastChange  Status',
             '    place1 - Healthy - in haproxy with (1/1) total backends UP in this namespace.',

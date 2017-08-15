@@ -73,8 +73,7 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
 ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
-no_escape = re.compile('\x1B\[[0-9;]*[mK]')
-no_escape_b = re.compile(b'\x1B\[[0-9;]*[mK]')
+no_escape = re.compile(b'\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
@@ -842,7 +841,7 @@ def _now():
 
 def remove_ansi_escape_sequences(line):
     """Removes ansi escape sequences from the given line."""
-    return no_escape.sub('', line) if type(line) is str else no_escape_b.sub(b'', line)
+    return no_escape.sub(b'', line)
 
 
 def format_log_line(level, cluster, service, instance, component, line, timestamp=None):
@@ -854,7 +853,7 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
     validate_log_component(component)
     if not timestamp:
         timestamp = _now()
-    line = remove_ansi_escape_sequences(line)
+    line = remove_ansi_escape_sequences(line.encode())
     message = json.dumps(
         {
             'timestamp': timestamp,
@@ -863,7 +862,7 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
             'service': service,
             'instance': instance,
             'component': component,
-            'message': str(line),
+            'message': line.decode(),
         }, sort_keys=True,
     )
     return message
@@ -1876,7 +1875,7 @@ def deploy_whitelist_to_constraints(deploy_whitelist):
 
 def terminal_len(text):
     """Return the number of characters that text will take up on a terminal. """
-    return len(remove_ansi_escape_sequences(text))
+    return len(remove_ansi_escape_sequences(text.encode()))
 
 
 def format_table(rows, min_spacing=2):

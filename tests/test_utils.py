@@ -578,15 +578,9 @@ def test_check_docker_image_true(mock_build_docker_image_name):
 
 
 def test_remove_ansi_escape_sequences():
-    plain_string = 'blackandwhite'
-    colored_string = '\033[34m' + plain_string + '\033[0m'
+    plain_string = b'blackandwhite'
+    colored_string = b'\033[34m' + plain_string + b'\033[0m'
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
-
-
-def test_remove_ansi_escape_sequences_with_bytes_object():
-    plain_string = 'blackandwhite'
-    colored_string = '\033[34m' + plain_string + '\033[0m'
-    assert utils.remove_ansi_escape_sequences(colored_string.encode()) == plain_string.encode()
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():
