@@ -15,15 +15,12 @@
 """
 Client interface for the Paasta rest api.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 import logging
 import os
+from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
-from six.moves.urllib_parse import urlparse
 
 import paasta_tools.api
 from paasta_tools.utils import load_system_paasta_config

@@ -14,10 +14,6 @@ PIN_TO_NUMA_NODE which contains the physical CPU and memory to restrict the
 container to. If the system is NUMA enabled, docker will be called with the
 arguments cpuset-cpus and cpuset-mems.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import logging
 import os
 import re
@@ -147,6 +143,10 @@ def generate_hostname(fqdn, mesos_task_id):
     # hostnames can only contain alphanumerics and dashes and must be no more
     # than 63 characters
     hostname = re.sub('[^a-zA-Z0-9-]+', '-', hostname)[:MAX_HOSTNAME_LENGTH]
+
+    # hostnames can also not end with dashes as per RFC952
+    hostname = hostname.rstrip('-')
+
     return hostname
 
 

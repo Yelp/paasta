@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import mock
 
 from paasta_tools import chronos_tools
@@ -411,7 +408,7 @@ class TestMonitoring_Tools:
                 fake_team,
                 sensu_host=fake_sensu_host,
                 sensu_port=fake_sensu_port,
-                **expected_kwargs
+                **expected_kwargs,
             )
             load_system_paasta_config_patch.return_value.get_cluster.assert_called_once_with()
 

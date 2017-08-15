@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 
 from paasta_tools.marathon_tools import load_marathon_config

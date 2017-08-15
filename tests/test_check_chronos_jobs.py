@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from datetime import datetime
 from datetime import timedelta
 
@@ -211,19 +208,21 @@ def test_respect_latest_run_after_rerun(mock_lookup_chronos_jobs):
 def test_build_service_job_mapping(mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
     services = ['service1', 'service2', 'service3']
     latest_time = '2016-07-26T22:03:00+00:00'
-    fake_jobs = [[
-        {
-            'name': service + ' foo',
-            'lastSuccess': '2016-07-26T22:02:00+00:00',
-        },
-        {
-            'name': service + ' foo',
-            'lastError': latest_time,
-        },
-        {
-            'name': service + ' foo',
-        },
-    ] for service in services]
+    fake_jobs = [
+        [
+            {
+                'name': service + ' foo',
+                'lastSuccess': '2016-07-26T22:02:00+00:00',
+            },
+            {
+                'name': service + ' foo',
+                'lastError': latest_time,
+            },
+            {
+                'name': service + ' foo',
+            },
+        ] for service in services
+    ]
     fake_jobs.append([
         {
             'name': 'tmp-2017-06-13T123738942755 service4 foo',

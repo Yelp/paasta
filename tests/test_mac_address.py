@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import contextlib
 import fcntl
 import itertools
@@ -12,7 +8,6 @@ import time
 
 import mock
 import pytest
-import six
 
 from paasta_tools import mac_address
 
@@ -93,7 +88,7 @@ def mock_randbits():
     # make getrandbits() reliably return an incrementing counter starting at 0
     class counter(itertools.count):
         def __call__(self, _):
-            return six.next(self)
+            return next(self)
 
     with mock.patch.object(mac_address.random, 'getrandbits', side_effect=counter()):
         yield

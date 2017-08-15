@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import glob
 
 from setuptools import find_packages
@@ -43,18 +39,14 @@ setup(
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich >= 0.17.3',
-        'enum34',
         'ephemeral-port-reserve >= 1.0.1',
-        'futures',
         'gevent == 1.1.1',
         'humanize >= 0.5.1',
-        'httplib2 >= 0.9,<= 1.0',
         'inotify >= 0.2.8',
         'isodate >= 0.5.0',
         'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.9.0',
-        'path.py >= 8.1',
         'progressbar2 >= 3.10.0',
         'pyramid >= 1.8',
         'pymesos >= 0.2.0',
@@ -88,6 +80,7 @@ setup(
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/get_mesos_leader.py',
         'paasta_tools/list_marathon_service_instances.py',
+        'paasta_tools/monitoring/check_capacity.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
         'paasta_tools/monitoring/kill_orphaned_docker_containers.py',
@@ -115,7 +108,7 @@ setup(
             'paasta_docker_wrapper=paasta_tools.docker_wrapper:main',
             'paasta_firewall_update=paasta_tools.firewall_update:main',
             'paasta_firewall_logging=paasta_tools.firewall_logging:main',
-            'paasta_oom_finder=paasta_tools.oom_finder:main',
+            'paasta_oom_logger=paasta_tools.oom_logger:main',
         ],
         'paste.app_factory': [
             'paasta-api-config=paasta_tools.api.api:make_app',

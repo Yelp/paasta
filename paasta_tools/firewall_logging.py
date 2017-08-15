@@ -1,17 +1,12 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import os
 import signal
 import socket
+import socketserver
 import sys
 
 import syslogmp
-from six.moves import socketserver
 
 from paasta_tools.firewall import services_running_here
 from paasta_tools.utils import _log

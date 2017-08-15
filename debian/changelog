@@ -1,3 +1,150 @@
+paasta-tools (0.66.26) xenial; urgency=medium
+
+  * 0.66.26 tagged with 'make release'
+    Commit: Merge pull request #1433 from
+    Yelp/jlynch_support_multiple_classic_ports  Support multiple puppet
+    service ports
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 14 Aug 2017 13:21:56 -0700
+
+paasta-tools (0.66.25) xenial; urgency=low
+
+  * 0.66.25 tagged with 'make release'
+    Commit: Merge pull request #1447 from Yelp/dynamo-in-example-cluster
+    add dynamodb deps to example cluster
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Thu, 10 Aug 2017 10:46:07 -0700
+
+paasta-tools (0.66.24) xenial; urgency=medium
+
+  * 0.66.24 tagged with 'make release'
+    Commit: Actually add check_capacity script
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 06:50:40 -0700
+
+paasta-tools (0.66.23) xenial; urgency=medium
+
+  * 0.66.23 tagged with 'make release'
+    Commit: Merge pull request #1446 from Yelp/add-check-capacity-script
+    check_capacity should be added as a script
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 06:01:58 -0700
+
+paasta-tools (0.66.22) xenial; urgency=medium
+
+  * 0.66.22 tagged with 'make release'
+    Commit: Fix more imports
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 09 Aug 2017 04:46:18 -0700
+
+paasta-tools (0.66.21) xenial; urgency=medium
+
+  * 0.66.21 tagged with 'make release'
+    Commit: Merge branch "fix_local_run_volume_dedupe"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 08 Aug 2017 20:01:57 -0700
+
+paasta-tools (0.66.20) xenial; urgency=medium
+
+  * 0.66.20 tagged with 'make release'
+    Commit: Merge pull request #1440 from Yelp/u/jgl/inject_deploy_group
+    Inject the PAASTA_DEPLOY_GROUP env variable
+
+ -- Joseph Lukasik <jgl@yelp.com>  Tue, 08 Aug 2017 12:13:30 -0700
+
+paasta-tools (0.66.20) xenial; urgency=medium
+
+  * 0.66.20 tagged with 'make release'
+    Commit: Merge pull request #1440 from Yelp/u/jgl/inject_deploy_group
+    Inject the PAASTA_DEPLOY_GROUP env variable
+
+ -- Joseph Lukasik <jgl@yelp.com>  Tue, 08 Aug 2017 12:11:08 -0700
+
+paasta-tools (0.66.19) xenial; urgency=medium
+
+  * 0.66.19 tagged with 'make release'
+    Commit: precommit fix
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:39:59 -0400
+
+paasta-tools (0.66.18) xenial; urgency=medium
+
+  * 0.66.18 tagged with 'make release'
+    Commit: Merge pull request #1423 from bchess/rstrip_hostname_dashes
+    strip trailing hostname dashes
+
+ -- bchess <bchess@squirt>  Wed, 02 Aug 2017 15:31:22 -0400
+
+paasta-tools (0.66.17) xenial; urgency=medium
+
+  * 0.66.17 tagged with 'make release'
+    Commit: Merge pull request #1419 from Yelp/add-drain-timeouts  Add a
+    sane timeout when talking to hacheck
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 02 Aug 2017 06:56:30 -0700
+
+paasta-tools (0.66.16) xenial; urgency=medium
+
+  * 0.66.16 tagged with 'make release'
+    Commit: Merge pull request #1417 from chriskuehl/whitelist-google-
+    public-dns  Always whitelist Google Public DNS
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Tue, 01 Aug 2017 18:31:00 -0700
+
+paasta-tools (0.66.15) xenial; urgency=medium
+
+  * 0.66.15 tagged with 'make release'
+    Commit: fix precommit whitespace
+
+ -- bchess <bchess@squirt>  Mon, 31 Jul 2017 20:02:35 -0400
+
+paasta-tools (0.66.14) xenial; urgency=medium
+
+  * 0.66.14 tagged with 'make release'
+    Commit: Merge pull request #1412 from
+    bchess/insecure_registry_fallback  When checking the registry,
+    fallback to trying http as well
+
+ -- bchess <bchess@squirt>  Mon, 31 Jul 2017 19:50:44 -0400
+
+paasta-tools (0.66.13) xenial; urgency=medium
+
+  * 0.66.13 tagged with 'make release'
+    Commit: Fix schema to allow shm_size
+
+ -- Matthew Bentley <bentley@yelp.com>  Fri, 28 Jul 2017 09:04:52 -0700
+
+paasta-tools (0.66.12) xenial; urgency=medium
+
+  * 0.66.12 tagged with 'make release'
+    Commit: Merge pull request #1409 from Yelp/set-shm-size  Allow
+    setting the shm-size
+
+ -- Matthew Bentley <bentley@yelp.com>  Fri, 28 Jul 2017 07:10:25 -0700
+
+paasta-tools (0.66.11) xenial; urgency=medium
+
+  * 0.66.11 tagged with 'make release'
+    Commit: Merge pull request #1402 from bchess/firewall_update_py36
+    Bug fixes to firewall_update related to py3 upgrade
+
+ -- bchess <bchess@squirt>  Wed, 26 Jul 2017 09:43:10 -0400
+
+paasta-tools (0.66.10) xenial; urgency=medium
+
+  * 0.66.10 tagged with 'make release'
+    Commit: more fixes for when firewall has no dependencies. added test
+
+ -- Benjamin Chess <bchess@yelp.com>  Tue, 25 Jul 2017 09:46:58 -0700
+
+paasta-tools (0.66.9) xenial; urgency=medium
+
+  * 0.66.9 tagged with 'make release'
+    Commit: Merge pull request #1382 from Yelp/PAASTA-567-oom-logger
+    paasta_oom_logger
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 24 Jul 2017 14:55:36 -0700
+
 paasta-tools (0.66.8) xenial; urgency=medium
 
   * 0.66.8 tagged with 'make release'

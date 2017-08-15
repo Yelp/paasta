@@ -12,14 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import shlex
 import subprocess
 import sys
-
-from six.moves.urllib_parse import urlparse
+from urllib.parse import urlparse
 
 from paasta_tools.cli.utils import calculate_remote_masters
 from paasta_tools.cli.utils import find_connectable_master

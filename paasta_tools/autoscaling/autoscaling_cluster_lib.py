@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 import os
 import time
@@ -449,8 +446,10 @@ class ClusterAutoscaler(ResourceLogMixin):
             if len(filtered_sorted_slaves) == 0:
                 self.log.info("ALL slaves killed so moving on to next resource!")
                 break
-            self.log.info("Resource slave kill preference: {}".format([slave.hostname
-                                                                       for slave in filtered_sorted_slaves]))
+            self.log.info("Resource slave kill preference: {}".format([
+                slave.hostname
+                for slave in filtered_sorted_slaves
+            ]))
             slave_to_kill = filtered_sorted_slaves.pop(0)
             instance_capacity = slave_to_kill.instance_weight
             new_capacity = current_capacity - instance_capacity

@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import socket
 from contextlib import contextmanager
 
@@ -210,6 +206,16 @@ class TestGenerateHostname(object):
             'chronos:can_do!s0me weird-stuff',
         )
         assert hostname == 'first-chronos-can-do-s0me-weird-stuff'
+
+    def test_no_dashes_on_end(self):
+        assert docker_wrapper.generate_hostname('beep', 'foobar-') == 'beep-foobar'
+
+        hostname = docker_wrapper.generate_hostname(
+            'reallllllllllllllylooooooooooooooong',
+            'reallyreallylongid012345--abc',
+        )
+        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongid012345'
+        assert len(hostname) == 61
 
 
 @pytest.mark.parametrize(
@@ -733,7 +739,7 @@ class TestMain(object):
             'docker',
             'run',
             '--mac-address=00:00:00:00:00:00',
-            *mock_firewall_env_args
+            *mock_firewall_env_args,
         )]
 
         assert mock_firewall_flock.return_value.__enter__.called is True
@@ -758,7 +764,7 @@ class TestMain(object):
             'docker',
             'docker',
             'inspect',
-            *mock_firewall_env_args
+            *mock_firewall_env_args,
         )]
 
     def test_mac_address_already_set(self, mock_mac_address, mock_execlp, mock_firewall_env_args):
@@ -775,7 +781,7 @@ class TestMain(object):
             'docker',
             'run',
             '--mac-address=12:34:56:78:90:ab',
-            *mock_firewall_env_args
+            *mock_firewall_env_args,
         )]
 
     def test_mac_address_no_lockdir(self, capsys, mock_execlp, tmpdir, mock_firewall_env_args):
@@ -791,7 +797,7 @@ class TestMain(object):
                 'docker',
                 'docker',
                 'run',
-                *mock_firewall_env_args
+                *mock_firewall_env_args,
             )]
             _, err = capsys.readouterr()
             assert err.startswith('Unable to add mac address: [Errno 2] No such file or directory')
@@ -818,7 +824,7 @@ class TestMain(object):
             'docker',
             'run',
             '--mac-address=00:00:00:00:00:00',
-            *mock_firewall_env_args
+            *mock_firewall_env_args,
         )]
         _, err = capsys.readouterr()
         assert err.startswith('Unable to add firewall rules: Oh noes')

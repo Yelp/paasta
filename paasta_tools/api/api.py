@@ -15,9 +15,6 @@
 """
 Responds to paasta service and instance requests.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import os
@@ -27,12 +24,12 @@ import service_configuration_lib
 from gevent import monkey
 from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
+from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
-
 
 monkey.patch_all()
 
@@ -81,7 +78,7 @@ def make_app(global_config=None):
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
     config.add_route('version', '/v1/version')
     config.scan()
-    return config.make_wsgi_app()
+    return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
 
 
 def setup_paasta_api():

@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 import json
 import os
@@ -168,7 +165,7 @@ def test_load_system_paasta_config():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_file_patch, mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
         return_value=['/some/fake/dir/some_file.json'],
@@ -218,7 +215,7 @@ def test_load_system_paasta_config_file_dne():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', side_effect=IOError(2, 'a', 'b'), autospec=None,
+        'builtins.open', side_effect=IOError(2, 'a', 'b'), autospec=None,
     ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path],
     ):
@@ -237,7 +234,7 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
         return_value=['a', 'b'],
@@ -747,7 +744,7 @@ def test_DeploymentsJson_read():
         },
     }
     with mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_patch, mock.patch(
         'json.load', autospec=True, return_value=fake_json,
     ) as json_patch, mock.patch(
@@ -1113,6 +1110,7 @@ class TestInstanceConfig:
             'PAASTA_SERVICE': 'fake_service',
             'PAASTA_INSTANCE': 'fake_instance',
             'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
             'PAASTA_DOCKER_IMAGE': '',
         }
 
@@ -1121,14 +1119,15 @@ class TestInstanceConfig:
             service='',
             cluster='',
             instance='',
-            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
-            branch_dict={'docker_image': 'something'},
+            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}, 'deploy_group': 'fake_deploy_group'},
+            branch_dict={'docker_image': 'something', 'deploy_group': 'nothing'},
         )
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
             'PAASTA_SERVICE': '',
             'PAASTA_INSTANCE': '',
             'PAASTA_CLUSTER': '',
+            'PAASTA_DEPLOY_GROUP': 'fake_deploy_group',
             'PAASTA_DOCKER_IMAGE': 'something',
         }
 

@@ -13,22 +13,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import fnmatch
 import itertools
 import json
 import logging
 import os
 import re
+from urllib.parse import urljoin
 
 import requests
 import requests.exceptions
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
 from retry import retry
-from six.moves.urllib_parse import urljoin
 
 from . import exceptions
 from . import framework
@@ -74,7 +71,7 @@ class MesosMaster(object):
             return method(
                 urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
-                **kwargs
+                **kwargs,
             )
         except requests.exceptions.ConnectionError:
             raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
@@ -182,7 +179,7 @@ class MesosMaster(object):
         if not active_only:
             keys.append("completed_tasks")
         return itertools.chain(
-            *[util.merge(x, *keys) for x in self._framework_list(active_only)]
+            *[util.merge(x, *keys) for x in self._framework_list(active_only)],
         )
 
     def task(self, fltr):

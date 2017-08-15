@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import mock
 import pytest
 from addict import Dict
@@ -10,6 +7,7 @@ from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
+from paasta_tools.frameworks.task_store import DictTaskStore
 
 
 @pytest.fixture
@@ -54,7 +52,8 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
 
 
 class TestNativeScheduler(object):
-    def test_start_upgrade_rollback_scaledown(self, system_paasta_config):
+    @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
+    def test_start_upgrade_rollback_scaledown(self, mock_log, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"
         cluster = "cluster"
@@ -87,8 +86,14 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
+            task_store_type=DictTaskStore,
         )
         fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         with mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -96,7 +101,7 @@ class TestNativeScheduler(object):
         ):
             # First, start up 3 old tasks
             old_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 3
+            assert len(scheduler.task_store.get_all_tasks()) == 3
             # and mark the old tasks as up
             for task in old_tasks:
                 scheduler.statusUpdate(fake_driver, mock.Mock(task_id=task.task_id, state=TASK_RUNNING))
@@ -107,10 +112,10 @@ class TestNativeScheduler(object):
 
             # and start 3 more tasks
             new_tasks = scheduler.launch_tasks_for_offers(fake_driver, [make_fake_offer()])
-            assert len(scheduler.tasks_with_flags) == 6
+            assert len(scheduler.task_store.get_all_tasks()) == 6
             # It should not drain anything yet, since the new tasks aren't up.
             scheduler.kill_tasks_if_necessary(fake_driver)
-            assert len(scheduler.tasks_with_flags) == 6
+            assert len(scheduler.task_store.get_all_tasks()) == 6
             assert len(scheduler.drain_method.downed_task_ids) == 0
 
             # Now we mark the new tasks as up.
@@ -203,6 +208,12 @@ class TestNativeScheduler(object):
             service_config=service_configs[0],
             reconcile_start_time=0,
             staging_timeout=1,
+            task_store_type=DictTaskStore,
+        )
+        scheduler.registered(
+            driver=mock.Mock(),
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
         )
 
         with mock.patch(
@@ -255,6 +266,12 @@ class TestNativeScheduler(object):
             system_paasta_config=system_paasta_config,
             service_config=service_config,
             staging_timeout=1,
+            task_store_type=DictTaskStore,
+        )
+        scheduler.registered(
+            driver=mock.Mock(),
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
         )
 
         assert scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool="default"))
@@ -367,11 +384,75 @@ class TestNativeServiceConfig(object):
             system_paasta_config=system_paasta_config,
             service_config=service_configs[0],
             staging_timeout=1,
+            task_store_type=DictTaskStore,
         )
-
         fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
 
         scheduler.blacklist_slave('super big slave')
         assert len(scheduler.blacklisted_slaves) == 1
         scheduler.resourceOffers(fake_driver, [make_fake_offer()])
-        assert len(scheduler.tasks_with_flags) == 0
+        assert len(scheduler.task_store.get_all_tasks()) == 0
+
+    def test_make_drain_task_works_with_hacheck_drain_method(self, system_paasta_config):
+        service_name = "service_name"
+        instance_name = "instance_name"
+        cluster = "cluster"
+
+        service_config = NativeServiceConfig(
+            service=service_name,
+            instance=instance_name,
+            cluster=cluster,
+            config_dict={
+                "cpus": 0.1,
+                "mem": 50,
+                "instances": 1,
+                "cmd": 'sleep 50',
+                "drain_method": "hacheck",
+                "pool": "default",
+            },
+            branch_dict={
+                'docker_image': 'busybox',
+                'desired_state': 'start',
+                'force_bounce': '0',
+            },
+            soa_dir='/nail/etc/services',
+        )
+
+        scheduler = native_scheduler.NativeScheduler(
+            service_name=service_name,
+            instance_name=instance_name,
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            service_config=service_config,
+            staging_timeout=1,
+            task_store_type=DictTaskStore,
+        )
+
+        fake_driver = mock.Mock()
+        scheduler.registered(
+            driver=fake_driver,
+            frameworkId=mock.Mock(value='foo'),
+            masterInfo=mock.Mock(),
+        )
+
+        # launch a task
+        offer = make_fake_offer(port_begin=31337, port_end=31337)
+        with mock.patch(
+            'paasta_tools.utils.load_system_paasta_config', autospec=True,
+            return_value=system_paasta_config,
+        ):
+            scheduler.launch_tasks_for_offers(
+                driver=fake_driver,
+                offers=[offer],
+            )
+
+        expected = "http://super_big_slave:6666/spool/service_name.instance_name/31337/status"
+        actual = scheduler.drain_method.spool_url(
+            scheduler.make_drain_task(list(scheduler.task_store.get_all_tasks().keys())[0]),
+        )
+        assert actual == expected

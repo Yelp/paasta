@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import os.path
@@ -92,7 +87,9 @@ def run_cron(args):
 
 
 def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_service_dir):
-    filename = event[3]
+    filename = event[3].decode()
+    log.debug('process_inotify_event on {}'.format(filename))
+
     service_instance, suffix = os.path.splitext(filename)
     if suffix != '.json':
         return
@@ -113,7 +110,7 @@ def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_serv
             firewall.ensure_service_chains(service_groups, soa_dir, synapse_service_dir)
 
         for service_to_update in services_to_update:
-            log.debug('Updated ', service_to_update)
+            log.debug('Updated {}'.format(service_to_update))
     except TimeoutError as e:
         log.error(
             'Unable to update firewalls for {} because time-out obtaining flock: {}'.format(
@@ -135,7 +132,7 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
         if not outbound_firewall:
             continue
 
-        dependencies = config.get_dependencies()
+        dependencies = config.get_dependencies() or ()
 
         smartstack_dependencies = [d['smartstack'] for d in dependencies if d.get('smartstack')]
         for smartstack_dependency in smartstack_dependencies:

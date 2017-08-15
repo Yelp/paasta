@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import mock
 from pytest import raises
 
@@ -22,7 +19,7 @@ from paasta_tools.cli.fsm import autosuggest
 
 class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self):
-        with mock.patch('six.moves.builtins.open', autospec=True):
+        with mock.patch('builtins.open', autospec=True):
             with mock.patch("paasta_tools.cli.fsm.autosuggest.yaml", autospec=True) as mock_yaml:
                 mock_yaml.safe_load.return_value = {
                     "main": {

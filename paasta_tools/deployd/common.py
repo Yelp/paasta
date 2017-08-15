@@ -1,12 +1,8 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 import time
 from collections import namedtuple
+from queue import Queue
 from threading import Thread
-
-from six.moves.queue import Queue
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
@@ -14,6 +10,7 @@ from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
 BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
@@ -83,20 +80,19 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
     for service, instance in instances:
-        config = load_marathon_service_config_no_cache(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=DEFAULT_SOA_DIR,
-        )
         try:
+            config = load_marathon_service_config_no_cache(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=DEFAULT_SOA_DIR,
+            )
             config_app = config.format_marathon_app_dict()
             app_id = '/{}'.format(config_app['id'])
-        except (NoDockerImageError, InvalidJobNameError):
-            config_app = None
-        if not config_app:
-            service_instances.append((service, instance))
-        elif app_id not in marathon_app_ids:
+        except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable) as e:
+            print("DEBUG: Skipping %s.%s because: '%s'" % (service, instance, str(e)))
+            continue
+        if app_id not in marathon_app_ids:
             service_instances.append((service, instance))
         elif marathon_apps[app_id].instances != config_app['instances']:
             service_instances.append((service, instance))

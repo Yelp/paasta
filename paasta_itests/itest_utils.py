@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 import os
 import time
@@ -39,11 +36,13 @@ def update_context_marathon_config(context):
         MarathonServiceConfig, 'get_max_instances', autospec=True,
     ) as mock_get_max_instances:
         mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
-        context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
-            context.service,
-            context.instance,
-            soa_dir=context.soa_dir,
-        ).items() if key in whitelist_keys}
+        context.marathon_complete_config = {
+            key: value for key, value in marathon_tools.create_complete_config(
+                context.service,
+                context.instance,
+                soa_dir=context.soa_dir,
+            ).items() if key in whitelist_keys
+        }
     context.marathon_complete_config.update({
         'cmd': '/bin/sleep 1m',
         'constraints': None,

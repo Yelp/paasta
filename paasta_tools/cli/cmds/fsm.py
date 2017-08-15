@@ -12,15 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import contextlib
-import os.path
 import shutil
 import sys
 
-import six
 from cookiecutter.main import cookiecutter
 
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
@@ -39,28 +34,12 @@ def make_copyfile_symlink_aware():
     orig_copymode = shutil.copymode
 
     def symlink_aware_copyfile(*args, **kwargs):
-        if six.PY2:
-            infile, outfile = args
-            if os.path.islink(infile):
-                linkto = os.readlink(infile)
-                try:
-                    os.symlink(linkto, outfile)
-                except OSError:
-                    pass
-            else:
-                orig_copyfile(*args, **kwargs)
-        else:
-            kwargs.setdefault('follow_symlinks', False)
-            orig_copyfile(*args, **kwargs)
+        kwargs.setdefault('follow_symlinks', False)
+        orig_copyfile(*args, **kwargs)
 
     def symlink_aware_copymode(*args, **kwargs):
-        if six.PY2:
-            _, outfile = args
-            if not os.path.islink(outfile):
-                orig_copymode(*args, **kwargs)
-        else:
-            kwargs.setdefault('follow_symlinks', False)
-            orig_copymode(*args, **kwargs)
+        kwargs.setdefault('follow_symlinks', False)
+        orig_copymode(*args, **kwargs)
 
     shutil.copyfile = symlink_aware_copyfile
     shutil.copymode = symlink_aware_copymode

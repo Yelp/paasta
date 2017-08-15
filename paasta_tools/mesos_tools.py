@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 import itertools
 import json
@@ -21,11 +18,11 @@ import logging
 import re
 import socket
 from collections import namedtuple
+from urllib.parse import urlparse
 
 import humanize
 import requests
 from kazoo.client import KazooClient
-from six.moves.urllib_parse import urlparse
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
@@ -565,10 +562,12 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
         slaves,
         key=lambda slave: slave['attributes'].get(attribute),
     )
-    return {key: list(group) for key, group in itertools.groupby(
-        sorted_slaves,
-        key=lambda slave: slave['attributes'].get(attribute),
-    ) if key}
+    return {
+        key: list(group) for key, group in itertools.groupby(
+            sorted_slaves,
+            key=lambda slave: slave['attributes'].get(attribute),
+        ) if key
+    }
 
 
 def get_slaves():
@@ -701,8 +700,10 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
         slaves = slaves_list
     elif pool:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
-                  if slave_counts['slave']['attributes'].get('pool', 'default') == pool]
+        slaves = [
+            {'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
+            if slave_counts['slave']['attributes'].get('pool', 'default') == pool
+        ]
     else:
         slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
     for slave in slaves:

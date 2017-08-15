@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 
 import marathon
@@ -35,7 +32,7 @@ class TestBounceLib:
         lock_name = 'the_internet'
         lock_file = '/var/lock/%s.lock' % lock_name
         fake_fd = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', fake_fd, autospec=None) as open_patch:
+        with mock.patch('builtins.open', fake_fd, autospec=None) as open_patch:
             with mock.patch('fcntl.lockf', autospec=None) as lockf_patch:
                 with mock.patch('os.remove', autospec=None) as remove_patch:
                     with bounce_lib.bounce_lock(lock_name):

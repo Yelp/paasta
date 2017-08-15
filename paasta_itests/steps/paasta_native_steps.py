@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 import os
 import socket
@@ -125,7 +122,9 @@ def should_eventually_start_num_tasks(context, num):
     num = int(num)
 
     for _ in range(20):
-        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+        actual_num = len(
+            [p for p in context.scheduler.task_store.get_all_tasks().values() if p.mesos_task_state == TASK_RUNNING],
+        )
         if actual_num >= num:
             return
         time.sleep(1)
@@ -274,7 +273,9 @@ def it_should_eventually_have_only_num_tasks(context, num):
     num = int(num)
 
     for _ in range(60):
-        actual_num = len([p for p in context.scheduler.tasks_with_flags.values() if p.mesos_task_state == TASK_RUNNING])
+        actual_num = len(
+            [p for p in context.scheduler.task_store.get_all_tasks().values() if p.mesos_task_state == TASK_RUNNING],
+        )
         if actual_num <= num:
             return
         time.sleep(1)
@@ -298,7 +299,8 @@ def we_change_instances_to_num(context, num):
 def should_not_start_tasks_for_num_seconds(context, num):
     time.sleep(int(num))
 
-    assert [] == [p for p in context.scheduler.tasks_with_flags.values() if (p.mesos_task_state in LIVE_TASK_STATES)]
+    assert [] == [p for p in context.scheduler.task_store.get_all_tasks().values()
+                  if (p.mesos_task_state in LIVE_TASK_STATES)]
 
 
 @then('periodic() should eventually be called')

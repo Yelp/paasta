@@ -1,16 +1,13 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import inspect
 import logging
 import logging.handlers
 import socket
 import sys
 import time
+from queue import Empty
 
 import service_configuration_lib
-from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import get_marathon_client_from_config
@@ -173,7 +170,8 @@ class DeployDaemon(PaastaThread):
         self.log.info("All watchers started, now adding all services for initial bounce")
         self.add_all_services()
         self.log.info("Prioritising services that we know need a bounce...")
-        self.prioritise_bouncing_services()
+        if self.config.get_deployd_startup_oracle_enabled():
+            self.prioritise_bouncing_services()
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True
@@ -255,15 +253,19 @@ class DeployDaemon(PaastaThread):
 
     def start_watchers(self):
         """ should block until all threads happy"""
-        watcher_classes = [obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
-                           obj[1].__bases__[0] == watchers.PaastaWatcher]
-        self.watcher_threads = [watcher(
-            inbox_q=self.inbox_q,
-            cluster=self.config.get_cluster(),
-            zookeeper_client=self.zk,
-            config=self.config,
-        )
-            for watcher in watcher_classes]
+        watcher_classes = [
+            obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
+            obj[1].__bases__[0] == watchers.PaastaWatcher
+        ]
+        self.watcher_threads = [
+            watcher(
+                inbox_q=self.inbox_q,
+                cluster=self.config.get_cluster(),
+                zookeeper_client=self.zk,
+                config=self.config,
+            )
+            for watcher in watcher_classes
+        ]
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:
             watcher.start()

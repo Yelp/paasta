@@ -172,6 +172,7 @@ instance MAY have:
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
+    * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
 
     Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
     See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
@@ -314,9 +315,14 @@ Notes:
 
 The yaml where Chronos jobs are defined. Top-level keys are the job names.
 
-Most of the descriptions below are taken directly from the Chronos API docs,
-which can be found here:
-https://mesos.github.io/chronos/docs/api.html#job-configuration
+NB: Yelp maintains its own fork of Chronos at https://github.com/Yelp/chronos,
+and this is the version deployed in the paasta clusters at Yelp. The fork is
+based off the 2.4 release of upstream Chronos. The most notable change is the
+support for specifying schedules in crontab format, but also contains various
+stability fixes. We have not backported any of the new features to hit 3.0.
+Consequently, the list shown here is the most accurate documentation of
+supported fields; the docs upstream may describe keys that are not supported or
+have different behaviour to those mentioned here.
 
 Each job configuration MUST specify the following options:
 

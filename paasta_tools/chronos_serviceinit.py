@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 
 import humanize
@@ -176,20 +173,22 @@ def _format_parents_verbose(job):
     # find matching parent jobs
     parent_jobs = [
         chronos_tools.get_jobs_for_service_instance(
-            *service_instance, include_disabled=True, include_temporary=False
+            *service_instance, include_disabled=True, include_temporary=False,
         )[0]
         for service_instance in parent_service_instances
     ]
 
     # get the status of the last run of each parent job
     parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
-    formatted_lines = [("\n"
-                        "    - %(job_name)s\n"
-                        "      Last Run: %(status)s (%(last_run)s)" % {
-                            "job_name": parent['name'],
-                            "last_run": status_parent[1],
-                            "status": status_parent[0],
-                        }) for (parent, status_parent) in parent_statuses]
+    formatted_lines = [
+        ("\n"
+         "    - %(job_name)s\n"
+         "      Last Run: %(status)s (%(last_run)s)" % {
+             "job_name": parent['name'],
+             "last_run": status_parent[1],
+             "status": status_parent[0],
+         }) for (parent, status_parent) in parent_statuses
+    ]
     return '\n'.join(formatted_lines)
 
 

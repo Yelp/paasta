@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PaaSTA log reader for humans"""
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import datetime
 import logging
@@ -25,13 +22,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
+from queue import Empty
 from time import sleep
 
 import dateutil
 import isodate
 import pytz
 import ujson as json
-from six.moves.queue import Empty
 
 from paasta_tools.utils import paasta_print
 
@@ -62,7 +59,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
-DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring', 'stdout', 'stderr']
+DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring', 'oom', 'stdout', 'stderr']
 
 log = logging.getLogger(__name__)
 

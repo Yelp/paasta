@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import sys
 import unittest
+from queue import Empty
 
 import mock
 from pytest import raises
-from six.moves.queue import Empty
 
 from paasta_tools.deployd.common import ServiceInstance
 
@@ -194,6 +191,7 @@ class TestDeployDaemon(unittest.TestCase):
                 get_deployd_big_bounce_rate=mock.Mock(return_value=10),
                 get_cluster=mock.Mock(return_value='westeros-prod'),
                 get_log_writer=mock.Mock(return_value={'driver': None}),
+                get_deployd_startup_oracle_enabled=mock.Mock(return_value=False),
             )
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
@@ -245,9 +243,13 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
             assert mock_add_all_services.called
-            assert mock_prioritise_bouncing_services.called
+            assert not mock_prioritise_bouncing_services.called
             assert mock_start_workers.called
             assert mock_main_loop.called
+
+            self.deployd.config.get_deployd_startup_oracle_enabled = mock.Mock(return_value=True)
+            self.deployd.startup()
+            assert mock_prioritise_bouncing_services.called
 
     def test_main_loop(self):
         with mock.patch(

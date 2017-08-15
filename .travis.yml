@@ -2,7 +2,7 @@ branches:
   only:
     - master
     - /^v[0-9.]+$/
-    - /^maci-.*$/
+    - /^travis-ci-.*$/
 language: python
 cache:
   pip: true

@@ -11,10 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import contextlib
 import copy
 import datetime
@@ -28,6 +24,7 @@ import logging
 import math
 import os
 import pwd
+import queue
 import re
 import shlex
 import signal
@@ -46,7 +43,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import six
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -203,6 +199,11 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
+    def get_shm_size(self):
+        """Get's the shm_size to pass to docker
+        See --shm-size in the docker docs"""
+        return self.config_dict.get('shm_size', None)
+
     def get_ulimit(self):
         """Get the --ulimit options to be passed to docker
         Generated from the ulimit configuration option, which is a dictionary
@@ -253,6 +254,11 @@ class InstanceConfig(object):
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
             ])
+        shm = self.get_shm_size()
+        if shm:
+            parameters.extend([
+                {"key": "shm-size", "value": "%s" % shm},
+            ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
@@ -281,6 +287,7 @@ class InstanceConfig(object):
             "PAASTA_SERVICE": self.service,
             "PAASTA_INSTANCE": self.instance,
             "PAASTA_CLUSTER": self.cluster,
+            "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
         user_env = self.config_dict.get('env', {})
@@ -707,6 +714,12 @@ LOG_COMPONENTS = OrderedDict([
             'help': 'Logs from security-related services such as firewall monitoring',
         },
     ),
+    (
+        'oom', {
+            'color': PaastaColors.red,
+            'help': 'Kernel OOM events.',
+        },
+    ),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
@@ -815,7 +828,7 @@ def _log(*args, **kwargs):
 
 
 class LogWriter(object):
-    def log(self, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
         raise NotImplementedError()
 
 
@@ -1133,6 +1146,15 @@ class SystemPaastaConfig(dict):
         """
         return self.get('deployd_maintenance_polling_frequency', 30)
 
+    def get_deployd_startup_oracle_enabled(self):
+        """This controls whether deployd will add all services that need a bounce on
+        startup. Generally this is desirable behaviour. If you are performing a bounce
+        of *all* services you will want to disable this.
+
+        :returns: A boolean
+        """
+        return self.get('deployd_startup_oracle_enabled', True)
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 
@@ -1280,7 +1302,7 @@ class SystemPaastaConfig(dict):
 
 def _run(
     command, env=os.environ, timeout=None, log=False, stream=False,
-    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs
+    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs,
 ):
     """Given a command, run it. Return a tuple of the return code and any
     output.
@@ -1877,7 +1899,7 @@ def format_table(rows, min_spacing=2):
     :returns: A string containing rows formatted as a table.
     """
 
-    list_rows = [r for r in rows if not isinstance(r, six.string_types)]
+    list_rows = [r for r in rows if not isinstance(r, str)]
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
@@ -2024,10 +2046,10 @@ def prompt_pick_one(sequence, choosing):
 def to_bytes(obj):
     if isinstance(obj, bytes):
         return obj
-    elif isinstance(obj, six.text_type):
+    elif isinstance(obj, str):
         return obj.encode('UTF-8')
     else:
-        return six.text_type(obj).encode('UTF-8')
+        return str(obj).encode('UTF-8')
 
 
 def paasta_print(*args, **kwargs):
@@ -2066,7 +2088,7 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True
 class _Timeout(object):
     def __init__(self, function, seconds, error_message):
         self.seconds = seconds
-        self.control = six.moves.queue.Queue()
+        self.control = queue.Queue()
         self.function = function
         self.error_message = error_message
 
@@ -2098,6 +2120,6 @@ class _Timeout(object):
                 if ret[0]:
                     return ret[1]
                 else:
-                    exc_info = ret[1]
-                    six.reraise(*exc_info)
+                    _, e, tb = ret[1]
+                    raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)

@@ -27,9 +27,6 @@ Command line options:
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 - -m, --minimal: Only show service instances that need bouncing
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import sys
 
@@ -38,7 +35,9 @@ from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -89,6 +88,15 @@ def get_desired_marathon_configs(soa_dir):
                 soa_dir=soa_dir,
             ).format_marathon_app_dict()
             marathon_configs[marathon_config['id'].lstrip('/')] = marathon_config
+        except NoSlavesAvailableError as errormsg:
+            _log(
+                service=service,
+                line=errormsg,
+                component='deploy',
+                level='event',
+                cluster=cluster,
+                instance=instance,
+            )
         except (NoDeploymentsAvailable, NoDockerImageError):
             pass
     return marathon_configs

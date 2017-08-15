@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import json
 import os
@@ -25,6 +22,8 @@ import string
 import sys
 from datetime import datetime
 
+from boto3.session import Session
+from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
 
@@ -190,15 +189,17 @@ def paasta_to_task_config_kwargs(
 
 
 def build_executor_stack(
-        # TODO: rename to registry?
-        processor,
-        service,
-        instance,
-        # TODO: move run_id into task identifier?
-        run_id,
-        system_paasta_config,
-        framework_staging_timeout,
+    # TODO: rename to registry?
+    processor,
+    service,
+    instance,
+    cluster,
+    # TODO: move run_id into task identifier?
+    run_id,
+    system_paasta_config,
+    framework_staging_timeout,
 ):
+
     mesos_address = '{}:{}'.format(
         mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
     )
@@ -220,8 +221,34 @@ def build_executor_stack(
         framework_staging_timeout=framework_staging_timeout,
         initial_decline_delay=0.5,
     )
-    RetryingExecutor = processor.executor_cls(provider='retrying')
-    return RetryingExecutor(mesos_executor)
+
+    credentials_file = taskproc_config.get('boto_credential_file')
+    if credentials_file:
+        with open(credentials_file) as f:
+            credentials = json.loads(f.read())
+    else:
+        raise ValueError("Required aws credentials")
+
+    region = taskproc_config.get('aws_region')
+
+    endpoint = taskproc_config.get('dynamodb_endpoint')
+    session = Session(
+        region_name=region,
+        aws_access_key_id=credentials['accessKeyId'],
+        aws_secret_access_key=credentials['secretAccessKey'],
+    )
+
+    StatefulExecutor = processor.executor_cls(provider='stateful')
+    stateful_executor = StatefulExecutor(
+        downstream_executor=mesos_executor,
+        persister=DynamoDBPersister(
+            table_name="taskproc_events_%s" % cluster,
+            session=session,
+            endpoint_url=endpoint,
+        ),
+    )
+
+    return stateful_executor
 
 
 def remote_run_start(args):
@@ -266,6 +293,7 @@ def remote_run_start(args):
 
     processor = TaskProcessor()
     processor.load_plugin(provider_module='task_processing.plugins.mesos')
+    processor.load_plugin(provider_module='task_processing.plugins.stateful')
 
     MesosExecutor = processor.executor_cls(provider='mesos')
     task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
@@ -277,13 +305,14 @@ def remote_run_start(args):
             instance_type=instance_type,
             soa_dir=soa_dir,
             config_overrides=overrides_dict,
-        )
+        ),
     )
 
     executor_stack = build_executor_stack(
         processor,
         service,
         instance,
+        cluster,
         run_id,
         system_paasta_config,
         args.staging_timeout,

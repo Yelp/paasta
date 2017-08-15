@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 import functools
 import json
@@ -24,12 +21,11 @@ import sys
 import time
 from os import execlp
 from random import randint
+from urllib.parse import urlparse
 
 import ephemeral_port_reserve
 import requests
-import six
 from docker import errors
-from six.moves.urllib_parse import urlparse
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.chronos_tools import parse_time_variables
@@ -404,7 +400,7 @@ def get_docker_run_cmd(
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        if isinstance(command, six.string_types):
+        if isinstance(command, str):
             cmd.extend(('sh', '-c', command))
         else:
             cmd.extend(command)
@@ -802,12 +798,7 @@ def configure_and_run_docker_container(
     if pull_image:
         docker_pull_image(docker_url)
 
-    # if only one volume specified, extra_volumes should be converted to a list
-    extra_volumes = instance_config.get_extra_volumes()
-    if type(extra_volumes) == dict:
-        extra_volumes = [extra_volumes]
-
-    for volume in system_paasta_config.get_volumes() + extra_volumes:
+    for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if interactive is True and args.cmd is None:

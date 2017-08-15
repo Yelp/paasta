@@ -11,19 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import contextlib
 import datetime
 import json
 from multiprocessing import Queue
+from queue import Empty
 
 import isodate
 import mock
 import pytest
 from pytest import raises
-from six.moves.queue import Empty
 
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import logs

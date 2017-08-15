@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 
 import marathon
@@ -141,7 +138,7 @@ class TestMarathonTools:
             instance=fake_instance,
             config_dict=dict(
                 self.fake_srv_config,
-                **self.fake_marathon_app_config.config_dict
+                **self.fake_marathon_app_config.config_dict,
             ),
             branch_dict={},
         )
@@ -205,7 +202,7 @@ class TestMarathonTools:
                 instance=fake_instance,
                 config_dict=dict(
                     self.fake_srv_config,
-                    **self.fake_marathon_app_config.config_dict
+                    **self.fake_marathon_app_config.config_dict,
                 ),
                 branch_dict=fake_branch_dict,
             )
@@ -232,7 +229,7 @@ class TestMarathonTools:
         from_file = {'marathon_config': {'foo': 'bar'}}
         open_mock = mock.mock_open()
         with mock.patch(
-            'six.moves.builtins.open', open_mock, autospec=None,
+            'builtins.open', open_mock, autospec=None,
         ) as open_file_patch, mock.patch(
             'json.load', autospec=True, return_value=from_file,
         ) as json_patch, mock.patch(
@@ -866,9 +863,10 @@ class TestMarathonTools:
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         expected_env = {
             'FAKEENV': 'FAKEVALUE',
-            'PAASTA_CLUSTER': '',
+            'PAASTA_CLUSTER': 'fake_cluster',
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
+            'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
             'PAASTA_DOCKER_IMAGE': '',
         }
         fake_cpus = .42
@@ -937,7 +935,7 @@ class TestMarathonTools:
         }
         config = marathon_tools.MarathonServiceConfig(
             service='can_you_dig_it',
-            cluster='',
+            cluster='fake_cluster',
             instance='yes_i_can',
             config_dict={
                 'env': fake_env,
@@ -1752,7 +1750,6 @@ class TestMarathonServiceConfig(object):
         ]
 
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
-
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
@@ -1767,6 +1764,29 @@ class TestMarathonServiceConfig(object):
         expected = [
             {
                 "protocol": "HTTP",
+                "path": '/status',
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 30,
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_https(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
+        expected = [
+            {
+                "protocol": "HTTPS",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,

@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import mock
 
 from paasta_tools import generate_deployments_for_service
@@ -164,7 +161,7 @@ def test_main():
     ) as mappings_patch, mock.patch(
         'os.path.join', return_value='JOIN', autospec=True,
     ) as join_patch, mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_patch, mock.patch(
         'json.dump', autospec=True,
     ) as json_dump_patch, mock.patch(

@@ -11,9 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import csv
 import datetime
@@ -21,6 +18,7 @@ import logging
 import re
 from collections import defaultdict
 from time import sleep
+from urllib.parse import urlsplit
 
 import chronos
 import dateutil
@@ -29,9 +27,6 @@ import pytz
 import service_configuration_lib
 from croniter import croniter
 from crontab import CronSlices
-from six import iteritems
-from six import iterkeys
-from six.moves.urllib_parse import urlsplit
 
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
@@ -1076,11 +1071,11 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
             soa_dir=soa_dir,
         )
         for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir)
-        for instance in iterkeys(read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir))
+        for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir)
     }
 
     adjacency_list = defaultdict(set)  # List of adjacency used by dfs algorithm
-    for instance, config in iteritems(chronos_configs):
+    for instance, config in chronos_configs.items():
         for parent in config.get_parents():
             parent = decompose_job_id(paasta_to_chronos_job_name(parent))
             # Map the graph a undirected graph to simplify identification of connected components
@@ -1117,7 +1112,7 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
 
     # Build connected components
     known_connected_components = []
-    for instance in iterkeys(chronos_configs):
+    for instance in chronos_configs:
         cached_dfs(  # Using cached version of DFS to avoid all algorithm execution if the result it already know
             known_dfs_results=known_connected_components,
             node=instance,
@@ -1147,7 +1142,7 @@ def get_related_jobs_configs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR
     related_jobs = connected_components[(service, instance)]
     return {
         job: config
-        for job, config in iteritems(chronos_configs)
+        for job, config in chronos_configs.items()
         if job in related_jobs
     }
 

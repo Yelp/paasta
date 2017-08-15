@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 import os
 import time
@@ -313,14 +310,16 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         )
         for service, instance in service_instances:
             self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
-        service_instances = [ServiceInstance(
-            service=service,
-            instance=instance,
-            bounce_by=int(time.time()),
-            watcher=self.__class__.__name__,
-            bounce_timers=None,
-            failures=0,
-        )
-            for service, instance in service_instances]
+        service_instances = [
+            ServiceInstance(
+                service=service,
+                instance=instance,
+                bounce_by=int(time.time()),
+                watcher=self.__class__.__name__,
+                bounce_timers=None,
+                failures=0,
+            )
+            for service, instance in service_instances
+        ]
         for service_instance in service_instances:
             self.filewatcher.inbox_q.put(service_instance)

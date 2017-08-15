@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import json
 import re
 try:
@@ -39,8 +36,8 @@ def add_start_args_to_parser(parser):
     parser.add_argument(
         '-C', '--cmd',
         help=(
-            'Run Docker container with particular command, '
-            'for example: "bash". By default will use the command or args specified by the '
+            'Run Docker container with particular command, for example: '
+            '"bash". By default will use the command or args specified by the '
             'soa-configs or what was specified in the Dockerfile'
         ),
         required=False,
@@ -77,8 +74,9 @@ def add_common_args_to_parser(parser):
     parser.add_argument(
         '-c', '--cluster',
         help=(
-            "The name of the cluster you wish to run your task on. "
-            "If omitted, uses the default cluster defined in the paasta remote-run configs"
+            'The name of the cluster you wish to run your task on. '
+            'If omitted, uses the default cluster defined in the paasta'
+            'remote-run configs'
         ),
     ).completer = lazy_choices_completer(list_clusters)
     parser.add_argument(
@@ -110,7 +108,10 @@ def add_common_args_to_parser(parser):
     )
     parser.add_argument(
         '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
+        help=(
+            "Simulate a docker run for a particular instance of the "
+            "service, like 'main' or 'canary'"
+        ),
         required=False,
         default=None,
     ).completer = lazy_choices_completer(list_instances)
@@ -121,16 +122,21 @@ def add_subparser(subparsers):
         'remote-run',
         help="Schedule Mesos to run adhoc command in context of a service",
         description=(
-            "'paasta remote-run' is useful for running adhoc commands in context "
-            "of a service's Docker image. The command will be scheduled on a "
-            "Mesos cluster and stdout/stderr printed after execution is finished."
+            "`paasta remote-run` is useful for running adhoc commands in "
+            "context of a service's Docker image. The command will be "
+            "scheduled on a Mesos cluster and stdout/stderr printed after "
+            "execution is finished."
         ),
         epilog=(
-            "Note: 'paasta remote-run' Mesos API that may require authentication."
+            "Note: `paasta remote-run` uses Mesos API that may require "
+            "authentication."
         ),
     )
 
-    main_subs = main_parser.add_subparsers(dest='action', help='Subcommands of remote-run')
+    main_subs = main_parser.add_subparsers(
+        dest='action',
+        help='Subcommands of remote-run',
+    )
 
     start_parser = main_subs.add_parser(
         'start',
@@ -140,8 +146,8 @@ def add_subparser(subparsers):
     add_common_args_to_parser(start_parser)
     start_parser.add_argument(
         '-X', '--constraint',
-        help='Constraint option, format: <attr>,OP[,<value>], OP can be one of '
-        'the following: EQUALS matches attribute value exactly, LIKE and '
+        help='Constraint option, format: <attr>,OP[,<value>], OP can be one '
+        'of the following: EQUALS matches attribute value exactly, LIKE and '
         'UNLIKE match on regular expression, MAX_PER constrains number of '
         'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
         required=False,
@@ -156,7 +162,8 @@ def add_subparser(subparsers):
     add_common_args_to_parser(stop_parser)
     stop_parser.add_argument(
         '-F', '--framework-id',
-        help='ID of framework to stop. Must belong to remote-run of selected service instance.',
+        help='ID of framework to stop. Must belong to remote-run of selected'
+        'service instance.',
         required=False,
         default=None,
     )
@@ -176,13 +183,17 @@ def paasta_remote_run(args):
     except PaastaNotConfiguredError:
         paasta_print(
             PaastaColors.yellow(
-                "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
-                "PaaSTA is not configured locally on this host, and remote-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA.",
+                "Warning: Couldn't load config files from '/etc/paasta'. This "
+                "indicates PaaSTA is not configured locally on this host, and "
+                "remote-run may not behave the same way it would behave on a "
+                "server configured for PaaSTA.",
             ),
             sep='\n',
         )
-        system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
+        system_paasta_config = SystemPaastaConfig(
+            {"volumes": []},
+            '/etc/paasta',
+        )
 
     cmd_parts = ['/usr/bin/paasta_remote_run', args.action]
     args_vars = vars(args)
@@ -198,7 +209,10 @@ def paasta_remote_run(args):
         'run_id': None,
         'framework_id': None,
         'instances': None,
+        'instance': None,
     }
+
+    # copy relevant arguments into cmd_parts
     for key in args_vars:
         # skip args we don't know about
         if key not in args_keys:
@@ -219,7 +233,9 @@ def paasta_remote_run(args):
 
     constraints = [x.split(',', 2) for x in args_vars.get('constraint', [])]
     if len(constraints) > 0:
-        cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
+        cmd_parts.extend(
+            ['--constraints-json', quote(json.dumps(constraints))],
+        )
 
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(

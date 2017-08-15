@@ -15,14 +15,13 @@
 """Contains methods used by the paasta client to wait for deployment
 of a docker image to a cluster.instance.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 from argparse import ArgumentTypeError
 
 from paasta_tools import remote_git
 from paasta_tools.cli.cmds.mark_for_deployment import NoInstancesFound
+from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
+from paasta_tools.cli.cmds.mark_for_deployment import report_waiting_aborted
 from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -238,8 +237,8 @@ def paasta_wait_for_deployment(args):
             level='event',
         )
 
-    except (KeyboardInterrupt, TimeoutError):
-        paasta_print("Waiting for deployment aborted.")
+    except (KeyboardInterrupt, TimeoutError, NoSuchCluster):
+        report_waiting_aborted(service, args.deploy_group)
         return 1
     except NoInstancesFound:
         return 1

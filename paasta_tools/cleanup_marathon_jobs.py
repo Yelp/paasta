@@ -31,9 +31,6 @@ Command line options:
     is sane to kill when this job runs
 - -f, --force: Force the killing of apps if we breach the threshold
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import logging
 import sys
@@ -164,9 +161,11 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
             log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
             continue
         running_apps.append(app_id)
-    apps_to_kill = [(service, instance, git_sha, config_sha)
-                    for service, instance, git_sha, config_sha in running_apps
-                    if (service, instance) not in valid_services]
+    apps_to_kill = [
+        (service, instance, git_sha, config_sha)
+        for service, instance, git_sha, config_sha in running_apps
+        if (service, instance) not in valid_services
+    ]
 
     log.debug("Running apps: %s" % running_apps)
     log.debug("Valid apps: %s" % valid_services)

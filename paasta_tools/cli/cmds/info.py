@@ -12,9 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -100,7 +97,7 @@ def get_deployments_strings(service, soa_dir):
             if service_mode == "tcp":
                 service_port = service_config.get('proxy_port')
                 link = PaastaColors.cyan('%s://paasta-%s.yelp:%d/' % (service_mode, cluster, service_port))
-            elif service_mode == "http":
+            elif service_mode == "http" or service_mode == "https":
                 link = PaastaColors.cyan('%s://%s.paasta-%s.yelp/' % (service_mode, service, cluster))
             else:
                 link = "N/A"

@@ -37,16 +37,11 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import json
 import logging
 import os
 import re
-
-import six
 
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -79,8 +74,10 @@ def parse_args():
 
 def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None):
     if deploy_group:
-        instances = [config for config in get_instance_configs_for_service(soa_dir=soa_dir, service=service)
-                     if config.get_deploy_group() == deploy_group]
+        instances = [
+            config for config in get_instance_configs_for_service(soa_dir=soa_dir, service=service)
+            if config.get_deploy_group() == deploy_group
+        ]
     else:
         instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
     cluster_map = {}
@@ -234,7 +231,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     except KeyError:
         deploy_group_mappings = {}
         for deploy_group, image in deployments_dict.items():
-            if isinstance(image, six.string_types):
+            if isinstance(image, str):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',
