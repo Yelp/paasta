@@ -350,12 +350,9 @@ def paasta_args_mixer(args):
         filters.append(filter_service)
     if args.deploy_group:
         filters.append(filter_deploy_group)
-    print(filters)
 
     for service in list_services(soa_dir=args.soa_dir):
-        print(service)
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
-            print(instance_conf)
             if all([f(instance_conf) for f in filters]):
                 clusters_services_instances[instance_conf.get_cluster()][service].add(instance_conf.get_instance())
 

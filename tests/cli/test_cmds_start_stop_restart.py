@@ -184,7 +184,6 @@ def test_paasta_start_or_stop(
         soa_dir='/soa/dir',
         load_deployments=False,
     )
-    print(mock_get_instance_config.call_args_list)
     mock_get_instance_config.assert_has_calls(
         [
             c1_get_instance_config_call,

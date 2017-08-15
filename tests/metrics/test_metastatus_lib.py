@@ -745,7 +745,6 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
         mesos_state=fake_state,
         grouping_func=grouping_func,
     )
-    print(resp)
     # resp should have 4 keys...
     assert(len(resp.keys()) == 4)
     # Each key should be a set with 2 items...

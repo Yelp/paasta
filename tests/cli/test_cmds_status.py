@@ -552,7 +552,6 @@ def test_paasta_args_mixer_clusters_and_instances_clusters_instances_deploy_grou
     ]
 
     pargs = paasta_args_mixer(args)
-    print(pargs)
     assert sorted(pargs.keys()) == ['cluster1']
     assert pargs['cluster1']['fake_service'] == {'instance1'}
 
@@ -582,7 +581,6 @@ def test_paasta_args_mixer_clusters_uses_deploy_group_when_no_clusters_and_insta
     ]
 
     pargs = paasta_args_mixer(args)
-    print(pargs)
     assert sorted(pargs.keys()) == ['cluster1', 'cluster2']
     assert pargs['cluster1']['fake_service'] == {'instance1', 'instance2'}
     assert pargs['cluster2']['fake_service'] == {'instance3'}
