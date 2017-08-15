@@ -1657,10 +1657,10 @@ class TestFileLogWriter:
             fw = utils.FileLogWriter("/dev/null", flock=True)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
-                mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_EX)
+                mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_EX)
                 mock_fcntl.flock.reset_mock()
 
-            mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_UN)
+            mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_UN)
 
     def test_maybe_flock_flock_false(self):
         """Make sure we don't flock/unflock when flock=False"""
@@ -1882,10 +1882,10 @@ def test_flock(mock_flock, tmpdir):
     my_file = tmpdir.join('my-file')
     with open(str(my_file), 'w') as f:
         with utils.flock(f):
-            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
             mock_flock.reset_mock()
 
-        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
 
 
 @mock.patch("paasta_tools.utils.Timeout", autospec=True)
@@ -1895,10 +1895,10 @@ def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
     with open(str(my_file), 'w') as f:
         with utils.timed_flock(f, seconds=mock.sentinel.seconds):
             mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
-            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
             mock_flock.reset_mock()
 
-        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
 
 
 @mock.patch("paasta_tools.utils.Timeout", autospec=True, side_effect=utils.TimeoutError('Oh noes'))
@@ -1921,6 +1921,6 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
         with utils.timed_flock(f, seconds=1):
             time.sleep(2)
         assert mock_flock.mock_calls == [
-            mock.call(f, utils.fcntl.LOCK_EX),
-            mock.call(f, utils.fcntl.LOCK_UN),
+            mock.call(f.fileno(), utils.fcntl.LOCK_EX),
+            mock.call(f.fileno(), utils.fcntl.LOCK_UN),
         ]

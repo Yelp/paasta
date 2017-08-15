@@ -38,15 +38,23 @@ from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
+from types import FrameType
 from typing import Any
 from typing import Callable
+from typing import cast
+from typing import Collection
+from typing import ContextManager
 from typing import Dict
+from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List  # noqa
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
 from typing import Union  # noqa
 
@@ -102,14 +110,16 @@ TimeCacheEntry = TypedDict(
     },
 )
 
+_CacheRetT = TypeVar('_CacheRetT')
 
-class time_cache:
-    def __init__(self, ttl=0):
-        self.configs: Dict[List, TimeCacheEntry] = {}
+
+class time_cache(object):
+    def __init__(self, ttl: float=0) -> None:
+        self.configs: Dict[Tuple, TimeCacheEntry] = {}
         self.ttl = ttl
 
-    def __call__(self, f):
-        def cache(*args, **kwargs):
+    def __call__(self, f: Callable[..., _CacheRetT]) -> Callable[..., _CacheRetT]:
+        def cache(*args: Any, **kwargs: Any) -> _CacheRetT:
             if 'ttl' in kwargs:
                 ttl = kwargs['ttl']
                 del kwargs['ttl']
@@ -124,8 +134,11 @@ class time_cache:
         return cache
 
 
-def sort_dicts(dcts):
-    def key(dct):
+_SortDictsT = TypeVar('_SortDictsT', bound=Mapping)
+
+
+def sort_dicts(dcts: Iterable[_SortDictsT]) -> List[_SortDictsT]:
+    def key(dct: _SortDictsT) -> Tuple:
         return tuple(sorted(dct.items()))
     return sorted(dcts, key=key)
 
@@ -186,6 +199,7 @@ BranchDict = TypedDict(
     'BranchDict',
     {
         'docker_image': str,
+        'git_sha': str,
         'desired_state': str,
         'force_bounce': Optional[str],
     },
@@ -206,7 +220,7 @@ class InstanceConfig(object):
 
     def __init__(
         self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
-        branch_dict: BranchDict, soa_dir=DEFAULT_SOA_DIR,
+        branch_dict: BranchDict, soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
@@ -220,7 +234,7 @@ class InstanceConfig(object):
             if key in self.config_dict:
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
-    def __get_interpolation_facts(self):
+    def __get_interpolation_facts(self) -> Dict[str, str]:
         return {
             'cluster': self.cluster,
             'instance': self.instance,
@@ -236,10 +250,10 @@ class InstanceConfig(object):
     def get_service(self) -> str:
         return self.service
 
-    def get_docker_registry(self):
+    def get_docker_registry(self) -> str:
         return get_service_docker_registry(self.service, self.soa_dir)
 
-    def get_branch(self):
+    def get_branch(self) -> str:
         return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
 
     def get_deploy_group(self) -> str:
@@ -329,7 +343,7 @@ class InstanceConfig(object):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self, with_labels=True) -> Iterable[DockerParameter]:
+    def format_docker_parameters(self, with_labels: bool=True) -> Iterable[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
@@ -355,7 +369,7 @@ class InstanceConfig(object):
         parameters.extend(self.get_cap_add())
         return parameters
 
-    def get_disk(self, default=1024) -> float:
+    def get_disk(self, default: float=1024) -> float:
         """Gets the  amount of disk space required from the service's configuration.
 
         Defaults to 1024 (1G) if no value is specified in the config.
@@ -628,8 +642,8 @@ class InstanceConfig(object):
             return None
         return security.get('outbound_firewall')
 
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, type(self)):
             return self.config_dict == other.config_dict and \
                 self.branch_dict == other.branch_dict and \
                 self.cluster == other.cluster and \
@@ -639,7 +653,7 @@ class InstanceConfig(object):
             return False
 
 
-def validate_service_instance(service, instance, cluster, soa_dir):
+def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
     for instance_type in INSTANCE_TYPES:
         services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
         if (service, instance) in services:
@@ -652,8 +666,15 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         )
 
 
-def compose(func_one, func_two):
-    def composed(*args, **kwargs):
+_ComposeRetT = TypeVar('_ComposeRetT')
+_ComposeInnerRetT = TypeVar('_ComposeInnerRetT')
+
+
+def compose(
+    func_one: Callable[[_ComposeInnerRetT], _ComposeRetT],
+    func_two: Callable[..., _ComposeInnerRetT],
+) -> Callable[..., _ComposeRetT]:
+    def composed(*args: Any, **kwargs: Any) -> _ComposeRetT:
         return func_one(func_two(*args, **kwargs))
     return composed
 
@@ -673,7 +694,7 @@ class PaastaColors:
     YELLOW = '\033[33m'
 
     @staticmethod
-    def bold(text):
+    def bold(text: str) -> str:
         """Return bolded text.
 
         :param text: a string
@@ -682,7 +703,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.BOLD, text)
 
     @staticmethod
-    def blue(text):
+    def blue(text: str) -> str:
         """Return text that can be printed blue.
 
         :param text: a string
@@ -691,7 +712,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.BLUE, text)
 
     @staticmethod
-    def green(text):
+    def green(text: str) -> str:
         """Return text that can be printed green.
 
         :param text: a string
@@ -699,7 +720,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.GREEN, text)
 
     @staticmethod
-    def red(text):
+    def red(text: str) -> str:
         """Return text that can be printed red.
 
         :param text: a string
@@ -707,7 +728,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.RED, text)
 
     @staticmethod
-    def magenta(text):
+    def magenta(text: str) -> str:
         """Return text that can be printed magenta.
 
         :param text: a string
@@ -715,7 +736,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.MAGENTA, text)
 
     @staticmethod
-    def color_text(color, text):
+    def color_text(color: str, text: str) -> str:
         """Return text that can be printed color.
 
         :param color: ANSI colour code
@@ -727,7 +748,7 @@ class PaastaColors:
         return color + replaced + PaastaColors.DEFAULT
 
     @staticmethod
-    def cyan(text):
+    def cyan(text: str) -> str:
         """Return text that can be printed cyan.
 
         :param text: a string
@@ -735,7 +756,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.CYAN, text)
 
     @staticmethod
-    def yellow(text):
+    def yellow(text: str) -> str:
         """Return text that can be printed yellow.
 
         :param text: a string
@@ -743,11 +764,11 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.YELLOW, text)
 
     @staticmethod
-    def grey(text):
+    def grey(text: str) -> str:
         return PaastaColors.color_text(PaastaColors.GREY, text)
 
     @staticmethod
-    def default(text):
+    def default(text: str) -> str:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
@@ -848,14 +869,14 @@ class NoSuchLogComponent(Exception):
     pass
 
 
-def validate_log_component(component):
+def validate_log_component(component: str) -> bool:
     if component in LOG_COMPONENTS.keys():
         return True
     else:
         raise NoSuchLogComponent
 
 
-def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
+def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
@@ -871,7 +892,11 @@ def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
     return general_config.get('git_url', default_location)
 
 
-def get_service_docker_registry(service, soa_dir=DEFAULT_SOA_DIR, system_config=None):
+def get_service_docker_registry(
+    service: str,
+    soa_dir: str=DEFAULT_SOA_DIR,
+    system_config: Optional['SystemPaastaConfig']=None,
+) -> str:
     service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
     try:
         return service_configuration['docker_registry']
@@ -908,24 +933,43 @@ _log_writer = None
 _log_writer_classes = {}
 
 
-def register_log_writer(name):
-    """Returns a decorator that registers that bounce function at a given name
-    so get_log_writer_classes can find it."""
-    def outer(bounce_func):
-        _log_writer_classes[name] = bounce_func
-        return bounce_func
+class LogWriter(object):
+    def __init__(self, **kwargs: Any) -> None:
+        pass
+
+    def log(
+        self,
+        service: str,
+        line: str,
+        component: str,
+        level: str=DEFAULT_LOGLEVEL,
+        cluster: str=ANY_CLUSTER,
+        instance: str=ANY_INSTANCE,
+    ) -> None:
+        raise NotImplementedError()
+
+
+_LogWriterTypeT = TypeVar('_LogWriterTypeT', bound=Type[LogWriter])
+
+
+def register_log_writer(name: str) -> Callable[[_LogWriterTypeT], _LogWriterTypeT]:
+    """Returns a decorator that registers that log writer class at a given name
+    so get_log_writer_class can find it."""
+    def outer(log_writer_class: _LogWriterTypeT) -> _LogWriterTypeT:
+        _log_writer_classes[name] = log_writer_class
+        return log_writer_class
     return outer
 
 
-def get_log_writer_class(name):
+def get_log_writer_class(name: str) -> Type[LogWriter]:
     return _log_writer_classes[name]
 
 
-def list_log_writers():
+def list_log_writers() -> Iterable[str]:
     return _log_writer_classes.keys()
 
 
-def configure_log():
+def configure_log() -> None:
     """We will log to the yocalhost binded scribe."""
     log_writer_config = load_system_paasta_config().get_log_writer()
     global _log_writer
@@ -933,27 +977,44 @@ def configure_log():
     _log_writer = LogWriterClass(**log_writer_config.get('options', {}))
 
 
-def _log(*args, **kwargs):
+def _log(
+    service: str,
+    line: str,
+    component: str,
+    level: str=DEFAULT_LOGLEVEL,
+    cluster: str=ANY_CLUSTER,
+    instance: str=ANY_INSTANCE,
+) -> None:
     if _log_writer is None:
         configure_log()
-    return _log_writer.log(*args, **kwargs)
+    return _log_writer.log(
+        service=service,
+        line=line,
+        component=component,
+        level=level,
+        cluster=cluster,
+        instance=instance,
+    )
 
 
-class LogWriter(object):
-    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
-        raise NotImplementedError()
-
-
-def _now():
+def _now() -> str:
     return datetime.datetime.utcnow().isoformat()
 
 
-def remove_ansi_escape_sequences(line):
+def remove_ansi_escape_sequences(line: str) -> str:
     """Removes ansi escape sequences from the given line."""
     return no_escape.sub('', line)
 
 
-def format_log_line(level, cluster, service, instance, component, line, timestamp=None):
+def format_log_line(
+    level: str,
+    cluster: str,
+    service: str,
+    instance: str,
+    component: str,
+    line: str,
+    timestamp: str=None,
+) -> str:
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
@@ -977,7 +1038,7 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
     return message
 
 
-def get_log_name_for_service(service, prefix=None):
+def get_log_name_for_service(service: str, prefix: str=None) -> str:
     if prefix:
         return 'stream_paasta_%s_%s' % (prefix, service)
     return 'stream_paasta_%s' % service
@@ -985,11 +1046,25 @@ def get_log_name_for_service(service, prefix=None):
 
 @register_log_writer('scribe')
 class ScribeLogWriter(LogWriter):
-    def __init__(self, scribe_host='169.254.255.254', scribe_port=1463, scribe_disable=False, **kwargs):
+    def __init__(
+        self,
+        scribe_host: str='169.254.255.254',
+        scribe_port: int=1463,
+        scribe_disable: bool=False,
+        **kwargs: Any,
+    ) -> None:
         self.clog = __import__('clog')
         self.clog.config.configure(scribe_host=scribe_host, scribe_port=scribe_port, scribe_disable=scribe_disable)
 
-    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(
+        self,
+        service: str,
+        line: str,
+        component: str,
+        level: str=DEFAULT_LOGLEVEL,
+        cluster: str=ANY_CLUSTER,
+        instance: str=ANY_INSTANCE,
+    ) -> None:
         """This expects someone (currently the paasta cli main()) to have already
         configured the log object. We'll just write things to it.
         """
@@ -1009,10 +1084,18 @@ class NullLogWriter(LogWriter):
     """A LogWriter class that doesn't do anything. Primarily useful for integration tests where we don't care about
     logs."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         pass
 
-    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(
+        self,
+        service: str,
+        line: str,
+        component: str,
+        level: str=DEFAULT_LOGLEVEL,
+        cluster: str=ANY_CLUSTER,
+        instance: str=ANY_INSTANCE,
+    ) -> None:
         pass
 
 
@@ -1021,21 +1104,31 @@ def _empty_context() -> Iterator[None]:
     yield
 
 
+_AnyIO = Union[io.IOBase, IO]
+
+
 @register_log_writer('file')
 class FileLogWriter(LogWriter):
-    def __init__(self, path_format, mode='a+', line_delimeter='\n', flock=False):
+    def __init__(
+        self,
+        path_format: str,
+        mode: str='a+',
+        line_delimeter: str='\n',
+        flock: bool=False,
+    ) -> None:
         self.path_format = path_format
         self.mode = mode
         self.flock = flock
         self.line_delimeter = line_delimeter
 
-    def maybe_flock(self, fd):
+    def maybe_flock(self, fd: _AnyIO) -> ContextManager:
         if self.flock:
+            # https://github.com/python/typeshed/issues/1548
             return flock(fd)
         else:
             return _empty_context()
 
-    def format_path(self, service, component, level, cluster, instance):
+    def format_path(self, service: str, component: str, level: str, cluster: str, instance: str) -> str:
         return self.path_format.format(
             service=service,
             component=component,
@@ -1044,7 +1137,15 @@ class FileLogWriter(LogWriter):
             instance=instance,
         )
 
-    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(
+        self,
+        service: str,
+        line: str,
+        component: str,
+        level: str=DEFAULT_LOGLEVEL,
+        cluster: str=ANY_CLUSTER,
+        instance: str=ANY_INSTANCE,
+    ) -> None:
         path = self.format_path(service, component, level, cluster, instance)
 
         # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
@@ -1068,16 +1169,16 @@ class FileLogWriter(LogWriter):
 
 
 @contextlib.contextmanager
-def flock(fd):
+def flock(fd: _AnyIO) -> Iterator[None]:
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
         yield
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
 
 
 @contextlib.contextmanager
-def timed_flock(fd, seconds=1):
+def timed_flock(fd: _AnyIO, seconds: int=1) -> Iterator[None]:
     """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
     raise a TimeoutError if `seconds` elapses before the flock can be obtained
     """
@@ -1091,7 +1192,7 @@ def timed_flock(fd, seconds=1):
         flock_context.__exit__(*sys.exc_info())
 
 
-def _timeout(process):
+def _timeout(process: Popen) -> None:
     """Helper function for _run. It terminates the process.
     Doesn't raise OSError, if we try to terminate a non-existing
     process as there can be a very small window between poll() and kill()
@@ -1115,7 +1216,7 @@ class NoConfigurationForServiceError(Exception):
     pass
 
 
-def get_readable_files_in_glob(glob, path):
+def get_readable_files_in_glob(glob: str, path: str) -> List[str]:
     """
     Returns a sorted list of files that are readable in an input glob by recursively searching a path
     """
@@ -1212,7 +1313,7 @@ SystemPaastaConfigDict = TypedDict(
 )
 
 
-def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
+def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
     the dictionaries (last file wins).
@@ -1239,12 +1340,12 @@ class SystemPaastaConfig(object):
         self.directory = directory
         self.config_dict = config
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, SystemPaastaConfig):
             return self.directory == other.directory and self.config_dict == other.config_dict
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SystemPaastaConfig(%r, %r)" % (self.config_dict, self.directory)
 
     def get_zk_hosts(self) -> str:
@@ -1502,9 +1603,16 @@ class SystemPaastaConfig(object):
 
 
 def _run(
-    command, env=os.environ, timeout=None, log=False, stream=False,
-    stdin=None, stdin_interrupt=False, popen_kwargs={}, **kwargs,
-):
+    command: Union[str, List[str]],
+    env: Mapping[str, str]=os.environ,
+    timeout: float=None,
+    log: bool=False,
+    stream: bool=False,
+    stdin: Any=None,
+    stdin_interrupt: bool=False,
+    popen_kwargs: Dict={},
+    **kwargs: Any,
+) -> Tuple[int, str]:
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -1535,7 +1643,7 @@ def _run(
         process = Popen(command, **popen_kwargs)
 
         if stdin_interrupt:
-            def signal_handler(signum, frame):
+            def signal_handler(signum: int, frame: FrameType) -> None:
                 process.stdin.write("\n")
                 process.stdin.flush()
                 process.wait()
@@ -1598,14 +1706,14 @@ def _run(
     return returncode, '\n'.join(output)
 
 
-def get_umask():
+def get_umask() -> int:
     """Get the current umask for this process. NOT THREAD SAFE."""
     old_umask = os.umask(0o0022)
     os.umask(old_umask)
     return old_umask
 
 
-def get_user_agent():
+def get_user_agent() -> str:
     user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
     if len(sys.argv) >= 1:
         return user_agent + " " + os.path.basename(sys.argv[0])
@@ -1614,7 +1722,7 @@ def get_user_agent():
 
 
 @contextlib.contextmanager
-def atomic_file_write(target_path):
+def atomic_file_write(target_path: str) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
@@ -1637,8 +1745,11 @@ class InvalidJobNameError(Exception):
 
 
 def compose_job_id(
-    name: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None,
-    spacer=SPACER,
+    name: str,
+    instance: str,
+    git_hash: Optional[str]=None,
+    config_hash: Optional[str]=None,
+    spacer: str=SPACER,
 ) -> str:
     """Compose a job/app id by concatenating its name, instance, git hash, and config hash.
 
@@ -1663,7 +1774,7 @@ def compose_job_id(
     return composed
 
 
-def decompose_job_id(job_id, spacer=SPACER):
+def decompose_job_id(job_id: str, spacer: str=SPACER) -> Tuple[str, str, str, str]:
     """Break a composed job id into its constituent (service name, instance,
     git hash, config hash) by splitting with ``spacer``.
 
@@ -1683,7 +1794,7 @@ def decompose_job_id(job_id, spacer=SPACER):
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def build_docker_image_name(service):
+def build_docker_image_name(service: str) -> str:
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
 
@@ -1696,7 +1807,7 @@ def build_docker_image_name(service):
     return name
 
 
-def build_docker_tag(service, upstream_git_commit):
+def build_docker_tag(service: str, upstream_git_commit: str) -> str:
     """Builds the DOCKER_TAG string
 
     upstream_git_commit is the SHA that we're building. Usually this is the
@@ -1709,7 +1820,7 @@ def build_docker_tag(service, upstream_git_commit):
     return tag
 
 
-def check_docker_image(service, tag):
+def check_docker_image(service: str, tag: str) -> bool:
     """Checks whether the given image for :service: with :tag: exists.
 
     :raises: ValueError if more than one docker image with :tag: found.
@@ -1721,22 +1832,26 @@ def check_docker_image(service, tag):
     images = docker_client.images(name=image_name)
     result = [image for image in images if docker_tag in image['RepoTags']]
     if len(result) > 1:
-        raise ValueError('More than one docker image found with tag %s\n%s' % docker_tag, result)
+        raise ValueError('More than one docker image found with tag %s\n%s' % (docker_tag, result))
     return len(result) == 1
 
 
-def datetime_from_utc_to_local(utc_datetime):
+def datetime_from_utc_to_local(utc_datetime: datetime.datetime) -> datetime.datetime:
     return datetime_convert_timezone(utc_datetime, dateutil.tz.tzutc(), dateutil.tz.tzlocal())
 
 
-def datetime_convert_timezone(datetime, from_zone, to_zone):
-    datetime = datetime.replace(tzinfo=from_zone)
-    converted_datetime = datetime.astimezone(to_zone)
+def datetime_convert_timezone(
+    dt: datetime.datetime,
+    from_zone: datetime.tzinfo,
+    to_zone: datetime.tzinfo,
+) -> datetime.datetime:
+    dt = dt.replace(tzinfo=from_zone)
+    converted_datetime = dt.astimezone(to_zone)
     converted_datetime = converted_datetime.replace(tzinfo=None)
     return converted_datetime
 
 
-def get_username():
+def get_username() -> str:
     """Returns the current username in a portable way. Will use the SUDO_USER
     environment variable if present.
     http://stackoverflow.com/a/2899055
@@ -1744,7 +1859,11 @@ def get_username():
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
-def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
+def get_soa_cluster_deploy_files(
+    service: str=None,
+    soa_dir: str=DEFAULT_SOA_DIR,
+    instance_type: str=None,
+) -> Iterator[Tuple[str, str]]:
     if service is None:
         service = '*'
     service_path = os.path.join(soa_dir, service)
@@ -1763,7 +1882,7 @@ def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance
             yield (cluster, yaml_file)
 
 
-def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
+def list_clusters(service: str=None, soa_dir: str=DEFAULT_SOA_DIR, instance_type: str=None) -> List[str]:
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
@@ -1782,7 +1901,13 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     return sorted(clusters)
 
 
-def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR, cache=True):
+def list_all_instances_for_service(
+    service: str,
+    clusters: Iterable[str]=None,
+    instance_type: str=None,
+    soa_dir: str=DEFAULT_SOA_DIR,
+    cache: bool=True,
+) -> Set[str]:
     instances = set()
     if not clusters:
         clusters = list_clusters(service, soa_dir=soa_dir)
@@ -1858,7 +1983,11 @@ def get_service_instance_list(
     )
 
 
-def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_services_for_cluster(
+    cluster: str=None,
+    instance_type: str=None,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> List[Tuple[str, str]]:
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
@@ -1876,15 +2005,15 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
     return instance_list
 
 
-def parse_yaml_file(yaml_file):
+def parse_yaml_file(yaml_file: str) -> Any:
     return yaml.safe_load(open(yaml_file))
 
 
-def get_docker_host():
+def get_docker_host() -> str:
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
 
 
-def get_docker_client():
+def get_docker_client() -> Client:
     client_opts = kwargs_from_env(assert_hostname=False)
     if 'base_url' in client_opts:
         return Client(**client_opts)
@@ -1892,7 +2021,7 @@ def get_docker_client():
         return Client(base_url=get_docker_host(), **client_opts)
 
 
-def get_running_mesos_docker_containers():
+def get_running_mesos_docker_containers() -> List[Dict]:
     client = get_docker_client()
     running_containers = client.containers()
     return [container for container in running_containers if "mesos-" in container["Names"][0]]
@@ -1905,23 +2034,23 @@ class TimeoutError(Exception):
 class Timeout:
     # From http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
 
-    def __init__(self, seconds=1, error_message='Timeout'):
+    def __init__(self, seconds: int=1, error_message: str='Timeout') -> None:
         self.seconds = seconds
         self.error_message = error_message
 
-    def handle_timeout(self, signum, frame):
+    def handle_timeout(self, signum: int, frame: FrameType) -> None:
         raise TimeoutError(self.error_message)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.old_handler = signal.signal(signal.SIGALRM, self.handle_timeout)
         signal.alarm(self.seconds)
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, self.old_handler)
 
 
-def print_with_indent(line, indent=2):
+def print_with_indent(line: str, indent: int=2) -> None:
     """Print a line with a given indent level"""
     paasta_print(" " * indent + line)
 
@@ -1930,7 +2059,7 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
+def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJson':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
@@ -1939,7 +2068,7 @@ def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
         raise NoDeploymentsAvailable
 
 
-def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
+def load_v2_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJson':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
@@ -1949,14 +2078,13 @@ def load_v2_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
 
 
 class DeploymentsJson(dict):
-
-    def get_branch_dict(self, service, branch):
+    def get_branch_dict(self, service: str, branch: str) -> BranchDict:
         full_branch = '%s:paasta-%s' % (service, branch)
         return self.get(full_branch, {})
 
-    def get_branch_dict_v2(self, service, branch, deploy_group):
+    def get_branch_dict_v2(self, service: str, branch: str, deploy_group: str) -> BranchDict:
         full_branch = '%s:%s' % (service, branch)
-        branch_dict = {
+        branch_dict: BranchDict = {
             'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
             'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
             'desired_state': self.get_desired_state_for_branch(full_branch),
@@ -1964,56 +2092,56 @@ class DeploymentsJson(dict):
         }
         return branch_dict
 
-    def get_docker_image_for_deploy_group(self, deploy_group):
+    def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
         try:
             return self['deployments'][deploy_group]['docker_image']
         except KeyError:
             raise NoDeploymentsAvailable
 
-    def get_git_sha_for_deploy_group(self, deploy_group):
+    def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
             return self['deployments'][deploy_group]['git_sha']
         except KeyError:
             raise NoDeploymentsAvailable
 
-    def get_desired_state_for_branch(self, control_branch):
+    def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
             return self['controls'][control_branch].get('desired_state', 'start')
         except KeyError:
             raise NoDeploymentsAvailable
 
-    def get_force_bounce_for_branch(self, control_branch):
+    def get_force_bounce_for_branch(self, control_branch: str) -> str:
         try:
             return self['controls'][control_branch].get('force_bounce', None)
         except KeyError:
             raise NoDeploymentsAvailable
 
 
-def get_paasta_branch(cluster, instance):
+def get_paasta_branch(cluster: str, instance: str) -> str:
     return SPACER.join((cluster, instance))
 
 
-def parse_timestamp(tstamp):
+def parse_timestamp(tstamp: str) -> datetime.datetime:
     return datetime.datetime.strptime(tstamp, '%Y%m%dT%H%M%S')
 
 
-def format_timestamp(dt=None):
+def format_timestamp(dt: datetime.datetime=None) -> str:
     if dt is None:
         dt = datetime.datetime.utcnow()
     return dt.strftime('%Y%m%dT%H%M%S')
 
 
-def get_paasta_tag_from_deploy_group(identifier, desired_state):
+def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
     return 'paasta-%s-%s-%s' % (identifier, timestamp, desired_state)
 
 
-def get_paasta_tag(cluster, instance, desired_state):
+def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
     return 'paasta-%s.%s-%s-%s' % (cluster, instance, timestamp, desired_state)
 
 
-def format_tag(tag):
+def format_tag(tag: str) -> str:
     return 'refs/tags/%s' % tag
 
 
@@ -2021,7 +2149,7 @@ class NoDockerImageError(Exception):
     pass
 
 
-def get_config_hash(config: Any, force_bounce=None) -> str:
+def get_config_hash(config: Any, force_bounce: str=None) -> str:
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
@@ -2039,7 +2167,7 @@ def get_config_hash(config: Any, force_bounce=None) -> str:
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def get_code_sha_from_dockerurl(docker_url):
+def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha
     """
@@ -2048,7 +2176,7 @@ def get_code_sha_from_dockerurl(docker_url):
     return "git%s" % parts[-1][:8]
 
 
-def is_under_replicated(num_available, expected_count, crit_threshold):
+def is_under_replicated(num_available: int, expected_count: int, crit_threshold: int) -> Tuple[bool, float]:
     """Calculates if something is under replicated
 
     :param num_available: How many things are up
@@ -2057,7 +2185,7 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
     :returns: Tuple of (bool, ratio)
     """
     if expected_count == 0:
-        ratio = 100
+        ratio = 100.
     else:
         ratio = (num_available / float(expected_count)) * 100
 
@@ -2100,12 +2228,12 @@ def deploy_whitelist_to_constraints(deploy_whitelist: DeployWhitelist) -> List[C
     return []
 
 
-def terminal_len(text):
+def terminal_len(text: str) -> int:
     """Return the number of characters that text will take up on a terminal. """
     return len(remove_ansi_escape_sequences(text))
 
 
-def format_table(rows, min_spacing=2):
+def format_table(rows: Iterable[Union[str, List[str]]], min_spacing: int=2) -> List[str]:
     """Formats a table for use on the command line.
 
     :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string
@@ -2118,7 +2246,7 @@ def format_table(rows, min_spacing=2):
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
-        return rows
+        return cast(List[str], rows)
 
     widths = []
     for i in range(len(list_rows[0])):
@@ -2126,7 +2254,7 @@ def format_table(rows, min_spacing=2):
 
     expanded_rows = []
     for row in rows:
-        if row not in list_rows:
+        if isinstance(row, str):
             expanded_rows.append([row])
         else:
             expanded_row = []
@@ -2141,12 +2269,15 @@ def format_table(rows, min_spacing=2):
     return [(' ' * min_spacing).join(r) for r in expanded_rows]
 
 
-def deep_merge_dictionaries(overrides, defaults):
+_DeepMergeT = TypeVar('_DeepMergeT', bound=Any)
+
+
+def deep_merge_dictionaries(overrides: _DeepMergeT, defaults: _DeepMergeT) -> _DeepMergeT:
     """
     Merges two dictionaries.
     """
     result = copy.deepcopy(defaults)
-    stack = [(overrides, result)]
+    stack: List[Tuple[Dict, Dict]] = [(overrides, result)]
     while stack:
         source_dict, result_dict = stack.pop()
         for key, value in source_dict.items():
@@ -2165,11 +2296,11 @@ class ZookeeperPool(object):
     manager over a large number of zookeeper calls without opening and closing a connection each time.
     GIL makes this 'safe'.
     """
-    counter = 0
-    zk = None
+    counter: int = 0
+    zk: KazooClient = None
 
     @classmethod
-    def __enter__(cls):
+    def __enter__(cls) -> KazooClient:
         if cls.zk is None:
             cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
             cls.zk.start()
@@ -2177,7 +2308,7 @@ class ZookeeperPool(object):
         return cls.zk
 
     @classmethod
-    def __exit__(cls, *args, **kwargs):
+    def __exit__(cls, *args: Any, **kwargs: Any) -> None:
         cls.counter = cls.counter - 1
         if cls.counter == 0:
             cls.zk.stop()
@@ -2185,14 +2316,14 @@ class ZookeeperPool(object):
             cls.zk = None
 
 
-def calculate_tail_lines(verbose_level):
+def calculate_tail_lines(verbose_level: int) -> int:
     if verbose_level == 1:
         return 0
     else:
         return 10 ** (verbose_level - 1)
 
 
-def is_deploy_step(step):
+def is_deploy_step(step: str) -> bool:
     """
     Returns true if the given step deploys to an instancename
     Returns false if the step is a predefined step-type, e.g. itest or command-*
@@ -2200,30 +2331,37 @@ def is_deploy_step(step):
     return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))
 
 
-def use_requests_cache(cache_name, backend='memory', **kwargs):
-    def wrap(fun):
-        def fun_with_cache(*args, **kwargs):
+_UseRequestsCacheFuncT = TypeVar('_UseRequestsCacheFuncT', bound=Callable)
+
+
+def use_requests_cache(
+    cache_name: str,
+    backend: str='memory',
+    **kwargs: Any,
+) -> Callable[[_UseRequestsCacheFuncT], _UseRequestsCacheFuncT]:
+    def wrap(fun: _UseRequestsCacheFuncT) -> _UseRequestsCacheFuncT:
+        def fun_with_cache(*args: Any, **kwargs: Any) -> Any:
             requests_cache.install_cache(cache_name, backend=backend, **kwargs)
             result = fun(*args, **kwargs)
             requests_cache.uninstall_cache()
             return result
-        return fun_with_cache
+        return cast(_UseRequestsCacheFuncT, fun_with_cache)
     return wrap
 
 
-def long_job_id_to_short_job_id(long_job_id):
+def long_job_id_to_short_job_id(long_job_id: str) -> str:
     service, instance, _, __ = decompose_job_id(long_job_id)
     return compose_job_id(service, instance)
 
 
-def mean(iterable):
+def mean(iterable: Collection[float]) -> float:
     """
     Returns the average value of an iterable
     """
     return sum(iterable) / len(iterable)
 
 
-def prompt_pick_one(sequence, choosing):
+def prompt_pick_one(sequence: Sequence[str], choosing: str) -> str:
     if not sys.stdin.isatty():
         paasta_print(
             'No {choosing} specified and no TTY present to ask.'
@@ -2258,7 +2396,7 @@ def prompt_pick_one(sequence, choosing):
         return result
 
 
-def to_bytes(obj):
+def to_bytes(obj: Any) -> bytes:
     if isinstance(obj, bytes):
         return obj
     elif isinstance(obj, str):
@@ -2267,7 +2405,7 @@ def to_bytes(obj):
         return str(obj).encode('UTF-8')
 
 
-def paasta_print(*args, **kwargs):
+def paasta_print(*args: Any, **kwargs: Any) -> None:
     f = kwargs.pop('file', sys.stdout)
     f = getattr(f, 'buffer', f)
     end = to_bytes(kwargs.pop('end', '\n'))
@@ -2278,13 +2416,20 @@ def paasta_print(*args, **kwargs):
     f.flush()
 
 
-def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True):
+_TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
+
+
+def timeout(
+    seconds: int=10,
+    error_message: str=os.strerror(errno.ETIME),
+    use_signals: bool=True,
+) -> Callable[[Callable[..., _TimeoutFuncRetType]], Callable[..., _TimeoutFuncRetType]]:
     if use_signals:
-        def decorate(func):
-            def _handle_timeout(signum, frame):
+        def decorate(func: Callable[..., _TimeoutFuncRetType]) -> Callable[..., _TimeoutFuncRetType]:
+            def _handle_timeout(signum: int, frame: FrameType) -> None:
                 raise TimeoutError(error_message)
 
-            def wrapper(*args, **kwargs):
+            def wrapper(*args: Any, **kwargs: Any) -> _TimeoutFuncRetType:
                 signal.signal(signal.SIGALRM, _handle_timeout)
                 signal.alarm(seconds)
                 try:
@@ -2295,12 +2440,10 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True
 
             return wraps(func)(wrapper)
     else:
-        def decorate(func):
-            return _Timeout(func, seconds, error_message)
+        def decorate(func: Callable[..., _TimeoutFuncRetType]) -> Callable[..., _TimeoutFuncRetType]:
+            # https://github.com/python/mypy/issues/797
+            return _Timeout(func, seconds, error_message)  # type: ignore
     return decorate
-
-
-_TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
 
 
 class _Timeout(object):
@@ -2310,7 +2453,7 @@ class _Timeout(object):
         self.function = function
         self.error_message = error_message
 
-    def run(self, *args, **kwargs):
+    def run(self, *args: Any, **kwargs: Any) -> None:
         # Try and put the result of the function into the q
         # if an exception occurrs then we put the exc_info instead
         # so that it can be raised in the main thread.
@@ -2319,7 +2462,7 @@ class _Timeout(object):
         except Exception:
             self.control.put((False, sys.exc_info()))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> _TimeoutFuncRetType:
         self.func_thread = threading.Thread(
             target=self.run,
             args=args,
@@ -2330,14 +2473,14 @@ class _Timeout(object):
         self.func_thread.start()
         return self.get_and_raise()
 
-    def get_and_raise(self):
+    def get_and_raise(self) -> _TimeoutFuncRetType:
         while not self.timeout < time.time():
             time.sleep(0.01)
             if not self.func_thread.is_alive():
                 ret = self.control.get()
                 if ret[0]:
-                    return ret[1]
+                    return cast(_TimeoutFuncRetType, ret[1])
                 else:
-                    _, e, tb = ret[1]
+                    _, e, tb = cast(Tuple, ret[1])
                     raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)
