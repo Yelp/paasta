@@ -81,8 +81,6 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc')
 
-DOCKER_ARGS_WHITELIST = ('shm-size')
-
 
 class time_cache:
     def __init__(self, ttl=0):
@@ -443,23 +441,12 @@ class InstanceConfig(object):
 
         return True, ''
 
-    def check_extra_docker_args(self):
-        extra_docker_args = self.get_extra_docker_args()
-        valid = True
-        err = []
-        for arg in extra_docker_args.keys():
-            if arg not in DOCKER_ARGS_WHITELIST:
-                err.append('"%s" is not a whitelisted key for extra_docker_args' % arg)
-
-        return valid, ', '.join(err)
-
     def check(self, param):
         check_methods = {
             'cpus': self.check_cpus,
             'mem': self.check_mem,
             'security': self.check_security,
             'dependencies_reference': self.check_dependencies_reference,
-            'extra_docker_args': self.check_extra_docker_args,
         }
         check_method = check_methods.get(param)
         if check_method is not None:
@@ -469,7 +456,7 @@ class InstanceConfig(object):
 
     def validate(self):
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'extra_docker_args']:
+        for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)

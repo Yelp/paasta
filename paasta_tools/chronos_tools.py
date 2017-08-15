@@ -477,7 +477,6 @@ class ChronosJobConfig(InstanceConfig):
             'dependencies_reference': self.check_dependencies_reference,
             'parents': self.check_parents,
             'cmd': self.check_cmd,
-            'extra_docker_args': self.check_extra_docker_args,
         }
         supported_params_without_checks = ['description', 'owner', 'disabled']
         if param in check_methods:
