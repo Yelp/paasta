@@ -14,6 +14,7 @@
 # limitations under the License.
 import copy
 import itertools
+import math
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
@@ -33,8 +34,12 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
 
+class ResourceInfo(namedtuple('ResourceInfo', ['cpus', 'mem', 'disk', 'gpus'])):
+    def __new__(cls, cpus, mem, disk, gpus=0):
+        return super().__new__(cls, cpus, mem, disk, gpus)
+
+
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
-ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
 
 EXPECTED_HEALTHY_FRAMEWORKS = 2
@@ -78,8 +83,20 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
+def get_mesos_gpu_status(metrics):
+    """Takes in the mesos metrics and analyzes them, returning gpus status.
+
+    :param metrics: mesos metrics dictionary
+    :returns: Tuple of the output array and is_ok bool
+    """
+    total = metrics['master/gpus_total']
+    used = metrics['master/gpus_used']
+    available = total - used
+    return total, used, available
+
+
 def filter_mesos_state_metrics(dictionary):
-    valid_keys = ['cpus', 'mem', 'disk']
+    valid_keys = ['cpus', 'mem', 'disk', 'gpus']
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
@@ -201,6 +218,33 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
     else:
         return HealthCheckResult(
             message="CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)" % (threshold, perc_used),
+            healthy=False,
+        )
+
+
+def assert_gpu_health(metrics, threshold=0):
+    total, used, available = get_mesos_gpu_status(metrics)
+
+    if math.isclose(total, 0):
+        # assume that no gpus is healthy since most machines don't have them
+        return HealthCheckResult(
+            message="No gpus found from mesos!",
+            healthy=True,
+        )
+    else:
+        perc_used = percent_used(total, used)
+
+    if check_threshold(perc_used, threshold):
+        # only whole gpus can be used
+        return HealthCheckResult(
+            message="GPUs: %d / %d in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True,
+        )
+    else:
+        return HealthCheckResult(
+            message="CRITICAL: Less than %d%% GPUs available. (Currently using %.2f%% of %d)"
+            % (threshold, perc_used, total),
             healthy=False,
         )
 
@@ -383,11 +427,13 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
             cpus=resource_free_dict['cpus'],
             disk=resource_free_dict['disk'],
             mem=resource_free_dict['mem'],
+            gpus=resource_free_dict.get('gpus', 0),
         ),
         "total": ResourceInfo(
             cpus=resource_total_dict['cpus'],
             disk=resource_total_dict['disk'],
             mem=resource_total_dict['mem'],
+            gpus=resource_total_dict.get('gpus', 0),
         ),
         "slave_count": len(slaves),
     }
@@ -491,6 +537,7 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
         assert_cpu_health(mesos_metrics, mesos_state),
         assert_memory_health(mesos_metrics, mesos_state),
         assert_disk_health(mesos_metrics, mesos_state),
+        assert_gpu_health(mesos_metrics),
         assert_tasks_running(mesos_metrics),
         assert_slave_health(mesos_metrics),
     ]

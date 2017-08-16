@@ -180,6 +180,36 @@ def test_failing_disk_health():
     assert "CRITICAL: Less than 10% disk available. (Currently using 97.66%)" in failure_output
 
 
+def test_assert_gpu_health():
+    ok_metrics = {
+        'master/gpus_total': 3,
+        'master/gpus_used': 1,
+    }
+    ok_output, ok_health = metastatus_lib.assert_gpu_health(ok_metrics)
+    assert ok_health
+    assert "GPUs: 1 / 3 in use (%s)" % PaastaColors.green("33.33%") in ok_output
+
+
+def test_assert_no_gpu_health():
+    zero_metrics = {
+        'master/gpus_total': 0,
+        'master/gpus_used': 0,
+    }
+    zero_output, zero_health = metastatus_lib.assert_gpu_health(zero_metrics)
+    assert zero_health
+    assert "No gpus found from mesos!" in zero_output
+
+
+def test_assert_bad_gpu_health():
+    bad_metrics = {
+        'master/gpus_total': 4,
+        'master/gpus_used': 3,
+    }
+    bad_output, bad_health = metastatus_lib.assert_gpu_health(bad_metrics, threshold=50)
+    assert not bad_health
+    assert "CRITICAL: Less than 50% GPUs available. (Currently using 75.00% of 4)" in bad_output
+
+
 def test_cpu_health_mesos_reports_zero():
     mesos_metrics = {
         'master/cpus_total': 0,
@@ -525,10 +555,14 @@ def test_filter_mesos_state_metrics():
         'mem': 1,
         'MEM': 2,
         'garbage_data': 3,
+        'disk': 4,
+        'gpus': 5,
     }
     expected = {
         'cpus': 0,
         'mem': 1,
+        'disk': 4,
+        'gpus': 5,
     }
     assert metastatus_lib.filter_mesos_state_metrics(test_resource_dictionary) == expected
 
@@ -835,6 +869,7 @@ def test_calculate_resource_utilization_for_slaves():
                 'cpus': 500,
                 'disk': 200,
                 'mem': 750,
+                'gpus': 5,
             },
             'reserved_resources': {},
             'attributes': {
@@ -848,6 +883,7 @@ def test_calculate_resource_utilization_for_slaves():
                 'cpus': 10,
                 'mem': 10,
                 'disk': 10,
+                'gpus': 1,
             },
             'state': 'TASK_RUNNING',
         },
@@ -856,14 +892,20 @@ def test_calculate_resource_utilization_for_slaves():
                 'cpus': 10,
                 'mem': 10,
                 'disk': 10,
+                'gpus': 2,
             },
             'state': 'TASK_RUNNING',
         },
     ]
-    assert metastatus_lib.calculate_resource_utilization_for_slaves(
+    free = metastatus_lib.calculate_resource_utilization_for_slaves(
         slaves=fake_slaves,
         tasks=tasks,
-    )['free'].cpus == 480
+    )['free']
+
+    assert free.cpus == 480
+    assert free.mem == 730
+    assert free.disk == 180
+    assert free.gpus == 2
 
 
 def test_healthcheck_result_for_resource_utilization_ok():
@@ -1037,6 +1079,15 @@ def test_get_mesos_disk_status():
     }
     actual = metastatus_lib.get_mesos_disk_status(metrics)
     assert actual == (100, 50, 50)
+
+
+def test_get_mesos_gpu_status():
+    metrics = {
+        'master/gpus_total': 3,
+        'master/gpus_used': 1,
+    }
+    actual = metastatus_lib.get_mesos_gpu_status(metrics)
+    assert actual == (3, 1, 2)
 
 
 def test_reserved_maintenence_resources_no_maintenenance():

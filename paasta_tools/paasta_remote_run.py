@@ -157,6 +157,7 @@ def paasta_to_task_config_kwargs(
     cpus = native_job_config.get_cpus()
     mem = native_job_config.get_mem()
     disk = native_job_config.get_disk(10)
+    gpus = native_job_config.get_gpus()
 
     kwargs = {
         'image': str(image),
@@ -170,7 +171,11 @@ def paasta_to_task_config_kwargs(
         # 'ulimit'
         'uris': [uris],
         'docker_parameters': docker_parameters,
+        'containerizer': 'DOCKER',
     }
+    if gpus > 0:
+        kwargs['gpus'] = int(gpus)
+        kwargs['containerizer'] = 'MESOS'
 
     config_hash = get_config_hash(
         kwargs,
