@@ -11,6 +11,7 @@ import service_configuration_lib
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import PaastaPriorityQueue
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
@@ -26,29 +27,29 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
 
-class DedupedQueue(PaastaQueue):
+class DedupedPriorityQueue(PaastaPriorityQueue):
     """This class extends the python Queue class so that the Queue is
     deduplicated. i.e. there can be only one copy of each service instance
     in the queue at any one time
     """
 
     def __init__(self, name, *args, **kwargs):
-        PaastaQueue.__init__(self, name, *args, **kwargs)
+        PaastaPriorityQueue.__init__(self, name, *args, **kwargs)
         self.bouncing = set()
 
-    def put(self, service_instance, *args, **kwargs):
+    def put(self, priority, service_instance, *args, **kwargs):
         service_instance_key = "{}.{}".format(
             service_instance.service,
             service_instance.instance,
         )
         if service_instance_key not in self.bouncing:
             self.bouncing.add(service_instance_key)
-            PaastaQueue.put(self, service_instance, *args, **kwargs)
+            PaastaPriorityQueue.put(self, priority, service_instance, *args, **kwargs)
         else:
             self.log.debug("{} already present in {}, dropping extra message".format(service_instance_key, self.name))
 
     def get(self, *args, **kwargs):
-        service_instance = PaastaQueue.get(self, *args, **kwargs)
+        service_instance = PaastaPriorityQueue.get(self, *args, **kwargs)
         service_instance_key = "{}.{}".format(
             service_instance.service,
             service_instance.instance,
@@ -105,7 +106,7 @@ class Inbox(PaastaThread):
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
                 bounced.append(service_instance_key)
-                self.bounce_q.put(service_instance)
+                self.bounce_q.put(service_instance.priority, service_instance)
         for service_instance_key in bounced:
             self.to_bounce.pop(service_instance_key)
         # TODO: if the bounceq is empty we could probably start adding SIs from
@@ -129,7 +130,7 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
-        self.bounce_q = DedupedQueue("BounceQueue")
+        self.bounce_q = DedupedPriorityQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
@@ -228,6 +229,7 @@ class DeployDaemon(PaastaThread):
         )
         instances_to_add = rate_limit_instances(
             instances=instances,
+            cluster=self.config.get_cluster(),
             number_per_minute=self.config.get_deployd_startup_bounce_rate(),
             watcher_name='daemon_start',
         )
@@ -245,7 +247,8 @@ class DeployDaemon(PaastaThread):
             self.inbox_q.put(ServiceInstance(
                 service=service,
                 instance=instance,
-                watcher=self.__class__.__name__,
+                cluster=self.config.get_cluster(),
+                watcher=type(self).__name__,
                 bounce_by=int(time.time()),
                 bounce_timers=None,
                 failures=0,
