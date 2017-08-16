@@ -465,6 +465,13 @@ class ClusterAutoscaler(ResourceLogMixin):
                         "This is a SFR so we must kill at least one slave to prevent the autoscaler "
                         "getting stuck whilst scaling down gradually",
                     )
+                    if new_capacity < 1 and self.sfr['SpotFleetRequestState'] == 'active':
+                        self.log.info(
+                            "Can't set target capacity to less than 1 for SFRs. No further "
+                            "action for this SFR",
+
+                        )
+                        break
                 else:
                     break
             try:
