@@ -1,3 +1,12 @@
+paasta-tools (0.66.29) xenial; urgency=low
+
+  * 0.66.29 tagged with 'make release'
+    Commit: Merge pull request #1455 from Yelp/kawaiwan-add-gpu-for-
+    remote-run  Add gpu resource for remote-run and cli (for hook
+    validation)
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Wed, 16 Aug 2017 12:01:08 -0700
+
 paasta-tools (0.66.28) xenial; urgency=medium
 
   * 0.66.28 tagged with 'make release'
