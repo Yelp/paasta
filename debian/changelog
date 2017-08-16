@@ -1,3 +1,19 @@
+paasta-tools (0.66.28) xenial; urgency=medium
+
+  * 0.66.28 tagged with 'make release'
+    Commit: Merge pull request #1463 from Yelp/fix-paasta-autoscaler-
+    scaling-to-zero  Fix scaling SFRs to less than 1
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 16 Aug 2017 08:05:13 -0700
+
+paasta-tools (0.66.27) xenial; urgency=medium
+
+  * 0.66.27 tagged with 'make release'
+    Commit: Merge pull request #1463 from Yelp/fix-paasta-autoscaler-
+    scaling-to-zero  Fix scaling SFRs to less than 1
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 16 Aug 2017 07:26:48 -0700
+
 paasta-tools (0.66.26) xenial; urgency=medium
 
   * 0.66.26 tagged with 'make release'
