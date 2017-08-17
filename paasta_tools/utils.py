@@ -199,10 +199,8 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_shm_size(self):
-        """Get's the shm_size to pass to docker
-        See --shm-size in the docker docs"""
-        return self.config_dict.get('shm_size', None)
+    def get_extra_docker_args(self):
+        return self.config_dict.get('extra_docker_args', {})
 
     def get_ulimit(self):
         """Get the --ulimit options to be passed to docker
@@ -254,11 +252,12 @@ class InstanceConfig(object):
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
             ])
-        shm = self.get_shm_size()
-        if shm:
-            parameters.extend([
-                {"key": "shm-size", "value": "%s" % shm},
-            ])
+        extra_docker_args = self.get_extra_docker_args()
+        if extra_docker_args:
+            for key, value in extra_docker_args.items():
+                parameters.extend([
+                    {"key": key, "value": value},
+                ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
