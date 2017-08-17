@@ -260,7 +260,10 @@ def test_assert_no_duplicate_frameworks():
             },
         ],
     }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(state)
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+    )
 
     expected_output = "\n".join(
         ["Frameworks:"] +
@@ -287,9 +290,37 @@ def test_duplicate_frameworks():
             },
         ],
     }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(state)
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+    )
     assert "    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1." in output
     assert not ok
+
+
+def test_duplicate_frameworks_not_checked():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+        ],
+    }
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework2', 'test_framework3', 'test_framework4'],
+    )
+    assert "test_framework2" in output
+    assert ok
 
 
 def test_connected_frameworks():
