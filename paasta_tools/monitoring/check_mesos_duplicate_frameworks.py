@@ -28,6 +28,7 @@ def parse_args():
         '--check', '-C', dest='check', type=str, default='',
         help='Comma separated list of frameworks to check for duplicates',
     )
+    return parser.parse_args()
 
 
 def check_mesos_no_duplicate_frameworks():

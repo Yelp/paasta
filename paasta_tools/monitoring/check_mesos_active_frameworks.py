@@ -29,6 +29,7 @@ def parse_args():
         help='Comma separated list of frameworks to expect.\n'
         'Will fail if any of these are not found',
     )
+    return parser.parse_args()
 
 
 def check_mesos_active_frameworks():
