@@ -1,3 +1,10 @@
+paasta-tools (0.66.31) xenial; urgency=medium
+
+  * 0.66.31 tagged with 'make release'
+    Commit: Fix monitoring check_ scripts
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 17 Aug 2017 09:28:44 -0700
+
 paasta-tools (0.66.30) xenial; urgency=medium
 
   * 0.66.30 tagged with 'make release'
