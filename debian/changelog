@@ -1,3 +1,11 @@
+paasta-tools (0.66.32) xenial; urgency=medium
+
+  * 0.66.32 tagged with 'make release'
+    Commit: Merge pull request #1458 from Yelp/docker-args-whitelist
+    Allow "extra_docker_args"
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Thu, 17 Aug 2017 15:58:09 -0700
+
 paasta-tools (0.66.31) xenial; urgency=medium
 
   * 0.66.31 tagged with 'make release'
