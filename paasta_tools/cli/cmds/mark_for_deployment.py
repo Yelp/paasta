@@ -16,6 +16,7 @@
 deployment to a cluster.instance.
 """
 import logging
+import math
 import sys
 import time
 from argparse import ArgumentTypeError
@@ -30,6 +31,7 @@ from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -303,13 +305,15 @@ class ClusterData:
     :param instances_queue: a thread-safe queue. Should contain all cluster
                             instances that need to be checked.
     :type instances_queue: Queue
+    :param soa_dir:
     """
 
-    def __init__(self, cluster, service, git_sha, instances_queue):
+    def __init__(self, cluster, service, git_sha, instances_queue, soa_dir):
         self.cluster = cluster
         self.service = service
         self.git_sha = git_sha
         self.instances_queue = instances_queue
+        self.soa_dir = soa_dir
 
 
 def instances_deployed(cluster_data, instances_out, green_light):
@@ -364,6 +368,15 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             instance = cluster_data.instances_queue.get(block=False)
         except Empty:
             return
+
+        instance_config = get_instance_config(
+            cluster_data.service,
+            instance,
+            cluster_data.cluster,
+            load_deployments=False,
+            soa_dir=cluster_data.soa_dir,
+        )
+
         log.debug("Inspecting the deployment status of {}.{} on {}"
                   .format(cluster_data.service, instance, cluster_data.cluster))
         try:
@@ -445,16 +458,20 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance)
                 continue
-            if (
-                status.marathon.expected_instance_count >
-                status.marathon.running_instance_count
-            ):
+
+            # The bounce margin factor defines what proportion of instances we need to be "safe",
+            # so consider it scaled up "enough" if we have that proportion of instances ready.
+            required_instance_count = int(math.ceil(
+                instance_config.get_bounce_margin_factor() * status.marathon.expected_instance_count,
+            ))
+            if required_instance_count > status.marathon.running_instance_count:
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
-                             "has {} out of {}"
+                             "has {} out of {} required instances (out of a total of {})"
                              .format(
                                  cluster_data.service, instance,
                                  cluster_data.cluster,
                                  status.marathon.running_instance_count,
+                                 required_instance_count,
                                  status.marathon.expected_instance_count,
                              ))
                 cluster_data.instances_queue.task_done()
@@ -546,6 +563,7 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             cluster=cluster, service=service,
             git_sha=git_sha,
             instances_queue=Queue(),
+            soa_dir=soa_dir,
         ))
         for i in cluster_map[cluster]['instances']:
             clusters_data[-1].instances_queue.put(i)
