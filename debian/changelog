@@ -1,3 +1,11 @@
+paasta-tools (0.66.30) xenial; urgency=medium
+
+  * 0.66.30 tagged with 'make release'
+    Commit: Merge pull request #1452 from Yelp/metastatus-split  split
+    up metastatus checks
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 17 Aug 2017 08:24:22 -0700
+
 paasta-tools (0.66.29) xenial; urgency=low
 
   * 0.66.29 tagged with 'make release'
