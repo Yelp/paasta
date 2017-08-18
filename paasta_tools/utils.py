@@ -1289,16 +1289,16 @@ class SystemPaastaConfig(dict):
         """Get the number of deploys to do per minute when deployd starts
         or determines it needs to bounce all services
 
-        :return: integer
+        :return: float
         """
-        return self.get("deployd_big_bounce_rate", 2)
+        return float(self.get("deployd_big_bounce_rate", .1))
 
     def get_deployd_startup_bounce_rate(self):
         """Get the number of deploys to do per minute when deployd starts
 
-        :return: integer
+        :return: float
         """
-        return self.get("deployd_startup_bounce_rate", 5)
+        return float(self.get("deployd_startup_bounce_rate", .1))
 
     def get_deployd_log_level(self):
         """Get the log level for paasta-deployd
