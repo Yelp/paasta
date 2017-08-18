@@ -737,7 +737,7 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
         utilization_perc = 100
     else:
         utilization_perc = utilization / float(healthcheck_utilization_pair[1].total) * 100
-    if humanize and healthcheck_utilization_pair[1].metric != 'cpus':
+    if humanize and healthcheck_utilization_pair[1].metric not in ['cpus', 'gpus']:
         return color_func('%s/%s (%.2f%%)' % (
             naturalsize(utilization * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),
