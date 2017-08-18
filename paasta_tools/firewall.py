@@ -249,10 +249,25 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         yield _yocalhost_rule(port, 'proxy_port ' + namespace)
 
 
+def _ports_valid(ports):
+    for port in ports:
+        try:
+            port = int(port)
+        except ValueError:
+            log.exception(f'Unable to parse port: {port}')
+            return False
+
+        if not 1 <= port <= 65535:
+            log.error(f'Bogus port number: {port}')
+            return False
+    else:
+        return True
+
+
 def _cidr_rules(conf):
     for dep in conf.get_dependencies() or ():
         cidr = dep.get('cidr')
-        port = dep.get('port')
+        port_str = dep.get('port')
 
         if cidr is None:
             continue
@@ -263,20 +278,20 @@ def _cidr_rules(conf):
             log.exception(f'Unable to parse IP network: {cidr}')
             continue
 
-        if port is not None:
-            try:
-                port = int(port)
-            except ValueError:
-                log.exception(f'Unable to parse port: {port}')
+        if port_str is not None:
+            # port can be either a single port like "443" or a range like "1024:65535"
+            ports = str(port_str).split(':')
+
+            if len(ports) > 2:
+                log.error(f'"port" must be either a single value or a range like "1024:65535": {port_str}')
                 continue
 
-            if not 1 <= port <= 65535:
-                log.error(f'Bogus port number: {port}')
+            if not _ports_valid(ports):
                 continue
 
         # Set up an ip rule if no port, or a tcp/udp rule if there is a port
         dst = f'{network.network_address.exploded}/{network.netmask}'
-        if port is None:
+        if port_str is None:
             yield iptables.Rule(
                 protocol='ip',
                 src='0.0.0.0/0.0.0.0',
@@ -303,13 +318,13 @@ def _cidr_rules(conf):
                         (
                             'comment',
                             (
-                                ('comment', (f'allow {network}:{port}',)),
+                                ('comment', (f'allow {network}:{port_str}',)),
                             ),
                         ),
                         (
                             proto,
                             (
-                                ('dport', (str(port),)),
+                                ('dport', (str(port_str),)),
                             ),
                         ),
                     ),
