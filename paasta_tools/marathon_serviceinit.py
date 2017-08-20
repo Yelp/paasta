@@ -278,7 +278,7 @@ def format_haproxy_backend_row(backend, is_correct_instance):
     if is_correct_instance:
         return row
     else:
-        return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row)
+        return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col.encode()).decode()) for col in row)
 
 
 def status_smartstack_backends(
