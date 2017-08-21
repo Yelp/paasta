@@ -220,7 +220,8 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds, client, job_name):
     try:
         expected_runtime = int(client.job_stat(job_name)['histogram']['99thPercentile'])
     except KeyError:
-        log.warn("Can't get 99thPercentile for %s." % job_name)
+        log.debug("Can't get 99thPercentile for %s. "
+                  "Assuming a runtime of %d seconds." % (job_name, interval_in_seconds))
         expected_runtime = interval_in_seconds
     return (dt_next_run + timedelta(seconds=expected_runtime) < dt_now_utc)
 
