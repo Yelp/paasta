@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
-import pytest
 
 from paasta_tools import remote_git
 from paasta_tools.cli.cli import parse_args
@@ -404,55 +403,3 @@ def test_start_or_stop_bad_refs(
 
 def test_cluster_list_defaults_to_all():
     return True
-
-
-@pytest.mark.xfail(reason='This functionality will be moved')
-# re ^^: rewriting paasta args mixer removed the instance suggest feature, but it should be re-added
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
-def test_cluster_throws_exception_for_invalid_cluster_no_instances(
-        mock_list_clusters,
-        mock_apply_args_filters,
-        capfd,
-):
-    args, _ = parse_args([
-        'restart', '-s', 'fake_service',
-        '-c', 'fake_cluster_1,fake_cluster_2', '-d', '/foo',
-    ])
-
-    mock_list_clusters.return_value = ['fake_cluster_2']
-    mock_apply_args_filters.return_value = {
-        'fake_cluster_2': {'fake_service': ['i1']},
-    }
-
-    assert args.command(args) == 1
-    output, _ = capfd.readouterr()
-    assert "Invalid cluster name(s) specified: fake_cluster_1" in output
-    # assert "Valid options: fake_cluster_2" in output
-
-
-@pytest.mark.xfail(reason='This functionality will be moved')
-# re ^^: rewriting paasta args mixer removed the instance suggest feature, but it should be re-added
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
-def test_cluster_throws_exception_no_matching_instance_clusters(
-        mock_list_clusters,
-        mock_apply_args_filters,
-        capfd,
-):
-    args, _ = parse_args([
-        'restart', '-s', 'fake_service', '-i', 'instance_one,instance_tw',
-        '-c', 'fake_cluster_1,fake_cluster_2,fake_cluster_3', '-d', '/foo',
-    ])
-
-    # this is called twice: once for each of the instances.
-    # the code should flatten these out to be one list.
-    mock_list_clusters.return_value = ['fake_cluster_1', 'fake_cluster_2']
-    mock_apply_args_filters.return_value = {
-        'fake_cluster_2': {'fake_service': ['i1']},
-    }
-
-    assert args.command(args) == 1
-    output, _ = capfd.readouterr()
-    assert "Invalid cluster name(s) specified: fake_cluster_3" in output
-    # assert "Valid options: fake_cluster_1 fake_cluster_2" in output

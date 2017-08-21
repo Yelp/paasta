@@ -35,10 +35,10 @@ from paasta_tools.cli.utils import PaastaColors
 
 def make_fake_instance_conf(cluster, service, instance, deploy_group=None):
     conf = MagicMock()
-    conf.get_cluster = lambda: cluster
-    conf.get_service = lambda: service
-    conf.get_instance = lambda: instance
-    conf.get_deploy_group = lambda: deploy_group
+    conf.get_cluster.return_value = cluster
+    conf.get_service.return_value = service
+    conf.get_instance.return_value = instance
+    conf.get_deploy_group.return_value = deploy_group
     return conf
 
 
@@ -670,6 +670,40 @@ def test_apply_args_filters_clusters_and_instances(
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ['cluster1']
     assert pargs['cluster1']['fake_service'] == {'instance1', 'instance3'}
+
+
+@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
+@patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
+def test_apply_args_filters_no_instances_found(
+    mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
+    mock_list_all_instances_for_service, capfd,
+):
+    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
+    args = PaastaArgs(
+        service='fake_service',
+        soa_dir='/fake/soa/dir',
+        deploy_group=None,
+        clusters='cluster1',
+        instances='instance4,instance5',
+        owner=None,
+    )
+    mock_figure_out_service_name.return_value = 'fake_service'
+    mock_list_services.return_value = ['fake_service']
+    mock_get_instance_configs_for_service.return_value = [
+        make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group'),
+        make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group'),
+        make_fake_instance_conf('cluster1', 'fake_service', 'instance3', 'fake_deploy_group'),
+    ]
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2', 'instance3']
+    pargs = apply_args_filters(args)
+    output, _ = capfd.readouterr()
+    assert len(pargs.keys()) == 0
+    assert "fake_service doesn't have any instances matching instance4, instance5 on cluster1." in output
+    assert "Did you mean any of these?" in output
+    for i in ["instance1", "instance2", "instance3"]:
+        assert i in output
 
 
 @patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)

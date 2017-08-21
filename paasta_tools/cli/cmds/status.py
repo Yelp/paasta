@@ -300,6 +300,7 @@ def verify_instances(args_instances, service, clusters):
         suggestions = []
         for instance in misspelled_instances:
             suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
+        suggestions = list(set(suggestions))
 
         if clusters:
             message = (
@@ -356,6 +357,8 @@ def apply_args_filters(args):
     """
     Take an args object and returns the dict of cluster:service:instances
     Currently, will filter by clusters, instances, services, and deploy_groups
+    If no instances are found, will print a message and try to find matching instances
+    for each service
 
     :param args: args object containing attributes to filter by
     :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
@@ -364,10 +367,20 @@ def apply_args_filters(args):
 
     filters = get_filters(args)
 
+    i_count = 0
     for service in list_services(soa_dir=args.soa_dir):
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
             if all([f(instance_conf) for f in filters]):
                 clusters_services_instances[instance_conf.get_cluster()][service].add(instance_conf.get_instance())
+                i_count += 1
+
+    if i_count == 0 and args.service and args.instances:
+        if args.clusters:
+            clusters = args.clusters.split(',')
+        else:
+            clusters = list_clusters()
+        for service in args.service.split(','):
+            verify_instances(args.instances, service, clusters)
 
     return clusters_services_instances
 
