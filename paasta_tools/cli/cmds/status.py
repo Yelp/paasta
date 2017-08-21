@@ -331,7 +331,7 @@ def get_filters(args):
     :param args: args object
     :returns: list of functions that take an instance config and returns if the instance conf matches the filter
     """
-    if not any([args.clusters, args.instances, args.owner, args.deploy_group]):
+    if not any([args.clusters, args.instances, args.deploy_group]):
         service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
         service = args.service
