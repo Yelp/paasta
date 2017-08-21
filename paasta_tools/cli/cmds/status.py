@@ -325,6 +325,11 @@ def verify_instances(args_instances, service, clusters):
 
 
 def get_filters(args):
+    """Figures out which filters to apply from an args object, and returns them
+
+    :param args: args object
+    :returns: list of functions that take an instance config and returns if the instance conf matches the filter
+    """
     if not any([args.clusters, args.instances, args.owner, args.deploy_group]):
         service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
@@ -348,6 +353,13 @@ def get_filters(args):
 
 
 def apply_args_filters(args):
+    """
+    Take an args object and returns the dict of cluster:service:instances
+    Currently, will filter by clusters, instances, services, and deploy_groups
+
+    :param args: args object containing attributes to filter by
+    :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
+    """
     clusters_services_instances = defaultdict(lambda: defaultdict(set))
 
     filters = get_filters(args)
