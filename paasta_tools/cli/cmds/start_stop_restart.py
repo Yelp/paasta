@@ -14,6 +14,9 @@
 # limitations under the License.
 import datetime
 import socket
+import sys
+
+import choice
 
 from paasta_tools import remote_git
 from paasta_tools import utils
@@ -29,6 +32,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -70,6 +74,11 @@ def add_subparser(subparsers):
             "For example: --clusters norcal-prod,nova-prod",
             required=True,
         ).completer = lazy_choices_completer(list_clusters)
+        status_parser.add_argument(
+            '--allow-multiple-services', dest="allow_multiple_services",
+            action='store_true', default=False,
+            help="Allow the command to affect multiple services",
+        )
 
         status_parser.add_argument(
             '-d', '--soa-dir',
@@ -169,6 +178,28 @@ def paasta_start_or_stop(args, desired_state):
     pargs = apply_args_filters(args)
     if len(pargs) == 0:
         return 1
+
+    affected_services = {s for service_list in pargs.values() for s in service_list.keys()}
+    if len(affected_services) > 1:
+        paasta_print(PaastaColors.red("Warning: trying to start/stop/restart multiple services:"))
+
+        for cluster, services_instances in pargs.items():
+            paasta_print("Cluster %s:" % cluster)
+            for service, instances in services_instances.items():
+                paasta_print("    Service %s:" % service)
+                paasta_print("        Instances %s" % ",".join(instances))
+
+        if args.allow_multiple_services:
+            paasta_print(PaastaColors.red("    --allow-multiple-services specified, continuing anyways"))
+        else:
+            if sys.stdin.isatty():
+                confirm = choice.Binary('Are you sure you want to continue?', False).ask()
+            else:
+                confirm = False
+            if not confirm:
+                paasta_print("    please specify --allow-multiple-services for this command to take affect")
+                paasta_print("    exiting")
+                return 1
 
     invalid_deploy_groups = []
     marathon_message_printed, chronos_message_printed = False, False
