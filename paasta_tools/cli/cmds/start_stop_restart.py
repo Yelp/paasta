@@ -74,11 +74,6 @@ def add_subparser(subparsers):
             "For example: --clusters norcal-prod,nova-prod",
             required=True,
         ).completer = lazy_choices_completer(list_clusters)
-        status_parser.add_argument(
-            '--allow-multiple-services', dest="allow_multiple_services",
-            action='store_true', default=False,
-            help="Allow the command to affect multiple services",
-        )
 
         status_parser.add_argument(
             '-d', '--soa-dir',
@@ -189,17 +184,14 @@ def paasta_start_or_stop(args, desired_state):
                 paasta_print("    Service %s:" % service)
                 paasta_print("        Instances %s" % ",".join(instances))
 
-        if args.allow_multiple_services:
-            paasta_print(PaastaColors.red("    --allow-multiple-services specified, continuing anyways"))
+        if sys.stdin.isatty():
+            confirm = choice.Binary('Are you sure you want to continue?', False).ask()
         else:
-            if sys.stdin.isatty():
-                confirm = choice.Binary('Are you sure you want to continue?', False).ask()
-            else:
-                confirm = False
-            if not confirm:
-                paasta_print("    please specify --allow-multiple-services for this command to take affect")
-                paasta_print("    exiting")
-                return 1
+            confirm = False
+        if not confirm:
+            paasta_print()
+            paasta_print("exiting")
+            return 1
 
     invalid_deploy_groups = []
     marathon_message_printed, chronos_message_printed = False, False
