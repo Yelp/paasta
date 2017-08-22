@@ -360,7 +360,7 @@ def get_filters(args):
         owners = args.owner.split(',')
 
         filters.append(
-            # If the instance owner is None, check the server owner, else check the instance owner
+            # If the instance owner is None, check the service owner, else check the instance owner
             lambda conf: get_team(
                 overrides={},
                 service=conf.get_service(),
