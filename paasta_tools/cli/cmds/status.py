@@ -28,11 +28,13 @@ from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_teams
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
+from paasta_tools.marathon_tools import get_team
 from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -87,6 +89,10 @@ def add_subparser(subparsers):
             'If specified together with --instances and/or --clusters, will show common instances only.'
         ),
     ).completer = lazy_choices_completer(list_deploy_groups)
+    status_parser.add_argument(
+        '-o', '--owner',
+        help='Team to filter instances by.',
+    ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -331,7 +337,7 @@ def get_filters(args):
     :param args: args object
     :returns: list of functions that take an instance config and returns if the instance conf matches the filter
     """
-    if args.service is None:
+    if args.service is None and args.owner is None:
         service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
         service = args.service
@@ -349,6 +355,18 @@ def get_filters(args):
 
     if args.deploy_group:
         filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
+
+    if args.owner:
+        owners = args.owner.split(',')
+
+        filters.append(
+            # If the instance owner is None, check the server owner, else check the instance owner
+            lambda conf: get_team(
+                overrides={},
+                service=conf.get_service(),
+                soa_dir=args.soa_dir,
+            ) in owners if conf.get_instance_owner() is None else conf.get_instance_owner() in owners,
+        )
 
     return filters
 

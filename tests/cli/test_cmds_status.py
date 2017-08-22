@@ -739,3 +739,52 @@ def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instanc
         call("  east"),
         call("  west"),
     ])
+
+
+@patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
+@patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
+@patch('paasta_tools.cli.cmds.status.get_instances_by_owners', autospec=True)
+def test_status_with_owner(
+        mock_get_instances_by_owners, mock_report_status,
+        mock_load_system_paasta_config, mock_get_actual_deployments,
+        mock_figure_out_service_name, mock_list_services,
+        mock_get_instance_configs_for_service, capfd,
+):
+    fake_system_paasta_config = utils.SystemPaastaConfig({}, '/fake/config')
+    mock_load_system_paasta_config.return_value = fake_system_paasta_config
+    mock_list_services.return_value = ['fakeservice', 'otherservice']
+    cluster = 'fake_cluster'
+    mock_inst_1 = make_fake_instance_conf(cluster, 'fakeservice', 'instance1')
+    mock_inst_2 = make_fake_instance_conf(cluster, 'otherservice', 'instance3')
+    mock_get_instance_configs_for_service.return_value = [
+        mock_inst_1,
+        mock_inst_2,
+    ]
+
+    mock_get_actual_deployments.return_value = {
+        'fakeservice.instance1': 'sha1',
+        'fakeservice.instance2': 'sha2',
+        'otherservice.instance3': 'sha3',
+        'otherservice.instance1': 'sha4',
+    }
+    mock_get_instances_by_owners.return_value = {cluster: {
+        'fakeservice': ['instance1', 'instance2'],
+        'otherservice': ['instance3', 'instance4'],
+    }}
+    mock_report_status.return_value = 0
+
+    args = MagicMock()
+    args.service = None
+    args.instances = None
+    args.clusters = None
+    args.deploy_group = None
+    args.owner = 'faketeam'
+    args.soa_dir = '/fake/soa/dir'
+    return_value = paasta_status(args)
+
+    assert return_value == 0
+    assert mock_report_status.call_count == 2

@@ -27,6 +27,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_teams
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -68,6 +69,10 @@ def add_subparser(subparsers):
                 'If specified together with --instances and/or --clusters, will %s common instances only.' % lower
             ),
         ).completer = lazy_choices_completer(list_deploy_groups)
+        status_parser.add_argument(
+            '-o', '--owner',
+            help='Team to filter instances by.',
+        ).lazy_choices_completer(list_teams)
         status_parser.add_argument(
             '-c', '--clusters',
             help="A comma-separated list of clusters to view. "
