@@ -1,3 +1,35 @@
+paasta-tools (0.66.35) xenial; urgency=low
+
+  * 0.66.35 tagged with 'make release'
+    Commit: Merge pull request #1475 from Yelp/hliu_bump_taskproc  bump
+    up task_processing sha
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Tue, 22 Aug 2017 13:54:42 -0700
+
+paasta-tools (0.66.35) xenial; urgency=low
+
+  * 0.66.35 tagged with 'make release'
+    Commit: Merge pull request #1475 from Yelp/hliu_bump_taskproc  bump
+    up task_processing sha
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Tue, 22 Aug 2017 13:41:50 -0700
+
+paasta-tools (0.66.35) xenial; urgency=low
+
+  * 0.66.35 tagged with 'make release'
+    Commit: Merge pull request #1475 from Yelp/hliu_bump_taskproc  bump
+    up task_processing sha
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Tue, 22 Aug 2017 13:40:38 -0700
+
+paasta-tools (0.66.35) xenial; urgency=low
+
+  * 0.66.35 tagged with 'make release'
+    Commit: Merge pull request #1475 from Yelp/hliu_bump_taskproc  bump
+    up task_processing sha
+
+ -- Sagar Sadashiv Patwardhan <sagarp@yelp.com>  Tue, 22 Aug 2017 13:39:30 -0700
+
 paasta-tools (0.66.34) xenial; urgency=medium
 
   * 0.66.34 tagged with 'make release'
