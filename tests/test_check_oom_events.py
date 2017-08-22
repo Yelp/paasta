@@ -1,13 +1,15 @@
 import time
 
 import pytest
+from mock import Mock
 from mock import patch
 from pysensu_yelp import Status
 
 from paasta_tools.check_oom_events import compose_sensu_status
 from paasta_tools.check_oom_events import latest_oom_events
 from paasta_tools.check_oom_events import main
-from paasta_tools.check_oom_events import oom_events
+from paasta_tools.check_oom_events import OOMEvent
+from paasta_tools.check_oom_events import read_oom_events_from_scribe
 
 
 @pytest.fixture
@@ -24,35 +26,38 @@ def scribereader_output():
     )
 
 
-def test_compose_sensu_status_ok():
-    assert compose_sensu_status(('service', 'instance'), []) \
-        == (Status.OK, 'oom-killer is calm.')
+@pytest.fixture
+def instance_config():
+    config = Mock()
+    config.instance = 'fake_instance'
+    config.service = 'fake_service'
+    return config
 
 
-def test_compose_sensu_status_1_process():
+def test_compose_sensu_status_ok(instance_config):
+    assert compose_sensu_status(instance_config, []) \
+        == (Status.OK, 'No oom events for fake_service.fake_instance in the last minute.')
+
+
+def test_compose_sensu_status_not_ok(instance_config):
     assert compose_sensu_status(
-        ('service', 'instance'),
-        [('hostname', 'container_id', 'proc_A')],
-    ) \
-        == (Status.CRITICAL, 'killing 1 process/min (proc_A).')
-
-
-def test_compose_sensu_status_more_than_1_process():
-    assert compose_sensu_status(
-        ('service', 'instance'), [
-            ('hostname1', 'container_id1', 'proc_A'),
-            ('hostname3', 'container_id3', 'proc_C'),
-            ('hostname2', 'container_id2', 'proc_B'),
-            ('hostname2', 'container_id2', ''),
+        instance_config, [
+            OOMEvent('hostname1', 'container_id1', 'proc_A'),
+            OOMEvent('hostname3', 'container_id3', 'proc_C'),
+            OOMEvent('hostname2', 'container_id2', 'proc_B'),
+            OOMEvent('hostname2', 'container_id2', ''),
         ],
-    ) == (Status.CRITICAL, 'killing 4 processes/min (proc_A,proc_B,proc_C).')
+    ) == (
+        Status.CRITICAL, 'The Out Of Memory killer killed 4 processes (proc_A,proc_B,proc_C)'
+                         ' in the last minute in fake_service.fake_instance containers.',
+    )
 
 
 @patch('paasta_tools.check_oom_events.scribereader', autospec=True)
-def test_oom_events(mock_scribereader, scribereader_output):
+def test_read_oom_events_from_scribe(mock_scribereader, scribereader_output):
     mock_scribereader.get_default_scribe_hosts.return_value = [{'host': '', 'port': ''}]
     mock_scribereader.get_stream_tailer.return_value = scribereader_output
-    assert len([x for x in oom_events('fake_cluster', 'fake_superregion')]) == 2
+    assert len([x for x in read_oom_events_from_scribe('fake_cluster', 'fake_superregion')]) == 2
 
 
 @patch('paasta_tools.check_oom_events.scribereader', autospec=True)
