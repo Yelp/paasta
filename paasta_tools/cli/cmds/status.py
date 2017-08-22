@@ -331,21 +331,21 @@ def get_filters(args):
     :param args: args object
     :returns: list of functions that take an instance config and returns if the instance conf matches the filter
     """
-    if not any([args.clusters, args.instances, args.deploy_group]):
+    if args.service is None:
         service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
         service = args.service
 
     filters = []
 
+    if service:
+        filters.append(lambda conf: conf.get_service() in service.split(','))
+
     if args.clusters:
         filters.append(lambda conf: conf.get_cluster() in args.clusters.split(','))
 
     if args.instances:
         filters.append(lambda conf: conf.get_instance() in args.instances.split(','))
-
-    if args.service:
-        filters.append(lambda conf: conf.get_service() in service.split(','))
 
     if args.deploy_group:
         filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
