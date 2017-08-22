@@ -72,7 +72,7 @@ def add_subparser(subparsers):
         status_parser.add_argument(
             '-o', '--owner',
             help='Team to filter instances by.',
-        ).lazy_choices_completer(list_teams)
+        ).completer = lazy_choices_completer(list_teams)
         status_parser.add_argument(
             '-c', '--clusters',
             help="A comma-separated list of clusters to view. "
