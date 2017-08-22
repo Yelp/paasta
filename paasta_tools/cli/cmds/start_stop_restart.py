@@ -14,15 +14,16 @@
 # limitations under the License.
 import datetime
 import socket
+import sys
+
+import choice
 
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
-from paasta_tools.cli.cmds.status import paasta_args_mixer
-from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_all_instances_for_service
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
@@ -31,6 +32,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -167,91 +169,74 @@ def print_chronos_message(desired_state):
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
     soa_dir = args.soa_dir
-    service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
-    pargs = paasta_args_mixer(args, service)
-    if pargs is None:
+    pargs = apply_args_filters(args)
+    if len(pargs) == 0:
         return 1
 
-    instances = pargs.instance_whitelist if pargs.instance_whitelist else None
-    # assert that each of the clusters that the user specifies are 'valid'
-    # for the instance list provided; that is, assert that at least one of the instances
-    # provided in the -i argument is deployed there.
-    # if there are no instances defined in the args, then assert that the service
-    # is deployed to that cluster.
-    # If args.clusters is falsey, then default to *all* clusters that a service is deployed to,
-    # and we figure out which ones are needed for each service later.
-    if instances:
-        instance_clusters = [list_clusters(service, soa_dir, instance) for instance in instances]
-        valid_clusters = sorted(list({cluster for cluster_list in instance_clusters for cluster in cluster_list}))
-    else:
-        valid_clusters = list_clusters(service, soa_dir)
+    affected_services = {s for service_list in pargs.values() for s in service_list.keys()}
+    if len(affected_services) > 1:
+        paasta_print(PaastaColors.red("Warning: trying to start/stop/restart multiple services:"))
 
-    if pargs.cluster_whitelist:
-        clusters = pargs.cluster_whitelist
-        invalid_clusters = [cluster for cluster in clusters if cluster not in valid_clusters]
-        if invalid_clusters:
-            paasta_print(
-                "Invalid cluster name(s) specified: %s." % " ".join(invalid_clusters),
-                "Valid options: %s" % " ".join(valid_clusters),
-            )
+        for cluster, services_instances in pargs.items():
+            paasta_print("Cluster %s:" % cluster)
+            for service, instances in services_instances.items():
+                paasta_print("    Service %s:" % service)
+                paasta_print("        Instances %s" % ",".join(instances))
+
+        if sys.stdin.isatty():
+            confirm = choice.Binary('Are you sure you want to continue?', False).ask()
+        else:
+            confirm = False
+        if not confirm:
+            paasta_print()
+            paasta_print("exiting")
             return 1
-    else:
-        clusters = valid_clusters
-
-    try:
-        remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
-    except remote_git.LSRemoteException as e:
-        msg = (
-            "Error talking to the git server: %s\n"
-            "This PaaSTA command requires access to the git server to operate.\n"
-            "The git server may be down or not reachable from here.\n"
-            "Try again from somewhere where the git server can be reached, "
-            "like your developer environment."
-        ) % str(e)
-        paasta_print(msg)
-        return 1
 
     invalid_deploy_groups = []
     marathon_message_printed, chronos_message_printed = False, False
-    for cluster in clusters:
-        # If they haven't specified what instances to act on, do it for all of them.
-        # If they have specified what instances, only iterate over them if they're
-        # actually within this cluster.
-        if instances is None:
-            cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
-            paasta_print("no instances specified; restarting all instances for service")
-        else:
-            all_cluster_instances = list_all_instances_for_service(service, clusters=[cluster], soa_dir=soa_dir)
-            cluster_instances = all_cluster_instances.intersection(set(instances))
+    for cluster, services_instances in pargs.items():
+        for service, instances in services_instances.items():
+            try:
+                remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
+            except remote_git.LSRemoteException as e:
+                msg = (
+                    "Error talking to the git server: %s\n"
+                    "This PaaSTA command requires access to the git server to operate.\n"
+                    "The git server may be down or not reachable from here.\n"
+                    "Try again from somewhere where the git server can be reached, "
+                    "like your developer environment."
+                ) % str(e)
+                paasta_print(msg)
+                return 1
 
-        for instance in cluster_instances:
-            service_config = get_instance_config(
-                service=service,
-                cluster=cluster,
-                instance=instance,
-                soa_dir=soa_dir,
-                load_deployments=False,
-            )
-            deploy_group = service_config.get_deploy_group()
-            (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
-
-            if deploy_tag not in remote_refs:
-                invalid_deploy_groups.append(deploy_group)
-            else:
-                force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-                if isinstance(service_config, MarathonServiceConfig) and not marathon_message_printed:
-                    print_marathon_message(desired_state)
-                    marathon_message_printed = True
-                elif isinstance(service_config, ChronosJobConfig) and not chronos_message_printed:
-                    print_chronos_message(desired_state)
-                    chronos_message_printed = True
-
-                issue_state_change_for_service(
-                    service_config=service_config,
-                    force_bounce=force_bounce,
-                    desired_state=desired_state,
+            for instance in instances:
+                service_config = get_instance_config(
+                    service=service,
+                    cluster=cluster,
+                    instance=instance,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
                 )
+                deploy_group = service_config.get_deploy_group()
+                (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+
+                if deploy_tag not in remote_refs:
+                    invalid_deploy_groups.append(deploy_group)
+                else:
+                    force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+                    if isinstance(service_config, MarathonServiceConfig) and not marathon_message_printed:
+                        print_marathon_message(desired_state)
+                        marathon_message_printed = True
+                    elif isinstance(service_config, ChronosJobConfig) and not chronos_message_printed:
+                        print_chronos_message(desired_state)
+                        chronos_message_printed = True
+
+                    issue_state_change_for_service(
+                        service_config=service_config,
+                        force_bounce=force_bounce,
+                        desired_state=desired_state,
+                    )
 
     return_val = 0
     if invalid_deploy_groups:

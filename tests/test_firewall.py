@@ -128,6 +128,7 @@ def mock_service_config():
             {'smartstack': 'example_happyhour.main'},
             {'cidr': '169.229.226.0/24'},
             {'cidr': '8.8.8.8', 'port': 53},
+            {'cidr': '8.8.4.4', 'port': '1024:65535'},
         ]
         mock_instance_config.return_value.get_outbound_firewall.return_value = 'monitor'
 
@@ -230,6 +231,24 @@ def test_service_group_rules_monitor(mock_service_config, service_group):
                 ('udp', (('dport', ('53',)),)),
             ),
         ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.4.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.4.4/32:1024:65535',)),)),
+                ('tcp', (('dport', ('1024:65535',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.4.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.4.4/32:1024:65535',)),)),
+                ('udp', (('dport', ('1024:65535',)),)),
+            ),
+        ),
     )
 
 
@@ -310,6 +329,24 @@ def test_service_group_rules_block(mock_service_config, service_group):
             matches=(
                 ('comment', (('comment', ('allow 8.8.8.8/32:53',)),)),
                 ('udp', (('dport', ('53',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='tcp',
+            target='ACCEPT',
+            dst='8.8.4.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.4.4/32:1024:65535',)),)),
+                ('tcp', (('dport', ('1024:65535',)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol='udp',
+            target='ACCEPT',
+            dst='8.8.4.4/255.255.255.255',
+            matches=(
+                ('comment', (('comment', ('allow 8.8.4.4/32:1024:65535',)),)),
+                ('udp', (('dport', ('1024:65535',)),)),
             ),
         ),
     )

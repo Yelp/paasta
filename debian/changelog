@@ -1,3 +1,19 @@
+paasta-tools (0.66.34) xenial; urgency=medium
+
+  * 0.66.34 tagged with 'make release'
+    Commit: Merge pull request #1470 from Yelp/u/ddelnano/allow-github-
+    remotes  Remove validation that prevents github remotes
+
+ -- Domenic Del Nano <ddelnano@yelp.com>  Mon, 21 Aug 2017 07:25:17 -0700
+
+paasta-tools (0.66.33) xenial; urgency=medium
+
+  * 0.66.33 tagged with 'make release'
+    Commit: Merge pull request #1467 from chriskuehl/allow-cidr-port-
+    ranges  Allow port ranges for CIDR rules
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Fri, 18 Aug 2017 14:55:49 -0700
+
 paasta-tools (0.66.32) xenial; urgency=medium
 
   * 0.66.32 tagged with 'make release'

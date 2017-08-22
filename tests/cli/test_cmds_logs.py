@@ -334,7 +334,7 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
 
 
 def test_parse_marathon_log_line_fail():
-    assert '' == logs.parse_marathon_log_line("fake timestamp", None, None)
+    assert '' == logs.parse_marathon_log_line(b"fake timestamp", None, None)
 
 
 def test_parse_marathon_log_line_ok():
@@ -353,11 +353,11 @@ def test_parse_marathon_log_line_ok():
         'level': 'event',
         'message': line,
     })
-    assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(expected)
+    assert sorted(logs.parse_marathon_log_line(line.encode(), clusters, fake_service)) == sorted(expected)
 
 
 def test_parse_chronos_log_line_fail():
-    assert '' == logs.parse_chronos_log_line("fake timestamp", None, None)
+    assert '' == logs.parse_chronos_log_line(b"fake timestamp", None, None)
 
 
 def test_parse_chronos_log_line_ok():
@@ -376,7 +376,7 @@ def test_parse_chronos_log_line_ok():
         'level': 'event',
         'message': line,
     })
-    assert sorted(logs.parse_chronos_log_line(line, clusters, fake_service)) == sorted(expected)
+    assert sorted(logs.parse_chronos_log_line(line.encode(), clusters, fake_service)) == sorted(expected)
 
 
 @pytest.mark.skipif(not scribereader_available, reason='scribereader not available')  # pragma: no cover (yelpy)
@@ -669,7 +669,7 @@ def test_scribereader_print_last_n_logs():
 
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_iter = mock.MagicMock()
-        fake_iter.__iter__.return_value = ["""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+        fake_iter.__iter__.return_value = [b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
                                            "level":"debug","message":"testing",
                                            "timestamp":"2016-06-08T06:31:52.706609135Z"}"""] * 100
         mock_scribereader.get_stream_tailer.return_value = fake_iter
@@ -708,7 +708,7 @@ def test_scribereader_print_logs_by_time():
 
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_iter = mock.MagicMock()
-        fake_iter.__iter__.return_value = ["""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+        fake_iter.__iter__.return_value = [b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
                                            "level":"debug","message":"testing",
                                            "timestamp":"2016-06-08T06:31:52.706609135Z"}"""] * 100
         mock_scribereader.get_stream_tailer.return_value = fake_iter
