@@ -76,7 +76,7 @@ def test_status_arg_service_not_found(
     expected_output = str(error) + "\n"
 
     args = MagicMock()
-    args.service = False
+    args.service = None
     args.owner = None
     args.clusters = None
     args.instances = None
