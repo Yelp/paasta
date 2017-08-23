@@ -211,6 +211,7 @@ def report_status_for_cluster(
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     paasta_print()
+    paasta_print("service: %s" % service)
     paasta_print("cluster: %s" % cluster)
     seen_instances = []
     deployed_instances = []
