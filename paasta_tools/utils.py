@@ -21,7 +21,6 @@ import hashlib
 import io
 import json
 import logging
-import math
 import os
 import pwd
 import queue
@@ -165,16 +164,6 @@ class InstanceConfig(object):
         mem = self.config_dict.get('mem', 1024)
         return mem
 
-    def get_mem_swap(self):
-        """Gets the memory-swap value. This value is passed to the docker
-        container to ensure that the total memory limit (memory + swap) is the
-        same value as the 'mem' key in soa-configs. Note - this value *has* to
-        be >= to the mem key, so we always round up to the closest MB.
-        """
-        mem = self.get_mem()
-        mem_swap = int(math.ceil(mem))
-        return "%sm" % mem_swap
-
     def get_cpus(self):
         """Gets the number of cpus required from the service's configuration.
 
@@ -246,7 +235,6 @@ class InstanceConfig(object):
         :param with_labels: Whether to build docker parameters with or without labels
         :returns: A list of parameters to be added to docker run"""
         parameters = [
-            {"key": "memory-swap", "value": self.get_mem_swap()},
             {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
             {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
         ]

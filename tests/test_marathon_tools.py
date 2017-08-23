@@ -908,7 +908,6 @@ class TestMarathonTools:
                         },
                     ],
                     'parameters': [
-                        {'key': 'memory-swap', 'value': "%sm" % int(fake_mem)},
                         {"key": "cpu-period", "value": "%s" % int(fake_period)},
                         {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
                         {"key": "label", "value": "paasta_service=can_you_dig_it"},
@@ -2020,7 +2019,6 @@ def test_format_marathon_app_dict_no_smartstack():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
@@ -2091,7 +2089,6 @@ def test_format_marathon_app_dict_with_smartstack():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
@@ -2229,7 +2226,6 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
