@@ -1,3 +1,11 @@
+paasta-tools (0.66.36) xenial; urgency=medium
+
+  * 0.66.36 tagged with 'make release'
+    Commit: Merge pull request #1474 from Yelp/status-by-owner_2  Status
+    by owner, round 2
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 23 Aug 2017 08:51:23 -0700
+
 paasta-tools (0.66.35) xenial; urgency=low
 
   * 0.66.35 tagged with 'make release'
