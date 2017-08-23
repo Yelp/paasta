@@ -39,7 +39,7 @@ def make_fake_instance_conf(cluster, service, instance, deploy_group=None, team=
     conf.get_service.return_value = service
     conf.get_instance.return_value = instance
     conf.get_deploy_group.return_value = deploy_group
-    conf.get_instance_owner.return_value = team
+    conf.get_team.return_value = team
     return conf
 
 

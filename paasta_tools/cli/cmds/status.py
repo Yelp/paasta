@@ -365,7 +365,7 @@ def get_filters(args):
                 overrides={},
                 service=conf.get_service(),
                 soa_dir=args.soa_dir,
-            ) in owners if conf.get_instance_owner() is None else conf.get_instance_owner() in owners,
+            ) in owners if conf.get_team() is None else conf.get_team() in owners,
         )
 
     return filters

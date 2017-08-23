@@ -153,7 +153,7 @@ class InstanceConfig(object):
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
 
-    def get_instance_owner(self):
+    def get_team(self):
         return self.config_dict.get('monitoring', {}).get('team', None)
 
     def get_mem(self):
