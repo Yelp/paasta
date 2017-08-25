@@ -904,7 +904,6 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.format_docker_parameters() == [
-            {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "100000"},
             {"key": "cpu-quota", "value": "1000000"},
             {"key": "label", "value": "paasta_service=fake_name"},
@@ -930,7 +929,6 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.format_docker_parameters() == [
-            {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
             {"key": "label", "value": "paasta_service=fake_name"},
@@ -950,30 +948,6 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.get_cpu_quota() == 200000
-
-    def test_get_mem_swap_int(self):
-        fake_conf = utils.InstanceConfig(
-            service='',
-            instance='',
-            cluster='',
-            config_dict={
-                'mem': 50,
-            },
-            branch_dict={},
-        )
-        assert fake_conf.get_mem_swap() == "50m"
-
-    def test_get_mem_swap_float_rounds_up(self):
-        fake_conf = utils.InstanceConfig(
-            service='',
-            instance='',
-            cluster='',
-            config_dict={
-                'mem': 50.4,
-            },
-            branch_dict={},
-        )
-        assert fake_conf.get_mem_swap() == "51m"
 
     def test_get_disk_in_config(self):
         fake_conf = utils.InstanceConfig(
