@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import difflib
 import os
 import sys
@@ -22,6 +23,7 @@ from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
 from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.cli.cmds.remote_run import paasta_remote_run
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -266,7 +268,24 @@ def report_status_for_cluster(
                 for line in status.rstrip().split('\n'):
                     paasta_print('    %s' % line)
 
-    paasta_print(report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance'))
+            paasta_print('Remote runs:')
+            remote_run_args = argparse.Namespace(
+                action='list',
+                service=service,
+                cluster=cluster,
+                instance=','.join(deployed_instances),
+                verbose=True,
+            )
+            paasta_remote_run(
+                remote_run_args,
+                system_paasta_config=system_paasta_config,
+            )
+
+    report_invalid = report_invalid_whitelist_values(
+        instance_whitelist, seen_instances, 'instance',
+    )
+    if report_invalid != '':
+        paasta_print(report_invalid)
 
     return return_code
 
@@ -405,7 +424,7 @@ def apply_args_filters(args):
 
 
 def paasta_status(args):
-    """Print the status of a Yelp service running on PaaSTA.
+    """Print the status of a service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
 

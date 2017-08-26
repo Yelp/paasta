@@ -177,23 +177,24 @@ def add_subparser(subparsers):
     main_parser.set_defaults(command=paasta_remote_run)
 
 
-def paasta_remote_run(args):
-    try:
-        system_paasta_config = load_system_paasta_config()
-    except PaastaNotConfiguredError:
-        paasta_print(
-            PaastaColors.yellow(
-                "Warning: Couldn't load config files from '/etc/paasta'. This "
-                "indicates PaaSTA is not configured locally on this host, and "
-                "remote-run may not behave the same way it would behave on a "
-                "server configured for PaaSTA.",
-            ),
-            sep='\n',
-        )
-        system_paasta_config = SystemPaastaConfig(
-            {"volumes": []},
-            '/etc/paasta',
-        )
+def paasta_remote_run(args, system_paasta_config=None):
+    if system_paasta_config is None:
+        try:
+            system_paasta_config = load_system_paasta_config()
+        except PaastaNotConfiguredError:
+            paasta_print(
+                PaastaColors.yellow(
+                    "Warning: Couldn't load config files from '/etc/paasta'. This "
+                    "indicates PaaSTA is not configured locally on this host, and "
+                    "remote-run may not behave the same way it would behave on a "
+                    "server configured for PaaSTA.",
+                ),
+                sep='\n',
+            )
+            system_paasta_config = SystemPaastaConfig(
+                {"volumes": []},
+                '/etc/paasta',
+            )
 
     cmd_parts = ['/usr/bin/paasta_remote_run', args.action]
     args_vars = vars(args)

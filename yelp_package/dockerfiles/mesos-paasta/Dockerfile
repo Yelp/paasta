@@ -20,6 +20,7 @@ ADD requirements.txt requirements-dev.txt /paasta/
 RUN pip install virtualenv==15.1.0
 RUN virtualenv /venv -ppython3.6
 ENV PATH=/venv/bin:$PATH
+RUN pip install -r /paasta/requirements.txt
 RUN pip install -r /paasta/requirements-dev.txt
 
 ADD ./yelp_package/dockerfiles/mesos-paasta/cron.d /etc/cron.d
