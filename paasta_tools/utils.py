@@ -169,10 +169,11 @@ class InstanceConfig(object):
         """Gets the memory-swap value. This value is passed to the docker
         container to ensure that the total memory limit (memory + swap) is the
         same value as the 'mem' key in soa-configs. Note - this value *has* to
-        be >= to the mem key, so we always round up to the closest MB.
+        be >= to the mem key, so we always round up to the closest MB and add
+        additional 64MB for the docker executor (See PAASTA-12450).
         """
         mem = self.get_mem()
-        mem_swap = int(math.ceil(mem))
+        mem_swap = int(math.ceil(mem + 64))
         return "%sm" % mem_swap
 
     def get_cpus(self):
