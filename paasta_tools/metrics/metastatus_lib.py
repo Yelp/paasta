@@ -14,6 +14,7 @@
 # limitations under the License.
 import copy
 import itertools
+import math
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
@@ -33,8 +34,12 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
 
+class ResourceInfo(namedtuple('ResourceInfo', ['cpus', 'mem', 'disk', 'gpus'])):
+    def __new__(cls, cpus, mem, disk, gpus=0):
+        return super().__new__(cls, cpus, mem, disk, gpus)
+
+
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
-ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
 
 EXPECTED_HEALTHY_FRAMEWORKS = 2
@@ -78,8 +83,20 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
+def get_mesos_gpu_status(metrics):
+    """Takes in the mesos metrics and analyzes them, returning gpus status.
+
+    :param metrics: mesos metrics dictionary
+    :returns: Tuple of the output array and is_ok bool
+    """
+    total = metrics['master/gpus_total']
+    used = metrics['master/gpus_used']
+    available = total - used
+    return total, used, available
+
+
 def filter_mesos_state_metrics(dictionary):
-    valid_keys = ['cpus', 'mem', 'disk']
+    valid_keys = ['cpus', 'mem', 'disk', 'gpus']
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
@@ -205,6 +222,33 @@ def assert_disk_health(metrics, mesos_state, threshold=10):
         )
 
 
+def assert_gpu_health(metrics, threshold=0):
+    total, used, available = get_mesos_gpu_status(metrics)
+
+    if math.isclose(total, 0):
+        # assume that no gpus is healthy since most machines don't have them
+        return HealthCheckResult(
+            message="No gpus found from mesos!",
+            healthy=True,
+        )
+    else:
+        perc_used = percent_used(total, used)
+
+    if check_threshold(perc_used, threshold):
+        # only whole gpus can be used
+        return HealthCheckResult(
+            message="GPUs: %d / %d in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True,
+        )
+    else:
+        return HealthCheckResult(
+            message="CRITICAL: Less than %d%% GPUs available. (Currently using %.2f%% of %d)"
+            % (threshold, perc_used, total),
+            healthy=False,
+        )
+
+
 def assert_tasks_running(metrics):
     running = metrics['master/tasks_running']
     staging = metrics['master/tasks_staging']
@@ -215,7 +259,7 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_no_duplicate_frameworks(state):
+def assert_no_duplicate_frameworks(state, frameworks_list):
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
@@ -230,7 +274,9 @@ def assert_no_duplicate_frameworks(state):
         indicating if there are any duplicate frameworks.
     """
     frameworks = state['frameworks']
-    framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))
+    framework_counts = OrderedDict(
+        sorted(Counter([fw['name'] for fw in frameworks if fw['name'] in frameworks_list]).items()),
+    )
     output = ["Frameworks:"]
     ok = True
 
@@ -245,6 +291,28 @@ def assert_no_duplicate_frameworks(state):
         message=("\n").join(output),
         healthy=ok,
     )
+
+
+def assert_frameworks_exist(state, expected):
+    frameworks = [f['name'] for f in state['frameworks']]
+    not_found = []
+    ok = True
+
+    for f in expected:
+        if f not in frameworks:
+            ok = False
+            not_found.append(f)
+
+    if ok:
+        return HealthCheckResult(
+            message="all expected frameworks found",
+            healthy=ok,
+        )
+    else:
+        return HealthCheckResult(
+            message="CRITICAL: framework(s) %s not found" % ', '.join(not_found),
+            healthy=ok,
+        )
 
 
 def assert_slave_health(metrics):
@@ -383,11 +451,13 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
             cpus=resource_free_dict['cpus'],
             disk=resource_free_dict['disk'],
             mem=resource_free_dict['mem'],
+            gpus=resource_free_dict.get('gpus', 0),
         ),
         "total": ResourceInfo(
             cpus=resource_total_dict['cpus'],
             disk=resource_total_dict['disk'],
             mem=resource_total_dict['mem'],
+            gpus=resource_total_dict.get('gpus', 0),
         ),
         "slave_count": len(slaves),
     }
@@ -491,6 +561,7 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
         assert_cpu_health(mesos_metrics, mesos_state),
         assert_memory_health(mesos_metrics, mesos_state),
         assert_disk_health(mesos_metrics, mesos_state),
+        assert_gpu_health(mesos_metrics),
         assert_tasks_running(mesos_metrics),
         assert_slave_health(mesos_metrics),
     ]
@@ -510,7 +581,7 @@ def get_mesos_state_status(mesos_state):
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
     :returns: a list of HealthCheckResult tuples
     """
-    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state)]
+    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state, ['marathon', 'chronos'])]
 
 
 def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
@@ -555,7 +626,8 @@ def assert_chronos_scheduled_jobs(client):
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=True)
+    healthy = num_jobs != 0
+    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=healthy)
 
 
 def assert_chronos_queued_jobs(client):
@@ -665,7 +737,7 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
         utilization_perc = 100
     else:
         utilization_perc = utilization / float(healthcheck_utilization_pair[1].total) * 100
-    if humanize and healthcheck_utilization_pair[1].metric != 'cpus':
+    if humanize and healthcheck_utilization_pair[1].metric not in ['cpus', 'gpus']:
         return color_func('%s/%s (%.2f%%)' % (
             naturalsize(utilization * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),

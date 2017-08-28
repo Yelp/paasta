@@ -55,6 +55,8 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: paasta metastatus verbose succeeds
     Given a working paasta cluster
      When we create a trivial marathon app
+      And we create a trivial chronos job called "testjob"
+      And we wait for the chronos job stored as "testjob" to appear in the job list
      Then paasta_metastatus -v exits with return code "0" and output " "
      Then paasta_metastatus -vv exits with return code "0" and output " "
      Then paasta_metastatus -vvv exits with return code "0" and output "Hostname"

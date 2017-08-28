@@ -61,7 +61,7 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
 
     assert(resp.status_int == 200)
     assert(len(body) == 1)
-    assert(set(body[0].keys()) == {"disk", "mem", "groupings", "cpus"})
+    assert(set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"})
 
 
 mock_mesos_state = {

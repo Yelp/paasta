@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,10 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# It is imperative that this file not contain any imports from our
-# dependencies. Since this file is imported from setup.py in the
-# setup phase, the dependencies may not exist on disk yet.
-#
-# Don't bump version manually. See `make release` docs in ./Makefile
-__version__ = '0.66.36'
+import sys
+
+from paasta_tools.metrics.metastatus_lib import assert_quorum_size
+from paasta_tools.utils import paasta_print
+
+
+def check_mesos_quorum():
+    result = assert_quorum_size()
+    if result.healthy:
+        paasta_print("OK: " + result.message)
+        sys.exit(0)
+    else:
+        paasta_print(result.message)
+        sys.exit(2)
+
+
+if __name__ == '__main__':
+    check_mesos_quorum()

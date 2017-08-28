@@ -2,6 +2,9 @@ version: '2'
 volumes:
   ssh-data: {}
 services:
+  zookeeper:
+    # we need to create /mesos-testcluster/autoscaling for deployd to start up correctly...
+    command: "bash -c '/usr/share/zookeeper/bin/zkServer.sh start-foreground & sleep 5 && /usr/share/zookeeper/bin/zkCli.sh create /mesos-testcluster/autoscaling \"\" & while true; do sleep 100; done'"
   mesosbase:
     build: ../yelp_package/dockerfiles/itest/mesos/
   mesosmaster:
@@ -10,7 +13,6 @@ services:
       dockerfile: ./yelp_package/dockerfiles/mesos-paasta/Dockerfile
     ports:
       - '5050:5050'
-      - '5054:5054'
       - 22
     depends_on:
       - mesosbase
@@ -64,6 +66,7 @@ services:
       - mesosslave
       - marathon
       - dynamodb
+      - paasta_api
   chronos:
     ports:
       - '8081:8081'
@@ -84,3 +87,12 @@ services:
     image: deangiberson/aws-dynamodb-local
     ports:
         - '8000:8000'
+  paasta_api:
+    command: bash -c 'pip install -e /work && while true; do pserve /work/paasta_tools/api/development.ini --reload; echo "RESTARTING API..."; sleep 5; done'
+    ports:
+      - '5054:5054'
+    volumes:
+      - ../:/work:rw
+      - nail-etc:/nail/etc
+      - ./paasta:/etc/paasta:rw
+      - ./example-services:/nail/etc/services:rw

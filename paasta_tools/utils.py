@@ -174,7 +174,6 @@ InstanceConfigDict = TypedDict(
         'args': List[str],
         'cfs_period_us': float,
         'cpu_burst_pct': float,
-        'shm_size': str,
         'ulimit': Dict[str, Dict[str, Any]],
         'cap_add': List,
         'env': Dict[str, str],
@@ -190,6 +189,8 @@ InstanceConfigDict = TypedDict(
         'constraints': List[Constraint],
         'extra_constraints': List[Constraint],
         'net': str,
+        'extra_docker_args': Dict[str, str],
+        'gpus': float,
     },
     total=False,
 )
@@ -259,6 +260,9 @@ class InstanceConfig(object):
     def get_deploy_group(self) -> str:
         return self.config_dict.get('deploy_group', self.get_branch())
 
+    def get_team(self) -> str:
+        return self.config_dict.get('monitoring', {}).get('team', None)
+
     def get_mem(self) -> float:
         """Gets the memory required from the service's configuration.
 
@@ -272,10 +276,11 @@ class InstanceConfig(object):
         """Gets the memory-swap value. This value is passed to the docker
         container to ensure that the total memory limit (memory + swap) is the
         same value as the 'mem' key in soa-configs. Note - this value *has* to
-        be >= to the mem key, so we always round up to the closest MB.
+        be >= to the mem key, so we always round up to the closest MB and add
+        additional 64MB for the docker executor (See PAASTA-12450).
         """
         mem = self.get_mem()
-        mem_swap = int(math.ceil(mem))
+        mem_swap = int(math.ceil(mem + 64))
         return "%sm" % mem_swap
 
     def get_cpus(self) -> float:
@@ -305,10 +310,8 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_shm_size(self) -> str:
-        """Get's the shm_size to pass to docker
-        See --shm-size in the docker docs"""
-        return self.config_dict.get('shm_size', None)
+    def get_extra_docker_args(self) -> Dict[str, str]:
+        return self.config_dict.get('extra_docker_args', {})
 
     def get_ulimit(self) -> Iterable[DockerParameter]:
         """Get the --ulimit options to be passed to docker
@@ -360,11 +363,12 @@ class InstanceConfig(object):
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
             ])
-        shm = self.get_shm_size()
-        if shm:
-            parameters.extend([
-                {"key": "shm-size", "value": "%s" % shm},
-            ])
+        extra_docker_args = self.get_extra_docker_args()
+        if extra_docker_args:
+            for key, value in extra_docker_args.items():
+                parameters.extend([
+                    {"key": key, "value": value},
+                ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
@@ -377,6 +381,15 @@ class InstanceConfig(object):
         :returns: The amount of disk space specified by the config, 1024 if not specified"""
         disk = self.config_dict.get('disk', default)
         return disk
+
+    def get_gpus(self, default: float=0) -> float:
+        """Gets the number of gpus required from the service's configuration.
+
+        Default to 0 if no value is specified in the config.
+
+        :returns: The number of gpus specified by the config, 0 if not specified"""
+        gpus = self.config_dict.get('gpus', default)
+        return gpus
 
     def get_cmd(self) -> Optional[str]:
         """Get the docker cmd specified in the service's configuration.
@@ -517,6 +530,12 @@ class InstanceConfig(object):
         if disk is not None:
             if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
+        return True, ''
+
+    def check_gpus(self) -> Tuple[bool, str]:
+        gpus = self.get_gpus()
+        if gpus is not None and not isinstance(gpus, (float, int)):
+            return False, 'The specified gpus value "%s" is not a valid float or int.' % gpus
         return True, ''
 
     def check_security(self) -> Tuple[bool, str]:
@@ -1304,8 +1323,8 @@ SystemPaastaConfigDict = TypedDict(
         'expected_slave_attributes': ExpectedSlaveAttributes,
         'security_check_command': str,
         'deployd_number_workers': int,
-        'deployd_big_bounce_rate': int,
-        'deployd_startup_bounce_rate': int,
+        'deployd_big_bounce_rate': float,
+        'deployd_startup_bounce_rate': float,
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
     },
@@ -1579,20 +1598,22 @@ class SystemPaastaConfig(object):
         """
         return self.config_dict.get("deployd_number_workers", 4)
 
-    def get_deployd_big_bounce_rate(self) -> int:
+    def get_deployd_big_bounce_rate(self) -> float:
         """Get the number of deploys to do per minute when deployd starts
         or determines it needs to bounce all services
 
-        :return: integer
+        :return: float
         """
-        return self.config_dict.get("deployd_big_bounce_rate", 2)
 
-    def get_deployd_startup_bounce_rate(self) -> int:
+        return float(self.config_dict.get("deployd_big_bounce_rate", .1))
+
+    def get_deployd_startup_bounce_rate(self) -> float:
         """Get the number of deploys to do per minute when deployd starts
 
-        :return: integer
+        :return: float
         """
-        return self.config_dict.get("deployd_startup_bounce_rate", 5)
+
+        return float(self.config_dict.get("deployd_startup_bounce_rate", .1))
 
     def get_deployd_log_level(self) -> str:
         """Get the log level for paasta-deployd

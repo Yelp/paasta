@@ -906,7 +906,7 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.format_docker_parameters() == [
-            {"key": "memory-swap", "value": '1024m'},
+            {"key": "memory-swap", "value": '1088m'},
             {"key": "cpu-period", "value": "100000"},
             {"key": "cpu-quota", "value": "1000000"},
             {"key": "label", "value": "paasta_service=fake_name"},
@@ -932,7 +932,7 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.format_docker_parameters() == [
-            {"key": "memory-swap", "value": '1024m'},
+            {"key": "memory-swap", "value": '1088m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},
             {"key": "label", "value": "paasta_service=fake_name"},
@@ -963,7 +963,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        assert fake_conf.get_mem_swap() == "50m"
+        assert fake_conf.get_mem_swap() == "114m"
 
     def test_get_mem_swap_float_rounds_up(self):
         fake_conf = utils.InstanceConfig(
@@ -975,7 +975,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        assert fake_conf.get_mem_swap() == "51m"
+        assert fake_conf.get_mem_swap() == "115m"
 
     def test_get_disk_in_config(self):
         fake_conf = utils.InstanceConfig(
@@ -996,6 +996,26 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.get_disk() == 1024
+
+    def test_get_gpus_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={'gpus': -123},
+            branch_dict={},
+        )
+        assert fake_conf.get_gpus() == -123
+
+    def test_get_gpus_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_gpus() == 0
 
     def test_get_ulimit_in_config(self):
         fake_conf = utils.InstanceConfig(

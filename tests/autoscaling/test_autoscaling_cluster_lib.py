@@ -916,9 +916,82 @@ class TestClusterAutoscaler(unittest.TestCase):
             )
             mock_get_mesos_task_count_by_slave.return_value = [{'task_counts': mock_slave_2}]
             self.autoscaler.resource = {'type': 'aws_spot_fleet_request', 'sfr': {'SpotFleetRequestState': 'active'}}
+            self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             mock_filtered_slaves = mock.Mock()
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
             mock_sfr_sorted_slaves_2 = [mock_slave_2]
+
+            # test we kill only one instance on scale down and then reach capacity
+            mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
+            self.autoscaler.downscale_aws_resource(
+                filtered_slaves=mock_filtered_slaves,
+                current_capacity=5,
+                target_capacity=4,
+            )
+            assert mock_gracefully_terminate_slave.call_count == 1
+
+            mock_gracefully_terminate_slave.reset_mock()
+            # test we always kill one SFR instance at least to stop getting wedged
+            mock_slave_1 = mock.Mock(
+                hostname='host1',
+                instance_id='i-blah123',
+                task_counts=mock_task_counts,
+                instance_weight=0.3,
+            )
+            mock_slave_2 = mock.Mock(
+                hostname='host2',
+                instance_id='i-blah456',
+                task_counts=mock_task_counts,
+                instance_weight=2,
+            )
+            mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
+            self.autoscaler.downscale_aws_resource(
+                filtered_slaves=mock_filtered_slaves,
+                current_capacity=5,
+                target_capacity=4,
+            )
+            assert mock_gracefully_terminate_slave.call_count == 1
+
+            mock_gracefully_terminate_slave.reset_mock()
+            # but not if it takes us to setting 0 capacity
+            mock_slave_1 = mock.Mock(
+                hostname='host1',
+                instance_id='i-blah123',
+                task_counts=mock_task_counts,
+                instance_weight=1.1,
+            )
+            mock_slave_2 = mock.Mock(
+                hostname='host2',
+                instance_id='i-blah456',
+                task_counts=mock_task_counts,
+                instance_weight=2,
+            )
+            mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
+            self.autoscaler.downscale_aws_resource(
+                filtered_slaves=mock_filtered_slaves,
+                current_capacity=2,
+                target_capacity=1,
+            )
+            assert not mock_gracefully_terminate_slave.called
+
+            mock_gracefully_terminate_slave.reset_mock()
+            # unless this is a cancelled SFR in which case we can go to 0
+            self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled'}
+            self.autoscaler.downscale_aws_resource(
+                filtered_slaves=mock_filtered_slaves,
+                current_capacity=2,
+                target_capacity=1,
+            )
+            assert mock_gracefully_terminate_slave.call_count == 1
+
+            mock_gracefully_terminate_slave.reset_mock()
+            # test stop if FailSetSpotCapacity
+            mock_slave_1 = mock.Mock(
+                hostname='host1',
+                instance_id='i-blah123',
+                task_counts=mock_task_counts,
+                instance_weight=1,
+            )
             mock_terminate_call_1 = mock.call(
                 self.autoscaler,
                 slave_to_kill=mock_slave_1,
@@ -938,17 +1011,6 @@ class TestClusterAutoscaler(unittest.TestCase):
                 current_capacity=5,
                 new_capacity=3,
             )
-
-            # test we kill only one instance on scale down and then reach capacity
-            mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
-            self.autoscaler.downscale_aws_resource(
-                filtered_slaves=mock_filtered_slaves,
-                current_capacity=5,
-                target_capacity=4,
-            )
-            assert mock_gracefully_terminate_slave.call_count == 1
-
-            # test stop if FailSetSpotCapacity
             mock_gracefully_terminate_slave.side_effect = autoscaling_cluster_lib.FailSetResourceCapacity
             mock_sfr_sorted_slaves_1 = [mock_slave_2, mock_slave_1]
             mock_sfr_sorted_slaves_2 = [mock_slave_2]

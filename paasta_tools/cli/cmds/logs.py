@@ -286,6 +286,7 @@ def extract_utc_timestamp_from_log_line(line):
 
 
 def parse_marathon_log_line(line, clusters, service):
+    line = line.decode('utf-8')
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''
@@ -302,6 +303,7 @@ def parse_marathon_log_line(line, clusters, service):
 
 
 def parse_chronos_log_line(line, clusters, service):
+    line = line.decode('utf-8')
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''

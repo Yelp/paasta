@@ -14,12 +14,10 @@
 from mock import ANY
 from mock import MagicMock
 from mock import patch
-from pytest import raises
 
 from paasta_tools.cli.cmds.generate_pipeline import generate_pipeline
 from paasta_tools.cli.cmds.generate_pipeline import get_git_repo_for_fab_repo
 from paasta_tools.cli.cmds.generate_pipeline import paasta_generate_pipeline
-from paasta_tools.cli.cmds.generate_pipeline import validate_git_url_for_fab_repo
 from paasta_tools.cli.utils import NoSuchService
 
 
@@ -168,17 +166,3 @@ def test_get_git_repo_for_fab_repo_handles_services(mock_get_git_url):
     mock_get_git_url.return_value = 'git@git.yelpcorp.com:services/fake_service'
     actual = get_git_repo_for_fab_repo('unused', '/fake/soa/dir')
     assert actual == 'services/fake_service'
-
-
-def test_validate_git_url_for_fab_repo_happy():
-    good_git_url = 'git@git.yelpcorp.com:foobar'
-    actual = validate_git_url_for_fab_repo(good_git_url)
-    assert actual is True
-
-
-def test_validate_git_url_for_fab_repo_invalid():
-    bad_git_url = 'git@github.com:foobar'
-    with raises(NotImplementedError) as exc:
-        validate_git_url_for_fab_repo(bad_git_url)
-    assert 'cannot currently handle' in str(exc.value)
-    assert bad_git_url in str(exc.value)

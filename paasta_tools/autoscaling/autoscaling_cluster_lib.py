@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import math
 import os
 import time
 from collections import namedtuple
@@ -213,10 +214,13 @@ class ClusterAutoscaler(ResourceLogMixin):
         self.log.debug(region_pool_utilization_dict)
         free_pool_resources = region_pool_utilization_dict['free']
         total_pool_resources = region_pool_utilization_dict['total']
-        utilization = 1.0 - min([
-            float(float(pair[0]) / float(pair[1]))
-            for pair in zip(free_pool_resources, total_pool_resources)
-        ])
+        free_percs = []
+        for pair in zip(free_pool_resources, total_pool_resources):
+            free, total = pair[0], pair[1]
+            if math.isclose(total, 0):
+                continue
+            free_percs.append(float(free) / float(total))
+        utilization = 1.0 - min(free_percs)
         target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
         return utilization - target_utilization
 
@@ -465,6 +469,13 @@ class ClusterAutoscaler(ResourceLogMixin):
                         "This is a SFR so we must kill at least one slave to prevent the autoscaler "
                         "getting stuck whilst scaling down gradually",
                     )
+                    if new_capacity < 1 and self.sfr['SpotFleetRequestState'] == 'active':
+                        self.log.info(
+                            "Can't set target capacity to less than 1 for SFRs. No further "
+                            "action for this SFR",
+
+                        )
+                        break
                 else:
                     break
             try:
