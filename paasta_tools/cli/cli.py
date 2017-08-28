@@ -80,7 +80,9 @@ def get_argparser():
         ),
     )
 
-    subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
+    subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help", dest='command')
+    subparsers.required = True
+
     # Adding a separate help subparser allows us to respont to "help" without --help
     help_parser = subparsers.add_parser('help', add_help=False)
     help_parser.set_defaults(command=None)

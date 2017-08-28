@@ -1,9 +1,14 @@
 opt/venvs/paasta-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
 opt/venvs/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_services
 opt/venvs/paasta-tools/bin/check_capacity.py usr/bin/check_capacity
+opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_jobs
 opt/venvs/paasta-tools/bin/check_classic_service_replication.py usr/bin/check_classic_service_replication
+opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
+opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks
+opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
+opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 opt/venvs/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
 opt/venvs/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services

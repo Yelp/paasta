@@ -24,6 +24,7 @@ import logging
 import math
 import os
 import pwd
+import queue
 import re
 import shlex
 import signal
@@ -42,7 +43,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import six
 import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -153,6 +153,9 @@ class InstanceConfig(object):
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
 
+    def get_team(self):
+        return self.config_dict.get('monitoring', {}).get('team', None)
+
     def get_mem(self):
         """Gets the memory required from the service's configuration.
 
@@ -166,10 +169,11 @@ class InstanceConfig(object):
         """Gets the memory-swap value. This value is passed to the docker
         container to ensure that the total memory limit (memory + swap) is the
         same value as the 'mem' key in soa-configs. Note - this value *has* to
-        be >= to the mem key, so we always round up to the closest MB.
+        be >= to the mem key, so we always round up to the closest MB and add
+        additional 64MB for the docker executor (See PAASTA-12450).
         """
         mem = self.get_mem()
-        mem_swap = int(math.ceil(mem))
+        mem_swap = int(math.ceil(mem + 64))
         return "%sm" % mem_swap
 
     def get_cpus(self):
@@ -199,10 +203,8 @@ class InstanceConfig(object):
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_shm_size(self):
-        """Get's the shm_size to pass to docker
-        See --shm-size in the docker docs"""
-        return self.config_dict.get('shm_size', None)
+    def get_extra_docker_args(self):
+        return self.config_dict.get('extra_docker_args', {})
 
     def get_ulimit(self):
         """Get the --ulimit options to be passed to docker
@@ -254,11 +256,12 @@ class InstanceConfig(object):
                 {"key": "label", "value": "paasta_service=%s" % self.service},
                 {"key": "label", "value": "paasta_instance=%s" % self.instance},
             ])
-        shm = self.get_shm_size()
-        if shm:
-            parameters.extend([
-                {"key": "shm-size", "value": "%s" % shm},
-            ])
+        extra_docker_args = self.get_extra_docker_args()
+        if extra_docker_args:
+            for key, value in extra_docker_args.items():
+                parameters.extend([
+                    {"key": key, "value": value},
+                ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         return parameters
@@ -271,6 +274,15 @@ class InstanceConfig(object):
         :returns: The amount of disk space specified by the config, 1024 if not specified"""
         disk = self.config_dict.get('disk', default)
         return disk
+
+    def get_gpus(self, default=0):
+        """Gets the number of gpus required from the service's configuration.
+
+        Default to 0 if no value is specified in the config.
+
+        :returns: The number of gpus specified by the config, 0 if not specified"""
+        gpus = self.config_dict.get('gpus', default)
+        return gpus
 
     def get_cmd(self):
         """Get the docker cmd specified in the service's configuration.
@@ -408,6 +420,12 @@ class InstanceConfig(object):
         if disk is not None:
             if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
+        return True, ''
+
+    def check_gpus(self):
+        gpus = self.get_gpus()
+        if gpus is not None and not isinstance(gpus, (float, int)):
+            return False, 'The specified gpus value "%s" is not a valid float or int.' % gpus
         return True, ''
 
     def check_security(self):
@@ -828,7 +846,7 @@ def _log(*args, **kwargs):
 
 
 class LogWriter(object):
-    def log(self, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
         raise NotImplementedError()
 
 
@@ -1146,6 +1164,15 @@ class SystemPaastaConfig(dict):
         """
         return self.get('deployd_maintenance_polling_frequency', 30)
 
+    def get_deployd_startup_oracle_enabled(self):
+        """This controls whether deployd will add all services that need a bounce on
+        startup. Generally this is desirable behaviour. If you are performing a bounce
+        of *all* services you will want to disable this.
+
+        :returns: A boolean
+        """
+        return self.get('deployd_startup_oracle_enabled', True)
+
     def get_sensu_host(self):
         """Get the host that we should send sensu events to.
 
@@ -1266,16 +1293,16 @@ class SystemPaastaConfig(dict):
         """Get the number of deploys to do per minute when deployd starts
         or determines it needs to bounce all services
 
-        :return: integer
+        :return: float
         """
-        return self.get("deployd_big_bounce_rate", 2)
+        return float(self.get("deployd_big_bounce_rate", .1))
 
     def get_deployd_startup_bounce_rate(self):
         """Get the number of deploys to do per minute when deployd starts
 
-        :return: integer
+        :return: float
         """
-        return self.get("deployd_startup_bounce_rate", 5)
+        return float(self.get("deployd_startup_bounce_rate", .1))
 
     def get_deployd_log_level(self):
         """Get the log level for paasta-deployd
@@ -1884,7 +1911,7 @@ def format_table(rows, min_spacing=2):
     :returns: A string containing rows formatted as a table.
     """
 
-    list_rows = [r for r in rows if not isinstance(r, six.string_types)]
+    list_rows = [r for r in rows if not isinstance(r, str)]
 
     # If all of the rows are strings, we have nothing to do, so short-circuit.
     if not list_rows:
@@ -2031,10 +2058,10 @@ def prompt_pick_one(sequence, choosing):
 def to_bytes(obj):
     if isinstance(obj, bytes):
         return obj
-    elif isinstance(obj, six.text_type):
+    elif isinstance(obj, str):
         return obj.encode('UTF-8')
     else:
-        return six.text_type(obj).encode('UTF-8')
+        return str(obj).encode('UTF-8')
 
 
 def paasta_print(*args, **kwargs):
@@ -2073,7 +2100,7 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME), use_signals=True
 class _Timeout(object):
     def __init__(self, function, seconds, error_message):
         self.seconds = seconds
-        self.control = six.moves.queue.Queue()
+        self.control = queue.Queue()
         self.function = function
         self.error_message = error_message
 
@@ -2105,6 +2132,6 @@ class _Timeout(object):
                 if ret[0]:
                     return ret[1]
                 else:
-                    exc_info = ret[1]
-                    six.reraise(*exc_info)
+                    _, e, tb = ret[1]
+                    raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)

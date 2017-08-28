@@ -154,7 +154,8 @@ def main(argv=None):
                 mesos_state,
             )
             all_rows = [[
-                grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)', 'Agent count',
+                grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)',
+                'GPU (used/total)', 'Agent count',
             ]]
             table_rows = []
             for attribute_value, resource_info_dict in resource_info_dict.items():
@@ -198,7 +199,7 @@ def main(argv=None):
                 lambda slave: slave['hostname'],
                 mesos_state,
             )
-            all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)']]
+            all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)', 'GPU (used/total)']]
 
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave

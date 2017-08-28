@@ -42,8 +42,7 @@ import json
 import logging
 import os
 import re
-
-import six
+from collections import defaultdict
 
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -82,13 +81,9 @@ def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None):
         ]
     else:
         instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
-    cluster_map = {}
+    cluster_map = defaultdict(lambda: defaultdict(list))
     for instance_config in instances:
-        try:
-            cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
-        except KeyError:
-            cluster_map[instance_config.get_cluster()] = {'instances': []}
-            cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
+        cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
     return cluster_map
 
 
@@ -233,7 +228,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     except KeyError:
         deploy_group_mappings = {}
         for deploy_group, image in deployments_dict.items():
-            if isinstance(image, six.string_types):
+            if isinstance(image, str):
                 deploy_group_mappings[deploy_group] = {
                     'docker_image': image,
                     'desired_state': 'start',

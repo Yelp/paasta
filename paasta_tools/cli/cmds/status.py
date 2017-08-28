@@ -15,7 +15,7 @@
 import difflib
 import os
 import sys
-from collections import namedtuple
+from collections import defaultdict
 from distutils.util import strtobool
 
 from bravado.exception import HTTPError
@@ -24,17 +24,19 @@ from service_configuration_lib import read_deploy
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_teams
 from paasta_tools.cli.utils import PaastaCheckMessages
-from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
@@ -87,6 +89,10 @@ def add_subparser(subparsers):
             'If specified together with --instances and/or --clusters, will show common instances only.'
         ),
     ).completer = lazy_choices_completer(list_deploy_groups)
+    status_parser.add_argument(
+        '-o', '--owner',
+        help='Team to filter instances by.',
+    ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -211,6 +217,7 @@ def report_status_for_cluster(
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     paasta_print()
+    paasta_print("service: %s" % service)
     paasta_print("cluster: %s" % cluster)
     seen_instances = []
     deployed_instances = []
@@ -270,6 +277,8 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     """
     return_string = ""
     bogus_entries = []
+    if whitelist is None:
+        return
     for entry in whitelist:
         if entry not in items:
             bogus_entries.append(entry)
@@ -281,35 +290,10 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def report_status(
-    service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
-    system_paasta_config, verbose=0, use_api_endpoint=False,
-):
-
-    deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
-    return_codes = [
-        report_status_for_cluster(
-            service=service,
-            cluster=cluster,
-            deploy_pipeline=deploy_pipeline,
-            actual_deployments=actual_deployments,
-            instance_whitelist=instance_whitelist,
-            system_paasta_config=system_paasta_config,
-            verbose=verbose,
-            use_api_endpoint=use_api_endpoint,
-        )
-        for cluster in deployed_clusters
-        if not cluster_whitelist or cluster in cluster_whitelist
-    ]
-
-    paasta_print(report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster'))
-    return 0 if all([return_code == 0 for return_code in return_codes]) else 1
-
-
 def verify_instances(args_instances, service, clusters):
     """Verify that a list of instances specified by user is correct for this service.
 
-    :param args_instances: a comma separated string containig a list of instances.
+    :param args_instances: a list of instances.
     :param service: the service name
     :param cluster: a list of clusters
     :returns: a list of instances specified in args_instances without any exclusions.
@@ -323,6 +307,7 @@ def verify_instances(args_instances, service, clusters):
         suggestions = []
         for instance in misspelled_instances:
             suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
+        suggestions = list(set(suggestions))
 
         if clusters:
             message = (
@@ -347,81 +332,108 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def paasta_args_mixer(args, service):
-    if args.deploy_group is None:
-        cluster_whitelist = args.clusters.split(",") if args.clusters is not None else []
-        if args.instances is not None:
-            instance_whitelist = verify_instances(args.instances, service, cluster_whitelist)
-        else:
-            instance_whitelist = []
+def get_filters(args):
+    """Figures out which filters to apply from an args object, and returns them
+
+    :param args: args object
+    :returns: list of functions that take an instance config and returns if the instance conf matches the filter
+    """
+    if args.service is None and args.owner is None:
+        service = figure_out_service_name(args, soa_dir=args.soa_dir)
     else:
-        clusters_instances = get_cluster_instance_map_for_service(
-            soa_dir=args.soa_dir,
-            service=service,
-            deploy_group=args.deploy_group,
+        service = args.service
+
+    filters = []
+
+    if service:
+        filters.append(lambda conf: conf.get_service() in service.split(','))
+
+    if args.clusters:
+        filters.append(lambda conf: conf.get_cluster() in args.clusters.split(','))
+
+    if args.instances:
+        filters.append(lambda conf: conf.get_instance() in args.instances.split(','))
+
+    if args.deploy_group:
+        filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
+
+    if args.owner:
+        owners = args.owner.split(',')
+
+        filters.append(
+            # If the instance owner is None, check the service owner, else check the instance owner
+            lambda conf: get_team(
+                overrides={},
+                service=conf.get_service(),
+                soa_dir=args.soa_dir,
+            ) in owners if conf.get_team() is None else conf.get_team() in owners,
         )
-        cluster_whitelist = list(
-            (set(args.clusters.split(",")) & set(clusters_instances))
-            if args.clusters is not None else clusters_instances,
-        )
 
-        diff = set(cluster_whitelist) - set(clusters_instances)
-        if (args.clusters is not None and not cluster_whitelist) or diff:
-            paasta_print("The %s deploy_group doesn't have any instances of %s on %s." %
-                         (args.deploy_group, service, ', '.join(diff) or args.clusters))
-            return None
+    return filters
 
-        instances_set = set()
-        for cluster in cluster_whitelist:
-            for instance in clusters_instances[cluster].get('instances', []):
-                instances_set.add(instance)
 
-        instance_whitelist = list(
-            set(args.instances.split(",")) & instances_set
-            if args.instances is not None else instances_set,
-        )
+def apply_args_filters(args):
+    """
+    Take an args object and returns the dict of cluster:service:instances
+    Currently, will filter by clusters, instances, services, and deploy_groups
+    If no instances are found, will print a message and try to find matching instances
+    for each service
 
-        diff = set(instance_whitelist) - instances_set
-        if (args.instances is not None and not instance_whitelist) or diff:
-            paasta_print("The %s deploy_group doesn't have any instances of %s matching %s." %
-                         (args.deploy_group, service, ', '.join(diff) or args.instances))
-            return None
+    :param args: args object containing attributes to filter by
+    :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
+    """
+    clusters_services_instances = defaultdict(lambda: defaultdict(set))
 
-    PaastaArgs = namedtuple('PaastaArgs', ['cluster_whitelist', 'instance_whitelist'])
-    return PaastaArgs(
-        cluster_whitelist=cluster_whitelist,
-        instance_whitelist=instance_whitelist,
-    )
+    filters = get_filters(args)
+
+    i_count = 0
+    for service in list_services(soa_dir=args.soa_dir):
+        for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
+            if all([f(instance_conf) for f in filters]):
+                clusters_services_instances[instance_conf.get_cluster()][service].add(instance_conf.get_instance())
+                i_count += 1
+
+    if i_count == 0 and args.service and args.instances:
+        if args.clusters:
+            clusters = args.clusters.split(',')
+        else:
+            clusters = list_clusters()
+        for service in args.service.split(','):
+            verify_instances(args.instances, service, clusters)
+
+    return clusters_services_instances
 
 
 def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
-    service = figure_out_service_name(args, soa_dir)
-    actual_deployments = get_actual_deployments(service, soa_dir)
+
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
     else:
         use_api_endpoint = False
 
-    pargs = paasta_args_mixer(args, service)
-    if pargs is None:
-        return 1
+    return_codes = [0]
+    clusters_services_instances = apply_args_filters(args)
+    for cluster, service_instances in clusters_services_instances.items():
+        for service, instances in service_instances.items():
+            actual_deployments = get_actual_deployments(service, soa_dir)
+            if actual_deployments:
+                deploy_pipeline = list(get_planned_deployments(service, soa_dir))
+                return_code = report_status_for_cluster(
+                    service=service,
+                    cluster=cluster,
+                    deploy_pipeline=deploy_pipeline,
+                    actual_deployments=actual_deployments,
+                    instance_whitelist=instances,
+                    system_paasta_config=load_system_paasta_config(),
+                    verbose=args.verbose,
+                    use_api_endpoint=use_api_endpoint,
+                )
+                return_codes.append(return_code)
+            else:
+                paasta_print(missing_deployments_message(service))
+                return_codes.append(1)
 
-    if actual_deployments:
-        deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-        return_code = report_status(
-            service=service,
-            deploy_pipeline=deploy_pipeline,
-            actual_deployments=actual_deployments,
-            cluster_whitelist=pargs.cluster_whitelist,
-            instance_whitelist=pargs.instance_whitelist,
-            system_paasta_config=load_system_paasta_config(),
-            verbose=args.verbose,
-            use_api_endpoint=use_api_endpoint,
-        )
-        return return_code
-    else:
-        paasta_print(missing_deployments_message(service))
-        return 1
+    return max(return_codes)

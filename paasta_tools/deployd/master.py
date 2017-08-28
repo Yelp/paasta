@@ -5,9 +5,9 @@ import logging.handlers
 import socket
 import sys
 import time
+from queue import Empty
 
 import service_configuration_lib
-from six.moves.queue import Empty
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import get_marathon_client_from_config
@@ -170,7 +170,8 @@ class DeployDaemon(PaastaThread):
         self.log.info("All watchers started, now adding all services for initial bounce")
         self.add_all_services()
         self.log.info("Prioritising services that we know need a bounce...")
-        self.prioritise_bouncing_services()
+        if self.config.get_deployd_startup_oracle_enabled():
+            self.prioritise_bouncing_services()
         self.log.info("Starting worker threads")
         self.start_workers()
         self.started = True

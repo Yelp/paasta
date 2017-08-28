@@ -61,7 +61,7 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
 
     assert(resp.status_int == 200)
     assert(len(body) == 1)
-    assert(set(body[0].keys()) == {"disk", "mem", "groupings", "cpus"})
+    assert(set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"})
 
 
 mock_mesos_state = {
@@ -74,7 +74,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'default', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar1',
@@ -84,7 +84,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'default', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'foo2',
@@ -94,7 +94,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar2',
@@ -104,7 +104,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'foo3',
@@ -114,7 +114,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
         {
             'id': 'bar2',
@@ -124,7 +124,7 @@ mock_mesos_state = {
                 'mem': 50,
             },
             'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': [],
+            'reserved_resources': {},
         },
     ],
     'frameworks': [

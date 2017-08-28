@@ -31,7 +31,6 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
 
-monkey.patch_all()
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +101,7 @@ def setup_paasta_api():
 
 
 def main(argv=None):
+    monkey.patch_all()
     args = parse_paasta_api_args()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)

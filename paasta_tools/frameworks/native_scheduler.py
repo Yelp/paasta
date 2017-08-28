@@ -7,7 +7,6 @@ import random
 import threading
 import time
 import uuid
-from threading import Timer
 
 import service_configuration_lib
 from addict import Dict
@@ -20,9 +19,11 @@ from paasta_tools import mesos_tools
 from paasta_tools.frameworks.constraints import check_offer_constraints
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
+from paasta_tools.frameworks.task_store import ZKTaskStore
+from paasta_tools.utils import _log
+from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import paasta_print
 
 log = logging.getLogger(__name__)
 
@@ -47,26 +48,6 @@ class ConstraintFailAllTasksError(Exception):
     pass
 
 
-class MesosTaskParameters(object):
-    def __init__(
-        self,
-        health=None,
-        mesos_task_state=None,
-        is_draining=False,
-        is_healthy=False,
-        staging_timer=None,
-        offer=None,
-    ):
-        self.health = health
-        self.mesos_task_state = mesos_task_state
-
-        self.is_draining = is_draining
-        self.is_healthy = is_healthy
-        self.offer = offer
-        self.marked_for_gc = False
-        self.staging_timer = staging_timer
-
-
 class NativeScheduler(Scheduler):
     def __init__(
         self, service_name, instance_name, cluster,
@@ -74,6 +55,7 @@ class NativeScheduler(Scheduler):
         soa_dir=DEFAULT_SOA_DIR, service_config=None, reconcile_backoff=30,
         instance_type='paasta_native', service_config_overrides=None,
         reconcile_start_time=float('inf'),
+        task_store_type=ZKTaskStore,
     ):
         self.service_name = service_name
         self.instance_name = instance_name
@@ -81,7 +63,11 @@ class NativeScheduler(Scheduler):
         self.cluster = cluster
         self.system_paasta_config = system_paasta_config
         self.soa_dir = soa_dir
-        self.tasks_with_flags = {}
+
+        # This will be initialized in registered().
+        self.task_store = None
+        self.task_store_type = task_store_type
+
         self.service_config_overrides = service_config_overrides or {}
         self.constraint_state = {}
         self.constraint_state_lock = threading.Lock()
@@ -99,8 +85,8 @@ class NativeScheduler(Scheduler):
         # Gets set when registered() is called
         self.framework_id = None
 
-        self.blacklisted_slaves = set()
-        self.blacklisted_slaves_lock = threading.Lock()
+        # agent_id -> unix timestamp of when we blacklisted it
+        self.blacklisted_slaves = {}
         self.blacklist_timeout = 3600
 
         if service_config is not None:
@@ -112,19 +98,35 @@ class NativeScheduler(Scheduler):
         else:
             self.load_config()
 
+    def log(self, line, level=DEFAULT_LOGLEVEL):
+        _log(
+            service=self.service_name,
+            instance=self.instance_name,
+            component='deploy',
+            line=line,
+            level=level,
+        )
+
     def shutdown(self, driver):
         # TODO: this is naive, as it does nothing to stop on-going calls
         #       to statusUpdate or resourceOffers.
-        paasta_print("Freezing the scheduler. Further status updates and resource offers are ignored.")
+        self.log("Freezing the scheduler. Further status updates and resource offers are ignored.")
         self.frozen = True
-        paasta_print("Killing any remaining live tasks.")
-        for task, parameters in self.tasks_with_flags.items():
+        self.log("Killing any remaining live tasks.")
+        for task, parameters in self.task_store.get_all_tasks().items():
             if parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
     def registered(self, driver, frameworkId, masterInfo):
         self.framework_id = frameworkId.value
-        paasta_print("Registered with framework ID %s" % frameworkId.value)
+        self.log("Registered with framework ID %s" % frameworkId.value)
+
+        self.task_store = self.task_store_type(
+            service_name=self.service_name,
+            instance_name=self.instance_name,
+            framework_id=self.framework_id,
+            system_paasta_config=self.system_paasta_config,
+        )
 
         self.reconcile_start_time = time.time()
         driver.reconcileTasks([])
@@ -137,7 +139,7 @@ class NativeScheduler(Scheduler):
             return
 
         if self.within_reconcile_backoff():
-            paasta_print("Declining all offers since we started reconciliation too recently")
+            self.log("Declining all offers since we started reconciliation too recently")
             for offer in offers:
                 driver.declineOffer(offer.id)
         else:
@@ -167,27 +169,19 @@ class NativeScheduler(Scheduler):
                         driver.launchTasks([offer.id], tasks)
 
                         for task in tasks:
-                            staging_timer = self.staging_timer_for_task(
-                                self.staging_timeout,
-                                driver,
+                            self.task_store.add_task_if_doesnt_exist(
                                 task.task_id.value,
+                                health=None,
+                                mesos_task_state=TASK_STAGING,
+                                offer=offer,
+                                resources=task.resources,
                             )
-                            self.tasks_with_flags.setdefault(
-                                task.task_id.value,
-                                MesosTaskParameters(
-                                    health=None,
-                                    mesos_task_state=TASK_STAGING,
-                                    offer=offer,
-                                    staging_timer=staging_timer,
-                                ),
-                            )
-                            staging_timer.start()
                         launched_tasks.extend(tasks)
                         self.constraint_state = new_state
                     else:
                         driver.declineOffer(offer.id)
                 except ConstraintFailAllTasksError:
-                    paasta_print("Offer failed constraints for every task, rejecting 60s")
+                    self.log("Offer failed constraints for every task, rejecting 60s")
                     filters = Dict(refuse_seconds=60)
                     driver.declineOffer(offer.id, filters)
         return launched_tasks
@@ -221,34 +215,27 @@ class NativeScheduler(Scheduler):
 
         return num_have < self.service_config.get_desired_instances()
 
-    def get_new_tasks(self, name, tasks):
-        return set(filter(
-            lambda tid:
-                self.is_task_new(name, tid) and
-                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks,
-        ))
+    def get_new_tasks(self, name, tasks_with_params):
+        return {
+            tid: params for tid, params in tasks_with_params.items() if (
+                self.is_task_new(name, tid) and (params.mesos_task_state in LIVE_TASK_STATES)
+            )
+        }
 
-    def get_old_tasks(self, name, tasks):
-        return set(filter(
-            lambda tid:
-                not(self.is_task_new(name, tid)) and
-                self.tasks_with_flags[tid].mesos_task_state in LIVE_TASK_STATES,
-            tasks,
-        ))
+    def get_old_tasks(self, name, tasks_with_params):
+        return {
+            tid: params for tid, params in tasks_with_params.items() if (
+                (not self.is_task_new(name, tid)) and (params.mesos_task_state in LIVE_TASK_STATES)
+            )
+        }
 
     def is_task_new(self, name, tid):
         return tid.startswith("%s." % name)
 
     def log_and_kill(self, driver, task_id):
         log.critical('Task stuck launching for %ss, assuming to have failed. Killing task.' % self.staging_timeout)
-        self.blacklist_slave(self.tasks_with_flags[task_id].offer.agent_id.value)
+        self.blacklist_slave(self.task_store.get_task(task_id).offer.agent_id.value)
         self.kill_task(driver, task_id)
-
-    def staging_timer_for_task(self, timeout_value, driver, task_id):
-        timer = Timer(timeout_value, lambda: self.log_and_kill(driver, task_id))
-        timer.daemon = True
-        return timer
 
     def tasks_and_state_for_offer(self, driver, offer, state):
         """Returns collection of tasks that can fit inside an offer."""
@@ -279,7 +266,7 @@ class NativeScheduler(Scheduler):
         new_constraint_state = copy.deepcopy(state)
         total = 0
         failed_constraints = 0
-        while self.need_more_tasks(base_task.name, self.tasks_with_flags, tasks):
+        while self.need_more_tasks(base_task.name, self.task_store.get_all_tasks(), tasks):
             total += 1
 
             if not(
@@ -344,6 +331,7 @@ class NativeScheduler(Scheduler):
 
         self.load_config()
         self.kill_tasks_if_necessary(driver)
+        self.check_blacklisted_slaves_for_timeout()
 
     def statusUpdate(self, driver, update):
         if self.frozen:
@@ -351,24 +339,18 @@ class NativeScheduler(Scheduler):
 
         # update tasks
         task_id = update.task_id.value
-        paasta_print('Task {} is in state {}'.format(
-            task_id, update.state,
-        ))
+        self.log(
+            'Task {} is in state {}'.format(
+                task_id, update.state,
+            ),
+        )
 
-        task_params = self.tasks_with_flags.setdefault(task_id, MesosTaskParameters(health=None))
-        task_params.mesos_task_state = update.state
-
-        for task, params in list(self.tasks_with_flags.items()):
-            if params.marked_for_gc:
-                self.tasks_with_flags.pop(task)
-
-        if task_params.mesos_task_state is not TASK_STAGING:
-            if self.tasks_with_flags[task_id].staging_timer:
-                self.tasks_with_flags[task_id].staging_timer.cancel()
-                self.tasks_with_flags[task_id].staging_timer = None
+        task_params = self.task_store.update_task(
+            task_id,
+            mesos_task_state=update.state,
+        )
 
         if task_params.mesos_task_state not in LIVE_TASK_STATES:
-            task_params.marked_for_gc = True
             with self.constraint_state_lock:
                 update_constraint_state(
                     task_params.offer, self.constraints,
@@ -378,11 +360,11 @@ class NativeScheduler(Scheduler):
         driver.acknowledgeStatusUpdate(update)
         self.kill_tasks_if_necessary(driver)
 
-    def make_healthiness_sorter(self, base_task_name):
+    def make_healthiness_sorter(self, base_task_name, all_tasks_with_params):
         def healthiness_score(task_id):
             """Return a tuple that can be used as a key for sorting, that expresses our desire to keep this task around.
             Higher values (things that sort later) are more desirable."""
-            params = self.tasks_with_flags[task_id]
+            params = all_tasks_with_params[task_id]
 
             state_score = {
                 TASK_KILLING: 0,
@@ -405,68 +387,94 @@ class NativeScheduler(Scheduler):
     def kill_tasks_if_necessary(self, driver):
         base_task = self.service_config.base_task(self.system_paasta_config)
 
-        new_tasks = self.get_new_tasks(base_task.name, self.tasks_with_flags.keys())
-        happy_new_tasks = self.get_happy_tasks(new_tasks)
+        all_tasks_with_params = self.task_store.get_all_tasks()
+
+        new_tasks_with_params = self.get_new_tasks(base_task.name, all_tasks_with_params)
+        happy_new_tasks_with_params = self.get_happy_tasks(new_tasks_with_params)
 
         desired_instances = self.service_config.get_desired_instances()
         # this puts the most-desired tasks first. I would have left them in order of bad->good and used
         # new_tasks_by_desirability[:-desired_instances] instead, but list[:-0] is an empty list, rather than the full
         # list.
-        new_tasks_by_desirability = sorted(
-            list(new_tasks),
-            key=self.make_healthiness_sorter(base_task.name),
+        new_task_ids_by_desirability = sorted(
+            list(new_tasks_with_params.keys()),
+            key=self.make_healthiness_sorter(base_task.name, all_tasks_with_params),
             reverse=True,
         )
-        new_tasks_to_kill = new_tasks_by_desirability[desired_instances:]
+        new_task_ids_to_kill = new_task_ids_by_desirability[desired_instances:]
 
-        old_tasks = self.get_old_tasks(base_task.name, self.tasks_with_flags.keys())
-        old_happy_tasks = self.get_happy_tasks(old_tasks)
-        old_draining_tasks = self.get_draining_tasks(old_tasks)
-        old_unhappy_tasks = set(old_tasks) - set(old_happy_tasks) - set(old_draining_tasks)
+        old_tasks_with_params = self.get_old_tasks(base_task.name, all_tasks_with_params)
+        old_happy_tasks_with_params = self.get_happy_tasks(old_tasks_with_params)
+        old_draining_tasks_with_params = self.get_draining_tasks(old_tasks_with_params)
+
+        old_unhappy_task_ids = set(old_tasks_with_params.keys()) - set(old_happy_tasks_with_params.keys()) - \
+            set(old_draining_tasks_with_params)
 
         actions = bounce_lib.crossover_bounce(
             new_config={"instances": desired_instances},
             new_app_running=True,
-            happy_new_tasks=happy_new_tasks,
-            old_app_live_happy_tasks=self.group_tasks_by_version(old_happy_tasks + new_tasks_to_kill),
-            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_tasks),
+            happy_new_tasks=happy_new_tasks_with_params.keys(),
+            old_app_live_happy_tasks=self.group_tasks_by_version(
+                list(old_happy_tasks_with_params.keys()) + new_task_ids_to_kill,
+            ),
+            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_task_ids),
         )
 
-        for task in set(new_tasks) - set(actions['tasks_to_drain']):
+        for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
             self.undrain_task(task)
         for task in actions['tasks_to_drain']:
             self.drain_task(task)
 
-        for task, parameters in self.tasks_with_flags.items():
+        for task, parameters in all_tasks_with_params.items():
             if parameters.is_draining and \
-                    self.drain_method.is_safe_to_kill(DrainTask(id=task)) and \
+                    self.drain_method.is_safe_to_kill(self.make_drain_task(task)) and \
                     parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
 
-    def get_happy_tasks(self, tasks):
-        """Filter a list of tasks to those that are happy."""
-        happy_tasks = []
-        for task in tasks:
-            params = self.tasks_with_flags[task]
+    def get_happy_tasks(self, tasks_with_params):
+        """Filter a dictionary of tasks->params to those that are running and not draining."""
+        happy_tasks = {}
+        for tid, params in tasks_with_params.items():
             if params.mesos_task_state == TASK_RUNNING and not params.is_draining:
-                happy_tasks.append(task)
+                happy_tasks[tid] = params
         return happy_tasks
 
-    def get_draining_tasks(self, tasks):
-        """Filter a list of tasks to those that are draining."""
-        return [t for t, p in self.tasks_with_flags.items() if p.is_draining]
+    def get_draining_tasks(self, tasks_with_params):
+        """Filter a dictionary of tasks->params to those that are draining."""
+        return {t: p for t, p in tasks_with_params.items() if p.is_draining}
 
-    def undrain_task(self, task):
-        self.drain_method.stop_draining(DrainTask(id=task))
-        self.tasks_with_flags[task].is_draining = False
+    def make_drain_task(self, task_id):
+        """Return a DrainTask object, which is suitable for passing to drain methods."""
 
-    def drain_task(self, task):
-        self.drain_method.drain(DrainTask(id=task))
-        self.tasks_with_flags[task].is_draining = True
+        ports = []
 
-    def kill_task(self, driver, task):
-        driver.killTask(Dict(value=task))
-        self.tasks_with_flags[task].mesos_task_state = TASK_KILLING
+        params = self.task_store.get_task(task_id)
+        for resource in params.resources:
+            if resource['name'] == "ports":
+                for rg in resource['ranges']['range']:
+                    for port in range(rg['begin'], rg['end'] + 1):
+                        ports.append(port)
+
+        return DrainTask(
+            id=task_id,
+            host=params.offer['agent_id']['value'],
+            ports=ports,
+        )
+
+    def undrain_task(self, task_id):
+        self.log("Undraining task %s" % task_id)
+        self.drain_method.stop_draining(self.make_drain_task(task_id))
+        self.task_store.update_task(task_id, is_draining=False)
+
+    def drain_task(self, task_id):
+        self.log("Draining task %s" % task_id)
+        self.drain_method.drain(self.make_drain_task(task_id))
+        self.task_store.update_task(task_id, is_draining=True)
+
+    def kill_task(self, driver, task_id):
+        self.log("Killing task %s" % task_id)
+        driver.killTask(Dict(value=task_id))
+        self.task_store.update_task(task_id, mesos_task_state=TASK_KILLING)
 
     def group_tasks_by_version(self, task_ids):
         d = {}
@@ -506,15 +514,8 @@ class NativeScheduler(Scheduler):
         self.constraints = self.service_config.get_constraints() or []
 
     def blacklist_slave(self, agent_id):
-        if agent_id in self.blacklisted_slaves:
-            return
-
         log.debug("Blacklisting slave: %s" % agent_id)
-        with self.blacklisted_slaves_lock:
-            self.blacklisted_slaves.add(agent_id)
-            t = Timer(self.blacklist_timeout, lambda: self.unblacklist_slave(agent_id))
-            t.daemon = True
-            t.start()
+        self.blacklisted_slaves.setdefault(agent_id, time.time())
 
     def unblacklist_slave(self, agent_id):
         if agent_id not in self.blacklisted_slaves:
@@ -524,10 +525,17 @@ class NativeScheduler(Scheduler):
         with self.blacklisted_slaves_lock:
             self.blacklisted_slaves.discard(agent_id)
 
+    def check_blacklisted_slaves_for_timeout(self):
+        for agent_id, blacklist_time in self.blacklisted_slaves.items():
+            if (blacklist_time + self.blacklist_timeout) < time.time():
+                self.unblacklist_slave(agent_id)
+
 
 class DrainTask(object):
-    def __init__(self, id):
+    def __init__(self, id, host, ports):
         self.id = id
+        self.host = host
+        self.ports = ports
 
 
 def find_existing_id_if_exists_or_gen_new(name):

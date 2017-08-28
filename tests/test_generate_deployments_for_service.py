@@ -161,7 +161,7 @@ def test_main():
     ) as mappings_patch, mock.patch(
         'os.path.join', return_value='JOIN', autospec=True,
     ) as join_patch, mock.patch(
-        'six.moves.builtins.open', file_mock, autospec=None,
+        'builtins.open', file_mock, autospec=None,
     ) as open_patch, mock.patch(
         'json.dump', autospec=True,
     ) as json_dump_patch, mock.patch(

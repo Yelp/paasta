@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    sha: v0.9.1
+    sha: v0.9.2
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
@@ -10,11 +10,7 @@
         exclude: /template/
     -   id: debug-statements
     -   id: name-tests-test
-        args:
-        - --django
-        # Once https://github.com/pre-commit/pre-commit-hooks/pull/221 is
-        # merged and released this line can be removed
-        files: ^tests/.+\.py$
+        args: [--django]
     -   id: requirements-txt-fixer
     -   id: flake8
         exclude: ^docs/source/conf.py$
@@ -25,22 +21,19 @@
     sha: v0.3.5
     hooks:
     -   id: reorder-python-imports
-        args:
-        - --remove-import
-        - from __future__ import absolute_import
-        - --remove-import
-        - from __future__ import division
-        - --remove-import
-        - from __future__ import print_function
-        - --remove-import
-        - from __future__ import unicode_literals
+        args: [
+            '--remove-import', 'from __future__ import absolute_import',
+            '--remove-import', 'from __future__ import division',
+            '--remove-import', 'from __future__ import print_function',
+            '--remove-import', 'from __future__ import unicode_literals',
+        ]
 -   repo: https://github.com/asottile/pyupgrade
-    sha: v1.1.2-1
+    sha: v1.2.0
     hooks:
     -   id: pyupgrade
         args: [--py3-plus]
 -   repo: https://github.com/asottile/add-trailing-comma
-    sha: v0.6.2
+    sha: v0.6.4
     hooks:
     -   id: add-trailing-comma
         args: [--py36-plus]

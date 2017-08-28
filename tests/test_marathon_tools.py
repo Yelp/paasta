@@ -229,7 +229,7 @@ class TestMarathonTools:
         from_file = {'marathon_config': {'foo': 'bar'}}
         open_mock = mock.mock_open()
         with mock.patch(
-            'six.moves.builtins.open', open_mock, autospec=None,
+            'builtins.open', open_mock, autospec=None,
         ) as open_file_patch, mock.patch(
             'json.load', autospec=True, return_value=from_file,
         ) as json_patch, mock.patch(
@@ -908,7 +908,7 @@ class TestMarathonTools:
                         },
                     ],
                     'parameters': [
-                        {'key': 'memory-swap', 'value': "%sm" % int(fake_mem)},
+                        {'key': 'memory-swap', 'value': "%sm" % int(fake_mem + 64)},
                         {"key": "cpu-period", "value": "%s" % int(fake_period)},
                         {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
                         {"key": "label", "value": "paasta_service=can_you_dig_it"},
@@ -1750,7 +1750,6 @@ class TestMarathonServiceConfig(object):
         ]
 
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
-
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
@@ -1765,6 +1764,29 @@ class TestMarathonServiceConfig(object):
         expected = [
             {
                 "protocol": "HTTP",
+                "path": '/status',
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 30,
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_https(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
+        expected = [
+            {
+                "protocol": "HTTPS",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
@@ -1998,7 +2020,7 @@ def test_format_marathon_app_dict_no_smartstack():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
+                        {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
@@ -2069,7 +2091,7 @@ def test_format_marathon_app_dict_with_smartstack():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
+                        {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},
@@ -2207,7 +2229,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1024m'},
+                        {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '250000'},
                         {"key": "label", "value": 'paasta_service=service'},

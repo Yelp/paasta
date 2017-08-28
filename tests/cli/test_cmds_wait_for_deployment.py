@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from queue import Queue
 from threading import Event
 
 from bravado.exception import HTTPError
 from mock import Mock
 from mock import patch
 from pytest import raises
-from six.moves.queue import Queue
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
@@ -26,6 +26,7 @@ from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.remote_git import LSRemoteException
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import TimeoutError
 
 
@@ -113,12 +114,13 @@ def mock_status_instance_side_effect(service, instance):  # pragma: no cover (ge
     return mock_status_instance
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_instance_config', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch(
     'paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client',
     autospec=True,
 )
-def test_instances_deployed(mock_get_paasta_api_client, mock__log):
+def test_instances_deployed(mock_get_paasta_api_client, mock__log, mock_get_instance_config):
     mock_paasta_api_client = Mock()
     mock_get_paasta_api_client.return_value = mock_paasta_api_client
     mock_paasta_api_client.service.status_instance.side_effect = \
@@ -132,6 +134,7 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log):
         service='service1',
         git_sha='somesha',
         instances_queue=Queue(),
+        soa_dir=DEFAULT_SOA_DIR,
     )
     cluster_data.instances_queue.put('instance1')
     instances_out = Queue()
@@ -360,6 +363,7 @@ def test_compose_timeout_message():
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
+        soa_dir=DEFAULT_SOA_DIR,
     ))
     clusters_data[0].instances_queue.put('instance1')
     clusters_data[0].instances_queue.put('instance2')
@@ -368,6 +372,7 @@ def test_compose_timeout_message():
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
+        soa_dir=DEFAULT_SOA_DIR,
     ))
     clusters_data[1].instances_queue.put('instance3')
     clusters_data.append(mark_for_deployment.ClusterData(
@@ -375,6 +380,7 @@ def test_compose_timeout_message():
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
+        soa_dir=DEFAULT_SOA_DIR,
     ))
     message = mark_for_deployment.compose_timeout_message(
         clusters_data, 1, 'fake_group',
