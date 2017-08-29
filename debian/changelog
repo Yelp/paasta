@@ -1,3 +1,19 @@
+paasta-tools (0.66.37) xenial; urgency=medium
+
+  * 0.66.37 tagged with 'make release'
+    Commit: Merge pull request #1481 from Yelp/fix-oom-logger-regex
+    Match process names with spaces and slashes in oom-logger
+
+ -- Alexander Dudko <adudko@yelp.com>  Tue, 29 Aug 2017 12:27:32 -0700
+
+paasta-tools (0.66.36) xenial; urgency=medium
+
+  * 0.66.36 tagged with 'make release'
+    Commit: Merge pull request #1483 from Yelp/check-oom-events-as-a-
+    script  Package check_oom_events as a script.
+
+ -- Alexander Dudko <adudko@yelp.com>  Tue, 29 Aug 2017 12:25:38 -0700
+
 paasta-tools (0.66.36) xenial; urgency=medium
 
   * 0.66.36 tagged with 'make release'

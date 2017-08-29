@@ -28,6 +28,7 @@ Submodules
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
    paasta_tools.check_marathon_services_replication
+   paasta_tools.check_oom_events
    paasta_tools.chronos_rerun
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
