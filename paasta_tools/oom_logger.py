@@ -55,7 +55,7 @@ LogLine = namedtuple(
 
 
 def capture_oom_events_from_stdin():
-    process_name_regex = re.compile('^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(\w+) invoked oom-killer:')
+    process_name_regex = re.compile('^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(.+)\sinvoked\soom-killer:')
     oom_regex = re.compile('^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a')
     process_name = ''
 
@@ -63,7 +63,6 @@ def capture_oom_events_from_stdin():
         syslog = sys.stdin.readline()
         if not syslog:
             break
-        print(syslog)
         r = process_name_regex.search(syslog)
         if r:
             process_name = r.group(1)
