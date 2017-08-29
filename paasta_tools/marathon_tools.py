@@ -769,8 +769,9 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
                     continue
                 nerve_dict['port'] = port
                 nerve_list.append((registration, nerve_dict))
-        except KeyError:
+        except (KeyError, NoConfigurationForServiceError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
+
     return nerve_list
 
 
