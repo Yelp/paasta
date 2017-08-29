@@ -1517,8 +1517,8 @@ def test_volumes_are_deduped():
             service='service',
             config_dict={
                 'extra_volumes': [{
-                    "hostPath": "/hostPath/",
-                    "containerPath": "/containerPath/",
+                    "hostPath": "/hostPath",
+                    "containerPath": "/containerPath",
                     "mode": "RO",
                 }],
             },
