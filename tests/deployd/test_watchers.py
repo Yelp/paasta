@@ -414,7 +414,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         type(mock_event).name = name
         assert self.handler.filter_event(mock_event) is None
 
-        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
+        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR', pathname='/foo/bar')
         name = mock.PropertyMock(return_value='another.file')
         type(mock_event).name = name
         assert mock_event == self.handler.filter_event(mock_event)
@@ -423,7 +423,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         mock_event = mock.Mock(maskname='MAJORAS')
         self.handler.watch_new_folder(mock_event)
         assert not self.mock_filewatcher.wm.add_watch.called
-        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
+        mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR', pathname='/foo/')
         self.handler.watch_new_folder(mock_event)
         assert self.mock_filewatcher.wm.add_watch.called
 
@@ -508,7 +508,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
             self.handler.watch_new_folder(mock_event)
             assert not self.mock_filewatcher.wm.add_watch.called
 
-            mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR')
+            mock_event = mock.Mock(maskname='IN_CREATE|IN_ISDIR', pathname='/foo')
             name = mock.PropertyMock(return_value='universe')
             type(mock_event).name = name
             self.handler.watch_new_folder(mock_event)

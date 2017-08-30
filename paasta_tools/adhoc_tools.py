@@ -34,7 +34,6 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
         soa_dir=soa_dir,
     )
     adhoc_conf_file = "adhoc-%s" % cluster
-    log.info("Reading adhoc configuration file: %s.yaml", adhoc_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
         service_name=service,
         extra_info=adhoc_conf_file,

@@ -89,7 +89,7 @@ class Inbox(PaastaThread):
     def process_service_instance(self, service_instance):
         service_instance_key = "{}.{}".format(service_instance.service, service_instance.instance)
         if self.should_add_to_bounce(service_instance, service_instance_key):
-            self.log.debug("Adding {} to be bounced in the future".format(service_instance))
+            self.log.info("Enqueuing {} to be bounced in the future".format(service_instance))
             self.to_bounce[service_instance_key] = service_instance
 
     def should_add_to_bounce(self, service_instance, service_instance_key):
@@ -101,6 +101,7 @@ class Inbox(PaastaThread):
 
     def process_to_bounce(self):
         bounced = []
+        self.log.info("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
         for service_instance_key in self.to_bounce.keys():
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
@@ -141,6 +142,7 @@ class DeployDaemon(PaastaThread):
         handler = logging.StreamHandler()
         handler.addFilter(AddHostnameFilter())
         root_logger.addHandler(handler)
+        logging.getLogger("kazoo").setLevel(logging.CRITICAL)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(hostname)s:%(levelname)s:%(name)s:%(message)s'))
 
     def run(self):
