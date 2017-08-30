@@ -53,22 +53,22 @@ class TestDedupedPriorityQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaPriorityQueue', autospec=True,
-        ) as mock_paasta_queue:
+            'paasta_tools.deployd.master.PaastaPriorityQueue.put', autospec=True,
+        ) as mock_paasta_queue_put:
 
             self.queue.put(0, self.mock_service_instance)
-            mock_paasta_queue.put.assert_called_with(self.queue, 0, self.mock_service_instance)
+            mock_paasta_queue_put.assert_called_with(self.queue, 0, self.mock_service_instance)
             assert 'universe.c137' in self.queue.bouncing
 
-            mock_paasta_queue.reset_mock()
+            mock_paasta_queue_put.reset_mock()
             self.queue.put(0, self.mock_service_instance)
-            assert not mock_paasta_queue.called
+            assert not mock_paasta_queue_put.called
             assert 'universe.c137' in self.queue.bouncing
 
     def test_get(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaPriorityQueue', autospec=True,
-        ) as mock_paasta_queue:
+            'paasta_tools.deployd.master.PaastaPriorityQueue.get', autospec=True,
+        ) as mock_paasta_queue_get:
 
             self.mock_service_instance = BaseServiceInstance(
                 service='universe',
@@ -80,10 +80,10 @@ class TestDedupedPriorityQueue(unittest.TestCase):
                 failures=0,
             )
             self.queue.bouncing.add('universe.c137')
-            mock_paasta_queue.get.return_value = self.mock_service_instance
+            mock_paasta_queue_get.return_value = self.mock_service_instance
 
             assert self.queue.get() is self.mock_service_instance
-            assert mock_paasta_queue.get.called
+            assert mock_paasta_queue_get.called
             assert 'universe.c137' not in self.queue.bouncing
 
 

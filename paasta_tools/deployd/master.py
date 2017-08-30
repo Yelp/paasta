@@ -34,7 +34,7 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
     """
 
     def __init__(self, name, *args, **kwargs):
-        PaastaPriorityQueue.__init__(self, name, *args, **kwargs)
+        super(DedupedPriorityQueue, self).__init__(name, *args, **kwargs)
         self.bouncing = set()
 
     def put(self, priority, service_instance, *args, **kwargs):
@@ -44,12 +44,12 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
         )
         if service_instance_key not in self.bouncing:
             self.bouncing.add(service_instance_key)
-            PaastaPriorityQueue.put(self, priority, service_instance, *args, **kwargs)
+            super(DedupedPriorityQueue, self).put(priority, service_instance, *args, **kwargs)
         else:
             self.log.debug("{} already present in {}, dropping extra message".format(service_instance_key, self.name))
 
     def get(self, *args, **kwargs):
-        service_instance = PaastaPriorityQueue.get(self, *args, **kwargs)
+        service_instance = super(DedupedPriorityQueue, self).get(*args, **kwargs)
         service_instance_key = "{}.{}".format(
             service_instance.service,
             service_instance.instance,

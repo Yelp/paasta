@@ -71,7 +71,7 @@ class PaastaQueue(Queue):
 
     def __init__(self, name, *args, **kwargs):
         self.name = name
-        Queue.__init__(self, *args, **kwargs)
+        super(PaastaQueue, self).__init__(*args, **kwargs)
 
     @property
     def log(self):
@@ -80,14 +80,14 @@ class PaastaQueue(Queue):
 
     def put(self, item, *args, **kwargs):
         self.log.debug("Adding {} to {} queue".format(item, self.name))
-        Queue.put(self, item, *args, **kwargs)
+        super(PaastaQueue, self).put(item, *args, **kwargs)
 
 
 class PaastaPriorityQueue(PriorityQueue):
 
     def __init__(self, name, *args, **kwargs):
         self.name = name
-        PriorityQueue.__init__(self, *args, **kwargs)
+        super(PaastaPriorityQueue, self).__init__(*args, **kwargs)
         self.counter = 0
 
     @property
@@ -102,10 +102,10 @@ class PaastaPriorityQueue(PriorityQueue):
         # and then the second item in the tuple (counter). This way all items with the same
         # priority come out in the order they were entered.
         self.counter += 1
-        PriorityQueue.put(self, (priority, self.counter, item), *args, **kwargs)
+        super(PaastaPriorityQueue, self).put((priority, self.counter, item), *args, **kwargs)
 
     def get(self, *args, **kwargs):
-        return PriorityQueue.get(self, *args, **kwargs)[2]
+        return super(PaastaPriorityQueue, self).get(*args, **kwargs)[2]
 
 
 def rate_limit_instances(instances, cluster, number_per_minute, watcher_name):

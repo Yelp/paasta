@@ -34,10 +34,10 @@ class TestPaastaQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            'paasta_tools.deployd.common.Queue', autospec=True,
-        ) as mock_q:
+            'paasta_tools.deployd.common.Queue.put', autospec=True,
+        ) as mock_q_put:
             self.queue.put("human")
-            mock_q.put.assert_called_with(self.queue, "human")
+            mock_q_put.assert_called_with(self.queue, "human")
 
 
 class TestPaastaPriorityQueue(unittest.TestCase):
@@ -49,19 +49,19 @@ class TestPaastaPriorityQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            'paasta_tools.deployd.common.PriorityQueue', autospec=True,
-        ) as mock_q:
+            'paasta_tools.deployd.common.PriorityQueue.put', autospec=True,
+        ) as mock_q_put:
             self.queue.put(3, "human")
-            mock_q.put.assert_called_with(self.queue, (3, 1, "human"))
+            mock_q_put.assert_called_with(self.queue, (3, 1, "human"))
 
             self.queue.put(3, "human")
-            mock_q.put.assert_called_with(self.queue, (3, 2, "human"))
+            mock_q_put.assert_called_with(self.queue, (3, 2, "human"))
 
     def test_get(self):
         with mock.patch(
-            'paasta_tools.deployd.common.PriorityQueue', autospec=True,
-        ) as mock_q:
-            mock_q.get.return_value = (3, 2, "human")
+            'paasta_tools.deployd.common.PriorityQueue.get', autospec=True,
+        ) as mock_q_get:
+            mock_q_get.return_value = (3, 2, "human")
             assert self.queue.get() == "human"
 
 
