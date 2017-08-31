@@ -338,15 +338,10 @@ def get_filters(args):
     :param args: args object
     :returns: list of functions that take an instance config and returns if the instance conf matches the filter
     """
-    if args.service is None and args.owner is None:
-        service = figure_out_service_name(args, soa_dir=args.soa_dir)
-    else:
-        service = args.service
-
     filters = []
 
-    if service:
-        filters.append(lambda conf: conf.get_service() in service.split(','))
+    if args.service:
+        filters.append(lambda conf: conf.get_service() in args.service.split(','))
 
     if args.clusters:
         filters.append(lambda conf: conf.get_cluster() in args.clusters.split(','))
@@ -384,11 +379,14 @@ def apply_args_filters(args):
     """
     clusters_services_instances = defaultdict(lambda: defaultdict(set))
 
+    if args.service is None and args.owner is None:
+        args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
+
     filters = get_filters(args)
 
     i_count = 0
     for service in list_services(soa_dir=args.soa_dir):
-        if service != args.service:
+        if args.service and service != args.service:
             continue
 
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
