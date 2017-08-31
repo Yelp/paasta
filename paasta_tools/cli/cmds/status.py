@@ -388,6 +388,9 @@ def apply_args_filters(args):
 
     i_count = 0
     for service in list_services(soa_dir=args.soa_dir):
+        if service != args.service:
+            continue
+
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
             if all([f(instance_conf) for f in filters]):
                 clusters_services_instances[instance_conf.get_cluster()][service].add(instance_conf.get_instance())
