@@ -24,6 +24,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
+from paasta_tools import remote_run
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -146,9 +147,6 @@ def main():
     for instance in instances:
         try:
             instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
-            if instance_type == 'adhoc':
-                continue
-
             version = get_deployment_version(actual_deployments, cluster, instance)
             paasta_print('instance: %s' % PaastaColors.blue(instance))
             paasta_print('Git sha:    %s (desired)' % version)
@@ -177,6 +175,18 @@ def main():
                 )
             elif instance_type == 'paasta_native':
                 return_code = paasta_native_serviceinit.perform_command(
+                    command=command,
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    verbose=args.verbose,
+                    soa_dir=args.soa_dir,
+                )
+            elif instance_type == 'adhoc':
+                if instance == 'interactive':
+                    continue
+
+                return_code = paasta_remote_run.perform_command(
                     command=command,
                     service=service,
                     instance=instance,

@@ -393,9 +393,18 @@ def remote_run_stop(args):
         paasta_print(teardown.text)
 
 
-def remote_run_list(args):
+frameworks = None
+def remote_run_list(args, reset_frameworks=False):
     _, service, cluster, _, instance, _ = extract_args(args)
-    frameworks = get_all_frameworks(active_only=True)
+
+    global frameworks
+
+    if reset_frameworks:
+        frameworks = None
+
+    if frameworks is None:
+        frameworks = get_all_frameworks(active_only=True)
+
     prefix = "paasta-remote %s.%s" % (service, instance)
     filtered = [f for f in frameworks if f.name.startswith(prefix)]
     filtered.sort(key=lambda x: x.name)
@@ -410,6 +419,19 @@ def remote_run_list(args):
         )
     else:
         paasta_print("Nothing found.")
+
+
+def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    if command != 'status':
+        return 0
+
+    try:
+        remote_run_list(
+            **{'service': service, 'cluster': cluster, 'instance': instance}
+        )
+        return 0
+    except:
+        return 1
 
 
 def main(argv):
