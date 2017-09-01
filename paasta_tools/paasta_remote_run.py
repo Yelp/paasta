@@ -111,9 +111,28 @@ def extract_args(args):
         instance_type = 'adhoc'
         instance = 'remote'
     else:
-        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+        instance_type = validate_service_instance(
+            service, instance, cluster, soa_dir
+        )
+        if instance_type != 'adhoc':
+            paasta_print(
+                PaastaColors.red(
+                    (
+                        "Please use instance declared in adhoc.yaml for use "
+                        "with remote-run, {} is declared as {}"
+                    ).format(instance, instance_type)
+                )
+            )
+            os._exit(1)
 
-    return (system_paasta_config, service, cluster, soa_dir, instance, instance_type)
+    return (
+        system_paasta_config,
+        service,
+        cluster,
+        soa_dir,
+        instance,
+        instance_type
+    )
 
 
 def paasta_to_task_config_kwargs(
@@ -121,7 +140,7 @@ def paasta_to_task_config_kwargs(
         instance,
         cluster,
         system_paasta_config,
-        instance_type='paasta_native',
+        instance_type,
         soa_dir=DEFAULT_SOA_DIR,
         config_overrides=None,
 ):
@@ -308,7 +327,7 @@ def remote_run_start(args):
             instance,
             cluster,
             system_paasta_config,
-            instance_type=instance_type,
+            instance_type,
             soa_dir=soa_dir,
             config_overrides=overrides_dict,
         ),
