@@ -409,29 +409,20 @@ def remote_run_list(args, reset_frameworks=False):
     filtered = [f for f in frameworks if f.name.startswith(prefix)]
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
-        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f.name).groups()
+        launch_time, run_id = re.match(
+            'paasta-remote [^\s]+ (\w+) (\w+)', f.name
+        ).groups()
         paasta_print("Launch time: %s, run id: %s, framework id: %s" %
                      (launch_time, run_id, f.id))
     if len(filtered) > 0:
         paasta_print(
-            "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance),
+            (
+                "Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
+                "| -F <framework id>]` to stop."
+            ).format(service, cluster, instance),
         )
     else:
         paasta_print("Nothing found.")
-
-
-def perform_command(command, service, instance, cluster, verbose, soa_dir):
-    if command != 'status':
-        return 0
-
-    try:
-        remote_run_list(
-            **{'service': service, 'cluster': cluster, 'instance': instance}
-        )
-        return 0
-    except:
-        return 1
 
 
 def main(argv):
