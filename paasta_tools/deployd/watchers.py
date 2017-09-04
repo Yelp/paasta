@@ -255,6 +255,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     cluster=self.public_config.get_cluster(),
                     number_per_minute=bounce_rate,
                     watcher_name=type(self).__name__,
+                    priority=99,
                 )
             for service_instance in service_instances:
                 self.filewatcher.inbox_q.put(service_instance)

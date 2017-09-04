@@ -232,6 +232,7 @@ class DeployDaemon(PaastaThread):
             cluster=self.config.get_cluster(),
             number_per_minute=self.config.get_deployd_startup_bounce_rate(),
             watcher_name='daemon_start',
+            priority=99,
         )
         for service_instance in instances_to_add:
             self.inbox_q.put(service_instance)
