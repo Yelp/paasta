@@ -799,7 +799,14 @@ def configure_and_run_docker_container(
         docker_pull_image(docker_url)
 
     for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
-        volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
+        if os.path.exists(volume['hostPath']):
+            volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
+        else:
+            paasta_print(
+                PaastaColors.yellow(
+                    "Warning: Path %s does not exist on this host. Skipping this binding." % volume['hostPath'],
+                ),
+            )
 
     if interactive is True and args.cmd is None:
         command = 'bash'

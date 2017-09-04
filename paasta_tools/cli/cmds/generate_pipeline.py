@@ -61,23 +61,11 @@ def paasta_generate_pipeline(args):
     generate_pipeline(service=service, soa_dir=soa_dir)
 
 
-def validate_git_url_for_fab_repo(git_url):
-    """fab_repo can only accept certain git urls, so this function will raise an
-    exception if the git_url is not something fab_repo can handle."""
-    if not git_url.startswith('git@git.yelpcorp.com:'):
-        raise NotImplementedError(
-            "fab_repo cannot currently handle git urls that look like: '%s'.\n"
-            "They must start with 'git@git.yelpcorp.com:'" % git_url,
-        )
-    return True
-
-
 def get_git_repo_for_fab_repo(service, soa_dir):
     """Returns the 'repo' in fab_repo terms. fab_repo just wants the trailing
     section of the git_url, after the colon.
     """
     git_url = get_git_url(service, soa_dir=soa_dir)
-    validate_git_url_for_fab_repo(git_url)
     repo = git_url.split(':')[1]
     return repo
 

@@ -3,8 +3,8 @@ import unittest
 import mock
 from pytest import raises
 
+from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import BounceTimers
-from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.workers import BounceResults
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
@@ -93,6 +93,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 service='universe',
                 instance='c137',
                 failures=0,
+                priority=0,
             )
             self.mock_bounce_q.get.return_value = mock_si
             with raises(LoopBreak):
@@ -106,13 +107,14 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_timers=mock_timers,
             )
             mock_process_service_instance.return_value = mock_bounce_results
-            mock_queued_si = ServiceInstance(
+            mock_queued_si = BaseServiceInstance(
                 service='universe',
                 instance='c137',
                 bounce_by=61,
                 watcher='Worker1',
                 bounce_timers=mock_timers,
                 failures=1,
+                priority=0,
             )
             with raises(LoopBreak):
                 self.worker.run()
@@ -123,16 +125,18 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 service='universe',
                 instance='c137',
                 failures=0,
+                priority=0,
             )
             self.mock_bounce_q.get.return_value = mock_si
             mock_process_service_instance.side_effect = Exception
-            mock_queued_si = ServiceInstance(
+            mock_queued_si = BaseServiceInstance(
                 service='universe',
                 instance='c137',
                 bounce_by=61,
                 watcher='Worker1',
                 bounce_timers=mock_si.bounce_timers,
                 failures=1,
+                priority=0,
             )
             with raises(LoopBreak):
                 self.worker.run()

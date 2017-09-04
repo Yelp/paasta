@@ -33,7 +33,8 @@ import dateutil.parser
 import pysensu_yelp
 
 from paasta_tools import chronos_tools
-from paasta_tools.check_chronos_jobs import send_event
+from paasta_tools import monitoring_tools
+from paasta_tools.check_chronos_jobs import check_chronos_job_name
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import paasta_print
 
@@ -178,13 +179,13 @@ def main():
             job_successes.append(response)
             try:
                 (service, instance) = chronos_tools.decompose_job_id(response[0])
-                send_event(
+                monitoring_tools.send_event(
+                    check_name=check_chronos_job_name(service, instance),
                     service=service,
-                    instance=instance,
-                    monitoring_overrides={},
+                    overrides={},
                     soa_dir=soa_dir,
-                    status_code=pysensu_yelp.Status.OK,
-                    message="This instance was removed and is no longer supposed to be scheduled.",
+                    status=pysensu_yelp.Status.OK,
+                    output="This instance was removed and is no longer supposed to be scheduled.",
                 )
             except InvalidJobNameError:
                 # If we deleted some bogus job with a bogus jobid that could not be parsed,

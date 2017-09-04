@@ -145,6 +145,9 @@
                     "exclusiveMinimum": true,
                     "exclusiveMaximum": false
                 },
+                "bounce_priority": {
+                    "type": "integer"
+                },
                 "deploy_group": {
                     "type": "string"
                 },
@@ -284,8 +287,9 @@
                 "dependencies_reference": {
                     "type": "string"
                 },
-                "shm_size": {
-                    "type": "string"
+                "extra_docker_args": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
                 },
                 "security": {
                     "type": "object",

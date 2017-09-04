@@ -1084,7 +1084,7 @@ class TestChronosTools:
                 'image': fake_docker_url,
                 'type': 'DOCKER',
                 'parameters': [
-                    {'key': 'memory-swap', 'value': "1024m"},
+                    {'key': 'memory-swap', 'value': "1088m"},
                     {"key": "cpu-period", "value": "%s" % int(fake_period)},
                     {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
                     {"key": "label", "value": "paasta_service=test_service"},
@@ -1383,7 +1383,7 @@ class TestChronosTools:
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1025m'},
+                        {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '5500000'},
                         {"key": "label", "value": "paasta_service=test-service"},
@@ -1503,7 +1503,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1025m'},
+                        {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '5500000'},
                         {"key": "label", "value": "paasta_service=test-service"},
@@ -1568,7 +1568,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1025m'},
+                        {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '5500000'},
                         {"key": "label", "value": "paasta_service=test-service"},
@@ -1649,7 +1649,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
                     'parameters': [
-                        {'key': 'memory-swap', 'value': '1025m'},
+                        {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
                         {"key": "cpu-quota", "value": '5500000'},
                         {"key": "label", "value": "paasta_service=test-service"},

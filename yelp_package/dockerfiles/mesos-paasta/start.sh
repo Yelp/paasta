@@ -13,8 +13,9 @@ while read link; do echo $link|sed -e 's|opt/venvs/paasta-tools/|/venv/|'| sed -
 /usr/sbin/rsyslogd
 cron
 mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --credentials=/etc/mesos-secrets --hostname=$(hostname) &
+paasta-deployd &> /var/log/paasta-deployd.log
 while true; do
-    pserve /work/paasta_tools/api/development.ini --reload
-    echo "RESTARTING API IN 5 SECONDS"
+    paasta-deployd &> /var/log/paasta-deployd.log
+    echo "paasta-deployd exited, restarting in 5s..."
     sleep 5
 done
