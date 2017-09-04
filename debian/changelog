@@ -1,3 +1,11 @@
+paasta-tools (0.66.38) xenial; urgency=medium
+
+  * 0.66.38 tagged with 'make release'
+    Commit: Merge pull request #1466 from Yelp/paasta-deployd-priority
+    Make deployd bounce queue a priority queue
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 04 Sep 2017 05:55:45 -0700
+
 paasta-tools (0.66.37) xenial; urgency=medium
 
   * 0.66.37 tagged with 'make release'
