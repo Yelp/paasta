@@ -108,7 +108,7 @@ class PaastaPriorityQueue(PriorityQueue):
         return super(PaastaPriorityQueue, self).get(*args, **kwargs)[2]
 
 
-def rate_limit_instances(instances, cluster, number_per_minute, watcher_name):
+def rate_limit_instances(instances, cluster, number_per_minute, watcher_name, priority=None):
     service_instances = []
     if not instances:
         return []
@@ -124,6 +124,7 @@ def rate_limit_instances(instances, cluster, number_per_minute, watcher_name):
             bounce_by=bounce_time,
             bounce_timers=None,
             failures=0,
+            priority=priority,
         ))
         bounce_time += time_step
     return service_instances

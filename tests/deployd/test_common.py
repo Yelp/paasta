@@ -167,6 +167,29 @@ def test_rate_limit_instances():
         ]
         assert ret == expected
 
+        ret = rate_limit_instances([mock_si_1, mock_si_2], "westeros-prod", 2, "Custos", priority=99)
+        expected = [
+            BaseServiceInstance(
+                service='universe',
+                instance='c137',
+                watcher='Custos',
+                priority=99,
+                bounce_by=1,
+                bounce_timers=None,
+                failures=0,
+            ),
+            BaseServiceInstance(
+                service='universe',
+                instance='c138',
+                watcher='Custos',
+                priority=99,
+                bounce_by=31,
+                bounce_timers=None,
+                failures=0,
+            ),
+        ]
+        assert ret == expected
+
 
 def test_exponential_back_off():
     assert exponential_back_off(0, 60, 2, 6000) == 60
