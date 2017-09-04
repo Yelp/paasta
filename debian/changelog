@@ -1,3 +1,12 @@
+paasta-tools (0.66.39) xenial; urgency=medium
+
+  * 0.66.39 tagged with 'make release'
+    Commit: Merge pull request #1490 from
+    Yelp/deployd_deprioritise_big_bounces  De-prioritise startup/public
+    config bounces
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 04 Sep 2017 09:19:18 -0700
+
 paasta-tools (0.66.38) xenial; urgency=medium
 
   * 0.66.38 tagged with 'make release'
