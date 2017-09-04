@@ -412,20 +412,22 @@ def remote_run_stop(args):
         paasta_print(teardown.text)
 
 
-frameworks = None
-def remote_run_list(args, reset_frameworks=False):
-    _, service, cluster, _, instance, _ = extract_args(args)
+def remote_run_frameworks():
+    return get_all_frameworks(active_only=True)
 
-    global frameworks
 
-    if reset_frameworks:
-        frameworks = None
-
+def remote_run_filter_frameworks(service, instance, frameworks=None):
     if frameworks is None:
-        frameworks = get_all_frameworks(active_only=True)
+        frameworks = remote_run_frameworks()
 
     prefix = "paasta-remote %s.%s" % (service, instance)
-    filtered = [f for f in frameworks if f.name.startswith(prefix)]
+    return [f for f in frameworks if f.name.startswith(prefix)]
+
+
+def remote_run_list(args, frameworks=None):
+    _, service, cluster, _, instance, _ = extract_args(args)
+    filtered = remote_run_frameworks_for(
+        service, instance, frameworks=frameworks)
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
         launch_time, run_id = re.match(

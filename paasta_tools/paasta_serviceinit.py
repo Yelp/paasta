@@ -176,6 +176,10 @@ def main():
             instance_types_map[instance_type].append(instance)
 
 
+    remote_run_frameworks = None
+    if len(instance_types_map['adhoc']) > 0:
+        remote_run_frameworks = paasta_remote_run.remote_run_frameworks()
+
     for instance_type in instance_types:
         for instance in instance_types_map[instance_type]:
             try:
@@ -228,7 +232,8 @@ def main():
                             cluster=cluster,
                             instance=instance,
                             yelpsoa_config_root=args.soa_dir,
-                        )
+                        ),
+                        frameworks=remote_run_frameworks,
                     )
                     return_code = 0
             except Exception:
