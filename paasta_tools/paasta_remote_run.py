@@ -172,6 +172,7 @@ def paasta_to_task_config_kwargs(
         'uris': [uris],
         'docker_parameters': docker_parameters,
         'containerizer': 'DOCKER',
+        'environment': native_job_config.get_env_dictionary(),
     }
     if gpus > 0:
         kwargs['gpus'] = int(gpus)
