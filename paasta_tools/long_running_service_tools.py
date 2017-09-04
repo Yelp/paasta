@@ -107,6 +107,15 @@ class LongRunningServiceConfig(InstanceConfig):
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
+    def get_bounce_priority(self):
+        """Gives a priority to each service instance which deployd will use to prioritise services.
+        Higher numbers are higher priority. This affects the order in which deployd workers pick
+        instances from the bounce queue.
+
+        NB: we multiply by -1 here because *internally* lower numbers are higher priority.
+        """
+        return self.config_dict.get('bounce_priority', 0) * -1
+
     def get_instances(self):
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""

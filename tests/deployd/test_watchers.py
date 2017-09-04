@@ -5,7 +5,7 @@ import mock
 from pytest import raises
 from requests.exceptions import RequestException
 
-from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployd.common import BaseServiceInstance
 
 
 class FakePyinotify(object):  # pragma: no cover
@@ -125,6 +125,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_process_node_event(self):
         with mock.patch(
+            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+        ), mock.patch(
             'paasta_tools.deployd.watchers.EventType', autospec=True,
         ) as mock_event_type, mock.patch(
             'time.time', autospec=True, return_value=1,
@@ -142,12 +144,13 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 path='/autoscaling/service/instance/instances',
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
+            self.mock_inbox_q.put.assert_called_with(BaseServiceInstance(
                 service='service',
                 instance='instance',
                 bounce_by=1,
                 bounce_timers=None,
                 watcher=self.watcher.__class__.__name__,
+                priority=0,
                 failures=0,
             ))
 
@@ -157,12 +160,13 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 path='/autoscaling/service/instance/instances',
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(ServiceInstance(
+            self.mock_inbox_q.put.assert_called_with(BaseServiceInstance(
                 service='service',
                 instance='instance',
                 bounce_by=1,
                 bounce_timers=None,
                 watcher=self.watcher.__class__.__name__,
+                priority=0,
                 failures=0,
             ))
 
@@ -341,6 +345,8 @@ class TestMaintenanceWatcher(unittest.TestCase):
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
+            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+        ), mock.patch(
             'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True,
         ) as mock_get_marathon_apps, mock.patch(
             'time.time', autospec=True, return_value=1,
@@ -368,19 +374,21 @@ class TestMaintenanceWatcher(unittest.TestCase):
             mock_get_marathon_apps.return_value = mock_marathon_apps
             ret = self.watcher.get_at_risk_service_instances(['host1'])
             expected = [
-                ServiceInstance(
+                BaseServiceInstance(
                     service='universe',
                     instance='c137',
                     bounce_by=1,
                     watcher=self.watcher.__class__.__name__,
+                    priority=0,
                     bounce_timers=None,
                     failures=0,
                 ),
-                ServiceInstance(
+                BaseServiceInstance(
                     service='universe',
                     instance='c139',
                     bounce_by=1,
                     watcher=self.watcher.__class__.__name__,
+                    priority=0,
                     bounce_timers=None,
                     failures=0,
                 ),
@@ -543,6 +551,8 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
     def test_bounce_service(self):
         with mock.patch(
+            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+        ), mock.patch(
             'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True,
         ) as mock_list_instances, mock.patch(
             'paasta_tools.deployd.watchers.get_service_instances_needing_update', autospec=True,
@@ -566,12 +576,13 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 ],
                 self.handler.filewatcher.cluster,
             )
-            expected_si = ServiceInstance(
+            expected_si = BaseServiceInstance(
                 service='universe',
                 instance='c137',
                 bounce_by=1,
                 watcher='YelpSoaEventHandler',
                 bounce_timers=None,
+                priority=0,
                 failures=0,
             )
             self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
