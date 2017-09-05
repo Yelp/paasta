@@ -16,7 +16,6 @@ import argparse
 import logging
 import sys
 import traceback
-from addict import Dict
 
 import requests_cache
 
@@ -222,16 +221,18 @@ def main():
                     )
                 elif instance_type == 'adhoc':
                     if instance == 'interactive':
-                        continue
+                        raise NotImplementedError
                     if command != 'status':
-                        continue
+                        raise NotImplementedError
 
                     paasta_remote_run.remote_run_list(
-                        Dict(
-                            service=service,
-                            cluster=cluster,
-                            instance=instance,
-                            yelpsoa_config_root=args.soa_dir,
+                        argparse.Namespace(
+                            **{
+                                'service': service,
+                                'cluster': cluster,
+                                'instance': instance,
+                                'yelpsoa_config_root': args.soa_dir,
+                            }
                         ),
                         frameworks=remote_run_frameworks,
                     )

@@ -103,7 +103,7 @@ def extract_args(args):
             sep='\n',
             file=sys.stderr,
         )
-        os._exit(1)
+        sys.exit(1)
 
     soa_dir = args.yelpsoa_config_root
     instance = args.instance
@@ -123,7 +123,7 @@ def extract_args(args):
                     ).format(instance, instance_type)
                 )
             )
-            os._exit(1)
+            sys.exit(1)
 
     return (
         system_paasta_config,
@@ -373,7 +373,7 @@ def remote_run_stop(args):
     _, service, cluster, _, instance, _ = extract_args(args)
     if args.framework_id is None and args.run_id is None:
         paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
-        os._exit(1)
+        sys.exit(1)
 
     frameworks = [
         f
@@ -384,14 +384,14 @@ def remote_run_stop(args):
     if framework_id is None:
         if re.match('\s', args.run_id):
             paasta_print(PaastaColors.red("Run id must not contain whitespace."))
-            os._exit(1)
+            sys.exit(1)
 
         found = [f for f in frameworks if re.search(' %s$' % args.run_id, f.name) is not None]
         if len(found) > 0:
             framework_id = found[0].id
         else:
             paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
-            os._exit(1)
+            sys.exit(1)
     else:
         found = [f for f in frameworks if f.id == framework_id]
         if len(found) == 0:
@@ -401,7 +401,7 @@ def remote_run_stop(args):
                     (framework_id, service, instance),
                 ),
             )
-            os._exit(1)
+            sys.exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
     mesos_master = get_mesos_master()
@@ -426,7 +426,7 @@ def remote_run_filter_frameworks(service, instance, frameworks=None):
 
 def remote_run_list(args, frameworks=None):
     _, service, cluster, _, instance, _ = extract_args(args)
-    filtered = remote_run_frameworks_for(
+    filtered = remote_run_filter_frameworks(
         service, instance, frameworks=frameworks)
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
