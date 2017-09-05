@@ -363,6 +363,10 @@
         "marathon": {
           "$ref": "#/definitions/InstanceStatusMarathon",
           "description": "Marathon specific instance status"
+        },
+        "chronos": {
+          "$ref": "#/definitions/InstanceStatusChronos",
+          "description": "Chronos specifid instance status"
         }
       }
     },
@@ -417,6 +421,83 @@
         "desired_state",
         "app_count",
         "bounce_method"
+      ]
+    },
+    "InstanceStatusChronos": {
+      "type": "object",
+      "properties": {
+        "desired_state": {
+          "type": "string",
+          "description": "Desired state of a service, for both Marathon and Chronos",
+          "enum": ["start", "stop"]
+        },
+        "schedule_type": {
+          "type": "string",
+          "description": "The type of schedule, dependent or shceduled",
+          "enum": ["parents", "schedule"]
+        },
+        "schedule_parents": {
+          "type": "array",
+          "description": "The parents on a dependent job",
+          "items": {
+            "type": "string"
+          }
+        },
+        "schedule": {
+          "type": "object",
+          "description": "The schedule of a scheduled job",
+          "properties": {
+            "schedule": {
+              "type": "string"
+            },
+            "time_zone": {
+              "type": "string"
+            },
+            "epsilon": {
+              "type": "string"
+            }
+          }
+        },
+        "status": {
+          "type": "object",
+          "description": "The status of the job",
+          "properties": {
+            "disabled_state": {
+              "type": "string"
+            },
+            "chronos_state": {
+              "type": "string"
+            }
+          }
+        },
+        "command": {
+          "type": "string",
+          "description": "The command for the job"
+        },
+        "last_status": {
+          "type": "object",
+          "properties": {
+            "result": {
+              "type": "string"
+            },
+            "time": {
+              "type": "string"
+            }
+          }
+        },
+        "mesos_status": {
+          "type": "string",
+          "description": "The status in mesos",
+          "enum": ["runnning", "not_running"]
+        }
+      },
+      "required": [
+        "desired_state",
+        "schedule_type",
+        "status",
+        "command",
+        "last_status",
+        "mesos_status"
       ]
     },
     "InstanceTasks": {
