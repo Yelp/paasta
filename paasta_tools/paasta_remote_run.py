@@ -112,7 +112,7 @@ def extract_args(args):
         instance = 'remote'
     else:
         instance_type = validate_service_instance(
-            service, instance, cluster, soa_dir
+            service, instance, cluster, soa_dir,
         )
         if instance_type != 'adhoc':
             paasta_print(
@@ -120,8 +120,8 @@ def extract_args(args):
                     (
                         "Please use instance declared in adhoc.yaml for use "
                         "with remote-run, {} is declared as {}"
-                    ).format(instance, instance_type)
-                )
+                    ).format(instance, instance_type),
+                ),
             )
             sys.exit(1)
 
@@ -131,7 +131,7 @@ def extract_args(args):
         cluster,
         soa_dir,
         instance,
-        instance_type
+        instance_type,
     )
 
 
@@ -427,11 +427,12 @@ def remote_run_filter_frameworks(service, instance, frameworks=None):
 def remote_run_list(args, frameworks=None):
     _, service, cluster, _, instance, _ = extract_args(args)
     filtered = remote_run_filter_frameworks(
-        service, instance, frameworks=frameworks)
+        service, instance, frameworks=frameworks,
+    )
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
         launch_time, run_id = re.match(
-            'paasta-remote [^\s]+ (\w+) (\w+)', f.name
+            'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
         ).groups()
         paasta_print("Launch time: %s, run id: %s, framework id: %s" %
                      (launch_time, run_id, f.id))

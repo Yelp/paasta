@@ -149,13 +149,13 @@ def main():
     for instance in instances:
         try:
             instance_type = validate_service_instance(
-                service, instance, cluster, args.soa_dir
+                service, instance, cluster, args.soa_dir,
             )
         except Exception:
             log.error(
                 (
                     'Exception raised while looking at service %s instance %s:'
-                ).format(service, instance)
+                ).format(service, instance),
             )
             log.error(traceback.format_exc())
             return_codes.append(1)
@@ -167,13 +167,12 @@ def main():
                     "I calculated an instance_type of {} for {} which I don't "
                     "know how to handle."
                 ).format(
-                    instance_type, compose_job_id(service, instance)
-                )
+                    instance_type, compose_job_id(service, instance),
+                ),
             )
             return_codes.append(1)
         else:
             instance_types_map[instance_type].append(instance)
-
 
     remote_run_frameworks = None
     if len(instance_types_map['adhoc']) > 0:
@@ -183,7 +182,7 @@ def main():
         for instance in instance_types_map[instance_type]:
             try:
                 version = get_deployment_version(
-                    actual_deployments, cluster, instance
+                    actual_deployments, cluster, instance,
                 )
                 paasta_print('instance: %s' % PaastaColors.blue(instance))
                 paasta_print('Git sha:    %s (desired)' % version)
@@ -232,7 +231,7 @@ def main():
                                 'cluster': cluster,
                                 'instance': instance,
                                 'yelpsoa_config_root': args.soa_dir,
-                            }
+                            },
                         ),
                         frameworks=remote_run_frameworks,
                     )
@@ -242,7 +241,8 @@ def main():
                     (
                         'Exception raised while looking at service {} '
                         'instance {}:'
-                    ).format(service, instance))
+                    ).format(service, instance),
+                )
                 log.error(traceback.format_exc())
                 return_code = 1
 
