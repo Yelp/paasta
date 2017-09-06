@@ -317,7 +317,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             )
             loop.close()
 
-    async def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
+    async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff):
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
         # we giveup waiting for the instance to drain and mark it for termination anyway
@@ -334,12 +334,11 @@ class ClusterAutoscaler(ResourceLogMixin):
                 self.log.error("Failed to start drain "
                                "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
                 raise
-        self.log.info("Decreasing resource from {} to: {}".format(current_capacity, new_capacity))
+        self.log.info("Decreasing resource from {} to: {}".format(self.capacity, self.capacity + capacity_diff))
         # Instance weights can be floats but the target has to be an integer
         # because this is all AWS allows on the API call to set target capacity
-        new_capacity = int(floor(new_capacity))
         try:
-            self.set_capacity(new_capacity)
+            self.set_capacity(int(floor(self.capacity + capacity_diff)))
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
@@ -351,8 +350,8 @@ class ClusterAutoscaler(ResourceLogMixin):
             await self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
-            self.log.error("Setting resource capacity back to {}".format(current_capacity))
-            self.set_capacity(current_capacity)
+            self.log.error("Setting resource capacity back to {}".format(self.capacity - capacity_diff))
+            self.set_capacity(self.capacity - capacity_diff)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
             if not self.dry_run:
                 undrain([drain_host_string])
@@ -451,6 +450,7 @@ class ClusterAutoscaler(ResourceLogMixin):
     async def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
         terminate_tasks = {}
+        self.capacity = current_capacity
         while True:
             filtered_sorted_slaves = ec2_fitness.sort_by_ec2_fitness(filtered_slaves)[::-1]
             if len(filtered_sorted_slaves) == 0:
@@ -485,11 +485,11 @@ class ClusterAutoscaler(ResourceLogMixin):
                 else:
                     break
 
+            capacity_diff = new_capacity - current_capacity
             terminate_tasks[slave_to_kill.hostname] = asyncio.ensure_future(
                 self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
-                    current_capacity=current_capacity,
-                    new_capacity=new_capacity,
+                    capacity_diff=capacity_diff,
                 ),
             )
 
@@ -698,6 +698,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         except ClientError as e:
             self.log.error("Error modifying spot fleet request: {}".format(e))
             raise FailSetResourceCapacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
@@ -820,6 +821,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         except ClientError as e:
             self.log.error("Error modifying ASG: {}".format(e))
             raise FailSetResourceCapacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
