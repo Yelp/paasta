@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import math
 import os
@@ -224,7 +225,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
         return utilization - target_utilization
 
-    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None):
+    async def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
@@ -262,7 +263,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     else:
                         self.log.info("Instance {}: NOT ready to kill".format(instance_id))
                     self.log.debug("Waiting 5 seconds and then checking again")
-                    time.sleep(5)
+                    await asyncio.sleep(5)
         except TimeoutError:
             self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(
                 drain_timeout,
@@ -306,13 +307,17 @@ class ClusterAutoscaler(ResourceLogMixin):
                     "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
                 )
                 return
-            self.downscale_aws_resource(
-                filtered_slaves=filtered_slaves,
-                current_capacity=current_capacity,
-                target_capacity=target_capacity,
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(
+                self.downscale_aws_resource(
+                    filtered_slaves=filtered_slaves,
+                    current_capacity=current_capacity,
+                    target_capacity=target_capacity,
+                ),
             )
+            loop.close()
 
-    def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
+    async def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
         # we giveup waiting for the instance to drain and mark it for termination anyway
@@ -343,7 +348,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             raise
         self.log.info("Waiting for instance to drain before we terminate")
         try:
-            self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
+            await self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {}".format(current_capacity))
@@ -443,7 +448,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             if status['InstanceId'] == instance_id
         ]
 
-    def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
+    async def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
         while True:
             filtered_sorted_slaves = ec2_fitness.sort_by_ec2_fitness(filtered_slaves)[::-1]
@@ -479,7 +484,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 else:
                     break
             try:
-                self.gracefully_terminate_slave(
+                await self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
                     current_capacity=current_capacity,
                     new_capacity=new_capacity,
