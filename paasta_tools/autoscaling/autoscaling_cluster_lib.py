@@ -450,6 +450,7 @@ class ClusterAutoscaler(ResourceLogMixin):
 
     async def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
         killed_slaves = 0
+        terminate_tasks = {}
         while True:
             filtered_sorted_slaves = ec2_fitness.sort_by_ec2_fitness(filtered_slaves)[::-1]
             if len(filtered_sorted_slaves) == 0:
@@ -483,18 +484,31 @@ class ClusterAutoscaler(ResourceLogMixin):
                         break
                 else:
                     break
-            try:
-                await self.gracefully_terminate_slave(
+
+            terminate_tasks[slave_to_kill.hostname] = asyncio.ensure_future(
+                self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
                     current_capacity=current_capacity,
                     new_capacity=new_capacity,
-                )
-                killed_slaves += 1
-            except HTTPError:
-                # Something wrong draining host so try next host
-                continue
-            except FailSetResourceCapacity:
-                break
+                ),
+            )
+
+            for hostname, task in terminate_tasks:
+                if task is None:
+                    continue
+                if task.cancelled():
+                    terminate_tasks[hostname] = None
+                if not task.done():
+                    continue
+                try:
+                    terminate_tasks[hostname] = None
+                    task.result()  # Raises an exception if the task raised an exception
+                    killed_slaves += 1
+                except HTTPError:
+                    # Something wrong draining host so try next host
+                    continue
+                except FailSetResourceCapacity:
+                    break
 
             current_capacity = new_capacity
             mesos_state = get_mesos_master().state_summary()
@@ -509,6 +523,15 @@ class ClusterAutoscaler(ResourceLogMixin):
                 for i, slave in enumerate(filtered_sorted_slaves):
                     slave.task_counts = task_counts[i]['task_counts']
             filtered_slaves = filtered_sorted_slaves
+
+        while any([task is not None for task in terminate_tasks.values()]):
+            for hostname, task in terminate_tasks:
+                if task is None:
+                    continue
+                if task.cancelled() or task.done():
+                    terminate_tasks[hostname] = None
+
+            await asyncio.sleep(1)
 
 
 class SpotAutoscaler(ClusterAutoscaler):
