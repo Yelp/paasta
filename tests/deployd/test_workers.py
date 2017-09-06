@@ -13,7 +13,7 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 class TestPaastaDeployWorker(unittest.TestCase):
     def setUp(self):
         self.mock_inbox_q = mock.Mock()
-        self.mock_bounce_q = mock.Mock()
+        self.mock_pending_bounces = mock.Mock()
         self.mock_metrics = mock.Mock()
         mock_config = mock.Mock(
             get_cluster=mock.Mock(return_value='westeros-prod'),
@@ -25,7 +25,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.worker = PaastaDeployWorker(
                 1,
                 self.mock_inbox_q,
-                self.mock_bounce_q,
+                self.mock_pending_bounces,
                 mock_config,
                 self.mock_metrics,
             )
@@ -95,7 +95,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 priority=0,
             )
-            self.mock_bounce_q.get.return_value = mock_si
+            self.mock_pending_bounces.get.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
@@ -127,7 +127,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 priority=0,
             )
-            self.mock_bounce_q.get.return_value = mock_si
+            self.mock_pending_bounces.get.return_value = mock_si
             mock_process_service_instance.side_effect = Exception
             mock_queued_si = BaseServiceInstance(
                 service='universe',
