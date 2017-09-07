@@ -53,7 +53,7 @@ def perform_security_check(args):
         paasta_print("Nothing to be executed during the security-check step")
         return 0
 
-    command = "{} {} {}".format(security_check_command, args["service"], args["commit"])
+    command = "{} {} {}".format(security_check_command, args.service, args.commit)
 
     ret_code, output = _run(command, timeout=300, stream=True)
     if ret_code != 0:
