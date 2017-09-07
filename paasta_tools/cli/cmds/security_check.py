@@ -31,12 +31,12 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='Name of service for which you wish to check. Leading "services-", as included in a '
              'Jenkins job name, will be stripped.',
-        required=False,
+        required=True,
     )
     list_parser.add_argument(
         '-c', '--commit',
         help='Git sha of the image to check',
-        required=False,
+        required=True,
     )
     list_parser.set_defaults(command=perform_security_check)
 
@@ -53,7 +53,9 @@ def perform_security_check(args):
         paasta_print("Nothing to be executed during the security-check step")
         return 0
 
-    ret_code, output = _run(security_check_command, timeout=300, stream=True)
+    command = "{} {} {}".format(security_check_command, args["service"], args["commit"])
+
+    ret_code, output = _run(command, timeout=300, stream=True)
     if ret_code != 0:
         paasta_print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
