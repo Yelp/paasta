@@ -224,15 +224,10 @@ def main():
                     if command != 'status':
                         raise NotImplementedError
 
-                    paasta_remote_run.remote_run_list(
-                        argparse.Namespace(
-                            **{
-                                'service': service,
-                                'cluster': cluster,
-                                'instance': instance,
-                                'yelpsoa_config_root': args.soa_dir,
-                            },
-                        ),
+                    paasta_remote_run.remote_run_list_report(
+                        service=service,
+                        instance=instance,
+                        cluster=cluster,
                         frameworks=remote_run_frameworks,
                     )
                     return_code = 0

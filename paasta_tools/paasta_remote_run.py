@@ -424,8 +424,7 @@ def remote_run_filter_frameworks(service, instance, frameworks=None):
     return [f for f in frameworks if f.name.startswith(prefix)]
 
 
-def remote_run_list(args, frameworks=None):
-    _, service, cluster, _, instance, _ = extract_args(args)
+def remote_run_list_report(service, instance, cluster, frameworks=None):
     filtered = remote_run_filter_frameworks(
         service, instance, frameworks=frameworks,
     )
@@ -445,6 +444,16 @@ def remote_run_list(args, frameworks=None):
         )
     else:
         paasta_print("Nothing found.")
+
+
+def remote_run_list(args, frameworks=None):
+    _, service, cluster, _, instance, _ = extract_args(args)
+    return remote_run_list_report(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        frameworks=frameworks,
+    )
 
 
 def main(argv):
