@@ -555,9 +555,8 @@ def test_check_service_replication_for_normal_smartstack():
         'paasta_tools.check_marathon_services_replication.check_smartstack_replication_for_instance',
         autospec=True,
     ) as mock_check_smartstack_replication_for_service:
-        mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
+            service=service, instance=instance, cluster=cluster, soa_dir=None,
             system_paasta_config=fake_system_paasta_config, all_tasks=all_tasks,
         )
         mock_check_smartstack_replication_for_service.assert_called_once_with(
@@ -584,9 +583,7 @@ def test_check_service_replication_for_non_smartstack():
         'paasta_tools.check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance',
         autospec=True,
     ) as mock_check_healthy_marathon_tasks:
-        mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client,
             all_tasks=[],
             service=service,
             instance=instance,
@@ -698,10 +695,9 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         'paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
         autospec=True,
     ) as mock_get_expected_count:
-        mock_client = mock.Mock()
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
+            service=service, instance=instance, cluster=cluster, soa_dir=None,
             system_paasta_config=fake_system_paasta_config, all_tasks=[],
         )
         assert mock_get_proxy_port_for_instance.call_count == 0

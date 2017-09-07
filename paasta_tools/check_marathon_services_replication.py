@@ -317,7 +317,7 @@ def send_event_if_under_replication(
     )
 
 
-def check_service_replication(client, service, instance, all_tasks, cluster, soa_dir, system_paasta_config):
+def check_service_replication(service, instance, all_tasks, cluster, soa_dir, system_paasta_config):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -329,7 +329,10 @@ def check_service_replication(client, service, instance, all_tasks, cluster, soa
     """
     job_id = compose_job_id(service, instance)
     try:
-        expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
+        expected_count = marathon_tools.get_expected_instance_count_for_namespace(
+            service=service, namespace=instance,
+            cluster=cluster, soa_dir=soa_dir,
+        )
     except NoDeploymentsAvailable:
         log.debug('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
         return
@@ -379,7 +382,6 @@ def main():
     for service, instance in service_instances:
 
         check_service_replication(
-            client=client,
             service=service,
             instance=instance,
             cluster=cluster,
