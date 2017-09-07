@@ -463,10 +463,16 @@
           "description": "The status of the job",
           "properties": {
             "disabled_state": {
-              "type": "string"
+              "type": "string",
+              "enum": ["not_scheduled", "scheduled"]
             },
             "chronos_state": {
               "type": "string"
+            },
+            "mesos_state": {
+              "type": "string",
+              "description": "The status in mesos",
+              "enum": ["runnning", "not_running"]
             }
           }
         },
@@ -484,11 +490,6 @@
               "type": "string"
             }
           }
-        },
-        "mesos_status": {
-          "type": "string",
-          "description": "The status in mesos",
-          "enum": ["runnning", "not_running"]
         }
       },
       "required": [
@@ -496,8 +497,7 @@
         "schedule_type",
         "status",
         "command",
-        "last_status",
-        "mesos_status"
+        "last_status"
       ]
     },
     "InstanceTasks": {
