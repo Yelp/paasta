@@ -876,16 +876,21 @@ def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
     errors = {}
     mesos_state = get_mesos_master().state_summary()
     for identifier, resource in autoscaling_resources:
+        pool = resource['pool']
+        region = resource['region']
+        if (region, pool) in errors.keys():
+            continue
+
         target_utilization = all_pool_settings.get(
-            resource['pool'], {},
+            pool, {},
         ).get(
             'target_utilization', DEFAULT_TARGET_UTILIZATION,
         )
-        errors[identifier] = get_mesos_utilization_error(
-            mesos_state,
-            resource['region'],
-            resource['pool'],
-            target_utilization,
+        errors[(region, pool)] = get_mesos_utilization_error(
+            mesos_state=mesos_state,
+            region=region,
+            pool=pool,
+            target_utilization=target_utilization,
         )
 
     return errors
@@ -910,7 +915,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 config_folder=config_folder,
                 dry_run=dry_run,
                 log_level=log_level,
-                utilization_error=utilization_errors[identifier],
+                utilization_error=utilization_errors[(resource['region'], resource['pool'])],
             ))
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
