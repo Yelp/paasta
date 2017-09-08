@@ -74,11 +74,12 @@ class ResourceLogMixin(object):
 
 class ClusterAutoscaler(ResourceLogMixin):
 
-    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None):
+    def __init__(self, resource, pool_settings, config_folder, dry_run, utilization_error, log_level=None):
         self.resource = resource
         self.pool_settings = pool_settings
         self.config_folder = config_folder
         self.dry_run = dry_run
+        self.utilization_error = utilization_error
         if log_level is not None:
             self.log.setLevel(log_level)
 
@@ -180,12 +181,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         }
         return slaves
 
-    def get_mesos_utilization_error(
-        self,
-        slaves,
-        mesos_state,
-        expected_instances=None,
-    ):
+    def check_expected_slaves(self, slaves, expected_instances):
         current_instances = len(slaves)
         if current_instances == 0:
             error_message = ("No instances are active, not scaling until the instances are attached to mesos")
@@ -206,24 +202,6 @@ class ClusterAutoscaler(ResourceLogMixin):
                     current_instances, expected_instances, MISSING_SLAVE_PANIC_THRESHOLD,
                 )
                 raise ClusterAutoscalingError(error_message)
-
-        region_pool_utilization_dict = get_resource_utilization_by_grouping(
-            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-            mesos_state,
-        )[(self.resource['pool'], self.resource['region'],)]
-
-        self.log.debug(region_pool_utilization_dict)
-        free_pool_resources = region_pool_utilization_dict['free']
-        total_pool_resources = region_pool_utilization_dict['total']
-        free_percs = []
-        for pair in zip(free_pool_resources, total_pool_resources):
-            free, total = pair[0], pair[1]
-            if math.isclose(total, 0):
-                continue
-            free_percs.append(float(free) / float(total))
-        utilization = 1.0 - min(free_percs)
-        target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
-        return utilization - target_utilization
 
     async def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None):
         """Waits for slave to be drained and then terminate
@@ -543,7 +521,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 continue
             try:
                 await task
-            except (HttpError, FailSetResourceCapacity):
+            except (HTTPError, FailSetResourceCapacity):
                 continue
 
         # In case there's nothing to kill, we'll get a RuntimeWarning unless we await on something
@@ -597,11 +575,8 @@ class SpotAutoscaler(ClusterAutoscaler):
                 return 0, 0
             mesos_state = get_mesos_master().state
             slaves = self.get_aws_slaves(mesos_state)
-            error = self.get_mesos_utilization_error(
-                slaves=slaves,
-                mesos_state=mesos_state,
-                expected_instances=expected_instances,
-            )
+            self.check_expected_slaves(slaves, expected_instances)
+            error = self.utilization_error
         elif self.sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
             self.log.warning(
                 "Not scaling an SFR in state: {} so {}, skipping...".format(
@@ -626,10 +601,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
             self.resource['min_capacity'] = 0
             slaves = self.get_pool_slaves(mesos_state)
-            pool_error = self.get_mesos_utilization_error(
-                slaves=slaves,
-                mesos_state=mesos_state,
-            )
+            pool_error = self.utilization_error
             if pool_error > 0:
                 self.log.info(
                     "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id']),
@@ -771,11 +743,8 @@ class AsgAutoscaler(ClusterAutoscaler):
             return self.get_asg_delta(1)
         mesos_state = get_mesos_master().state
         slaves = self.get_aws_slaves(mesos_state)
-        error = self.get_mesos_utilization_error(
-            slaves=slaves,
-            mesos_state=mesos_state,
-            expected_instances=expected_instances,
-        )
+        self.check_expected_slaves(slaves, expected_instances)
+        error = self.utilization_error
         return self.get_asg_delta(error)
 
     def is_aws_launching_instances(self):
@@ -903,6 +872,25 @@ class PaastaAwsSlave(object):
             return 1
 
 
+def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
+    errors = {}
+    mesos_state = get_mesos_master().state_summary()
+    for identifier, resource in autoscaling_resources:
+        target_utilization = all_pool_settings.get(
+            resource['pool'], {},
+        ).get(
+            'target_utilization', DEFAULT_TARGET_UTILIZATION,
+        )
+        errors[identifier] = get_mesos_utilization_error(
+            mesos_state,
+            resource['region'],
+            resource['pool'],
+            target_utilization,
+        )
+
+    return errors
+
+
 def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     log.debug("Sleep 20s to throttle AWS API calls")
     time.sleep(20)
@@ -912,6 +900,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
@@ -921,6 +910,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 config_folder=config_folder,
                 dry_run=dry_run,
                 log_level=log_level,
+                utilization_error=utilization_errors[identifier],
             ))
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
@@ -1011,3 +1001,27 @@ def autoscaling_info_for_resource(resource, pool_settings):
         max_capacity=str(scaler.resource['max_capacity']),
         instances=str(len(scaler.instances)),
     )
+
+
+def get_mesos_utilization_error(
+    mesos_state,
+    region,
+    pool,
+    target_utilization,
+):
+    region_pool_utilization_dict = get_resource_utilization_by_grouping(
+        lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
+        mesos_state,
+    )[(pool, region,)]
+
+    log.debug(region_pool_utilization_dict)
+    free_pool_resources = region_pool_utilization_dict['free']
+    total_pool_resources = region_pool_utilization_dict['total']
+    free_percs = []
+    for pair in zip(free_pool_resources, total_pool_resources):
+        free, total = pair[0], pair[1]
+        if math.isclose(total, 0):
+            continue
+        free_percs.append(float(free) / float(total))
+    utilization = 1.0 - min(free_percs)
+    return utilization - target_utilization
