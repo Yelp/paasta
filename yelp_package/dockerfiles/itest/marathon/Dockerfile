@@ -33,7 +33,7 @@ RUN add-apt-repository ppa:webupd8team/java && \
     apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         lsb-release \
-        marathon=1.4.6-1.0.656.ubuntu1604 \
+        marathon=1.4.7-1.0.657.ubuntu1604 \
         oracle-java8-installer > /dev/null && \
     apt-get clean
 
