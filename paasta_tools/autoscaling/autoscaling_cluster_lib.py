@@ -282,7 +282,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 else:
                     raise
 
-    def scale_resource(self, current_capacity, target_capacity, event_loop):
+    async def scale_resource(self, current_capacity, target_capacity):
         """Scales an AWS resource based on current and target capacity
         If scaling up we just set target capacity and let AWS take care of the rest
         If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -312,12 +312,10 @@ class ClusterAutoscaler(ResourceLogMixin):
                     "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
                 )
                 return
-            event_loop.run_until_complete(
-                self.downscale_aws_resource(
-                    filtered_slaves=filtered_slaves,
-                    current_capacity=current_capacity,
-                    target_capacity=target_capacity,
-                ),
+            await self.downscale_aws_resource(
+                filtered_slaves=filtered_slaves,
+                current_capacity=current_capacity,
+                target_capacity=target_capacity,
             )
 
     async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff):
@@ -931,11 +929,21 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         time.sleep(3)
     sorted_autoscaling_scalers = sorted(autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True)
     event_loop = asyncio.get_event_loop()
-    for scaler in sorted_autoscaling_scalers:
-        autoscale_cluster_resource(scaler, event_loop)
-        log.debug("Sleep 3s to throttle AWS API calls")
-        time.sleep(3)
+    event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers))
     event_loop.close()
+
+
+async def run_parallel_scalers(sorted_autoscaling_scalers):
+    scaling_tasks = []
+    for scaler in sorted_autoscaling_scalers:
+        scaling_tasks.append(asyncio.ensure_future(autoscale_cluster_resource(scaler)))
+        log.debug("Sleep 3s to throttle AWS API calls")
+        await asyncio.sleep(3)
+    for task in scaling_tasks:
+        if task.cancelled() or task.done():
+            continue
+        await task
+    await asyncio.sleep(0.1)
 
 
 def get_scaler(scaler_type):
@@ -946,12 +954,12 @@ def get_scaler(scaler_type):
     return scalers[scaler_type]
 
 
-def autoscale_cluster_resource(scaler, event_loop):
+async def autoscale_cluster_resource(scaler):
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
         log.info("Target capacity: {}, Capacity current: {}".format(target, current))
-        scaler.scale_resource(current, target, event_loop)
+        await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (scaler.resource['id'], e))
 
