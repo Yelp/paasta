@@ -59,12 +59,12 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
 
 
 class Inbox(PaastaThread):
-    def __init__(self, inbox_q, bounce_q):
+    def __init__(self, inbox_q, pending_bounces):
         super(Inbox, self).__init__()
         self.daemon = True
         self.name = "Inbox"
         self.inbox_q = inbox_q
-        self.bounce_q = bounce_q
+        self.pending_bounces = pending_bounces
         self.to_bounce = {}
 
     def run(self):
@@ -107,7 +107,7 @@ class Inbox(PaastaThread):
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
                 bounced.append(service_instance_key)
-                self.bounce_q.put(service_instance.priority, service_instance)
+                self.pending_bounces.put(service_instance.priority, service_instance)
         for service_instance_key in bounced:
             self.to_bounce.pop(service_instance_key)
         # TODO: if the bounceq is empty we could probably start adding SIs from
@@ -131,10 +131,10 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
-        self.bounce_q = DedupedPriorityQueue("BounceQueue")
+        self.pending_bounces = DedupedPriorityQueue("BounceQueue")
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
-        self.inbox = Inbox(self.inbox_q, self.bounce_q)
+        self.inbox = Inbox(self.inbox_q, self.pending_bounces)
         self.marathon_client = get_marathon_client_from_config()
 
     def setup_logging(self):
@@ -166,7 +166,7 @@ class DeployDaemon(PaastaThread):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
         self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
-        QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
+        QueueMetrics(self.inbox, self.pending_bounces, self.config.get_cluster(), self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -209,7 +209,7 @@ class DeployDaemon(PaastaThread):
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
             worker_no = len(self.workers) + 1
-            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config, self.metrics)
+            worker = PaastaDeployWorker(worker_no, self.inbox_q, self.pending_bounces, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 
@@ -219,7 +219,7 @@ class DeployDaemon(PaastaThread):
     def start_workers(self):
         self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
-            worker = PaastaDeployWorker(i, self.inbox_q, self.bounce_q, self.config, self.metrics)
+            worker = PaastaDeployWorker(i, self.inbox_q, self.pending_bounces, self.config, self.metrics)
             worker.start()
             self.workers.append(worker)
 

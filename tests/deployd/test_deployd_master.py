@@ -89,9 +89,9 @@ class TestDedupedPriorityQueue(unittest.TestCase):
 
 class TestInbox(unittest.TestCase):
     def setUp(self):
-        self.mock_bounce_q = mock.Mock()
+        self.mock_pending_bounces = mock.Mock()
         self.mock_inbox_q = mock.Mock()
-        self.inbox = Inbox(self.mock_inbox_q, self.mock_bounce_q)
+        self.inbox = Inbox(self.mock_inbox_q, self.mock_pending_bounces)
 
     def test_run(self):
         with mock.patch(
@@ -167,8 +167,8 @@ class TestInbox(unittest.TestCase):
                 'universe.c138': mock_service_instance_2,
             }
             self.inbox.process_to_bounce()
-            self.mock_bounce_q.put.assert_called_with(mock_service_instance_1.priority, mock_service_instance_1)
-            assert self.mock_bounce_q.put.call_count == 1
+            self.mock_pending_bounces.put.assert_called_with(mock_service_instance_1.priority, mock_service_instance_1)
+            assert self.mock_pending_bounces.put.call_count == 1
 
     def tearDown(self):
         self.inbox.to_bounce = {}
@@ -238,7 +238,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(
                 self.deployd.inbox,
-                self.deployd.bounce_q,
+                self.deployd.pending_bounces,
                 'westeros-prod',
                 mock_get_metrics_interface.return_value,
             )

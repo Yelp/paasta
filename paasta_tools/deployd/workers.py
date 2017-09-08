@@ -12,12 +12,12 @@ BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'return_
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, inbox_q, bounce_q, config, metrics_provider):
+    def __init__(self, worker_number, inbox_q, pending_bounces, config, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
         self.name = "Worker{}".format(worker_number)
         self.inbox_q = inbox_q
-        self.bounce_q = bounce_q
+        self.pending_bounces = pending_bounces
         self.metrics = metrics_provider
         self.config = config
         self.cluster = self.config.get_cluster()
@@ -65,7 +65,7 @@ class PaastaDeployWorker(PaastaThread):
     def run(self):
         self.log.info("{} starting up".format(self.name))
         while True:
-            service_instance = self.bounce_q.get()
+            service_instance = self.pending_bounces.get()
             try:
                 bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(service_instance)
             except Exception as e:
