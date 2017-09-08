@@ -29,6 +29,17 @@ def service_instance_status(context, app_count, job_id):
 #    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
 
 
+@then('instance GET should return chronos desired_state "{desired_state}" for "{job_id}"')
+def chronos_service_instance_status(context, desired_state, job_id):
+    (service, instance, _, __) = decompose_job_id(job_id)
+    response = context.paasta_api_client.service.status_instance(
+        instance=instance,
+        service=service,
+    ).result()
+
+    assert response['chronos']['desired_state'] == desired_state, response
+
+
 @then('instance GET should return error code "{error_code}" for "{job_id}"')
 def service_instance_status_error(context, error_code, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
