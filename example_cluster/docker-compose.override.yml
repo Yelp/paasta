@@ -20,6 +20,7 @@ services:
     volumes:
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
+      - ./boto:/etc/boto:rw
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - ssh-data:/root/.ssh

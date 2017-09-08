@@ -112,21 +112,24 @@ def get_latest_deployment_tag(refs, deploy_group):
     return most_recent_ref, most_recent_sha
 
 
-def get_deploy_group_mappings(soa_dir, service, old_mappings):
+def get_deploy_group_mappings(soa_dir, service, old_mappings=None):
     """Gets mappings from service:deploy_group to services-service:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new
-                         mapping.
-    :returns: A dictionary mapping service:deploy_group to a dictionary containing:
+    :param old_mappings_DEPRECATED: A dictionary like the return dictionary.
+      Used for fallback if there is a problem with a new mapping.
+    :returns: A dictionary mapping service:deploy_group to a dictionary
+      containing:
 
-    - 'docker_image': something like "services-service:paasta-hash". This is relative to the paasta docker
-      registry.
-    - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
-    - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
-      the other properties of this app have not changed.
+    - 'docker_image': something like "services-service:paasta-hash". This is
+      relative to the paasta docker registry.
+    - 'desired_state': either 'start' or 'stop'. Says whether this branch
+      should be running.
+    - 'force_bounce': An arbitrary value, which may be None. A change in this
+      value should trigger a bounce, even if the other properties of this app
+      have not changed.
     """
     mappings = {}
     v2_mappings = {
@@ -139,7 +142,10 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
         service=service,
     )
 
-    deploy_group_branch_mappings = {config.get_branch(): config.get_deploy_group() for config in service_configs}
+    deploy_group_branch_mappings = {
+        config.get_branch(): config.get_deploy_group()
+        for config in service_configs
+    }
     if not deploy_group_branch_mappings:
         log.info('Service %s has no valid deploy groups. Skipping.', service)
         return {}
