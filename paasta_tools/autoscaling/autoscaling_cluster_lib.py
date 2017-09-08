@@ -1028,5 +1028,9 @@ def get_mesos_utilization_error(
         if math.isclose(total, 0):
             continue
         free_percs.append(float(free) / float(total))
+
+    if len(free_percs) == 0:  # If all resource totals are close to 0 for some reason
+        return 0
+
     utilization = 1.0 - min(free_percs)
     return utilization - target_utilization
