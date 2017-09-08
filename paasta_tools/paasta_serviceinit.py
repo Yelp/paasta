@@ -24,6 +24,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
+from paasta_tools import paasta_remote_run
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -143,57 +144,104 @@ def main():
     actual_deployments = get_actual_deployments(service, args.soa_dir)
     clients = PaastaClients(cached=(command == 'status'))
 
+    instance_types = ['marathon', 'chronos', 'paasta_native', 'adhoc']
+    instance_types_map = {it: [] for it in instance_types}
     for instance in instances:
         try:
-            instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
-            if instance_type == 'adhoc':
-                continue
-
-            version = get_deployment_version(actual_deployments, cluster, instance)
-            paasta_print('instance: %s' % PaastaColors.blue(instance))
-            paasta_print('Git sha:    %s (desired)' % version)
-
-            if instance_type == 'marathon':
-                return_code = marathon_serviceinit.perform_command(
-                    command=command,
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    verbose=args.verbose,
-                    soa_dir=args.soa_dir,
-                    app_id=args.app_id,
-                    delta=args.delta,
-                    client=clients.marathon(),
-                )
-            elif instance_type == 'chronos':
-                return_code = chronos_serviceinit.perform_command(
-                    command=command,
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    verbose=args.verbose,
-                    soa_dir=args.soa_dir,
-                    client=clients.chronos(),
-                )
-            elif instance_type == 'paasta_native':
-                return_code = paasta_native_serviceinit.perform_command(
-                    command=command,
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    verbose=args.verbose,
-                    soa_dir=args.soa_dir,
-                )
-            else:
-                log.error("I calculated an instance_type of %s for %s which I don't know how to handle."
-                          % (instance_type, compose_job_id(service, instance)))
-                return_code = 1
+            instance_type = validate_service_instance(
+                service, instance, cluster, args.soa_dir,
+            )
         except Exception:
-            log.error('Exception raised while looking at service %s instance %s:' % (service, instance))
+            log.error(
+                (
+                    'Exception raised while looking at service %s instance %s:'
+                ).format(service, instance),
+            )
             log.error(traceback.format_exc())
-            return_code = 1
+            return_codes.append(1)
+            continue
 
-        return_codes.append(return_code)
+        if instance_type not in instance_types:
+            log.error(
+                (
+                    "I calculated an instance_type of {} for {} which I don't "
+                    "know how to handle."
+                ).format(
+                    instance_type, compose_job_id(service, instance),
+                ),
+            )
+            return_codes.append(1)
+        else:
+            instance_types_map[instance_type].append(instance)
+
+    remote_run_frameworks = None
+    if len(instance_types_map['adhoc']) > 0:
+        remote_run_frameworks = paasta_remote_run.remote_run_frameworks()
+
+    for instance_type in instance_types:
+        for instance in instance_types_map[instance_type]:
+            try:
+                version = get_deployment_version(
+                    actual_deployments, cluster, instance,
+                )
+                paasta_print('instance: %s' % PaastaColors.blue(instance))
+                paasta_print('Git sha:    %s (desired)' % version)
+
+                if instance_type == 'marathon':
+                    return_code = marathon_serviceinit.perform_command(
+                        command=command,
+                        service=service,
+                        instance=instance,
+                        cluster=cluster,
+                        verbose=args.verbose,
+                        soa_dir=args.soa_dir,
+                        app_id=args.app_id,
+                        delta=args.delta,
+                        client=clients.marathon(),
+                    )
+                elif instance_type == 'chronos':
+                    return_code = chronos_serviceinit.perform_command(
+                        command=command,
+                        service=service,
+                        instance=instance,
+                        cluster=cluster,
+                        verbose=args.verbose,
+                        soa_dir=args.soa_dir,
+                        client=clients.chronos(),
+                    )
+                elif instance_type == 'paasta_native':
+                    return_code = paasta_native_serviceinit.perform_command(
+                        command=command,
+                        service=service,
+                        instance=instance,
+                        cluster=cluster,
+                        verbose=args.verbose,
+                        soa_dir=args.soa_dir,
+                    )
+                elif instance_type == 'adhoc':
+                    if instance == 'interactive':
+                        raise NotImplementedError
+                    if command != 'status':
+                        raise NotImplementedError
+
+                    paasta_remote_run.remote_run_list_report(
+                        service=service,
+                        instance=instance,
+                        cluster=cluster,
+                        frameworks=remote_run_frameworks,
+                    )
+                    return_code = 0
+            except Exception:
+                log.error(
+                    (
+                        'Exception raised while looking at service {} '
+                        'instance {}:'
+                    ).format(service, instance),
+                )
+                log.error(traceback.format_exc())
+                return_code = 1
+
+            return_codes.append(return_code)
 
     sys.exit(max(return_codes))
 
