@@ -282,7 +282,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 else:
                     raise
 
-    def scale_resource(self, current_capacity, target_capacity, loop):
+    def scale_resource(self, current_capacity, target_capacity, event_loop):
         """Scales an AWS resource based on current and target capacity
         If scaling up we just set target capacity and let AWS take care of the rest
         If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -312,7 +312,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
                 )
                 return
-            loop.run_until_complete(
+            event_loop.run_until_complete(
                 self.downscale_aws_resource(
                     filtered_slaves=filtered_slaves,
                     current_capacity=current_capacity,
@@ -321,6 +321,12 @@ class ClusterAutoscaler(ResourceLogMixin):
             )
 
     async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff):
+        """
+        Since this is async, it can be suspended at an `await` call.  Because of this, we need to re-calculate
+        the capacity each time we call `set_capacity` (as another coroutine could have set the capacity while
+        this one was suspended).  `set_capacity` stores the currently set capacity in the object, and then
+        this function re-calculates that from the capacity_diff each time we call `set_capacity`
+        """
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
         # we giveup waiting for the instance to drain and mark it for termination anyway
@@ -492,6 +498,9 @@ class ClusterAutoscaler(ResourceLogMixin):
 
             capacity_diff = new_capacity - current_capacity
             self.log.info("Starting async kill for %s" % slave_to_kill.hostname)
+            # My understanding is that ensure_future will actually start running the coroutine
+            #  (gracefully_terminate_slave), until it hits something that sleeps, then the loop
+            #  can continue and we start killing the next slave
             terminate_tasks[slave_to_kill.hostname] = asyncio.ensure_future(
                 self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
@@ -500,16 +509,14 @@ class ClusterAutoscaler(ResourceLogMixin):
             )
 
             for hostname, task in terminate_tasks.items():
-                if task is None:
+                if hostname in done_tasks:
                     continue
                 if task.cancelled():
-                    done_tasks.add(terminate_tasks[hostname])
-                    terminate_tasks[hostname] = None
+                    done_tasks.add(hostname)
                 if not task.done():
                     continue
                 try:
-                    done_tasks.add(terminate_tasks[hostname])
-                    terminate_tasks[hostname] = None
+                    done_tasks.add(hostname)
                     task.result()  # Raises an exception if the task raised an exception
                     killed_slaves += 1
                 except HTTPError:
@@ -532,17 +539,16 @@ class ClusterAutoscaler(ResourceLogMixin):
                     slave.task_counts = task_counts[i]['task_counts']
             filtered_slaves = filtered_sorted_slaves
 
-        while any([task is not None for task in terminate_tasks.values()]):
-            for hostname, task in terminate_tasks.items():
-                if task is None:
-                    continue
-                if task.cancelled() or task.done():
-                    done_tasks.add(terminate_tasks[hostname])
-                    terminate_tasks[hostname] = None
-                    continue
-                await terminate_tasks[hostname]
+        # Now we wait for each task to actually finish...
+        for hostname, task in terminate_tasks.items():
+            if task.cancelled() or task.done():
+                continue
+            try:
+                await task
+            except (HttpError, FailSetResourceCapacity):
+                continue
 
-        # In case there's nothing to kill, we'll get a RuntimeWarning unles we await on something
+        # In case there's nothing to kill, we'll get a RuntimeWarning unless we await on something
         await asyncio.sleep(1)
 
 
@@ -924,12 +930,12 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
     sorted_autoscaling_scalers = sorted(autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True)
-    loop = asyncio.get_event_loop()
+    event_loop = asyncio.get_event_loop()
     for scaler in sorted_autoscaling_scalers:
-        autoscale_cluster_resource(scaler, loop)
+        autoscale_cluster_resource(scaler, event_loop)
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
-    loop.close()
+    event_loop.close()
 
 
 def get_scaler(scaler_type):
@@ -940,12 +946,12 @@ def get_scaler(scaler_type):
     return scalers[scaler_type]
 
 
-def autoscale_cluster_resource(scaler, loop):
+def autoscale_cluster_resource(scaler, event_loop):
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
         log.info("Target capacity: {}, Capacity current: {}".format(target, current))
-        scaler.scale_resource(current, target, loop)
+        scaler.scale_resource(current, target, event_loop)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (scaler.resource['id'], e))
 
