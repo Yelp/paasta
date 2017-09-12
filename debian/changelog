@@ -1,3 +1,10 @@
+paasta-tools (0.67.0) xenial; urgency=medium
+
+  * 0.67.0 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into mypy
+
+ -- Evan Krall <krall@yelp.com>  Mon, 11 Sep 2017 18:59:35 -0700
+
 paasta-tools (0.66.39) xenial; urgency=medium
 
   * 0.66.39 tagged with 'make release'
