@@ -420,16 +420,19 @@ class ClusterAutoscaler(ResourceLogMixin):
         return accumulated
 
     def instance_descriptions_for_ips(self, ips):
-        return self.describe_instances(
-            instance_ids=[],
-            region=self.resource['region'],
-            instance_filters=[
-                {
-                    'Name': 'private-ip-address',
-                    'Values': ips,
-                },
-            ],
-        )
+        all_instances = []
+        for start, stop in zip(range(0, len(ips), 199), range(199, len(ips) + 199, 199)):
+            all_instances += self.describe_instances(
+                instance_ids=[],
+                region=self.resource['region'],
+                instance_filters=[
+                    {
+                        'Name': 'private-ip-address',
+                        'Values': ips[start:stop],
+                    },
+                ],
+            )
+        return all_instances
 
     def filter_instance_description_for_ip(self, ip, instance_descriptions):
         return [
