@@ -628,7 +628,7 @@ class InstanceConfig(object):
 
     def get_volumes(self, system_volumes: List[DockerVolume]) -> List[DockerVolume]:
         volumes = system_volumes + self.get_extra_volumes()
-        deduped = {v['containerPath'] + v['hostPath']: v for v in volumes}.values()
+        deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
         return sort_dicts(deduped)
 
     def get_dependencies_reference(self) -> Optional[str]:

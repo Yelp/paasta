@@ -19,6 +19,7 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import autoscale_local_clu
 
 
 log = logging.getLogger(__name__)
+logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
 def parse_args(argv):

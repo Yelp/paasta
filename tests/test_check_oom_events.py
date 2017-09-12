@@ -35,18 +35,23 @@ def instance_config():
 
 
 def test_compose_sensu_status_ok(instance_config):
-    assert compose_sensu_status(instance_config, []) \
+    assert compose_sensu_status(instance=instance_config, oom_events=[], is_check_enabled=True) \
         == (Status.OK, 'No oom events for fake_service.fake_instance in the last minute.')
+
+
+def test_compose_sensu_status_unknown(instance_config):
+    assert compose_sensu_status(instance=instance_config, oom_events=[], is_check_enabled=False) \
+        == (Status.OK, 'This check is disabled for fake_service.fake_instance.')
 
 
 def test_compose_sensu_status_not_ok(instance_config):
     assert compose_sensu_status(
-        instance_config, [
+        instance=instance_config, oom_events=[
             OOMEvent('hostname1', 'container_id1', 'proc_A'),
             OOMEvent('hostname3', 'container_id3', 'proc_C'),
             OOMEvent('hostname2', 'container_id2', 'proc_B'),
             OOMEvent('hostname2', 'container_id2', ''),
-        ],
+        ], is_check_enabled=True,
     ) == (
         Status.CRITICAL, 'The Out Of Memory killer killed 4 processes (proc_A,proc_B,proc_C)'
                          ' in the last minute in fake_service.fake_instance containers.',

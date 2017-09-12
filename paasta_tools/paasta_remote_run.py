@@ -103,7 +103,7 @@ def extract_args(args):
             sep='\n',
             file=sys.stderr,
         )
-        os._exit(1)
+        sys.exit(1)
 
     soa_dir = args.yelpsoa_config_root
     instance = args.instance
@@ -111,9 +111,28 @@ def extract_args(args):
         instance_type = 'adhoc'
         instance = 'remote'
     else:
-        instance_type = validate_service_instance(service, instance, cluster, soa_dir)
+        instance_type = validate_service_instance(
+            service, instance, cluster, soa_dir,
+        )
+        if instance_type != 'adhoc':
+            paasta_print(
+                PaastaColors.red(
+                    (
+                        "Please use instance declared in adhoc.yaml for use "
+                        "with remote-run, {} is declared as {}"
+                    ).format(instance, instance_type),
+                ),
+            )
+            sys.exit(1)
 
-    return (system_paasta_config, service, cluster, soa_dir, instance, instance_type)
+    return (
+        system_paasta_config,
+        service,
+        cluster,
+        soa_dir,
+        instance,
+        instance_type,
+    )
 
 
 def paasta_to_task_config_kwargs(
@@ -121,7 +140,7 @@ def paasta_to_task_config_kwargs(
         instance,
         cluster,
         system_paasta_config,
-        instance_type='paasta_native',
+        instance_type,
         soa_dir=DEFAULT_SOA_DIR,
         config_overrides=None,
 ):
@@ -172,6 +191,7 @@ def paasta_to_task_config_kwargs(
         'uris': [uris],
         'docker_parameters': docker_parameters,
         'containerizer': 'DOCKER',
+        'environment': native_job_config.get_env_dictionary(),
     }
     if gpus > 0:
         kwargs['gpus'] = int(gpus)
@@ -307,7 +327,7 @@ def remote_run_start(args):
             instance,
             cluster,
             system_paasta_config,
-            instance_type=instance_type,
+            instance_type,
             soa_dir=soa_dir,
             config_overrides=overrides_dict,
         ),
@@ -353,7 +373,7 @@ def remote_run_stop(args):
     _, service, cluster, _, instance, _ = extract_args(args)
     if args.framework_id is None and args.run_id is None:
         paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
-        os._exit(1)
+        sys.exit(1)
 
     frameworks = [
         f
@@ -364,14 +384,14 @@ def remote_run_stop(args):
     if framework_id is None:
         if re.match('\s', args.run_id):
             paasta_print(PaastaColors.red("Run id must not contain whitespace."))
-            os._exit(1)
+            sys.exit(1)
 
         found = [f for f in frameworks if re.search(' %s$' % args.run_id, f.name) is not None]
         if len(found) > 0:
             framework_id = found[0].id
         else:
             paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
-            os._exit(1)
+            sys.exit(1)
     else:
         found = [f for f in frameworks if f.id == framework_id]
         if len(found) == 0:
@@ -381,7 +401,7 @@ def remote_run_stop(args):
                     (framework_id, service, instance),
                 ),
             )
-            os._exit(1)
+            sys.exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
     mesos_master = get_mesos_master()
@@ -392,23 +412,48 @@ def remote_run_stop(args):
         paasta_print(teardown.text)
 
 
-def remote_run_list(args):
-    _, service, cluster, _, instance, _ = extract_args(args)
-    frameworks = get_all_frameworks(active_only=True)
+def remote_run_frameworks():
+    return get_all_frameworks(active_only=True)
+
+
+def remote_run_filter_frameworks(service, instance, frameworks=None):
+    if frameworks is None:
+        frameworks = remote_run_frameworks()
+
     prefix = "paasta-remote %s.%s" % (service, instance)
-    filtered = [f for f in frameworks if f.name.startswith(prefix)]
+    return [f for f in frameworks if f.name.startswith(prefix)]
+
+
+def remote_run_list_report(service, instance, cluster, frameworks=None):
+    filtered = remote_run_filter_frameworks(
+        service, instance, frameworks=frameworks,
+    )
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
-        launch_time, run_id = re.match('paasta-remote [^\s]+ (\w+) (\w+)', f.name).groups()
+        launch_time, run_id = re.match(
+            'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
+        ).groups()
         paasta_print("Launch time: %s, run id: %s, framework id: %s" %
                      (launch_time, run_id, f.id))
     if len(filtered) > 0:
         paasta_print(
-            "Use `paasta remote-run stop -s %s -c %s -i %s [-R <run id> | -F <framework id>]` to stop." %
-            (service, cluster, instance),
+            (
+                "Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
+                "| -F <framework id>]` to stop."
+            ).format(service, cluster, instance),
         )
     else:
         paasta_print("Nothing found.")
+
+
+def remote_run_list(args, frameworks=None):
+    _, service, cluster, _, instance, _ = extract_args(args)
+    return remote_run_list_report(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        frameworks=frameworks,
+    )
 
 
 def main(argv):

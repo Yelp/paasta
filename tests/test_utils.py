@@ -1387,6 +1387,49 @@ class TestInstanceConfig:
             {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
         ]
 
+    def test_get_volumes_handles_dupes_with_trailing_slashes(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+                    {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes: List[utils.DockerVolume] = [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RO"},
+        ]
+        # note: prefers extra_volumes over system_volumes
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+        ]
+
+    def test_get_volumes_preserves_trailing_slash(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes: List[utils.DockerVolume] = [
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
+        ]
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
+        ]
+
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"

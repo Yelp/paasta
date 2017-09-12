@@ -191,7 +191,6 @@ class InvalidChronosConfigError(Exception):
 @time_cache(ttl=30)
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
-    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
     return service_configuration_lib.read_extra_service_information(
         service,
         chronos_conf_file,
@@ -200,7 +199,6 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
-    log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_service_configuration(
         service,
         soa_dir=soa_dir,

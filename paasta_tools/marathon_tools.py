@@ -123,14 +123,11 @@ def load_marathon_service_config_no_cache(service, instance, cluster, load_deplo
                              should also be loaded
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
-    log.info("Reading service configuration files from dir %s/ in %s" % (service, soa_dir))
-    log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_service_configuration(
         service,
         soa_dir=soa_dir,
     )
     marathon_conf_file = "marathon-%s" % cluster
-    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
         service,
         marathon_conf_file,
@@ -774,8 +771,9 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
                     continue
                 nerve_dict['port'] = port
                 nerve_list.append((registration, nerve_dict))
-        except KeyError:
+        except (KeyError, NoConfigurationForServiceError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
+
     return nerve_list
 
 

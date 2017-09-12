@@ -5,7 +5,7 @@ from queue import Empty
 import mock
 from pytest import raises
 
-from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployd.common import BaseServiceInstance
 
 
 class FakePyinotify(object):  # pragma: no cover
@@ -33,18 +33,19 @@ sys.modules['pyinotify'] = FakePyinotify
 
 from paasta_tools.deployd.master import Inbox  # noqa
 from paasta_tools.deployd.master import DeployDaemon  # noqa
-from paasta_tools.deployd.master import DedupedQueue  # noqa
+from paasta_tools.deployd.master import DedupedPriorityQueue  # noqa
 from paasta_tools.deployd.master import main  # noqa
 
 
-class TestDedupedQueue(unittest.TestCase):
+class TestDedupedPriorityQueue(unittest.TestCase):
     def setUp(self):
-        self.queue = DedupedQueue("BounceQueue")
+        self.queue = DedupedPriorityQueue("BounceQueue")
         assert not self.queue.bouncing
-        self.mock_service_instance = ServiceInstance(
+        self.mock_service_instance = BaseServiceInstance(
             service='universe',
             instance='c137',
             watcher='tests',
+            priority=0,
             bounce_by=1,
             bounce_timers=None,
             failures=0,
@@ -52,36 +53,37 @@ class TestDedupedQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaQueue', autospec=True,
-        ) as mock_paasta_queue:
+            'paasta_tools.deployd.master.PaastaPriorityQueue.put', autospec=True,
+        ) as mock_paasta_queue_put:
 
-            self.queue.put(self.mock_service_instance)
-            mock_paasta_queue.put.assert_called_with(self.queue, self.mock_service_instance)
+            self.queue.put(0, self.mock_service_instance)
+            mock_paasta_queue_put.assert_called_with(self.queue, 0, self.mock_service_instance)
             assert 'universe.c137' in self.queue.bouncing
 
-            mock_paasta_queue.reset_mock()
-            self.queue.put(self.mock_service_instance)
-            assert not mock_paasta_queue.called
+            mock_paasta_queue_put.reset_mock()
+            self.queue.put(0, self.mock_service_instance)
+            assert not mock_paasta_queue_put.called
             assert 'universe.c137' in self.queue.bouncing
 
     def test_get(self):
         with mock.patch(
-            'paasta_tools.deployd.master.PaastaQueue', autospec=True,
-        ) as mock_paasta_queue:
+            'paasta_tools.deployd.master.PaastaPriorityQueue.get', autospec=True,
+        ) as mock_paasta_queue_get:
 
-            self.mock_service_instance = ServiceInstance(
+            self.mock_service_instance = BaseServiceInstance(
                 service='universe',
                 instance='c137',
                 watcher='tests',
+                priority=0,
                 bounce_by=1,
                 bounce_timers=None,
                 failures=0,
             )
             self.queue.bouncing.add('universe.c137')
-            mock_paasta_queue.get.return_value = self.mock_service_instance
+            mock_paasta_queue_get.return_value = self.mock_service_instance
 
             assert self.queue.get() is self.mock_service_instance
-            assert mock_paasta_queue.get.called
+            assert mock_paasta_queue_get.called
             assert 'universe.c137' not in self.queue.bouncing
 
 
@@ -165,7 +167,7 @@ class TestInbox(unittest.TestCase):
                 'universe.c138': mock_service_instance_2,
             }
             self.inbox.process_to_bounce()
-            self.mock_bounce_q.put.assert_called_with(mock_service_instance_1)
+            self.mock_bounce_q.put.assert_called_with(mock_service_instance_1.priority, mock_service_instance_1)
             assert self.mock_bounce_q.put.call_count == 1
 
     def tearDown(self):
@@ -177,7 +179,7 @@ class TestDeployDaemon(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.master.PaastaQueue', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.master.DedupedQueue', autospec=True,
+            'paasta_tools.deployd.master.DedupedPriorityQueue', autospec=True,
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True,
         ) as self.mock_inbox, mock.patch(
@@ -369,6 +371,8 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_prioritise_bouncing_services(self):
         with mock.patch(
+            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+        ), mock.patch(
             'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True,
         ) as mock_get_service_instances_that_need_bouncing, mock.patch(
             'time.time', autospec=True, return_value=1,
@@ -382,18 +386,20 @@ class TestDeployDaemon(unittest.TestCase):
                 '/nail/etc/services',
             )
             calls = [
-                mock.call(ServiceInstance(
+                mock.call(BaseServiceInstance(
                     service='universe',
                     instance='c138',
                     watcher='DeployDaemon',
+                    priority=0,
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
                 )),
-                mock.call(ServiceInstance(
+                mock.call(BaseServiceInstance(
                     service='universe',
                     instance='c137',
                     watcher='DeployDaemon',
+                    priority=0,
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
