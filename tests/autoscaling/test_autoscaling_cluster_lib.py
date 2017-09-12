@@ -1474,6 +1474,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             ret = self.autoscaler.instance_descriptions_for_ips(ips)
             assert len(ret) == 567
             assert ret == ips
+            assert mock_describe_instances.call_count == 3
 
 
 class TestPaastaAwsSlave(unittest.TestCase):
