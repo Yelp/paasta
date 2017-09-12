@@ -312,6 +312,15 @@ class ClusterAutoscaler(ResourceLogMixin):
                 target_capacity=target_capacity,
             )
 
+    def should_drain(self, slave_to_kill):
+        if self.dry_run:
+            return False
+        if slave_to_kill.instance_status['SystemStatus']['Status'] != 'ok':
+            return False
+        if slave_to_kill.instance_status['InstanceStatus']['Status'] != 'ok':
+            return False
+        return True
+
     def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
@@ -321,7 +330,8 @@ class ClusterAutoscaler(ResourceLogMixin):
         # do anything at the end of the maintenance window.
         duration = 600 * 1000000000  # nanoseconds
         self.log.info("Draining {}".format(slave_to_kill.pid))
-        if not self.dry_run:
+        should_drain = self.should_drain(slave_to_kill)
+        if should_drain:
             try:
                 drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
                 drain([drain_host_string], start, duration)
@@ -338,7 +348,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
-            if not self.dry_run:
+            if should_drain:
                 undrain([drain_host_string])
             raise
         self.log.info("Waiting for instance to drain before we terminate")
@@ -349,7 +359,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             self.log.error("Setting resource capacity back to {}".format(current_capacity))
             self.set_capacity(current_capacity)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
-            if not self.dry_run:
+            if should_drain:
                 undrain([drain_host_string])
 
     def filter_aws_slaves(self, slaves_list):
