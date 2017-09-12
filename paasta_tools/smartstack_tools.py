@@ -168,7 +168,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     replication_info = {}
     filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
         blacklist=blacklist,
-        whitelist=[],
+        whitelist=None,
     )
     if not filtered_slaves:
         raise mesos_tools.NoSlavesAvailableError
