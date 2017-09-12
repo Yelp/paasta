@@ -73,11 +73,12 @@ class ResourceLogMixin(object):
 
 class ClusterAutoscaler(ResourceLogMixin):
 
-    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None):
+    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None, draining_enabled=True):
         self.resource = resource
         self.pool_settings = pool_settings
         self.config_folder = config_folder
         self.dry_run = dry_run
+        self.draining_enabled = draining_enabled
         if log_level is not None:
             self.log.setLevel(log_level)
 
@@ -245,7 +246,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
-                    if is_safe_to_kill(slave.hostname) or dry_run:
+                    if is_safe_to_kill(slave.hostname) or dry_run or not self.draining_enabled:
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
@@ -313,6 +314,8 @@ class ClusterAutoscaler(ResourceLogMixin):
             )
 
     def should_drain(self, slave_to_kill):
+        if not self.draining_enabled:
+            return False
         if self.dry_run:
             return False
         if slave_to_kill.instance_status['SystemStatus']['Status'] != 'ok':
@@ -333,8 +336,9 @@ class ClusterAutoscaler(ResourceLogMixin):
         should_drain = self.should_drain(slave_to_kill)
         if should_drain:
             try:
-                drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
-                drain([drain_host_string], start, duration)
+                if self.draining_enabled:
+                    drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
+                    drain([drain_host_string], start, duration)
             except HTTPError as e:
                 self.log.error("Failed to start drain "
                                "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
@@ -868,6 +872,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
+    autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
     for identifier, resource in autoscaling_resources.items():
@@ -879,6 +884,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 config_folder=config_folder,
                 dry_run=dry_run,
                 log_level=log_level,
+                draining_enabled=autoscaling_draining_enabled,
             ))
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
