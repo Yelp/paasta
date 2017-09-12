@@ -618,7 +618,7 @@ def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
     :returns: boolean, True if the slave gets past the whitelist
     """
     # No whitelist, so disable whitelisting behaviour.
-    if whitelist is None:
+    if whitelist is None or len(whitelist) == 0:
         return True
     try:
         attributes = slave["attributes"]
