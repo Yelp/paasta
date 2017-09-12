@@ -1148,6 +1148,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 pid='slave(1)@10.1.1.1:5051',
                 instance_weight=1,
                 ip='10.1.1.1',
+                instance_status={'SystemStatus': {'Status': 'ok'}, 'InstanceStatus': {'Status': 'ok'}},
             )
             self.autoscaler.gracefully_terminate_slave(
                 slave_to_kill=mock_slave,
