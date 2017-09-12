@@ -572,7 +572,6 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     }
 
 
-@time_cache(ttl=10)
 def get_slaves():
     return get_mesos_master().fetch("/master/slaves").json()['slaves']
 

@@ -40,6 +40,7 @@ import pysensu_yelp
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import format_job_id
+from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.smartstack_tools import load_smartstack_info_for_service
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
@@ -112,6 +113,7 @@ def check_smartstack_replication_for_instance(
     soa_dir,
     expected_count,
     system_paasta_config,
+    mesos_slaves,
 ):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -121,6 +123,7 @@ def check_smartstack_replication_for_instance(
     :param instance: A PaaSTA instance, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     full_name = compose_job_id(service, instance)
@@ -148,6 +151,7 @@ def check_smartstack_replication_for_instance(
         soa_dir=soa_dir,
         blacklist=monitoring_blacklist,
         system_paasta_config=system_paasta_config,
+        mesos_slaves=mesos_slaves,
     )
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
@@ -317,7 +321,10 @@ def send_event_if_under_replication(
     )
 
 
-def check_service_replication(service, instance, all_tasks, cluster, soa_dir, system_paasta_config):
+def check_service_replication(
+    service, instance, all_tasks, cluster, soa_dir,
+    system_paasta_config, mesos_slaves,
+):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -325,6 +332,7 @@ def check_service_replication(service, instance, all_tasks, cluster, soa_dir, sy
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     job_id = compose_job_id(service, instance)
@@ -348,6 +356,7 @@ def check_service_replication(service, instance, all_tasks, cluster, soa_dir, sy
             soa_dir=soa_dir,
             expected_count=expected_count,
             system_paasta_config=system_paasta_config,
+            mesos_slaves=mesos_slaves,
         )
     else:
         check_healthy_marathon_tasks_for_service_instance(
@@ -379,6 +388,7 @@ def main():
     config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
     all_tasks = client.list_tasks()
+    mesos_slaves = get_slaves()
     for service, instance in service_instances:
 
         check_service_replication(
@@ -388,6 +398,7 @@ def main():
             all_tasks=all_tasks,
             soa_dir=soa_dir,
             system_paasta_config=system_paasta_config,
+            mesos_slaves=mesos_slaves,
         )
 
 
