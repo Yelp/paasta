@@ -614,7 +614,7 @@ def slave_passes_blacklist(slave, blacklist: DeployBlacklist) -> bool:
 def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
     """
     :param slave: A single mesos slave with attributes.
-    :param whitelist: A list of lists like ["location_type", ["location1", 'location2']]
+    :param whitelist: A 2 item list like ["location_type", ["location1", 'location2']]
     :returns: boolean, True if the slave gets past the whitelist
     """
     # No whitelist, so disable whitelisting behaviour.
