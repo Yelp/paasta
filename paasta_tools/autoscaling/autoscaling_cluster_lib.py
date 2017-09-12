@@ -572,12 +572,6 @@ class SpotAutoscaler(ClusterAutoscaler):
                 self.resource['id'],
             ))
             raise ClusterAutoscalingError
-        if self.is_aws_launching_instances() and self.sfr['SpotFleetRequestState'] == 'active':
-            self.log.warning(
-                "AWS hasn't reached the TargetCapacity that is currently set. We won't make any "
-                "changes this time as we should wait for AWS to launch more instances first.",
-            )
-            return 0, 0
         current, target = self.get_spot_fleet_delta(error)
         if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
             self.resource['min_capacity'] = 0

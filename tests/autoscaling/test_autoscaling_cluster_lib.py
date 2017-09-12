@@ -737,8 +737,8 @@ class TestSpotAutoscaler(unittest.TestCase):
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             mock_is_aws_launching_sfr_instances.return_value = True
             ret = self.autoscaler.metrics_provider()
-            assert ret == (0, 0)
-            assert not mock_get_spot_fleet_delta.called
+            assert ret == (1, 2)
+            assert mock_get_spot_fleet_delta.called
 
             # cancelled_running SFR
             mock_cleanup_cancelled_config.reset_mock()
