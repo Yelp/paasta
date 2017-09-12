@@ -19,6 +19,10 @@ class MasterNotAvailableException(Exception):
     pass
 
 
+class MasterTemporarilyNotAvailableException(Exception):
+    pass
+
+
 class NoSlavesAvailableError(Exception):
     pass
 

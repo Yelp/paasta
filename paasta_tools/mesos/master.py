@@ -75,6 +75,10 @@ class MesosMaster(object):
             )
         except requests.exceptions.ConnectionError:
             raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
+        except requests.exceptions.TooManyRedirects:
+            raise exceptions.MasterTemporarilyNotAvailableException(
+                "Unable to connect to master at %s, likely due to an ongoing leader election" % self.host,
+            )
 
     def fetch(self, url, **kwargs):
         return self._request(url, **kwargs)

@@ -25,6 +25,7 @@ from botocore.exceptions import ClientError
 from requests.exceptions import HTTPError
 
 from paasta_tools.autoscaling import ec2_fitness
+from paasta_tools.mesos.exceptions import MasterTemporarilyNotAvailableException
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_master
@@ -245,7 +246,11 @@ class ClusterAutoscaler(ResourceLogMixin):
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
-                    if is_safe_to_kill(slave.hostname) or dry_run:
+                    try:
+                        can_terminate = is_safe_to_kill(slave.hostname) or dry_run
+                    except MasterTemporarilyNotAvailableException:
+                        can_terminate = False
+                    if can_terminate:
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
