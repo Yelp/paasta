@@ -234,9 +234,9 @@ def build_executor_stack(
 
     MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(
-        role=taskproc_config.get('role', taskproc_config['principal']),
-        principal=taskproc_config['principal'],
-        secret=taskproc_config['secret'],
+        role=taskproc_config.get('role', taskproc_config.get('principal')),
+        principal=taskproc_config.get('principal'),
+        secret=taskproc_config.get('secret'),
         mesos_address=mesos_address,
         framework_name="paasta-remote %s %s %s" % (
             compose_job_id(service, instance),
