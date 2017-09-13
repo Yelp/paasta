@@ -225,7 +225,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
         return utilization - target_utilization
 
-    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None):
+    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None, should_drain=True):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
@@ -246,7 +246,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
-                    if is_safe_to_kill(slave.hostname) or dry_run or not self.draining_enabled:
+                    if is_safe_to_kill(slave.hostname) or not should_drain:
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
@@ -336,9 +336,8 @@ class ClusterAutoscaler(ResourceLogMixin):
         should_drain = self.should_drain(slave_to_kill)
         if should_drain:
             try:
-                if self.draining_enabled:
-                    drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
-                    drain([drain_host_string], start, duration)
+                drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
+                drain([drain_host_string], start, duration)
             except HTTPError as e:
                 self.log.error("Failed to start drain "
                                "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
@@ -357,7 +356,9 @@ class ClusterAutoscaler(ResourceLogMixin):
             raise
         self.log.info("Waiting for instance to drain before we terminate")
         try:
-            self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
+            self.wait_and_terminate(
+                slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'], should_drain=should_drain,
+            )
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {}".format(current_capacity))
