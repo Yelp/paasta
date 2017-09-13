@@ -359,7 +359,11 @@ class ClusterAutoscaler(ResourceLogMixin):
         self.log.info("Waiting for instance to drain before we terminate")
         try:
             self.wait_and_terminate(
-                slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'], should_drain=should_drain,
+                slave=slave_to_kill,
+                drain_timeout=drain_timeout,
+                dry_run=self.dry_run,
+                region=self.resource['region'],
+                should_drain=should_drain,
             )
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
