@@ -1327,6 +1327,7 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_startup_bounce_rate': float,
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
+        'cluster_autoscaling_draining_enabled': bool,
     },
     total=False,
 )
