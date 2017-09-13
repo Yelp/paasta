@@ -1,3 +1,12 @@
+paasta-tools (0.67.4) xenial; urgency=medium
+
+  * 0.67.4 tagged with 'make release'
+    Commit: Merge pull request #1508 from Yelp/dont-drain-unhealthy-
+    instances  Don"t try to drain unhealthy instances when scaling the
+    cluster down
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 06:25:49 -0700
+
 paasta-tools (0.67.3) xenial; urgency=medium
 
   * 0.67.3 tagged with 'make release'
