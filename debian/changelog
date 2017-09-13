@@ -1,3 +1,10 @@
+paasta-tools (0.67.3) xenial; urgency=medium
+
+  * 0.67.3 tagged with 'make release'
+    Commit: Released 0.67.2 via make release
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 03:31:44 -0700
+
 paasta-tools (0.67.2) xenial; urgency=medium
 
   * 0.67.2 tagged with 'make release'
