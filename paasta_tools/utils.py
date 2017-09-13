@@ -1327,6 +1327,7 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_startup_bounce_rate': float,
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
+        'cluster_autoscaling_draining_enabled': bool,
         'taskproc': Dict,
     },
     total=False,
@@ -1525,6 +1526,13 @@ class SystemPaastaConfig(object):
 
     def get_cluster_autoscaling_resources(self) -> ClusterAutoscalingResources:
         return self.config_dict.get('cluster_autoscaling_resources', {})
+
+    def get_cluster_autoscaling_draining_enabled(self) -> bool:
+        """ Enable mesos maintenance mode and trigger draining of instances before the
+        autoscaler terminates the instance.
+
+        :returns A bool"""
+        return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
 
     def get_resource_pool_settings(self) -> ResourcePoolSettings:
         return self.config_dict.get('resource_pool_settings', {})

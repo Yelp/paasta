@@ -73,11 +73,12 @@ class ResourceLogMixin(object):
 
 class ClusterAutoscaler(ResourceLogMixin):
 
-    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None):
+    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None, draining_enabled=True):
         self.resource = resource
         self.pool_settings = pool_settings
         self.config_folder = config_folder
         self.dry_run = dry_run
+        self.draining_enabled = draining_enabled
         if log_level is not None:
             self.log.setLevel(log_level)
 
@@ -224,7 +225,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
         return utilization - target_utilization
 
-    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None):
+    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None, should_drain=True):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
@@ -245,7 +246,9 @@ class ClusterAutoscaler(ResourceLogMixin):
                         )
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
-                    if is_safe_to_kill(slave.hostname) or dry_run:
+                    if not should_drain or is_safe_to_kill(slave.hostname):
+                        if not should_drain and not dry_run:
+                            time.sleep(300)
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
@@ -312,6 +315,17 @@ class ClusterAutoscaler(ResourceLogMixin):
                 target_capacity=target_capacity,
             )
 
+    def should_drain(self, slave_to_kill):
+        if not self.draining_enabled:
+            return False
+        if self.dry_run:
+            return False
+        if slave_to_kill.instance_status['SystemStatus']['Status'] != 'ok':
+            return False
+        if slave_to_kill.instance_status['InstanceStatus']['Status'] != 'ok':
+            return False
+        return True
+
     def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
@@ -321,7 +335,8 @@ class ClusterAutoscaler(ResourceLogMixin):
         # do anything at the end of the maintenance window.
         duration = 600 * 1000000000  # nanoseconds
         self.log.info("Draining {}".format(slave_to_kill.pid))
-        if not self.dry_run:
+        should_drain = self.should_drain(slave_to_kill)
+        if should_drain:
             try:
                 drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
                 drain([drain_host_string], start, duration)
@@ -338,18 +353,24 @@ class ClusterAutoscaler(ResourceLogMixin):
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
-            if not self.dry_run:
+            if should_drain:
                 undrain([drain_host_string])
             raise
         self.log.info("Waiting for instance to drain before we terminate")
         try:
-            self.wait_and_terminate(slave_to_kill, drain_timeout, self.dry_run, region=self.resource['region'])
+            self.wait_and_terminate(
+                slave=slave_to_kill,
+                drain_timeout=drain_timeout,
+                dry_run=self.dry_run,
+                region=self.resource['region'],
+                should_drain=should_drain,
+            )
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {}".format(current_capacity))
             self.set_capacity(current_capacity)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
-            if not self.dry_run:
+            if should_drain:
                 undrain([drain_host_string])
 
     def filter_aws_slaves(self, slaves_list):
@@ -861,6 +882,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         log.info("Running in dry_run mode, no changes should be made")
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
+    autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
     for identifier, resource in autoscaling_resources.items():
@@ -872,6 +894,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 config_folder=config_folder,
                 dry_run=dry_run,
                 log_level=log_level,
+                draining_enabled=autoscaling_draining_enabled,
             ))
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
