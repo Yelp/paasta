@@ -1465,6 +1465,22 @@ class TestClusterAutoscaler(unittest.TestCase):
         ret = self.autoscaler.get_pool_slaves(mock_mesos_state)
         assert ret == {'id1': mock_mesos_state['slaves'][0]}
 
+    def test_instace_descriptions_for_ips_splits_ips(self):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
+            autospec=True,
+        ) as mock_describe_instances:
+            ips = list(range(567))
+
+            def mock_describe_instance(self, instance_ids, region, instance_filters):
+                return instance_filters[0]['Values']
+            mock_describe_instances.side_effect = mock_describe_instance
+
+            ret = self.autoscaler.instance_descriptions_for_ips(ips)
+            assert len(ret) == 567
+            assert ret == ips
+            assert mock_describe_instances.call_count == 3
+
 
 class TestPaastaAwsSlave(unittest.TestCase):
 

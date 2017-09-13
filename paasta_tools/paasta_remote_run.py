@@ -230,7 +230,7 @@ def build_executor_stack(
     )
 
     # TODO: implement DryRunExecutor?
-    taskproc_config = system_paasta_config.get('taskproc')
+    taskproc_config = system_paasta_config.get_taskproc()
 
     MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(

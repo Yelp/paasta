@@ -1328,6 +1328,7 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
         'cluster_autoscaling_draining_enabled': bool,
+        'taskproc': Dict,
     },
     total=False,
 )
@@ -1629,6 +1630,9 @@ class SystemPaastaConfig(object):
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", 'INFO')
+
+    def get_taskproc(self) -> Dict:
+        return self.config_dict.get('taskproc', {})
 
 
 def _run(

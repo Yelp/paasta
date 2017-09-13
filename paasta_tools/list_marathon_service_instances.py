@@ -91,7 +91,7 @@ def get_desired_marathon_configs(soa_dir):
         except NoSlavesAvailableError as errormsg:
             _log(
                 service=service,
-                line=errormsg,
+                line=str(errormsg),
                 component='deploy',
                 level='event',
                 cluster=cluster,
