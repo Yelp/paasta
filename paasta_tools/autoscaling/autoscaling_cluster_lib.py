@@ -247,6 +247,8 @@ class ClusterAutoscaler(ResourceLogMixin):
                         continue
                     # Check if no tasks are running or we have reached the maintenance window
                     if is_safe_to_kill(slave.hostname) or not should_drain:
+                        if not should_drain and not dry_run:
+                            time.sleep(300)
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
                             slave.hostname,
