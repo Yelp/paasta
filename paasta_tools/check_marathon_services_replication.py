@@ -122,8 +122,7 @@ def check_smartstack_replication_for_instance(
     :param instance: A PaaSTA instance, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
-    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
+    :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
     """
     full_name = compose_job_id(service, instance)
 
@@ -321,7 +320,7 @@ def check_service_replication(
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
-        :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
+    :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
     """
     job_id = compose_job_id(service, instance)
     try:
@@ -359,9 +358,7 @@ def check_service_replication(
 
 
 def main():
-
     args = parse_args()
-    soa_dir = args.soa_dir
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -386,7 +383,7 @@ def main():
             instance=instance,
             cluster=cluster,
             all_tasks=all_tasks,
-            soa_dir=soa_dir,
+            soa_dir=args.soa_dir,
             smartstack_replication_checker=smartstack_replication_checker,
         )
 

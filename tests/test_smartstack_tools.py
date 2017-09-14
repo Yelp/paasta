@@ -96,62 +96,6 @@ def test_get_smartstack_replication_for_attribute():
         )
 
 
-@mock.patch('paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist', autospec=True)
-@mock.patch('paasta_tools.mesos_tools.filter_mesos_slaves_by_blacklist', autospec=True)
-@mock.patch('paasta_tools.smartstack_tools.get_replication_for_services', autospec=True)
-def test_get_smartstack_replication_for_attribute_when_mesos_slave_is_specified(
-        mock_get_replication_for_services,
-        mock_filter_mesos_slaves_by_blacklist,
-        mock_get_all_slaves_for_blacklist_whitelist,
-):
-    fake_namespace = 'fake_main'
-    fake_service = 'fake_service'
-    mock_filtered_slaves = [
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'foo',
-            },
-        },
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'bar',
-            },
-        },
-    ]
-
-    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
-    mock_filter_mesos_slaves_by_blacklist.return_value = mock_filtered_slaves
-    mock_get_replication_for_services.return_value = {}
-    expected = {'foo': {}, 'bar': {}}
-    mesos_slaves = mock.Mock()
-
-    actual = smartstack_tools.get_smartstack_replication_for_attribute(
-        attribute='fake_attribute',
-        service=fake_service,
-        namespace=fake_namespace,
-        blacklist=[],
-        system_paasta_config=fake_system_paasta_config,
-        mesos_slaves=mesos_slaves,
-    )
-    assert not mock_get_all_slaves_for_blacklist_whitelist.called
-    mock_filter_mesos_slaves_by_blacklist.assert_called_once_with(
-        slaves=mesos_slaves,
-        blacklist=[],
-        whitelist=None,
-    )
-    assert actual == expected
-    assert mock_get_replication_for_services.call_count == 2
-
-    mock_get_replication_for_services.assert_any_call(
-        synapse_host='hostone',
-        synapse_port=fake_system_paasta_config.get_synapse_port(),
-        synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
-        services=['fake_service.fake_main'],
-    )
-
-
 def test_get_replication_for_service():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, 'haproxy_snapshot.txt')

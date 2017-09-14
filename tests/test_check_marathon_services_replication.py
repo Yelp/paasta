@@ -125,7 +125,6 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
 
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
@@ -145,7 +144,6 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
 
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -166,7 +164,6 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -183,7 +180,6 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -204,7 +200,6 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -221,7 +216,6 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -246,7 +240,6 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -263,7 +256,6 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -288,7 +280,6 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -305,7 +296,6 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -330,7 +320,6 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event_if_under_replication', autospec=True,
     ) as mock_send_event_if_under_replication, mock.patch(
@@ -347,7 +336,6 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event_if_under_replication.call_count == 0
 
@@ -361,7 +349,6 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -378,7 +365,6 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -403,7 +389,6 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -420,7 +405,6 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -446,7 +430,6 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -463,7 +446,6 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -489,7 +471,6 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
     ) as mock_send_event, mock.patch(
@@ -506,7 +487,6 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -530,7 +510,6 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
     expected_replication_count = 2
     soa_dir = 'test_dir'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
-    mesos_slaves = []
     crit = 90
     with mock.patch(
         'paasta_tools.check_marathon_services_replication.send_event', autospec=True,
@@ -548,7 +527,6 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
             service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -569,7 +547,6 @@ def test_check_service_replication_for_normal_smartstack():
     cluster = 'fake_cluster'
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     all_tasks = []
-    mesos_slaves = []
     with mock.patch(
         'paasta_tools.marathon_tools.get_proxy_port_for_instance',
         autospec=True, return_value=666,
@@ -583,7 +560,6 @@ def test_check_service_replication_for_normal_smartstack():
         check_marathon_services_replication.check_service_replication(
             service=service, instance=instance, cluster=cluster, soa_dir=None,
             system_paasta_config=fake_system_paasta_config, all_tasks=all_tasks,
-            mesos_slaves=mesos_slaves,
         )
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
@@ -592,7 +568,6 @@ def test_check_service_replication_for_normal_smartstack():
             soa_dir=None,
             expected_count=100,
             system_paasta_config=fake_system_paasta_config,
-            mesos_slaves=mesos_slaves,
         )
 
 
@@ -617,7 +592,6 @@ def test_check_service_replication_for_non_smartstack():
             cluster=cluster,
             soa_dir=None,
             system_paasta_config=fake_system_paasta_config,
-            mesos_slaves=[],
         )
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
@@ -726,7 +700,7 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
             service=service, instance=instance, cluster=cluster, soa_dir=None,
-            system_paasta_config=fake_system_paasta_config, all_tasks=[], mesos_slaves=[],
+            system_paasta_config=fake_system_paasta_config, all_tasks=[],
         )
         assert mock_get_proxy_port_for_instance.call_count == 0
 
@@ -859,10 +833,7 @@ def test_main():
     ) as mock_load_marathon_config, mock.patch(
         'paasta_tools.check_marathon_services_replication.marathon_tools.get_marathon_client',
         autospec=True,
-    ) as mock_get_marathon_client, mock.patch(
-        'paasta_tools.check_marathon_services_replication.get_slaves',
-        autospec=True,
-    ) as mock_get_slaves:
+    ) as mock_get_marathon_client:
         mock_client = mock.Mock()
         mock_client.list_tasks.return_value = []
         mock_get_marathon_client.return_value = mock_client
@@ -874,4 +845,3 @@ def test_main():
         mock_get_services_for_cluster.assert_called_once_with(
             cluster='fake_cluster', instance_type='marathon', soa_dir=soa_dir,
         )
-        assert mock_get_slaves.called

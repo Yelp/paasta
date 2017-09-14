@@ -119,18 +119,13 @@ def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_
     return backends
 
 
-def load_smartstack_info_for_service(
-    service, namespace, blacklist, system_paasta_config,
-    soa_dir=DEFAULT_SOA_DIR, mesos_slaves=None,
-):
+def load_smartstack_info_for_service(service, namespace, blacklist, system_paasta_config, soa_dir=DEFAULT_SOA_DIR):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration
-    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
-
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form
 
     ::
@@ -155,14 +150,10 @@ def load_smartstack_info_for_service(
         namespace=namespace,
         blacklist=blacklist,
         system_paasta_config=system_paasta_config,
-        mesos_slaves=mesos_slaves,
     )
 
 
-def get_smartstack_replication_for_attribute(
-    attribute, service, namespace, blacklist,
-    system_paasta_config, mesos_slaves=None,
-):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, system_paasta_config):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -171,22 +162,14 @@ def get_smartstack_replication_for_attribute(
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :param blacklist: A list of blacklisted location tuples in the form of (location, value)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    if mesos_slaves is not None:
-        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
-            slaves=mesos_slaves,
-            blacklist=blacklist,
-            whitelist=None,
-        )
-    else:
-        filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
-            blacklist=blacklist,
-            whitelist=None,
-        )
+    filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
+        blacklist=blacklist,
+        whitelist=None,
+    )
     if not filtered_slaves:
         raise mesos_tools.NoSlavesAvailableError
 
