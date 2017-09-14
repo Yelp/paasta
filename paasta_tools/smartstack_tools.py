@@ -348,12 +348,20 @@ class SmartstackReplicationChecker:
 
     def get_replication_for_instance(self, instance_config):
         replication_info = {}
-        attribute_slave_dict = self._discover_mesos_slaves_for_instance(instance_config)
+        attribute_slave_dict = self._get_allowed_locations_and_hostnames(instance_config)
         for location, hosts in attribute_slave_dict.items():
             replication_info[location] = self._get_replication_info(location, hosts, instance_config)
         return replication_info
 
-    def _get_replication_info(self, location, hosts, instance_config):
+    def _get_replication_info(self, location, hosts, instance_config) -> Dict[str, int]:
+        """Returns service.instance and the number of instances registered in smartstack
+        at the location as a dict.
+
+        :param location: A string that identifies a habitat, a region and etc.
+        :param hosts: A list of mesos slave hostnames in this location.
+        :param instance_config: An instance of MarathonServiceConfig.
+        :returns: A dict {"service.instance": number_of_instances}.
+        """
         full_name = compose_job_id(instance_config.service, instance_config.instance)
         if location not in self._cache:
             self._cache[location] = get_replication_for_all_services_from_synapse_haproxy(
@@ -363,20 +371,26 @@ class SmartstackReplicationChecker:
             )
         return {full_name: self._cache[location][full_name]}
 
-    def _discover_mesos_slaves_for_instance(self, instance_config):
+    def _get_allowed_locations_and_hostnames(self, instance_config) -> Dict[str, list]:
+        """Returns a dict of locations and lists of corresponding mesos slaves
+        where deployment of the instance is allowed.
+
+        :param instance_config: An instance of MarathonServiceConfig
+        :returns: A dict {"uswest1-prod": ['hostname1', 'hostname2], ...}.
+        """
         monitoring_blacklist = instance_config.get_monitoring_blacklist(
             system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
+        )
+        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
+            slaves=self._mesos_slaves,
+            blacklist=monitoring_blacklist,
+            whitelist=None,
         )
         discover_location_type = marathon_tools.load_service_namespace_config(
             service=instance_config.service,
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
-        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
-            slaves=self._mesos_slaves,
-            blacklist=monitoring_blacklist,
-            whitelist=None,
-        )
         slaves_grouped_by_attribute = mesos_tools.get_mesos_slaves_grouped_by_attribute(
             slaves=filtered_slaves,
             attribute=discover_location_type,
