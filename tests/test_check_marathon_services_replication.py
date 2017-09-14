@@ -54,12 +54,13 @@ def test_send_event_users_monitoring_tools_send_event_properly():
             fake_output,
         )
         send_event_patch.assert_called_once_with(
-            fake_service_name,
-            expected_check_name,
-            mock.ANY,
-            fake_status,
-            fake_output,
-            fake_soa_dir,
+            service=fake_service_name,
+            check_name=expected_check_name,
+            overrides=mock.ANY,
+            status=fake_status,
+            output=fake_output,
+            soa_dir=fake_soa_dir,
+            cluster=fake_cluster,
         )
         # The overrides dictionary is mutated in the function under test, so
         # we expect the send_event_patch to be called with something that is a
@@ -105,6 +106,7 @@ def test_send_event_users_monitoring_tools_send_event_respects_alert_after():
             fake_status,
             fake_output,
             fake_soa_dir,
+            cluster=fake_cluster,
         )
         # The overrides dictionary is mutated in the function under test, so
         # we expect the send_event_patch to be called with something that is a

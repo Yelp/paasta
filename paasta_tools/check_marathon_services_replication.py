@@ -77,7 +77,7 @@ def send_event(service, namespace, cluster, soa_dir, status, output):
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
 
     check_name = 'check_marathon_services_replication.%s' % compose_job_id(service, namespace)
-    monitoring_tools.send_event(service, check_name, monitoring_overrides, status, output, soa_dir)
+    monitoring_tools.send_event(service, check_name, monitoring_overrides, status, output, soa_dir, cluster=cluster)
     _log(
         service=service,
         line='Replication: %s' % output,
