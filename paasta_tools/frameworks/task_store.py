@@ -1,9 +1,17 @@
+import copy
 import json
+from typing import Any
+from typing import Dict
+from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import BadVersionError
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
+from kazoo.protocol.states import ZnodeStat
 
 from paasta_tools.utils import _log
 
@@ -12,7 +20,17 @@ class MesosTaskParametersIsImmutableError(Exception):
     pass
 
 
+_SelfT = TypeVar('_SelfT', bound='MesosTaskParameters')
+
+
 class MesosTaskParameters(object):
+    health: Any
+    mesos_task_state: str
+    is_draining: bool
+    is_healthy: bool
+    offer: Any
+    resources: Any
+
     def __init__(
         self,
         health=None,
@@ -41,16 +59,16 @@ class MesosTaskParameters(object):
     def __delattr__(self, name):
         raise MesosTaskParametersIsImmutableError()
 
-    def merge(self, **kwargs):
+    def merge(self: _SelfT, **kwargs) -> 'MesosTaskParameters':
         """Return a merged MesosTaskParameters object, where attributes in other take precedence over self."""
 
-        new_dict = self.__dict__
+        new_dict = copy.deepcopy(self.__dict__)
         new_dict.update(kwargs)
 
         return MesosTaskParameters(**new_dict)
 
     @classmethod
-    def deserialize(cls, serialized_params):
+    def deserialize(cls: Type[_SelfT], serialized_params: Union[str, bytes]) -> _SelfT:
         return cls(**json.loads(serialized_params))
 
     def serialize(self):
@@ -64,25 +82,25 @@ class TaskStore(object):
         self.framework_id = framework_id
         self.system_paasta_config = system_paasta_config
 
-    def get_task(self, task_id):
+    def get_task(self, task_id: str) -> MesosTaskParameters:
         """Get task data for task_id. If we don't know about task_id, return None"""
         raise NotImplementedError()
 
-    def get_all_tasks(self):
+    def get_all_tasks(self) -> Dict[str, MesosTaskParameters]:
         """Returns a dictionary of task_id -> MesosTaskParameters for all known tasks."""
         raise NotImplementedError()
 
-    def overwrite_task(self, task_id, params):
+    def overwrite_task(self, task_id: str, params: MesosTaskParameters) -> None:
         raise NotImplementedError()
 
-    def add_task_if_doesnt_exist(self, task_id, **kwargs):
+    def add_task_if_doesnt_exist(self, task_id: str, **kwargs) -> None:
         """Add a task if it does not already exist. If it already exists, do nothing."""
         if self.get_task(task_id) is not None:
             return
         else:
             self.overwrite_task(task_id, MesosTaskParameters(**kwargs))
 
-    def update_task(self, task_id, **kwargs):
+    def update_task(self, task_id: str, **kwargs) -> MesosTaskParameters:
         existing_task = self.get_task(task_id)
         if existing_task:
             merged_params = existing_task.merge(**kwargs)
@@ -92,7 +110,7 @@ class TaskStore(object):
         self.overwrite_task(task_id, merged_params)
         return merged_params
 
-    def garbage_collect_old_tasks(self, max_dead_task_age):
+    def garbage_collect_old_tasks(self, max_dead_task_age: float) -> None:
         # TODO: call me.
         # TODO: implement in base class.
         raise NotImplementedError()
@@ -100,17 +118,17 @@ class TaskStore(object):
 
 class DictTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
-        self.tasks = {}
+        self.tasks: Dict[str, MesosTaskParameters] = {}
         super(DictTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
 
-    def get_task(self, task_id):
+    def get_task(self, task_id: str) -> MesosTaskParameters:
         return self.tasks.get(task_id)
 
-    def get_all_tasks(self):
+    def get_all_tasks(self) -> Dict[str, MesosTaskParameters]:
         """Returns a dictionary of task_id -> MesosTaskParameters for all known tasks."""
         return dict(self.tasks)
 
-    def overwrite_task(self, task_id, params):
+    def overwrite_task(self, task_id: str, params: MesosTaskParameters) -> None:
         # serialize/deserialize to make sure the returned values are the same format as ZKTaskStore.
         self.tasks[task_id] = MesosTaskParameters.deserialize(params.serialize())
 
@@ -138,11 +156,11 @@ class ZKTaskStore(TaskStore):
         self.zk_client.ensure_path('/')
         # TODO: call self.zk_client.stop() and .close()
 
-    def get_task(self, task_id):
+    def get_task(self, task_id: str) -> MesosTaskParameters:
         params, stat = self._get_task(task_id)
         return params
 
-    def _get_task(self, task_id):
+    def _get_task(self, task_id: str) -> Tuple[MesosTaskParameters, ZnodeStat]:
         """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns """
         try:
             data, stat = self.zk_client.get('/%s' % task_id)
@@ -171,7 +189,7 @@ class ZKTaskStore(TaskStore):
 
         return all_tasks
 
-    def update_task(self, task_id, **kwargs):
+    def update_task(self, task_id: str, **kwargs):
         retry = True
         while retry:
             retry = False
@@ -193,14 +211,14 @@ class ZKTaskStore(TaskStore):
 
         return merged_params
 
-    def overwrite_task(self, task_id, params, version=-1):
+    def overwrite_task(self, task_id: str, params: MesosTaskParameters, version=-1) -> None:
         try:
             self.zk_client.set(self._zk_path_from_task_id(task_id), params.serialize(), version=version)
         except NoNodeError:
             self.zk_client.create(self._zk_path_from_task_id(task_id), params.serialize())
 
-    def _zk_path_from_task_id(self, task_id):
+    def _zk_path_from_task_id(self, task_id: str) -> str:
         return '/%s' % task_id
 
-    def _task_id_from_zk_path(self, zk_path):
+    def _task_id_from_zk_path(self, zk_path: str) -> str:
         return zk_path.lstrip('/')

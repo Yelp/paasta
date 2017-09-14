@@ -1,3 +1,52 @@
+paasta-tools (0.67.4) xenial; urgency=medium
+
+  * 0.67.4 tagged with 'make release'
+    Commit: Merge pull request #1508 from Yelp/dont-drain-unhealthy-
+    instances  Don"t try to drain unhealthy instances when scaling the
+    cluster down
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 06:25:49 -0700
+
+paasta-tools (0.67.3) xenial; urgency=medium
+
+  * 0.67.3 tagged with 'make release'
+    Commit: Released 0.67.2 via make release
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 03:31:44 -0700
+
+paasta-tools (0.67.2) xenial; urgency=medium
+
+  * 0.67.2 tagged with 'make release'
+    Commit: Merge pull request #1509 from Yelp/fix_taskproc_breakage
+    Fix use of system_paasta_config.get, fallout of #1426
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 02:19:54 -0700
+
+paasta-tools (0.67.1) xenial; urgency=medium
+
+  * 0.67.1 tagged with 'make release'
+    Commit: Merge pull request #1505 from Yelp/fix-smartstack-tools-
+    whitelist  Fix type error, where whitelist gets checked against none
+    in mesos_tools
+
+ -- Matthew Bentley <bentley@yelp.com>  Tue, 12 Sep 2017 10:04:05 -0700
+
+paasta-tools (0.67.0) xenial; urgency=medium
+
+  * 0.67.0 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into mypy
+
+ -- Evan Krall <krall@yelp.com>  Mon, 11 Sep 2017 18:59:35 -0700
+
+paasta-tools (0.66.39) xenial; urgency=medium
+
+  * 0.66.39 tagged with 'make release'
+    Commit: Merge pull request #1490 from
+    Yelp/deployd_deprioritise_big_bounces  De-prioritise startup/public
+    config bounces
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 04 Sep 2017 09:19:18 -0700
+
 paasta-tools (0.66.38) xenial; urgency=medium
 
   * 0.66.38 tagged with 'make release'

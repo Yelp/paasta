@@ -4,7 +4,10 @@ from paasta_tools.frameworks import constraints
 
 
 def test_nested_inc_increments_by_step():
-    op, av, an, st = 'MAX_PER', 'default', 'pool', {}
+    op = 'MAX_PER'
+    av = 'default'
+    an = 'pool'
+    st: constraints.ConstraintState = {}
     constraints.nested_inc(op, None, av, an, st, 3)
     assert st['MAX_PER']['pool']['default'] == 3
 
@@ -33,6 +36,6 @@ def test_update_constraint_state_increments_counters():
     attr.configure_mock(name='pool')
     offer = Mock(attributes=[attr])
     cons = [['pool', 'MAX_PER', '5']]
-    state = {}
+    state: constraints.ConstraintState = {}
     constraints.update_constraint_state(offer, cons, state)
     assert state['MAX_PER']['pool']['test'] == 1

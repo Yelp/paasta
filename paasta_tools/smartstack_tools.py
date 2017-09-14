@@ -14,8 +14,14 @@
 import collections
 import csv
 import socket
+from typing import DefaultDict  # noqa
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Tuple  # noqa
 
 import requests
+from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
@@ -24,7 +30,17 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_user_agent
 
 
-def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format):
+HaproxyBackend = TypedDict(
+    'HaproxyBackend',
+    {
+        'pxname': str,
+        'svname': str,
+    },
+    total=False,
+)
+
+
+def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format) -> Iterable[Dict[str, str]]:
     """Retrieves the haproxy csv from the haproxy web interface
 
     :param synapse_host_port: A string in host:port format that this check
@@ -152,7 +168,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     replication_info = {}
     filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
         blacklist=blacklist,
-        whitelist=[],
+        whitelist=None,
     )
     if not filtered_slaves:
         raise mesos_tools.NoSlavesAvailableError
@@ -178,7 +194,10 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     return replication_info
 
 
-def get_replication_for_services(synapse_host, synapse_port, synapse_haproxy_url_format, services):
+def get_replication_for_services(
+    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str,
+    services: List[str],
+) -> Dict[str, int]:
     """Returns the replication level for the provided services
 
     This check is intended to be used with an haproxy load balancer, and
@@ -274,7 +293,9 @@ def match_backends_and_tasks(backends, tasks):
                      smartstack_tools.get_multiple_backends.
     :param tasks: An iterable of MarathonTask objects.
     """
-    backends_by_ip_port = collections.defaultdict(list)  # { (ip, port) : [backend1, backend2], ... }
+
+    # { (ip, port) : [backend1, backend2], ... }
+    backends_by_ip_port: DefaultDict[Tuple[str, int], List[HaproxyBackend]] = collections.defaultdict(list)
     backend_task_pairs = []
 
     for backend in backends:

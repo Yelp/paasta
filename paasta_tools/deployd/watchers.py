@@ -218,7 +218,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             return event
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR':
+        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
 
     def process_default(self, event):
@@ -278,7 +278,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             return event
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR':
+        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
             try:
                 file_names = os.listdir(event.pathname)

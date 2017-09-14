@@ -128,9 +128,8 @@ def send_event(name, instance, soa_dir, status, output):
 
 
 def get_main_marathon_config():
-    log.debug("Reading marathon configuration")
     marathon_config = marathon_tools.load_marathon_config()
-    log.info("Marathon config is: %s", marathon_config)
+    log.debug("Marathon config is: %s", marathon_config)
     return marathon_config
 
 

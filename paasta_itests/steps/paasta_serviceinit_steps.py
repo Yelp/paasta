@@ -72,7 +72,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     normal_instance_count = 1
-    cluster = context.system_paasta_config['cluster']
+    cluster = context.system_paasta_config.get_cluster()
 
     old_tasks = context.marathon_client.get_app(app_id).tasks
     with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):

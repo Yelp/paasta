@@ -11,8 +11,8 @@ from paasta_tools.utils import paasta_print
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            'Cross references running containers with task ids from the mesos slave',
-            ' and optionally kills them.',
+            'Cross references running containers with task ids from the mesos slave'
+            ' and optionally kills them.'
         ),
     )
     parser.add_argument(

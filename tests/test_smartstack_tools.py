@@ -83,7 +83,7 @@ def test_get_smartstack_replication_for_attribute():
         )
         mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
             blacklist=[],
-            whitelist=[],
+            whitelist=None,
         )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
