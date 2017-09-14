@@ -41,7 +41,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.mesos_tools import get_slaves
-from paasta_tools.smartstack_tools import load_smartstack_info_for_service
+from paasta_tools.smartstack_tools import SmartstackReplicationChecker
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -112,8 +112,7 @@ def check_smartstack_replication_for_instance(
     cluster,
     soa_dir,
     expected_count,
-    system_paasta_config,
-    mesos_slaves,
+    smartstack_replication_checker,
 ):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -141,18 +140,10 @@ def check_smartstack_replication_for_instance(
 
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
-    monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
-    )
+
     log.info('Checking instance %s in smartstack', full_name)
-    smartstack_replication_info = load_smartstack_info_for_service(
-        service=service,
-        namespace=instance,
-        soa_dir=soa_dir,
-        blacklist=monitoring_blacklist,
-        system_paasta_config=system_paasta_config,
-        mesos_slaves=mesos_slaves,
-    )
+    smartstack_replication_info = smartstack_replication_checker.get_replication_for_instance(job_config)
+
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
@@ -237,8 +228,6 @@ def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
 
     healthy_tasks = []
     for task in tasks_for_app:
-        if task.started_at is not None:
-            print(datetime_from_utc_to_local(task.started_at))
         if marathon_tools.is_task_healthy(task, default_healthy=True) \
                 and task.started_at is not None \
                 and datetime_from_utc_to_local(task.started_at) < one_minute_ago:
@@ -323,7 +312,7 @@ def send_event_if_under_replication(
 
 def check_service_replication(
     service, instance, all_tasks, cluster, soa_dir,
-    system_paasta_config, mesos_slaves,
+    smartstack_replication_checker,
 ):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
@@ -332,8 +321,7 @@ def check_service_replication(
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
-    :param mesos_slaves: A list of Mesos slaves (see mesos_tools.get_slaves)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
+        :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
     """
     job_id = compose_job_id(service, instance)
     try:
@@ -357,8 +345,7 @@ def check_service_replication(
             cluster=cluster,
             soa_dir=soa_dir,
             expected_count=expected_count,
-            system_paasta_config=system_paasta_config,
-            mesos_slaves=mesos_slaves,
+            smartstack_replication_checker=smartstack_replication_checker,
         )
     else:
         check_healthy_marathon_tasks_for_service_instance(
@@ -391,6 +378,7 @@ def main():
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
     all_tasks = client.list_tasks()
     mesos_slaves = get_slaves()
+    smartstack_replication_checker = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
     for service, instance in service_instances:
 
         check_service_replication(
@@ -399,8 +387,7 @@ def main():
             cluster=cluster,
             all_tasks=all_tasks,
             soa_dir=soa_dir,
-            system_paasta_config=system_paasta_config,
-            mesos_slaves=mesos_slaves,
+            smartstack_replication_checker=smartstack_replication_checker,
         )
 
 

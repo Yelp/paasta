@@ -211,6 +211,28 @@ def get_smartstack_replication_for_attribute(
     return replication_info
 
 
+def get_replication_for_all_services_from_synapse_haproxy(
+        synapse_host: str,
+        synapse_port: int,
+        synapse_haproxy_url_format: str,
+) -> Dict[str, int]:
+    """Returns the replication level for all services known to this synapse haproxy
+
+    :param synapse_host: The host that this check should contact for replication information.
+    :param synapse_port: The port number that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
+    :returns available_instance_counts: A dictionary mapping the service names
+                                        to an integer number of available replicas.
+    """
+    backends = get_multiple_backends(
+        services=None,
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
+    return collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
+
+
 def get_replication_for_services(
     synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str,
     services: List[str],
@@ -331,3 +353,49 @@ def match_backends_and_tasks(backends, tasks):
             backend_task_pairs.append((backend, None))
 
     return backend_task_pairs
+
+
+class SmartstackReplicationChecker:
+    def __init__(self, mesos_slaves, system_paasta_config):
+        self._mesos_slaves = mesos_slaves
+        self._synapse_port = system_paasta_config.get_synapse_port()
+        self._synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
+        self._system_paasta_config = system_paasta_config
+        self._cache = {}
+
+    def get_replication_for_instance(self, instance_config):
+        replication_info = {}
+        attribute_slave_dict = self._discover_mesos_slaves_for_instance(instance_config)
+        for location, hosts in attribute_slave_dict.items():
+            replication_info[location] = self._get_replication_info(location, hosts, instance_config)
+        return replication_info
+
+    def _get_replication_info(self, location, hosts, instance_config):
+        full_name = compose_job_id(instance_config.service, instance_config.instance)
+        if location not in self._cache:
+            self._cache[location] = get_replication_for_all_services_from_synapse_haproxy(
+                synapse_host=hosts[0],
+                synapse_port=self._synapse_port,
+                synapse_haproxy_url_format=self._synapse_haproxy_url_format,
+            )
+        return {full_name: self._cache[location][full_name]}
+
+    def _discover_mesos_slaves_for_instance(self, instance_config):
+        monitoring_blacklist = instance_config.get_monitoring_blacklist(
+            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
+        )
+        discover_location_type = marathon_tools.load_service_namespace_config(
+            service=instance_config.service,
+            namespace=instance_config.instance,
+            soa_dir=instance_config.soa_dir,
+        ).get_discover()
+        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
+            slaves=self._mesos_slaves,
+            blacklist=monitoring_blacklist,
+            whitelist=None,
+        )
+        slaves_grouped_by_attribute = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+            slaves=filtered_slaves,
+            attribute=discover_location_type,
+        )
+        return {attr: [s['hostname'] for s in slaves] for attr, slaves in slaves_grouped_by_attribute.items()}
