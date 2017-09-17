@@ -234,3 +234,40 @@ def test_match_backends_and_tasks():
         def keyfunc(t):
             return tuple(sorted((t[0] or {}).items())), t[1]
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
+
+
+@mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True)
+def test_get_replication_for_all_services_from_synapse_haproxy(mock_get_multiple_backends):
+    mock_get_multiple_backends.return_value = [
+        {"pxname": "servicename.main", "svname": "10.50.2.4:31000_box4", "status": "UP"},
+        {"pxname": "servicename.main", "svname": "10.50.2.5:31001_box5", "status": "UP"},
+        {"pxname": "servicename.main", "svname": "10.50.2.6:31001_box6", "status": "UP"},
+        {"pxname": "servicename.main", "svname": "10.50.2.6:31002_box7", "status": "UP"},
+        {"pxname": "servicename.main", "svname": "10.50.2.8:31000_box8", "status": "UP"},
+    ]
+    assert {'servicename.main': 5} == \
+        smartstack_tools.get_replication_for_all_services_from_synapse_haproxy('', 8888, '')
+
+
+@mock.patch('paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config', autospec=True)
+@mock.patch('paasta_tools.smartstack_tools.get_replication_for_all_services_from_synapse_haproxy', autospec=True)
+def test_get_replication_for_instance(
+    mock_get_replication_for_all_services_from_synapse_haproxy,
+    mock_load_service_namespace_config,
+):
+    mock_mesos_slaves = [
+        {'hostname': 'host1', 'attributes': {'region': 'fake_region1'}},
+        {'hostname': 'host2', 'attributes': {'region': 'fake_region1'}},
+    ]
+    mock_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+    instance_config = mock.Mock(service='fake_service', instance='fake_instance')
+    instance_config.get_monitoring_blacklist.return_value = []
+    mock_get_replication_for_all_services_from_synapse_haproxy.return_value = \
+        {'fake_service.fake_instance': 20}
+    mock_load_service_namespace_config.return_value.get_discover.return_value = 'region'
+    checker = smartstack_tools.SmartstackReplicationChecker(
+        mesos_slaves=mock_mesos_slaves,
+        system_paasta_config=mock_system_paasta_config,
+    )
+    assert checker.get_replication_for_instance(instance_config) == \
+        {'fake_region1': {'fake_service.fake_instance': 20}}
