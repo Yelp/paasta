@@ -339,6 +339,30 @@ def match_backends_and_tasks(backends, tasks):
 
 
 class SmartstackReplicationChecker:
+    """Retrives the number of regestered instances in each discoverable location.
+
+    Optimized for multiple queries. Gets the list of backends from synapse-haproxy
+    only once per location and reuse it in all subsequent calls of
+    SmartstackReplicationChecker.get_replication_for_instance().
+
+    :Example:
+
+    >>> from paasta_tools.mesos_tools import get_slaves
+    >>> from paasta_tools.utils import load_system_paasta_config
+    >>> from paasta_tools.marathon_tools import load_marathon_service_config
+    >>> from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+    >>>
+    >>> mesos_slaves = get_slaves()
+    >>> system_paasta_config = load_system_paasta_config()
+    >>> instance_config = load_marathon_service_config(service='fake_service',
+    ...                       instance='fake_instance', cluster='norcal-stagef')
+    >>>
+    >>> c = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    >>> c.get_replication_for_instance(instance_config)
+    {'uswest1-stagef': {'fake_service.fake_instance': 2}}
+    >>>
+    """
+
     def __init__(self, mesos_slaves, system_paasta_config):
         self._mesos_slaves = mesos_slaves
         self._synapse_port = system_paasta_config.get_synapse_port()
@@ -347,6 +371,11 @@ class SmartstackReplicationChecker:
         self._cache = {}
 
     def get_replication_for_instance(self, instance_config):
+        """Returns the number of regestered instances in each discoverable location.
+
+        :param instance_config: An instance of MarathonServiceConfig.
+        :returns: a dict {'location_type': {'service.instance': int}}
+        """
         replication_info = {}
         attribute_slave_dict = self._get_allowed_locations_and_hostnames(instance_config)
         for location, hosts in attribute_slave_dict.items():
