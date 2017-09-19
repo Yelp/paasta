@@ -194,7 +194,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     return replication_info
 
 
-def get_replication_for_all_services_from_synapse_haproxy(
+def get_replication_for_all_services(
         synapse_host: str,
         synapse_port: int,
         synapse_haproxy_url_format: str,
@@ -339,7 +339,7 @@ def match_backends_and_tasks(backends, tasks):
 
 
 class SmartstackReplicationChecker:
-    """Retrives the number of regestered instances in each discoverable location.
+    """Retrives the number of registered instances in each discoverable location.
 
     Optimized for multiple queries. Gets the list of backends from synapse-haproxy
     only once per location and reuse it in all subsequent calls of
@@ -371,7 +371,7 @@ class SmartstackReplicationChecker:
         self._cache = {}
 
     def get_replication_for_instance(self, instance_config):
-        """Returns the number of regestered instances in each discoverable location.
+        """Returns the number of registered instances in each discoverable location.
 
         :param instance_config: An instance of MarathonServiceConfig.
         :returns: a dict {'location_type': {'service.instance': int}}
@@ -379,22 +379,22 @@ class SmartstackReplicationChecker:
         replication_info = {}
         attribute_slave_dict = self._get_allowed_locations_and_hostnames(instance_config)
         for location, hosts in attribute_slave_dict.items():
-            replication_info[location] = self._get_replication_info(location, hosts, instance_config)
+            replication_info[location] = self._get_replication_info(location, hosts[0], instance_config)
         return replication_info
 
-    def _get_replication_info(self, location, hosts, instance_config) -> Dict[str, int]:
+    def _get_replication_info(self, location, hostname, instance_config) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
         at the location as a dict.
 
         :param location: A string that identifies a habitat, a region and etc.
-        :param hosts: A list of mesos slave hostnames in this location.
+        :param hostname: A mesos slave hostname to read replication information from.
         :param instance_config: An instance of MarathonServiceConfig.
         :returns: A dict {"service.instance": number_of_instances}.
         """
         full_name = compose_job_id(instance_config.service, instance_config.instance)
         if location not in self._cache:
-            self._cache[location] = get_replication_for_all_services_from_synapse_haproxy(
-                synapse_host=hosts[0],
+            self._cache[location] = get_replication_for_all_services(
+                synapse_host=hostname,
                 synapse_port=self._synapse_port,
                 synapse_haproxy_url_format=self._synapse_haproxy_url_format,
             )
