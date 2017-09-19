@@ -13,9 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import datetime
 import json
 import logging
@@ -75,8 +72,10 @@ def discover_detector_ids(detector_name):
 
 
 def get_detector_incidents(detector_ids):
-    urls = ['https://api.signalfx.com/v2/detector/{}/incidents'.format(id)
-            for id in detector_ids]
+    urls = [
+        'https://api.signalfx.com/v2/detector/{}/incidents'.format(id)
+        for id in detector_ids
+    ]
     responses = make_requests(urls)
     incident_data = []
     for response in responses:
