@@ -472,7 +472,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         if mode == 'http' or mode == 'https':
             http_path = self.get_healthcheck_uri(service_namespace_config)
-            protocol = mode.upper()
+            protocol = "MESOS_%s" % mode.upper()
             healthchecks = [
                 {
                     "protocol": protocol,

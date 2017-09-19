@@ -881,7 +881,7 @@ class TestMarathonTools:
         })
         fake_healthchecks = [
             {
-                "protocol": "HTTP",
+                "protocol": "MESOS_HTTP",
                 "path": "/health",
                 "gracePeriodSeconds": 3,
                 "intervalSeconds": 10,
@@ -1739,7 +1739,7 @@ class TestMarathonServiceConfig(object):
         })
         expected = [
             {
-                "protocol": "HTTP",
+                "protocol": "MESOS_HTTP",
                 "path": fake_path,
                 "gracePeriodSeconds": 70,
                 "intervalSeconds": 12,
@@ -1763,7 +1763,7 @@ class TestMarathonServiceConfig(object):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
             {
-                "protocol": "HTTP",
+                "protocol": "MESOS_HTTP",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
@@ -1786,7 +1786,7 @@ class TestMarathonServiceConfig(object):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
         expected = [
             {
-                "protocol": "HTTPS",
+                "protocol": "MESOS_HTTPS",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
@@ -2114,7 +2114,7 @@ def test_format_marathon_app_dict_with_smartstack():
             'health_checks': [
                 {
                     'portIndex': 0,
-                    'protocol': 'HTTP',
+                    'protocol': 'MESOS_HTTP',
                     'timeoutSeconds': 10,
                     'intervalSeconds': 10,
                     'gracePeriodSeconds': 60,
