@@ -18,6 +18,8 @@ import math
 import os
 import time
 from collections import namedtuple
+from datetime import datetime
+from datetime import timedelta
 from math import ceil
 from math import floor
 
@@ -61,6 +63,18 @@ MAX_CLUSTER_DELTA = .2
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
+
+
+class Timer(object):
+    def __init__(self, timeout):
+        self.timeout = timedelta(seconds=timeout)
+        self.start()
+
+    def start(self):
+        self.last_start = datetime.now()
+
+    def ready(self):
+        return datetime.now() > self.last_start + self.timeout
 
 
 class ResourceLogMixin(object):
@@ -213,7 +227,20 @@ class ClusterAutoscaler(ResourceLogMixin):
                 )
                 raise ClusterAutoscalingError(error_message)
 
-    async def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None, should_drain=True):
+    def can_kill(self, hostname, should_drain, dry_run, timer):
+        if dry_run:
+            return True
+        if timer.ready():
+            timer.start()
+            raise TimeoutError
+        if not should_drain:
+            return False
+        if is_safe_to_kill(hostname):
+            timer.start()
+            return True
+        return False
+
+    async def wait_and_terminate(self, slave, drain_timeout, dry_run, timer, region=None, should_drain=True):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
@@ -230,35 +257,32 @@ class ClusterAutoscaler(ResourceLogMixin):
         try:
             # This loop should always finish because the maintenance window should trigger is_ready_to_kill
             # being true. Just in case though we set a timeout and terminate anyway
-            with Timeout(seconds=drain_timeout + 300):
-                while True:
-                    instance_id = slave.instance_id
-                    if not instance_id:
-                        self.log.warning(
-                            "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
-                        )
-                        continue
-                    # Check if no tasks are running or we have reached the maintenance window
-                    if not should_drain or is_safe_to_kill(slave.hostname):
-                        if not should_drain and not dry_run:
-                            time.sleep(300)
-                        self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
-                            instance_id,
-                            slave.hostname,
-                            slave.ip,
-                        ))
-                        try:
-                            ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
-                        except ClientError as e:
-                            if e.response['Error'].get('Code') == 'DryRunOperation':
-                                pass
-                            else:
-                                raise
-                        break
-                    else:
-                        self.log.info("Instance {}: NOT ready to kill".format(instance_id))
-                    self.log.debug("Waiting 5 seconds and then checking again")
-                    await asyncio.sleep(5)
+            while True:
+                instance_id = slave.instance_id
+                if not instance_id:
+                    self.log.warning(
+                        "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
+                    )
+                    continue
+                # Check if no tasks are running or we have reached the maintenance window
+                if self.can_kill(slave.hostname, should_drain, dry_run, timer):
+                    self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
+                        instance_id,
+                        slave.hostname,
+                        slave.ip,
+                    ))
+                    try:
+                        ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
+                    except ClientError as e:
+                        if e.response['Error'].get('Code') == 'DryRunOperation':
+                            pass
+                        else:
+                            raise
+                    break
+                else:
+                    self.log.info("Instance {}: NOT ready to kill".format(instance_id))
+                self.log.debug("Waiting 5 seconds and then checking again")
+                await asyncio.sleep(5)
         except TimeoutError:
             self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(
                 drain_timeout,
@@ -319,7 +343,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             return False
         return True
 
-    async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff):
+    async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff, timer):
         """
         Since this is async, it can be suspended at an `await` call.  Because of this, we need to re-calculate
         the capacity each time we call `set_capacity` (as another coroutine could have set the capacity while
@@ -360,6 +384,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 slave=slave_to_kill,
                 drain_timeout=drain_timeout,
                 dry_run=self.dry_run,
+                timer=timer,
                 region=self.resource['region'],
                 should_drain=should_drain,
             )
@@ -471,6 +496,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         terminate_tasks = {}
         done_tasks = set()
         self.capacity = current_capacity
+        timer = Timer(300)
         while True:
             filtered_sorted_slaves = ec2_fitness.sort_by_ec2_fitness(filtered_slaves)[::-1]
             if len(filtered_sorted_slaves) == 0:
@@ -514,6 +540,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
                     capacity_diff=capacity_diff,
+                    timer=timer,
                 ),
             )
 
