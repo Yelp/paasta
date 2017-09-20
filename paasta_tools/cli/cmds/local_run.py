@@ -567,10 +567,16 @@ def run_docker_container(
     container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
 
-    try:
-        container_port = instance_config.get_container_port()
-    except AttributeError:
+    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
+        service, instance, instance_config, chosen_port, soa_dir=soa_dir,
+    )
+    if healthcheck_mode is None:
         container_port = None
+    else:
+        try:
+            container_port = instance_config.get_container_port()
+        except AttributeError:
+            container_port = None
 
     docker_run_args = dict(
         memory=memory,
@@ -587,9 +593,6 @@ def run_docker_container(
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     joined_docker_run_cmd = ' '.join(docker_run_cmd)
-    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
-        service, instance, instance_config, chosen_port, soa_dir=soa_dir,
-    )
 
     if dry_run:
         if json_dict:
