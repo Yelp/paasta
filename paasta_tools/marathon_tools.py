@@ -262,12 +262,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: The constraints specified in the config, or defaults described above
         """
         constraints = self.get_constraints()
-        blacklist = self.get_deploy_blacklist(
-            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
-        )
-        whitelist = self.get_deploy_whitelist(
-            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
-        )
         if constraints is not None:
             return constraints
         else:
@@ -276,7 +270,14 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 service_namespace_config=service_namespace_config,
                 system_paasta_config=system_paasta_config,
             ))
-            constraints.extend(self.get_deploy_constraints(blacklist, whitelist))
+            constraints.extend(
+                self.get_deploy_constraints(
+                    blacklist=self.get_deploy_blacklist(),
+                    whitelist=self.get_deploy_whitelist(),
+                    system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
+                    system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
+                ),
+            )
             constraints.extend(self.get_pool_constraints())
         return [[str(val) for val in constraint] for constraint in constraints]
 
@@ -304,13 +305,17 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         fake_slaves = [{"attributes": a} for a in expected_slave_attributes]
         filtered_slaves = filter_mesos_slaves_by_blacklist(
             slaves=fake_slaves,
-            blacklist=self.get_deploy_blacklist(
-                system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
-            ),
-            whitelist=self.get_deploy_whitelist(
-                system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
-            ),
+            blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist(),
         )
+        # A slave must be allowed by both the instance config's blacklist/whitelist and the system configs' blacklist/
+        # whitelist, so we filter twice.
+        filtered_slaves = filter_mesos_slaves_by_blacklist(
+            slaves=filtered_slaves,
+            blacklist=system_paasta_config.get_deploy_blacklist(),
+            whitelist=system_paasta_config.get_deploy_whitelist(),
+        )
+
         if not filtered_slaves:
             raise NoSlavesAvailableError(
                 (

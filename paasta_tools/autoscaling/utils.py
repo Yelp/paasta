@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections import defaultdict
+from typing import Callable
+from typing import Dict
 
 
-_autoscaling_components = defaultdict(dict)
+_autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)
 
 
 def register_autoscaling_component(name, method_type):

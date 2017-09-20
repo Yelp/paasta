@@ -17,7 +17,7 @@ FROM ubuntu:trusty
 # Need python3.6
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:fkrull/deadsnakes
+    add-apt-repository ppa:deadsnakes/ppa
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     echo "deb http://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list && \

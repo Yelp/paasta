@@ -17,6 +17,8 @@ import os
 import stat
 import sys
 import time
+from typing import Dict  # noqa -- imported for mypy
+from typing import List  # noqa -- imported for mypy
 
 import mock
 import pytest
@@ -80,7 +82,7 @@ def test_format_log_line():
 
 
 def test_deploy_whitelist_to_constraints():
-    fake_whitelist = ['fake_location_type', ['fake_location', 'anotherfake_location']]
+    fake_whitelist = ('fake_location_type', ['fake_location', 'anotherfake_location'],)
     expected_constraints = [['fake_location_type', 'LIKE', 'fake_location|anotherfake_location']]
 
     constraints = utils.deploy_whitelist_to_constraints(fake_whitelist)
@@ -157,7 +159,7 @@ def test_get_readable_files_in_glob_is_recursive(tmpdir):
 
 
 def test_load_system_paasta_config():
-    json_load_return_value = {'foo': 'bar'}
+    json_load_return_value: utils.SystemPaastaConfigDict = {'cluster': 'bar'}
     expected = utils.SystemPaastaConfig(json_load_return_value, '/some/fake/dir')
     file_mock = mock.mock_open()
     with mock.patch(
@@ -174,7 +176,7 @@ def test_load_system_paasta_config():
     ) as json_patch, mock.patch(
         'paasta_tools.utils.deep_merge_dictionaries', autospec=True, return_value=json_load_return_value,
     ) as mock_deep_merge:
-        actual = utils.load_system_paasta_config()
+        actual = utils.load_system_paasta_config(path='/some/fake/dir')
         assert actual == expected
         # Kinda weird but without this load_system_paasta_config() can (and
         # did! during development) return a plain dict without the test
@@ -225,9 +227,9 @@ def test_load_system_paasta_config_file_dne():
 
 
 def test_load_system_paasta_config_merge_lexographically():
-    fake_file_a = {'foo': 'this value will be overriden', 'fake': 'fake_data'}
-    fake_file_b = {'foo': 'overriding value'}
-    expected = utils.SystemPaastaConfig({'foo': 'overriding value', 'fake': 'fake_data'}, '/some/fake/dir')
+    fake_file_a = {'cluster': 'this value will be overriden', 'sensu_host': 'fake_data'}
+    fake_file_b = {'cluster': 'overriding value'}
+    expected = utils.SystemPaastaConfig({'cluster': 'overriding value', 'sensu_host': 'fake_data'}, '/some/fake/dir')
     file_mock = mock.mock_open()
     with mock.patch(
         'os.path.isdir', return_value=True, autospec=True,
@@ -241,7 +243,7 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b],
     ):
-        actual = utils.load_system_paasta_config()
+        actual = utils.load_system_paasta_config(path='/some/fake/dir')
         assert actual == expected
 
 
@@ -265,10 +267,10 @@ def test_SystemPaastaConfig_get_cluster_dne():
 def test_SystemPaastaConfig_get_volumes():
     fake_config = utils.SystemPaastaConfig(
         {
-            'volumes': [{'fake_path': "fake_other_path"}],
+            'volumes': [{'hostPath': "fake_other_path", 'containerPath': '/blurp', 'mode': 'ro'}],
         }, '/some/fake/dir',
     )
-    expected = [{'fake_path': "fake_other_path"}]
+    expected = [{'hostPath': "fake_other_path", 'containerPath': '/blurp', 'mode': 'ro'}]
     actual = fake_config.get_volumes()
     assert actual == expected
 
@@ -660,7 +662,7 @@ def test_get_service_instance_list():
     fake_instance_2 = 'water'
     fake_cluster = '16floz'
     fake_dir = '/nail/home/hipster'
-    fake_job_config = {
+    fake_job_config: Dict[str, Dict] = {
         fake_instance_1: {},
         fake_instance_2: {},
     }
@@ -823,7 +825,7 @@ def test_sort_dcts(dcts, expected):
 class TestInstanceConfig:
 
     def test_get_monitoring(self):
-        fake_info = 'fake_info'
+        fake_info = {'fake_key': 'fake_value'}
         assert utils.InstanceConfig(
             service='',
             cluster='',
@@ -1140,7 +1142,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'env': {'SPECIAL_ENV': 'TRUE'}, 'deploy_group': 'fake_deploy_group'},
-            branch_dict={'docker_image': 'something', 'deploy_group': 'nothing'},
+            branch_dict={'docker_image': 'something'},
         )
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
@@ -1224,7 +1226,7 @@ class TestInstanceConfig:
         assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == []
 
     def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
-        fake_deploy_blacklist = [["region", "fake_region"]]
+        fake_deploy_blacklist = [("region", "fake_region")]
         fake_conf = utils.InstanceConfig(
             service='',
             cluster='',
@@ -1242,10 +1244,10 @@ class TestInstanceConfig:
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == []
+        assert fake_conf.get_deploy_blacklist() == []
 
     def test_deploy_blacklist_reads_blacklist(self):
-        fake_deploy_blacklist = [["region", "fake_region"]]
+        fake_deploy_blacklist = [("region", "fake_region")]
         fake_conf = utils.InstanceConfig(
             service='',
             cluster='',
@@ -1253,7 +1255,7 @@ class TestInstanceConfig:
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
             branch_dict={},
         )
-        assert fake_conf.get_deploy_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
+        assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
         fake_conf = utils.InstanceConfig(
@@ -1266,7 +1268,7 @@ class TestInstanceConfig:
         assert fake_conf.get_extra_volumes() == []
 
     def test_extra_volumes_normal(self):
-        fake_extra_volumes = [
+        fake_extra_volumes: List[utils.DockerVolume] = [
             {
                 "containerPath": "/etc/a",
                 "hostPath": "/var/data/a",
@@ -1316,7 +1318,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        system_volumes = []
+        system_volumes: List[utils.DockerVolume] = []
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
         ]
@@ -1334,7 +1336,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        system_volumes = [{"containerPath": "/a", "hostPath": "/a", "mode": "RO"}]
+        system_volumes: List[utils.DockerVolume] = [{"containerPath": "/a", "hostPath": "/a", "mode": "RO"}]
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
             {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
@@ -1354,7 +1356,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        system_volumes = [
+        system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
             {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
             {"containerPath": "/d", "hostPath": "/d", "mode": "RO"},
@@ -1378,11 +1380,54 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        system_volumes = [
+        system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
         ]
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
+        ]
+
+    def test_get_volumes_handles_dupes_with_trailing_slashes(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+                    {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes: List[utils.DockerVolume] = [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RO"},
+        ]
+        # note: prefers extra_volumes over system_volumes
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
+            {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
+        ]
+
+    def test_get_volumes_preserves_trailing_slash(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={
+                'extra_volumes': [
+                    {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
+                ],
+            },
+            branch_dict={},
+        )
+        system_volumes: List[utils.DockerVolume] = [
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
+        ]
+        assert fake_conf.get_volumes(system_volumes) == [
+            {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
+            {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
         ]
 
     def test_get_docker_url_no_error(self):
@@ -1516,7 +1561,7 @@ def test_is_under_replicated_critical():
 
 
 def test_deploy_blacklist_to_constraints():
-    fake_deploy_blacklist = [["region", "useast1-prod"], ["habitat", "fake_habitat"]]
+    fake_deploy_blacklist = [("region", "useast1-prod"), ("habitat", "fake_habitat")]
     expected_constraints = [["region", "UNLIKE", "useast1-prod"], ["habitat", "UNLIKE", "fake_habitat"]]
     actual = utils.deploy_blacklist_to_constraints(fake_deploy_blacklist)
     assert actual == expected_constraints
@@ -1675,10 +1720,10 @@ class TestFileLogWriter:
             fw = utils.FileLogWriter("/dev/null", flock=True)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
-                mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_EX)
+                mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_EX)
                 mock_fcntl.flock.reset_mock()
 
-            mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_UN)
+            mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_UN)
 
     def test_maybe_flock_flock_false(self):
         """Make sure we don't flock/unflock when flock=False"""
@@ -1900,10 +1945,10 @@ def test_flock(mock_flock, tmpdir):
     my_file = tmpdir.join('my-file')
     with open(str(my_file), 'w') as f:
         with utils.flock(f):
-            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
             mock_flock.reset_mock()
 
-        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
 
 
 @mock.patch("paasta_tools.utils.Timeout", autospec=True)
@@ -1913,10 +1958,10 @@ def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
     with open(str(my_file), 'w') as f:
         with utils.timed_flock(f, seconds=mock.sentinel.seconds):
             mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
-            mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_EX)
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
             mock_flock.reset_mock()
 
-        mock_flock.assert_called_once_with(f, utils.fcntl.LOCK_UN)
+        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
 
 
 @mock.patch("paasta_tools.utils.Timeout", autospec=True, side_effect=utils.TimeoutError('Oh noes'))
@@ -1939,6 +1984,6 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
         with utils.timed_flock(f, seconds=1):
             time.sleep(2)
         assert mock_flock.mock_calls == [
-            mock.call(f, utils.fcntl.LOCK_EX),
-            mock.call(f, utils.fcntl.LOCK_UN),
+            mock.call(f.fileno(), utils.fcntl.LOCK_EX),
+            mock.call(f.fileno(), utils.fcntl.LOCK_UN),
         ]

@@ -17,7 +17,7 @@ FROM ubuntu:xenial
 # Need Python 3.6
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:fkrull/deadsnakes
+    add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

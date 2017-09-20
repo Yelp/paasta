@@ -968,7 +968,7 @@ class TestMarathonTools:
                     'docker_registry': fake_url,
                     'dockercfg_location': 'file:///root/.dockercfg',
                     'deploy_blacklist': [],
-                    'deploy_whitelist': [],
+                    'deploy_whitelist': None,
                     'expected_slave_attributes': [{"habitat": "my cool habitat"}],
                 },
                 "/foo",

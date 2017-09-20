@@ -2,6 +2,8 @@ import json
 import os
 import socket
 import time
+from typing import List  # noqa
+from typing import Tuple  # noqa
 
 import mock
 import yaml
@@ -9,6 +11,7 @@ from behave import given
 from behave import then
 from behave import when
 from itest_utils import clear_mesos_tools_cache
+from requests import HTTPError
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
@@ -77,14 +80,14 @@ def new_paasta_native_config(context, num):
 def start_paasta_native_framework(context, scheduler, reconcile_backoff, framework_name):
     clear_mesos_tools_cache()
     system_paasta_config = load_system_paasta_config()
-    system_paasta_config['docker_registry'] = 'docker.io'  # so busybox runs.
+    system_paasta_config.config_dict['docker_registry'] = 'docker.io'  # so busybox runs.
 
     if scheduler == 'paasta_native':
         scheduler_class = NativeScheduler
     elif scheduler == 'adhoc':
         scheduler_class = AdhocScheduler
     else:
-        raise "unknown scheduler: %s" % scheduler
+        raise Exception("unknown scheduler: %s" % scheduler)
 
     context.framework_name = framework_name
     context.scheduler = scheduler_class(
@@ -192,7 +195,7 @@ def terminate_that_framework(context):
     try:
         paasta_print("terminating framework %s" % context.scheduler.framework_id)
         mesos_tools.terminate_framework(context.scheduler.framework_id)
-    except Exception as e:
+    except HTTPError as e:
         raise Exception(e.response.text)
 
 
@@ -317,7 +320,7 @@ def periodic_should_eventually_be_called(context):
 def service_should_show_up_in_pnsrh_n_times(context, expected_num):
     mesosslave_ips = {x[4][0] for x in socket.getaddrinfo('mesosslave', 5051)}
 
-    results = []
+    results: List[Tuple[str, str, int]] = []
     for mesosslave_ip in mesosslave_ips:
         results.extend(
             paasta_native_services_running_here(

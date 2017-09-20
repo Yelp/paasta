@@ -358,7 +358,7 @@ def test_slave_passes_whitelist():
     assert not slave_passes
     slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, fake_whitelist_allow)
     assert slave_passes
-    slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, [])
+    slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, None)
     assert slave_passes
 
 
@@ -380,7 +380,7 @@ def test_filter_mesos_slaves_by_blacklist_when_unfiltered(mock_slave_passes_blac
         },
     ]
     blacklist = []
-    whitelist = []
+    whitelist = None
     actual = mesos_tools.filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist, whitelist=whitelist)
     assert mock_slave_passes_blacklist.call_count == 2
     assert actual == slaves
@@ -404,7 +404,7 @@ def test_filter_mesos_slaves_by_blacklist_when_filtered(mock_slave_passes_blackl
         },
     ]
     blacklist = []
-    whitelist = []
+    whitelist = None
     actual = mesos_tools.filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist, whitelist=whitelist)
     assert mock_slave_passes_blacklist.call_count == 2
     assert actual == []
