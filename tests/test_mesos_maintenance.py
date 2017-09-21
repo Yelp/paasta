@@ -18,6 +18,7 @@ import json
 import mock
 import pytest
 from dateutil import tz
+from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_maintenance import _make_request_payload
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_down
@@ -501,6 +502,10 @@ def test_drain(
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))
     assert mock_get_schedule_client.return_value.call_args == expected_args
 
+    mock_reserve_all_resources.side_effect = HTTPError()
+    drain(hostnames=['some-host'], start='some-start', duration='some-duration')
+    assert mock_get_schedule_client.call_count == 2
+
 
 @mock.patch('paasta_tools.mesos_maintenance.get_schedule_client', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
@@ -526,6 +531,10 @@ def test_undrain(
     assert mock_get_schedule_client.return_value.call_count == 1
     expected_args = mock.call(method="POST", endpoint="", data=json.dumps(fake_schedule))
     assert mock_get_schedule_client.return_value.call_args == expected_args
+
+    mock_unreserve_all_resources.side_effect = HTTPError()
+    undrain(hostnames=['some-host'])
+    assert mock_get_schedule_client.call_count == 2
 
 
 @mock.patch(
