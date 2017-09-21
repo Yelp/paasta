@@ -489,7 +489,7 @@ def reserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
+    log.info("Dynamically reserving resources on %s: %s" % (slave_id, resources))
     payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = reserve_api()
     try:
@@ -506,7 +506,7 @@ def unreserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically unreserving resoures on %s: %s" % (slave_id, resources))
+    log.info("Dynamically unreserving resources on %s: %s" % (slave_id, resources))
     payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = unreserve_api()
     try:
