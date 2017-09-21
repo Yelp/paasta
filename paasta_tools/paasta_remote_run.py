@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 from boto3.session import Session
+from pyrsistent import InvariantException
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
@@ -321,17 +322,40 @@ def remote_run_start(args):
     processor.load_plugin(provider_module='task_processing.plugins.stateful')
 
     MesosExecutor = processor.executor_cls(provider='mesos')
-    task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
-        **paasta_to_task_config_kwargs(
-            service,
-            instance,
-            cluster,
-            system_paasta_config,
-            instance_type,
-            soa_dir=soa_dir,
-            config_overrides=overrides_dict,
-        ),
-    )
+    try:
+        task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
+            **paasta_to_task_config_kwargs(
+                service,
+                instance,
+                cluster,
+                system_paasta_config,
+                instance_type,
+                soa_dir=soa_dir,
+                config_overrides=overrides_dict,
+            ),
+        )
+    except InvariantException as e:
+        if len(e.missing_fields) > 0:
+            paasta_print(
+                PaastaColors.red(
+                    "Mesos task config is missing following fields: {}".format(
+                        ', '.join(e.missing_fields),
+                    ),
+                ),
+            )
+        elif len(e.invariant_errors) > 0:
+            paasta_print(
+                PaastaColors.red(
+                    "Mesos task config is failing following checks: {}".format(
+                        ', '.join(str(ie) for ie in e.invariant_errors),
+                    ),
+                ),
+            )
+        else:
+            paasta_print(
+                PaastaColors.red("Mesos task config error: {}".format(e)),
+            )
+        sys.exit(1)
 
     executor_stack = build_executor_stack(
         processor,
