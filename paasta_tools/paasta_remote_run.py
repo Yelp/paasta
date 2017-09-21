@@ -20,10 +20,12 @@ import re
 import signal
 import string
 import sys
+import traceback
 from datetime import datetime
 
 from boto3.session import Session
 from pyrsistent import InvariantException
+from pyrsistent import PTypeError
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
@@ -181,7 +183,6 @@ def paasta_to_task_config_kwargs(
 
     kwargs = {
         'image': str(image),
-        'cmd': cmd,
         'cpus': cpus,
         'mem': float(mem),
         'disk': float(disk),
@@ -194,6 +195,8 @@ def paasta_to_task_config_kwargs(
         'containerizer': 'DOCKER',
         'environment': native_job_config.get_env_dictionary(),
     }
+    if cmd:
+        kwargs['cmd'] = cmd
     if gpus > 0:
         kwargs['gpus'] = int(gpus)
         kwargs['containerizer'] = 'MESOS'
@@ -355,6 +358,15 @@ def remote_run_start(args):
             paasta_print(
                 PaastaColors.red("Mesos task config error: {}".format(e)),
             )
+        traceback.print_exc()
+        sys.exit(1)
+    except PTypeError as e:
+        paasta_print(
+            PaastaColors.red(
+                "Mesos task config is failing a type check: {}".format(e),
+            ),
+        )
+        traceback.print_exc()
         sys.exit(1)
 
     executor_stack = build_executor_stack(
