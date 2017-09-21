@@ -383,7 +383,10 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': self.get_backoff_factor(),
             'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
-            'health_checks': self.get_healthchecks(service_namespace_config),
+            'health_checks': self.get_healthchecks(
+                service_namespace_config=service_namespace_config,
+                use_mesos_healthcheck=system_paasta_config.get_use_mesos_healthchecks()
+            ),
             'env': self.get_env(),
             'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
@@ -441,7 +444,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
         return ahash
 
-    def get_healthchecks(self, service_namespace_config):
+    def get_healthchecks(self, service_namespace_config, use_mesos_healthcheck):
         """Returns a list of healthchecks per `the Marathon docs`_.
 
         If you have an http service, it uses the default endpoint that smartstack uses.
@@ -472,7 +475,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         if mode == 'http' or mode == 'https':
             http_path = self.get_healthcheck_uri(service_namespace_config)
-            protocol = "MESOS_%s" % mode.upper()
+            protocol = "MESOS_%s" % mode.upper() if use_mesos_healthcheck else mode.upper()
             healthchecks = [
                 {
                     "protocol": protocol,
