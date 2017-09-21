@@ -1633,11 +1633,12 @@ class SystemPaastaConfig(object):
         return self.config_dict.get("deployd_log_level", 'INFO')
     
     def get_use_mesos_healthchecks(self) -> bool:
-        """Get the log level for paasta-deployd
+        """Get a boolean indicating whether HTTP(S) healthchecks should
+        be driven by Mesos, rather than Marathon
 
-        :return: string name of python logging level, e.g. INFO, DEBUG etc.
+        :return: a bool, indicating whether paasta should use MESOS healthchecks.
         """
-        return self.config_dict.get("deployd_log_level", 'INFO')
+        return self.config_dict.get("use_mesos_healthchecks", False)
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
