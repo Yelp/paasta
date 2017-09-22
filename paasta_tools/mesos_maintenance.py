@@ -564,10 +564,9 @@ def unreserve_all_resources(hostnames):
         log.info("Unreserving all resources on %s" % hostname)
         slave_id = slave['id']
         resources = []
-        for role in slave['reserved_resources']:
-            for resource in ['disk', 'mem', 'cpus']:
-                reserved_resource = slave['reserved_resources'][role][resource]
-                resources.append(Resource(name=resource, amount=reserved_resource))
+        for resource in ['disk', 'mem', 'cpus']:
+            reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
+            resources.append(Resource(name=resource, amount=reserved_resource))
         try:
             unreserve(slave_id=slave_id, resources=resources)
         except HTTPError:
