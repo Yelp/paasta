@@ -1,3 +1,11 @@
+paasta-tools (0.67.7) xenial; urgency=medium
+
+  * 0.67.7 tagged with 'make release'
+    Commit: Merge pull request #1516 from Yelp/make-cleanup-maintenance-
+    catch-error  Make cleanup maintenance pass if unreserving fails
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 22 Sep 2017 07:39:36 -0700
+
 paasta-tools (0.67.6) xenial; urgency=medium
 
   * 0.67.6 tagged with 'make release'
