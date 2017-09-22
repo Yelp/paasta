@@ -582,7 +582,10 @@ def drain(hostnames, start, duration):
     :returns: None
     """
     log.info("Draining: %s" % hostnames)
-    reserve_all_resources(hostnames)
+    try:
+        reserve_all_resources(hostnames)
+    except HTTPError as e:
+        log.warning("Failed to reserve resources, will continue to drain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
     try:
@@ -599,7 +602,10 @@ def undrain(hostnames):
     :returns: None
     """
     log.info("Undraining: %s" % hostnames)
-    unreserve_all_resources(hostnames)
+    try:
+        unreserve_all_resources(hostnames)
+    except HTTPError as e:
+        log.warning("Failed to unreserve resources, will continue to undrain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:
