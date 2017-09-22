@@ -1751,7 +1751,7 @@ class TestMarathonServiceConfig(object):
 
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1777,7 +1777,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1803,7 +1803,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            True
+            True,
         )
         assert actual == expected
 
@@ -1829,7 +1829,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1854,7 +1854,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1880,7 +1880,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1911,7 +1911,7 @@ class TestMarathonServiceConfig(object):
         ]
         actual = fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         )
         assert actual == expected
 
@@ -1926,7 +1926,7 @@ class TestMarathonServiceConfig(object):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         assert fake_marathon_service_config.get_healthchecks(
             fake_service_namespace_config,
-            False
+            False,
         ) == []
 
     def test_get_healthchecks_invalid_mode(self):

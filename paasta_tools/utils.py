@@ -1631,7 +1631,7 @@ class SystemPaastaConfig(object):
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", 'INFO')
-    
+
     def get_use_mesos_healthchecks(self) -> bool:
         """Get a boolean indicating whether HTTP(S) healthchecks should
         be driven by Mesos, rather than Marathon

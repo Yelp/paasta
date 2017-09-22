@@ -385,7 +385,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
             'health_checks': self.get_healthchecks(
                 service_namespace_config=service_namespace_config,
-                use_mesos_healthcheck=system_paasta_config.get_use_mesos_healthchecks()
+                use_mesos_healthcheck=system_paasta_config.get_use_mesos_healthchecks(),
             ),
             'env': self.get_env(),
             'mem': float(self.get_mem()),
