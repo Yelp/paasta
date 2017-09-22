@@ -21,6 +21,7 @@ from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
+from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -1550,3 +1551,40 @@ def test_proportional_decision_policy_good_enough(mock_save_historical_load, moc
         utilization=0.46,
         good_enough_window=(0.45, 0.55),
     )
+
+
+def test_filter_autoscaling_tasks_considers_old_versions():
+    all_marathon_tasks = [
+        mock.Mock(id='service.instance.gitOLD.configOLD.1', app_id='service.instance.gitOLD.configOLD'),
+        mock.Mock(id='service.instance.gitOLD.configOLD.2', app_id='service.instance.gitOLD.configOLD'),
+        mock.Mock(id='service.instance.gitNEW.configNEW.3', app_id='service.instance.gitNEW.configNEW'),
+        mock.Mock(id='service.instance.gitNEW.configNEW.4', app_id='service.instance.gitNEW.configNEW'),
+    ]
+
+    all_mesos_tasks = [
+        {'id': 'service.instance.gitOLD.configOLD.1'},
+        {'id': 'service.instance.gitOLD.configOLD.2'},
+        {'id': 'service.instance.gitNEW.configNEW.3'},
+        {'id': 'service.instance.gitNEW.configNEW.4'},
+    ]
+
+    fake_marathon_client = mock.Mock()
+
+    service_config = marathon_tools.MarathonServiceConfig(
+        service='service',
+        cluster='cluster',
+        instance='instance',
+        config_dict={},
+        branch_dict={},
+        soa_dir='/soa/dir',
+    )
+
+    expected = ({x.id: x for x in all_marathon_tasks}, all_mesos_tasks)
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.is_task_healthy',
+        return_value=True,
+        autospec=True,
+    ):
+        actual = filter_autoscaling_tasks(fake_marathon_client, all_marathon_tasks, all_mesos_tasks, service_config)
+
+    assert actual == expected

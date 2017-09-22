@@ -13,6 +13,7 @@
 # limitations under the License.
 import http.server
 import threading
+from typing import List
 
 import mock
 from behave import given
@@ -71,7 +72,7 @@ def check_retval(context, expected_retval):
 
 
 class FakeHTTPServer(object):
-    paths = []
+    paths: List[str] = []
 
     def start(self):
         self.server = http.server.HTTPServer(("localhost", 0), FakeHTTPRequestHandler)

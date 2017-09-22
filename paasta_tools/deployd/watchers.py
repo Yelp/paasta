@@ -70,9 +70,10 @@ class AutoscalerWatcher(PaastaWatcher):
             service_instance = ServiceInstance(
                 service=service,
                 instance=instance,
+                cluster=self.config.get_cluster(),
                 bounce_by=int(time.time()),
                 bounce_timers=None,
-                watcher=self.__class__.__name__,
+                watcher=type(self).__name__,
                 failures=0,
             )
             self.inbox_q.put(service_instance)
@@ -191,8 +192,9 @@ class MaintenanceWatcher(PaastaWatcher):
                 service_instances.append(ServiceInstance(
                     service=service,
                     instance=instance,
+                    cluster=self.config.get_cluster(),
                     bounce_by=int(time.time()),
-                    watcher=self.__class__.__name__,
+                    watcher=type(self).__name__,
                     bounce_timers=None,
                     failures=0,
                 ))
@@ -208,7 +210,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
 
     @property
     def log(self):
-        name = '.'.join([__name__, self.__class__.__name__])
+        name = '.'.join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def filter_event(self, event):
@@ -216,7 +218,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             return event
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR':
+        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
 
     def process_default(self, event):
@@ -250,8 +252,10 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 bounce_rate = self.public_config.get_deployd_big_bounce_rate()
                 service_instances = rate_limit_instances(
                     instances=service_instances,
+                    cluster=self.public_config.get_cluster(),
                     number_per_minute=bounce_rate,
-                    watcher_name=self.__class__.__name__,
+                    watcher_name=type(self).__name__,
+                    priority=99,
                 )
             for service_instance in service_instances:
                 self.filewatcher.inbox_q.put(service_instance)
@@ -265,7 +269,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
 
     @property
     def log(self):
-        name = '.'.join([__name__, self.__class__.__name__])
+        name = '.'.join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def filter_event(self, event):
@@ -274,7 +278,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             return event
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR':
+        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
             self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
             try:
                 file_names = os.listdir(event.pathname)
@@ -314,8 +318,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             ServiceInstance(
                 service=service,
                 instance=instance,
+                cluster=self.filewatcher.cluster,
                 bounce_by=int(time.time()),
-                watcher=self.__class__.__name__,
+                watcher=type(self).__name__,
                 bounce_timers=None,
                 failures=0,
             )

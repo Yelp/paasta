@@ -99,12 +99,20 @@ def latest_oom_events(cluster, superregion, interval=60):
     return res
 
 
-def compose_sensu_status(instance, events):
+def compose_sensu_status(instance, oom_events, is_check_enabled):
     """
     :param instance: InstanceConfig
-    :param events: a list of OOMEvents
+    :param oom_events: a list of OOMEvents
+    :param is_check_enabled: boolean to indicate whether the check enabled for the instance
     """
-    if len(events) == 0:
+    if not is_check_enabled:
+        return (
+            Status.OK, 'This check is disabled for %s.%s.' % (
+                instance.service,
+                instance.instance,
+            ),
+        )
+    if len(oom_events) == 0:
         return (
             Status.OK, 'No oom events for %s.%s in the last minute.' %
             (instance.service, instance.instance),
@@ -113,18 +121,18 @@ def compose_sensu_status(instance, events):
         return (
             Status.CRITICAL, 'The Out Of Memory killer killed %d processes (%s) '
             'in the last minute in %s.%s containers.' % (
-                len(events),
-                ','.join(sorted({e.process_name for e in events if e.process_name})),
+                len(oom_events),
+                ','.join(sorted({e.process_name for e in oom_events if e.process_name})),
                 instance.service,
                 instance.instance,
             ),
         )
 
 
-def send_sensu_event(instance, status, args):
+def send_sensu_event(instance, oom_events, args):
     """
     :param instance: InstanceConfig
-    :patam status: a Sensu status tuple
+    :param oom_events: a list of OOMEvents
     """
     check_name = compose_check_name_for_service_instance(
         'oom-killer',
@@ -132,15 +140,22 @@ def send_sensu_event(instance, status, args):
         instance.instance,
     )
     monitoring_overrides = instance.get_monitoring()
-    monitoring_overrides['team'] = 'noop'  # TODO: remove after testing
-    monitoring_overrides['page'] = False
-    monitoring_overrides['ticket'] = False
-    monitoring_overrides['notification_email'] = False  # TODO: remove after testing
-    monitoring_overrides['irc_channels'] = ['#oom-test']  # TODO: remove after testing
-    monitoring_overrides['alert_after'] = '0m'
-    monitoring_overrides['runbook'] = ['http://y/none']  # TODO: needs a link
-    monitoring_overrides['realert_every'] = args.realert_every
-    monitoring_overrides['tip'] = 'Try bumping the memory limit past %dMB' % instance.get_mem()
+    status = compose_sensu_status(
+        instance=instance,
+        oom_events=oom_events,
+        is_check_enabled=monitoring_overrides.get('check_oom_events', True),
+    )
+    monitoring_overrides.update({
+        'team': 'noop',  # TODO: remove after testing
+        'page': False,
+        'ticket': False,
+        'alert_after': '0m',
+        'realert_every': args.realert_every,
+        'notification_email': False,  # TODO: remove after testing
+        'irc_channels': ['#oom-test'],  # TODO: remove after testing
+        'runbook': 'http://y/none',  # TODO: needs a link
+        'tip': 'Try bumping the memory limit past %dMB' % instance.get_mem(),
+    })
     return monitoring_tools.send_event(
         service=instance.service,
         check_name=check_name,
@@ -156,15 +171,18 @@ def main(sys_argv):
     cluster = load_system_paasta_config().get_cluster()
     victims = latest_oom_events(cluster, args.superregion)
     for (service, instance) in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
-        instance_config = get_instance_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            load_deployments=False,
-            soa_dir=args.soa_dir,
-        )
-        status = compose_sensu_status(instance_config, victims.get((service, instance), []))
-        send_sensu_event(instance_config, status, args)
+        try:
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=args.soa_dir,
+            )
+            oom_events = victims.get((service, instance), [])
+            send_sensu_event(instance_config, oom_events, args)
+        except NotImplementedError:  # When instance_type is not supported by get_instance_config
+            pass
 
 
 if __name__ == '__main__':

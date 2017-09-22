@@ -86,9 +86,11 @@ class PaastaDeployWorker(PaastaThread):
                 service_instance = ServiceInstance(
                     service=service_instance.service,
                     instance=service_instance.instance,
+                    cluster=self.config.get_cluster(),
                     bounce_by=int(time.time()) + bounce_again_in_seconds,
                     watcher=self.name,
                     bounce_timers=bounce_timers,
+                    priority=service_instance.priority,
                     failures=failures,
                 )
                 self.inbox_q.put(service_instance)

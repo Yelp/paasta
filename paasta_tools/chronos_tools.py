@@ -191,7 +191,6 @@ class InvalidChronosConfigError(Exception):
 @time_cache(ttl=30)
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
-    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
     return service_configuration_lib.read_extra_service_information(
         service,
         chronos_conf_file,
@@ -200,7 +199,6 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
-    log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_service_configuration(
         service,
         soa_dir=soa_dir,
@@ -268,17 +266,18 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_calculated_constraints(self, system_paasta_config):
         constraints = self.get_constraints()
-        blacklist = self.get_deploy_blacklist(
-            system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
-        )
-        whitelist = self.get_deploy_whitelist(
-            system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
-        )
         if constraints is not None:
             return constraints
         else:
             constraints = self.get_extra_constraints()
-            constraints.extend(self.get_deploy_constraints(blacklist, whitelist))
+            constraints.extend(
+                self.get_deploy_constraints(
+                    blacklist=self.get_deploy_blacklist(),
+                    whitelist=self.get_deploy_whitelist(),
+                    system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
+                    system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
+                ),
+            )
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
         return [[str(val) for val in constraint] for constraint in constraints]

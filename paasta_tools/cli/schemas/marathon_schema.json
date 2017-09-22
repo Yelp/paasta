@@ -145,6 +145,9 @@
                     "exclusiveMinimum": true,
                     "exclusiveMaximum": false
                 },
+                "bounce_priority": {
+                    "type": "integer"
+                },
                 "deploy_group": {
                     "type": "string"
                 },

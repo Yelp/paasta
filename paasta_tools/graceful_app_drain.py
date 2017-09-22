@@ -92,6 +92,7 @@ def main():
             old_app_live_happy_tasks=old_app_live_happy_tasks,
             old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             old_app_draining_tasks=old_app_draining_tasks,
+            old_app_at_risk_tasks=old_app_at_risk_tasks,
             serviceinstance="{}.{}".format(service, instance),
             bounce_method='down',
             service=service,

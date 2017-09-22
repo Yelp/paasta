@@ -19,7 +19,7 @@ class PaastaLeaderElection(Election):
 
     @property
     def log(self):
-        name = '.'.join([__name__, self.__class__.__name__])
+        name = '.'.join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def run(self, func, *args, **kwargs):

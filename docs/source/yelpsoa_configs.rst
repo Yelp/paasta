@@ -114,6 +114,13 @@ instance MAY have:
     This allows bounces to proceed in the face of a percentage of failures.
     It doesn’t affect any other bounce method but crossover.
 
+  * ``bounce_priority``: an integer priority that informs paasta-deployd which service
+    instances should take priority over each other. The default priority is 0 and higher numbers
+    are considered higher priority. For example: if there are three service instances that need
+    bouncing: the first with a ``bounce_prioirty`` -1, the second with no ``bounce_priority`` and the
+    third with ``bounce_priority`` 1. Then paasta-deployd will prioritise the bounce of the third
+    service instance, then the second service instance and finally the first service instance.
+
   * ``drain_method``: Controls the drain method; see `drain_lib
     <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
     instances that are not in Smartstack, or ``hacheck`` if they are.
@@ -746,6 +753,11 @@ Here is a list of options that PaaSTA will pass through:
  * ``check_every``: **Not a setting that can be configured!!** This setting is
    described for completeness. In PaaSTA the check interval is not user-configurable
    and is hard-coded at ``1m``.
+
+ * ``check_oom_events``: Boolean to indicate if an instance should alert when
+   the Out Of Memory killer kills processes in the instance containers.
+   This alert sends an email to ``notification_email`` and post notifications
+   to ``irc_channels``. It neither pages nor makes a JIRA ticket. Defaults to **true**.
 
 
 Monitoring Examples

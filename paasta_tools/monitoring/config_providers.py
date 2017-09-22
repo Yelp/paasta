@@ -18,28 +18,49 @@ interface with a different provider.
 
 """
 import copy
+from typing import Any
+from typing import Dict
+from typing import Union
+
+from mypy_extensions import TypedDict
 
 
-monitoring_keys = [
-    'team', 'notification_email', 'service_type',
-    'runbook', 'tip', 'page', 'alert_after', 'realert_every',
-    'extra',
-]
+MonitoringInfo = TypedDict(
+    'MonitoringInfo',
+    {
+        "team": Union[str, None],
+        "notification_email": Union[str, None],
+        "service_type": Union[str, None],
+        "runbook": Union[str, None],
+        "tip": Union[str, None],
+        "page": Union[str, None],
+        "alert_after": Union[str, None],
+        "realert_every": Union[str, None],
+        "extra": Dict[Any, Any],
+    },
+)
 
 
-def extract_classic_monitoring_info(service_config):
+def extract_classic_monitoring_info(service_config, **kwargs) -> MonitoringInfo:
     monitoring_config = copy.deepcopy(service_config.get('monitoring', {}))
-    info = {
-        key: monitoring_config.pop(key, None) for
-        key in monitoring_keys
-    }
-    # Note, this will clobber whatever was in the extra key before, which
-    # we need to do for extra to actually mean what we want.
-    info['extra'] = monitoring_config
+
+    info = MonitoringInfo({
+        "team": monitoring_config.pop("team", None),
+        "notification_email": monitoring_config.pop("notification_email", None),
+        "service_type": monitoring_config.pop("service_type", None),
+        "runbook": monitoring_config.pop("runbook", None),
+        "tip": monitoring_config.pop("tip", None),
+        "page": monitoring_config.pop("page", None),
+        "alert_after": monitoring_config.pop("alert_after", None),
+        "realert_every": monitoring_config.pop("realert_every", None),
+        # Note, this will clobber whatever was in the extra key before, which
+        # we need to do for extra to actually mean what we want.
+        "extra": monitoring_config,
+    })
     return info
 
 
-def extract_monitoring_info(framework, config, **kwargs):
+def extract_monitoring_info(framework, config, **kwargs) -> MonitoringInfo:
     """Extract monitoring information from wherever it is specified
 
     To be monitored a service *must* supply a team and notification email.

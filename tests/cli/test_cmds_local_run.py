@@ -1498,7 +1498,8 @@ def test_get_local_run_environment_vars_other(
     assert 'MARATHON_PORT' not in actual
 
 
-def test_volumes_are_deduped():
+@mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=True, autospec=True)
+def test_volumes_are_deduped(mock_exists):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container',
         autospec=True,
@@ -1545,6 +1546,57 @@ def test_volumes_are_deduped():
                 yelpsoa_config_root='/blurp/durp',
             ),
         )
-
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs['volumes'] == ['/hostPath:/containerPath:ro']
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=False, autospec=True)
+def test_missing_volumes_skipped(mock_exists):
+    with mock.patch(
+        'paasta_tools.cli.cmds.local_run.run_docker_container',
+        autospec=True,
+    ) as mock_run_docker_container, mock.patch(
+        'paasta_tools.cli.cmds.local_run.get_instance_config',
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        'paasta_tools.cli.cmds.local_run.validate_service_instance',
+        autospec=True,
+        return_value='marathon',
+    ):
+
+        mock_get_instance_config.return_value = InstanceConfig(
+            cluster='cluster',
+            instance='instance',
+            service='service',
+            config_dict={
+                'extra_volumes': [{
+                    "hostPath": "/hostPath",
+                    "containerPath": "/containerPath",
+                    "mode": "RO",
+                }],
+            },
+            branch_dict={},
+        )
+
+        configure_and_run_docker_container(
+            docker_client=mock.Mock(),
+            docker_hash='12345',
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            system_paasta_config=SystemPaastaConfig(
+                {
+                    'volumes': [{
+                        "hostPath": "/hostPath",
+                        "containerPath": "/containerPath",
+                        "mode": "RO",
+                    }],
+                },
+                '/etc/paasta',
+            ),
+            args=mock.Mock(
+                yelpsoa_config_root='/blurp/durp',
+            ),
+        )
+        args, kwargs = mock_run_docker_container.call_args
+        assert kwargs['volumes'] == []

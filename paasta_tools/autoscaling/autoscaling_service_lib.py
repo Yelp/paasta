@@ -36,6 +36,7 @@ from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
+from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
@@ -719,15 +720,16 @@ def get_all_marathon_mesos_tasks(marathon_client):
 
 
 def filter_autoscaling_tasks(marathon_client, all_marathon_tasks, all_mesos_tasks, config):
-    job_id = config.format_marathon_app_dict()['id']
+    job_id_prefix = "%s%s" % (format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
+
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
     # are healthy. We assume tasks with no healthcheck results but a defined
     # healthcheck to be unhealthy (unless they are "old" in which case we
     # assume that marathon has screwed up and stopped healthchecking but that
     # they are healthy
-    log.info("Inspecting %s for autoscaling" % job_id)
+    log.info("Inspecting %s for autoscaling" % job_id_prefix)
     marathon_tasks = {task.id: task for task in all_marathon_tasks
-                      if task.id.startswith(job_id) and
+                      if task.id.startswith(job_id_prefix) and
                       (is_task_healthy(task) or not
                        marathon_client.get_app(task.app_id).health_checks or
                        is_old_task_missing_healthchecks(task, marathon_client))}
