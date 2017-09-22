@@ -1,3 +1,11 @@
+paasta-tools (0.67.6) xenial; urgency=medium
+
+  * 0.67.6 tagged with 'make release'
+    Commit: Merge pull request #1512 from Yelp/enable-mesos-healthchecks
+    use MESOS_HTTP{,s} healthchecks everywhere
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 22 Sep 2017 04:56:29 -0700
+
 paasta-tools (0.67.5) xenial; urgency=medium
 
   * 0.67.5 tagged with 'make release'
