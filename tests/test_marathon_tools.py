@@ -881,7 +881,7 @@ class TestMarathonTools:
         })
         fake_healthchecks = [
             {
-                "protocol": "MESOS_HTTP",
+                "protocol": "HTTP",
                 "path": "/health",
                 "gracePeriodSeconds": 3,
                 "intervalSeconds": 10,
@@ -2161,7 +2161,7 @@ def test_format_marathon_app_dict_with_smartstack():
             'health_checks': [
                 {
                     'portIndex': 0,
-                    'protocol': 'MESOS_HTTP',
+                    'protocol': 'HTTP',
                     'timeoutSeconds': 10,
                     'intervalSeconds': 10,
                     'gracePeriodSeconds': 60,
