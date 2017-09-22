@@ -146,14 +146,11 @@ def send_sensu_event(instance, oom_events, args):
         is_check_enabled=monitoring_overrides.get('check_oom_events', True),
     )
     monitoring_overrides.update({
-        'team': 'noop',  # TODO: remove after testing
         'page': False,
         'ticket': False,
         'alert_after': '0m',
         'realert_every': args.realert_every,
-        'notification_email': False,  # TODO: remove after testing
-        'irc_channels': ['#oom-test'],  # TODO: remove after testing
-        'runbook': 'http://y/none',  # TODO: needs a link
+        'runbook': 'y/check-oom-events',
         'tip': 'Try bumping the memory limit past %dMB' % instance.get_mem(),
     })
     return monitoring_tools.send_event(
