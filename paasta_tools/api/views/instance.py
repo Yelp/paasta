@@ -82,7 +82,7 @@ def chronos_instance_status(instance_status, service, instance, verbose):
         last_status = 'not_run'
     else:
         last_status = ''
-    if last_status == 'not_run' or '':
+    if last_status == 'not_run' or last_status == '':
         last_time = 'never'
     cstatus['last_status'] = {}
     cstatus['last_status']['result'] = last_status
