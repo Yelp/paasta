@@ -240,6 +240,13 @@
                     "type": "string",
                     "default": "/status"
                 },
+                "marathon_shard": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "previous_marathon_shards": {
+                    "type": "array"
+                },
                 "replication_threshold": {
                     "type": "integer",
                     "minimum": 0
