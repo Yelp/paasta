@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import json
+import logging
 import os
 import random
 import re
@@ -53,7 +54,10 @@ MESOS_TASK_SPACER = '.'
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
-    subs = parser.add_subparsers(dest='action', help='Subcommands of paasta_remote_run')
+    subs = parser.add_subparsers(
+        dest='action',
+        help='Subcommands of paasta_remote_run',
+    )
 
     start_parser = subs.add_parser('start', help='Start task')
     add_start_args_to_parser(start_parser)
@@ -494,6 +498,16 @@ def remote_run_list(args, frameworks=None):
 
 def main(argv):
     args = parse_args(argv)
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.verbose:
+        logging.basicConfig(level=logging.INFO)
+    # elif args.quiet:
+    #     logging.basicConfig(level=logging.ERROR)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
     actions = {
         'start': remote_run_start,
         'stop': remote_run_stop,
