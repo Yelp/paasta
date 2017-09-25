@@ -1,3 +1,11 @@
+paasta-tools (0.67.8) xenial; urgency=medium
+
+  * 0.67.8 tagged with 'make release'
+    Commit: Merge pull request #1522 from Yelp/maksym-remote-run-log-
+    levels  [remote-run] log verbosity from args
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 25 Sep 2017 04:16:10 -0700
+
 paasta-tools (0.67.7) xenial; urgency=medium
 
   * 0.67.7 tagged with 'make release'
