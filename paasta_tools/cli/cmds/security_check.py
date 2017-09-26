@@ -57,7 +57,7 @@ def perform_security_check(args):
     if ret_code != 0:
         paasta_print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
-            "including whitelisting safe versions of packages).",
+            "including whitelisting safe versions of packages and docker images).",
         )
 
     sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
