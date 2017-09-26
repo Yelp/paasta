@@ -248,6 +248,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     # Check if no tasks are running or we have reached the maintenance window
                     if not should_drain or is_safe_to_kill(slave.hostname):
                         if not should_drain and not dry_run:
+                            self.log.info("Draining is disabled, just waiting 5 minutes!")
                             time.sleep(300)
                         self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                             instance_id,
@@ -306,7 +307,8 @@ class ClusterAutoscaler(ResourceLogMixin):
             amount_to_decrease = delta * -1
             if amount_to_decrease > killable_capacity:
                 self.log.error(
-                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
+                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything! "
+                    "Amount wanted to decrease: %s, killable capacity: %s" % (amount_to_decrease, killable_capacity),
                 )
                 return
             self.downscale_aws_resource(
