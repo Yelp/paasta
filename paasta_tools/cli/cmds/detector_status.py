@@ -20,6 +20,8 @@ import os
 import sys
 import urllib
 
+import requests
+
 from paasta_tools.utils import load_system_paasta_config
 
 MAX_ROWS_IN_SFX_RESULTS = 1000
@@ -45,20 +47,13 @@ def format_timestamp(ts_millis):
 
 
 def make_requests(urls):
-    import gevent
-    import gevent.monkey
-    gevent.monkey.patch_all()
-    import requests
     for url in urls:
         logging.info('GET %s', url)
     headers = {
         'Content-Type': 'application/json',
         'X-SF-TOKEN': sfx_token(),
     }
-    jobs = [gevent.spawn(requests.get, url, headers=headers) for url in urls]
-    gevent.joinall(jobs, timeout=60)
-    responses = [job.value for job in jobs]
-    return responses
+    return [requests.get(url, headers=headers) for url in urls]
 
 
 def discover_detector_ids(detector_name):
@@ -66,7 +61,7 @@ def discover_detector_ids(detector_name):
         MAX_ROWS_IN_SFX_RESULTS,
     )
     if detector_name != 'all':
-        url += '&{}'.format(urllib.urlencode({'name': detector_name}))
+        url += '&{}'.format(urllib.parse.urlencode({'name': detector_name}))
     r = list(make_requests([url]))[0]
     return frozenset((result['id'] for result in r.json()['results']))
 
