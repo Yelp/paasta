@@ -20,6 +20,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.chronos_tools import ChronosJobConfig
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_job_status', autospec=True)
@@ -69,6 +70,50 @@ def test_instances_status_marathon(
     response = instance.instance_status(request)
     assert response['marathon']['bounce_method'] == 'fake_bounce'
     assert response['marathon']['desired_state'] == 'start'
+
+
+@mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_config', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.chronos_tools.get_chronos_client', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_job_config', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_actual_deployments', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.select_tasks_by_id', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
+def test_chronos_instance_status(
+    mock_get_cached_list_of_running_tasks_from_frameworks,
+    mock_select_tasks_by_id,
+    mock_get_actual_deployments,
+    mock_validate_service_instance,
+    mock_load_chronos_job_config,
+    mock_get_chronos_client,
+    mock_load_chronos_config,
+):
+    settings.cluster = 'fake_cluster'
+    mock_get_actual_deployments.return_value = {
+        'fake_cluster.fake_instance': 'GIT_SHA',
+        'fake_cluster.fake_instance2': 'GIT_SHA',
+        'fake_cluster2.fake_instance': 'GIT_SHA',
+        'fake_cluster2.fake_instance2': 'GIT_SHA',
+    }
+    mock_validate_service_instance.return_value = 'chronos'
+    mock_select_tasks_by_id.return_value = [1, 2, 3]
+
+    mock_load_chronos_job_config.return_value = ChronosJobConfig(
+        'fake_service',
+        'fake_instance',
+        'fake_cluster',
+        {
+            'schedule': 'always',
+        },
+        {},
+    )
+
+    request = testing.DummyRequest()
+    request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
+
+    response = instance.instance_status(request)
+    assert response['chronos']['schedule']['schedule'] == 'always'
+    assert response['chronos']['schedule_type'] == 'schedule'
 
 
 @mock.patch('paasta_tools.api.views.instance.adhoc_instance_status', autospec=True)
