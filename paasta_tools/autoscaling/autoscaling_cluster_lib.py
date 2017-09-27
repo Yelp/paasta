@@ -76,6 +76,9 @@ class Timer(object):
     def ready(self):
         return datetime.now() > self.last_start + self.timeout
 
+    def left(self):
+        return self.last_start + self.timeout - datetime.now()
+
 
 class ResourceLogMixin(object):
 
@@ -231,11 +234,14 @@ class ClusterAutoscaler(ResourceLogMixin):
         if dry_run:
             return True
         if timer.ready():
+            self.log.warning("Timer expired before slave ready to kill...")
             timer.start()
             raise TimeoutError
         if not should_drain:
+            self.log.info("Not draining, waiting %s longer before killing" % timer.left())
             return False
         if is_safe_to_kill(hostname):
+            self.log.info("Slave %s is ready to kill, with %s left on timer" % (hostname, timer.left()))
             timer.start()
             return True
         return False
@@ -323,7 +329,8 @@ class ClusterAutoscaler(ResourceLogMixin):
             amount_to_decrease = delta * -1
             if amount_to_decrease > killable_capacity:
                 self.log.error(
-                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything!",
+                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything! "
+                    "Amount wanted to decrease: %s, killable capacity: %s" % (amount_to_decrease, killable_capacity),
                 )
                 return
             await self.downscale_aws_resource(

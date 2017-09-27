@@ -87,7 +87,14 @@ def add_common_args_to_parser(parser):
     )
     parser.add_argument(
         '-v', '--verbose',
-        help='Show Docker commands output',
+        help='Show more output',
+        action='store_true',
+        required=False,
+        default=False,
+    )
+    parser.add_argument(
+        '--debug',
+        help='Show debug output',
         action='store_true',
         required=False,
         default=False,
@@ -202,7 +209,8 @@ def paasta_remote_run(args):
         'cluster': None,
         'yelpsoa_config_root': DEFAULT_SOA_DIR,
         'cmd': None,
-        'verbose': True,
+        'verbose': False,
+        'debug': False,
         'dry_run': False,
         'staging_timeout': None,
         'detach': False,

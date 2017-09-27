@@ -1,3 +1,34 @@
+paasta-tools (0.67.8) xenial; urgency=medium
+
+  * 0.67.8 tagged with 'make release'
+    Commit: Merge pull request #1522 from Yelp/maksym-remote-run-log-
+    levels  [remote-run] log verbosity from args
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 25 Sep 2017 04:16:10 -0700
+
+paasta-tools (0.67.7) xenial; urgency=medium
+
+  * 0.67.7 tagged with 'make release'
+    Commit: Merge pull request #1516 from Yelp/make-cleanup-maintenance-
+    catch-error  Make cleanup maintenance pass if unreserving fails
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 22 Sep 2017 07:39:36 -0700
+
+paasta-tools (0.67.6) xenial; urgency=medium
+
+  * 0.67.6 tagged with 'make release'
+    Commit: Merge pull request #1512 from Yelp/enable-mesos-healthchecks
+    use MESOS_HTTP{,s} healthchecks everywhere
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 22 Sep 2017 04:56:29 -0700
+
+paasta-tools (0.67.5) xenial; urgency=medium
+
+  * 0.67.5 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Wed, 20 Sep 2017 10:18:41 -0700
+
 paasta-tools (0.67.4) xenial; urgency=medium
 
   * 0.67.4 tagged with 'make release'

@@ -489,7 +489,7 @@ def reserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically reserving resoures on %s: %s" % (slave_id, resources))
+    log.info("Dynamically reserving resources on %s: %s" % (slave_id, resources))
     payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = reserve_api()
     try:
@@ -506,7 +506,7 @@ def unreserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically unreserving resoures on %s: %s" % (slave_id, resources))
+    log.info("Dynamically unreserving resources on %s: %s" % (slave_id, resources))
     payload = _make_request_payload(slave_id, build_reservation_payload(resources))
     client_fn = unreserve_api()
     try:
@@ -564,10 +564,9 @@ def unreserve_all_resources(hostnames):
         log.info("Unreserving all resources on %s" % hostname)
         slave_id = slave['id']
         resources = []
-        for role in slave['reserved_resources']:
-            for resource in ['disk', 'mem', 'cpus']:
-                reserved_resource = slave['reserved_resources'][role][resource]
-                resources.append(Resource(name=resource, amount=reserved_resource))
+        for resource in ['disk', 'mem', 'cpus']:
+            reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
+            resources.append(Resource(name=resource, amount=reserved_resource))
         try:
             unreserve(slave_id=slave_id, resources=resources)
         except HTTPError:
@@ -582,7 +581,10 @@ def drain(hostnames, start, duration):
     :returns: None
     """
     log.info("Draining: %s" % hostnames)
-    reserve_all_resources(hostnames)
+    try:
+        reserve_all_resources(hostnames)
+    except HTTPError as e:
+        log.warning("Failed to reserve resources, will continue to drain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
     try:
@@ -599,7 +601,10 @@ def undrain(hostnames):
     :returns: None
     """
     log.info("Undraining: %s" % hostnames)
-    unreserve_all_resources(hostnames)
+    try:
+        unreserve_all_resources(hostnames)
+    except HTTPError as e:
+        log.warning("Failed to unreserve resources, will continue to undrain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     try:

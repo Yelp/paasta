@@ -1328,6 +1328,7 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
         'cluster_autoscaling_draining_enabled': bool,
+        'use_mesos_healthchecks': bool,
         'taskproc': Dict,
     },
     total=False,
@@ -1630,6 +1631,14 @@ class SystemPaastaConfig(object):
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", 'INFO')
+
+    def get_use_mesos_healthchecks(self) -> bool:
+        """Get a boolean indicating whether HTTP(S) healthchecks should
+        be driven by Mesos, rather than Marathon
+
+        :return: a bool, indicating whether paasta should use MESOS healthchecks.
+        """
+        return self.config_dict.get("use_mesos_healthchecks", False)
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
