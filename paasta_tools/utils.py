@@ -1327,6 +1327,9 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_startup_bounce_rate': float,
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
+        'cluster_autoscaling_draining_enabled': bool,
+        'use_mesos_healthchecks': bool,
+        'taskproc': Dict,
     },
     total=False,
 )
@@ -1525,6 +1528,13 @@ class SystemPaastaConfig(object):
     def get_cluster_autoscaling_resources(self) -> ClusterAutoscalingResources:
         return self.config_dict.get('cluster_autoscaling_resources', {})
 
+    def get_cluster_autoscaling_draining_enabled(self) -> bool:
+        """ Enable mesos maintenance mode and trigger draining of instances before the
+        autoscaler terminates the instance.
+
+        :returns A bool"""
+        return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
+
     def get_resource_pool_settings(self) -> ResourcePoolSettings:
         return self.config_dict.get('resource_pool_settings', {})
 
@@ -1621,6 +1631,17 @@ class SystemPaastaConfig(object):
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", 'INFO')
+
+    def get_use_mesos_healthchecks(self) -> bool:
+        """Get a boolean indicating whether HTTP(S) healthchecks should
+        be driven by Mesos, rather than Marathon
+
+        :return: a bool, indicating whether paasta should use MESOS healthchecks.
+        """
+        return self.config_dict.get("use_mesos_healthchecks", False)
+
+    def get_taskproc(self) -> Dict:
+        return self.config_dict.get('taskproc', {})
 
 
 def _run(

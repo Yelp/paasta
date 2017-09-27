@@ -1,3 +1,67 @@
+paasta-tools (0.67.8) xenial; urgency=medium
+
+  * 0.67.8 tagged with 'make release'
+    Commit: Merge pull request #1522 from Yelp/maksym-remote-run-log-
+    levels  [remote-run] log verbosity from args
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 25 Sep 2017 04:16:10 -0700
+
+paasta-tools (0.67.7) xenial; urgency=medium
+
+  * 0.67.7 tagged with 'make release'
+    Commit: Merge pull request #1516 from Yelp/make-cleanup-maintenance-
+    catch-error  Make cleanup maintenance pass if unreserving fails
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 22 Sep 2017 07:39:36 -0700
+
+paasta-tools (0.67.6) xenial; urgency=medium
+
+  * 0.67.6 tagged with 'make release'
+    Commit: Merge pull request #1512 from Yelp/enable-mesos-healthchecks
+    use MESOS_HTTP{,s} healthchecks everywhere
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 22 Sep 2017 04:56:29 -0700
+
+paasta-tools (0.67.5) xenial; urgency=medium
+
+  * 0.67.5 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Wed, 20 Sep 2017 10:18:41 -0700
+
+paasta-tools (0.67.4) xenial; urgency=medium
+
+  * 0.67.4 tagged with 'make release'
+    Commit: Merge pull request #1508 from Yelp/dont-drain-unhealthy-
+    instances  Don"t try to drain unhealthy instances when scaling the
+    cluster down
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 06:25:49 -0700
+
+paasta-tools (0.67.3) xenial; urgency=medium
+
+  * 0.67.3 tagged with 'make release'
+    Commit: Released 0.67.2 via make release
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 03:31:44 -0700
+
+paasta-tools (0.67.2) xenial; urgency=medium
+
+  * 0.67.2 tagged with 'make release'
+    Commit: Merge pull request #1509 from Yelp/fix_taskproc_breakage
+    Fix use of system_paasta_config.get, fallout of #1426
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 13 Sep 2017 02:19:54 -0700
+
+paasta-tools (0.67.1) xenial; urgency=medium
+
+  * 0.67.1 tagged with 'make release'
+    Commit: Merge pull request #1505 from Yelp/fix-smartstack-tools-
+    whitelist  Fix type error, where whitelist gets checked against none
+    in mesos_tools
+
+ -- Matthew Bentley <bentley@yelp.com>  Tue, 12 Sep 2017 10:04:05 -0700
+
 paasta-tools (0.67.0) xenial; urgency=medium
 
   * 0.67.0 tagged with 'make release'

@@ -168,7 +168,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     replication_info = {}
     filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
         blacklist=blacklist,
-        whitelist=[],
+        whitelist=None,
     )
     if not filtered_slaves:
         raise mesos_tools.NoSlavesAvailableError
@@ -192,6 +192,28 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         replication_info[value] = repl_info
 
     return replication_info
+
+
+def get_replication_for_all_services(
+        synapse_host: str,
+        synapse_port: int,
+        synapse_haproxy_url_format: str,
+) -> Dict[str, int]:
+    """Returns the replication level for all services known to this synapse haproxy
+
+    :param synapse_host: The host that this check should contact for replication information.
+    :param synapse_port: The port number that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
+    :returns available_instance_counts: A dictionary mapping the service names
+                                        to an integer number of available replicas.
+    """
+    backends = get_multiple_backends(
+        services=None,
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
+    return collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
 
 
 def get_replication_for_services(
@@ -314,3 +336,92 @@ def match_backends_and_tasks(backends, tasks):
             backend_task_pairs.append((backend, None))
 
     return backend_task_pairs
+
+
+class SmartstackReplicationChecker:
+    """Retrives the number of registered instances in each discoverable location.
+
+    Optimized for multiple queries. Gets the list of backends from synapse-haproxy
+    only once per location and reuse it in all subsequent calls of
+    SmartstackReplicationChecker.get_replication_for_instance().
+
+    :Example:
+
+    >>> from paasta_tools.mesos_tools import get_slaves
+    >>> from paasta_tools.utils import load_system_paasta_config
+    >>> from paasta_tools.marathon_tools import load_marathon_service_config
+    >>> from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+    >>>
+    >>> mesos_slaves = get_slaves()
+    >>> system_paasta_config = load_system_paasta_config()
+    >>> instance_config = load_marathon_service_config(service='fake_service',
+    ...                       instance='fake_instance', cluster='norcal-stagef')
+    >>>
+    >>> c = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    >>> c.get_replication_for_instance(instance_config)
+    {'uswest1-stagef': {'fake_service.fake_instance': 2}}
+    >>>
+    """
+
+    def __init__(self, mesos_slaves, system_paasta_config):
+        self._mesos_slaves = mesos_slaves
+        self._synapse_port = system_paasta_config.get_synapse_port()
+        self._synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
+        self._system_paasta_config = system_paasta_config
+        self._cache = {}
+
+    def get_replication_for_instance(self, instance_config):
+        """Returns the number of registered instances in each discoverable location.
+
+        :param instance_config: An instance of MarathonServiceConfig.
+        :returns: a dict {'location_type': {'service.instance': int}}
+        """
+        replication_info = {}
+        attribute_slave_dict = self._get_allowed_locations_and_hostnames(instance_config)
+        for location, hosts in attribute_slave_dict.items():
+            replication_info[location] = self._get_replication_info(location, hosts[0], instance_config)
+        return replication_info
+
+    def _get_replication_info(self, location, hostname, instance_config) -> Dict[str, int]:
+        """Returns service.instance and the number of instances registered in smartstack
+        at the location as a dict.
+
+        :param location: A string that identifies a habitat, a region and etc.
+        :param hostname: A mesos slave hostname to read replication information from.
+        :param instance_config: An instance of MarathonServiceConfig.
+        :returns: A dict {"service.instance": number_of_instances}.
+        """
+        full_name = compose_job_id(instance_config.service, instance_config.instance)
+        if location not in self._cache:
+            self._cache[location] = get_replication_for_all_services(
+                synapse_host=hostname,
+                synapse_port=self._synapse_port,
+                synapse_haproxy_url_format=self._synapse_haproxy_url_format,
+            )
+        return {full_name: self._cache[location][full_name]}
+
+    def _get_allowed_locations_and_hostnames(self, instance_config) -> Dict[str, list]:
+        """Returns a dict of locations and lists of corresponding mesos slaves
+        where deployment of the instance is allowed.
+
+        :param instance_config: An instance of MarathonServiceConfig
+        :returns: A dict {"uswest1-prod": ['hostname1', 'hostname2], ...}.
+        """
+        monitoring_blacklist = instance_config.get_monitoring_blacklist(
+            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
+        )
+        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
+            slaves=self._mesos_slaves,
+            blacklist=monitoring_blacklist,
+            whitelist=None,
+        )
+        discover_location_type = marathon_tools.load_service_namespace_config(
+            service=instance_config.service,
+            namespace=instance_config.instance,
+            soa_dir=instance_config.soa_dir,
+        ).get_discover()
+        slaves_grouped_by_attribute = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+            slaves=filtered_slaves,
+            attribute=discover_location_type,
+        )
+        return {attr: [s['hostname'] for s in slaves] for attr, slaves in slaves_grouped_by_attribute.items()}

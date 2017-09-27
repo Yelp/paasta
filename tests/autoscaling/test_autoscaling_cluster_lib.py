@@ -1148,6 +1148,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 pid='slave(1)@10.1.1.1:5051',
                 instance_weight=1,
                 ip='10.1.1.1',
+                instance_status={'SystemStatus': {'Status': 'ok'}, 'InstanceStatus': {'Status': 'ok'}},
             )
             self.autoscaler.gracefully_terminate_slave(
                 slave_to_kill=mock_slave,
@@ -1158,7 +1159,9 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
             set_call_1 = mock.call(self.autoscaler, 4)
             mock_set_capacity.assert_has_calls([set_call_1])
-            mock_wait_and_terminate.assert_called_with(self.autoscaler, mock_slave, 123, False, region='westeros-1')
+            mock_wait_and_terminate.assert_called_with(
+                self.autoscaler, mock_slave, 123, False, region='westeros-1', should_drain=True,
+            )
 
             # test we cleanup if a termination fails
             set_call_2 = mock.call(self.autoscaler, 5)
@@ -1170,7 +1173,9 @@ class TestClusterAutoscaler(unittest.TestCase):
             )
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
             mock_set_capacity.assert_has_calls([set_call_1, set_call_2])
-            mock_wait_and_terminate.assert_called_with(self.autoscaler, mock_slave, 123, False, region='westeros-1')
+            mock_wait_and_terminate.assert_called_with(
+                self.autoscaler, mock_slave, 123, False, region='westeros-1', should_drain=True,
+            )
             mock_undrain.assert_called_with(['host1|10.1.1.1'])
 
             # test we cleanup if a set spot capacity fails
@@ -1459,6 +1464,22 @@ class TestClusterAutoscaler(unittest.TestCase):
         ]}
         ret = self.autoscaler.get_pool_slaves(mock_mesos_state)
         assert ret == {'id1': mock_mesos_state['slaves'][0]}
+
+    def test_instace_descriptions_for_ips_splits_ips(self):
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.describe_instances',
+            autospec=True,
+        ) as mock_describe_instances:
+            ips = list(range(567))
+
+            def mock_describe_instance(self, instance_ids, region, instance_filters):
+                return instance_filters[0]['Values']
+            mock_describe_instances.side_effect = mock_describe_instance
+
+            ret = self.autoscaler.instance_descriptions_for_ips(ips)
+            assert len(ret) == 567
+            assert ret == ips
+            assert mock_describe_instances.call_count == 3
 
 
 class TestPaastaAwsSlave(unittest.TestCase):

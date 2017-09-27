@@ -163,7 +163,7 @@ def _load_sensu_team_data():
     return team_data
 
 
-def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None):
+def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None, cluster=None):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param service: The service name the event is about
@@ -173,6 +173,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     :param status: The status to emit for this event
     :param output: The output to emit for this event
     :param soa_dir: The service directory to read monitoring information from
+    :param cluster: The cluster name (optional)
     """
     # This function assumes the input is a string like "mumble.main"
     team = get_team(overrides, service, soa_dir)
@@ -181,10 +182,11 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
 
     runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
     system_paasta_config = load_system_paasta_config()
-    try:
-        cluster_name = system_paasta_config.get_cluster()
-    except PaastaNotConfiguredError:
-        cluster_name = 'localhost'
+    if cluster is None:
+        try:
+            cluster = system_paasta_config.get_cluster()
+        except PaastaNotConfiguredError:
+            cluster = 'localhost'
     result_dict = {
         'tip': get_tip(overrides, service, soa_dir),
         'notification_email': get_notification_email(overrides, service, soa_dir),
@@ -195,7 +197,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': overrides.get('realert_every', monitoring_defaults('realert_every')),
-        'source': 'paasta-%s' % cluster_name,
+        'source': 'paasta-%s' % cluster,
         'ttl': ttl,
     }
 
