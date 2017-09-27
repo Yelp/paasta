@@ -117,7 +117,7 @@ instance MAY have:
   * ``bounce_priority``: an integer priority that informs paasta-deployd which service
     instances should take priority over each other. The default priority is 0 and higher numbers
     are considered higher priority. For example: if there are three service instances that need
-    bouncing: the first with a ``bounce_prioirty`` -1, the second with no ``bounce_priority`` and the
+    bouncing: the first with a ``bounce_priority`` -1, the second with no ``bounce_priority`` and the
     third with ``bounce_priority`` 1. Then paasta-deployd will prioritise the bounce of the third
     service instance, then the second service instance and finally the first service instance.
 
