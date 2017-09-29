@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+from typing import cast
+from typing import Dict  # noqa, imported for typing.
+from typing import List  # noqa, imported for typing.
 
 import marathon
 import mock
@@ -22,9 +25,12 @@ from pytest import raises
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
+from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
+from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJson
+from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -59,23 +65,9 @@ class TestMarathonTools:
     }
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({
-        'cluster': 'test_cluster',
-        'url': 'http://test_url',
+        'url': ['http://test_url'],
         'user': 'admin',
-        'pass': 'admin_pass',
-        'docker_registry': fake_docker_registry,
-        'docker_volumes': [
-            {
-                'hostPath': '/var/data/a',
-                'containerPath': '/etc/a',
-                'mode': 'RO',
-            },
-            {
-                'hostPath': '/var/data/b',
-                'containerPath': '/etc/b',
-                'mode': 'RW',
-            },
-        ],
+        'password': 'admin_pass',
     })
     fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
@@ -136,9 +128,11 @@ class TestMarathonTools:
             service=fake_name,
             cluster='',
             instance=fake_instance,
-            config_dict=dict(
-                self.fake_srv_config,
-                **self.fake_marathon_app_config.config_dict,
+            config_dict=cast(
+                MarathonServiceConfigDict, dict(
+                    self.fake_srv_config,
+                    **self.fake_marathon_app_config.config_dict,
+                ),
             ),
             branch_dict={},
         )
@@ -177,7 +171,7 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
-        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
+        fake_branch_dict = BranchDict({'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker})
         deployments_json_mock = mock.Mock(
             spec=DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
@@ -200,9 +194,11 @@ class TestMarathonTools:
                 service=fake_name,
                 cluster='',
                 instance=fake_instance,
-                config_dict=dict(
-                    self.fake_srv_config,
-                    **self.fake_marathon_app_config.config_dict,
+                config_dict=cast(
+                    MarathonServiceConfigDict, dict(
+                        self.fake_srv_config,
+                        **self.fake_marathon_app_config.config_dict,
+                    ),
                 ),
                 branch_dict=fake_branch_dict,
             )
@@ -245,7 +241,7 @@ class TestMarathonTools:
             json_patch.assert_called_with(open_mock.return_value.__enter__.return_value)
 
     def test_load_marathon_config_path_dne(self):
-        expected = {}
+        expected = marathon_tools.MarathonConfig({})
         with mock.patch(
             'paasta_tools.marathon_tools.open',
             create=True, side_effect=IOError(2, 'a', 'b'), autospec=None,
@@ -430,7 +426,7 @@ class TestMarathonTools:
         name = 'eman'
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
-        fake_config = {}
+        fake_config: Dict = {}
         with mock.patch(
             'service_configuration_lib.read_service_configuration',
             autospec=True,
@@ -542,7 +538,7 @@ class TestMarathonTools:
             service=name,
             cluster=cluster,
             instance=instance,
-            config_dict={'aaaaaaaa': ['bbbbbbbbbb']},
+            config_dict={'bounce_method': 'fakefakefake'},
             branch_dict={},
         )
 
@@ -848,16 +844,16 @@ class TestMarathonTools:
     def test_format_marathon_app_dict(self):
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
-            {
+            DockerVolume({
                 'hostPath': '/var/data/a',
                 'containerPath': '/etc/a',
                 'mode': 'RO',
-            },
-            {
+            }),
+            DockerVolume({
                 'hostPath': '/var/data/b',
                 'containerPath': '/etc/b',
                 'mode': 'RW',
-            },
+            }),
         ]
         fake_mem = 1000000000000000000000
         fake_env = {'FAKEENV': 'FAKEVALUE'}
@@ -1011,7 +1007,7 @@ class TestMarathonTools:
         assert fake_conf.get_bounce_method() == 'crossover'
 
     def test_get_bounce_health_params_in_config(self):
-        fake_param = 'fake_param'
+        fake_param = {'fake_param': 'fake_value'}
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1077,7 +1073,7 @@ class TestMarathonTools:
         assert fake_conf.get_drain_method(fake_service_namespace_config) == 'hacheck'
 
     def test_get_drain_method_params_in_config(self):
-        fake_param = 'fake_param'
+        fake_param = {'fake_param': 'fake_value'}
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1272,7 +1268,7 @@ class TestMarathonTools:
 
     def test_get_calculated_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
-        fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
+        fake_deploy_blacklist = [("region", "fake_blacklisted_region")]
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1369,13 +1365,13 @@ class TestMarathonTools:
             service='fake_name',
             cluster='fake_cluster',
             instance='fake_instance',
-            config_dict={'monitoring': 'test'},
+            config_dict={'monitoring': {'test': 'foo'}},
             branch_dict={},
         )
-        assert fake_conf.get_monitoring() == 'test'
+        assert fake_conf.get_monitoring() == {'test': 'foo'}
 
     def test_get_marathon_client(self):
-        fake_url = "nothing_for_me_to_do_but_dance"
+        fake_url = ["nothing_for_me_to_do_but_dance"]
         fake_user = "the_boogie"
         fake_passwd = "is_for_real"
         with mock.patch('paasta_tools.marathon_tools.MarathonClient', autospec=True) as client_patch:
@@ -1655,10 +1651,11 @@ class TestMarathonServiceConfig(object):
 
     def test_repr(self):
         actual = repr(marathon_tools.MarathonServiceConfig(
-            str('foo'), str('bar'), str(''),
-            {str('baz'): str('baz')}, {str('bubble'): str('gum')},
+            'foo', 'bar', '',
+            {'bounce_method': 'baz'}, {'docker_image': 'gum'},
         ))
-        expect = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}, '/nail/etc/services')"""
+        expect = """MarathonServiceConfig('foo', 'bar', '', {'bounce_method': 'baz'}, """ \
+            """{'docker_image': 'gum'}, '/nail/etc/services')"""
         assert actual == expect
 
     def test_get_healthcheck_mode_default(self):
@@ -2183,7 +2180,7 @@ def test_format_marathon_app_dict_utilizes_net():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
-    fake_system_volumes = [
+    fake_system_volumes: List[DockerVolume] = [
         {
             "containerPath": "/system",
             "hostPath": "/system",
@@ -2226,14 +2223,14 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
-    fake_extra_volumes = [
+    fake_extra_volumes: List[DockerVolume] = [
         {
             "containerPath": "/extra",
             "hostPath": "/extra",
             "mode": "RO",
         },
     ]
-    fake_system_volumes = [
+    fake_system_volumes: List[DockerVolume] = [
         {
             "containerPath": "/system",
             "hostPath": "/system",
@@ -2326,7 +2323,7 @@ def test_kill_tasks_passes_catches_fewer_than_error():
 
     actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
     fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
-    assert actual == []
+    assert actual is None
 
 
 def test_kill_tasks_passes_catches_already_dead_task():
@@ -2342,7 +2339,7 @@ def test_kill_tasks_passes_catches_already_dead_task():
 
     actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
     fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
-    assert actual == []
+    assert actual is None
 
 
 def test_create_complete_config():
@@ -2372,8 +2369,8 @@ def test_marathon_service_config_copy():
         service='fake-service',
         instance='fake-instance',
         cluster='fake-cluster',
-        config_dict={'elem': 'test'},
-        branch_dict={'elem2': 'test2'},
+        config_dict={'cmd': 'test'},
+        branch_dict={'docker_image': 'test2'},
     )
     fake_marathon_service_config_2 = fake_marathon_service_config.copy()
     assert fake_marathon_service_config is not fake_marathon_service_config_2
@@ -2520,20 +2517,20 @@ def test_kill_given_tasks():
     mock_kill_given_tasks = mock.Mock()
     mock_client = mock.Mock(kill_given_tasks=mock_kill_given_tasks)
 
-    ret = marathon_tools.kill_given_tasks(mock_client, [], 2)
+    ret = marathon_tools.kill_given_tasks(mock_client, [], True)
     assert not mock_kill_given_tasks.called
-    assert ret == []
+    assert ret is False
 
-    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
-    mock_kill_given_tasks.assert_called_with(task_ids=['id1', 'id2'], scale=2, force=True)
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], True)
+    mock_kill_given_tasks.assert_called_with(task_ids=['id1', 'id2'], scale=True, force=True)
     assert ret == mock_kill_given_tasks.return_value
 
     mock_error = mock.Mock(reason='thing is not valid', status_code=422, content=None)
     mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
-    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
-    assert ret == []
+    ret = marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], True)
+    assert ret is False
 
     mock_error = mock.Mock(reason='thing', status_code=500, content=None)
     mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
     with raises(MarathonHttpError):
-        marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], 2)
+        marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], True)
