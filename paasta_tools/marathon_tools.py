@@ -638,7 +638,7 @@ def get_marathon_clients(marathon_servers, cached=False):
     previous_servers = marathon_servers.previous
     previous_clients = []
     for previous_server in previous_servers:
-        previous_client.append(get_marathon_client(
+        previous_clients.append(get_marathon_client(
             url=previous_server.url,
             user=previous_server.user,
             passwd=previous_server.passwd,
