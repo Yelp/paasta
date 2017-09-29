@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1320,6 +1320,7 @@ SystemPaastaConfigDict = TypedDict(
         'local_run_config': LocalRunConfig,
         'paasta_native': PaastaNativeConfig,
         'mesos_config': Dict,
+        'monitoring_config': Dict,
         'deploy_blacklist': DeployBlacklist,
         'deploy_whitelist': DeployWhitelist,
         'expected_slave_attributes': ExpectedSlaveAttributes,
@@ -1580,6 +1581,12 @@ class SystemPaastaConfig(object):
         :returns: The mesos cli config
         """
         return self.config_dict.get("mesos_config", {})
+
+    def get_monitoring_config(self) -> Dict:
+        """Get the monitoring config
+
+        :returns: the monitoring config dictionary"""
+        return self.config_dict.get('monitoring_config', {})
 
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """Get global blacklist. This applies to all services
