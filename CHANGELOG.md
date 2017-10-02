@@ -1,5 +1,55 @@
 # Change Log
 
+## [v0.67.9](https://github.com/Yelp/paasta/tree/v0.67.9) (2017-10-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.8...v0.67.9)
+
+**Closed issues:**
+
+- Sensu's python plugin is looking for a maintainer [\#1529](https://github.com/Yelp/paasta/issues/1529)
+
+**Merged pull requests:**
+
+- Append previous clients to the right list [\#1533](https://github.com/Yelp/paasta/pull/1533) ([EvanKrall](https://github.com/EvanKrall))
+- Add yelp\_paasta\_helpers to extra\_requirements\_yelp [\#1531](https://github.com/Yelp/paasta/pull/1531) ([oktopuz](https://github.com/oktopuz))
+- Fix typo in docs [\#1530](https://github.com/Yelp/paasta/pull/1530) ([chriskuehl](https://github.com/chriskuehl))
+- remove limited instance count warning [\#1527](https://github.com/Yelp/paasta/pull/1527) ([somic](https://github.com/somic))
+- Updating security-check message [\#1526](https://github.com/Yelp/paasta/pull/1526) ([transcedentalia](https://github.com/transcedentalia))
+- Add more debug messages to the cluster autoscaler [\#1525](https://github.com/Yelp/paasta/pull/1525) ([matthewbentley](https://github.com/matthewbentley))
+- Apollo 205 detector status 36b [\#1524](https://github.com/Yelp/paasta/pull/1524) ([philipmulcahy](https://github.com/philipmulcahy))
+- Added in config loading and client generation for sharded marathon configurations [\#1523](https://github.com/Yelp/paasta/pull/1523) ([solarkennedy](https://github.com/solarkennedy))
+- Add chronos to status api [\#1491](https://github.com/Yelp/paasta/pull/1491) ([matthewbentley](https://github.com/matthewbentley))
+
+## [v0.67.8](https://github.com/Yelp/paasta/tree/v0.67.8) (2017-09-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.7...v0.67.8)
+
+**Closed issues:**
+
+- paasta\_cleanup\_maintenance is trying to remove resources for taskproc [\#1519](https://github.com/Yelp/paasta/issues/1519)
+
+**Merged pull requests:**
+
+- \[remote-run\] log verbosity from args [\#1522](https://github.com/Yelp/paasta/pull/1522) ([keymone](https://github.com/keymone))
+- bump taskproc to current master [\#1521](https://github.com/Yelp/paasta/pull/1521) ([keymone](https://github.com/keymone))
+- Only unreserve resources reserved for the purpose of maintenance [\#1520](https://github.com/Yelp/paasta/pull/1520) ([nhandler](https://github.com/nhandler))
+- Enable check\_oom\_events for everyone [\#1515](https://github.com/Yelp/paasta/pull/1515) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.67.7](https://github.com/Yelp/paasta/tree/v0.67.7) (2017-09-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.6...v0.67.7)
+
+**Merged pull requests:**
+
+- Make cleanup maintenance pass if unreserving fails [\#1516](https://github.com/Yelp/paasta/pull/1516) ([mattmb](https://github.com/mattmb))
+
+## [v0.67.6](https://github.com/Yelp/paasta/tree/v0.67.6) (2017-09-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.5...v0.67.6)
+
+**Merged pull requests:**
+
+- Fix typo s/resoures/resources/g [\#1518](https://github.com/Yelp/paasta/pull/1518) ([nhandler](https://github.com/nhandler))
+- \[remote-run\] print nicer error messages [\#1517](https://github.com/Yelp/paasta/pull/1517) ([keymone](https://github.com/keymone))
+- Consider tasks from all versions of a service when autoscaling. PAASTA-12983 [\#1513](https://github.com/Yelp/paasta/pull/1513) ([EvanKrall](https://github.com/EvanKrall))
+- use MESOS\_HTTP{,s} healthchecks everywhere [\#1512](https://github.com/Yelp/paasta/pull/1512) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
 ## [v0.67.5](https://github.com/Yelp/paasta/tree/v0.67.5) (2017-09-20)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.4...v0.67.5)
 
