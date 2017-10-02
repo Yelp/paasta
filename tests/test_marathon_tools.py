@@ -2534,3 +2534,29 @@ def test_kill_given_tasks():
     mock_kill_given_tasks.side_effect = MarathonHttpError(mock_error)
     with raises(MarathonHttpError):
         marathon_tools.kill_given_tasks(mock_client, ['id1', 'id2'], True)
+
+
+def test_rendezvous_hash_smoke():
+    # with the identity hash function, it should choose the lexicographically highest choice, which will be the last
+    # entry in the choices list.
+    assert 'aaa' == marathon_tools.rendezvous_hash(
+        choices=['ccc', 'bbb', 'aaa'],
+        key='shouldntmatterforthistest',
+        salt='',
+        hash_func=str,
+    )
+
+
+def test_rendezvous_hash_roughly_fractional_change():
+    """Make sure that when we remove an option, only ~1/10th of the keys get moved."""
+    first_choices = range(10)
+    second_choices = range(9)
+
+    test_keys = [str(x) for x in range(10000)]
+
+    first_results = [marathon_tools.rendezvous_hash(first_choices, k) for k in test_keys]
+    second_results = [marathon_tools.rendezvous_hash(second_choices, k) for k in test_keys]
+
+    num_same = len([1 for x, y in zip(first_results, second_results) if x == y])
+    assert num_same > 8900
+    assert num_same < 9100

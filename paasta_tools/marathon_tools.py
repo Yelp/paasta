@@ -24,12 +24,14 @@ import os
 from collections import namedtuple
 from math import ceil
 from typing import Any
+from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import TypeVar
 
 import requests
 import service_configuration_lib
@@ -89,7 +91,51 @@ log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 MarathonServers = namedtuple('MarathonServers', ['current', 'previous'])
-MarathonClients = namedtuple('MarathonClients', ['current', 'previous'])
+
+
+_RendezvousHashT = TypeVar('_RendezvousHashT')
+
+
+def rendezvous_hash(
+    choices: Sequence[_RendezvousHashT],
+    key: str,
+    salt: str='',
+    hash_func: Callable[[str], str]=get_config_hash,
+) -> _RendezvousHashT:
+    """
+
+    :param choices: A dictionary of string to arbitrary values. The string keys are used in the hash calculation, and
+                    the value with the "winning" key is returned."""
+    max_hash_value = None
+    max_hash_choice = None
+    for i, choice in enumerate(choices):
+        str_to_hash = MESOS_TASK_SPACER.join([str(i), key, salt])
+        hash_value = hash_func(str_to_hash)
+        if max_hash_value is None or hash_value > max_hash_value:
+            max_hash_value = hash_value
+            max_hash_choice = choice
+
+    return max_hash_choice
+
+
+class MarathonClients(object):
+    def __init__(self, current: List[MarathonClient], previous: List[MarathonClient]) -> None:
+        self.current = current
+        self.previous = previous
+
+    def get_current_client_for_service(self, job_config: 'MarathonServiceConfig') -> MarathonClient:
+        service_instance = compose_job_id(job_config.service, job_config.instance)
+        if job_config.get_marathon_shard() is not None:
+            return self.current[job_config.get_marathon_shard()]
+        else:
+            return rendezvous_hash(choices=self.current, key=service_instance)
+
+    def get_previous_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
+        service_instance = compose_job_id(job_config.service, job_config.instance)
+        if job_config.get_previous_marathon_shards() is not None:
+            return [self.previous[i] for i in job_config.get_previous_marathon_shards()]
+        else:
+            return [rendezvous_hash(choices=self.previous, key=service_instance)]
 
 
 def load_marathon_config() -> "MarathonConfig":
