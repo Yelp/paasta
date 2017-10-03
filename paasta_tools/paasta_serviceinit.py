@@ -220,10 +220,9 @@ def main():
                     )
                 elif instance_type == 'adhoc':
                     if instance == 'interactive':
-                        raise NotImplementedError
+                        continue
                     if command != 'status':
                         raise NotImplementedError
-
                     paasta_remote_run.remote_run_list_report(
                         service=service,
                         instance=instance,
