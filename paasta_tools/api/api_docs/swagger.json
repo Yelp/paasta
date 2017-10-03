@@ -472,7 +472,7 @@
             "mesos_state": {
               "type": "string",
               "description": "The status in mesos",
-              "enum": ["runnning", "not_running"]
+              "enum": ["running", "not_running"]
             }
           }
         },
