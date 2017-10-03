@@ -7,6 +7,7 @@ from typing import Tuple
 
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
+from mypy_extensions import TypedDict
 
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
@@ -43,6 +44,10 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     nerve_ns: str
     registrations: List[str]
     bounce_priority: int
+
+
+# Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
+BounceMethodConfigDict = TypedDict('BounceMethodConfigDict', {"instances": int})
 
 
 class ServiceNamespaceConfig(dict):

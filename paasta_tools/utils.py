@@ -366,7 +366,7 @@ class InstanceConfig(object):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self, with_labels: bool=True) -> Iterable[DockerParameter]:
+    def format_docker_parameters(self, with_labels: bool=True) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
@@ -612,7 +612,7 @@ class InstanceConfig(object):
                 error_msgs.append(check_msg)
         return error_msgs
 
-    def get_extra_volumes(self) -> Sequence[DockerVolume]:
+    def get_extra_volumes(self) -> List[DockerVolume]:
         """Extra volumes are a specially formatted list of dictionaries that should
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
@@ -647,7 +647,7 @@ class InstanceConfig(object):
         """
         return self.config_dict.get('net', 'bridge')
 
-    def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> Sequence[DockerVolume]:
+    def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
         deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
         return sort_dicts(deduped)
@@ -1325,7 +1325,7 @@ SystemPaastaConfigDict = TypedDict(
     {
         'zookeeper': str,
         'docker_registry': str,
-        'volumes': Sequence[DockerVolume],
+        'volumes': List[DockerVolume],
         'cluster': str,
         'dashboard_links': Dict[str, Dict[str, str]],
         'api_endpoints': Dict[str, str],
@@ -1436,7 +1436,7 @@ class SystemPaastaConfig(object):
                 % self.directory,
             )
 
-    def get_volumes(self) -> Sequence[DockerVolume]:
+    def get_volumes(self) -> List[DockerVolume]:
         """Get the volumes defined in this host's volumes config file.
 
         :returns: The list of volumes specified in the paasta configuration

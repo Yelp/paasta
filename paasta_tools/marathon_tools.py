@@ -24,9 +24,11 @@ import os
 from collections import namedtuple
 from math import ceil
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 
 import requests
@@ -38,6 +40,7 @@ from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from mypy_extensions import TypedDict
 
+from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -54,6 +57,8 @@ from paasta_tools.utils import Constraint
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DockerParameter
+from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
@@ -135,6 +140,66 @@ class HealthcheckDict(TypedDict, total=False):
     maxConsecutiveFailures: int
     path: str
     command: CommandDict
+
+
+# These are more-or-less duplicated from native_service_config, but this code uses camelCase, not snake_case.
+# We could probably refactor this, and just use snake_case -- Mesos is picky, but marathon-python will auto-convert.
+MarathonDockerPortMapping = TypedDict(
+    'MarathonDockerPortMapping',
+    {
+        'hostPort': int,
+        'containerPort': int,
+        'protocol': str,
+    },
+)
+
+MarathonPortDefinition = TypedDict(
+    'MarathonPortDefinition',
+    {
+        'port': int,
+        'protocol': str,
+    },
+)
+
+MarathonDockerInfo = TypedDict(
+    'MarathonDockerInfo',
+    {
+        'image': str,
+        'network': str,
+        'portMappings': List[MarathonDockerPortMapping],
+        'parameters': Sequence[DockerParameter],
+    },
+    total=False,
+)
+
+MarathonContainerInfo = TypedDict(
+    'MarathonContainerInfo',
+    {
+        'type': str,
+        'docker': MarathonDockerInfo,
+        'volumes': List[DockerVolume],
+    },
+)
+
+
+class FormattedMarathonAppDict(BounceMethodConfigDict, total=False):
+    container: MarathonContainerInfo
+    uris: List[str]
+    backoff_seconds: float
+    backoff_factor: float
+    max_launch_delay_seconds: float
+    health_checks: List[HealthcheckDict]
+    env: Dict[str, str]
+    mem: float
+    cpus: float
+    disk: float
+    constraints: List[Constraint]
+    cmd: str
+    args: List[str]
+    id: str
+    port_definitions: List[MarathonPortDefinition]
+    require_ports: bool
+    accepted_resource_roles: List[str]
 
 
 class MarathonConfig(dict):
@@ -424,7 +489,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         routing_constraints: List[Constraint] = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
 
-    def format_marathon_app_dict(self) -> Dict[str, Any]:
+    def format_marathon_app_dict(self) -> FormattedMarathonAppDict:
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -461,7 +526,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         net = get_mesos_network_for_net(self.get_net())
 
-        complete_config: Dict[str, Any] = {
+        complete_config: FormattedMarathonAppDict = {
             'container': {
                 'docker': {
                     'image': docker_url,
@@ -525,7 +590,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
-    def sanitize_for_config_hash(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_for_config_hash(self, config: FormattedMarathonAppDict) -> Dict[str, Any]:
         """Removes some data from complete_config to make it suitable for
         calculation of config hash.
 
@@ -533,7 +598,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :returns: sanitized copy of complete_config hash
         """
         ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
-        ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)
+        ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)  # type: ignore
         return ahash
 
     def get_healthchecks(
@@ -1072,7 +1137,7 @@ def get_app_queue_status(client: MarathonClient, app_id: str) -> Tuple[Optional[
     return (None, None)
 
 
-def create_complete_config(service: str, instance: str, soa_dir: str=DEFAULT_SOA_DIR) -> Dict[str, Any]:
+def create_complete_config(service: str, instance: str, soa_dir: str=DEFAULT_SOA_DIR) -> FormattedMarathonAppDict:
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
     return load_marathon_service_config(
         service=service,
@@ -1120,7 +1185,7 @@ def get_matching_appids(servicename: str, instance: str, client: MarathonClient)
     return [app.id for app in get_matching_apps(servicename, instance, marathon_apps)]
 
 
-def get_matching_apps(servicename: str, instance: str, marathon_apps: List[MarathonApp]) -> List[MarathonApp]:
+def get_matching_apps(servicename: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""

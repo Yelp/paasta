@@ -7,8 +7,10 @@ import random
 import threading
 import time
 import uuid
+from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Tuple
 
@@ -500,7 +502,7 @@ class NativeScheduler(Scheduler):
         driver.killTask({'value': task_id})
         self.task_store.update_task(task_id, mesos_task_state=TASK_KILLING)
 
-    def group_tasks_by_version(self, task_ids: List[str]) -> Dict[str, List[str]]:
+    def group_tasks_by_version(self, task_ids: Collection[str]) -> Mapping[str, Collection[str]]:
         d: Dict[str, List[str]] = {}
         for task_id in task_ids:
             version = task_id.rsplit('.', 1)[0]
