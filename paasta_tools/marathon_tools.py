@@ -645,18 +645,18 @@ def get_marathon_clients(marathon_servers, cached=False):
     current_clients = []
     for current_server in current_servers:
         current_clients.append(get_marathon_client(
-            url=current_server.url,
-            user=current_server.user,
-            passwd=current_server.passwd,
+            url=current_server.get_url(),
+            user=current_server.get_username(),
+            passwd=current_server.get_password(),
             cached=cached,
         ))
     previous_servers = marathon_servers.previous
     previous_clients = []
     for previous_server in previous_servers:
         previous_clients.append(get_marathon_client(
-            url=previous_server.url,
-            user=previous_server.user,
-            passwd=previous_server.passwd,
+            url=previous_server.get_url(),
+            user=previous_server.get_username(),
+            passwd=previous_server.get_password(),
             cached=cached,
         ))
     return MarathonClients(current=current_clients, previous=previous_clients)
