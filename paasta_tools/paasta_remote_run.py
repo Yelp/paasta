@@ -27,6 +27,8 @@ from datetime import datetime
 from boto3.session import Session
 from pyrsistent import InvariantException
 from pyrsistent import PTypeError
+from task_processing.metrics import create_counter
+from task_processing.metrics import get_metric
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
@@ -43,6 +45,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
@@ -50,6 +53,11 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 MESOS_TASK_SPACER = '.'
+
+
+def emit_counter_metric(counter_name, service, instance):
+    create_counter(counter_name, {'service': service, 'instance': instance})
+    get_metric(counter_name).count(1)
 
 
 def parse_args(argv):
@@ -110,6 +118,7 @@ def extract_args(args):
             sep='\n',
             file=sys.stderr,
         )
+        emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, 'UNKNOWN')
         sys.exit(1)
 
     soa_dir = args.yelpsoa_config_root
@@ -118,9 +127,15 @@ def extract_args(args):
         instance_type = 'adhoc'
         instance = 'remote'
     else:
-        instance_type = validate_service_instance(
-            service, instance, cluster, soa_dir,
-        )
+        try:
+            instance_type = validate_service_instance(
+                service, instance, cluster, soa_dir,
+            )
+        except NoConfigurationForServiceError as e:
+            paasta_print(e)
+            emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, instance)
+            sys.exit(1)
+
         if instance_type != 'adhoc':
             paasta_print(
                 PaastaColors.red(
@@ -130,6 +145,7 @@ def extract_args(args):
                     ).format(instance, instance_type),
                 ),
             )
+            emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, instance)
             sys.exit(1)
 
     return (
@@ -285,6 +301,7 @@ def build_executor_stack(
 
 
 def remote_run_start(args):
+
     system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
 
@@ -363,6 +380,7 @@ def remote_run_start(args):
                 PaastaColors.red("Mesos task config error: {}".format(e)),
             )
         traceback.print_exc()
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
         sys.exit(1)
     except PTypeError as e:
         paasta_print(
@@ -371,18 +389,8 @@ def remote_run_start(args):
             ),
         )
         traceback.print_exc()
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
         sys.exit(1)
-
-    executor_stack = build_executor_stack(
-        processor,
-        service,
-        instance,
-        cluster,
-        run_id,
-        system_paasta_config,
-        args.staging_timeout,
-    )
-    runner = Sync(executor_stack)
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
@@ -396,8 +404,26 @@ def remote_run_start(args):
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
-    terminal_event = runner.run(task_config)
-    runner.stop()
+    try:
+        executor_stack = build_executor_stack(
+            processor,
+            service,
+            instance,
+            cluster,
+            run_id,
+            system_paasta_config,
+            args.staging_timeout,
+        )
+        runner = Sync(executor_stack)
+
+        terminal_event = runner.run(task_config)
+        runner.stop()
+    except (Exception, ValueError) as e:
+        paasta_print("Except while running executor stack: %s", e)
+        traceback.print_exc()
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
+        sys.exit(1)
+
     if terminal_event.success:
         paasta_print("Task finished successfully")
         sys.exit(0)
@@ -405,6 +431,9 @@ def remote_run_start(args):
         paasta_print(
             PaastaColors.red("Task failed: {}".format(terminal_event.raw)),
         )
+        # This is not necessarily an infrastructure failure. It may just be a
+        # application failure.
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
         sys.exit(1)
 
 
@@ -413,6 +442,7 @@ def remote_run_stop(args):
     _, service, cluster, _, instance, _ = extract_args(args)
     if args.framework_id is None and args.run_id is None:
         paasta_print(PaastaColors.red("Must provide either run id or framework id to stop."))
+        emit_counter_metric('paasta.remote_run.stop.failed', service, instance)
         sys.exit(1)
 
     frameworks = [
@@ -424,6 +454,7 @@ def remote_run_stop(args):
     if framework_id is None:
         if re.match('\s', args.run_id):
             paasta_print(PaastaColors.red("Run id must not contain whitespace."))
+            emit_counter_metric('paasta.remote_run.stop.failed', service, instance)
             sys.exit(1)
 
         found = [f for f in frameworks if re.search(' %s$' % args.run_id, f.name) is not None]
@@ -431,6 +462,7 @@ def remote_run_stop(args):
             framework_id = found[0].id
         else:
             paasta_print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
+            emit_counter_metric('paasta.remote_run.stop.failed', service, instance)
             sys.exit(1)
     else:
         found = [f for f in frameworks if f.id == framework_id]
@@ -441,6 +473,7 @@ def remote_run_stop(args):
                     (framework_id, service, instance),
                 ),
             )
+            emit_counter_metric('paasta.remote_run.stop.failed', service, instance)
             sys.exit(1)
 
     paasta_print("Tearing down framework %s." % framework_id)
