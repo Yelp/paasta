@@ -198,7 +198,11 @@ class MesosMaster(object):
         return lst[0]
 
     def orphan_tasks(self):
-        return self.state["orphan_tasks"]
+        return [
+            task.Task(self, x)
+            for x in self._task_list(False)
+            if x['id'] in self.state["orphan_tasks"]
+        ]
 
     # XXX - need to filter on task state as well as id
     def tasks(self, fltr="", active_only=False):
