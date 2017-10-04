@@ -19,13 +19,14 @@ from paasta_tools.monitoring.check_mesos_duplicate_frameworks import check_mesos
 
 def test_check_mesos_no_duplicate_frameworks_ok(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
-    ) as mock_parse_args, mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
+        autospec=True,
+        return_value=mock.Mock(current=[1], previous=[]),
+    ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
-        mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
-        mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [
@@ -49,13 +50,14 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
 
 def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
-    ) as mock_parse_args, mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
+        autospec=True,
+        return_value=mock.Mock(current=[1], previous=[]),
+    ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
-        mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
-        mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [

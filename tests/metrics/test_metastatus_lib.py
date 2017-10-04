@@ -243,120 +243,55 @@ def test_disk_health_mesos_reports_zero():
     assert failure_health is False
 
 
-def test_assert_no_duplicate_frameworks():
+def test_assert_framework_count_not_ok():
     state = {
         'frameworks': [
             {
-                'name': 'test_framework1',
+                'name': 'marathon',
             },
             {
-                'name': 'test_framework2',
+                'name': 'marathon1',
             },
             {
-                'name': 'test_framework3',
+                'name': 'marathon2',
             },
             {
-                'name': 'test_framework4',
+                'name': 'test_framework',
             },
         ],
     }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+    output, ok = metastatus_lib.assert_framework_count(
         state,
-        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+        configured_framework_count=4,
     )
 
-    expected_output = "\n".join(
-        ["Frameworks:"] +
-        ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']],
-    )
-    assert output == expected_output
-    assert ok
-
-
-def test_duplicate_frameworks():
-    state = {
-        'frameworks': [
-            {
-                'name': 'test_framework1',
-            },
-            {
-                'name': 'test_framework1',
-            },
-            {
-                'name': 'test_framework1',
-            },
-            {
-                'name': 'test_framework2',
-            },
-        ],
-    }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
-        state,
-        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
-    )
-    assert "    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1." in output
+    assert "Frameworks (configured 4, connected 3):" in output
     assert not ok
 
 
-def test_duplicate_frameworks_not_checked():
+def test_assert_framework_count_ok():
     state = {
         'frameworks': [
             {
-                'name': 'test_framework1',
+                'name': 'chronos',
             },
             {
-                'name': 'test_framework1',
+                'name': 'marathon',
             },
             {
-                'name': 'test_framework1',
+                'name': 'marathon1',
             },
             {
-                'name': 'test_framework2',
+                'name': 'test_framework',
             },
         ],
     }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+    output, ok = metastatus_lib.assert_framework_count(
         state,
-        ['test_framework2', 'test_framework3', 'test_framework4'],
+        configured_framework_count=3,
     )
-    assert "test_framework2" in output
+    assert "Frameworks (configured 3, connected 3):" in output
     assert ok
-
-
-def test_connected_frameworks():
-    metrics = {
-        'master/frameworks_connected': 2,
-    }
-    hcr = metastatus_lib.assert_connected_frameworks(metrics)
-    assert hcr.healthy
-    assert "Connected Frameworks: expected: 2 actual: 2" in hcr.message
-
-
-def test_disconnected_frameworks():
-    metrics = {
-        'master/frameworks_disconnected': 1,
-    }
-    hcr = metastatus_lib.assert_disconnected_frameworks(metrics)
-    assert not hcr.healthy
-    assert "Disconnected Frameworks: expected: 0 actual: 1" in hcr.message
-
-
-def test_assert_active_frameworks():
-    metrics = {
-        'master/frameworks_active': 2,
-    }
-    hcr = metastatus_lib.assert_active_frameworks(metrics)
-    assert hcr.healthy
-    assert "Active Frameworks: expected: 2 actual: 2" in hcr.message
-
-
-def test_assert_inactive_frameworks():
-    metrics = {
-        'master/frameworks_inactive': 0,
-    }
-    hcr = metastatus_lib.assert_inactive_frameworks(metrics)
-    assert hcr.healthy
-    assert "Inactive Frameworks: expected: 0 actual: 0" in hcr.message
 
 
 @patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
