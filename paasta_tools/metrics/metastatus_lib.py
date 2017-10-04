@@ -17,7 +17,6 @@ import itertools
 import math
 from collections import Counter
 from collections import namedtuple
-from collections import OrderedDict
 
 from humanize import naturalsize
 
@@ -259,37 +258,45 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_no_duplicate_frameworks(state, frameworks_list):
-    """A function which asserts that there are no duplicate frameworks running, where
-    frameworks are identified by their name.
-
-    Note the extra spaces in the output strings: this is to account for the extra indentation
-    we add, so we can have:
-
-        frameworks:
-          framework: marathon count: 1
+def assert_framework_count(state, configured_framework_count):
+    """A function which asserts that the number of marathon and chronos frameworks running
+    matches the number of configured frameworks.
 
     :param state: the state info from the Mesos master
+    :param expected_framework_count: the expected number of connected frameworks
     :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
         indicating if there are any duplicate frameworks.
     """
-    frameworks = state['frameworks']
-    framework_counts = OrderedDict(
-        sorted(Counter([fw['name'] for fw in frameworks if fw['name'] in frameworks_list]).items()),
-    )
-    output = ["Frameworks:"]
-    ok = True
+    configurable_frameworks = ['marathon', 'chronos']
 
-    for framework, count in framework_counts.items():
-        if count > 1:
-            ok = False
-            output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."
-                          % (framework, count))
+    frameworks = state['frameworks']
+    connected_frameworks = []
+    for fw in frameworks:
+        if fw['name'].startswith('marathon'):
+            normalized_name = 'marathon'
         else:
-            output.append("    Framework: %s count: %d" % (framework, count))
+            normalized_name = fw['name']
+        if normalized_name in configurable_frameworks:
+            connected_frameworks.append(normalized_name)
+        else:
+            connected_frameworks.append('others')
+
+    framework_counts = Counter(connected_frameworks)
+    connected_framework_count = sum([
+        count for name, count in framework_counts.items()
+        if name in configurable_frameworks
+    ])
+    healty = connected_framework_count == configured_framework_count
+    output = [
+        "Frameworks (configured %d, connected %d):" %
+        (configured_framework_count, connected_framework_count),
+    ]
+
+    for framework in sorted(framework_counts):
+        output.append("    Framework: %s count: %d" % (framework, framework_counts[framework]))
     return HealthCheckResult(
         message=("\n").join(output),
-        healthy=ok,
+        healthy=healty,
     )
 
 
@@ -320,42 +327,6 @@ def assert_slave_health(metrics):
     return HealthCheckResult(
         message="Slaves: active: %d inactive: %d" % (active, inactive),
         healthy=True,
-    )
-
-
-def assert_connected_frameworks(mesos_metrics):
-    connected_frameworks = mesos_metrics['master/frameworks_connected']
-    healthy = connected_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
-    return HealthCheckResult(
-        message="Connected Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, connected_frameworks),
-        healthy=healthy,
-    )
-
-
-def assert_disconnected_frameworks(mesos_metrics):
-    disconnected_frameworks = mesos_metrics['master/frameworks_disconnected']
-    healthy = disconnected_frameworks == 0
-    return HealthCheckResult(
-        message="Disconnected Frameworks: expected: 0 actual: %d" % disconnected_frameworks,
-        healthy=healthy,
-    )
-
-
-def assert_active_frameworks(mesos_metrics):
-    active_frameworks = mesos_metrics['master/frameworks_active']
-    healthy = active_frameworks == EXPECTED_HEALTHY_FRAMEWORKS
-    return HealthCheckResult(
-        message="Active Frameworks: expected: %d actual: %d" % (EXPECTED_HEALTHY_FRAMEWORKS, active_frameworks),
-        healthy=healthy,
-    )
-
-
-def assert_inactive_frameworks(mesos_metrics):
-    inactive_frameworks = mesos_metrics['master/frameworks_inactive']
-    healthy = inactive_frameworks == 0
-    return HealthCheckResult(
-        message="Inactive Frameworks: expected: 0 actual: %d" % inactive_frameworks,
-        healthy=healthy,
     )
 
 
@@ -567,21 +538,19 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
     ]
 
 
-def get_framework_metrics_status(metrics):
-    return [
-        assert_connected_frameworks(metrics),
-        assert_disconnected_frameworks(metrics),
-        assert_inactive_frameworks(metrics),
-    ]
-
-
-def get_mesos_state_status(mesos_state):
+def get_mesos_state_status(mesos_state, configured_framework_count):
     """Perform healthchecks against mesos state.
     :param mesos_state: a dict exposing the mesos state described in
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
     :returns: a list of HealthCheckResult tuples
     """
-    return [assert_quorum_size(), assert_no_duplicate_frameworks(mesos_state, ['marathon', 'chronos'])]
+    return [
+        assert_quorum_size(),
+        assert_framework_count(
+            state=mesos_state,
+            configured_framework_count=configured_framework_count,
+        ),
+    ]
 
 
 def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
