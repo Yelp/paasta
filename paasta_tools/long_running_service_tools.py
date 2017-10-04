@@ -194,10 +194,6 @@ class LongRunningServiceConfig(InstanceConfig):
                 return self.get_max_instances()
             else:
                 limited_instances = self.limit_instance_count(zk_instances)
-                if limited_instances != zk_instances:
-                    log.warning("Returning limited instance count %d. (zk had %d)" % (
-                        limited_instances, zk_instances,
-                    ))
                 return limited_instances
         else:
             instances = self.config_dict.get('instances', 1)

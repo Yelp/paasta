@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os
+from collections import namedtuple
 from math import ceil
 
 import requests
@@ -68,9 +69,19 @@ CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_i
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
+MarathonServers = namedtuple('MarathonServers', ['current', 'previous'])
+MarathonClients = namedtuple('MarathonClients', ['current', 'previous'])
+
 
 def load_marathon_config():
     return MarathonConfig(load_system_paasta_config().get_marathon_config())
+
+
+def get_marathon_servers():
+    system_config = load_system_paasta_config()
+    current = [MarathonConfig(x) for x in system_config.get_marathon_servers()]
+    previous = [MarathonConfig(x) for x in system_config.get_previous_marathon_servers()]
+    return MarathonServers(current=current, previous=previous)
 
 
 class MarathonNotConfigured(Exception):
@@ -536,9 +547,19 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         '''Map this port on the host to your container's port 8888. Default is 0, which means Marathon picks a port.'''
         return self.config_dict.get('host_port', 0)
 
+    def get_marathon_shard(self):
+        """Returns the configued shard of Marathon to use.
+        Defaults to 0 currently as a fail-safe"""
+        return self.config_dict.get('marathon_shard', 0)
+
+    def get_previous_marathon_shards(self):
+        """Returns a list of Marathon shards a service might have been on previously.
+        Useful for graceful shard migrations. Defaults to an empty list"""
+        return self.config_dict.get('previous_marathon_shards', [])
+
 
 class MarathonDeployStatus:
-    """ An enum to represent marathon app deploy status.
+    """ An enum to represent Marathon app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
     Running, Deploying, Stopped, Delayed, Waiting, NotRunning = range(0, 6)
@@ -555,7 +576,6 @@ class MarathonDeployStatus:
 
 
 def get_marathon_app_deploy_status(client, app_id):
-
     if is_app_id_running(app_id, client):
         app = client.get_app(app_id)
     else:
@@ -587,9 +607,9 @@ class CachedMarathonClient(MarathonClient):
 
 
 def get_marathon_client(url, user, passwd, cached=False):
-    """Get a new marathon client connection in the form of a MarathonClient object.
+    """Get a new Marathon client connection in the form of a MarathonClient object.
 
-    :param url: The url to connect to marathon at
+    :param url: The url to connect to Marathon at
     :param user: The username to connect with
     :param passwd: The password to connect with
     :param cached: If true, return CachedMarathonClient
@@ -603,6 +623,28 @@ def get_marathon_client(url, user, passwd, cached=False):
         return CachedMarathonClient(url, user, passwd, timeout=30, session=session)
     else:
         return MarathonClient(url, user, passwd, timeout=30, session=session)
+
+
+def get_marathon_clients(marathon_servers, cached=False):
+    current_servers = marathon_servers.current
+    current_clients = []
+    for current_server in current_servers:
+        current_clients.append(get_marathon_client(
+            url=current_server.url,
+            user=current_server.user,
+            passwd=current_server.passwd,
+            cached=cached,
+        ))
+    previous_servers = marathon_servers.previous
+    previous_clients = []
+    for previous_server in previous_servers:
+        previous_clients.append(get_marathon_client(
+            url=previous_server.url,
+            user=previous_server.user,
+            passwd=previous_server.passwd,
+            cached=cached,
+        ))
+    return MarathonClients(current=current_clients, previous=previous_clients)
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):

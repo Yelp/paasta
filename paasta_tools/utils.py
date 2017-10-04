@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1270,6 +1270,7 @@ MarathonConfigDict = TypedDict(
     },
     total=False,
 )
+MarathonServers = List[MarathonConfigDict]
 LocalRunConfig = TypedDict(
     'LocalRunConfig',
     {
@@ -1287,7 +1288,6 @@ PaastaNativeConfig = TypedDict(
 )
 
 ExpectedSlaveAttributes = List[Dict[str, Any]]
-
 
 SystemPaastaConfigDict = TypedDict(
     'SystemPaastaConfigDict',
@@ -1315,9 +1315,12 @@ SystemPaastaConfigDict = TypedDict(
         'cluster_fqdn_format': str,
         'chronos_config': ChronosConfig,
         'marathon_config': MarathonConfigDict,
+        'marathon_servers': List[MarathonConfigDict],
+        'previous_marathon_servers': List[MarathonConfigDict],
         'local_run_config': LocalRunConfig,
         'paasta_native': PaastaNativeConfig,
         'mesos_config': Dict,
+        'monitoring_config': Dict,
         'deploy_blacklist': DeployBlacklist,
         'deploy_whitelist': DeployWhitelist,
         'expected_slave_attributes': ExpectedSlaveAttributes,
@@ -1557,6 +1560,12 @@ class SystemPaastaConfig(object):
         :returns: The marathon config dictionary"""
         return self.config_dict.get('marathon_config', {})
 
+    def get_marathon_servers(self) -> MarathonServers:
+        return self.config_dict.get('marathon_servers', [])
+
+    def get_previous_marathon_servers(self) -> MarathonServers:
+        return self.config_dict.get('previous_marathon_servers', [])
+
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
 
@@ -1572,6 +1581,12 @@ class SystemPaastaConfig(object):
         :returns: The mesos cli config
         """
         return self.config_dict.get("mesos_config", {})
+
+    def get_monitoring_config(self) -> Dict:
+        """Get the monitoring config
+
+        :returns: the monitoring config dictionary"""
+        return self.config_dict.get('monitoring_config', {})
 
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """Get global blacklist. This applies to all services

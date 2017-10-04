@@ -1,3 +1,19 @@
+paasta-tools (0.67.10) xenial; urgency=medium
+
+  * 0.67.10 tagged with 'make release'
+    Commit: Merge pull request #1535 from Yelp/remote-run-sfx  Emit
+    meteorite counters to track paasta_remote_run failures
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 03 Oct 2017 16:07:00 -0700
+
+paasta-tools (0.67.9) xenial; urgency=medium
+
+  * 0.67.9 tagged with 'make release'
+    Commit: Append previous clients to the right list (#1533)  * Append
+    previous clients to the right list  * fix typo
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 02 Oct 2017 06:25:18 -0700
+
 paasta-tools (0.67.8) xenial; urgency=medium
 
   * 0.67.8 tagged with 'make release'

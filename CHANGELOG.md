@@ -1,5 +1,63 @@
 # Change Log
 
+## [0.67.10](https://github.com/Yelp/paasta/tree/0.67.10) (2017-10-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.9...0.67.10)
+
+**Merged pull requests:**
+
+- Fix typo in api swagger [\#1536](https://github.com/Yelp/paasta/pull/1536) ([EvanKrall](https://github.com/EvanKrall))
+- Emit meteorite counters to track paasta\_remote\_run failures [\#1535](https://github.com/Yelp/paasta/pull/1535) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.67.9](https://github.com/Yelp/paasta/tree/v0.67.9) (2017-10-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.8...v0.67.9)
+
+**Closed issues:**
+
+- Sensu's python plugin is looking for a maintainer [\#1529](https://github.com/Yelp/paasta/issues/1529)
+
+**Merged pull requests:**
+
+- Append previous clients to the right list [\#1533](https://github.com/Yelp/paasta/pull/1533) ([EvanKrall](https://github.com/EvanKrall))
+- Add yelp\_paasta\_helpers to extra\_requirements\_yelp [\#1531](https://github.com/Yelp/paasta/pull/1531) ([oktopuz](https://github.com/oktopuz))
+- Fix typo in docs [\#1530](https://github.com/Yelp/paasta/pull/1530) ([chriskuehl](https://github.com/chriskuehl))
+- remove limited instance count warning [\#1527](https://github.com/Yelp/paasta/pull/1527) ([somic](https://github.com/somic))
+- Updating security-check message [\#1526](https://github.com/Yelp/paasta/pull/1526) ([transcedentalia](https://github.com/transcedentalia))
+- Add more debug messages to the cluster autoscaler [\#1525](https://github.com/Yelp/paasta/pull/1525) ([matthewbentley](https://github.com/matthewbentley))
+- Apollo 205 detector status 36b [\#1524](https://github.com/Yelp/paasta/pull/1524) ([philipmulcahy](https://github.com/philipmulcahy))
+- Added in config loading and client generation for sharded marathon configurations [\#1523](https://github.com/Yelp/paasta/pull/1523) ([solarkennedy](https://github.com/solarkennedy))
+- Add chronos to status api [\#1491](https://github.com/Yelp/paasta/pull/1491) ([matthewbentley](https://github.com/matthewbentley))
+
+## [v0.67.8](https://github.com/Yelp/paasta/tree/v0.67.8) (2017-09-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.7...v0.67.8)
+
+**Closed issues:**
+
+- paasta\_cleanup\_maintenance is trying to remove resources for taskproc [\#1519](https://github.com/Yelp/paasta/issues/1519)
+
+**Merged pull requests:**
+
+- \[remote-run\] log verbosity from args [\#1522](https://github.com/Yelp/paasta/pull/1522) ([keymone](https://github.com/keymone))
+- bump taskproc to current master [\#1521](https://github.com/Yelp/paasta/pull/1521) ([keymone](https://github.com/keymone))
+- Only unreserve resources reserved for the purpose of maintenance [\#1520](https://github.com/Yelp/paasta/pull/1520) ([nhandler](https://github.com/nhandler))
+- Enable check\_oom\_events for everyone [\#1515](https://github.com/Yelp/paasta/pull/1515) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.67.7](https://github.com/Yelp/paasta/tree/v0.67.7) (2017-09-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.6...v0.67.7)
+
+**Merged pull requests:**
+
+- Make cleanup maintenance pass if unreserving fails [\#1516](https://github.com/Yelp/paasta/pull/1516) ([mattmb](https://github.com/mattmb))
+
+## [v0.67.6](https://github.com/Yelp/paasta/tree/v0.67.6) (2017-09-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.5...v0.67.6)
+
+**Merged pull requests:**
+
+- Fix typo s/resoures/resources/g [\#1518](https://github.com/Yelp/paasta/pull/1518) ([nhandler](https://github.com/nhandler))
+- \[remote-run\] print nicer error messages [\#1517](https://github.com/Yelp/paasta/pull/1517) ([keymone](https://github.com/keymone))
+- Consider tasks from all versions of a service when autoscaling. PAASTA-12983 [\#1513](https://github.com/Yelp/paasta/pull/1513) ([EvanKrall](https://github.com/EvanKrall))
+- use MESOS\_HTTP{,s} healthchecks everywhere [\#1512](https://github.com/Yelp/paasta/pull/1512) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
 ## [v0.67.5](https://github.com/Yelp/paasta/tree/v0.67.5) (2017-09-20)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.4...v0.67.5)
 
@@ -577,7 +635,6 @@
 - fix erroneous calculation of per-slave usage [\#1296](https://github.com/Yelp/paasta/pull/1296) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - batch calls to describe instance status [\#1292](https://github.com/Yelp/paasta/pull/1292) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Re-order replication check output to list CRITICAL before OK [\#1277](https://github.com/Yelp/paasta/pull/1277) ([matthewbentley](https://github.com/matthewbentley))
-- sensu alert triggered when the security-check fails [\#1205](https://github.com/Yelp/paasta/pull/1205) ([transcedentalia](https://github.com/transcedentalia))
 
 ## [v0.65.18](https://github.com/Yelp/paasta/tree/v0.65.18) (2017-06-12)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.65.17...v0.65.18)
@@ -788,8 +845,6 @@
 - reduce v2/tasks call in check marathon replication [\#1222](https://github.com/Yelp/paasta/pull/1222) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Package task processing [\#1221](https://github.com/Yelp/paasta/pull/1221) ([jolynch](https://github.com/jolynch))
 - Don't log when bounce "doesn't do anything" [\#1217](https://github.com/Yelp/paasta/pull/1217) ([jglukasik](https://github.com/jglukasik))
-- Implement a forecaster that uses linear regression over a trailing window to estimate slope and level of the load. [\#1211](https://github.com/Yelp/paasta/pull/1211) ([EvanKrall](https://github.com/EvanKrall))
-- executor\_id is always equal to task\_id [\#1208](https://github.com/Yelp/paasta/pull/1208) ([oktopuz](https://github.com/oktopuz))
 
 ## [v0.63.3](https://github.com/Yelp/paasta/tree/v0.63.3) (2017-05-11)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.2...v0.63.3)
@@ -799,7 +854,6 @@
 - \[taskproc\] fix async example [\#1220](https://github.com/Yelp/paasta/pull/1220) ([keymone](https://github.com/keymone))
 - \[taskproc\] use secret file for authentication [\#1219](https://github.com/Yelp/paasta/pull/1219) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - \[taskproc\] subscription runner and more [\#1218](https://github.com/Yelp/paasta/pull/1218) ([keymone](https://github.com/keymone))
-- Add maintenance + public config watchers [\#1188](https://github.com/Yelp/paasta/pull/1188) ([mattmb](https://github.com/mattmb))
 
 ## [v0.63.2](https://github.com/Yelp/paasta/tree/v0.63.2) (2017-05-11)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.1...v0.63.2)
@@ -809,24 +863,9 @@
 - When data is missing for a task, ignore it, instead of having it skew utilization downwards. [\#1215](https://github.com/Yelp/paasta/pull/1215) ([EvanKrall](https://github.com/EvanKrall))
 - Runnable task examples \(PR for PR\) [\#1213](https://github.com/Yelp/paasta/pull/1213) ([keymone](https://github.com/keymone))
 - proportional decision policy: clamp to min/max instances even if load is good enough. [\#1212](https://github.com/Yelp/paasta/pull/1212) ([EvanKrall](https://github.com/EvanKrall))
-- Initial implementation of task-processor [\#1210](https://github.com/Yelp/paasta/pull/1210) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- Upgrade yelp-clog [\#1209](https://github.com/Yelp/paasta/pull/1209) ([asottile](https://github.com/asottile))
-- wait-for-deployment will no longer block on Deploying or Waiting \#1169 [\#1193](https://github.com/Yelp/paasta/pull/1193) ([somic](https://github.com/somic))
 
 ## [v0.63.1](https://github.com/Yelp/paasta/tree/v0.63.1) (2017-05-10)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.0...v0.63.1)
-
-**Merged pull requests:**
-
-- Don't pingpong with sys.modules for \_\_file\_\_ [\#1207](https://github.com/Yelp/paasta/pull/1207) ([asottile](https://github.com/asottile))
-- Don't install python2.6 backports for paasta [\#1206](https://github.com/Yelp/paasta/pull/1206) ([asottile](https://github.com/asottile))
-- ensure adhoc scheduler service config has cmd [\#1201](https://github.com/Yelp/paasta/pull/1201) ([keymone](https://github.com/keymone))
-- Catch NoSlavesAvailableError errors. PAASTA-8692 [\#1200](https://github.com/Yelp/paasta/pull/1200) ([solarkennedy](https://github.com/solarkennedy))
-- Fix tags being null when checking registry [\#1199](https://github.com/Yelp/paasta/pull/1199) ([mattmb](https://github.com/mattmb))
-- \[WIP\] Task processing: fleshing out the interface [\#1198](https://github.com/Yelp/paasta/pull/1198) ([keymone](https://github.com/keymone))
-- connect to random master for remote-run [\#1197](https://github.com/Yelp/paasta/pull/1197) ([keymone](https://github.com/keymone))
-- Task proc scheduler [\#1194](https://github.com/Yelp/paasta/pull/1194) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- Add cluster name to deployd metrics [\#1187](https://github.com/Yelp/paasta/pull/1187) ([mattmb](https://github.com/mattmb))
 
 
 
