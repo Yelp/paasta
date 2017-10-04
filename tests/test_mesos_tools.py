@@ -803,16 +803,15 @@ def test_get_all_running_tasks():
     ) as mock_get_mesos_master:
         mock_task_1 = mock.Mock()
         mock_task_2 = mock.Mock()
-        mock_task_3 = mock.Mock()
 
         mock_get_current_tasks.return_value = [mock_task_1, mock_task_2]
-        mock_orphan_tasks = mock.Mock(return_value=[mock_task_3])
+        mock_orphan_tasks = mock.Mock(return_value=[])
         mock_mesos_master = mock.Mock(orphan_tasks=mock_orphan_tasks)
         mock_get_mesos_master.return_value = mock_mesos_master
 
         ret = mesos_tools.get_all_running_tasks()
         mock_get_current_tasks.assert_called_with('')
-        mock_filter_running_tasks.assert_called_with([mock_task_1, mock_task_2, mock_task_3])
+        mock_filter_running_tasks.assert_called_with([mock_task_1, mock_task_2])
         assert ret == mock_filter_running_tasks.return_value
 
 
