@@ -125,9 +125,8 @@ def test_get_cluster_instance_map_for_service():
     with mock.patch(
         'paasta_tools.generate_deployments_for_service.get_instance_configs_for_service',
         return_value=fake_service_configs, autospec=True,
-    ) as mock_get_instance_configs_for_service:
+    ):
         ret = generate_deployments_for_service.get_cluster_instance_map_for_service('/nail/blah', 'service1', 'try_me')
-        mock_get_instance_configs_for_service.assert_called_with(soa_dir='/nail/blah', service='service1')
         expected = {'clusterA': {'instances': ['canary']}, 'clusterB': {'instances': ['main']}}
         assert ret == expected
 
