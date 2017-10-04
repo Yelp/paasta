@@ -249,6 +249,7 @@ class InstanceConfig(object):
         self.instance = instance
         self.service = service
         self.soa_dir = soa_dir
+        self._job_id = compose_job_id(service, instance)
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
@@ -270,6 +271,10 @@ class InstanceConfig(object):
 
     def get_service(self) -> str:
         return self.service
+
+    @property
+    def job_id(self) -> str:
+        return self._job_id
 
     def get_docker_registry(self) -> str:
         return get_service_docker_registry(self.service, self.soa_dir)
