@@ -72,7 +72,7 @@ def chronos_instance_status(instance_status, service, instance, verbose):
     cstatus['status']['disabled_state'] = 'not_scheduled' if job_config.get_disabled() else 'scheduled'
     cstatus['status']['chronos_state'] = chronos_tools.get_chronos_status_for_job(client, service, instance)
     cstatus['status']['mesos_state'] = 'running' if running_task_count else 'not_running'
-    cstatus['command'] = job_config.get_cmd()
+    cstatus['command'] = job_config.get_cmd() or ''
     last_time, last_status = chronos_tools.get_status_last_run(job_config.config_dict)
     if last_status == chronos_tools.LastRunState.Success:
         last_status = 'success'
