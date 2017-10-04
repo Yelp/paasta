@@ -395,7 +395,8 @@ def get_docker_run_cmd(
         cmd.append('--volume=%s' % volume)
     if interactive:
         cmd.append('--interactive=true')
-        cmd.append('--tty=true')
+        if sys.stdout.isatty():
+            cmd.append('--tty=true')
     else:
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
@@ -572,6 +573,7 @@ def run_docker_container(
     )
     if healthcheck_mode is None:
         container_port = None
+        interactive = True
     else:
         try:
             container_port = instance_config.get_container_port()
