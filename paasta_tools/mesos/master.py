@@ -35,6 +35,7 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
+from paasta_tools.utils import get_user_agent
 
 ZOOKEEPER_TIMEOUT = 1
 
@@ -67,10 +68,12 @@ class MesosMaster(object):
 
     @log.duration
     def _request(self, url, method=requests.get, **kwargs):
+        headers = {'User-Agent': get_user_agent()}
         try:
             return method(
                 urljoin(self.host, url),
                 timeout=self.config["response_timeout"],
+                headers=headers,
                 **kwargs,
             )
         except requests.exceptions.ConnectionError:
