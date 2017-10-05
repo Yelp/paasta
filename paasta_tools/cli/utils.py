@@ -849,50 +849,55 @@ def pick_slave_from_status(status, host=None):
         return slaves[0]
 
 
-def get_instance_configs_for_service(service, soa_dir):
+def get_instance_configs_for_service(service, soa_dir, type_filter=None):
     for cluster in list_clusters(
         service=service,
         soa_dir=soa_dir,
     ):
-        for _, instance in get_service_instance_list(
-            service=service,
-            cluster=cluster,
-            instance_type='marathon',
-            soa_dir=soa_dir,
-        ):
-            yield load_marathon_service_config(
+        if type_filter is None:
+            type_filter = ['marathon', 'chronos', 'adhoc']
+        if 'marathon' in type_filter:
+            for _, instance in get_service_instance_list(
                 service=service,
-                instance=instance,
                 cluster=cluster,
+                instance_type='marathon',
                 soa_dir=soa_dir,
-                load_deployments=False,
-            )
-        for _, instance in get_service_instance_list(
-            service=service,
-            cluster=cluster,
-            instance_type='chronos',
-            soa_dir=soa_dir,
-        ):
-            yield load_chronos_job_config(
+            ):
+                yield load_marathon_service_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'chronos' in type_filter:
+            for _, instance in get_service_instance_list(
                 service=service,
-                instance=instance,
                 cluster=cluster,
+                instance_type='chronos',
                 soa_dir=soa_dir,
-                load_deployments=False,
-            )
-        for _, instance in get_service_instance_list(
-            service=service,
-            cluster=cluster,
-            instance_type='adhoc',
-            soa_dir=soa_dir,
-        ):
-            yield load_adhoc_job_config(
+            ):
+                yield load_chronos_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'adhoc' in type_filter:
+            for _, instance in get_service_instance_list(
                 service=service,
-                instance=instance,
                 cluster=cluster,
+                instance_type='adhoc',
                 soa_dir=soa_dir,
-                load_deployments=False,
-            )
+            ):
+                yield load_adhoc_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
 
 
 class PaastaTaskNotFound(Exception):
