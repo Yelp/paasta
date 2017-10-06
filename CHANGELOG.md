@@ -1,7 +1,31 @@
 # Change Log
 
-## [0.67.10](https://github.com/Yelp/paasta/tree/0.67.10) (2017-10-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.9...0.67.10)
+## [0.67.12](https://github.com/Yelp/paasta/tree/0.67.12) (2017-10-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.11...0.67.12)
+
+**Merged pull requests:**
+
+- Only fall for mesos task counts on the paasta api in verbose mode [\#1547](https://github.com/Yelp/paasta/pull/1547) ([solarkennedy](https://github.com/solarkennedy))
+- Make all mesos api calls use the paasta user agent [\#1546](https://github.com/Yelp/paasta/pull/1546) ([solarkennedy](https://github.com/solarkennedy))
+- Revert "temporarily ignore orphan\_tasks in mesos\_tools.get\_all\_runnining\_tasks" [\#1545](https://github.com/Yelp/paasta/pull/1545) ([somic](https://github.com/somic))
+- Make wait-for-deployment only inspect marathon instances [\#1544](https://github.com/Yelp/paasta/pull/1544) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.67.11](https://github.com/Yelp/paasta/tree/v0.67.11) (2017-10-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.10...v0.67.11)
+
+**Closed issues:**
+
+- Cluster autoscaler crashes on mesos \(marathon?\) leader election [\#1503](https://github.com/Yelp/paasta/issues/1503)
+
+**Merged pull requests:**
+
+- Make paasta status ignore adhoc instances again [\#1539](https://github.com/Yelp/paasta/pull/1539) ([solarkennedy](https://github.com/solarkennedy))
+- local-run will detach only if healthcheck is needed [\#1538](https://github.com/Yelp/paasta/pull/1538) ([somic](https://github.com/somic))
+- temporarily ignore orphan\_tasks in mesos\_tools.get\_all\_running\_tasks [\#1537](https://github.com/Yelp/paasta/pull/1537) ([somic](https://github.com/somic))
+- Make cluster autoscaler gracefully handle a mesos leader election [\#1507](https://github.com/Yelp/paasta/pull/1507) ([matthewbentley](https://github.com/matthewbentley))
+
+## [v0.67.10](https://github.com/Yelp/paasta/tree/v0.67.10) (2017-10-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.67.9...v0.67.10)
 
 **Merged pull requests:**
 
@@ -843,26 +867,12 @@
 - Support adhoc.yaml in paasta check  [\#1225](https://github.com/Yelp/paasta/pull/1225) ([oktopuz](https://github.com/oktopuz))
 - Add a timeout for when git server cannot be reached [\#1223](https://github.com/Yelp/paasta/pull/1223) ([jglukasik](https://github.com/jglukasik))
 - reduce v2/tasks call in check marathon replication [\#1222](https://github.com/Yelp/paasta/pull/1222) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- Package task processing [\#1221](https://github.com/Yelp/paasta/pull/1221) ([jolynch](https://github.com/jolynch))
-- Don't log when bounce "doesn't do anything" [\#1217](https://github.com/Yelp/paasta/pull/1217) ([jglukasik](https://github.com/jglukasik))
 
 ## [v0.63.3](https://github.com/Yelp/paasta/tree/v0.63.3) (2017-05-11)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.2...v0.63.3)
 
-**Merged pull requests:**
-
-- \[taskproc\] fix async example [\#1220](https://github.com/Yelp/paasta/pull/1220) ([keymone](https://github.com/keymone))
-- \[taskproc\] use secret file for authentication [\#1219](https://github.com/Yelp/paasta/pull/1219) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- \[taskproc\] subscription runner and more [\#1218](https://github.com/Yelp/paasta/pull/1218) ([keymone](https://github.com/keymone))
-
 ## [v0.63.2](https://github.com/Yelp/paasta/tree/v0.63.2) (2017-05-11)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.1...v0.63.2)
-
-**Merged pull requests:**
-
-- When data is missing for a task, ignore it, instead of having it skew utilization downwards. [\#1215](https://github.com/Yelp/paasta/pull/1215) ([EvanKrall](https://github.com/EvanKrall))
-- Runnable task examples \(PR for PR\) [\#1213](https://github.com/Yelp/paasta/pull/1213) ([keymone](https://github.com/keymone))
-- proportional decision policy: clamp to min/max instances even if load is good enough. [\#1212](https://github.com/Yelp/paasta/pull/1212) ([EvanKrall](https://github.com/EvanKrall))
 
 ## [v0.63.1](https://github.com/Yelp/paasta/tree/v0.63.1) (2017-05-10)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.63.0...v0.63.1)
