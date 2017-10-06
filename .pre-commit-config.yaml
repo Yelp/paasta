@@ -1,3 +1,4 @@
+repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
     sha: v0.9.2
     hooks:
@@ -48,5 +49,5 @@
     -   id: no-catchall-except
         name: Prevent catchall except
         entry: except:$
-        language: pcre
+        language: pygrep
         files: \.py$
