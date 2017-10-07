@@ -37,11 +37,20 @@ def create_test_service():
 
 
 def deployment_json():
-    return DeploymentsJson({'example_happyhour:%s.main' % TEST_CLUSTER_NAME: {
-        'docker_image': 'services-example_happyhour:paasta-ff682c43d474155d708cf751a63d63abb9788b5e',
-        'desired_state': 'start',
-        'force_bounce': None,
-    }})
+    return DeploymentsJson({
+        '%s:paasta-%s.main' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
+        },
+        '%s:paasta-%s.canary' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
+        },
+        '%s:paasta-%s.example_chronos_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
+        },
+        '%s:paasta-%s.example_child_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
+        },
+    })
 
 
 def deployment_json_v2():
@@ -135,7 +144,10 @@ def test_marathon_instances_configs(
                 'smartstack': {}, 'dependencies': {}, 'instances': 3,
                 'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
             },
-            branch_dict={},
+            branch_dict={
+                'docker_image': 'some_image', 'desired_state': 'start',
+                'force_bounce': None,
+            },
             soa_dir=TEST_SOA_DIR,
         ),
         MarathonServiceConfig(
@@ -148,7 +160,10 @@ def test_marathon_instances_configs(
                 'smartstack': {}, 'dependencies': {}, 'instances': 1,
                 'deploy_group': 'fake.canary', 'cpus': 0.1, 'mem': 1000,
             },
-            branch_dict={},
+            branch_dict={
+                'docker_image': 'some_image', 'desired_state': 'start',
+                'force_bounce': None,
+            },
             soa_dir=TEST_SOA_DIR,
         ),
     ]
@@ -185,7 +200,10 @@ def test_chronos_instances_configs(
                 'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
                 'schedule_time_zone': 'America/Los_Angeles',
             },
-            branch_dict={},
+            branch_dict={
+                'docker_image': 'some_image', 'desired_state': 'start',
+                'force_bounce': None,
+            },
             soa_dir=TEST_SOA_DIR,
         ),
         ChronosJobConfig(
@@ -199,7 +217,10 @@ def test_chronos_instances_configs(
                 'parents': ['example_happyhour.example_chronos_job'],
                 'deploy_group': 'fake.non_canary', 'cmd': '/bin/sleep 5s',
             },
-            branch_dict={},
+            branch_dict={
+                'docker_image': 'some_image', 'desired_state': 'start',
+                'force_bounce': None,
+            },
             soa_dir=TEST_SOA_DIR,
         ),
     ]
@@ -351,3 +372,32 @@ def test_old_and_new_ways_load_the_same_adhoc_configs(
         ),
     ]
     assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc')] == expected
+
+
+@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+def test_instance_config(
+        mock_read_extra_service_information,
+        mock_load_deployments_json,
+):
+    mock_read_extra_service_information.return_value = marathon_cluster_config()
+    mock_load_deployments_json.return_value = deployment_json()
+    expected_instance_config = MarathonServiceConfig(
+        service=TEST_SERVICE_NAME,
+        cluster=TEST_CLUSTER_NAME,
+        instance='main',
+        config_dict={
+            'port': None, 'vip': None,
+            'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
+            'smartstack': {}, 'dependencies': {}, 'instances': 3,
+            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+        },
+        branch_dict={
+            'docker_image': 'some_image', 'desired_state': 'start',
+            'force_bounce': None,
+        },
+        soa_dir=TEST_SOA_DIR,
+    )
+    s = create_test_service()
+    instance_config = s.instance_config(TEST_CLUSTER_NAME, 'main')
+    assert instance_config == expected_instance_config

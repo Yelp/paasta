@@ -33,7 +33,23 @@ log.addHandler(logging.NullHandler())
 
 
 class PaastaServiceConfig():
-    """
+    """PaastaServiceConfig provides the public methods described below.
+
+    .. method:: PaastaServiceConfig.clusters
+
+        Returns an iterator that yields cluster names for the service.
+
+    .. method:: PaastaServiceConfig.instances(cluster, instance_type)
+
+        Returns an iterator that yields instance names as strings.
+
+    .. method:: PaastaServiceConfig.instance_configs(cluster, instance_type)
+
+        Returns an iterator that yields InstanceConfig objects.
+
+    .. method:: PaastaServiceConfig.instance_config(cluster, instance)
+
+        Returns an InstanceConfig object for whatever type of instance it is.
 
     :Example:
 
@@ -68,9 +84,9 @@ class PaastaServiceConfig():
 
     @property
     def clusters(self):
-        """Yield cluster names for the service.
+        """Returns an iterator that yields cluster names for the service.
 
-        :returns: yields cluster names
+        :returns: iterator that yields cluster names.
         """
         if self._clusters is None:
             self._clusters = list_clusters(service=self._service, soa_dir=self._soa_dir)
@@ -78,7 +94,7 @@ class PaastaServiceConfig():
             yield cluster
 
     def instances(self, cluster: str, instance_type: str):
-        """Yield instance names as a string.
+        """Returns an iterator that yields instance names as strings.
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
@@ -90,7 +106,7 @@ class PaastaServiceConfig():
             yield instance
 
     def instance_configs(self, cluster: str, instance_type: str):
-        """Yield instance configs.
+        """Returns an iterator that yields InstanceConfig objects.
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
@@ -104,7 +120,7 @@ class PaastaServiceConfig():
             yield create_config_function(cluster, instance, config)
 
     def instance_config(self, cluster: str, instance: str):
-        """Return an InstanceConfig object for whatever type of instance it is.
+        """Returns an InstanceConfig object for whatever type of instance it is.
 
         :param cluster: The cluster name
         :param instance: The instance name
@@ -113,12 +129,12 @@ class PaastaServiceConfig():
         for instance_type in INSTANCE_TYPES:
             if (cluster, instance_type) not in self._framework_configs:
                 self._refresh_framework_config(cluster, instance_type)
-            if instance in self._framework_configs:
+            if instance in self._framework_configs[(cluster, instance_type)]:
                 create_config_function = self._get_create_config_function(instance_type)
                 return create_config_function(
                     cluster=cluster,
                     instance=instance,
-                    config=self._framework_configs[instance],
+                    config=self._framework_configs[(cluster, instance_type)][instance],
                 )
 
     def _get_create_config_function(self, instance_type: str):
