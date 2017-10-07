@@ -241,6 +241,16 @@ class ChronosJobConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
 
+    def __repr__(self):
+        return "ChronosJobConfig(%r, %r, %r, %r, %r, %r)" % (
+            self.service,
+            self.cluster,
+            self.instance,
+            self.config_dict,
+            self.branch_dict,
+            self.soa_dir,
+        )
+
     def get_service(self):
         return self.service
 

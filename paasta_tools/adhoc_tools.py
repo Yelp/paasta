@@ -76,6 +76,16 @@ class AdhocJobConfig(LongRunningServiceConfig):
             soa_dir=soa_dir,
         )
 
+    def __repr__(self):
+        return "AdhocJobConfig(%r, %r, %r, %r, %r, %r)" % (
+            self.service,
+            self.cluster,
+            self.instance,
+            self.config_dict,
+            self.branch_dict,
+            self.soa_dir,
+        )
+
 
 def get_default_interactive_config(service, cluster, soa_dir, load_deployments=False):
     default_job_config = {

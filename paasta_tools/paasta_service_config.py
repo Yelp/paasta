@@ -161,7 +161,8 @@ class PaastaServiceConfig():
             if self._deployments_json is None:
                 self._deployments_json = load_v2_deployments_json(self._service, soa_dir=self._soa_dir)
             branch = config.get('branch', get_paasta_branch(cluster, instance))
-            return self._deployments_json.get_branch_dict_v2(self._service, branch)
+            deploy_group = config.get('deploy_group', branch)
+            return self._deployments_json.get_branch_dict_v2(self._service, branch, deploy_group)
         else:
             return {}
 

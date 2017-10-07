@@ -13,6 +13,9 @@
 # limitations under the License.
 from mock import patch
 
+from paasta_tools.adhoc_tools import AdhocJobConfig
+from paasta_tools.adhoc_tools import load_adhoc_job_config
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -34,11 +37,30 @@ def create_test_service():
 
 
 def deployment_json():
-    return DeploymentsJson({'example_happyhour:paasta-norcal-prod2.main': {
+    return DeploymentsJson({'example_happyhour:%s.main' % TEST_CLUSTER_NAME: {
         'docker_image': 'services-example_happyhour:paasta-ff682c43d474155d708cf751a63d63abb9788b5e',
         'desired_state': 'start',
         'force_bounce': None,
     }})
+
+
+def deployment_json_v2():
+    return DeploymentsJson({
+        'deployments': {'fake.non_canary': {
+            'docker_image': 'some_image',
+            'git_sha': 'some_sha',
+        }},
+        'controls': {
+            'example_happyhour:%s.sample_batch' % TEST_CLUSTER_NAME: {
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'example_happyhour:%s.interactive' % TEST_CLUSTER_NAME: {
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+        },
+    })
 
 
 def marathon_cluster_config():
@@ -59,16 +81,26 @@ def chronos_cluster_config():
     """Return a sample dict to mock service_configuration_lib.read_extra_service_information"""
     return {
         'example_chronos_job': {
-            'deploy_group': 'prod.non_canary', 'cpus': 0.1, 'mem': 200,
-            'cmd': '/code/virtualenv_run/bin/python -m timeit',
+            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 200,
+            'cmd': '/bin/sleep 5s',
             'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
             'schedule_time_zone': 'America/Los_Angeles',
         },
         'example_child_job': {
             'parents': ['example_happyhour.example_chronos_job'],
-            'deploy_group': 'prod.non_canary',
-            'cmd': '/code/virtualenv_run/bin/python -m timeit',
+            'deploy_group': 'fake.non_canary',
+            'cmd': '/bin/sleep 5s',
         },
+    }
+
+
+def adhoc_cluster_config():
+    return {
+        'sample_batch': {
+            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+            'cmd': '/bin/sleep 5s',
+        },
+        'interactive': {'deploy_group': 'fake.non_canary', 'mem': 1000},
     }
 
 
@@ -94,25 +126,141 @@ def test_marathon_instances_configs(
     s = create_test_service()
     expected = [
         MarathonServiceConfig(
-            TEST_SERVICE_NAME, TEST_CLUSTER_NAME, 'main', {
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='main',
+            config_dict={
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {}, 'instances': 3,
                 'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
-            }, {}, TEST_SOA_DIR,
+            },
+            branch_dict={},
+            soa_dir=TEST_SOA_DIR,
         ),
         MarathonServiceConfig(
-            TEST_SERVICE_NAME, TEST_CLUSTER_NAME, 'canary', {
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='canary',
+            config_dict={
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {}, 'instances': 1,
                 'deploy_group': 'fake.canary', 'cpus': 0.1, 'mem': 1000,
-            }, {}, TEST_SOA_DIR,
+            },
+            branch_dict={},
+            soa_dir=TEST_SOA_DIR,
         ),
     ]
     assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'marathon')] == expected
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='marathon-%s' % TEST_CLUSTER_NAME,
+        service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
+    )
+    mock_load_deployments_json.assert_called_once_with(
+        TEST_SERVICE_NAME,
+        soa_dir=TEST_SOA_DIR,
+    )
+
+
+@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+def test_chronos_instances_configs(
+        mock_read_extra_service_information,
+        mock_load_deployments_json,
+):
+    mock_read_extra_service_information.return_value = chronos_cluster_config()
+    mock_load_deployments_json.return_value = deployment_json()
+    s = create_test_service()
+    expected = [
+        ChronosJobConfig(
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='example_chronos_job',
+            config_dict={
+                'port': None, 'vip': None,
+                'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
+                'smartstack': {}, 'dependencies': {}, 'deploy_group': 'fake.non_canary',
+                'cpus': 0.1, 'mem': 200, 'cmd': '/bin/sleep 5s',
+                'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
+                'schedule_time_zone': 'America/Los_Angeles',
+            },
+            branch_dict={},
+            soa_dir=TEST_SOA_DIR,
+        ),
+        ChronosJobConfig(
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='example_child_job',
+            config_dict={
+                'port': None, 'vip': None,
+                'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
+                'smartstack': {}, 'dependencies': {},
+                'parents': ['example_happyhour.example_chronos_job'],
+                'deploy_group': 'fake.non_canary', 'cmd': '/bin/sleep 5s',
+            },
+            branch_dict={},
+            soa_dir=TEST_SOA_DIR,
+        ),
+    ]
+    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'chronos')] == expected
+    mock_read_extra_service_information.assert_called_once_with(
+        extra_info='chronos-%s' % TEST_CLUSTER_NAME,
+        service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
+    )
+    mock_load_deployments_json.assert_called_once_with(
+        TEST_SERVICE_NAME,
+        soa_dir=TEST_SOA_DIR,
+    )
+
+
+@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+def test_adhoc_instances_configs(
+        mock_read_extra_service_information,
+        mock_load_deployments_json,
+):
+    mock_read_extra_service_information.return_value = adhoc_cluster_config()
+    mock_load_deployments_json.return_value = deployment_json_v2()
+    s = create_test_service()
+    expected = [
+        AdhocJobConfig(
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='sample_batch',
+            config_dict={
+                'port': None, 'vip': None,
+                'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
+                'smartstack': {}, 'dependencies': {}, 'cmd': '/bin/sleep 5s',
+                'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+            },
+            branch_dict={
+                'docker_image': 'some_image', 'git_sha': 'some_sha',
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            soa_dir=TEST_SOA_DIR,
+        ),
+        AdhocJobConfig(
+            service=TEST_SERVICE_NAME,
+            cluster=TEST_CLUSTER_NAME,
+            instance='interactive',
+            config_dict={
+                'port': None, 'vip': None, 'lb_extras': {}, 'monitoring': {},
+                'deploy': {}, 'data': {}, 'smartstack': {}, 'dependencies': {},
+                'deploy_group': 'fake.non_canary', 'mem': 1000,
+            },
+            branch_dict={
+                'docker_image': 'some_image', 'git_sha': 'some_sha',
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            soa_dir=TEST_SOA_DIR,
+        ),
+    ]
+    for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc'):
+        print(i, i.cluster)
+    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc')] == expected
+    mock_read_extra_service_information.assert_called_once_with(
+        extra_info='adhoc-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
     )
     mock_load_deployments_json.assert_called_once_with(
@@ -175,3 +323,31 @@ def test_old_and_new_ways_load_the_same_chronos_configs(
         ),
     ]
     assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'chronos')] == expected
+
+
+@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.adhoc_tools.service_configuration_lib.read_extra_service_information', autospec=True)
+def test_old_and_new_ways_load_the_same_adhoc_configs(
+        mock_adhoc_tools_read_extra_service_information,
+        mock_read_extra_service_information,
+        mock_adhoc_tools_load_deployments_json,
+        mock_load_deployments_json,
+):
+    mock_read_extra_service_information.return_value = adhoc_cluster_config()
+    mock_adhoc_tools_read_extra_service_information.return_value = adhoc_cluster_config()
+    mock_load_deployments_json.return_value = deployment_json_v2()
+    mock_adhoc_tools_load_deployments_json.return_value = deployment_json_v2()
+    s = create_test_service()
+    expected = [
+        load_adhoc_job_config(
+            service=TEST_SERVICE_NAME, instance='sample_batch',
+            cluster=TEST_CLUSTER_NAME, load_deployments=True, soa_dir=TEST_SOA_DIR,
+        ),
+        load_adhoc_job_config(
+            service=TEST_SERVICE_NAME, instance='interactive',
+            cluster=TEST_CLUSTER_NAME, load_deployments=True, soa_dir=TEST_SOA_DIR,
+        ),
+    ]
+    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc')] == expected
