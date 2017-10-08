@@ -33,43 +33,28 @@ log.addHandler(logging.NullHandler())
 
 
 class PaastaServiceConfig():
-    """PaastaServiceConfig provides the public methods described below.
-
-    .. method:: PaastaServiceConfig.clusters
-
-        Returns an iterator that yields cluster names for the service.
-
-    .. method:: PaastaServiceConfig.instances(cluster, instance_type)
-
-        Returns an iterator that yields instance names as strings.
-
-    .. method:: PaastaServiceConfig.instance_configs(cluster, instance_type)
-
-        Returns an iterator that yields InstanceConfig objects.
-
-    .. method:: PaastaServiceConfig.instance_config(cluster, instance)
-
-        Returns an InstanceConfig object for whatever type of instance it is.
+    """PaastaServiceConfig provides useful methods for reading soa-configs and
+    iterating instance names or InstanceConfigs objects.
 
     :Example:
 
-        >>> from paasta_tools.paasta_service_config import PaastaServiceConfig
-        >>> from paasta_tools.utils import DEFAULT_SOA_DIR
-        >>>
-        >>> sc = PaastaServiceConfig(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
-        >>>
-        >>> for instance in sc.instances(cluster='fake_cluster', instance_type='marathon'):
-        ...     print(instance)
-        ...
-        main
-        canary
-        >>>
-        >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type='marathon'):
-        ...     print(instance_config.get_instance())
-        ...
-        main
-        canary
-        >>>
+    >>> from paasta_tools.paasta_service_config import PaastaServiceConfig
+    >>> from paasta_tools.utils import DEFAULT_SOA_DIR
+    >>>
+    >>> sc = PaastaServiceConfig(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
+    >>>
+    >>> for instance in sc.instances(cluster='fake_cluster', instance_type='marathon'):
+    ...     print(instance)
+    ...
+    main
+    canary
+    >>>
+    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type='marathon'):
+    ...     print(instance_config.get_instance())
+    ...
+    main
+    canary
+    >>>
     """
 
     def __init__(self, service: str, soa_dir: str=DEFAULT_SOA_DIR, load_deployments: bool=True):
@@ -98,7 +83,7 @@ class PaastaServiceConfig():
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
-        :returns: yields instance names
+        :returns: an iterator that yields instance names
         """
         if (cluster, instance_type) not in self._framework_configs:
             self._refresh_framework_config(cluster, instance_type)
@@ -110,7 +95,7 @@ class PaastaServiceConfig():
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
-        :returns: yields instances of MarathonServiceConfig, ChronosJobConfig and etc.
+        :returns: an iterator that yields instances of MarathonServiceConfig, ChronosJobConfig and etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type
         """
         create_config_function = self._get_create_config_function(instance_type)
