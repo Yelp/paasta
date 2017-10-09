@@ -248,24 +248,28 @@ def test_assert_framework_count_not_ok():
         'frameworks': [
             {
                 'name': 'marathon',
+                'id': 'id1',
             },
             {
                 'name': 'marathon1',
+                'id': 'id2',
             },
             {
                 'name': 'marathon2',
+                'id': 'id3',
             },
             {
-                'name': 'test_framework',
+                'name': 'chronos',
+                'id': 'id_chronos',
             },
         ],
     }
     output, ok = metastatus_lib.assert_framework_count(
         state,
-        configured_framework_count=4,
+        marathon_framework_ids=['id1', 'id2'],
     )
 
-    assert "Frameworks (configured 4, connected 3):" in output
+    assert "CRITICAL: Framework marathon has 3 out of 2 instances connected." in output
     assert not ok
 
 
@@ -274,23 +278,28 @@ def test_assert_framework_count_ok():
         'frameworks': [
             {
                 'name': 'chronos',
+                'id': 'id_chronos',
             },
             {
                 'name': 'marathon',
+                'id': 'id1',
             },
             {
                 'name': 'marathon1',
+                'id': 'id2',
             },
             {
                 'name': 'test_framework',
+                'id': 'id_test',
             },
         ],
     }
     output, ok = metastatus_lib.assert_framework_count(
         state,
-        configured_framework_count=3,
+        marathon_framework_ids=['id1', 'id2'],
     )
-    assert "Frameworks (configured 3, connected 3):" in output
+    assert "Framework: marathon count: 2" in output
+    assert "Framework: chronos count: 1" in output
     assert ok
 
 

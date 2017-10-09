@@ -14,10 +14,12 @@
 # limitations under the License.
 import sys
 
+from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics.metastatus_lib import assert_framework_count
+from paasta_tools.metrics.metastatus_lib import get_marathon_framework_ids
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
@@ -32,9 +34,12 @@ def check_mesos_no_duplicate_frameworks():
 
     system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config)
-    configured_framework_count = len(marathon_servers.current) + len(marathon_servers.previous) + 1
-
-    result = assert_framework_count(state, configured_framework_count)
+    marathon_clients = get_marathon_clients(marathon_servers)
+    marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
+    result = assert_framework_count(
+        state=state,
+        marathon_framework_ids=marathon_framework_ids,
+    )
     if result.healthy:
         paasta_print("OK: " + result.message)
         sys.exit(0)

@@ -258,45 +258,57 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_framework_count(state, configured_framework_count):
+def assert_chronos_frameworks(connected_chronos_frameworks):
+    framework_count = len(connected_chronos_frameworks)
+    healthy = framework_count == 1
+    if healthy:
+        output = "    Framework: chronos count: %d" % framework_count
+    else:
+        output = (
+            "    CRITICAL: Framework chronos has %d instances "
+            "running--expected no more than 1." % framework_count
+        )
+    return (healthy, output)
+
+
+def assert_marathon_frameworks(connected_marathon_frameworks, configured_framework_ids):
+    connected_framework_ids = {x['id'] for x in connected_marathon_frameworks}
+    healthy = connected_framework_ids == set(configured_framework_ids)
+    if healthy:
+        output = "    Framework: marathon count: %d" % len(configured_framework_ids)
+    else:
+        output = ("    CRITICAL: Framework marathon has %d out of %d instances connected."
+                  % (len(connected_framework_ids), len(configured_framework_ids)))
+    return (healthy, output)
+
+
+def assert_framework_count(state, marathon_framework_ids):
     """A function which asserts that the number of marathon and chronos frameworks running
     matches the number of configured frameworks.
 
     :param state: the state info from the Mesos master
-    :param expected_framework_count: the expected number of connected frameworks
+    :param marathon_framework_ids: Framework IDs of all marathon frameworks that are supposed to be connected.
     :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
-        indicating if there are any duplicate frameworks.
+        indicating if there are any problems.
     """
-    configurable_frameworks = ['marathon', 'chronos']
 
     frameworks = state['frameworks']
-    connected_frameworks = []
-    for fw in frameworks:
-        if fw['name'].startswith('marathon'):
-            normalized_name = 'marathon'
-        else:
-            normalized_name = fw['name']
-        if normalized_name in configurable_frameworks:
-            connected_frameworks.append(normalized_name)
-        else:
-            connected_frameworks.append('others')
+    chronos_healthy, chronos_output = \
+        assert_chronos_frameworks(
+            connected_chronos_frameworks=[x for x in frameworks if x['name'].startswith('chronos')],
+        )
 
-    framework_counts = Counter(connected_frameworks)
-    connected_framework_count = sum([
-        count for name, count in framework_counts.items()
-        if name in configurable_frameworks
-    ])
-    healty = connected_framework_count == configured_framework_count
-    output = [
-        "Frameworks (configured %d, connected %d):" %
-        (configured_framework_count, connected_framework_count),
-    ]
+    marathon_healthy, marathon_output = \
+        assert_marathon_frameworks(
+            connected_marathon_frameworks=[x for x in frameworks if x['name'].startswith('marathon')],
+            configured_framework_ids=marathon_framework_ids,
+        )
 
-    for framework in sorted(framework_counts):
-        output.append("    Framework: %s count: %d" % (framework, framework_counts[framework]))
+    output = ["Frameworks:", marathon_output, chronos_output]
+
     return HealthCheckResult(
         message=("\n").join(output),
-        healthy=healty,
+        healthy=marathon_healthy and chronos_healthy,
     )
 
 
@@ -538,7 +550,7 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
     ]
 
 
-def get_mesos_state_status(mesos_state, configured_framework_count):
+def get_mesos_state_status(mesos_state, marathon_framework_ids):
     """Perform healthchecks against mesos state.
     :param mesos_state: a dict exposing the mesos state described in
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
@@ -548,7 +560,7 @@ def get_mesos_state_status(mesos_state, configured_framework_count):
         assert_quorum_size(),
         assert_framework_count(
             state=mesos_state,
-            configured_framework_count=configured_framework_count,
+            marathon_framework_ids=marathon_framework_ids,
         ),
     ]
 
@@ -758,3 +770,12 @@ def reserved_maintenence_resources(resources):
             'disk': 0,
         },
     )
+
+
+def get_marathon_framework_ids(marathon_clients):
+    ids = []
+    for client in marathon_clients.current:
+        ids.append(client.get_info().framework_id)
+    for client in marathon_clients.previous:
+        ids.append(client.get_info().framework_id)
+    return ids

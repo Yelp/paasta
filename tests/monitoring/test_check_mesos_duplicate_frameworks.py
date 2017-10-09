@@ -23,17 +23,23 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
         autospec=True,
-        return_value=mock.Mock(current=[1], previous=[]),
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
+        autospec=True,
+        return_value=['id_marathon'],
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
+                {'name': 'marathon', 'id': 'id_marathon'},
+                {'name': 'chronos', 'id': 'id_chronos'},
+                {'name': 'foobar', 'id': 'id_foobar_1'},
+                {'name': 'foobar', 'id': 'id_foobar_2'},
             ],
         }
         mock_get_mesos_master.return_value = mock_master
@@ -54,18 +60,24 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
         autospec=True,
-        return_value=mock.Mock(current=[1], previous=[]),
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
+        autospec=True,
+        return_value=['id_marathon_1'],
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'marathon'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
+                {'name': 'marathon', 'id': 'id_marathon_1'},
+                {'name': 'marathon', 'id': 'id_marathon_2'},
+                {'name': 'chronos', 'id': 'id_chronos'},
+                {'name': 'foobar', 'id': 'id_foobar_1'},
+                {'name': 'foobar', 'id': 'id_foobar_2'},
             ],
         }
         mock_get_mesos_master.return_value = mock_master

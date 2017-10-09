@@ -27,10 +27,12 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import get_marathon_framework_ids
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -91,10 +93,11 @@ def main(argv=None):
         sys.exit(2)
 
     marathon_servers = get_marathon_servers(system_paasta_config)
-    configured_framework_count = len(marathon_servers.current) + len(marathon_servers.previous) + 1
+    marathon_clients = get_marathon_clients(marathon_servers)
+    marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
     mesos_state_status = metastatus_lib.get_mesos_state_status(
         mesos_state=mesos_state,
-        configured_framework_count=configured_framework_count,
+        marathon_framework_ids=marathon_framework_ids,
     )
 
     metrics = master.metrics_snapshot()
