@@ -60,8 +60,7 @@ setup(
         'retry',
         'requests == 2.6.2',
         'requests-cache >= 0.4.10,<= 0.5.0',
-        # We install this from git
-        # 'sensu-plugin >= 0.2.0',
+        'sensu-plugin',
         'service-configuration-lib >= 0.12.0',
         'syslogmp',
         'ujson == 1.35',
