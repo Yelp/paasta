@@ -27,9 +27,11 @@ from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Sequence
+from typing import Set  # noqa: imported for typing
 from typing import Tuple
 from typing import TypeVar
 
@@ -136,6 +138,30 @@ class MarathonClients(object):
             return [self.previous[i] for i in job_config.get_previous_marathon_shards()]
         else:
             return [rendezvous_hash(choices=self.previous, key=service_instance)]
+
+    def get_all_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
+        """Return the set of all clients that a service might have apps on, with no duplicate clients."""
+        all_clients = [self.get_current_client_for_service(job_config)]
+        all_clients.extend(self.get_previous_clients_for_service(job_config))
+
+        return dedupe_clients(all_clients)
+
+    def get_all_clients(self) -> List[MarathonClient]:
+        """Return the set of all unique clients."""
+        return dedupe_clients(self.current + self.previous)
+
+
+def dedupe_clients(all_clients: Iterable[MarathonClient]) -> List[MarathonClient]:
+    """Return a subset of the clients with no servers in common. The assumption here is that if there's any overlap in
+    servers, then two clients are talking about the same cluster."""
+    all_seen_servers: Set[str] = set()
+    deduped_clients: List[MarathonClient] = []
+    for client in all_clients:
+        if not any(server in all_seen_servers for server in client.servers):
+            all_seen_servers.update(client.servers)
+            deduped_clients.append(client)
+
+    return deduped_clients
 
 
 def load_marathon_config() -> "MarathonConfig":
@@ -1228,16 +1254,28 @@ def get_matching_appids(servicename: str, instance: str, client: MarathonClient)
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     marathon_apps = get_all_marathon_apps(client)
-    return [app.id for app in get_matching_apps(servicename, instance, marathon_apps)]
+    return [app.id for app in marathon_apps if does_app_id_match(servicename, instance, app.id)]
 
 
 def get_matching_apps(servicename: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
+    return [app for app in marathon_apps if does_app_id_match(servicename, instance, app.id)]
+
+
+def get_matching_apps_with_clients(
+    servicename: str,
+    instance: str,
+    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+) -> List[Tuple[MarathonApp, MarathonClient]]:
+    return [(a, c) for a, c in marathon_apps_with_clients if does_app_id_match(servicename, instance, a.id)]
+
+
+def does_app_id_match(servicename: str, instance: str, app_id: str) -> bool:
     jobid = format_job_id(servicename, instance)
     expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
-    return [app for app in marathon_apps if app.id.startswith(expected_prefix)]
+    return app_id.startswith(expected_prefix)
 
 
 def get_all_marathon_apps(client: MarathonClient, embed_tasks: bool=False) -> List[MarathonApp]:

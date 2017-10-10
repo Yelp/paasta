@@ -5,6 +5,7 @@ dist/
 .paasta
 .pip/
 *.py?
+!*.pyi
 .*.sw?
 .idea
 paasta_tools.egg-info/
