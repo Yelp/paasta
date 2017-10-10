@@ -104,10 +104,10 @@ def rendezvous_hash(
     salt: str='',
     hash_func: Callable[[str], str]=get_config_hash,
 ) -> _RendezvousHashT:
-    """
+    """For each choice, calculate the hash of the index of that choice combined with the key, then return the choice
+    whose corresponding hash is highest.
 
-    :param choices: A dictionary of string to arbitrary values. The string keys are used in the hash calculation, and
-                    the value with the "winning" key is returned."""
+    :param choices: A sequence of arbitrary values. The "winning" value will be returned."""
     max_hash_value = None
     max_hash_choice = None
     for i, choice in enumerate(choices):
