@@ -269,7 +269,7 @@ def test_assert_framework_count_not_ok():
         marathon_framework_ids=['id1', 'id2'],
     )
 
-    assert "CRITICAL: Framework marathon has 3 out of 2 instances connected." in output
+    assert "CRITICAL: There are 3 marathon frameworks connected! (Expected 2)" in output
     assert not ok
 
 

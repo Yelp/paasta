@@ -41,7 +41,6 @@ class ResourceInfo(namedtuple('ResourceInfo', ['cpus', 'mem', 'disk', 'gpus'])):
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
 
-EXPECTED_HEALTHY_FRAMEWORKS = 2
 HIGH_QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.highQueueSize'
 QUEUE_GAUGE = 'org.apache.mesos.chronos.scheduler.jobs.TaskManager.queueSize'
 
@@ -265,8 +264,8 @@ def assert_chronos_frameworks(connected_chronos_frameworks):
         output = "    Framework: chronos count: %d" % framework_count
     else:
         output = (
-            "    CRITICAL: Framework chronos has %d instances "
-            "running--expected no more than 1." % framework_count
+            "    CRITICAL: There are %d connected chronos frameworks!"
+            " (expected 1)" % framework_count
         )
     return (healthy, output)
 
@@ -277,7 +276,7 @@ def assert_marathon_frameworks(connected_marathon_frameworks, configured_framewo
     if healthy:
         output = "    Framework: marathon count: %d" % len(configured_framework_ids)
     else:
-        output = ("    CRITICAL: Framework marathon has %d out of %d instances connected."
+        output = ("    CRITICAL: There are %d marathon frameworks connected! (Expected %d)"
                   % (len(connected_framework_ids), len(configured_framework_ids)))
     return (healthy, output)
 
