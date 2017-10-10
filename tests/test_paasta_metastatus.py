@@ -21,6 +21,8 @@ from paasta_tools import paasta_metastatus
 
 def test_main_no_marathon_config():
     with patch(
+        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+    ), patch(
         'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
     ) as load_marathon_config_patch, patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
@@ -58,6 +60,8 @@ def test_main_no_marathon_config():
 
 def test_main_no_chronos_config():
     with patch(
+        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+    ), patch(
         'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
     ) as load_marathon_config_patch, patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
@@ -95,6 +99,8 @@ def test_main_no_chronos_config():
 
 def test_main_marathon_jsondecode_error():
     with patch(
+        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+    ), patch(
         'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
     ) as load_marathon_config_patch, patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
