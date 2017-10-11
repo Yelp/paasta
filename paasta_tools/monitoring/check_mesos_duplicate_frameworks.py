@@ -12,28 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import argparse
 import sys
 
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.metrics.metastatus_lib import assert_no_duplicate_frameworks
+from paasta_tools.metrics.metastatus_lib import assert_framework_count
+from paasta_tools.metrics.metastatus_lib import get_marathon_framework_ids
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        '--check', '-C', dest='check', type=str, default='',
-        help='Comma separated list of frameworks to check for duplicates',
-    )
-    return parser.parse_args()
-
-
 def check_mesos_no_duplicate_frameworks():
-    options = parse_args()
-    check = options.check.split(',')
     master = get_mesos_master()
     try:
         state = master.state
@@ -41,12 +32,19 @@ def check_mesos_no_duplicate_frameworks():
         paasta_print("CRITICAL: %s" % e.message)
         sys.exit(2)
 
-    result = assert_no_duplicate_frameworks(state, check)
+    system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = get_marathon_clients(marathon_servers)
+    marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
+    result = assert_framework_count(
+        state=state,
+        marathon_framework_ids=marathon_framework_ids,
+    )
     if result.healthy:
         paasta_print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print(result.message)
+        paasta_print("CRITICAL: %s" % result.message)
         sys.exit(2)
 
 
