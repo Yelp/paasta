@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import unittest
+import warnings
 from math import floor
 
 import mock
@@ -26,6 +27,9 @@ from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.utils import TimeoutError
 
 
+warnings.filterwarnings("error", category=RuntimeWarning)
+
+
 def _run(coro):
     asyncio.set_event_loop(asyncio.new_event_loop())
     return asyncio.get_event_loop().run_until_complete(coro)
@@ -33,7 +37,7 @@ def _run(coro):
 
 def get_coro_with_exception(error):
     async def f(*args, **kwargs):
-        asyncio.sleep(0.01)
+        await asyncio.sleep(0.01)
         raise error
     return f
 
