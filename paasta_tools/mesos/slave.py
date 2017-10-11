@@ -22,6 +22,7 @@ from . import exceptions
 from . import log
 from . import mesos_file
 from . import util
+from paasta_tools.utils import get_user_agent
 
 
 class MesosSlave(object):
@@ -49,11 +50,13 @@ class MesosSlave(object):
 
     @log.duration
     def fetch(self, url, **kwargs):
+        headers = {'User-Agent': get_user_agent()}
         try:
             return requests.get(
-                urljoin(
-                    self.host, url,
-                ), timeout=self.config["response_timeout"], **kwargs,
+                urljoin(self.host, url),
+                timeout=self.config["response_timeout"],
+                headers=headers,
+                **kwargs,
             )
         except requests.exceptions.ConnectionError:
             raise exceptions.SlaveDoesNotExist(

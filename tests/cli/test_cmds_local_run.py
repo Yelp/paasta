@@ -703,7 +703,6 @@ def test_get_docker_run_cmd_interactive_true():
     )
 
     assert '--interactive=true' in actual
-    assert '--tty=true' in actual
 
 
 def test_get_docker_run_docker_params():

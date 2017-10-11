@@ -151,7 +151,7 @@ def get_running_tasks_from_frameworks(job_id=''):
 
 
 def get_all_running_tasks():
-    """ Will include all running tasks, including orphans
+    """ Will include all running tasks; for now orphans are not included
     """
     framework_tasks = get_current_tasks('')
     mesos_master = get_mesos_master()

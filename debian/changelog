@@ -1,3 +1,20 @@
+paasta-tools (0.67.12) xenial; urgency=medium
+
+  * 0.67.12 tagged with 'make release'
+    Commit: Merge pull request #1547 from
+    Yelp/only_frameworks_on_verbose  Only fall for mesos task counts on
+    the paasta api in verbose mode
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 06 Oct 2017 10:53:28 -0700
+
+paasta-tools (0.67.11) xenial; urgency=medium
+
+  * 0.67.11 tagged with 'make release'
+    Commit: Merge pull request #1537 from somic/PAASTA-11595_1
+    temporarily ignore orphan_tasks in mesos_tools.get_all_running_tasks
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 05 Oct 2017 02:16:01 -0700
+
 paasta-tools (0.67.10) xenial; urgency=medium
 
   * 0.67.10 tagged with 'make release'

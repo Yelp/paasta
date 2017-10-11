@@ -536,7 +536,11 @@ def _run_cluster_worker(cluster_data, green_light):
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
-    cluster_map = get_cluster_instance_map_for_service(soa_dir=soa_dir, service=service, deploy_group=deploy_group)
+    # Currently only 'marathon' instances are supported for wait_for_deployment because they
+    # are the only thing that are worth waiting on.
+    cluster_map = get_cluster_instance_map_for_service(
+        soa_dir=soa_dir, service=service, deploy_group=deploy_group, type_filter='marathon',
+    )
     if not cluster_map:
         _log(
             service=service,

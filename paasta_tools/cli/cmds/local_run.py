@@ -19,6 +19,7 @@ import os
 import socket
 import sys
 import time
+import uuid
 from os import execlp
 from random import randint
 from urllib.parse import urlparse
@@ -395,7 +396,8 @@ def get_docker_run_cmd(
         cmd.append('--volume=%s' % volume)
     if interactive:
         cmd.append('--interactive=true')
-        cmd.append('--tty=true')
+        if sys.stdout.isatty():
+            cmd.append('--tty=true')
     else:
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
@@ -474,11 +476,12 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         # In a local_run environment, the docker_image may not be available
         # so we can fall-back to the injected DOCKER_TAG per the paasta contract
         docker_image = os.environ['DOCKER_TAG']
+    fake_taskid = uuid.uuid4()
     env = {
         'HOST': hostname,
         'MESOS_SANDBOX': '/mnt/mesos/sandbox',
-        'MESOS_CONTAINER_NAME': 'mesos-simulated-container-name',
-        'MESOS_TASK_ID': 'simulated_mesos_task_id',
+        'MESOS_CONTAINER_NAME': 'localrun-%s' % fake_taskid,
+        'MESOS_TASK_ID': str(fake_taskid),
         'PAASTA_DOCKER_IMAGE': docker_image,
     }
     if framework == 'marathon':
@@ -572,6 +575,7 @@ def run_docker_container(
     )
     if healthcheck_mode is None:
         container_port = None
+        interactive = True
     else:
         try:
             container_port = instance_config.get_container_port()

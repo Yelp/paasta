@@ -11,12 +11,11 @@ docker-py==1.2.3
 dulwich==0.17.3
 ephemeral-port-reserve==1.0.1
 gevent==1.1.1
-git+git://github.com/sensu/sensu-plugin-python@bf00ac33
 # We have git commit access to marathon-python but don't have pypi
 # so we pull from git
 git+git://github.com/thefactory/marathon-python@c1e0c341#egg=marathon
 # While task_processing is in rapid development mode, we install it from git
-git+git://github.com/Yelp/task_processing@52483ed7#egg=task_processing[mesos_executor]
+git+git://github.com/Yelp/task_processing@72fafd9ebdbd0d6165f8b79ba0050dba1009ec31#egg=task_processing[mesos_executor]
 http-parser==0.8.3
 httplib2==0.9.2
 humanize==0.5.1
@@ -40,6 +39,7 @@ PyYAML==3.11
 requests==2.6.2
 requests-cache==0.4.10
 retry==0.9.2
+sensu-plugin==0.3.1
 service-configuration-lib==0.12.0
 simplejson==3.10.0
 six>=1.9.0

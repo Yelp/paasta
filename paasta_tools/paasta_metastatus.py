@@ -27,10 +27,14 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import get_marathon_framework_ids
 from paasta_tools.utils import format_table
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
@@ -77,6 +81,8 @@ def main(argv=None):
     chronos_config = None
     args = parse_args(argv)
 
+    system_paasta_config = load_system_paasta_config()
+
     master = get_mesos_master()
     try:
         mesos_state = master.state
@@ -86,8 +92,12 @@ def main(argv=None):
         paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = get_marathon_clients(marathon_servers)
+    marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
     mesos_state_status = metastatus_lib.get_mesos_state_status(
         mesos_state=mesos_state,
+        marathon_framework_ids=marathon_framework_ids,
     )
 
     metrics = master.metrics_snapshot()
@@ -95,9 +105,8 @@ def main(argv=None):
         mesos_metrics=metrics,
         mesos_state=mesos_state,
     )
-    framework_metrics_healthchecks = metastatus_lib.get_framework_metrics_status(metrics=metrics)
 
-    all_mesos_results = mesos_state_status + mesos_metrics_status + framework_metrics_healthchecks
+    all_mesos_results = mesos_state_status + mesos_metrics_status
 
     # Check to see if Marathon should be running here by checking for config
     marathon_config = marathon_tools.load_marathon_config()
