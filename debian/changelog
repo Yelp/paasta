@@ -1,3 +1,12 @@
+paasta-tools (0.67.13) xenial; urgency=medium
+
+  * 0.67.13 tagged with 'make release'
+    Commit: Merge pull request #1555 from
+    Yelp/wait_for_deployment_no_marathon  Don"t fail wait_for_deployment
+    if no marathon instances match the deploy group in question.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Oct 2017 16:30:31 -0700
+
 paasta-tools (0.67.12) xenial; urgency=medium
 
   * 0.67.12 tagged with 'make release'
