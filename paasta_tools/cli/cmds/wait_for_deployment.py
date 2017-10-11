@@ -19,7 +19,6 @@ import logging
 from argparse import ArgumentTypeError
 
 from paasta_tools import remote_git
-from paasta_tools.cli.cmds.mark_for_deployment import NoInstancesFound
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.mark_for_deployment import report_waiting_aborted
 from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
@@ -239,8 +238,6 @@ def paasta_wait_for_deployment(args):
 
     except (KeyboardInterrupt, TimeoutError, NoSuchCluster):
         report_waiting_aborted(service, args.deploy_group)
-        return 1
-    except NoInstancesFound:
         return 1
 
     return 0
