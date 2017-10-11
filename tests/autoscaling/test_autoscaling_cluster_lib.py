@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import unittest
 from math import floor
 
@@ -23,6 +24,18 @@ from paasta_tools.autoscaling import autoscaling_cluster_lib
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.utils import TimeoutError
+
+
+def _run(coro):
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    return asyncio.get_event_loop().run_until_complete(coro)
+
+
+def get_coro_with_exception(error):
+    async def f(*args, **kwargs):
+        asyncio.sleep(0.01)
+        raise error
+    return f
 
 
 def pid_to_ip_sideeffect(pid):
@@ -38,6 +51,30 @@ def is_resource_cancelled_sideeffect(self):
     if self.resource['id'] == 'sfr-blah3':
         return True
     return False
+
+
+def test_get_mesos_utilization_error():
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
+        autospec=True,
+    ) as mock_get_resource_utilization_by_grouping:
+        mock_mesos_state = {'slaves': [
+            {'attributes': {'pool': 'default'}},
+            {'attributes': {'pool': 'default'}},
+        ]}
+        mock_utilization = {
+            'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
+            'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0),
+        }
+        mock_get_resource_utilization_by_grouping.return_value = {('default', 'westeros-1'): mock_utilization}
+
+        ret = autoscaling_cluster_lib.get_mesos_utilization_error(
+            mesos_state=mock_mesos_state,
+            region="westeros-1",
+            pool="default",
+            target_utilization=0.8,
+        )
+        assert ret == 0.5 - 0.8
 
 
 def test_get_instances_from_ip():
@@ -62,7 +99,9 @@ def test_autoscale_local_cluster():
         autospec=True,
     ) as mock_is_resource_cancelled, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
-    ) as mock_get_sfr:
+    ) as mock_get_sfr, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
+    ) as mock_get_all_utilization_errors:
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
             'id1': {
@@ -87,6 +126,15 @@ def test_autoscale_local_cluster():
             get_resource_pool_settings=mock_get_resource_pool_settings,
         )
         mock_get_paasta_config.return_value = mock_get_resources
+        mock_get_all_utilization_errors.return_value = {
+            ('westeros-1', 'default'): -0.2,
+        }
+        calls = []
+
+        async def fake_autoscale(scaler):
+            calls.append(scaler)
+            await asyncio.sleep(0.1)
+        mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
         assert mock_get_paasta_config.called
@@ -94,21 +142,27 @@ def test_autoscale_local_cluster():
         assert autoscaled_resources[0] == mock_scaling_resources['id3']
         assert mock_scaling_resources['id1'] in autoscaled_resources[1:3]
         assert mock_scaling_resources['id2'] in autoscaled_resources[1:3]
+        assert len(calls) == 3
 
 
 def test_autoscale_cluster_resource():
+    call = []
+
+    async def mock_scale_resource(current, target):
+        call.append((current, target))
+        await asyncio.sleep(0.01)
+
     mock_scaling_resource = {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}
     mock_scaler = mock.Mock()
     mock_metrics_provider = mock.Mock(return_value=(2, 6))
-    mock_scale_resource = mock.Mock()
     mock_scaler.metrics_provider = mock_metrics_provider
     mock_scaler.scale_resource = mock_scale_resource
     mock_scaler.resource = mock_scaling_resource
 
     # test scale up
-    autoscaling_cluster_lib.autoscale_cluster_resource(mock_scaler)
+    _run(autoscaling_cluster_lib.autoscale_cluster_resource(mock_scaler))
     assert mock_metrics_provider.called
-    mock_scale_resource.assert_called_with(2, 6)
+    assert (2, 6) in call
 
 
 def test_get_autoscaling_info_for_all_resources():
@@ -240,11 +294,13 @@ class TestAsgAutoscaler(unittest.TestCase):
             }
             mock_pool_settings = {'drain_timeout': 123}
             mock_config_folder = '/nail/blah'
+            mock_utilization_error = 0.3
             self.autoscaler = autoscaling_cluster_lib.AsgAutoscaler(
                 mock_resource,
                 mock_pool_settings,
                 mock_config_folder,
                 False,
+                mock_utilization_error,
             )
             self.autoscaler.instances = []
 
@@ -287,11 +343,11 @@ class TestAsgAutoscaler(unittest.TestCase):
             mock_update_auto_scaling_group = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(update_auto_scaling_group=mock_update_auto_scaling_group)
             self.autoscaler.dry_run = True
-            self.autoscaler.set_capacity(2)
+            self.autoscaler.set_capacity(2, 2)
             assert not mock_update_auto_scaling_group.called
             self.autoscaler.dry_run = False
 
-            self.autoscaler.set_capacity(2)
+            self.autoscaler.set_capacity(2, 2)
             mock_ec2_client.assert_called_with('autoscaling', region_name='westeros-1')
             mock_update_auto_scaling_group.assert_called_with(
                 AutoScalingGroupName='asg-blah',
@@ -300,7 +356,8 @@ class TestAsgAutoscaler(unittest.TestCase):
 
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
                 mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 1}}, 'blah')
-                self.autoscaler.set_capacity(2)
+                self.autoscaler.set_capacity(2, 2)
+            assert self.autoscaler.capacity == 2
 
     def test_get_instance_type_weights_asg(self):
         ret = self.autoscaler.get_instance_type_weights()
@@ -393,9 +450,6 @@ class TestAsgAutoscaler(unittest.TestCase):
         with mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg_delta', autospec=True,
         ) as mock_get_asg_delta, mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_mesos_utilization_error',
-            autospec=True,
-        ) as mock_get_mesos_utilization_error, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_aws_slaves', autospec=True,
         ) as mock_get_aws_slaves, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
@@ -413,7 +467,7 @@ class TestAsgAutoscaler(unittest.TestCase):
             mock_master = mock.Mock(state=mock_mesos_state)
             mock_get_mesos_master.return_value = mock_master
 
-            mock_slaves = mock.Mock()
+            mock_slaves = ['one', 'two']
             mock_get_aws_slaves.return_value = mock_slaves
 
             # cancelled ASG
@@ -427,14 +481,7 @@ class TestAsgAutoscaler(unittest.TestCase):
             self.autoscaler.asg = {'some': 'stuff'}
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
-            mock_get_mesos_utilization_error.return_value = float(0.3)
             ret = self.autoscaler.metrics_provider()
-            mock_get_mesos_utilization_error.assert_called_with(
-                self.autoscaler,
-                slaves=mock_get_aws_slaves.return_value,
-                mesos_state=mock_mesos_state,
-                expected_instances=2,
-            )
             mock_get_asg_delta.assert_called_with(self.autoscaler, float(0.3))
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
@@ -477,11 +524,13 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_resource = {'id': 'sfr-blah', 'type': 'sfr', 'region': 'westeros-1', 'pool': 'default'}
             mock_pool_settings = {'drain_timeout': 123}
             mock_config_folder = '/nail/blah'
+            mock_utilization_error = 0.3
             self.autoscaler = autoscaling_cluster_lib.SpotAutoscaler(
                 mock_resource,
                 mock_pool_settings,
                 mock_config_folder,
                 False,
+                mock_utilization_error,
             )
 
     def test_exists(self):
@@ -570,22 +619,23 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_modify_spot_fleet_request = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(modify_spot_fleet_request=mock_modify_spot_fleet_request)
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
-                ret = self.autoscaler.set_capacity(4)
+                ret = self.autoscaler.set_capacity(4, 4.1)
             assert not mock_modify_spot_fleet_request.called
 
             mock_modify_spot_fleet_request.side_effect = ClientError({'Error': {}}, 'blah')
             mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
-                ret = self.autoscaler.set_capacity(4)
+                ret = self.autoscaler.set_capacity(4, 4.1)
 
             mock_modify_spot_fleet_request.side_effect = None
-            ret = self.autoscaler.set_capacity(4)
+            ret = self.autoscaler.set_capacity(4, 4.1)
             mock_modify_spot_fleet_request.assert_called_with(
                 SpotFleetRequestId='sfr-blah',
                 TargetCapacity=4,
                 ExcessCapacityTerminationPolicy='noTermination',
             )
             assert ret is not None
+            assert self.autoscaler.capacity == 4.1
 
     def test_get_instance_type_weights_sfr(self):
         mock_launch_specs = [
@@ -673,9 +723,6 @@ class TestSpotAutoscaler(unittest.TestCase):
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_delta',
             autospec=True,
         ) as mock_get_spot_fleet_delta, mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_mesos_utilization_error',
-            autospec=True,
-        ) as mock_get_mesos_utilization_error, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_aws_slaves', autospec=True,
         ) as mock_get_aws_slaves, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_pool_slaves',
@@ -696,7 +743,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_master = mock.Mock(state=mock_mesos_state)
             mock_get_mesos_master.return_value = mock_master
 
-            mock_slaves = mock.Mock()
+            mock_slaves = ['one', 'two']
             mock_get_aws_slaves.return_value = mock_slaves
             mock_get_pool_slaves.return_value = mock_slaves
 
@@ -719,14 +766,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             # active SFR
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
-            mock_get_mesos_utilization_error.return_value = float(0.3)
             ret = self.autoscaler.metrics_provider()
-            mock_get_mesos_utilization_error.assert_called_with(
-                self.autoscaler,
-                slaves=mock_get_aws_slaves.return_value,
-                mesos_state=mock_mesos_state,
-                expected_instances=2,
-            )
             mock_get_spot_fleet_delta.assert_called_with(self.autoscaler, float(0.3))
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
@@ -748,23 +788,8 @@ class TestSpotAutoscaler(unittest.TestCase):
             assert not mock_cleanup_cancelled_config.called
             assert ret == (0, 0)
             mock_get_spot_fleet_delta.return_value = 2, 1
-            mock_get_mesos_utilization_error.return_value = -0.2
-            mock_get_mesos_utilization_error.reset_mock()
+            self.autoscaler.utilization_error = -0.2
             ret = self.autoscaler.metrics_provider()
-            get_utilization_calls = [
-                mock.call(
-                    self.autoscaler,
-                    slaves=mock_slaves,
-                    mesos_state=mock_mesos_state,
-                    expected_instances=2,
-                ),
-                mock.call(
-                    self.autoscaler,
-                    slaves=mock_get_pool_slaves.return_value,
-                    mesos_state=mock_mesos_state,
-                ),
-            ]
-            mock_get_mesos_utilization_error.assert_has_calls(get_utilization_calls)
 
             assert ret == (2, 0)
             mock_get_spot_fleet_delta.return_value = 4, 2
@@ -772,7 +797,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             assert ret == (4, 2)
 
             # cancelled_running SFR with pool underprovisioned
-            mock_get_mesos_utilization_error.return_value = 0.2
+            self.autoscaler.utilization_error = 0.2
             ret = self.autoscaler.metrics_provider()
             assert ret == (0, 0)
 
@@ -798,11 +823,13 @@ class TestClusterAutoscaler(unittest.TestCase):
         mock_resource = {'id': 'sfr-blah', 'type': 'sfr', 'region': 'westeros-1', 'pool': 'default'}
         mock_pool_settings = {'drain_timeout': 123}
         mock_config_folder = '/nail/blah'
+        mock_utilization_error = 0.3
         self.autoscaler = autoscaling_cluster_lib.ClusterAutoscaler(
             mock_resource,
             mock_pool_settings,
             mock_config_folder,
             False,
+            mock_utilization_error,
         )
 
     def test_describe_instance(self):
@@ -857,21 +884,22 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
             mock_get_mesos_master.return_value = mock_master
+            mock_downscale_aws_resource.side_effect = lambda *a, **k: asyncio.sleep(0.01)
 
             # test no scale
-            self.autoscaler.scale_resource(4, 4)
+            _run(self.autoscaler.scale_resource(4, 4))
             assert not mock_set_capacity.called
 
             # test scale up
-            self.autoscaler.scale_resource(2, 4)
-            mock_set_capacity.assert_called_with(self.autoscaler, 4)
+            _run(self.autoscaler.scale_resource(2, 4))
+            mock_set_capacity.assert_called_with(self.autoscaler, 4, 4)
 
             # test scale down
             mock_slave_1 = mock.Mock(instance_weight=1.099999999)
             mock_slave_2 = mock.Mock(instance_weight=2.2)
             mock_sfr_sorted_slaves_1 = [mock_slave_1, mock_slave_2]
             mock_filter_aws_slaves.return_value = mock_sfr_sorted_slaves_1
-            self.autoscaler.scale_resource(3.3, 0)
+            _run(self.autoscaler.scale_resource(3.3, 0))
             assert mock_get_mesos_master.called
             mock_get_mesos_task_count_by_slave.assert_called_with(
                 mock_mesos_state,
@@ -896,7 +924,17 @@ class TestClusterAutoscaler(unittest.TestCase):
         ) as mock_sort_slaves_to_kill, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.gracefully_terminate_slave',
             autospec=True,
-        ) as mock_gracefully_terminate_slave:
+        ) as mock_gracefully_terminate_slave, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.Timer', autospec=True,
+        ) as mock_timer:
+            mock_timer_value = mock.Mock()
+            mock_timer.return_value = mock_timer_value
+            calls = []
+
+            async def gracefully_terminate(self, **kwargs):
+                calls.append(kwargs)
+                await asyncio.sleep(0.01)
+            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
@@ -914,7 +952,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 task_counts=mock_task_counts,
                 instance_weight=2,
             )
-            mock_get_mesos_task_count_by_slave.return_value = [{'task_counts': mock_slave_2}]
+            mock_get_mesos_task_count_by_slave.return_value = [{'task_counts': mock_task_counts}]
             self.autoscaler.resource = {'type': 'aws_spot_fleet_request', 'sfr': {'SpotFleetRequestState': 'active'}}
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             mock_filtered_slaves = mock.Mock()
@@ -923,14 +961,15 @@ class TestClusterAutoscaler(unittest.TestCase):
 
             # test we kill only one instance on scale down and then reach capacity
             mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=4,
-            )
+            ))
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
+            calls = []
             # test we always kill one SFR instance at least to stop getting wedged
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -945,14 +984,15 @@ class TestClusterAutoscaler(unittest.TestCase):
                 instance_weight=2,
             )
             mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=4,
-            )
+            ))
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
+            calls = []
             # but not if it takes us to setting 0 capacity
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -967,24 +1007,26 @@ class TestClusterAutoscaler(unittest.TestCase):
                 instance_weight=2,
             )
             mock_sort_slaves_to_kill.return_value = mock_sfr_sorted_slaves_2
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=2,
                 target_capacity=1,
-            )
+            ))
             assert not mock_gracefully_terminate_slave.called
 
             mock_gracefully_terminate_slave.reset_mock()
+            calls = []
             # unless this is a cancelled SFR in which case we can go to 0
             self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled'}
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=2,
                 target_capacity=1,
-            )
+            ))
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
+            calls = []
             # test stop if FailSetSpotCapacity
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -995,23 +1037,32 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_terminate_call_1 = mock.call(
                 self.autoscaler,
                 slave_to_kill=mock_slave_1,
-                current_capacity=5,
-                new_capacity=4,
+                capacity_diff=-1,
+                timer=mock_timer_value,
             )
             mock_terminate_call_2 = mock.call(
                 self.autoscaler,
                 slave_to_kill=mock_slave_2,
-                current_capacity=4,
-                new_capacity=2,
+                capacity_diff=-2,
+                timer=mock_timer_value,
             )
             # for draining slave 1 failure HTTPError scenario
             mock_terminate_call_3 = mock.call(
                 self.autoscaler,
                 slave_to_kill=mock_slave_2,
-                current_capacity=5,
-                new_capacity=3,
+                capacity_diff=-2,
+                timer=mock_timer_value,
             )
-            mock_gracefully_terminate_slave.side_effect = autoscaling_cluster_lib.FailSetResourceCapacity
+
+            def make_failing_terminate(error):
+                async def gt(self, **kwargs):
+                    calls.append(kwargs)
+                    await asyncio.sleep(0.01)
+                    raise error
+                return gt
+            mock_gracefully_terminate_slave.side_effect = make_failing_terminate(
+                autoscaling_cluster_lib.FailSetResourceCapacity,
+            )
             mock_sfr_sorted_slaves_1 = [mock_slave_2, mock_slave_1]
             mock_sfr_sorted_slaves_2 = [mock_slave_2]
             mock_sort_slaves_to_kill.side_effect = [
@@ -1019,16 +1070,16 @@ class TestClusterAutoscaler(unittest.TestCase):
                 mock_sfr_sorted_slaves_2,
                 [],
             ]
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=2,
-            )
+            ))
             mock_gracefully_terminate_slave.assert_has_calls([mock_terminate_call_1])
 
             # test continue if HTTPError
-            mock_gracefully_terminate_slave.side_effect = HTTPError
             mock_gracefully_terminate_slave.reset_mock()
+            mock_gracefully_terminate_slave.side_effect = make_failing_terminate(HTTPError)
             mock_sfr_sorted_slaves_1 = [mock_slave_2, mock_slave_1]
             mock_sfr_sorted_slaves_2 = [mock_slave_2]
             mock_sort_slaves_to_kill.side_effect = [
@@ -1036,18 +1087,18 @@ class TestClusterAutoscaler(unittest.TestCase):
                 mock_sfr_sorted_slaves_2,
                 [],
             ]
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=2,
-            )
+            ))
             mock_gracefully_terminate_slave.assert_has_calls([
                 mock_terminate_call_1,
                 mock_terminate_call_3,
             ])
 
             # test normal scale down
-            mock_gracefully_terminate_slave.side_effect = None
+            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
             mock_gracefully_terminate_slave.reset_mock()
             mock_get_mesos_task_count_by_slave.reset_mock()
             mock_sort_slaves_to_kill.reset_mock()
@@ -1058,11 +1109,11 @@ class TestClusterAutoscaler(unittest.TestCase):
                 mock_sfr_sorted_slaves_2,
                 [],
             ]
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=5,
                 target_capacity=2,
-            )
+            ))
             assert mock_get_mesos_master.called
             mock_gracefully_terminate_slave.assert_has_calls([
                 mock_terminate_call_1,
@@ -1084,7 +1135,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 instance_id='i-blah123',
                 instance_weight=0.3,
             )
-            mock_gracefully_terminate_slave.side_effect = None
+            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
             mock_gracefully_terminate_slave.reset_mock()
             mock_get_mesos_task_count_by_slave.reset_mock()
             mock_sort_slaves_to_kill.reset_mock()
@@ -1095,11 +1146,11 @@ class TestClusterAutoscaler(unittest.TestCase):
                 {'task_counts': mock_slave_1}
                 for x in range(0, 9)
             ]
-            self.autoscaler.downscale_aws_resource(
+            _run(self.autoscaler.downscale_aws_resource(
                 filtered_slaves=mock_filtered_slaves,
                 current_capacity=8,
                 target_capacity=7,
-            )
+            ))
             assert mock_gracefully_terminate_slave.call_count == 3
 
     def test_filter_instance_description_for_ip(self):
@@ -1139,6 +1190,8 @@ class TestClusterAutoscaler(unittest.TestCase):
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity',
             autospec=True,
         ) as mock_set_capacity:
+            mock_timer = mock.Mock()
+            mock_wait_and_terminate.side_effect = lambda *a, **k: asyncio.sleep(0.01)
             self.autoscaler.resource = {'id': 'sfr-blah', 'region': 'westeros-1', 'type': 'sfr'}
             mock_time.return_value = int(1)
             mock_start = (1 + 123) * 1000000000
@@ -1150,44 +1203,55 @@ class TestClusterAutoscaler(unittest.TestCase):
                 ip='10.1.1.1',
                 instance_status={'SystemStatus': {'Status': 'ok'}, 'InstanceStatus': {'Status': 'ok'}},
             )
-            self.autoscaler.gracefully_terminate_slave(
+            self.autoscaler.capacity = 5
+            _run(self.autoscaler.gracefully_terminate_slave(
                 slave_to_kill=mock_slave,
-                current_capacity=5,
-                new_capacity=4,
-            )
+                capacity_diff=-1,
+                timer=mock_timer,
+            ))
+
+            def _set_capacity(self, capacity, unrounded_capacity):
+                self.capacity = unrounded_capacity
+
+            mock_set_capacity.side_effect = _set_capacity
 
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
-            set_call_1 = mock.call(self.autoscaler, 4)
+            set_call_1 = mock.call(self.autoscaler, 4, 4)
             mock_set_capacity.assert_has_calls([set_call_1])
             mock_wait_and_terminate.assert_called_with(
-                self.autoscaler, mock_slave, 123, False, region='westeros-1', should_drain=True,
+                self.autoscaler, slave=mock_slave, drain_timeout=123, dry_run=False,
+                region='westeros-1', should_drain=True, timer=mock_timer,
             )
 
             # test we cleanup if a termination fails
-            set_call_2 = mock.call(self.autoscaler, 5)
-            mock_wait_and_terminate.side_effect = ClientError({'Error': {}}, 'blah')
-            self.autoscaler.gracefully_terminate_slave(
+            mock_set_capacity.reset_mock()
+            set_call_2 = mock.call(self.autoscaler, 5, 5)
+            mock_wait_and_terminate.side_effect = get_coro_with_exception(ClientError({'Error': {}}, 'blah'))
+            self.autoscaler.capacity = 5
+            _run(self.autoscaler.gracefully_terminate_slave(
                 slave_to_kill=mock_slave,
-                current_capacity=5,
-                new_capacity=4,
-            )
+                capacity_diff=-1,
+                timer=mock_timer,
+            ))
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
             mock_set_capacity.assert_has_calls([set_call_1, set_call_2])
             mock_wait_and_terminate.assert_called_with(
-                self.autoscaler, mock_slave, 123, False, region='westeros-1', should_drain=True,
+                self.autoscaler, slave=mock_slave, drain_timeout=123, dry_run=False,
+                region='westeros-1', should_drain=True, timer=mock_timer,
             )
             mock_undrain.assert_called_with(['host1|10.1.1.1'])
 
             # test we cleanup if a set spot capacity fails
-            mock_wait_and_terminate.side_effect = None
+            mock_wait_and_terminate.side_effect = lambda *a, **k: asyncio.sleep(0.01)
             mock_wait_and_terminate.reset_mock()
             mock_set_capacity.side_effect = autoscaling_cluster_lib.FailSetResourceCapacity
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
-                self.autoscaler.gracefully_terminate_slave(
+                self.autoscaler.capacity = 5
+                _run(self.autoscaler.gracefully_terminate_slave(
                     slave_to_kill=mock_slave,
-                    current_capacity=5,
-                    new_capacity=4,
-                )
+                    capacity_diff=-1,
+                    timer=mock_timer,
+                ))
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
             mock_set_capacity.assert_has_calls([set_call_1])
             mock_undrain.assert_called_with(['host1|10.1.1.1'])
@@ -1199,11 +1263,12 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_set_capacity.reset_mock()
             mock_drain.side_effect = HTTPError
             with raises(HTTPError):
-                self.autoscaler.gracefully_terminate_slave(
+                self.autoscaler.capacity = 5
+                _run(self.autoscaler.gracefully_terminate_slave(
                     slave_to_kill=mock_slave,
-                    current_capacity=5,
-                    new_capacity=4,
-                )
+                    capacity_diff=-1,
+                    timer=mock_timer,
+                ))
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
             assert not mock_set_capacity.called
             assert not mock_wait_and_terminate.called
@@ -1218,6 +1283,8 @@ class TestClusterAutoscaler(unittest.TestCase):
         ) as mock_is_safe_to_kill:
             mock_terminate_instances = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
+            mock_timer = mock.Mock()
+            mock_timer.ready = lambda: False
 
             mock_is_safe_to_kill.return_value = True
             mock_slave_to_kill = mock.Mock(
@@ -1226,12 +1293,18 @@ class TestClusterAutoscaler(unittest.TestCase):
                 pid='slave(1)@10.1.1.1:5051',
                 ip='10.1.1.1',
             )
-            self.autoscaler.wait_and_terminate(mock_slave_to_kill, 600, False, region='westeros-1')
+            _run(self.autoscaler.wait_and_terminate(
+                slave=mock_slave_to_kill, drain_timeout=600, dry_run=False, timer=mock_timer,
+                region='westeros-1', should_drain=True,
+            ))
             mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
             mock_is_safe_to_kill.assert_called_with('hostblah')
 
             mock_is_safe_to_kill.side_effect = [False, False, True]
-            self.autoscaler.wait_and_terminate(mock_slave_to_kill, 600, False, region='westeros-1')
+            _run(self.autoscaler.wait_and_terminate(
+                slave=mock_slave_to_kill, drain_timeout=600, dry_run=False, timer=mock_timer,
+                region='westeros-1', should_drain=True,
+            ))
             assert mock_is_safe_to_kill.call_count == 4
 
     def test_get_instance_ips(self):
@@ -1416,37 +1489,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_os_remove.reset_mock()
             self.autoscaler.cleanup_cancelled_config('sfr-blah-not-exist', '/nail')
             assert not mock_os_remove.called
-
-    def test_get_mesos_utilization_error(self):
-        with mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
-            autospec=True,
-        ) as mock_get_resource_utilization_by_grouping:
-            mock_mesos_state = {'slaves': [
-                {'attributes': {'pool': 'default'}},
-                {'attributes': {'pool': 'default'}},
-            ]}
-            mock_utilization = {
-                'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
-                'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0),
-            }
-            mock_get_resource_utilization_by_grouping.return_value = {('default', 'westeros-1'): mock_utilization}
-            self.autoscaler.pool_settings = {'target_utilization': 0.8}
-
-            ret = self.autoscaler.get_mesos_utilization_error(
-                slaves=mock_mesos_state['slaves'],
-                mesos_state=mock_mesos_state,
-                expected_instances=2,
-            )
-            assert ret == 0.5 - 0.8
-
-            mock_mesos_state['slaves'].pop()
-            with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
-                self.autoscaler.get_mesos_utilization_error(
-                    slaves=mock_mesos_state['slaves'],
-                    mesos_state=mock_mesos_state,
-                    expected_instances=2,
-                )
 
     def test_get_pool_slaves(self):
         self.autoscaler.resource = {'pool': 'default'}

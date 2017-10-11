@@ -295,7 +295,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 slave.pid,
             ))
             try:
-                ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
+                ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
             except ClientError as e:
                 if e.response['Error'].get('Code') == 'DryRunOperation':
                     pass
@@ -550,6 +550,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     timer=timer,
                 ),
             )
+            killed_slaves += 1
 
             for hostname, task in terminate_tasks.items():
                 if hostname in done_tasks:
@@ -561,7 +562,6 @@ class ClusterAutoscaler(ResourceLogMixin):
                 try:
                     done_tasks.add(hostname)
                     task.result()  # Raises an exception if the task raised an exception
-                    killed_slaves += 1
                 except HTTPError:
                     # Something wrong draining host so try next host
                     continue
@@ -584,8 +584,6 @@ class ClusterAutoscaler(ResourceLogMixin):
 
         # Now we wait for each task to actually finish...
         for hostname, task in terminate_tasks.items():
-            if task.cancelled() or task.done():
-                continue
             try:
                 await task
             except (HTTPError, FailSetResourceCapacity):
@@ -936,7 +934,7 @@ class PaastaAwsSlave(object):
 def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
     errors = {}
     mesos_state = get_mesos_master().state_summary()
-    for identifier, resource in autoscaling_resources:
+    for identifier, resource in autoscaling_resources.items():
         pool = resource['pool']
         region = resource['region']
         if (region, pool) in errors.keys():
@@ -1013,6 +1011,7 @@ def get_scaler(scaler_type):
 
 
 async def autoscale_cluster_resource(scaler):
+    await asyncio.sleep(0.1)
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
@@ -1086,8 +1085,7 @@ def get_mesos_utilization_error(
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
     free_percs = []
-    for pair in zip(free_pool_resources, total_pool_resources):
-        free, total = pair[0], pair[1]
+    for free, total in zip(free_pool_resources, total_pool_resources):
         if math.isclose(total, 0):
             continue
         free_percs.append(float(free) / float(total))
