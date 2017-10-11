@@ -42,6 +42,10 @@ def get_coro_with_exception(error):
     return f
 
 
+async def just_sleep(*a, **k):
+    await asyncio.sleep(0.01)
+
+
 def pid_to_ip_sideeffect(pid):
     pid_to_ip = {
         'pid1': '10.1.1.1',
@@ -888,7 +892,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
             mock_get_mesos_master.return_value = mock_master
-            mock_downscale_aws_resource.side_effect = lambda *a, **k: asyncio.sleep(0.01)
+            mock_downscale_aws_resource.side_effect = just_sleep
 
             # test no scale
             _run(self.autoscaler.scale_resource(4, 4))
@@ -933,12 +937,8 @@ class TestClusterAutoscaler(unittest.TestCase):
         ) as mock_timer:
             mock_timer_value = mock.Mock()
             mock_timer.return_value = mock_timer_value
-            calls = []
 
-            async def gracefully_terminate(self, **kwargs):
-                calls.append(kwargs)
-                await asyncio.sleep(0.01)
-            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
+            mock_gracefully_terminate_slave.side_effect = just_sleep
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
             mock_master.state_summary.return_value = mock_mesos_state
@@ -973,7 +973,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
-            calls = []
             # test we always kill one SFR instance at least to stop getting wedged
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -996,7 +995,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
-            calls = []
             # but not if it takes us to setting 0 capacity
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -1019,7 +1017,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert not mock_gracefully_terminate_slave.called
 
             mock_gracefully_terminate_slave.reset_mock()
-            calls = []
             # unless this is a cancelled SFR in which case we can go to 0
             self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled'}
             _run(self.autoscaler.downscale_aws_resource(
@@ -1030,7 +1027,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert mock_gracefully_terminate_slave.call_count == 1
 
             mock_gracefully_terminate_slave.reset_mock()
-            calls = []
             # test stop if FailSetSpotCapacity
             mock_slave_1 = mock.Mock(
                 hostname='host1',
@@ -1058,13 +1054,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 timer=mock_timer_value,
             )
 
-            def make_failing_terminate(error):
-                async def gt(self, **kwargs):
-                    calls.append(kwargs)
-                    await asyncio.sleep(0.01)
-                    raise error
-                return gt
-            mock_gracefully_terminate_slave.side_effect = make_failing_terminate(
+            mock_gracefully_terminate_slave.side_effect = get_coro_with_exception(
                 autoscaling_cluster_lib.FailSetResourceCapacity,
             )
             mock_sfr_sorted_slaves_1 = [mock_slave_2, mock_slave_1]
@@ -1083,7 +1073,7 @@ class TestClusterAutoscaler(unittest.TestCase):
 
             # test continue if HTTPError
             mock_gracefully_terminate_slave.reset_mock()
-            mock_gracefully_terminate_slave.side_effect = make_failing_terminate(HTTPError)
+            mock_gracefully_terminate_slave.side_effect = get_coro_with_exception(HTTPError)
             mock_sfr_sorted_slaves_1 = [mock_slave_2, mock_slave_1]
             mock_sfr_sorted_slaves_2 = [mock_slave_2]
             mock_sort_slaves_to_kill.side_effect = [
@@ -1102,7 +1092,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             ])
 
             # test normal scale down
-            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
+            mock_gracefully_terminate_slave.side_effect = just_sleep
             mock_gracefully_terminate_slave.reset_mock()
             mock_get_mesos_task_count_by_slave.reset_mock()
             mock_sort_slaves_to_kill.reset_mock()
@@ -1139,7 +1129,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 instance_id='i-blah123',
                 instance_weight=0.3,
             )
-            mock_gracefully_terminate_slave.side_effect = gracefully_terminate
+            mock_gracefully_terminate_slave.side_effect = just_sleep
             mock_gracefully_terminate_slave.reset_mock()
             mock_get_mesos_task_count_by_slave.reset_mock()
             mock_sort_slaves_to_kill.reset_mock()
@@ -1195,7 +1185,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             autospec=True,
         ) as mock_set_capacity:
             mock_timer = mock.Mock()
-            mock_wait_and_terminate.side_effect = lambda *a, **k: asyncio.sleep(0.01)
+            mock_wait_and_terminate.side_effect = just_sleep
             self.autoscaler.resource = {'id': 'sfr-blah', 'region': 'westeros-1', 'type': 'sfr'}
             mock_time.return_value = int(1)
             mock_start = (1 + 123) * 1000000000
@@ -1246,7 +1236,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_undrain.assert_called_with(['host1|10.1.1.1'])
 
             # test we cleanup if a set spot capacity fails
-            mock_wait_and_terminate.side_effect = lambda *a, **k: asyncio.sleep(0.01)
+            mock_wait_and_terminate.side_effect = just_sleep
             mock_wait_and_terminate.reset_mock()
             mock_set_capacity.side_effect = autoscaling_cluster_lib.FailSetResourceCapacity
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
