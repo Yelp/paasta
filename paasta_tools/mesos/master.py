@@ -121,10 +121,10 @@ class MesosMaster(object):
 
         retry = KazooRetry(max_tries=10)
         with zookeeper.client(
-                hosts=hosts,
-                read_only=True,
-                connection_retry=retry,
-                command_retry=retry,
+            hosts=hosts,
+            read_only=True,
+            connection_retry=retry,
+            command_retry=retry,
         ) as zk:
             def master_id(key):
                 return int(key.split("_")[-1])
