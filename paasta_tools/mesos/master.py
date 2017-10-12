@@ -73,8 +73,8 @@ class MesosMaster(object):
     @util.CachedProperty(ttl=5)
     def cache_host(self):
         host_url = urlparse(self.host)
-        host_url.port = 5055  # make this configurable
-        return str(host_url)
+        host_url._replace(netloc=host_url.hostname + ':5055')
+        return host_url.geturl()
 
     @log.duration
     def _request(self, url, method=requests.get, cached=False, **kwargs):
