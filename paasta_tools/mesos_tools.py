@@ -62,8 +62,9 @@ def get_mesos_config():
     return Config(get_mesos_config_path())
 
 
-def get_mesos_master():
-    return MesosMaster(get_mesos_config())
+def get_mesos_master(**overrides):
+    config = get_mesos_config()
+    return MesosMaster({**config, **overrides})
 
 
 MY_HOSTNAME = socket.getfqdn()

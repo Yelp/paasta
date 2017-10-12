@@ -544,7 +544,12 @@ def execute_paasta_serviceinit_on_remote_master(
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
-def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_info=False):
+def run_paasta_metastatus(
+    master, humanize, groupings,
+    verbose=0,
+    autoscaling_info=False,
+    cache_enabled=False,
+):
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
@@ -556,7 +561,15 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_in
         verbose_flag = '-vv'
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cmd_args = " ".join(filter(None, [verbose_flag, humanize_flag, groupings_flag, autoscaling_flag]))
+    cache_flag = "--cache-enabled" if cache_enabled else ''
+    cmd_args = " ".join(
+        filter(
+            None, [
+                verbose_flag, humanize_flag, groupings_flag,
+                autoscaling_flag, cache_flag,
+            ],
+        ),
+    )
     command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_metastatus %s' % (
         master,
         cmd_args,
@@ -568,6 +581,7 @@ def run_paasta_metastatus(master, humanize, groupings, verbose=0, autoscaling_in
 def execute_paasta_metastatus_on_remote_master(
     cluster, system_paasta_config, humanize, groupings, verbose,
     autoscaling_info=False,
+    cache_enabled=False,
 ):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
@@ -577,7 +591,9 @@ def execute_paasta_metastatus_on_remote_master(
     except NoMasterError as e:
         return (255, str(e))
 
-    return run_paasta_metastatus(master, humanize, groupings, verbose, autoscaling_info)
+    return run_paasta_metastatus(
+        master, humanize, groupings, verbose, autoscaling_info, cache_enabled,
+    )
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):

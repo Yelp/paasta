@@ -20,6 +20,7 @@ import logging
 import os
 import re
 from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 import requests
 import requests.exceptions
@@ -64,23 +65,44 @@ class MesosMaster(object):
 
     @util.CachedProperty(ttl=5)
     def host(self):
-        return "{}://{}".format(self.config["scheme"], self.resolve(self.config["master"]))
+        return "{}://{}".format(
+            self.config["scheme"],
+            self.resolve(self.config["master"]),
+        )
+
+    @util.CachedProperty(ttl=5)
+    def cache_host(self):
+        host_url = urlparse(self.host)
+        host_url.port = 5055  # make this configurable
+        return str(host_url)
 
     @log.duration
-    def _request(self, url, method=requests.get, **kwargs):
+    def _request(self, url, method=requests.get, cached=False, **kwargs):
         headers = {'User-Agent': get_user_agent()}
+
+        if cached and self.config.fetch("cache_enabled", False):
+            # TODO: fall back to original host if this fails?
+            host = self.cache_host
+        else:
+            host = self.host
+
         try:
             return method(
-                urljoin(self.host, url),
+                urljoin(host, url),
                 timeout=self.config["response_timeout"],
                 headers=headers,
                 **kwargs,
             )
         except requests.exceptions.ConnectionError:
-            raise exceptions.MasterNotAvailableException(MISSING_MASTER.format(self.host))
+            raise exceptions.MasterNotAvailableException(
+                MISSING_MASTER.format(self.host),
+            )
         except requests.exceptions.TooManyRedirects:
             raise exceptions.MasterTemporarilyNotAvailableException(
-                "Unable to connect to master at %s, likely due to an ongoing leader election" % self.host,
+                (
+                    "Unable to connect to master at %s, likely due to "
+                    "an ongoing leader election"
+                ) % self.host,
             )
 
     def fetch(self, url, **kwargs):
@@ -98,7 +120,12 @@ class MesosMaster(object):
         path = "/" + path
 
         retry = KazooRetry(max_tries=10)
-        with zookeeper.client(hosts=hosts, read_only=True, connection_retry=retry, command_retry=retry) as zk:
+        with zookeeper.client(
+                hosts=hosts,
+                read_only=True,
+                connection_retry=retry,
+                command_retry=retry,
+        ) as zk:
             def master_id(key):
                 return int(key.split("_")[-1])
 
@@ -109,11 +136,15 @@ class MesosMaster(object):
             leader = sorted(get_masters(), key=lambda x: master_id(x))
 
             if len(leader) == 0:
-                raise exceptions.MasterNotAvailableException("cannot find any masters at {}".format(cfg,))
+                raise exceptions.MasterNotAvailableException(
+                    "cannot find any masters at {}".format(cfg,),
+                )
             data, stat = zk.get(os.path.join(path, leader[0]))
 
             if not data:
-                exceptions.MasterNotAvailableException("Cannot retrieve valid MasterInfo data from ZooKeeper")
+                exceptions.MasterNotAvailableException(
+                    "Cannot retrieve valid MasterInfo data from ZooKeeper",
+                )
             else:
                 data = data.decode('utf8')
 
@@ -125,9 +156,13 @@ class MesosMaster(object):
                     if ip and port:
                         return "{ip}:{port}".format(ip=ip, port=port)
             except ValueError as parse_error:
-                log.debug("[WARN] No JSON content, probably connecting to older Mesos version. "
-                          "Reason: {}".format(parse_error))
-                raise exceptions.MasterNotAvailableException("Failed to parse mesos master ip from ZK")
+                log.debug(
+                    "[WARN] No JSON content, probably connecting to older "
+                    "Mesos version. Reason: {}".format(parse_error),
+                )
+                raise exceptions.MasterNotAvailableException(
+                    "Failed to parse mesos master ip from ZK",
+                )
 
     @log.duration
     def resolve(self, cfg):
@@ -148,7 +183,7 @@ class MesosMaster(object):
 
     @util.CachedProperty(ttl=15)
     def state(self):
-        return self.fetch("/master/state.json").json()
+        return self.fetch("/master/state.json", cached=True).json()
 
     def state_summary(self):
         return self.fetch("/master/state-summary").json()
@@ -193,7 +228,9 @@ class MesosMaster(object):
         lst = self.tasks(fltr)
 
         if len(lst) == 0:
-            raise exceptions.TaskNotFoundException("Cannot find a task with filter %s" % fltr)
+            raise exceptions.TaskNotFoundException(
+                "Cannot find a task with filter %s" % fltr,
+            )
 
         elif len(lst) > 1:
             raise exceptions.MultipleTasksForIDError(
@@ -229,13 +266,16 @@ class MesosMaster(object):
 
     @util.CachedProperty(ttl=15)
     def _frameworks(self):
-        return self.fetch("/master/frameworks").json()
+        return self.fetch("/master/frameworks", cached=True).json()
 
     def frameworks(self, active_only=False):
-        return [framework.Framework(f) for f in self._framework_list(active_only)]
+        return [framework.Framework(f)
+                for f in self._framework_list(active_only)]
 
     def teardown(self, framework_id):
-        return self.post("/master/teardown", data="frameworkId=%s" % framework_id)
+        return self.post(
+            "/master/teardown", data="frameworkId=%s" % framework_id,
+        )
 
     def metrics_snapshot(self):
         return self.fetch("/metrics/snapshot").json()
