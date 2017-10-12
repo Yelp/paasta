@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os
+from collections import defaultdict
 from collections import namedtuple
 from math import ceil
 
@@ -950,6 +951,21 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
         return len(tasks) >= expected_tasks
 
 
+def get_app_queue(client, app_id):
+    """Returns the app queue of an application if it exists in Marathon's launch queue
+
+    :param client: The marathon client
+    :param app_id: The Marathon app id (without the leading /)
+    :returns: The app queue from marathon
+    """
+    app_id = "/%s" % app_id
+    app_queue = client.list_queue(embed_last_unused_offers=True)
+    for app_queue_item in app_queue:
+        if app_queue_item.app.id == app_id:
+            return app_queue_item
+    return None
+
+
 def get_app_queue_status(client, app_id):
     """Returns the status of an application if it exists in Marathon's launch queue
 
@@ -959,13 +975,42 @@ def get_app_queue_status(client, app_id):
               if the app cannot be found. If is_overdue is True, then Marathon has
               not received a resource offer that satisfies the requirements for the app
     """
-    app_id = "/%s" % app_id
-    app_queue = client.list_queue()
-    for app_queue_item in app_queue:
-        if app_queue_item.app.id == app_id:
-            return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
+    app_queue = get_app_queue(client, app_id)
+    return get_app_queue_status_from_queue(app_queue)
+
+
+def get_app_queue_status_from_queue(app_queue_item):
+    if app_queue_item is None:
+        return (None, None)
+    return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
     return (None, None)
+
+
+def get_app_queue_last_unused_offers(app_queue_item):
+    """Returns the unused offers for an app
+
+    :param app_queue_item: app_queue_item returned by get_app_queue
+    :returns: A list of offers recieved from mesos, including the reasons they were rejected
+    """
+    if app_queue_item is None:
+        return []
+    return app_queue_item.lastUnusedOffers
+    return []
+
+
+def summarize_unused_offers(app_queue):
+    """Returns a summary of the reasons marathon rejected offers from mesos
+
+    :param unused_offers: A list of unused offers as returned by get_app_queue_last_unused_offers
+    :returns: A dict of rejection_reason: count
+    """
+    unused_offers = get_app_queue_last_unused_offers(app_queue)
+    reasons = defaultdict(lambda: 0)
+    for offer in unused_offers:
+        for reason in offer.reason:
+            reasons[reason] += 1
+    return reasons
 
 
 def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):
