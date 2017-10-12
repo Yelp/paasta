@@ -363,7 +363,9 @@ def test_execute_paasta_metastatus_on_remote_master(
     )
     mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
-    mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False, [], 0, False)
+    mock_run_paasta_metastatus.assert_called_once_with(
+        'fake_connectable_master', False, [], 0, False, False,
+    )
     assert return_code == mock.sentinel.paasta_metastatus_return_code
     assert actual == mock.sentinel.paasta_metastatus_output
 
