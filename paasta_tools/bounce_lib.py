@@ -20,8 +20,10 @@ import os
 import time
 from contextlib import contextmanager
 from typing import Callable
+from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Mapping
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
@@ -33,6 +35,7 @@ from requests.exceptions import ConnectionError
 from requests.exceptions import RequestException
 
 from paasta_tools import marathon_tools
+from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
@@ -57,15 +60,13 @@ BounceMethodResult = TypedDict(
     },
 )
 
-NewConfig = TypedDict('NewConfig', {"instances": int})
-
 BounceMethod = Callable[
     [
-        Arg(NewConfig, 'new_config'),
+        Arg(BounceMethodConfigDict, 'new_config'),
         Arg(bool, 'new_app_running'),
-        Arg(List, 'happy_new_tasks'),
-        Arg(Dict[str, List], 'old_app_live_happy_tasks'),
-        Arg(Dict[str, List], 'old_app_live_unhappy_tasks'),
+        Arg(Collection, 'happy_new_tasks'),
+        Arg(Mapping[str, Collection], 'old_app_live_happy_tasks'),
+        Arg(Mapping[str, Collection], 'old_app_live_unhappy_tasks'),
         DefaultArg(float, 'margin_factor'),
     ],
     BounceMethodResult
@@ -269,11 +270,11 @@ def flatten_tasks(tasks_by_app_id):
 
 @register_bounce_method('brutal')
 def brutal_bounce(
-    new_config: NewConfig,
+    new_config: BounceMethodConfigDict,
     new_app_running: bool,
-    happy_new_tasks: List,
-    old_app_live_happy_tasks: Dict[str, List],
-    old_app_live_unhappy_tasks: Dict[str, List],
+    happy_new_tasks: Collection,
+    old_app_live_happy_tasks: Mapping[str, Collection],
+    old_app_live_unhappy_tasks: Mapping[str, Collection],
     margin_factor=1.0,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
@@ -300,11 +301,11 @@ def brutal_bounce(
 
 @register_bounce_method('upthendown')
 def upthendown_bounce(
-    new_config: NewConfig,
+    new_config: BounceMethodConfigDict,
     new_app_running: bool,
-    happy_new_tasks: List,
-    old_app_live_happy_tasks: Dict[str, List],
-    old_app_live_unhappy_tasks: Dict[str, List],
+    happy_new_tasks: Collection,
+    old_app_live_happy_tasks: Mapping[str, Collection],
+    old_app_live_unhappy_tasks: Mapping[str, Collection],
     margin_factor=1.0,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
@@ -326,11 +327,11 @@ def upthendown_bounce(
 
 @register_bounce_method('crossover')
 def crossover_bounce(
-    new_config: NewConfig,
+    new_config: BounceMethodConfigDict,
     new_app_running: bool,
-    happy_new_tasks: List,
-    old_app_live_happy_tasks: Dict[str, List],
-    old_app_live_unhappy_tasks: Dict[str, List],
+    happy_new_tasks: Collection,
+    old_app_live_happy_tasks: Mapping[str, Collection],
+    old_app_live_unhappy_tasks: Mapping[str, Collection],
     margin_factor=1.0,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
@@ -363,11 +364,11 @@ def crossover_bounce(
 
 @register_bounce_method('downthenup')
 def downthenup_bounce(
-    new_config: NewConfig,
+    new_config: BounceMethodConfigDict,
     new_app_running: bool,
-    happy_new_tasks: List,
-    old_app_live_happy_tasks: Dict[str, List],
-    old_app_live_unhappy_tasks: Dict[str, List],
+    happy_new_tasks: Collection,
+    old_app_live_happy_tasks: Mapping[str, Collection],
+    old_app_live_unhappy_tasks: Mapping[str, Collection],
     margin_factor=1.0,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
@@ -383,11 +384,11 @@ def downthenup_bounce(
 
 @register_bounce_method('down')
 def down_bounce(
-    new_config: NewConfig,
+    new_config: BounceMethodConfigDict,
     new_app_running: bool,
-    happy_new_tasks: List,
-    old_app_live_happy_tasks: Dict[str, List],
-    old_app_live_unhappy_tasks: Dict[str, List],
+    happy_new_tasks: Collection,
+    old_app_live_happy_tasks: Mapping[str, Collection],
+    old_app_live_unhappy_tasks: Mapping[str, Collection],
     margin_factor=1.0,
 ):
     """

@@ -106,7 +106,6 @@ class PaastaDeployWorker(PaastaThread):
             instance=service_instance.instance,
             client=self.marathon_client,
             soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-            marathon_config=self.marathon_config,
             marathon_apps=marathon_apps,
         )
 

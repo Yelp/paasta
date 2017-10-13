@@ -7,6 +7,7 @@ from typing import Tuple
 
 import service_configuration_lib
 from kazoo.exceptions import NoNodeError
+from mypy_extensions import TypedDict
 
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
@@ -45,6 +46,10 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_priority: int
 
 
+# Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
+BounceMethodConfigDict = TypedDict('BounceMethodConfigDict', {"instances": int})
+
+
 class ServiceNamespaceConfig(dict):
 
     def get_mode(self) -> str:
@@ -65,13 +70,13 @@ class ServiceNamespaceConfig(dict):
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
 
-    def get_healthcheck_uri(self):
+    def get_healthcheck_uri(self) -> str:
         return self.get('healthcheck_uri', '/status')
 
-    def get_discover(self):
+    def get_discover(self) -> str:
         return self.get('discover', 'region')
 
-    def is_in_smartstack(self):
+    def is_in_smartstack(self) -> bool:
         if self.get('proxy_port') is not None:
             return True
         else:
@@ -83,7 +88,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def __init__(
         self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
-        branch_dict: BranchDict, soa_dir=DEFAULT_SOA_DIR,
+        branch_dict: BranchDict, soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         super(LongRunningServiceConfig, self).__init__(
             cluster=cluster,
@@ -139,7 +144,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
         return registrations or [compose_job_id(self.service, self.instance)]
 
-    def get_healthcheck_uri(self, service_namespace_config) -> str:
+    def get_healthcheck_uri(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
     def get_healthcheck_cmd(self) -> str:
@@ -162,7 +167,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_healthcheck_max_consecutive_failures(self) -> int:
         return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
-    def get_healthcheck_mode(self, service_namespace_config) -> str:
+    def get_healthcheck_mode(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
