@@ -168,10 +168,13 @@ def load_marathon_config() -> "MarathonConfig":
     return MarathonConfig(load_system_paasta_config().get_marathon_config())
 
 
-def get_marathon_servers() -> MarathonServers:
-    system_config = load_system_paasta_config()
-    current = [MarathonConfig(x) for x in system_config.get_marathon_servers()]
-    previous = [MarathonConfig(x) for x in system_config.get_previous_marathon_servers()]
+def get_marathon_servers(system_paasta_config: SystemPaastaConfig) -> MarathonServers:
+    """
+    :param system_paasta_config: A SystemPaastaConfig object representing the system
+                                 configuration.
+    """
+    current = [MarathonConfig(x) for x in system_paasta_config.get_marathon_servers()]
+    previous = [MarathonConfig(x) for x in system_paasta_config.get_previous_marathon_servers()]
     return MarathonServers(current=current, previous=previous)
 
 
@@ -278,6 +281,18 @@ class MarathonConfig(dict):
 
     def __init__(self, config: MarathonConfigDict) -> None:
         super(MarathonConfig, self).__init__(config)
+
+    @property
+    def url(self) -> List[str]:
+        return self.get_url()
+
+    @property
+    def user(self) -> str:
+        return self.get_username()
+
+    @property
+    def passwd(self) -> str:
+        return self.get_password()
 
     def get_url(self) -> List[str]:
         """Get the Marathon API url

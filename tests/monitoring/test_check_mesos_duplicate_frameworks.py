@@ -19,20 +19,27 @@ from paasta_tools.monitoring.check_mesos_duplicate_frameworks import check_mesos
 
 def test_check_mesos_no_duplicate_frameworks_ok(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
-    ) as mock_parse_args, mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
+        autospec=True,
+        return_value=['id_marathon'],
+    ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
-        mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
-        mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
+                {'name': 'marathon', 'id': 'id_marathon'},
+                {'name': 'chronos', 'id': 'id_chronos'},
+                {'name': 'foobar', 'id': 'id_foobar_1'},
+                {'name': 'foobar', 'id': 'id_foobar_2'},
             ],
         }
         mock_get_mesos_master.return_value = mock_master
@@ -49,21 +56,28 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
 
 def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
-    ) as mock_parse_args, mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
+        autospec=True,
+        return_value=['id_marathon_1'],
+    ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
-        mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
-        mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = {
             'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'marathon'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
+                {'name': 'marathon', 'id': 'id_marathon_1'},
+                {'name': 'marathon', 'id': 'id_marathon_2'},
+                {'name': 'chronos', 'id': 'id_chronos'},
+                {'name': 'foobar', 'id': 'id_foobar_1'},
+                {'name': 'foobar', 'id': 'id_foobar_2'},
             ],
         }
         mock_get_mesos_master.return_value = mock_master

@@ -279,8 +279,6 @@ def paasta_mark_for_deployment(args):
             ret = 1
         except NoSuchCluster:
             report_waiting_aborted(service, args.deploy_group)
-        except NoInstancesFound:
-            return 1
     if old_git_sha is not None and old_git_sha != args.commit and not args.auto_rollback:
         paasta_print()
         paasta_print("If you wish to roll back, you can run:")
@@ -545,12 +543,14 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         _log(
             service=service,
             component='deploy',
-            line=("Couldn't find any instances for service {} in deploy "
-                  "group {}".format(service, deploy_group)),
+            line=("Couldn't find any marathon instances for service {} in deploy group {}. Exiting.".format(
+                service,
+                deploy_group,
+            )),
             level='event',
         )
-        raise NoInstancesFound
-    paasta_print("Waiting for deployment of {} for '{}' complete..."
+        return
+    paasta_print("Waiting for deployment of {} for '{}' to complete..."
                  .format(git_sha, deploy_group))
 
     total_instances = 0
@@ -647,10 +647,6 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
                 status_commands='\n  '.join(paasta_status),
                 logs_commands='\n  '.join(paasta_logs),
             ))
-
-
-class NoInstancesFound(Exception):
-    pass
 
 
 class NoSuchCluster(Exception):

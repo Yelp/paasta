@@ -308,15 +308,17 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
-def test_paasta_wait_for_deployment_return_1_when_no_instances_in_deploy_group(
+def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock_list_deploy_groups,
     mock_validate_service_name,
+    mock_validate_git_sha,
     mock_get_cluster_instance_map_for_service,
 ):
     mock_list_deploy_groups.return_value = {'test_deploy_group'}
     mock_get_cluster_instance_map_for_service.return_value = {}
-    assert paasta_wait_for_deployment(fake_args) == 1
+    assert paasta_wait_for_deployment(fake_args) == 0
     assert mock_validate_service_name.called
 
 
