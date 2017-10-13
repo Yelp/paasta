@@ -59,6 +59,11 @@ def setup_system_paasta_config():
                 'user': None,
                 'password': None,
             },
+            'marathon_servers': [{
+                'url': marathon_connection_string,
+                'user': None,
+                'password': None,
+            }],
             'chronos_config': {
                 'user': None,
                 'password': None,
@@ -167,7 +172,13 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
 
-    write_etc_paasta(context, {'marathon_config': context.marathon_config}, 'marathon.json')
+    write_etc_paasta(
+        context, {
+            'marathon_config': context.marathon_config,
+            'marathon_servers': context.system_paasta_config.get_marathon_servers(),
+        },
+        'marathon.json',
+    )
     write_etc_paasta(context, {'chronos_config': context.chronos_config}, 'chronos.json')
     write_etc_paasta(
         context, {
