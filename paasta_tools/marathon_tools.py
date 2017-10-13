@@ -995,7 +995,7 @@ def get_app_queue_last_unused_offers(app_queue_item):
     """
     if app_queue_item is None:
         return []
-    return app_queue_item.lastUnusedOffers
+    return app_queue_item.last_unused_offers
     return []
 
 
@@ -1008,7 +1008,7 @@ def summarize_unused_offers(app_queue):
     unused_offers = get_app_queue_last_unused_offers(app_queue)
     reasons = defaultdict(lambda: 0)
     for offer in unused_offers:
-        for reason in offer.reason:
+        for reason in offer['reason']:
             reasons[reason] += 1
     return reasons
 

@@ -145,11 +145,10 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
 
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
     status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
-    unused_offers_summary = None
+    app_queue = marathon_tools.get_app_queue(client, app_id)
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
     if status == marathon_tools.MarathonDeployStatus.Delayed:
-        app_queue = marathon_tools.get_app_queue(client, app_id)
         _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
-        unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
         deploy_status_human = marathon_app_deploy_status_human(status, backoff_seconds)
     else:
         deploy_status_human = marathon_app_deploy_status_human(status)
