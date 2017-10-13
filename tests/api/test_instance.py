@@ -250,6 +250,37 @@ def test_instance_task(mock_get_task, mock_instance_status, mock_add_slave_info,
         ret = instance.instance_task(mock_request)
 
 
+@mock.patch('paasta_tools.api.views.instance.marathon_tools.get_app_queue', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.marathon_tools.load_marathon_service_config', autospec=True)
+def test_instance_delay(mock_load_config, mock_get_app_queue):
+    mock_unused_offers = mock.Mock()
+    mock_unused_offers.last_unused_offers = [
+        {
+            'reason': ['foo', 'bar'],
+        },
+        {
+            'reason': ['bar', 'baz'],
+        },
+        {
+            'reason': [],
+        },
+    ]
+    mock_get_app_queue.return_value = mock_unused_offers
+
+    mock_config = mock.Mock()
+    mock_config.format_marathon_app_dict = lambda: {'id': 'foo'}
+    mock_load_config.return_value = mock_config
+
+    request = testing.DummyRequest()
+    request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
+
+    response = instance.instance_delay(request)
+    print(response)
+    assert response['foo'] == 1
+    assert response['bar'] == 2
+    assert response['baz'] == 1
+
+
 def test_add_executor_info():
     mock_mesos_task = mock.Mock()
     mock_executor = {

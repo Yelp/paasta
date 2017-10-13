@@ -984,8 +984,6 @@ def get_app_queue_status_from_queue(app_queue_item):
         return (None, None)
     return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
-    return (None, None)
-
 
 def get_app_queue_last_unused_offers(app_queue_item):
     """Returns the unused offers for an app
@@ -996,7 +994,6 @@ def get_app_queue_last_unused_offers(app_queue_item):
     if app_queue_item is None:
         return []
     return app_queue_item.last_unused_offers
-    return []
 
 
 def summarize_unused_offers(app_queue):
