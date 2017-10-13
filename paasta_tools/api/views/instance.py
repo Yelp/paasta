@@ -220,6 +220,21 @@ def instance_tasks(request):
     return [task._Task__items for task in tasks]
 
 
+@view_config(route_name="service.instance.delay", request_method='GET', renderer='json')
+def instance_delay(request):
+    service = request.swagger_data.get('service')
+    instance = request.swagger_data.get('instance')
+    client = settings.marathon_client
+    job_config = marathon_tools.load_marathon_service_config(
+        service, instance, settings.cluster, soa_dir=settings.soa_dir,
+    )
+    app_id = job_config.format_marathon_app_dict()['id']
+    app_queue = marathon_tools.get_app_queue(client, app_id)
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
+
+    return unused_offers_summary
+
+
 def add_executor_info(task):
     task._Task__items['executor'] = task.executor.copy()
     task._Task__items['executor'].pop('tasks', None)
