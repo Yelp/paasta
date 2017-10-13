@@ -37,7 +37,7 @@ from paasta_tools.deployd.watchers import AutoscalerWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigFileWatcher  # noqa
 from paasta_tools.deployd.watchers import PublicConfigEventHandler  # noqa
 from paasta_tools.deployd.watchers import get_service_instances_needing_update  # noqa
-from paasta_tools.deployd.watchers import get_marathon_client_from_config  # noqa
+from paasta_tools.deployd.watchers import get_marathon_clients_from_config  # noqa
 from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 
 
@@ -287,7 +287,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
         self.mock_marathon_client = mock.Mock()
         mock_config = mock.Mock(get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20))
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
+            'paasta_tools.deployd.watchers.get_marathon_clients_from_config', autospec=True,
         ):
             self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod", config=mock_config)
 
@@ -347,7 +347,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.get_all_marathon_apps', autospec=True,
+            'paasta_tools.deployd.watchers.get_marathon_apps_with_clients', autospec=True,
         ) as mock_get_marathon_apps, mock.patch(
             'time.time', autospec=True, return_value=1,
         ):
@@ -371,7 +371,8 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     app_id='/universe.c139.configsha.gitsha',
                 )]),
             ]
-            mock_get_marathon_apps.return_value = mock_marathon_apps
+            mock_client = mock.Mock()
+            mock_get_marathon_apps.return_value = [(app, mock_client) for app in mock_marathon_apps]
             ret = self.watcher.get_at_risk_service_instances(['host1'])
             expected = [
                 BaseServiceInstance(
@@ -404,7 +405,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.watchers.load_system_paasta_config', autospec=True, return_value=self.mock_config,
         ), mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
+            'paasta_tools.deployd.watchers.get_marathon_clients_from_config', autospec=True,
         ):
             self.handler.my_init(self.mock_filewatcher)
 
@@ -486,7 +487,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         self.handler = YelpSoaEventHandler()
         self.mock_filewatcher = mock.Mock()
         with mock.patch(
-            'paasta_tools.deployd.watchers.get_marathon_client_from_config', autospec=True,
+            'paasta_tools.deployd.watchers.get_marathon_clients_from_config', autospec=True,
         ):
             self.handler.my_init(self.mock_filewatcher)
 
@@ -569,7 +570,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 cache=False,
             )
             mock_get_service_instances_needing_update.assert_called_with(
-                self.handler.marathon_client,
+                self.handler.marathon_clients,
                 [
                     ('universe', 'c137'),
                     ('universe', 'c138'),

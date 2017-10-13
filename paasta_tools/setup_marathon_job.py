@@ -775,11 +775,7 @@ def main() -> None:
 
     clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers())
     unique_clients = clients.get_all_clients()
-
-    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
-    for client in unique_clients:
-        for app in marathon_tools.get_all_marathon_apps(client, embed_tasks=True):
-            marathon_apps_with_clients.append((app, client))
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(unique_clients, embed_tasks=True)
 
     num_failed_deployments = 0
     for service_instance in args.service_instance_list:

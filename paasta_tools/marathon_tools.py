@@ -1282,6 +1282,17 @@ def get_all_marathon_apps(client: MarathonClient, embed_tasks: bool=False) -> Li
     return client.list_apps(embed_tasks=embed_tasks)
 
 
+def get_marathon_apps_with_clients(
+    clients: Collection[MarathonClient],
+    embed_tasks: bool=False,
+) -> List[Tuple[MarathonApp, MarathonClient]]:
+    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
+    for client in clients:
+        for app in get_all_marathon_apps(client, embed_tasks=embed_tasks):
+            marathon_apps_with_clients.append((app, client))
+    return marathon_apps_with_clients
+
+
 def kill_task(client: MarathonClient, app_id: str, task_id: str, scale: bool) -> Optional[MarathonTask]:
     """Wrapper to the official kill_task method that is tolerant of errors"""
     try:

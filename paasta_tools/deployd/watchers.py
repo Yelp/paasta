@@ -9,7 +9,7 @@ from kazoo.recipe.watchers import ChildrenWatch
 from kazoo.recipe.watchers import DataWatch
 from requests.exceptions import RequestException
 
-from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
@@ -17,7 +17,7 @@ from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import deformat_job_id
-from paasta_tools.marathon_tools import get_all_marathon_apps
+from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
@@ -149,7 +149,7 @@ class MaintenanceWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super(MaintenanceWatcher, self).__init__(inbox_q, cluster, config)
         self.draining = set()
-        self.marathon_client = get_marathon_client_from_config()
+        self.marathon_clients = get_marathon_clients_from_config()
 
     def get_new_draining_hosts(self):
         try:
@@ -178,8 +178,12 @@ class MaintenanceWatcher(PaastaWatcher):
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts):
-        marathon_apps = get_all_marathon_apps(self.marathon_client, embed_tasks=True)
-        at_risk_tasks = [task for app in marathon_apps for task in app.tasks if task.host in draining_hosts]
+        marathon_apps_with_clients = get_marathon_apps_with_clients(self.marathon_clients, embed_tasks=True)
+        at_risk_tasks = []
+        for app, client in marathon_apps_with_clients:
+            for task in app.tasks:
+                if task.host in draining_hosts:
+                    at_risk_tasks.append(task)
         self.log.info("At risk tasks: {}".format(at_risk_tasks))
         service_instances = []
         for task in at_risk_tasks:
@@ -206,7 +210,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
         self.public_config = load_system_paasta_config()
-        self.marathon_client = get_marathon_client_from_config()
+        self.marathon_clients = get_marathon_clients_from_config()
 
     @property
     def log(self):
@@ -242,7 +246,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     soa_dir=DEFAULT_SOA_DIR,
                 )
                 service_instances = get_service_instances_needing_update(
-                    self.marathon_client,
+                    self.marathon_clients,
                     all_service_instances,
                     self.public_config.get_cluster(),
                 )
@@ -265,7 +269,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
 
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
-        self.marathon_client = get_marathon_client_from_config()
+        self.marathon_clients = get_marathon_clients_from_config()
 
     @property
     def log(self):
@@ -308,7 +312,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         self.log.debug(instances)
         service_instances = [(service_name, instance) for instance in instances]
         service_instances = get_service_instances_needing_update(
-            self.marathon_client,
+            self.marathon_clients,
             service_instances,
             self.filewatcher.cluster,
         )
