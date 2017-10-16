@@ -137,6 +137,46 @@
         ]
       }
     },
+    "/services/{service}/{instance}/delay": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "The service is delayed for these possible reasons",
+            "schema": {
+                "$ref":"#/definitions/InstanceDelay"
+            }
+          },
+          "204": {
+            "description": "Could not find any reasons for a delay"
+          },
+          "404": {
+            "description": "Deployment key not found"
+          },
+          "500": {
+            "description": "Instance failure"
+          }
+        },
+        "summary": "Get the possible reasons for a deployment delay for a marathon service.instance",
+        "operationId": "delay_instance",
+        "tags": ["service"],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    },
     "/services/{service}/{instance}/tasks": {
       "get": {
         "responses": {
@@ -369,6 +409,9 @@
           "description": "Chronos specifid instance status"
         }
       }
+    },
+    "InstanceDelay": {
+      "type": "object"
     },
     "InstanceStatusMarathon": {
       "type": "object",

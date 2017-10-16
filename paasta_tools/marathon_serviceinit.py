@@ -96,9 +96,14 @@ def status_desired_state(service, instance, client, job_config):
 
 def status_marathon_job_human(
     service, instance, deploy_status, app_id,
-    running_instances, normal_instance_count,
+    running_instances, normal_instance_count, unused_offers_summary=None,
 ):
     name = PaastaColors.cyan(compose_job_id(service, instance))
+    if unused_offers_summary is not None and len(unused_offers_summary) > 0:
+        stalled_str = "\n    ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()])
+        stall_reason = "\n  Possibly stalled for:\n    %s" % stalled_str
+    else:
+        stall_reason = ""
     if deploy_status != 'NotRunning':
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
@@ -109,11 +114,13 @@ def status_marathon_job_human(
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s" % (status, instance_count, deploy_status)
+        return "Marathon:   %s - up with %s instances. Status: %s%s" % (
+            status, instance_count, deploy_status, stall_reason,
+        )
     else:
         status = PaastaColors.yellow("Warning")
-        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)" % (
-            status, name, app_id,
+        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)%s" % (
+            status, name, app_id, stall_reason,
         )
 
 
@@ -140,8 +147,10 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
 
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
     status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
+    app_queue = marathon_tools.get_app_queue(client, app_id)
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
     if status == marathon_tools.MarathonDeployStatus.Delayed:
-        _, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
+        _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
         deploy_status_human = marathon_app_deploy_status_human(status, backoff_seconds)
     else:
         deploy_status_human = marathon_app_deploy_status_human(status)
@@ -152,7 +161,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         running_instances = client.get_app(app_id).tasks_running
     return status_marathon_job_human(
         service, instance, deploy_status_human, app_id,
-        running_instances, normal_instance_count,
+        running_instances, normal_instance_count, unused_offers_summary,
     )
 
 

@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os
+from collections import defaultdict
 from collections import namedtuple
 from math import ceil
 from typing import Any
@@ -42,6 +43,7 @@ from marathon import MarathonHttpError
 from marathon import NotFoundError
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
+from marathon.models.queue import MarathonQueueItem
 from mypy_extensions import TypedDict
 
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
@@ -869,18 +871,18 @@ def get_marathon_clients(marathon_servers: MarathonServers, cached: bool=False) 
     current_clients = []
     for current_server in current_servers:
         current_clients.append(get_marathon_client(
-            url=current_server.url,
-            user=current_server.user,
-            passwd=current_server.passwd,
+            url=current_server.get_url(),
+            user=current_server.get_username(),
+            passwd=current_server.get_password(),
             cached=cached,
         ))
     previous_servers = marathon_servers.previous
     previous_clients = []
     for previous_server in previous_servers:
         previous_clients.append(get_marathon_client(
-            url=previous_server.url,
-            user=previous_server.user,
-            passwd=previous_server.passwd,
+            url=previous_server.get_url(),
+            user=previous_server.get_username(),
+            passwd=previous_server.get_password(),
             cached=cached,
         ))
     return MarathonClients(current=current_clients, previous=previous_clients)
@@ -1206,6 +1208,21 @@ def app_has_tasks(
         return len(tasks) >= expected_tasks
 
 
+def get_app_queue(client: MarathonClient, app_id: str) -> Optional[MarathonQueueItem]:
+    """Returns the app queue of an application if it exists in Marathon's launch queue
+
+    :param client: The marathon client
+    :param app_id: The Marathon app id (without the leading /)
+    :returns: The app queue from marathon
+    """
+    app_id = "/%s" % app_id
+    app_queue = client.list_queue(embed_last_unused_offers=True)
+    for app_queue_item in app_queue:
+        if app_queue_item.app.id == app_id:
+            return app_queue_item
+    return None
+
+
 def get_app_queue_status(client: MarathonClient, app_id: str) -> Tuple[Optional[bool], Optional[float]]:
     """Returns the status of an application if it exists in Marathon's launch queue
 
@@ -1215,13 +1232,41 @@ def get_app_queue_status(client: MarathonClient, app_id: str) -> Tuple[Optional[
               if the app cannot be found. If is_overdue is True, then Marathon has
               not received a resource offer that satisfies the requirements for the app
     """
-    app_id = "/%s" % app_id
-    app_queue = client.list_queue()
-    for app_queue_item in app_queue:
-        if app_queue_item.app.id == app_id:
-            return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
+    app_queue = get_app_queue(client, app_id)
+    return get_app_queue_status_from_queue(app_queue)
 
-    return (None, None)
+
+def get_app_queue_status_from_queue(
+    app_queue_item: Optional[MarathonQueueItem],
+) -> Tuple[Optional[bool], Optional[float]]:
+    if app_queue_item is None:
+        return (None, None)
+    return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
+
+
+def get_app_queue_last_unused_offers(app_queue_item: Optional[MarathonQueueItem]) -> List[Dict]:
+    """Returns the unused offers for an app
+
+    :param app_queue_item: app_queue_item returned by get_app_queue
+    :returns: A list of offers recieved from mesos, including the reasons they were rejected
+    """
+    if app_queue_item is None:
+        return []
+    return app_queue_item.last_unused_offers
+
+
+def summarize_unused_offers(app_queue: List[Dict]) -> Dict[str, int]:
+    """Returns a summary of the reasons marathon rejected offers from mesos
+
+    :param app_queue: An app queue item as returned from get_app_queue
+    :returns: A dict of rejection_reason: count
+    """
+    unused_offers = get_app_queue_last_unused_offers(app_queue)
+    reasons: Dict[str, int] = defaultdict(lambda: 0)
+    for offer in unused_offers:
+        for reason in offer['reason']:
+            reasons[reason] += 1
+    return reasons
 
 
 def create_complete_config(service: str, instance: str, soa_dir: str=DEFAULT_SOA_DIR) -> FormattedMarathonAppDict:
