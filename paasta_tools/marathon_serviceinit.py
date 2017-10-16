@@ -99,7 +99,7 @@ def status_marathon_job_human(
     running_instances, normal_instance_count, unused_offers_summary=None,
 ):
     name = PaastaColors.cyan(compose_job_id(service, instance))
-    if unused_offers_summary is not None:
+    if unused_offers_summary is not None and len(unused_offers_summary) > 0:
         stalled_str = "\n    ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()])
         stall_reason = "\n  Possibly stalled for:\n    %s" % stalled_str
     else:
