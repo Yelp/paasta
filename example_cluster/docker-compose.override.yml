@@ -42,8 +42,12 @@ services:
   marathon:
     ports:
       - '8080:8080'
-    depends_on:
-      - zookeeper
+  marathon1:
+    ports:
+      - '8080:8080'
+  marathon2:
+    ports:
+      - '8080:8080'
   itest_trusty:
     build: ../yelp_package/dockerfiles/trusty/
   playground:
@@ -66,6 +70,8 @@ services:
       - git
       - mesosslave
       - marathon
+      - marathon1
+      - marathon2
       - dynamodb
       - paasta_api
   chronos:
