@@ -253,7 +253,10 @@ class ClusterAutoscaler(ResourceLogMixin):
         :param drain_timeout: how long to wait before terminating
             even if not drained
         :param region to connect to ec2
-        :param dry_run: Don't drain or make changes to spot fleet if True"""
+        :param dry_run: Don't drain or make changes to spot fleet if True
+        :param should_drain: whether we should drain hosts before waiting to stop them
+        :param timer: a Timer object to keep terminates happening once every n seconds accross co-routines
+        """
         ec2_client = boto3.client('ec2', region_name=region)
         self.log.info("Starting TERMINATING: {} (Hostname = {}, IP = {})".format(
             slave.instance_id,
@@ -262,14 +265,14 @@ class ClusterAutoscaler(ResourceLogMixin):
         ))
         try:
             # This loop should always finish because the maintenance window should trigger is_ready_to_kill
-            # being true. Just in case though we set a timeout and terminate anyway
+            # being true. Just in case though we set a timeout (from timer) and terminate anyway
             while True:
                 instance_id = slave.instance_id
                 if not instance_id:
                     self.log.warning(
                         "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
                     )
-                    continue
+                    break
                 # Check if no tasks are running or we have reached the maintenance window
                 if self.can_kill(slave.hostname, should_drain, dry_run, timer):
                     self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
@@ -316,10 +319,12 @@ class ClusterAutoscaler(ResourceLogMixin):
         delta = target_capacity - current_capacity
         if delta == 0:
             self.log.info("Already at target capacity: {}".format(target_capacity))
+            await asyncio.sleep(1)
             return
         elif delta > 0:
             self.log.info("Increasing resource capacity to: {}".format(target_capacity))
             self.set_capacity(target_capacity, target_capacity)
+            await asyncio.sleep(1)
             return
         elif delta < 0:
             mesos_state = get_mesos_master().state_summary()
@@ -501,7 +506,6 @@ class ClusterAutoscaler(ResourceLogMixin):
         self.log.info("downscale_aws_resource for %s" % filtered_slaves)
         killed_slaves = 0
         terminate_tasks = {}
-        done_tasks = set()
         self.capacity = current_capacity
         timer = Timer(300)
         while True:
@@ -552,24 +556,11 @@ class ClusterAutoscaler(ResourceLogMixin):
             )
             killed_slaves += 1
 
-            for hostname, task in terminate_tasks.items():
-                if hostname in done_tasks:
-                    continue
-                if task.cancelled():
-                    done_tasks.add(hostname)
-                if not task.done():
-                    continue
-                try:
-                    done_tasks.add(hostname)
-                    task.result()  # Raises an exception if the task raised an exception
-                except HTTPError:
-                    # Something wrong draining host so try next host
-                    continue
-                except FailSetResourceCapacity:
-                    break
-
             current_capacity = new_capacity
             mesos_state = get_mesos_master().state_summary()
+            # It's not obvious what this loop is doing: it is updating the task counts for
+            #  for the slaves in filtered_sorted_slaves, so next time through the loop
+            #  we can re-sort
             if filtered_sorted_slaves:
                 task_counts = get_mesos_task_count_by_slave(
                     mesos_state,

@@ -28,10 +28,12 @@ from paasta_tools.utils import TimeoutError
 
 
 warnings.filterwarnings("error", category=RuntimeWarning)
+asyncio.get_event_loop().set_debug(True)
 
 
 def _run(coro):
     asyncio.set_event_loop(asyncio.new_event_loop())
+    asyncio.get_event_loop().set_debug(True)
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
