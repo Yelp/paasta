@@ -17,6 +17,7 @@ PaaSTA service instance status/start/stop etc.
 """
 import traceback
 
+from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import chronos_tools
@@ -232,7 +233,12 @@ def instance_delay(request):
     app_queue = marathon_tools.get_app_queue(client, app_id)
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
 
-    return unused_offers_summary
+    if len(unused_offers_summary) != 0:
+        return unused_offers_summary
+    else:
+        response = Response()
+        response.status_int = 204
+        return response
 
 
 def add_executor_info(task):

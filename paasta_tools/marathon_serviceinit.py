@@ -101,9 +101,9 @@ def status_marathon_job_human(
     name = PaastaColors.cyan(compose_job_id(service, instance))
     if unused_offers_summary is not None:
         stalled_str = "\n    ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()])
-        stalled = "\n  Possibly stalled for:\n    %s" % stalled_str
+        stall_reason = "\n  Possibly stalled for:\n    %s" % stalled_str
     else:
-        stalled = ""
+        stall_reason = ""
     if deploy_status != 'NotRunning':
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
@@ -114,11 +114,13 @@ def status_marathon_job_human(
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s%s" % (status, instance_count, deploy_status, stalled)
+        return "Marathon:   %s - up with %s instances. Status: %s%s" % (
+            status, instance_count, deploy_status, stall_reason,
+        )
     else:
         status = PaastaColors.yellow("Warning")
         return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)%s" % (
-            status, name, app_id, stalled,
+            status, name, app_id, stall_reason,
         )
 
 
