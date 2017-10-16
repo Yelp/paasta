@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os
+import sys
 from collections import defaultdict
 from collections import namedtuple
 from math import ceil
@@ -53,6 +54,7 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.utils import _log
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
@@ -1346,3 +1348,27 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
             num_at_risk_tasks += 1
     log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
     return num_at_risk_tasks
+
+
+def broadcast_log_all_services_running_here(line, component='monitoring'):
+    """Log a line of text to paasta logs of all services running on this host.
+
+    :param line: text to log
+    :param component: paasta log component
+    """
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+
+    services = get_marathon_services_running_here_for_nerve(None, DEFAULT_SOA_DIR)
+    for service, instance in [x[0].split('.') for x in services]:
+        _log(
+            line=line,
+            service=service,
+            instance=instance,
+            component=component,
+            cluster=cluster,
+        )
+
+
+def broadcast_log_all_services_running_here_from_stdin(component='monitoring'):
+    broadcast_log_all_services_running_here(sys.stdin.read().strip())
