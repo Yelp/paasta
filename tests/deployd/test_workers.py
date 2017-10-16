@@ -171,7 +171,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 client=self.worker.marathon_client,
                 soa_dir=DEFAULT_SOA_DIR,
-                marathon_config=self.worker.marathon_config,
                 marathon_apps=mock_get_all_marathon_apps.return_value,
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
@@ -190,7 +189,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 client=self.worker.marathon_client,
                 soa_dir=DEFAULT_SOA_DIR,
-                marathon_config=self.worker.marathon_config,
                 marathon_apps=mock_get_all_marathon_apps.return_value,
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
