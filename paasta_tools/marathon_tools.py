@@ -39,7 +39,7 @@ from marathon import MarathonHttpError
 from marathon import NotFoundError
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
-from marathon.modesl.queue import MarathonQueueItem
+from marathon.models.queue import MarathonQueueItem
 from mypy_extensions import TypedDict
 
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
