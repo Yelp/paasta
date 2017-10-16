@@ -294,7 +294,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 await asyncio.sleep(5)
         except TimeoutError:
             self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(
-                drain_timeout,
+                timer.timeout,
                 slave.pid,
             ))
             try:
