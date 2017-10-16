@@ -149,8 +149,16 @@ class InvalidInstanceConfig(Exception):
 
 DeployBlacklist = List[Tuple[str, str]]
 DeployWhitelist = Optional[Tuple[str, List[str]]]
+# The actual config files will have lists, since tuples are not expressible in base YAML, so we define different types
+# here to represent that. The getter functions will convert to the safe versions above.
+UnsafeDeployBlacklist = Optional[Sequence[Sequence[str]]]
+UnsafeDeployWhitelist = Optional[Sequence[Union[str, Sequence[str]]]]
+
 
 Constraint = Sequence[str]
+
+# e.g. ['GROUP_BY', 'habitat', 2]. Marathon doesn't like that so we'll convert to Constraint later.
+UnstringifiedConstraint = Sequence[Union[str, int, float]]
 
 SecurityConfigDict = Dict  # Todo: define me.
 
@@ -178,16 +186,16 @@ InstanceConfigDict = TypedDict(
         'cap_add': List,
         'env': Dict[str, str],
         'monitoring': Dict[str, str],
-        'deploy_blacklist': DeployBlacklist,
-        'deploy_whitelist': DeployWhitelist,
-        'monitoring_blacklist': DeployBlacklist,
+        'deploy_blacklist': UnsafeDeployBlacklist,
+        'deploy_whitelist': UnsafeDeployWhitelist,
+        'monitoring_blacklist': UnsafeDeployBlacklist,
         'pool': str,
         'extra_volumes': List[DockerVolume],
         'security': SecurityConfigDict,
         'dependencies_reference': str,
         'dependencies': Dict[str, Dict],
-        'constraints': List[Constraint],
-        'extra_constraints': List[Constraint],
+        'constraints': List[UnstringifiedConstraint],
+        'extra_constraints': List[UnstringifiedConstraint],
         'net': str,
         'extra_docker_args': Dict[str, str],
         'gpus': float,
@@ -215,6 +223,18 @@ DockerParameter = TypedDict(
         'value': str,
     },
 )
+
+
+def safe_deploy_blacklist(input: UnsafeDeployBlacklist) -> DeployBlacklist:
+    return [(t, l) for t, l in input]
+
+
+def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
+    try:
+        location_type, allowed_values = input
+        return cast(str, location_type), cast(List[str], allowed_values)
+    except TypeError:
+        return None
 
 
 class InstanceConfig(object):
@@ -346,7 +366,7 @@ class InstanceConfig(object):
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": "{}".format(value)}
 
-    def format_docker_parameters(self, with_labels: bool=True) -> Iterable[DockerParameter]:
+    def format_docker_parameters(self, with_labels: bool=True) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
@@ -464,19 +484,20 @@ class InstanceConfig(object):
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return self.config_dict.get('deploy_blacklist', [])
+        return safe_deploy_blacklist(self.config_dict.get('deploy_blacklist', []))
 
     def get_deploy_whitelist(self) -> DeployWhitelist:
         """The deploy whitelist is a tuple of (location_type, [allowed value, allowed value, ...]).
         To have tasks scheduled on it, a host must be covered by the deploy whitelist (if present) and not excluded by
         the deploy blacklist."""
-        return self.config_dict.get('deploy_whitelist', None)
+
+        return safe_deploy_whitelist(self.config_dict.get('deploy_whitelist'))
 
     def get_monitoring_blacklist(self, system_deploy_blacklist: DeployBlacklist) -> DeployBlacklist:
         """The monitoring_blacklist is a list of tuples of (location type, location value), where the tuples indicate
         which locations the user doesn't care to be monitored"""
         return (
-            self.config_dict.get('monitoring_blacklist', []) +
+            safe_deploy_blacklist(self.config_dict.get('monitoring_blacklist', [])) +
             self.get_deploy_blacklist() +
             system_deploy_blacklist
         )
@@ -614,11 +635,11 @@ class InstanceConfig(object):
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
-    def get_constraints(self) -> List[Constraint]:
-        return self.config_dict.get('constraints', None)
+    def get_constraints(self) -> Optional[List[Constraint]]:
+        return stringify_constraints(self.config_dict.get('constraints', None))
 
     def get_extra_constraints(self) -> List[Constraint]:
-        return self.config_dict.get('extra_constraints', [])
+        return stringify_constraints(self.config_dict.get('extra_constraints', []))
 
     def get_net(self) -> str:
         """
@@ -626,8 +647,8 @@ class InstanceConfig(object):
         """
         return self.config_dict.get('net', 'bridge')
 
-    def get_volumes(self, system_volumes: List[DockerVolume]) -> List[DockerVolume]:
-        volumes = system_volumes + self.get_extra_volumes()
+    def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
+        volumes = list(system_volumes) + list(self.get_extra_volumes())
         deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
         return sort_dicts(deduped)
 
@@ -670,6 +691,16 @@ class InstanceConfig(object):
                 self.service == other.service
         else:
             return False
+
+
+def stringify_constraint(usc: UnstringifiedConstraint) -> Constraint:
+    return [str(x) for x in usc]
+
+
+def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List[Constraint]:
+    if uscs is None:
+        return None
+    return [stringify_constraint(usc) for usc in uscs]
 
 
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
@@ -1321,8 +1352,8 @@ SystemPaastaConfigDict = TypedDict(
         'paasta_native': PaastaNativeConfig,
         'mesos_config': Dict,
         'monitoring_config': Dict,
-        'deploy_blacklist': DeployBlacklist,
-        'deploy_whitelist': DeployWhitelist,
+        'deploy_blacklist': UnsafeDeployBlacklist,
+        'deploy_whitelist': UnsafeDeployWhitelist,
         'expected_slave_attributes': ExpectedSlaveAttributes,
         'security_check_command': str,
         'deployd_number_workers': int,
@@ -1594,7 +1625,7 @@ class SystemPaastaConfig(object):
 
         :returns: The blacklist
         """
-        return self.config_dict.get("deploy_blacklist", [])
+        return safe_deploy_blacklist(self.config_dict.get("deploy_blacklist", []))
 
     def get_deploy_whitelist(self) -> DeployWhitelist:
         """Get global whitelist. This applies to all services
@@ -1602,7 +1633,8 @@ class SystemPaastaConfig(object):
 
         :returns: The whitelist
         """
-        return self.config_dict.get("deploy_whitelist", None)
+
+        return safe_deploy_whitelist(self.config_dict.get('deploy_whitelist'))
 
     def get_expected_slave_attributes(self) -> ExpectedSlaveAttributes:
         """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for

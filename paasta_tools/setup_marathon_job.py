@@ -45,10 +45,22 @@ import logging
 import sys
 import traceback
 from collections import defaultdict
+from typing import Any
+from typing import Callable
+from typing import Collection
+from typing import Dict  # noqa: imported for typing
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 import pysensu_yelp
 import requests_cache
 from marathon.exceptions import MarathonHttpError
+from marathon.models.app import MarathonApp
+from marathon.models.app import MarathonTask
+from mypy_extensions import Arg
+from mypy_extensions import DefaultNamedArg
 from requests.exceptions import HTTPError
 from requests.exceptions import ReadTimeout
 
@@ -71,6 +83,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
+from paasta_tools.utils import SystemPaastaConfig
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -78,7 +91,13 @@ from paasta_tools.utils import SPACER
 log = logging.getLogger(__name__)
 
 
-def parse_args():
+LogDeployError = Callable[[Arg(str, 'errormsg'), DefaultNamedArg(str, 'level')], None]
+
+
+LogBounceAction = Callable[[Arg(str, 'line'), DefaultNamedArg(str, 'level')], None]
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument(
         'service_instance_list', nargs='+',
@@ -98,7 +117,7 @@ def parse_args():
     return args
 
 
-def send_event(name, instance, soa_dir, status, output):
+def send_event(name: str, instance: str, soa_dir: str, status: int, output: str) -> None:
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param name: The service name the event is about
@@ -127,22 +146,26 @@ def send_event(name, instance, soa_dir, status, output):
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
-def get_main_marathon_config():
+def get_main_marathon_config() -> marathon_tools.MarathonConfig:
     marathon_config = marathon_tools.load_marathon_config()
     log.debug("Marathon config is: %s", marathon_config)
     return marathon_config
 
 
 def drain_tasks_and_find_tasks_to_kill(
-    tasks_to_drain, already_draining_tasks, drain_method, log_bounce_action,
-    bounce_method, at_risk_tasks,
-):
+    tasks_to_drain: Collection[MarathonTask],
+    already_draining_tasks: Collection[MarathonTask],
+    drain_method: drain_lib.DrainMethod,
+    log_bounce_action: LogBounceAction,
+    bounce_method: str,
+    at_risk_tasks: Collection[MarathonTask],
+) -> Set[MarathonTask]:
     """Drain the tasks_to_drain, and return the set of tasks that are safe to kill."""
     all_draining_tasks = set(already_draining_tasks) | set(at_risk_tasks)
     tasks_to_kill = set()
 
     if len(tasks_to_drain) > 0:
-        tasks_to_drain_by_app_id = defaultdict(set)
+        tasks_to_drain_by_app_id: Dict[str, MarathonTask] = defaultdict(set)
         for task in tasks_to_drain:
             tasks_to_drain_by_app_id[task.app_id].add(task)
         for app_id, tasks in tasks_to_drain_by_app_id.items():
@@ -177,26 +200,26 @@ def drain_tasks_and_find_tasks_to_kill(
 
 
 def do_bounce(
-    bounce_func,
-    drain_method,
-    config,
-    new_app_running,
-    happy_new_tasks,
-    old_app_live_happy_tasks,
-    old_app_live_unhappy_tasks,
-    old_app_draining_tasks,
-    old_app_at_risk_tasks,
-    service,
-    bounce_method,
-    serviceinstance,
-    cluster,
-    instance,
-    marathon_jobid,
-    client,
-    soa_dir,
-    bounce_margin_factor=1.0,
-):
-    def log_bounce_action(line, level='debug'):
+    bounce_func: bounce_lib.BounceMethod,
+    drain_method: drain_lib.DrainMethod,
+    config: marathon_tools.FormattedMarathonAppDict,
+    new_app_running: bool,
+    happy_new_tasks: List[MarathonTask],
+    old_app_live_happy_tasks: Dict[str, Set[MarathonTask]],
+    old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]],
+    old_app_draining_tasks: Dict[str, Set[MarathonTask]],
+    old_app_at_risk_tasks: Dict[str, Set[MarathonTask]],
+    service: str,
+    bounce_method: str,
+    serviceinstance: str,
+    cluster: str,
+    instance: str,
+    marathon_jobid: str,
+    client: marathon_tools.MarathonClient,
+    soa_dir: str,
+    bounce_margin_factor: float=1.0,
+) -> Optional[float]:
+    def log_bounce_action(line: str, level: str='debug') -> None:
         return _log(
             service=service,
             line=line,
@@ -320,11 +343,20 @@ def do_bounce(
         return None
 
 
+TasksByStateDict = Dict[str, Set[MarathonTask]]
+
+
 def get_tasks_by_state_for_app(
-    app, drain_method, service, nerve_ns, bounce_health_params,
-    system_paasta_config, log_deploy_error, draining_hosts,
-):
-    tasks_by_state = {
+    app: MarathonApp,
+    drain_method: drain_lib.DrainMethod,
+    service: str,
+    nerve_ns: str,
+    bounce_health_params: Dict[str, Any],
+    system_paasta_config: SystemPaastaConfig,
+    log_deploy_error: LogDeployError,
+    draining_hosts: Collection[str],
+) -> TasksByStateDict:
+    tasks_by_state: TasksByStateDict = {
         'happy': set(),
         'unhappy': set(),
         'draining': set(),
@@ -357,9 +389,20 @@ def get_tasks_by_state_for_app(
 
 
 def get_tasks_by_state(
-    other_apps, drain_method, service, nerve_ns, bounce_health_params,
-    system_paasta_config, log_deploy_error, draining_hosts,
-):
+    other_apps: Collection[MarathonApp],
+    drain_method: drain_lib.DrainMethod,
+    service: str,
+    nerve_ns: str,
+    bounce_health_params: Dict[str, Any],
+    system_paasta_config: SystemPaastaConfig,
+    log_deploy_error: LogDeployError,
+    draining_hosts: Collection[str],
+) -> Tuple[
+    Dict[str, Set[MarathonTask]],
+    Dict[str, Set[MarathonTask]],
+    Dict[str, Set[MarathonTask]],
+    Dict[str, Set[MarathonTask]],
+]:
     """Split tasks from old apps into 4 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -393,7 +436,12 @@ def get_tasks_by_state(
     return old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks, old_app_at_risk_tasks
 
 
-def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
+def undrain_tasks(
+    to_undrain: Collection[MarathonTask],
+    leave_draining: Collection[MarathonTask],
+    drain_method: drain_lib.DrainMethod,
+    log_deploy_error: LogDeployError,
+) -> None:
     # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
     # `paasta mark-for-deployment`), then we should undrain them.
     for task in to_undrain:
@@ -405,20 +453,20 @@ def undrain_tasks(to_undrain, leave_draining, drain_method, log_deploy_error):
 
 
 def deploy_service(
-    service,
-    instance,
-    marathon_jobid,
-    config,
-    client,
-    marathon_apps,
-    bounce_method,
-    drain_method_name,
-    drain_method_params,
-    nerve_ns,
-    bounce_health_params,
-    soa_dir,
-    bounce_margin_factor=1.0,
-):
+    service: str,
+    instance: str,
+    marathon_jobid: str,
+    config: marathon_tools.FormattedMarathonAppDict,
+    client: marathon_tools.MarathonClient,
+    marathon_apps: Collection[MarathonApp],
+    bounce_method: str,
+    drain_method_name: str,
+    drain_method_params: Dict[str, Any],
+    nerve_ns: str,
+    bounce_health_params: Dict[str, Any],
+    soa_dir: str,
+    bounce_margin_factor: float=1.0,
+) -> Tuple[int, str, Optional[float]]:
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -434,7 +482,7 @@ def deploy_service(
     :param bounce_margin_factor: the multiplication factor used to calculate the number of instances to be drained
     :returns: A tuple of (status, output, bounce_in_seconds) to be used with send_sensu_event"""
 
-    def log_deploy_error(errormsg, level='event'):
+    def log_deploy_error(errormsg: str, level: str='event') -> None:
         return _log(
             service=service,
             line=errormsg,
@@ -606,7 +654,14 @@ def deploy_service(
     return (0, 'Service deployed.', bounce_again_in_seconds)
 
 
-def setup_service(service, instance, client, service_marathon_config, marathon_apps, soa_dir):
+def setup_service(
+    service: str,
+    instance: str,
+    client: marathon_tools.MarathonClient,
+    service_marathon_config: marathon_tools.MarathonServiceConfig,
+    marathon_apps: Collection[MarathonApp],
+    soa_dir: str,
+) -> Tuple[int, str, Optional[float]]:
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
@@ -653,7 +708,7 @@ def setup_service(service, instance, client, service_marathon_config, marathon_a
     )
 
 
-def main():
+def main() -> None:
     """Attempt to set up a list of marathon service instances given.
     Exits 1 if any service.instance deployment failed.
     This is done in the following order:
@@ -691,7 +746,7 @@ def main():
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
             num_failed_deployments = num_failed_deployments + 1
         else:
-            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps)[0]:
+            if deploy_marathon_service(service, instance, client, soa_dir, marathon_apps)[0]:
                 num_failed_deployments = num_failed_deployments + 1
 
     requests_cache.uninstall_cache()
@@ -702,7 +757,13 @@ def main():
     sys.exit(1 if num_failed_deployments else 0)
 
 
-def deploy_marathon_service(service, instance, client, soa_dir, marathon_config, marathon_apps):
+def deploy_marathon_service(
+    service: str,
+    instance: str,
+    client: marathon_tools.MarathonClient,
+    soa_dir: str,
+    marathon_apps: Collection[marathon_tools.MarathonApp],
+) -> Tuple[int, float]:
     """deploy the service instance given and proccess return code
     if there was an error we send a sensu alert.
 
@@ -710,7 +771,6 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config,
     :param instance: The instance of the service to setup
     :param client: A MarathonClient object
     :param soa_dir: Path to yelpsoa configs
-    :param marathon_config: The service instance's configuration dict
     :param marathon_apps: A list of all marathon app objects
     :returns: A tuple of (status, bounce_in_seconds) to be used by paasta-deployd
         bounce_in_seconds instructs how long until the deployd should try another bounce

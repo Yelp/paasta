@@ -14,7 +14,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import BranchDict  # noqa, imported for typing.
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import Constraint
+from paasta_tools.utils import Constraint  # noqa, imported for typing.
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl
@@ -287,9 +287,6 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
     def get_mesos_network_mode(self) -> str:
         return self.get_net().upper()
-
-    def get_constraints(self) -> List[Constraint]:
-        return self.config_dict.get('constraints', [])
 
 
 def load_paasta_native_job_config(

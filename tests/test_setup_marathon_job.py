@@ -12,8 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any  # noqa: imported for typing
+from typing import Dict  # noqa: imported for typing
+from typing import List  # noqa: imported for typing
+from typing import Set  # noqa: imported for typing
+
 import marathon
 import mock
+from marathon.models.app import MarathonApp  # noqa: imported for typing
+from marathon.models.app import MarathonTask  # noqa: imported for typing
 from pytest import raises
 
 from paasta_tools import bounce_lib
@@ -33,7 +40,6 @@ from paasta_tools.utils import paasta_print
 
 class TestSetupMarathonJob:
 
-    fake_docker_image = 'test_docker:1.0'
     fake_cluster = 'fake_test_cluster'
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='servicename',
@@ -43,7 +49,6 @@ class TestSetupMarathonJob:
             'instances': 3,
             'cpus': 1,
             'mem': 100,
-            'docker_image': fake_docker_image,
             'nerve_ns': 'aaaaugh',
             'bounce_method': 'brutal',
         },
@@ -51,7 +56,7 @@ class TestSetupMarathonJob:
     )
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({
-        'url': 'http://test_url',
+        'url': ['http://test_url'],
         'user': 'admin',
         'password': 'admin_pass',
     })
@@ -234,7 +239,7 @@ class TestSetupMarathonJob:
     def test_send_event(self):
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
-        fake_status = '42'
+        fake_status = 42
         fake_output = 'The http port is not open'
         fake_soa_dir = ''
         expected_check_name = 'setup_marathon_job.%s' % compose_job_id(fake_service, fake_instance)
@@ -275,7 +280,7 @@ class TestSetupMarathonJob:
     def test_do_bounce_when_create_app_and_new_app_not_running_but_already_created(self):
         """ Note that this is possible if two bounces are running at the same time
         because we get the list of marathon apps outside of any locking"""
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': True,
             'tasks_to_drain': [mock.Mock(app_id='fake_task_to_kill_1')],
         }
@@ -283,13 +288,13 @@ class TestSetupMarathonJob:
             bounce_lib.brutal_bounce,
             return_value=fake_bounce_func_return,
         )
-        fake_config = {'instances': 5}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 5}
         fake_new_app_running = False
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {}
-        fake_old_app_live_unhappy_tasks = {}
-        fake_old_app_draining_tasks = {}
-        fake_old_app_at_risk_tasks = {}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -345,7 +350,7 @@ class TestSetupMarathonJob:
             assert mock_kill_old_ids.call_count == 0
 
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': True,
             'tasks_to_drain': [mock.Mock(app_id='fake_task_to_kill_1')],
         }
@@ -353,13 +358,13 @@ class TestSetupMarathonJob:
             bounce_lib.brutal_bounce,
             return_value=fake_bounce_func_return,
         )
-        fake_config = {'instances': 5}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 5}
         fake_new_app_running = False
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {}
-        fake_old_app_live_unhappy_tasks = {}
-        fake_old_app_draining_tasks = {}
-        fake_old_app_at_risk_tasks = {}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -439,7 +444,7 @@ class TestSetupMarathonJob:
 
     def test_do_bounce_when_create_app_and_new_app_running(self):
         fake_task_to_drain = mock.Mock(app_id='fake_app_to_kill_1')
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': True,
             'tasks_to_drain': [fake_task_to_drain],
         }
@@ -447,13 +452,13 @@ class TestSetupMarathonJob:
             bounce_lib.brutal_bounce,
             return_value=fake_bounce_func_return,
         )
-        fake_config = {'instances': 5}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': {fake_task_to_drain}}
-        fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set()}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': {fake_task_to_drain}}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -504,7 +509,7 @@ class TestSetupMarathonJob:
 
     def test_do_bounce_when_tasks_to_drain(self):
         fake_task_to_drain = mock.Mock(app_id='fake_app_to_kill_1')
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': False,
             'tasks_to_drain': [fake_task_to_drain],
         }
@@ -512,13 +517,13 @@ class TestSetupMarathonJob:
             bounce_lib.brutal_bounce,
             return_value=fake_bounce_func_return,
         )
-        fake_config = {'instances': 5}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': {fake_task_to_drain}}
-        fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set()}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': {fake_task_to_drain}}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -569,7 +574,7 @@ class TestSetupMarathonJob:
             assert fake_drain_method.drain.call_count == expected_drain_task_count
 
     def test_do_bounce_when_apps_to_kill(self):
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': False,
             'tasks_to_drain': [],
         }
@@ -577,13 +582,13 @@ class TestSetupMarathonJob:
             bounce_lib.brutal_bounce,
             return_value=fake_bounce_func_return,
         )
-        fake_config = {'instances': 5}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_live_unhappy_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
-        fake_old_app_at_risk_tasks = {'fake_app_to_kill_1': set()}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {'fake_app_to_kill_1': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -636,7 +641,7 @@ class TestSetupMarathonJob:
             assert 'Now running %s' % fake_marathon_jobid in third_logged_line
 
     def test_do_bounce_when_nothing_to_do(self):
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': False,
             'tasks_to_drain': [],
         }
@@ -645,13 +650,13 @@ class TestSetupMarathonJob:
             return_value=fake_bounce_func_return,
         )
 
-        fake_config = {'instances': 3}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 3}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {}
-        fake_old_app_live_unhappy_tasks = {}
-        fake_old_app_draining_tasks = {}
-        fake_old_app_at_risk_tasks = {}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -694,7 +699,7 @@ class TestSetupMarathonJob:
 
     def test_do_bounce_when_all_old_tasks_are_unhappy(self):
         old_tasks = [mock.Mock(id=id, app_id='old_app') for id in ['old_one', 'old_two', 'old_three']]
-        fake_bounce_func_return = {
+        fake_bounce_func_return: bounce_lib.BounceMethodResult = {
             'create_app': False,
             'tasks_to_drain': old_tasks,
         }
@@ -703,13 +708,13 @@ class TestSetupMarathonJob:
             return_value=fake_bounce_func_return,
         )
 
-        fake_config = {'instances': 3}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'instances': 3}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_live_happy_tasks = {'old_app': set()}
-        fake_old_app_live_unhappy_tasks = {'old_app': set(old_tasks)}
-        fake_old_app_draining_tasks = {'old_app': set()}
-        fake_old_app_at_risk_tasks = {'old_app': set()}
+        fake_old_app_live_happy_tasks: Dict[str, Set[MarathonTask]] = {'old_app': set()}
+        fake_old_app_live_unhappy_tasks: Dict[str, Set[MarathonTask]] = {'old_app': set(old_tasks)}
+        fake_old_app_draining_tasks: Dict[str, Set[MarathonTask]] = {'old_app': set()}
+        fake_old_app_at_risk_tasks: Dict[str, Set[MarathonTask]] = {'old_app': set()}
         fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -756,16 +761,16 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobid = 'fake_jobid'
-        fake_config = {
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
             'id': 'some_id',
             'instances': 5,
         }
         fake_client = mock.MagicMock(scale_app=mock.Mock())
         fake_bounce_method = 'bounce'
         fake_drain_method_name = 'drain'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_nerve_ns = 'nerve'
-        fake_bounce_health_params = {}
+        fake_bounce_health_params: Dict[str, Any] = {}
         fake_soa_dir = '/soa/dir'
         fake_marathon_apps = mock.Mock()
         with mock.patch(
@@ -814,16 +819,16 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobid = 'fake_jobid'
-        fake_config = {
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
             'id': 'some_id',
             'instances': 5,
         }
         fake_client = mock.MagicMock(scale_app=mock.Mock())
         fake_bounce_method = 'bounce'
         fake_drain_method_name = 'drain'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_nerve_ns = 'nerve'
-        fake_bounce_health_params = {}
+        fake_bounce_health_params: Dict[str, Any] = {}
         fake_soa_dir = '/soa/dir'
         fake_marathon_apps = mock.Mock()
         with mock.patch(
@@ -880,16 +885,16 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobid = 'fake_jobid'
-        fake_config = {
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
             'id': 'some_id',
             'instances': 1,
         }
         fake_client = mock.MagicMock()
         fake_bounce_method = 'bounce'
         fake_drain_method_name = 'drain'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_nerve_ns = 'nerve'
-        fake_bounce_health_params = {}
+        fake_bounce_health_params: Dict[str, Any] = {}
         fake_soa_dir = '/soa/dir'
         fake_marathon_apps = mock.Mock()
         with mock.patch(
@@ -946,16 +951,16 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobid = 'fake_jobid'
-        fake_config = {
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
             'id': 'some_id',
             'instances': 50,
         }
         fake_client = mock.MagicMock()
         fake_bounce_method = 'bounce'
         fake_drain_method_name = 'drain'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_nerve_ns = 'nerve'
-        fake_bounce_health_params = {}
+        fake_bounce_health_params: Dict[str, Any] = {}
         fake_soa_dir = '/soa/dir'
         fake_marathon_apps = mock.Mock()
         with mock.patch(
@@ -1015,16 +1020,16 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobid = 'fake_jobid'
-        fake_config = {
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
             'id': 'some_id',
             'instances': 3,
         }
         fake_client = mock.MagicMock()
         fake_bounce_method = 'bounce'
         fake_drain_method_name = 'drain'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_nerve_ns = 'nerve'
-        fake_bounce_health_params = {}
+        fake_bounce_health_params: Dict[str, Any] = {}
         fake_soa_dir = '/soa/dir'
         fake_marathon_apps = mock.Mock()
         with mock.patch(
@@ -1146,11 +1151,11 @@ class TestSetupMarathonJob:
         }
         fake_bounce = 'trampoline'
         fake_drain_method = 'noop'
-        fake_drain_method_params = {}
+        fake_drain_method_params: Dict[str, Any] = {}
         fake_bounce_margin_factor = 0.5
         with mock.patch(
             'paasta_tools.setup_marathon_job.deploy_service',
-            return_value=(111, 'Never'),
+            return_value=(111, 'Never', 63),
             autospec=True,
         ) as deploy_service_patch, mock.patch.object(
             self.fake_marathon_service_config,
@@ -1190,7 +1195,7 @@ class TestSetupMarathonJob:
             autospec=True,
         ):
             mock_marathon_apps = mock.Mock()
-            status, output = setup_marathon_job.setup_service(
+            status, output, bounce_in_seconds = setup_marathon_job.setup_service(
                 service=fake_name,
                 instance=fake_instance,
                 client=fake_client,
@@ -1200,6 +1205,7 @@ class TestSetupMarathonJob:
             )
             assert status == 111
             assert output == 'Never'
+            assert bounce_in_seconds == 63
 
             get_bounce_patch.assert_called_once_with()
             get_bounce_margin_factor_patch.assert_called_once_with()
@@ -1258,7 +1264,6 @@ class TestSetupMarathonJob:
                 'instances': 3,
                 'cpus': 1,
                 'mem': 100,
-                'docker_image': self.fake_docker_image,
                 'nerve_ns': 'fake_nerve_ns',
                 'bounce_method': 'brutal',
             },
@@ -1299,7 +1304,7 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_marathon_apps),
         )
-        fake_config = {'id': fake_id, 'instances': 2}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: drain_method not recognized: doesntexist. Must be one of (exists1, exists2)'
         expected = (1, errormsg, None)
@@ -1342,7 +1347,7 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_marathon_apps),
         )
-        fake_config = {'id': fake_id, 'instances': 2}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'id': fake_id, 'instances': 2}
 
         errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
             (fake_bounce, ', '.join(list_bounce_methods()))
@@ -1380,7 +1385,7 @@ class TestSetupMarathonJob:
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance, 'git11111111', 'config11111111')
-        fake_config = {'id': fake_id, 'instances': 2}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'id': fake_id, 'instances': 2}
 
         old_app_id = marathon_tools.format_job_id(fake_name, fake_instance, 'git22222222', 'config22222222')
         old_task_to_drain = mock.Mock(id="old_task_to_drain", app_id=old_app_id)
@@ -1442,7 +1447,7 @@ class TestSetupMarathonJob:
                 bounce_health_params={},
                 soa_dir='fake_soa_dir',
             )
-            assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
+            assert result[0] == 0, "Expected successful result; got (%d, %s, %d)" % result
             assert fake_client.create_app.call_count == 0
             fake_bounce_func.assert_called_once_with(
                 new_config=fake_config,
@@ -1485,7 +1490,7 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps),
         )
-        fake_config = {'id': fake_id, 'instances': 2}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'id': fake_id, 'instances': 2}
 
         with mock.patch(
             'paasta_tools.setup_marathon_job._log', autospec=True,
@@ -1530,7 +1535,7 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps),
         )
-        fake_config = {'id': fake_id, 'instances': 2}
+        fake_config: marathon_tools.FormattedMarathonAppDict = {'id': fake_id, 'instances': 2}
 
         with mock.patch(
             'paasta_tools.setup_marathon_job._log', autospec=True,
@@ -1581,14 +1586,12 @@ class TestSetupMarathonJob:
             side_effect=bounce_lib.LockHeldException,
         ):
             mock_client = mock.Mock()
-            mock_marathon_config = {}
-            mock_marathon_apps = []
+            mock_marathon_apps: List[MarathonApp] = []
             ret = setup_marathon_job.deploy_marathon_service(
                 'something',
                 'main',
                 mock_client,
                 'fake_soa',
-                mock_marathon_config,
                 mock_marathon_apps,
             )
             assert not mock_setup_service.called
@@ -1604,15 +1607,13 @@ class TestSetupMarathonJob:
             'paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
-            mock_client = mock.Mock()
-            mock_marathon_config = {}
-            mock_marathon_apps = []
+            mock_client: marathon_tools.MarathonClient = mock.Mock()
+            mock_marathon_apps: List[marathon_tools.MarathonApp] = []
             ret = setup_marathon_job.deploy_marathon_service(
                 'something',
                 'main',
                 mock_client,
                 'fake_soa',
-                mock_marathon_config,
                 mock_marathon_apps,
             )
             assert ret == (1, None)
@@ -1639,19 +1640,19 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         ]
         fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
-        expected_live_happy_tasks = {
+        expected_live_happy_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: set(),
             fake_apps[1].id: set(),
         }
-        expected_live_unhappy_tasks = {
+        expected_live_unhappy_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: set(),
             fake_apps[1].id: set(),
         }
-        expected_draining_tasks = {
+        expected_draining_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: set(),
             fake_apps[1].id: set(),
         }
-        expected_at_risk_tasks = {
+        expected_at_risk_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: set(),
             fake_apps[1].id: set(),
         }
@@ -1703,19 +1704,19 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 
         fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
-        expected_live_happy_tasks = {
+        expected_live_happy_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: {fake_apps[0].tasks[0]},
             fake_apps[1].id: {fake_apps[1].tasks[0]},
         }
-        expected_live_unhappy_tasks = {
+        expected_live_unhappy_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: {fake_apps[0].tasks[1]},
             fake_apps[1].id: {fake_apps[1].tasks[1]},
         }
-        expected_draining_tasks = {
+        expected_draining_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: {fake_apps[0].tasks[2]},
             fake_apps[1].id: {fake_apps[1].tasks[2]},
         }
-        expected_at_risk_tasks = {
+        expected_at_risk_tasks: Dict[str, Set[marathon_tools.MarathonTask]] = {
             fake_apps[0].id: set(),
             fake_apps[1].id: set(),
         }
@@ -1745,8 +1746,8 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 class TestDrainTasksAndFindTasksToKill(object):
     def test_catches_exception_during_drain(self):
         tasks_to_drain = {mock.Mock(id='to_drain')}
-        already_draining_tasks = set()
-        at_risk_tasks = set()
+        already_draining_tasks: Set[MarathonTask] = set()
+        at_risk_tasks: Set[MarathonTask] = set()
         fake_drain_method = mock.Mock(
             drain=mock.Mock(side_effect=Exception('Hello')),
         )
@@ -1770,8 +1771,8 @@ class TestDrainTasksAndFindTasksToKill(object):
 
     def test_catches_exception_during_is_safe_to_kill(self):
         tasks_to_drain = {mock.Mock(id='to_drain')}
-        already_draining_tasks = set()
-        at_risk_tasks = set()
+        already_draining_tasks: Set[MarathonTask] = set()
+        at_risk_tasks: Set[MarathonTask] = set()
         fake_drain_method = mock.Mock(
             is_safe_to_kill=mock.Mock(side_effect=Exception('Hello')),
         )
