@@ -1359,8 +1359,11 @@ def broadcast_log_all_services_running_here(line, component='monitoring'):
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
-    services = get_marathon_services_running_here_for_nerve(None, DEFAULT_SOA_DIR)
-    for service, instance in [x[0].split('.') for x in services]:
+    services = mesos_services_running_here(
+        framework_filter=lambda fw: fw['name'].startswith('marathon') or fw['name'].startswith('chronos'),
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+    )
+    for service, instance, _ in services:
         _log(
             line=line,
             service=service,
