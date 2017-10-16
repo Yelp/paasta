@@ -1,3 +1,12 @@
+paasta-tools (0.67.14) xenial; urgency=medium
+
+  * 0.67.14 tagged with 'make release'
+    Commit: Merge pull request #1557 from
+    Yelp/add_stalled_reason_to_marathon_status  Add potential reasons
+    for app deployments being stalled to paasta status and api
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 16 Oct 2017 07:21:01 -0700
+
 paasta-tools (0.67.13) xenial; urgency=medium
 
   * 0.67.13 tagged with 'make release'
