@@ -520,16 +520,23 @@ class ClusterAutoscaler(ResourceLogMixin):
             current_capacity = new_capacity
             mesos_state = get_mesos_master().state_summary()
             if filtered_sorted_slaves:
+                # Filter out slaves no longer in mesos state
+                updated_filtered_slaves = [
+                    slave for slave in filtered_sorted_slaves
+                    if slave['id'] in [s['id'] for s in mesos_state.get('slaves', [])]
+                ]
+                # Get updated task counts for slaves from state
                 task_counts = get_mesos_task_count_by_slave(
                     mesos_state,
                     slaves_list=[
                         {'task_counts': slave.task_counts}
-                        for slave in filtered_sorted_slaves
+                        for slave in updated_filtered_slaves
                     ],
                 )
-                for i, slave in enumerate(filtered_sorted_slaves):
+                # Update the task counts in the slaves list
+                for i, slave in enumerate(updated_filtered_slaves):
                     slave.task_counts = task_counts[i]['task_counts']
-            filtered_slaves = filtered_sorted_slaves
+            filtered_slaves = updated_filtered_slaves
 
 
 class SpotAutoscaler(ClusterAutoscaler):
