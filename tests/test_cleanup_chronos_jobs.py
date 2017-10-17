@@ -51,15 +51,37 @@ def test_deployed_job_names():
     assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
 
 
+@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_config', autospec=True)
+@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_job_config', autospec=True)
 @mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance', autospec=True)
-def test_filter_expired_tmp_jobs(mock_get_temporary_jobs):
+def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_config, mock_load_chronos_config):
     two_days_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(days=2)
     one_hour_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(hours=1)
+
+    # Ensure that a tmp job with a very long schedule interval is only cleaned
+    # up if the last success was outside the schedule interval
+    seconds_in_one_month = 2592000
+    seconds_in_one_day = 86400
+
+    mock_chronos_job = mock.Mock(autospec=True)
+    mock_chronos_job.get_schedule_interval_in_seconds.side_effect = [
+        seconds_in_one_month,
+        seconds_in_one_day,
+        seconds_in_one_day,
+    ]
+
+    mock_load_chronos_job_config.return_value = mock_chronos_job
     mock_get_temporary_jobs.side_effect = [
+        [{'name': 'tmp long batch', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp foo bar', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp anotherservice anotherinstance', 'lastSuccess': one_hour_ago.isoformat()}],
     ]
-    actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(mock.Mock(), ['foo bar', 'anotherservice anotherinstance'])
+    actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(
+        mock.Mock(),
+        ['tmp long batch', 'foo bar', 'anotherservice anotherinstance'],
+        cluster='fake_cluster',
+        soa_dir='/soa/dir',
+    )
     assert actual == ['foo bar']
 
 
