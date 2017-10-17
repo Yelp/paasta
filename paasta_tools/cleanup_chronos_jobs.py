@@ -144,8 +144,7 @@ def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
             if last_run_state != chronos_tools.LastRunState.NotRun:
                 if ((datetime.datetime.now(dateutil.tz.tzutc()) -
                      dateutil.parser.parse(last_run_time)) >
-                        datetime.timedelta(seconds=interval)):
-                        # datetime.timedelta(days=1)):
+                        max(datetime.timedelta(seconds=interval), datetime.timedelta(days=1))):
                     expired.append(job_name)
     return expired
 

@@ -62,12 +62,15 @@ def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_
     # up if the last success was outside the schedule interval
     seconds_in_one_month = 2592000
     seconds_in_one_day = 86400
+    # Ensure that a tmp job with a very short schedule is kept for at least a day
+    seconds_in_half_hour = 1300
 
     mock_chronos_job = mock.Mock(autospec=True)
     mock_chronos_job.get_schedule_interval_in_seconds.side_effect = [
         seconds_in_one_month,
         seconds_in_one_day,
         seconds_in_one_day,
+        seconds_in_half_hour,
     ]
 
     mock_load_chronos_job_config.return_value = mock_chronos_job
@@ -75,10 +78,11 @@ def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_
         [{'name': 'tmp long batch', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp foo bar', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp anotherservice anotherinstance', 'lastSuccess': one_hour_ago.isoformat()}],
+        [{'name': 'tmp short batch', 'lastSuccess': one_hour_ago.isoformat()}],
     ]
     actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(
         mock.Mock(),
-        ['tmp long batch', 'foo bar', 'anotherservice anotherinstance'],
+        ['long batch', 'foo bar', 'anotherservice anotherinstance', 'short batch'],
         cluster='fake_cluster',
         soa_dir='/soa/dir',
     )
