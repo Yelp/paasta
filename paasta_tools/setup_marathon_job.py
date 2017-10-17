@@ -773,7 +773,8 @@ def main() -> None:
     # Setting up transparent cache for http API calls
     requests_cache.install_cache("setup_marathon_jobs", backend="memory")
 
-    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers())
+    system_paasta_config = load_system_paasta_config()
+    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
     unique_clients = clients.get_all_clients()
     marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(unique_clients, embed_tasks=True)
 

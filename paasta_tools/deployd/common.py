@@ -12,6 +12,7 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
@@ -163,6 +164,7 @@ def get_service_instances_needing_update(marathon_clients, instances, cluster):
 
 
 def get_marathon_clients_from_config():
-    marathon_servers = get_marathon_servers()
+    system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config)
     marathon_clients = get_marathon_clients(marathon_servers)
     return marathon_clients

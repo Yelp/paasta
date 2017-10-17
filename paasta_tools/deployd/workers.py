@@ -7,6 +7,7 @@ from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.setup_marathon_job import deploy_marathon_service
+from paasta_tools.utils import load_system_paasta_config
 
 BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'return_code', 'bounce_timers'])
 
@@ -24,7 +25,8 @@ class PaastaDeployWorker(PaastaThread):
         self.setup()
 
     def setup(self):
-        self.marathon_servers = marathon_tools.get_marathon_servers()
+        system_paasta_config = load_system_paasta_config()
+        self.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
         self.marathon_clients = marathon_tools.get_marathon_clients(self.marathon_servers)
 
     def setup_timers(self, service_instance):

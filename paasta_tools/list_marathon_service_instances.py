@@ -141,7 +141,8 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     if args.minimal:
-        marathon_servers = get_marathon_servers()
+        system_paasta_config = load_system_paasta_config()
+        marathon_servers = get_marathon_servers(system_paasta_config)
         marathon_clients = get_marathon_clients(marathon_servers)
         service_instances = get_service_instances_that_need_bouncing(
             marathon_clients=marathon_clients, soa_dir=soa_dir,
