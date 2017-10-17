@@ -41,12 +41,15 @@ class MarathonConfig(MarathonObject):
 
 class MarathonZooKeeperConfig(MarathonObject):
     zk = ...  # type: Any
-    zk_future_timeout = ...  # type: Any
     zk_hosts = ...  # type: Any
     zk_path = ...  # type: Any
     zk_state = ...  # type: Any
+    zk_max_versions = ...  # type: Any
     zk_timeout = ...  # type: Any
-    def __init__(self, zk: Optional[Any] = ..., zk_future_timeout: Optional[Any] = ..., zk_hosts: Optional[Any] = ..., zk_max_versions: Optional[Any] = ..., zk_path: Optional[Any] = ..., zk_session_timeout: Optional[Any] = ..., zk_state: Optional[Any] = ..., zk_timeout: Optional[Any] = ...) -> None: ...
+    zk_connection_timeout = ...  # type: Any
+    zk_future_timeout = ...  # type: Any
+    zk_session_timeout = ...  # type: Any
+    def __init__(self, zk: Optional[Any] = ..., zk_future_timeout: Optional[Any] = ..., zk_hosts: Optional[Any] = ..., zk_max_versions: Optional[Any] = ..., zk_path: Optional[Any] = ..., zk_session_timeout: Optional[Any] = ..., zk_state: Optional[Any] = ..., zk_timeout: Optional[Any] = ..., zk_connection_timeout: Optional[Any] = ...) -> None: ...
 
 class MarathonHttpConfig(MarathonObject):
     assets_path = ...  # type: Any

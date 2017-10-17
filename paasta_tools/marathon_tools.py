@@ -1255,7 +1255,7 @@ def get_app_queue_last_unused_offers(app_queue_item: Optional[MarathonQueueItem]
     return app_queue_item.last_unused_offers
 
 
-def summarize_unused_offers(app_queue: List[Dict]) -> Dict[str, int]:
+def summarize_unused_offers(app_queue: Optional[MarathonQueueItem]) -> Dict[str, int]:
     """Returns a summary of the reasons marathon rejected offers from mesos
 
     :param app_queue: An app queue item as returned from get_app_queue

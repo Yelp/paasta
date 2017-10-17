@@ -78,7 +78,7 @@ class MarathonInstanceChangedEvent(MarathonEvent):
 class MarathonUnknownInstanceTerminated(MarathonEvent):
     KNOWN_ATTRIBUTES = ...  # type: Any
 
-class MarathonInstanceHealthChanged(MarathonEvent):
+class MarathonInstanceHealthChangedEvent(MarathonEvent):
     KNOWN_ATTRIBUTES = ...  # type: Any
 
 class MarathonPodCreatedEvent(MarathonEvent):
@@ -96,4 +96,5 @@ class MarathonUnhealthyInstanceKillEvent(MarathonEvent):
 class EventFactory:
     def __init__(self) -> None: ...
     event_to_class = ...  # type: Any
+    class_to_event = ...  # type: Any
     def process(self, event): ...

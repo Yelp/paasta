@@ -13,7 +13,8 @@ class MarathonQueueItem(MarathonResource):
     delay = ...  # type: Any
     since = ...  # type: Any
     processed_offers_summary = ...  # type: Any
-    def __init__(self, app: Optional[Any] = ..., overdue: Optional[Any] = ..., count: Optional[Any] = ..., delay: Optional[Any] = ..., since: Optional[Any] = ..., processed_offers_summary: Optional[Any] = ...) -> None: ...
+    last_unused_offers = ...  # type: Any
+    def __init__(self, app: Optional[Any] = ..., overdue: Optional[Any] = ..., count: Optional[Any] = ..., delay: Optional[Any] = ..., since: Optional[Any] = ..., processed_offers_summary: Optional[Any] = ..., last_unused_offers: Optional[Any] = ...) -> None: ...
 
 class MarathonQueueItemDelay(MarathonResource):
     time_left_seconds = ...  # type: Any

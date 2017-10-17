@@ -158,7 +158,7 @@ class MarathonUnreachableStrategy(MarathonObject):
     def from_json(cls, attributes): ...
 
 class MarathonAppVersionInfo(MarathonObject):
-    DATETIME_FORMAT = ...  # type: str
+    DATETIME_FORMATS = ...  # type: Any
     last_scaling_at = ...  # type: Any
     last_config_change_at = ...  # type: Any
     def __init__(self, last_scaling_at: Optional[Any] = ..., last_config_change_at: Optional[Any] = ...) -> None: ...

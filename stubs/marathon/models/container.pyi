@@ -9,9 +9,10 @@ from .base import MarathonObject as MarathonObject
 class MarathonContainer(MarathonObject):
     TYPES = ...  # type: Any
     type = ...  # type: Any
+    port_mappings = ...  # type: Any
     docker = ...  # type: Any
     volumes = ...  # type: Any
-    def __init__(self, docker: Optional[Any] = ..., type: str = ..., volumes: Optional[Any] = ...) -> None: ...
+    def __init__(self, docker: Optional[Any] = ..., type: str = ..., port_mappings: Optional[Any] = ..., volumes: Optional[Any] = ...) -> None: ...
 
 class MarathonDockerContainer(MarathonObject):
     NETWORK_MODES = ...  # type: Any
@@ -21,7 +22,7 @@ class MarathonDockerContainer(MarathonObject):
     parameters = ...  # type: Any
     privileged = ...  # type: Any
     force_pull_image = ...  # type: Any
-    def __init__(self, image: Optional[Any] = ..., network: str = ..., port_mappings: Optional[Any] = ..., parameters: Optional[Any] = ..., privileged: Optional[Any] = ..., force_pull_image: Optional[Any] = ..., **kwargs) -> None: ...
+    def __init__(self, image: Optional[Any] = ..., network: Optional[Any] = ..., port_mappings: Optional[Any] = ..., parameters: Optional[Any] = ..., privileged: Optional[Any] = ..., force_pull_image: Optional[Any] = ..., **kwargs) -> None: ...
 
 class MarathonContainerPortMapping(MarathonObject):
     PROTOCOLS = ...  # type: Any
