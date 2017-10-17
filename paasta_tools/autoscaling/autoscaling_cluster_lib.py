@@ -536,6 +536,8 @@ class ClusterAutoscaler(ResourceLogMixin):
                 # Update the task counts in the slaves list
                 for i, slave in enumerate(updated_filtered_slaves):
                     slave.task_counts = task_counts[i]['task_counts']
+            else:
+                updated_filtered_slaves = filtered_sorted_slaves
             filtered_slaves = updated_filtered_slaves
 
 
