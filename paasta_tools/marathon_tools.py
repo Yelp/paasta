@@ -1360,7 +1360,7 @@ def broadcast_log_all_services_running_here(line, component='monitoring'):
     cluster = system_paasta_config.get_cluster()
 
     services = mesos_services_running_here(
-        framework_filter=lambda fw: fw['name'].startswith('marathon') or fw['name'].startswith('chronos'),
+        framework_filter=lambda _: True,
         parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
     )
     for service, instance, _ in services:
