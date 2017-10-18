@@ -524,7 +524,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                 # Filter out slaves no longer in mesos state
                 updated_filtered_slaves = [
                     slave for slave in filtered_sorted_slaves
-                    if slave['id'] in good_ids
+                    if slave.instance_id in good_ids
                 ]
                 # Get updated task counts for slaves from state
                 task_counts = get_mesos_task_count_by_slave(
