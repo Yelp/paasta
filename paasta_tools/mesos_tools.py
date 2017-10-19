@@ -63,8 +63,6 @@ def get_mesos_config():
 
 
 def get_mesos_master(**overrides):
-    import traceback
-    traceback.print_stack()
     config = get_mesos_config()
     for k, v in overrides.items():
         config[k] = v
