@@ -1,7 +1,25 @@
 {
   "marathon_servers": [
-    {"user": null, "password": null, "url": ["http://marathon:8080"]},
-    {"user": null, "password": null, "url": ["http://marathon1:8080"]},
-    {"user": null, "password": null, "url": ["http://marathon2:8080"]}
+    {
+      "url": [
+        "http://marathon:8080"
+      ],
+      "user": null,
+      "password": null
+    },
+    {
+      "url": [
+        "http://marathon1:8080"
+      ],
+      "user": null,
+      "password": null
+    },
+    {
+      "url": [
+        "http://marathon2:8080"
+      ],
+      "user": null,
+      "password": null
+    }
   ]
 }
