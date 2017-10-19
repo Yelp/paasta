@@ -34,6 +34,7 @@ import pysensu_yelp
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
+from paasta_tools import utils
 from paasta_tools.check_chronos_jobs import check_chronos_job_name
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import paasta_print
@@ -114,7 +115,7 @@ def filter_tmp_jobs(job_names):
     return [name for name in job_names if name.startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
 
 
-def filter_expired_tmp_jobs(client, job_names):
+def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
     """
     Given a list of temporary jobs, find those ready to be removed. Their
     suitablity for removal is defined by two things:
@@ -133,10 +134,17 @@ def filter_expired_tmp_jobs(client, job_names):
         )
         for job in temporary_jobs:
             last_run_time, last_run_state = chronos_tools.get_status_last_run(job)
+            chronos_job_config = chronos_tools.load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            interval = chronos_job_config.get_schedule_interval_in_seconds()
             if last_run_state != chronos_tools.LastRunState.NotRun:
                 if ((datetime.datetime.now(dateutil.tz.tzutc()) -
                      dateutil.parser.parse(last_run_time)) >
-                        datetime.timedelta(days=1)):
+                        max(datetime.timedelta(seconds=interval), datetime.timedelta(days=1))):
                     expired.append(job_name)
     return expired
 
@@ -149,13 +157,16 @@ def main():
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
+    system_paasta_config = utils.load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+
     running_jobs = set(deployed_job_names(client))
 
     expected_service_jobs = {chronos_tools.compose_job_id(*job) for job in
                              chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)}
 
     all_tmp_jobs = set(filter_tmp_jobs(filter_paasta_jobs(running_jobs)))
-    expired_tmp_jobs = set(filter_expired_tmp_jobs(client, all_tmp_jobs))
+    expired_tmp_jobs = set(filter_expired_tmp_jobs(client, all_tmp_jobs, cluster=cluster, soa_dir=soa_dir))
     valid_tmp_jobs = all_tmp_jobs - expired_tmp_jobs
 
     to_delete = running_jobs - expected_service_jobs - valid_tmp_jobs
