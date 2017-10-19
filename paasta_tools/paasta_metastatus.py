@@ -84,7 +84,12 @@ def main(argv=None):
 
     system_paasta_config = load_system_paasta_config()
 
-    master = get_mesos_master(use_mesos_cache=args.use_mesos_cache)
+    master_kwargs = {}
+    # we don't want to be passing False to not override a possible True
+    # value from system config
+    if args.use_mesos_cache:
+        master_kwargs['use_mesos_cache'] = True
+    master = get_mesos_master(**master_kwargs)
     try:
         mesos_state = master.state
     except MasterNotAvailableException as e:
