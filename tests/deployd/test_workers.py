@@ -32,9 +32,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
 
     def test_setup(self):
         with mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.load_marathon_config', autospec=True,
+            'paasta_tools.deployd.workers.load_system_paasta_config', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_marathon_client', autospec=True,
+            'paasta_tools.deployd.workers.marathon_tools.get_marathon_clients', autospec=True,
+        ), mock.patch(
+            'paasta_tools.deployd.workers.marathon_tools.get_marathon_servers', autospec=True,
         ):
             self.worker.setup()
 

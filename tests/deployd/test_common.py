@@ -300,6 +300,8 @@ def test_get_service_instances_needing_update():
 
 def test_get_marathon_clients_from_config():
     with mock.patch(
+        'paasta_tools.deployd.common.load_system_paasta_config', autospec=True,
+    ), mock.patch(
         'paasta_tools.deployd.common.get_marathon_servers', autospec=True,
     ), mock.patch(
         'paasta_tools.deployd.common.get_marathon_clients', autospec=True,
