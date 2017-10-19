@@ -164,7 +164,7 @@ def assert_instances_equals(context, number):
 
 @when('we mark a host it is running on as at-risk')
 def mark_host_running_on_at_risk(context):
-    app = context.marathon_client.get_app(context.new_id)
+    app = context.current_client.get_app(context.new_id)
     tasks = app.tasks
     host = tasks[0].host
     mark_host_at_risk(context, host)
@@ -194,7 +194,7 @@ def tasks_on_that_at_risk_host_drained(context, number):
 @then('there should be {number:d} tasks on the host "{host}"')
 def tasks_on_host_drained(context, number, host):
     app_id = context.new_id
-    tasks = context.marathon_client.list_tasks(app_id)
+    tasks = context.current_client.list_tasks(app_id)
     count = 0
     for task in tasks:
         if task.host == host:
