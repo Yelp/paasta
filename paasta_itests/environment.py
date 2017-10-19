@@ -167,6 +167,11 @@ def _clean_up_maintenance(context):
             del context.at_risk_host
 
 
+def _clean_up_current_client(context):
+    if hasattr(context, 'current_client'):
+        del context.current_client
+
+
 def after_scenario(context, scenario):
     _stop_deployd(context)
     _clean_up_marathon_apps(context)
@@ -178,6 +183,7 @@ def after_scenario(context, scenario):
     _clean_up_maintenance(context)
     _clean_up_paasta_native_frameworks(context)  # this must come before _clean_up_etc_paasta
     _clean_up_etc_paasta(context)
+    _clean_up_current_client(context)
 
 
 def before_feature(context, feature):
