@@ -1350,7 +1350,7 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
     return num_at_risk_tasks
 
 
-def broadcast_log_all_services_running_here(line, component='monitoring'):
+def broadcast_log_all_services_running_here(line: str, component: str='monitoring') -> None:
     """Log a line of text to paasta logs of all services running on this host.
 
     :param line: text to log
@@ -1373,5 +1373,5 @@ def broadcast_log_all_services_running_here(line, component='monitoring'):
         )
 
 
-def broadcast_log_all_services_running_here_from_stdin(component='monitoring'):
+def broadcast_log_all_services_running_here_from_stdin(component: str='monitoring') -> None:
     broadcast_log_all_services_running_here(sys.stdin.read().strip())
