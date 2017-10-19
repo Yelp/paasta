@@ -44,10 +44,10 @@ services:
       - '8080:8080'
   marathon1:
     ports:
-      - '8080:8080'
+      - '8180:8080'
   marathon2:
     ports:
-      - '8080:8080'
+      - '8280:8080'
   itest_trusty:
     build: ../yelp_package/dockerfiles/trusty/
   playground:
