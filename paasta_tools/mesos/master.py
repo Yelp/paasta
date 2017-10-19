@@ -80,7 +80,7 @@ class MesosMaster(object):
     def _request(self, url, method=requests.get, cached=False, **kwargs):
         headers = {'User-Agent': get_user_agent()}
 
-        if cached and self.config.get("cache_enabled", False):
+        if cached and self.config.get("use_mesos_cache", False):
             # TODO: fall back to original host if this fails?
             host = self.cache_host
         else:

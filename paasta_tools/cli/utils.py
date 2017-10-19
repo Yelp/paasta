@@ -548,7 +548,7 @@ def run_paasta_metastatus(
     master, humanize, groupings,
     verbose=0,
     autoscaling_info=False,
-    cache_enabled=False,
+    use_mesos_cache=False,
 ):
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
@@ -561,7 +561,7 @@ def run_paasta_metastatus(
         verbose_flag = '-vv'
     humanize_flag = "-H" if humanize else ''
     groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cache_flag = "--cache-enabled" if cache_enabled else ''
+    cache_flag = "--use-mesos-cache" if use_mesos_cache else ''
     cmd_args = " ".join(
         filter(
             None, [
@@ -581,7 +581,7 @@ def run_paasta_metastatus(
 def execute_paasta_metastatus_on_remote_master(
     cluster, system_paasta_config, humanize, groupings, verbose,
     autoscaling_info=False,
-    cache_enabled=False,
+    use_mesos_cache=False,
 ):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
@@ -592,7 +592,7 @@ def execute_paasta_metastatus_on_remote_master(
         return (255, str(e))
 
     return run_paasta_metastatus(
-        master, humanize, groupings, verbose, autoscaling_info, cache_enabled,
+        master, humanize, groupings, verbose, autoscaling_info, use_mesos_cache,
     )
 
 

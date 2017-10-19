@@ -68,10 +68,10 @@ def add_subparser(subparsers):
         help="Show cluster autoscaling info, implies -vv",
     )
     status_parser.add_argument(
-        '--cache_enabled',
+        '--use-mesos-cache',
         action='store_true',
         default=False,
-        dest="cache_enabled",
+        dest="use_mesos_cache",
         help="Use Mesos cache for state.json and frameworks",
     )
     status_parser.add_argument(
@@ -95,7 +95,7 @@ def print_cluster_status(
     cluster, system_paasta_config, humanize, groupings,
     verbose=0,
     autoscaling_info=False,
-    cache_enabled=False,
+    use_mesos_cache=False,
 ):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
@@ -106,7 +106,7 @@ def print_cluster_status(
         groupings=groupings,
         verbose=verbose,
         autoscaling_info=autoscaling_info,
-        cache_enabled=cache_enabled,
+        use_mesos_cache=use_mesos_cache,
     )
 
     paasta_print("Cluster: %s" % cluster)
@@ -160,7 +160,7 @@ def paasta_metastatus(args):
                     groupings=args.groupings,
                     verbose=args.verbose,
                     autoscaling_info=args.autoscaling_info,
-                    cache_enabled=args.cache_enabled,
+                    use_mesos_cache=args.use_mesos_cache,
                 ),
             )
         else:

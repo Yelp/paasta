@@ -61,7 +61,7 @@ def parse_args(argv):
         ),
     )
     parser.add_argument('-t', '--threshold', type=int, default=90)
-    parser.add_argument('--cache-enabled', action='store_true', default=False)
+    parser.add_argument('--use-mesos-cache', action='store_true', default=False)
     parser.add_argument(
         '-a', '--autoscaling-info', action='store_true', default=False,
         dest="autoscaling_info",
@@ -84,7 +84,7 @@ def main(argv=None):
 
     system_paasta_config = load_system_paasta_config()
 
-    master = get_mesos_master(cache_enabled=args.cache_enabled)
+    master = get_mesos_master(use_mesos_cache=args.use_mesos_cache)
     try:
         mesos_state = master.state
     except MasterNotAvailableException as e:
