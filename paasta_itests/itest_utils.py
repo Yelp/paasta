@@ -36,12 +36,15 @@ def update_context_marathon_config(context):
         MarathonServiceConfig, 'get_max_instances', autospec=True,
     ) as mock_get_max_instances:
         mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
+        context.job_config = marathon_tools.load_marathon_service_config(
+            service=context.service,
+            instance=context.instance,
+            cluster=context.system_paasta_config.get_cluster(),
+            soa_dir=context.soa_dir,
+        )
+        context.current_client = context.marathon_clients.get_current_client_for_service(context.job_config)
         context.marathon_complete_config = {
-            key: value for key, value in marathon_tools.create_complete_config(
-                context.service,
-                context.instance,
-                soa_dir=context.soa_dir,
-            ).items() if key in whitelist_keys
+            key: value for key, value in context.job_config.format_marathon_app_dict().items() if key in whitelist_keys
         }
     context.marathon_complete_config.update({
         'cmd': '/bin/sleep 1m',

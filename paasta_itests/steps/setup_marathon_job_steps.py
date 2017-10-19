@@ -124,9 +124,9 @@ def run_until_number_tasks(context, number):
             )
             run_setup_marathon_job(context)
         sleep(0.5)
-        if context.marathon_client.get_app(context.app_id).instances == number:
+        if context.current_client.get_app(context.app_id).instances == number:
             return
-    assert context.marathon_client.get_app(context.app_id).instances == number
+    assert context.current_client.get_app(context.app_id).instances == number
 
 
 @when('we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
@@ -137,12 +137,16 @@ def zookeeper_scale_job(context, service, instance, number):
 
 @then('we should see it in the list of apps')
 def see_it_in_list(context):
-    assert context.app_id in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+    full_list = []
+    for client in context.marathon_clients.get_all_clients():
+        full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+
+    assert context.app_id in full_list
 
 
 @then('we can run get_app')
 def can_run_get_app(context):
-    assert context.marathon_client.get_app(context.app_id)
+    assert context.current_client.get_app(context.app_id)
 
 
 @then('we should see the number of instances become {number:d}')
@@ -150,12 +154,12 @@ def assert_instances_equals(context, number):
     attempts = 0
     while attempts < 10:
         try:
-            assert context.marathon_client.get_app(context.app_id).instances == number
+            assert context.current_client.get_app(context.app_id).instances == number
             return
         except AssertionError:
             attempts += 1
             sleep(5)
-    assert context.marathon_client.get_app(context.app_id).instances == number
+    assert context.current_client.get_app(context.app_id).instances == number
 
 
 @when('we mark a host it is running on as at-risk')
