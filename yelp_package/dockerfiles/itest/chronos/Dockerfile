@@ -31,6 +31,7 @@ RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         lsb-release \
         chronos=2.5.0-yelp32-1.ubuntu1604 \
+        rsyslog \
         && \
     apt-get clean
 
