@@ -38,10 +38,11 @@ def start_deployd(context):
     timeout = start + 60
     while "Startup finished!" not in output:
         output = context.daemon.stderr.readline().decode('utf-8')
+        if not output:
+            raise Exception("deployd exited prematurely")
         print(output.rstrip('\n'))
-        time.sleep(1)
         if time.time() > timeout:
-            raise "deployd never ran"
+            raise Exception("deployd never ran")
     time.sleep(5)
 
 
