@@ -38,14 +38,14 @@ def create_trivial_marathon_app(context):
         'instances': 3,
         'constraints': [["hostname", "UNIQUE"]],
     }
-    paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
+    paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_clients.current[0])
 
 
 @then('we should see it running in marathon')
 def list_marathon_apps_has_trivial_app(context):
-    actual = paasta_tools.marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+    actual = paasta_tools.marathon_tools.list_all_marathon_app_ids(context.marathon_clients.current[0])
     assert APP_ID in actual
-    assert context.marathon_client.get_app('/%s' % APP_ID)
+    assert context.marathon_clients.current[0].get_app('/%s' % APP_ID)
 
 
 @then('it should show up in marathon_services_running_here')
@@ -59,7 +59,7 @@ def marathon_services_running_here_works(context):
 def when_the_task_has_started(context):
     # 120 * 0.5 = 60 seconds
     for _ in range(120):
-        app = context.marathon_client.get_app(APP_ID)
+        app = context.marathon_clients.current[0].get_app(APP_ID)
         happy_count = app.tasks_running
         if happy_count >= 3:
             return
