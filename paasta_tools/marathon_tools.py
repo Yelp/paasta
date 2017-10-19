@@ -788,9 +788,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_marathon_shard(self) -> Optional[int]:
         """Returns the configued shard of Marathon to use.
-        Defaults to 0 currently as a fail-safe, but will default to None when we have more confidence in the sharding
-        code."""
-        return self.config_dict.get('marathon_shard', 0)
+        Defaults to None, which means MarathonClients will decide which shard to put this app on."""
+        return self.config_dict.get('marathon_shard', None)
 
     def get_previous_marathon_shards(self) -> Optional[List[int]]:
         """Returns a list of Marathon shards a service might have been on previously.

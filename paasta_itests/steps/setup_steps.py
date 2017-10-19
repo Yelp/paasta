@@ -170,12 +170,8 @@ def working_paasta_cluster(context):
 
 @given('a working paasta cluster, with docker registry {docker_registry}')
 def working_paasta_cluster_with_registry(context, docker_registry):
-    """Adds a working marathon client and chronos client for the purposes of
+    """Adds a working marathon_clients and chronos client for the purposes of
     interacting with them in the test."""
-    if not hasattr(context, 'marathon_client'):
-        context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
-    else:
-        paasta_print('Marathon connection already established')
 
     if not hasattr(context, 'marathon_clients'):
         context.marathon_clients, context.marathon_servers, context.system_paasta_config = setup_marathon_clients()
@@ -198,7 +194,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
 
     write_etc_paasta(
         context, {
-            'marathon_config': context.marathon_config,
             'marathon_servers': context.system_paasta_config.get_marathon_servers(),
         },
         'marathon.json',
