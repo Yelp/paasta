@@ -77,10 +77,20 @@ class Config(object):
     def _profile(self):
         return self.__items.get(self._profile_key, {})
 
+    def get(self, item, default=None):
+        try:
+            return self[item]
+        except KeyError:
+            return default
+
     def __getitem__(self, item):
         if item == "profile":
             return self.__items[item]
-        return self._profile.get(item, self.DEFAULTS[item])
+
+        if item in self._profile:
+            return self._profile[item]
+        else:
+            return self.DEFAULTS[item]
 
     def __setitem__(self, k, v):
         if k == "profile":

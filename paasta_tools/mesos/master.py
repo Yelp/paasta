@@ -73,14 +73,14 @@ class MesosMaster(object):
     @util.CachedProperty(ttl=5)
     def cache_host(self):
         host_url = urlparse(self.host)
-        host_url._replace(netloc=host_url.hostname + ':5055')
-        return host_url.geturl()
+        replaced = host_url._replace(netloc=host_url.hostname + ':5055')
+        return replaced.geturl()
 
     @log.duration
     def _request(self, url, method=requests.get, cached=False, **kwargs):
         headers = {'User-Agent': get_user_agent()}
 
-        if cached and self.config.fetch("cache_enabled", False):
+        if cached and self.config.get("cache_enabled", False):
             # TODO: fall back to original host if this fails?
             host = self.cache_host
         else:
@@ -95,14 +95,14 @@ class MesosMaster(object):
             )
         except requests.exceptions.ConnectionError:
             raise exceptions.MasterNotAvailableException(
-                MISSING_MASTER.format(self.host),
+                MISSING_MASTER.format(host),
             )
         except requests.exceptions.TooManyRedirects:
             raise exceptions.MasterTemporarilyNotAvailableException(
                 (
                     "Unable to connect to master at %s, likely due to "
                     "an ongoing leader election"
-                ) % self.host,
+                ) % host,
             )
 
     def fetch(self, url, **kwargs):
