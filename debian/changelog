@@ -1,6 +1,6 @@
-paasta-tools (0.67.15) xenial; urgency=medium
+paasta-tools (0.67.16) xenial; urgency=medium
 
-  * 0.67.15 tagged with 'make release'
+  * 0.67.16 tagged with 'make release'
     Commit: Merge pull request #1572 from
     Yelp/exception_handling_cleanup_tmp_jobs  Handle being unable to get
     a tmp job"s full config
