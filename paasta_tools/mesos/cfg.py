@@ -31,7 +31,8 @@ DEFAULTS = {
 def load_mesos_config(config_path):
     with open(config_path, 'rt') as f:
         try:
-            on_disk = json.load(f)
+            # assume profile is always default
+            on_disk = json.load(f)["default"]
         except ValueError as e:
             raise ValueError(
                 'Invalid JSON: {} in {}'.format(str(e), config_path),
