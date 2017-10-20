@@ -1,6 +1,15 @@
 paasta-tools (0.67.15) xenial; urgency=medium
 
   * 0.67.15 tagged with 'make release'
+    Commit: Merge pull request #1572 from
+    Yelp/exception_handling_cleanup_tmp_jobs  Handle being unable to get
+    a tmp job"s full config
+
+ -- Joseph Lukasik <jgl@yelp.com>  Fri, 20 Oct 2017 14:48:18 -0700
+
+paasta-tools (0.67.15) xenial; urgency=medium
+
+  * 0.67.15 tagged with 'make release'
     Commit: Merge pull request #1556 from Yelp/mesos-cache-enabled-flag
     Allow metastatus to use cached mesos state and frameworks
 
