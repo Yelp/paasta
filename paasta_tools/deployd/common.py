@@ -14,6 +14,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import NoConfigurationForServiceError
 
 BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
 BaseServiceInstance = namedtuple(
@@ -54,7 +55,7 @@ class ServiceInstance(BaseServiceInstance):
                 cluster=cluster,
                 soa_dir=DEFAULT_SOA_DIR,
             )
-        except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable) as e:
+        except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError) as e:
             return 0
         return config.get_bounce_priority()
 
