@@ -139,6 +139,10 @@ class CachingChronosClient(chronos.ChronosClient):
         return super(CachingChronosClient, self).list()
 
     @time_cache(ttl=20)
+    def metrics(self):
+        return super(CachingChronosClient, self).metrics()
+
+    @time_cache(ttl=20)
     def scheduler_graph(self):
         return super(CachingChronosClient, self).scheduler_graph()
 
