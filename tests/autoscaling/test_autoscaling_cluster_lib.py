@@ -353,11 +353,11 @@ class TestAsgAutoscaler(unittest.TestCase):
             mock_update_auto_scaling_group = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(update_auto_scaling_group=mock_update_auto_scaling_group)
             self.autoscaler.dry_run = True
-            self.autoscaler.set_capacity(2, 2)
+            self.autoscaler.set_capacity(2)
             assert not mock_update_auto_scaling_group.called
             self.autoscaler.dry_run = False
 
-            self.autoscaler.set_capacity(2, 2)
+            self.autoscaler.set_capacity(2)
             mock_ec2_client.assert_called_with('autoscaling', region_name='westeros-1')
             mock_update_auto_scaling_group.assert_called_with(
                 AutoScalingGroupName='asg-blah',
@@ -366,7 +366,7 @@ class TestAsgAutoscaler(unittest.TestCase):
 
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
                 mock_update_auto_scaling_group.side_effect = ClientError({'Error': {'Code': 1}}, 'blah')
-                self.autoscaler.set_capacity(2, 2)
+                self.autoscaler.set_capacity(2)
             assert self.autoscaler.capacity == 2
 
     def test_get_instance_type_weights_asg(self):
@@ -629,16 +629,16 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_modify_spot_fleet_request = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(modify_spot_fleet_request=mock_modify_spot_fleet_request)
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
-                ret = self.autoscaler.set_capacity(4, 4.1)
+                ret = self.autoscaler.set_capacity(4.1)
             assert not mock_modify_spot_fleet_request.called
 
             mock_modify_spot_fleet_request.side_effect = ClientError({'Error': {}}, 'blah')
             mock_get_sfr.return_value = {'SpotFleetRequestState': 'active'}
             with raises(autoscaling_cluster_lib.FailSetResourceCapacity):
-                ret = self.autoscaler.set_capacity(4, 4.1)
+                ret = self.autoscaler.set_capacity(4.1)
 
             mock_modify_spot_fleet_request.side_effect = None
-            ret = self.autoscaler.set_capacity(4, 4.1)
+            ret = self.autoscaler.set_capacity(4.1)
             mock_modify_spot_fleet_request.assert_called_with(
                 SpotFleetRequestId='sfr-blah',
                 TargetCapacity=4,
@@ -902,7 +902,7 @@ class TestClusterAutoscaler(unittest.TestCase):
 
             # test scale up
             _run(self.autoscaler.scale_resource(2, 4))
-            mock_set_capacity.assert_called_with(self.autoscaler, 4, 4)
+            mock_set_capacity.assert_called_with(self.autoscaler, 4)
 
             # test scale down
             mock_slave_1 = mock.Mock(instance_weight=1.099999999)
@@ -1110,18 +1110,10 @@ class TestClusterAutoscaler(unittest.TestCase):
                 current_capacity=5,
                 target_capacity=2,
             ))
-            assert mock_get_mesos_master.called
             mock_gracefully_terminate_slave.assert_has_calls([
                 mock_terminate_call_1,
                 mock_terminate_call_2,
             ])
-            mock_get_task_count_calls = [
-                mock.call(
-                    mock_mesos_state,
-                    slaves_list=[{'task_counts': mock_task_counts}],
-                ),
-            ]
-            mock_get_mesos_task_count_by_slave.assert_has_calls(mock_get_task_count_calls)
 
             # test non integer scale down
             # this should result in killing 3 instances,
@@ -1206,13 +1198,13 @@ class TestClusterAutoscaler(unittest.TestCase):
                 timer=mock_timer,
             ))
 
-            def _set_capacity(self, capacity, unrounded_capacity):
-                self.capacity = unrounded_capacity
+            def _set_capacity(self, capacity):
+                self.capacity = capacity
 
             mock_set_capacity.side_effect = _set_capacity
 
             mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
-            set_call_1 = mock.call(self.autoscaler, 4, 4)
+            set_call_1 = mock.call(self.autoscaler, 4)
             mock_set_capacity.assert_has_calls([set_call_1])
             mock_wait_and_terminate.assert_called_with(
                 self.autoscaler, slave=mock_slave, drain_timeout=123, dry_run=False,
@@ -1221,7 +1213,7 @@ class TestClusterAutoscaler(unittest.TestCase):
 
             # test we cleanup if a termination fails
             mock_set_capacity.reset_mock()
-            set_call_2 = mock.call(self.autoscaler, 5, 5)
+            set_call_2 = mock.call(self.autoscaler, 5)
             mock_wait_and_terminate.side_effect = get_coro_with_exception(ClientError({'Error': {}}, 'blah'))
             self.autoscaler.capacity = 5
             _run(self.autoscaler.gracefully_terminate_slave(
