@@ -45,7 +45,9 @@ def test__frameworks(mock_fetch):
     mock_frameworks = Mock()
     mock_fetch.return_value = Mock(json=Mock(return_value=mock_frameworks))
     ret = mesos_master._frameworks
-    mock_fetch.assert_called_with(mesos_master, "/master/frameworks")
+    mock_fetch.assert_called_with(
+        mesos_master, "/master/frameworks", cached=True,
+    )
     assert ret == mock_frameworks
 
 
