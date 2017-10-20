@@ -638,7 +638,7 @@ def get_chronos_status(chronos_client):
     )
 
 
-def get_marathon_client(marathon_config):
+def get_marathon_client(marathon_config, cached=False):
     """Given a MarathonConfig object, return
     a client.
     :param marathon_config: a MarathonConfig object
@@ -648,6 +648,7 @@ def get_marathon_client(marathon_config):
         marathon_config.get_url(),
         marathon_config.get_username(),
         marathon_config.get_password(),
+        cached=cached,
     )
 
 
