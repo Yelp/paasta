@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
+import errno
 import json
 
 
@@ -28,15 +29,20 @@ DEFAULTS = {
 }
 
 
-def load_mesos_config(config_path):
-    with open(config_path, 'rt') as f:
-        try:
-            # assume profile is always default
-            on_disk = json.load(f)["default"]
-        except ValueError as e:
-            raise ValueError(
-                'Invalid JSON: {} in {}'.format(str(e), config_path),
-            )
+def load_mesos_config(config_path, profile="default"):
+    on_disk = {}
+
+    try:
+        with open(config_path, 'rt') as f:
+            on_disk = json.load(f)[profile]
+    except ValueError as e:
+        raise ValueError(
+            'Invalid JSON: {} in {}'.format(str(e), config_path),
+        )
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
+
     config = copy.deepcopy(DEFAULTS)
     config.update(on_disk)
     return config
