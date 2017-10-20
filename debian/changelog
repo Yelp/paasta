@@ -1,3 +1,11 @@
+paasta-tools (0.67.15) xenial; urgency=medium
+
+  * 0.67.15 tagged with 'make release'
+    Commit: Merge pull request #1556 from Yelp/mesos-cache-enabled-flag
+    Allow metastatus to use cached mesos state and frameworks
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 20 Oct 2017 02:16:58 -0700
+
 paasta-tools (0.67.14) xenial; urgency=medium
 
   * 0.67.14 tagged with 'make release'
