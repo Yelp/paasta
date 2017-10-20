@@ -37,6 +37,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools import utils
 from paasta_tools.check_chronos_jobs import check_chronos_job_name
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 
 
@@ -134,13 +135,17 @@ def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
         )
         for job in temporary_jobs:
             last_run_time, last_run_state = chronos_tools.get_status_last_run(job)
-            chronos_job_config = chronos_tools.load_chronos_job_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
-            interval = chronos_job_config.get_schedule_interval_in_seconds()
+            try:
+                chronos_job_config = chronos_tools.load_chronos_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+                interval = chronos_job_config.get_schedule_interval_in_seconds()
+            except NoConfigurationForServiceError:
+                # If we can't get the job's config, default to cleanup after 1 day
+                interval = 0
             if last_run_state != chronos_tools.LastRunState.NotRun:
                 if ((datetime.datetime.now(dateutil.tz.tzutc()) -
                      dateutil.parser.parse(last_run_time)) >
