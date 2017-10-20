@@ -110,7 +110,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         if log_level is not None:
             self.log.setLevel(log_level)
 
-    def set_capacity(self, capacity, unrounded_capacity):
+    def set_capacity(self, capacity):
         pass
 
     def get_instance_type_weights(self):
@@ -234,7 +234,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         if dry_run:
             return True
         if timer.ready():
-            self.log.warning("Timer expired before slave ready to kill...")
+            self.log.warning("Timer expired before slave ready to kill, proceding to terminate anyways")
             timer.start()
             raise TimeoutError
         if not should_drain:
@@ -323,7 +323,7 @@ class ClusterAutoscaler(ResourceLogMixin):
             return
         elif delta > 0:
             self.log.info("Increasing resource capacity to: {}".format(target_capacity))
-            self.set_capacity(target_capacity, target_capacity)
+            self.set_capacity(target_capacity)
             await asyncio.sleep(1)
             return
         elif delta < 0:
@@ -383,7 +383,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         # Instance weights can be floats but the target has to be an integer
         # because this is all AWS allows on the API call to set target capacity
         try:
-            self.set_capacity(int(floor(self.capacity + capacity_diff)), self.capacity + capacity_diff)
+            self.set_capacity(self.capacity + capacity_diff)
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
@@ -403,7 +403,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {}".format(self.capacity - capacity_diff))
-            self.set_capacity(self.capacity - capacity_diff, self.capacity - capacity_diff)
+            self.set_capacity(self.capacity - capacity_diff)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
             if should_drain:
                 undrain([drain_host_string])
@@ -557,20 +557,6 @@ class ClusterAutoscaler(ResourceLogMixin):
             killed_slaves += 1
 
             current_capacity = new_capacity
-            mesos_state = get_mesos_master().state_summary()
-            # It's not obvious what this loop is doing: it is updating the task counts for
-            #  for the slaves in filtered_sorted_slaves, so next time through the loop
-            #  we can re-sort
-            if filtered_sorted_slaves:
-                task_counts = get_mesos_task_count_by_slave(
-                    mesos_state,
-                    slaves_list=[
-                        {'task_counts': slave.task_counts}
-                        for slave in filtered_sorted_slaves
-                    ],
-                )
-                for i, slave in enumerate(filtered_sorted_slaves):
-                    slave.task_counts = task_counts[i]['task_counts']
             filtered_slaves = filtered_sorted_slaves
 
         # Now we wait for each task to actually finish...
@@ -702,10 +688,11 @@ class SpotAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity, unrounded_capacity):
+    def set_capacity(self, capacity):
         """ AWS won't modify a request that is already modifying. This
         function ensures we wait a few seconds in case we've just modified
         a SFR"""
+        rounded_capacity = int(floor(capacity))
         ec2_client = boto3.client('ec2', region_name=self.resource['region'])
         with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
             try:
@@ -730,13 +717,13 @@ class SpotAutoscaler(ClusterAutoscaler):
             return True
         try:
             ret = ec2_client.modify_spot_fleet_request(
-                SpotFleetRequestId=self.resource['id'], TargetCapacity=capacity,
+                SpotFleetRequestId=self.resource['id'], TargetCapacity=rounded_capacity,
                 ExcessCapacityTerminationPolicy='noTermination',
             )
         except ClientError as e:
             self.log.error("Error modifying spot fleet request: {}".format(e))
             raise FailSetResourceCapacity
-        self.capacity = unrounded_capacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
@@ -844,7 +831,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity, unrounded_capacity):
+    def set_capacity(self, capacity):
         if self.dry_run:
             return
         asg_client = boto3.client('autoscaling', region_name=self.resource['region'])
@@ -856,7 +843,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         except ClientError as e:
             self.log.error("Error modifying ASG: {}".format(e))
             raise FailSetResourceCapacity
-        self.capacity = unrounded_capacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
