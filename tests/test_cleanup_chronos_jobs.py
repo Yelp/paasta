@@ -17,6 +17,7 @@ import dateutil
 import mock
 
 from paasta_tools import cleanup_chronos_jobs
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 
 
@@ -71,18 +72,27 @@ def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_
         seconds_in_one_day,
         seconds_in_one_day,
         seconds_in_half_hour,
+        seconds_in_one_day,
     ]
 
-    mock_load_chronos_job_config.return_value = mock_chronos_job
+    mock_load_chronos_job_config.side_effect = [
+        mock_chronos_job,
+        mock_chronos_job,
+        mock_chronos_job,
+        mock_chronos_job,
+        NoConfigurationForServiceError,  # Test that we handle not being able to get a job's config
+    ]
+
     mock_get_temporary_jobs.side_effect = [
         [{'name': 'tmp long batch', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp foo bar', 'lastSuccess': two_days_ago.isoformat()}],
         [{'name': 'tmp anotherservice anotherinstance', 'lastSuccess': one_hour_ago.isoformat()}],
         [{'name': 'tmp short batch', 'lastSuccess': one_hour_ago.isoformat()}],
+        [{'name': 'tmp nonexistent batch', 'lastSuccess': one_hour_ago.isoformat()}],
     ]
     actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(
         mock.Mock(),
-        ['long batch', 'foo bar', 'anotherservice anotherinstance', 'short batch'],
+        ['long batch', 'foo bar', 'anotherservice anotherinstance', 'short batch', 'nonexistent batch'],
         cluster='fake_cluster',
         soa_dir='/soa/dir',
     )
