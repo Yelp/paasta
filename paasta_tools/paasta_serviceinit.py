@@ -100,13 +100,9 @@ class PaastaClients():
 
     def marathon(self):
         if self._marathon is None:
-            marathon_config = marathon_tools.load_marathon_config()
-            self._marathon = marathon_tools.get_marathon_client(
-                marathon_config.get_url(),
-                marathon_config.get_username(),
-                marathon_config.get_password(),
-                cached=self._cached,
-            )
+            system_paasta_config = load_system_paasta_config()
+            marathon_servers = system_paasta_config.get_marathon_servers()
+            self._marathon = marathon_tools.get_marathon_clients(marathon_servers)
         return self._marathon
 
     def chronos(self):
@@ -197,7 +193,7 @@ def main():
                         soa_dir=args.soa_dir,
                         app_id=args.app_id,
                         delta=args.delta,
-                        client=clients.marathon(),
+                        clients=clients.marathon(),
                     )
                 elif instance_type == 'chronos':
                     return_code = chronos_serviceinit.perform_command(

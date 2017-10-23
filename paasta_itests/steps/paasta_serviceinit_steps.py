@@ -62,7 +62,7 @@ def status_marathon_job(context, status, job_id):
             instance,
             app_id,
             normal_instance_count,
-            context.marathon_client,
+            context.marathon_clients.current[0],
         )
     assert status in output
 
