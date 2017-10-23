@@ -1,3 +1,12 @@
+paasta-tools (0.67.18) xenial; urgency=medium
+
+  * 0.67.18 tagged with 'make release'
+    Commit: Merge pull request #1560 from Yelp/filter-nonexistant-agents-
+    from-cluster-autoscaler-slaves-list  Filter out slaves from the
+    slaves list if not in mesos state
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 23 Oct 2017 09:34:05 -0700
+
 paasta-tools (0.67.17) xenial; urgency=medium
 
   * 0.67.17 tagged with 'make release'
