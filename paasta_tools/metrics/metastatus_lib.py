@@ -265,7 +265,7 @@ def assert_chronos_frameworks(connected_chronos_frameworks):
     else:
         output = (
             "    CRITICAL: There are %d connected chronos frameworks!"
-            " (expected 1)" % framework_count
+            " (Expected 1)" % framework_count
         )
     return (healthy, output)
 
@@ -568,32 +568,41 @@ def run_healthchecks_with_param(param, healthcheck_functions, format_options={})
     return [healthcheck(param, **format_options) for healthcheck in healthcheck_functions]
 
 
-def assert_marathon_apps(client):
-    num_apps = len(client.list_apps())
-    if num_apps < 1:
+def assert_marathon_apps(clients):
+    num_apps = [len(c.list_apps()) for c in clients]
+    if sum(num_apps) < 1:
         return HealthCheckResult(
             message="CRITICAL: No marathon apps running",
             healthy=False,
         )
     else:
-        return HealthCheckResult(message="marathon apps: %d" % num_apps, healthy=True)
+        return HealthCheckResult(
+            message="marathon apps: %10d" % sum(num_apps),
+            healthy=True,
+        )
 
 
-def assert_marathon_tasks(client):
-    num_tasks = len(client.list_tasks())
-    return HealthCheckResult(message="marathon tasks: %d" % num_tasks, healthy=True)
+def assert_marathon_tasks(clients):
+    num_tasks = [len(c.list_tasks()) for c in clients]
+    return HealthCheckResult(
+        message="marathon tasks: %9d" % sum(num_tasks),
+        healthy=True,
+    )
 
 
-def assert_marathon_deployments(client):
-    num_deployments = len(client.list_deployments())
-    return HealthCheckResult(message="marathon deployments: %d" % num_deployments, healthy=True)
+def assert_marathon_deployments(clients):
+    num_deployments = [len(c.list_deployments()) for c in clients]
+    return HealthCheckResult(
+        message="marathon deployments: %3d" % sum(num_deployments),
+        healthy=True,
+    )
 
 
-def get_marathon_status(client):
+def get_marathon_status(clients):
     """ Gathers information about marathon.
     :return: string containing the status.  """
     return run_healthchecks_with_param(
-        client, [
+        clients, [
             assert_marathon_apps,
             assert_marathon_tasks,
             assert_marathon_deployments,
@@ -638,7 +647,7 @@ def get_chronos_status(chronos_client):
     )
 
 
-def get_marathon_client(marathon_config):
+def get_marathon_client(marathon_config, cached=False):
     """Given a MarathonConfig object, return
     a client.
     :param marathon_config: a MarathonConfig object
@@ -648,6 +657,7 @@ def get_marathon_client(marathon_config):
         marathon_config.get_url(),
         marathon_config.get_username(),
         marathon_config.get_password(),
+        cached=cached,
     )
 
 
@@ -769,12 +779,3 @@ def reserved_maintenence_resources(resources):
             'disk': 0,
         },
     )
-
-
-def get_marathon_framework_ids(marathon_clients):
-    ids = []
-    for client in marathon_clients.current:
-        ids.append(client.get_info().framework_id)
-    for client in marathon_clients.previous:
-        ids.append(client.get_info().framework_id)
-    return ids

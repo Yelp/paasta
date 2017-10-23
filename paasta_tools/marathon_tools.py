@@ -18,9 +18,11 @@ make the PaaSTA stack work.
 """
 import copy
 import datetime
+import itertools
 import json
 import logging
 import os
+import sys
 from collections import defaultdict
 from collections import namedtuple
 from math import ceil
@@ -57,6 +59,7 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.utils import _log
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
@@ -887,6 +890,20 @@ def get_marathon_clients(marathon_servers: MarathonServers, cached: bool=False) 
     return MarathonClients(current=current_clients, previous=previous_clients)
 
 
+def get_list_of_marathon_clients(
+        system_paasta_config: Optional[SystemPaastaConfig]=None,
+        cached: bool=False,
+) -> List[MarathonClient]:
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = get_marathon_clients(marathon_servers, cached=cached)
+    return [c for c in itertools.chain(
+        marathon_clients.current,
+        marathon_clients.previous,
+    )]
+
+
 def format_job_id(service: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None) -> str:
     """Compose a Marathon app id formatted to meet Marathon's
     `app id requirements <https://mesosphere.github.io/marathon/docs/rest-api.html#id-string>`_
@@ -1440,3 +1457,30 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
             num_at_risk_tasks += 1
     log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
     return num_at_risk_tasks
+
+
+def broadcast_log_all_services_running_here(line: str, component: str='monitoring') -> None:
+    """Log a line of text to paasta logs of all services running on this host.
+
+    :param line: text to log
+    :param component: paasta log component
+    """
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+
+    services = mesos_services_running_here(
+        framework_filter=lambda _: True,
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+    )
+    for service, instance, _ in services:
+        _log(
+            line=line,
+            service=service,
+            instance=instance,
+            component=component,
+            cluster=cluster,
+        )
+
+
+def broadcast_log_all_services_running_here_from_stdin(component: str='monitoring') -> None:
+    broadcast_log_all_services_running_here(sys.stdin.read().strip())
