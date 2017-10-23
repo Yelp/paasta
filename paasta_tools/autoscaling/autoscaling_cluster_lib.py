@@ -319,12 +319,10 @@ class ClusterAutoscaler(ResourceLogMixin):
         delta = target_capacity - current_capacity
         if delta == 0:
             self.log.info("Already at target capacity: {}".format(target_capacity))
-            await asyncio.sleep(1)
             return
         elif delta > 0:
             self.log.info("Increasing resource capacity to: {}".format(target_capacity))
             self.set_capacity(target_capacity)
-            await asyncio.sleep(1)
             return
         elif delta < 0:
             mesos_state = get_mesos_master().state_summary()
@@ -565,9 +563,6 @@ class ClusterAutoscaler(ResourceLogMixin):
                 await task
             except (HTTPError, FailSetResourceCapacity):
                 continue
-
-        # In case there's nothing to kill, we'll get a RuntimeWarning unless we await on something
-        await asyncio.sleep(1)
 
 
 class SpotAutoscaler(ClusterAutoscaler):
@@ -977,7 +972,6 @@ async def run_parallel_scalers(sorted_autoscaling_scalers):
         if task.cancelled() or task.done():
             continue
         await task
-    await asyncio.sleep(0.1)
 
 
 def get_scaler(scaler_type):
@@ -989,7 +983,6 @@ def get_scaler(scaler_type):
 
 
 async def autoscale_cluster_resource(scaler):
-    await asyncio.sleep(0.1)
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
