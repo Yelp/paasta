@@ -30,8 +30,8 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
 
 
-def _get_marathon_connection_string():
-    return 'http://%s' % get_service_connection_string('marathon')
+def _get_marathon_connection_string(service='marathon'):
+    return 'http://%s' % get_service_connection_string(service)
 
 
 def _get_chronos_connection_string():
@@ -59,11 +59,23 @@ def setup_system_paasta_config():
                 'user': None,
                 'password': None,
             },
-            'marathon_servers': [{
-                'url': marathon_connection_string,
-                'user': None,
-                'password': None,
-            }],
+            'marathon_servers': [
+                {
+                    'url': _get_marathon_connection_string('marathon'),
+                    'user': None,
+                    'password': None,
+                },
+                {
+                    'url': _get_marathon_connection_string('marathon1'),
+                    'user': None,
+                    'password': None,
+                },
+                {
+                    'url': _get_marathon_connection_string('marathon2'),
+                    'user': None,
+                    'password': None,
+                },
+            ],
             'chronos_config': {
                 'user': None,
                 'password': None,
@@ -82,6 +94,13 @@ def setup_marathon_client():
         marathon_config.get_password(),
     )
     return (client, marathon_config, system_paasta_config)
+
+
+def setup_marathon_clients():
+    system_paasta_config = setup_system_paasta_config()
+    marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
+    clients = marathon_tools.get_marathon_clients(marathon_servers)
+    return (clients, marathon_servers, system_paasta_config)
 
 
 def setup_chronos_client():
@@ -157,6 +176,11 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
     else:
         paasta_print('Marathon connection already established')
+
+    if not hasattr(context, 'marathon_clients'):
+        context.marathon_clients, context.marathon_servers, context.system_paasta_config = setup_marathon_clients()
+    else:
+        paasta_print('Marathon connections already established')
 
     if not hasattr(context, 'chronos_client'):
         context.chronos_config = setup_chronos_config()

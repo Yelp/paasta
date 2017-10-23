@@ -61,6 +61,7 @@ def parse_args(argv):
         ),
     )
     parser.add_argument('-t', '--threshold', type=int, default=90)
+    parser.add_argument('--use-mesos-cache', action='store_true', default=False)
     parser.add_argument(
         '-a', '--autoscaling-info', action='store_true', default=False,
         dest="autoscaling_info",
@@ -83,7 +84,12 @@ def main(argv=None):
 
     system_paasta_config = load_system_paasta_config()
 
-    master = get_mesos_master()
+    master_kwargs = {}
+    # we don't want to be passing False to not override a possible True
+    # value from system config
+    if args.use_mesos_cache:
+        master_kwargs['use_mesos_cache'] = True
+    master = get_mesos_master(**master_kwargs)
     try:
         mesos_state = master.state
     except MasterNotAvailableException as e:
@@ -115,7 +121,9 @@ def main(argv=None):
     chronos_config = load_chronos_config()
 
     if marathon_config:
-        marathon_client = metastatus_lib.get_marathon_client(marathon_config)
+        marathon_client = metastatus_lib.get_marathon_client(
+            marathon_config, cached=True,
+        )
         try:
             marathon_results = metastatus_lib.get_marathon_status(marathon_client)
         except (MarathonError, InternalServerError, ValueError) as e:
@@ -130,7 +138,7 @@ def main(argv=None):
         )]
 
     if chronos_config:
-        chronos_client = get_chronos_client(chronos_config)
+        chronos_client = get_chronos_client(chronos_config, cached=True)
         try:
             chronos_results = metastatus_lib.get_chronos_status(chronos_client)
         except (chronos.ChronosAPIError) as e:

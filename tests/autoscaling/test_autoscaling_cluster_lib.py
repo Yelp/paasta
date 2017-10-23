@@ -943,6 +943,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_gracefully_terminate_slave.side_effect = just_sleep
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
+            mock_mesos_state.get = lambda _, __: [{'id': 'i-blah123'}, {'id': 'i-blah456'}]
             mock_master.state_summary.return_value = mock_mesos_state
             mock_get_mesos_master.return_value = mock_master
             mock_task_counts = mock.Mock()

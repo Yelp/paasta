@@ -1919,7 +1919,10 @@ def check_docker_image(service: str, tag: str) -> bool:
     image_name = build_docker_image_name(service)
     docker_tag = build_docker_tag(service, tag)
     images = docker_client.images(name=image_name)
-    result = [image for image in images if docker_tag in image['RepoTags']]
+    # image['RepoTags'] may be None
+    # Fixed upstream but only in docker-py 2.
+    # https://github.com/docker/docker-py/issues/1401
+    result = [image for image in images if docker_tag in (image['RepoTags'] or [])]
     if len(result) > 1:
         raise ValueError('More than one docker image found with tag %s\n%s' % (docker_tag, result))
     return len(result) == 1

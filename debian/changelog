@@ -1,3 +1,37 @@
+paasta-tools (0.67.17) xenial; urgency=medium
+
+  * 0.67.17 tagged with 'make release'
+    Commit: Merge pull request #1569 from Yelp/cleanup-mesos-config
+    replace mesos.cfg.Config
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 23 Oct 2017 01:50:23 -0700
+
+paasta-tools (0.67.16) xenial; urgency=medium
+
+  * 0.67.16 tagged with 'make release'
+    Commit: Merge pull request #1572 from
+    Yelp/exception_handling_cleanup_tmp_jobs  Handle being unable to get
+    a tmp job"s full config
+
+ -- Joseph Lukasik <jgl@yelp.com>  Fri, 20 Oct 2017 14:48:18 -0700
+
+paasta-tools (0.67.15) xenial; urgency=medium
+
+  * 0.67.15 tagged with 'make release'
+    Commit: Merge pull request #1556 from Yelp/mesos-cache-enabled-flag
+    Allow metastatus to use cached mesos state and frameworks
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 20 Oct 2017 02:16:58 -0700
+
+paasta-tools (0.67.14) xenial; urgency=medium
+
+  * 0.67.14 tagged with 'make release'
+    Commit: Merge pull request #1557 from
+    Yelp/add_stalled_reason_to_marathon_status  Add potential reasons
+    for app deployments being stalled to paasta status and api
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 16 Oct 2017 07:21:01 -0700
+
 paasta-tools (0.67.13) xenial; urgency=medium
 
   * 0.67.13 tagged with 'make release'

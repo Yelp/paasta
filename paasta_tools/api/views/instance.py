@@ -17,6 +17,7 @@ PaaSTA service instance status/start/stop etc.
 """
 import traceback
 
+from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import chronos_tools
@@ -218,6 +219,26 @@ def instance_tasks(request):
         tasks = [add_executor_info(task) for task in tasks]
         tasks = [add_slave_info(task) for task in tasks]
     return [task._Task__items for task in tasks]
+
+
+@view_config(route_name="service.instance.delay", request_method='GET', renderer='json')
+def instance_delay(request):
+    service = request.swagger_data.get('service')
+    instance = request.swagger_data.get('instance')
+    client = settings.marathon_client
+    job_config = marathon_tools.load_marathon_service_config(
+        service, instance, settings.cluster, soa_dir=settings.soa_dir,
+    )
+    app_id = job_config.format_marathon_app_dict()['id']
+    app_queue = marathon_tools.get_app_queue(client, app_id)
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
+
+    if len(unused_offers_summary) != 0:
+        return unused_offers_summary
+    else:
+        response = Response()
+        response.status_int = 204
+        return response
 
 
 def add_executor_info(task):

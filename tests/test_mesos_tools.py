@@ -223,7 +223,11 @@ def test_get_mesos_leader_no_hostname():
             mesos_tools.get_mesos_leader()
 
 
-@mock.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True)
+@mock.patch(
+    'paasta_tools.mesos_tools.get_mesos_config',
+    autospec=True,
+    return_value={"scheme": "http", "master": "test"},
+)
 def test_get_mesos_leader_cli_mesosmasterconnectionerror(mock_get_mesos_config):
     with mock.patch(
         'paasta_tools.mesos.master.MesosMaster.resolve',

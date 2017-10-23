@@ -83,7 +83,27 @@ services:
       - 8080
     environment:
       CLUSTER: testcluster
-    command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger --mesos_authentication --env_vars_prefix MARATHON_ --mesos_authentication_principal marathon --mesos_authentication_secret_file /etc/marathon_framework_secret'
+    command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger --mesos_authentication --env_vars_prefix MARATHON_ --mesos_authentication_principal marathon --mesos_authentication_secret_file /etc/marathon_framework_secret --framework_name marathon'
+    depends_on:
+      - zookeeper
+
+  marathon1:
+    build: ../yelp_package/dockerfiles/itest/marathon/
+    ports:
+      - 8080
+    environment:
+      CLUSTER: testcluster
+    command: 'marathon --zk zk://zookeeper:2181/marathon1 --master zk://zookeeper:2181/mesos-testcluster --no-logger --mesos_authentication --env_vars_prefix MARATHON_ --mesos_authentication_principal marathon --mesos_authentication_secret_file /etc/marathon_framework_secret --framework_name marathon1'
+    depends_on:
+      - zookeeper
+
+  marathon2:
+    build: ../yelp_package/dockerfiles/itest/marathon/
+    ports:
+      - 8080
+    environment:
+      CLUSTER: testcluster
+    command: 'marathon --zk zk://zookeeper:2181/marathon2 --master zk://zookeeper:2181/mesos-testcluster --no-logger --mesos_authentication --env_vars_prefix MARATHON_ --mesos_authentication_principal marathon --mesos_authentication_secret_file /etc/marathon_framework_secret --framework_name marathon2'
     depends_on:
       - zookeeper
 
@@ -91,6 +111,8 @@ services:
     build: ../yelp_package/dockerfiles/trusty/
     environment:
       MARATHON_PORT: 'http://marathon:8080'
+      MARATHON1_PORT: 'http://marathon1:8080'
+      MARATHON2_PORT: 'http://marathon2:8080'
       MESOSMASTER_PORT: 'http://mesosmaster:5050'
       HACHECK_PORT: 'http://hacheck:6666'
       ZOOKEEPER_PORT: 'zk://zookeeper:2181'
