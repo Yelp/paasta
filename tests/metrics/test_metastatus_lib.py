@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import inspect
+import re
 
 import mock
 from mock import Mock
@@ -303,15 +304,14 @@ def test_assert_framework_count_ok():
     assert ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
-def test_ok_marathon_apps(mock_get_marathon_client):
-    client = mock_get_marathon_client.return_value
+def test_ok_marathon_apps():
+    client = Mock()
     client.list_apps.return_value = [
         "MarathonApp::1",
         "MarathonApp::2",
     ]
-    output, ok = metastatus_lib.assert_marathon_apps(client)
-    assert "marathon apps: 2" in output
+    output, ok = metastatus_lib.assert_marathon_apps([client])
+    assert re.match("marathon apps: +2", output)
     assert ok
 
 
@@ -324,21 +324,19 @@ def test_no_marathon_apps(mock_get_marathon_client):
     assert not ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
-def test_marathon_tasks(mock_get_marathon_client):
-    client = mock_get_marathon_client.return_value
+def test_marathon_tasks():
+    client = Mock()
     client.list_tasks.return_value = ["MarathonTask:1"]
-    output, ok = metastatus_lib.assert_marathon_tasks(client)
-    assert "marathon tasks: 1" in output
+    output, ok = metastatus_lib.assert_marathon_tasks([client])
+    assert re.match("marathon tasks: +1", output)
     assert ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
-def test_assert_marathon_deployments(mock_get_marathon_client):
-    client = mock_get_marathon_client.return_value
+def test_assert_marathon_deployments():
+    client = Mock()
     client.list_deployments.return_value = ["MarathonDeployment:1"]
-    output, ok = metastatus_lib.assert_marathon_deployments(client)
-    assert "marathon deployments: 1" in output
+    output, ok = metastatus_lib.assert_marathon_deployments([client])
+    assert re.match("marathon deployments: +1", output)
     assert ok
 
 
@@ -383,18 +381,8 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 
 
-@patch('paasta_tools.metrics.metastatus_lib.marathon_tools.get_marathon_client', autospec=True)
-@patch('paasta_tools.metrics.metastatus_lib.marathon_tools.load_marathon_config', autospec=True)
-def test_get_marathon_status(
-    mock_load_marathon_config,
-    mock_get_marathon_client,
-):
-    mock_load_marathon_config.return_value = MarathonConfig({
-        'url': 'fakeurl',
-        'user': 'fakeuser',
-        'password': 'fakepass',
-    })
-    client = mock_get_marathon_client.return_value
+def test_get_marathon_status():
+    client = Mock()
     client.list_apps.return_value = [
         "MarathonApp::1",
         "MarathonApp::2",
@@ -407,11 +395,11 @@ def test_get_marathon_status(
         "MarathonTask::2",
         "MarathonTask::3",
     ]
-    expected_apps_output = ("marathon apps: 2", True)
-    expected_deployment_output = ("marathon deployments: 1", True)
-    expected_tasks_output = ("marathon tasks: 3", True)
+    expected_apps_output = ("marathon apps:          2", True)
+    expected_deployment_output = ("marathon deployments:   1", True)
+    expected_tasks_output = ("marathon tasks:         3", True)
 
-    results = metastatus_lib.get_marathon_status(client)
+    results = metastatus_lib.get_marathon_status([client])
 
     assert expected_apps_output in results
     assert expected_deployment_output in results

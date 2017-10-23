@@ -19,12 +19,7 @@ from paasta_tools.monitoring.check_mesos_duplicate_frameworks import check_mesos
 
 def test_check_mesos_no_duplicate_frameworks_ok(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
-    ), mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
-        autospec=True,
-    ), mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        'paasta_tools.marathon_tools.get_list_of_marathon_clients',
         autospec=True,
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
@@ -56,12 +51,7 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
 
 def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.load_system_paasta_config', autospec=True,
-    ), mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_servers',
-        autospec=True,
-    ), mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_clients',
+        'paasta_tools.marathon_tools.get_list_of_marathon_clients',
         autospec=True,
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',

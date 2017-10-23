@@ -14,15 +14,14 @@
 # limitations under the License.
 import argparse
 import functools
+import itertools
 import logging
 import sys
 
 import chronos
-from marathon.exceptions import InternalServerError
 from marathon.exceptions import MarathonError
 
 from paasta_tools import __version__
-from paasta_tools import marathon_tools
 from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
@@ -32,7 +31,6 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
-from paasta_tools.metrics.metastatus_lib import get_marathon_framework_ids
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -77,8 +75,44 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+def get_marathon_framework_ids(marathon_clients):
+    return [client.get_info().framework_id for client in marathon_clients]
+
+
+def _run_mesos_checks(mesos_master, mesos_state, marathon_clients):
+    try:
+        marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
+    except (MarathonError, ValueError) as e:
+        paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon cluster: {}".format(e)))
+        sys.exit(2)
+
+    mesos_state_status = metastatus_lib.get_mesos_state_status(
+        mesos_state=mesos_state,
+        marathon_framework_ids=marathon_framework_ids,
+    )
+
+    metrics = mesos_master.metrics_snapshot()
+    mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(
+        mesos_metrics=metrics,
+        mesos_state=mesos_state,
+    )
+    return mesos_state_status + mesos_metrics_status
+
+
+def _run_marathon_checks(marathon_clients):
+    try:
+        marathon_results = metastatus_lib.get_marathon_status(marathon_clients)
+        return marathon_results
+    except (MarathonError, ValueError) as e:
+        paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon cluster: {}".format(e)))
+        sys.exit(2)
+
+
+def all_marathon_clients(marathon_clients):
+    return [c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)]
+
+
 def main(argv=None):
-    marathon_config = None
     chronos_config = None
     args = parse_args(argv)
 
@@ -90,52 +124,25 @@ def main(argv=None):
     if args.use_mesos_cache:
         master_kwargs['use_mesos_cache'] = True
     master = get_mesos_master(**master_kwargs)
+
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))
+
     try:
         mesos_state = master.state
+        all_mesos_results = _run_mesos_checks(
+            mesos_master=master,
+            mesos_state=mesos_state,
+            marathon_clients=marathon_clients,
+        )
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
         paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
-    marathon_servers = get_marathon_servers(system_paasta_config)
-    marathon_clients = get_marathon_clients(marathon_servers)
-    marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
-    mesos_state_status = metastatus_lib.get_mesos_state_status(
-        mesos_state=mesos_state,
-        marathon_framework_ids=marathon_framework_ids,
-    )
-
-    metrics = master.metrics_snapshot()
-    mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(
-        mesos_metrics=metrics,
-        mesos_state=mesos_state,
-    )
-
-    all_mesos_results = mesos_state_status + mesos_metrics_status
-
-    # Check to see if Marathon should be running here by checking for config
-    marathon_config = marathon_tools.load_marathon_config()
-
     # Check to see if Chronos should be running here by checking for config
     chronos_config = load_chronos_config()
-
-    if marathon_config:
-        marathon_client = metastatus_lib.get_marathon_client(
-            marathon_config, cached=True,
-        )
-        try:
-            marathon_results = metastatus_lib.get_marathon_status(marathon_client)
-        except (MarathonError, InternalServerError, ValueError) as e:
-            # catch ValueError until marathon-python/pull/167 is merged and this is handled upstream
-            paasta_print(PaastaColors.red(("CRITICAL: Unable to contact Marathon cluster at {}!"
-                                           "Is the cluster healthy?".format(marathon_config["url"]))))
-            sys.exit(2)
-    else:
-        marathon_results = [metastatus_lib.HealthCheckResult(
-            message='Marathon is not configured to run here',
-            healthy=True,
-        )]
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config, cached=True)
@@ -149,6 +156,8 @@ def main(argv=None):
             message='Chronos is not configured to run here',
             healthy=True,
         )]
+
+    marathon_results = _run_marathon_checks(marathon_clients)
 
     mesos_ok = all(metastatus_lib.status_for_results(all_mesos_results))
     marathon_ok = all(metastatus_lib.status_for_results(marathon_results))
@@ -210,7 +219,7 @@ def main(argv=None):
             for line in format_table(table):
                 print_with_indent(line, 4)
 
-        if args.verbose == 3:
+        if args.verbose >= 3:
             print_with_indent('Per Slave Utilization', 2)
             slave_resource_dict = metastatus_lib.get_resource_utilization_by_grouping(
                 lambda slave: slave['hostname'],
