@@ -26,7 +26,7 @@ from kazoo.client import KazooClient
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
-from paasta_tools.mesos.cfg import Config
+from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.utils import DeployBlacklist
@@ -55,11 +55,13 @@ def get_mesos_config_path():
     """
     Determine where to find the configuration for mesos-cli.
     """
-    return load_system_paasta_config().get_mesos_cli_config().get("path", DEFAULT_MESOS_CLI_CONFIG_LOCATION)
+    return load_system_paasta_config(). \
+        get_mesos_cli_config(). \
+        get("path", DEFAULT_MESOS_CLI_CONFIG_LOCATION)
 
 
 def get_mesos_config():
-    return Config(get_mesos_config_path())
+    return load_mesos_config(get_mesos_config_path())
 
 
 def get_mesos_master(**overrides):
