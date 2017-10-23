@@ -1,3 +1,11 @@
+paasta-tools (0.67.17) xenial; urgency=medium
+
+  * 0.67.17 tagged with 'make release'
+    Commit: Merge pull request #1569 from Yelp/cleanup-mesos-config
+    replace mesos.cfg.Config
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 23 Oct 2017 01:50:23 -0700
+
 paasta-tools (0.67.16) xenial; urgency=medium
 
   * 0.67.16 tagged with 'make release'
