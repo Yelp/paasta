@@ -435,12 +435,12 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.zk = mock_zk
             mock_start = mock.Mock()
             FakeWatchers.PaastaWatcher.start = mock_start
-            self.deployd.config.get_watchers_enabled = mock.Mock()
-            self.deployd.config.get_watchers_enabled.return_value = []
+            self.deployd.config.get_disabled_watchers = mock.Mock()
+            self.deployd.config.get_disabled_watchers.return_value = []
             self.deployd.start_watchers()
             assert mock_start.call_count == 2
 
-            self.deployd.config.get_watchers_enabled.return_value = ['FakeWatcher2']
+            self.deployd.config.get_disabled_watchers.return_value = ['FakeWatcher2']
             self.deployd.start_watchers()
             assert mock_start.call_count == 3
 

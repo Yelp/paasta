@@ -1690,8 +1690,8 @@ class SystemPaastaConfig(object):
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
 
-    def get_watchers_enables(self) -> List:
-        return self.config_dict.get('watchers_enabled', [])
+    def get_disabled_watchers(self) -> List:
+        return self.config_dict.get('disabled_watchers', [])
 
 
 def _run(
