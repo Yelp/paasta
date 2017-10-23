@@ -142,7 +142,7 @@ def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
                     cluster=cluster,
                     soa_dir=soa_dir,
                 )
-                interval = chronos_job_config.get_schedule_interval_in_seconds()
+                interval = chronos_job_config.get_schedule_interval_in_seconds() or 0
             except NoConfigurationForServiceError:
                 # If we can't get the job's config, default to cleanup after 1 day
                 interval = 0
