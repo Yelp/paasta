@@ -1364,6 +1364,7 @@ SystemPaastaConfigDict = TypedDict(
         'cluster_autoscaling_draining_enabled': bool,
         'use_mesos_healthchecks': bool,
         'taskproc': Dict,
+        'disabled_watchers': List,
     },
     total=False,
 )
