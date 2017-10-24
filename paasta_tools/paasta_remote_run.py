@@ -56,7 +56,8 @@ MESOS_TASK_SPACER = '.'
 
 def emit_counter_metric(counter_name, service, instance):
     create_counter(counter_name, {'service': service, 'instance': instance})
-    get_metric(counter_name).count(1) 
+    get_metric(counter_name).count(1)
+
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
@@ -293,9 +294,18 @@ def build_executor_stack(
 def remote_run_start(args):
 
     system_paasta_config, service, cluster, \
-            soa_dir, instance, instance_type, constraints = extract_args(args)
+        soa_dir, instance, instance_type, constraints = extract_args(args)
     overrides_dict = {}
 
+    constraints_json = args.constraints_json
+    if constraints_json:
+        try:
+            constraints = json.loads(constraints_json)
+        except Exception as e:
+            paasta_print("Error while parsing constraints: %s", e)
+
+        if constraints:
+            overrides_dict['constraints'] = constraints
 
     if args.cmd:
         overrides_dict['cmd'] = args.cmd
@@ -402,7 +412,7 @@ def remote_run_start(args):
             pool=native_job_config.get_pool(),
             cluster=cluster,
             run_id=run_id,
-            system_paastA_config=system_paasta_config,
+            system_paasta_config=system_paasta_config,
             staging_timeout=args.staging_timeout,
         )
         runner = Sync(executor_stack)
