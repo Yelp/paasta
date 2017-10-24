@@ -19,7 +19,7 @@ import requests
 from paasta_tools.utils import get_user_agent
 
 _drain_methods = {}
-HACHECK_TIMEOUT = 15
+HACHECK_TIMEOUT = (3, 1)  # (connect timeout, read timeout)
 
 
 def register_drain_method(name):
