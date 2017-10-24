@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import math
 import os
 import time
 from collections import namedtuple
+from datetime import datetime
+from datetime import timedelta
 from math import ceil
 from math import floor
 
@@ -62,6 +65,21 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
+class Timer(object):
+    def __init__(self, timeout):
+        self.timeout = timedelta(seconds=timeout)
+        self.start()
+
+    def start(self):
+        self.last_start = datetime.now()
+
+    def ready(self):
+        return datetime.now() > self.last_start + self.timeout
+
+    def left(self):
+        return self.last_start + self.timeout - datetime.now()
+
+
 class ResourceLogMixin(object):
 
     @property
@@ -73,11 +91,21 @@ class ResourceLogMixin(object):
 
 class ClusterAutoscaler(ResourceLogMixin):
 
-    def __init__(self, resource, pool_settings, config_folder, dry_run, log_level=None, draining_enabled=True):
+    def __init__(
+        self,
+        resource,
+        pool_settings,
+        config_folder,
+        dry_run,
+        utilization_error,
+        log_level=None,
+        draining_enabled=True,
+    ):
         self.resource = resource
         self.pool_settings = pool_settings
         self.config_folder = config_folder
         self.dry_run = dry_run
+        self.utilization_error = utilization_error
         self.draining_enabled = draining_enabled
         if log_level is not None:
             self.log.setLevel(log_level)
@@ -180,12 +208,7 @@ class ClusterAutoscaler(ResourceLogMixin):
         }
         return slaves
 
-    def get_mesos_utilization_error(
-        self,
-        slaves,
-        mesos_state,
-        expected_instances=None,
-    ):
+    def check_expected_slaves(self, slaves, expected_instances):
         current_instances = len(slaves)
         if current_instances == 0:
             error_message = ("No instances are active, not scaling until the instances are attached to mesos")
@@ -207,80 +230,82 @@ class ClusterAutoscaler(ResourceLogMixin):
                 )
                 raise ClusterAutoscalingError(error_message)
 
-        region_pool_utilization_dict = get_resource_utilization_by_grouping(
-            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-            mesos_state,
-        )[(self.resource['pool'], self.resource['region'],)]
+    def can_kill(self, hostname, should_drain, dry_run, timer):
+        if dry_run:
+            return True
+        if timer.ready():
+            self.log.warning("Timer expired before slave ready to kill, proceding to terminate anyways")
+            timer.start()
+            raise TimeoutError
+        if not should_drain:
+            self.log.info("Not draining, waiting %s longer before killing" % timer.left())
+            return False
+        if is_safe_to_kill(hostname):
+            self.log.info("Slave %s is ready to kill, with %s left on timer" % (hostname, timer.left()))
+            timer.start()
+            return True
+        return False
 
-        self.log.debug(region_pool_utilization_dict)
-        free_pool_resources = region_pool_utilization_dict['free']
-        total_pool_resources = region_pool_utilization_dict['total']
-        free_percs = []
-        for pair in zip(free_pool_resources, total_pool_resources):
-            free, total = pair[0], pair[1]
-            if math.isclose(total, 0):
-                continue
-            free_percs.append(float(free) / float(total))
-        utilization = 1.0 - min(free_percs)
-        target_utilization = self.pool_settings.get('target_utilization', DEFAULT_TARGET_UTILIZATION)
-        return utilization - target_utilization
-
-    def wait_and_terminate(self, slave, drain_timeout, dry_run, region=None, should_drain=True):
+    async def wait_and_terminate(self, slave, drain_timeout, dry_run, timer, region=None, should_drain=True):
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
         :param drain_timeout: how long to wait before terminating
             even if not drained
         :param region to connect to ec2
-        :param dry_run: Don't drain or make changes to spot fleet if True"""
+        :param dry_run: Don't drain or make changes to spot fleet if True
+        :param should_drain: whether we should drain hosts before waiting to stop them
+        :param timer: a Timer object to keep terminates happening once every n seconds accross co-routines
+        """
         ec2_client = boto3.client('ec2', region_name=region)
+        self.log.info("Starting TERMINATING: {} (Hostname = {}, IP = {})".format(
+            slave.instance_id,
+            slave.hostname,
+            slave.ip,
+        ))
         try:
             # This loop should always finish because the maintenance window should trigger is_ready_to_kill
-            # being true. Just in case though we set a timeout and terminate anyway
-            with Timeout(seconds=drain_timeout + 300):
-                while True:
-                    instance_id = slave.instance_id
-                    if not instance_id:
-                        self.log.warning(
-                            "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
-                        )
-                        continue
-                    # Check if no tasks are running or we have reached the maintenance window
-                    if not should_drain or is_safe_to_kill(slave.hostname):
-                        if not should_drain and not dry_run:
-                            self.log.info("Draining is disabled, just waiting 5 minutes!")
-                            time.sleep(300)
-                        self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
-                            instance_id,
-                            slave.hostname,
-                            slave.ip,
-                        ))
-                        try:
-                            ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
-                        except ClientError as e:
-                            if e.response['Error'].get('Code') == 'DryRunOperation':
-                                pass
-                            else:
-                                raise
-                        break
-                    else:
-                        self.log.info("Instance {}: NOT ready to kill".format(instance_id))
-                    self.log.debug("Waiting 5 seconds and then checking again")
-                    time.sleep(5)
+            # being true. Just in case though we set a timeout (from timer) and terminate anyway
+            while True:
+                instance_id = slave.instance_id
+                if not instance_id:
+                    self.log.warning(
+                        "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
+                    )
+                    break
+                # Check if no tasks are running or we have reached the maintenance window
+                if self.can_kill(slave.hostname, should_drain, dry_run, timer):
+                    self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
+                        instance_id,
+                        slave.hostname,
+                        slave.ip,
+                    ))
+                    try:
+                        ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
+                    except ClientError as e:
+                        if e.response['Error'].get('Code') == 'DryRunOperation':
+                            pass
+                        else:
+                            raise
+                    break
+                else:
+                    self.log.info("Instance {}: NOT ready to kill".format(instance_id))
+                self.log.debug("Waiting 5 seconds and then checking again")
+                await asyncio.sleep(5)
         except TimeoutError:
             self.log.error("Timed out after {} waiting to drain {}, now terminating anyway".format(
-                drain_timeout,
+                timer.timeout,
                 slave.pid,
             ))
             try:
-                ec2_client.terminate_instances(InstanceIds=instance_id, DryRun=dry_run)
+                ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
             except ClientError as e:
                 if e.response['Error'].get('Code') == 'DryRunOperation':
                     pass
                 else:
                     raise
 
-    def scale_resource(self, current_capacity, target_capacity):
+    async def scale_resource(self, current_capacity, target_capacity):
         """Scales an AWS resource based on current and target capacity
         If scaling up we just set target capacity and let AWS take care of the rest
         If scaling down we pick the slaves we'd prefer to kill, put them in maintenance
@@ -311,7 +336,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                     "Amount wanted to decrease: %s, killable capacity: %s" % (amount_to_decrease, killable_capacity),
                 )
                 return
-            self.downscale_aws_resource(
+            await self.downscale_aws_resource(
                 filtered_slaves=filtered_slaves,
                 current_capacity=current_capacity,
                 target_capacity=target_capacity,
@@ -328,7 +353,13 @@ class ClusterAutoscaler(ResourceLogMixin):
             return False
         return True
 
-    def gracefully_terminate_slave(self, slave_to_kill, current_capacity, new_capacity):
+    async def gracefully_terminate_slave(self, slave_to_kill, capacity_diff, timer):
+        """
+        Since this is async, it can be suspended at an `await` call.  Because of this, we need to re-calculate
+        the capacity each time we call `set_capacity` (as another coroutine could have set the capacity while
+        this one was suspended).  `set_capacity` stores the currently set capacity in the object, and then
+        this function re-calculates that from the capacity_diff each time we call `set_capacity`
+        """
         drain_timeout = self.pool_settings.get('drain_timeout', DEFAULT_DRAIN_TIMEOUT)
         # The start time of the maintenance window is the point at which
         # we giveup waiting for the instance to drain and mark it for termination anyway
@@ -346,12 +377,11 @@ class ClusterAutoscaler(ResourceLogMixin):
                 self.log.error("Failed to start drain "
                                "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
                 raise
-        self.log.info("Decreasing resource from {} to: {}".format(current_capacity, new_capacity))
+        self.log.info("Decreasing resource from {} to: {}".format(self.capacity, self.capacity + capacity_diff))
         # Instance weights can be floats but the target has to be an integer
         # because this is all AWS allows on the API call to set target capacity
-        new_capacity = int(floor(new_capacity))
         try:
-            self.set_capacity(new_capacity)
+            self.set_capacity(self.capacity + capacity_diff)
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
@@ -360,17 +390,18 @@ class ClusterAutoscaler(ResourceLogMixin):
             raise
         self.log.info("Waiting for instance to drain before we terminate")
         try:
-            self.wait_and_terminate(
+            await self.wait_and_terminate(
                 slave=slave_to_kill,
                 drain_timeout=drain_timeout,
                 dry_run=self.dry_run,
+                timer=timer,
                 region=self.resource['region'],
                 should_drain=should_drain,
             )
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
-            self.log.error("Setting resource capacity back to {}".format(current_capacity))
-            self.set_capacity(current_capacity)
+            self.log.error("Setting resource capacity back to {}".format(self.capacity - capacity_diff))
+            self.set_capacity(self.capacity - capacity_diff)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
             if should_drain:
                 undrain([drain_host_string])
@@ -469,8 +500,12 @@ class ClusterAutoscaler(ResourceLogMixin):
             if status['InstanceId'] == instance_id
         ]
 
-    def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
+    async def downscale_aws_resource(self, filtered_slaves, current_capacity, target_capacity):
+        self.log.info("downscale_aws_resource for %s" % filtered_slaves)
         killed_slaves = 0
+        terminate_tasks = {}
+        self.capacity = current_capacity
+        timer = Timer(300)
         while True:
             filtered_sorted_slaves = ec2_fitness.sort_by_ec2_fitness(filtered_slaves)[::-1]
             if len(filtered_sorted_slaves) == 0:
@@ -504,42 +539,30 @@ class ClusterAutoscaler(ResourceLogMixin):
                         break
                 else:
                     break
-            try:
+
+            capacity_diff = new_capacity - current_capacity
+            self.log.info("Starting async kill for %s" % slave_to_kill.hostname)
+            # My understanding is that ensure_future will actually start running the coroutine
+            #  (gracefully_terminate_slave), until it hits something that sleeps, then the loop
+            #  can continue and we start killing the next slave
+            terminate_tasks[slave_to_kill.hostname] = asyncio.ensure_future(
                 self.gracefully_terminate_slave(
                     slave_to_kill=slave_to_kill,
-                    current_capacity=current_capacity,
-                    new_capacity=new_capacity,
-                )
-                killed_slaves += 1
-            except HTTPError:
-                # Something wrong draining host so try next host
-                continue
-            except FailSetResourceCapacity:
-                break
+                    capacity_diff=capacity_diff,
+                    timer=timer,
+                ),
+            )
+            killed_slaves += 1
 
             current_capacity = new_capacity
-            mesos_state = get_mesos_master().state_summary()
-            if filtered_sorted_slaves:
-                good_ids = [s['id'] for s in mesos_state.get('slaves', [])]
-                # Filter out slaves no longer in mesos state
-                updated_filtered_slaves = [
-                    slave for slave in filtered_sorted_slaves
-                    if slave.instance_id in good_ids
-                ]
-                # Get updated task counts for slaves from state
-                task_counts = get_mesos_task_count_by_slave(
-                    mesos_state,
-                    slaves_list=[
-                        {'task_counts': slave.task_counts}
-                        for slave in updated_filtered_slaves
-                    ],
-                )
-                # Update the task counts in the slaves list
-                for i, slave in enumerate(updated_filtered_slaves):
-                    slave.task_counts = task_counts[i]['task_counts']
-            else:
-                updated_filtered_slaves = filtered_sorted_slaves
-            filtered_slaves = updated_filtered_slaves
+            filtered_slaves = filtered_sorted_slaves
+
+        # Now we wait for each task to actually finish...
+        for hostname, task in terminate_tasks.items():
+            try:
+                await task
+            except (HTTPError, FailSetResourceCapacity):
+                continue
 
 
 class SpotAutoscaler(ClusterAutoscaler):
@@ -589,11 +612,8 @@ class SpotAutoscaler(ClusterAutoscaler):
                 return 0, 0
             mesos_state = get_mesos_master().state
             slaves = self.get_aws_slaves(mesos_state)
-            error = self.get_mesos_utilization_error(
-                slaves=slaves,
-                mesos_state=mesos_state,
-                expected_instances=expected_instances,
-            )
+            self.check_expected_slaves(slaves, expected_instances)
+            error = self.utilization_error
         elif self.sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
             self.log.warning(
                 "Not scaling an SFR in state: {} so {}, skipping...".format(
@@ -612,10 +632,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
             self.resource['min_capacity'] = 0
             slaves = self.get_pool_slaves(mesos_state)
-            pool_error = self.get_mesos_utilization_error(
-                slaves=slaves,
-                mesos_state=mesos_state,
-            )
+            pool_error = self.utilization_error
             if pool_error > 0:
                 self.log.info(
                     "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id']),
@@ -670,6 +687,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         """ AWS won't modify a request that is already modifying. This
         function ensures we wait a few seconds in case we've just modified
         a SFR"""
+        rounded_capacity = int(floor(capacity))
         ec2_client = boto3.client('ec2', region_name=self.resource['region'])
         with Timeout(seconds=AWS_SPOT_MODIFY_TIMEOUT):
             try:
@@ -694,12 +712,13 @@ class SpotAutoscaler(ClusterAutoscaler):
             return True
         try:
             ret = ec2_client.modify_spot_fleet_request(
-                SpotFleetRequestId=self.resource['id'], TargetCapacity=capacity,
+                SpotFleetRequestId=self.resource['id'], TargetCapacity=rounded_capacity,
                 ExcessCapacityTerminationPolicy='noTermination',
             )
         except ClientError as e:
             self.log.error("Error modifying spot fleet request: {}".format(e))
             raise FailSetResourceCapacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
@@ -756,11 +775,8 @@ class AsgAutoscaler(ClusterAutoscaler):
             return self.get_asg_delta(1)
         mesos_state = get_mesos_master().state
         slaves = self.get_aws_slaves(mesos_state)
-        error = self.get_mesos_utilization_error(
-            slaves=slaves,
-            mesos_state=mesos_state,
-            expected_instances=expected_instances,
-        )
+        self.check_expected_slaves(slaves, expected_instances)
+        error = self.utilization_error
         return self.get_asg_delta(error)
 
     def is_aws_launching_instances(self):
@@ -822,6 +838,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         except ClientError as e:
             self.log.error("Error modifying ASG: {}".format(e))
             raise FailSetResourceCapacity
+        self.capacity = capacity
         return ret
 
     def is_resource_cancelled(self):
@@ -887,6 +904,30 @@ class PaastaAwsSlave(object):
             return 1
 
 
+def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
+    errors = {}
+    mesos_state = get_mesos_master().state_summary()
+    for identifier, resource in autoscaling_resources.items():
+        pool = resource['pool']
+        region = resource['region']
+        if (region, pool) in errors.keys():
+            continue
+
+        target_utilization = all_pool_settings.get(
+            pool, {},
+        ).get(
+            'target_utilization', DEFAULT_TARGET_UTILIZATION,
+        )
+        errors[(region, pool)] = get_mesos_utilization_error(
+            mesos_state=mesos_state,
+            region=region,
+            pool=pool,
+            target_utilization=target_utilization,
+        )
+
+    return errors
+
+
 def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     log.debug("Sleep 20s to throttle AWS API calls")
     time.sleep(20)
@@ -897,6 +938,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
@@ -906,6 +948,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 config_folder=config_folder,
                 dry_run=dry_run,
                 log_level=log_level,
+                utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
             ))
         except KeyError:
@@ -914,10 +957,21 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
     sorted_autoscaling_scalers = sorted(autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True)
+    event_loop = asyncio.get_event_loop()
+    event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers))
+    event_loop.close()
+
+
+async def run_parallel_scalers(sorted_autoscaling_scalers):
+    scaling_tasks = []
     for scaler in sorted_autoscaling_scalers:
-        autoscale_cluster_resource(scaler)
+        scaling_tasks.append(asyncio.ensure_future(autoscale_cluster_resource(scaler)))
         log.debug("Sleep 3s to throttle AWS API calls")
-        time.sleep(3)
+        await asyncio.sleep(3)
+    for task in scaling_tasks:
+        if task.cancelled() or task.done():
+            continue
+        await task
 
 
 def get_scaler(scaler_type):
@@ -928,12 +982,12 @@ def get_scaler(scaler_type):
     return scalers[scaler_type]
 
 
-def autoscale_cluster_resource(scaler):
+async def autoscale_cluster_resource(scaler):
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider()
         log.info("Target capacity: {}, Capacity current: {}".format(target, current))
-        scaler.scale_resource(current, target)
+        await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
         log.error('%s: %s' % (scaler.resource['id'], e))
 
@@ -985,3 +1039,30 @@ def autoscaling_info_for_resource(resource, pool_settings):
         max_capacity=str(scaler.resource['max_capacity']),
         instances=str(len(scaler.instances)),
     )
+
+
+def get_mesos_utilization_error(
+    mesos_state,
+    region,
+    pool,
+    target_utilization,
+):
+    region_pool_utilization_dict = get_resource_utilization_by_grouping(
+        lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
+        mesos_state,
+    )[(pool, region,)]
+
+    log.debug(region_pool_utilization_dict)
+    free_pool_resources = region_pool_utilization_dict['free']
+    total_pool_resources = region_pool_utilization_dict['total']
+    free_percs = []
+    for free, total in zip(free_pool_resources, total_pool_resources):
+        if math.isclose(total, 0):
+            continue
+        free_percs.append(float(free) / float(total))
+
+    if len(free_percs) == 0:  # If all resource totals are close to 0 for some reason
+        return 0
+
+    utilization = 1.0 - min(free_percs)
+    return utilization - target_utilization
