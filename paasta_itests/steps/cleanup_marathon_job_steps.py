@@ -58,4 +58,5 @@ def run_cleanup_marathon_job(context, flags, expected_return_code):
 @then('we should not see it in the list of apps')
 def not_see_it_in_list(context):
     with requests_cache.disabled():
-        assert context.app_id not in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+        for client in context.marathon_clients.get_all_clients():
+            assert context.app_id not in marathon_tools.list_all_marathon_app_ids(client)

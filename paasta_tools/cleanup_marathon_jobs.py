@@ -143,35 +143,32 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
         sane to kill when this job runs.
     :param force: Force the cleanup if we are above the kill_threshold"""
     log.info("Loading marathon configuration")
-    marathon_config = marathon_tools.load_marathon_config()
+    system_paasta_config = load_system_paasta_config()
     log.info("Connecting to marathon")
-    client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(), marathon_config.get_username(),
-        marathon_config.get_password(),
-    )
+    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
 
     valid_services = get_services_for_cluster(instance_type='marathon', soa_dir=soa_dir)
-    running_app_ids = marathon_tools.list_all_marathon_app_ids(client)
+    all_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(clients.get_all_clients())
 
-    running_apps = []
-    for app_id in running_app_ids:
+    app_ids_with_clients = []
+    for (app, client) in all_apps_with_clients:
         try:
-            app_id = marathon_tools.deformat_job_id(app_id)
+            app_id = marathon_tools.deformat_job_id(app.id.lstrip('/'))
         except InvalidJobNameError:
-            log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
+            log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app.id)
             continue
-        running_apps.append(app_id)
+        app_ids_with_clients.append((app_id, client))
     apps_to_kill = [
-        (service, instance, git_sha, config_sha)
-        for service, instance, git_sha, config_sha in running_apps
+        ((service, instance, git_sha, config_sha), client)
+        for (service, instance, git_sha, config_sha), client in app_ids_with_clients
         if (service, instance) not in valid_services
     ]
 
-    log.debug("Running apps: %s" % running_apps)
+    log.debug("Running apps: %s" % app_ids_with_clients)
     log.debug("Valid apps: %s" % valid_services)
     log.debug("Terminating: %s" % apps_to_kill)
-    if running_apps:
-        above_kill_threshold = float(len(apps_to_kill)) / float(len(running_apps)) > float(kill_threshold)
+    if app_ids_with_clients:
+        above_kill_threshold = float(len(apps_to_kill)) / float(len(app_ids_with_clients)) > float(kill_threshold)
         if above_kill_threshold and not force:
             log.critical(
                 "Paasta was about to kill more than %s of the running services, this "
@@ -179,8 +176,8 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
                 "really need to destroy everything" % kill_threshold,
             )
             raise DontKillEverythingError
-    for running_app in apps_to_kill:
-        app_id = marathon_tools.format_job_id(*running_app)
+    for id_tuple, client in apps_to_kill:
+        app_id = marathon_tools.format_job_id(*id_tuple)
         delete_app(
             app_id=app_id,
             client=client,
