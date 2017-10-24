@@ -41,7 +41,6 @@ from paasta_tools.frameworks.native_service_config import load_paasta_native_job
 from paasta_tools.mesos_tools import get_all_frameworks
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import load_system_paasta_config
@@ -336,7 +335,7 @@ def remote_run_start(args):
         cluster,
         soa_dir=soa_dir,
         instance_type=instance_type,
-        config_overrides=config_overrides,
+        config_overrides=overrides_dict,
     )
     try:
         task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
