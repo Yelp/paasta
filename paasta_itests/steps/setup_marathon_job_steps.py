@@ -104,6 +104,7 @@ def create_app_with_instances_constraints(context, job_id, number, constraints, 
     context.constraints = constraints
     update_context_marathon_config(context)
     context.app_id = context.marathon_complete_config['id']
+    context.new_id = context.app_id  # for compatibility with bounces_steps.there_are_num_which_tasks
     if no_apps_running:
         run_setup_marathon_job_no_apps_found(context)
     else:
@@ -135,13 +136,30 @@ def zookeeper_scale_job(context, service, instance, number):
         set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
+@then('we should see it in the list of apps on shard {shard_number:d}')
 @then('we should see it in the list of apps')
-def see_it_in_list(context):
+def see_it_in_list(context, shard_number=None):
     full_list = []
-    for client in context.marathon_clients.get_all_clients():
-        full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+    if shard_number is None:
+        for client in context.marathon_clients.get_all_clients():
+            full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+    else:
+        full_list.extend(marathon_tools.list_all_marathon_app_ids(context.marathon_clients.current[shard_number]))
 
     assert context.app_id in full_list
+
+
+@then('we should not see it in the list of apps on shard {shard_number:d}')
+@then('we should not see it in the list of apps')
+def not_see_it_in_list(context, shard_number=None):
+    full_list = []
+    if shard_number is None:
+        for client in context.marathon_clients.get_all_clients():
+            full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+    else:
+        full_list.extend(marathon_tools.list_all_marathon_app_ids(context.marathon_clients.current[shard_number]))
+
+    assert context.app_id not in full_list
 
 
 @then('we can run get_app')

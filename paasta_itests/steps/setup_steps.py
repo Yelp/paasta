@@ -289,8 +289,9 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
     context.soa_dir = soa_dir
 
 
+@given('I have yelpsoa-configs for the marathon job "{job_id}" on shard {shard:d}, previous shard {previous_shard:d}')
 @given('I have yelpsoa-configs for the marathon job "{job_id}"')
-def write_soa_dir_marathon_job(context, job_id):
+def write_soa_dir_marathon_job(context, job_id, shard=None, previous_shard=None):
     (service, instance, _, __) = decompose_job_id(job_id)
     try:
         soa_dir = context.soa_dir
@@ -303,12 +304,15 @@ def write_soa_dir_marathon_job(context, job_id):
         str(instance): {
             'cpus': 0.1,
             'mem': 100,
+            'marathon_shard': shard,
+            'previous_marathon_shards': [previous_shard] if previous_shard else None,
         },
     }
     if hasattr(context, "cmd"):
         soa[instance]['cmd'] = context.cmd
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.safe_dump(soa))
+
     context.soa_dir = soa_dir
 
 

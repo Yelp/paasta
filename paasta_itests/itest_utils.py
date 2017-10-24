@@ -18,6 +18,7 @@ import time
 import mock
 import requests
 import requests_cache
+import service_configuration_lib
 from marathon import NotFoundError
 
 from paasta_tools import marathon_tools
@@ -29,14 +30,18 @@ from paasta_tools.utils import timeout
 
 
 def update_context_marathon_config(context):
-    whitelist_keys = {'id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'}
+    whitelist_keys = {
+        'id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances',
+        'marathon_shard', 'previous_marathon_shards',
+    }
     with mock.patch.object(
         MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1,
     ), mock.patch.object(
         MarathonServiceConfig, 'get_max_instances', autospec=True,
     ) as mock_get_max_instances:
         mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
-        context.job_config = marathon_tools.load_marathon_service_config(
+        service_configuration_lib._yaml_cache = {}
+        context.job_config = marathon_tools.load_marathon_service_config_no_cache(
             service=context.service,
             instance=context.instance,
             cluster=context.system_paasta_config.get_cluster(),
