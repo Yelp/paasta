@@ -57,8 +57,7 @@ MESOS_TASK_SPACER = '.'
 
 def emit_counter_metric(counter_name, service, instance):
     create_counter(counter_name, {'service': service, 'instance': instance})
-    get_metric(counter_name).count(1)
-
+    get_metric(counter_name).count(1) 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
@@ -159,22 +158,12 @@ def extract_args(args):
 
 
 def paasta_to_task_config_kwargs(
-        service,
-        instance,
-        cluster,
-        system_paasta_config,
-        instance_type,
-        soa_dir=DEFAULT_SOA_DIR,
-        config_overrides=None,
+    service,
+    instance,
+    native_job_config,
+    system_paasta_config,
+    config_overrides=None,
 ):
-    native_job_config = load_paasta_native_job_config(
-        service,
-        instance,
-        cluster,
-        soa_dir=soa_dir,
-        instance_type=instance_type,
-        config_overrides=config_overrides,
-    )
 
     image = native_job_config.get_docker_url()
     docker_parameters = [
@@ -243,6 +232,7 @@ def build_executor_stack(
     service,
     instance,
     cluster,
+    pool,
     # TODO: move run_id into task identifier?
     run_id,
     system_paasta_config,
@@ -259,6 +249,7 @@ def build_executor_stack(
     MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(
         role=taskproc_config.get('role', taskproc_config.get('principal')),
+        pool=pool,
         principal=taskproc_config.get('principal'),
         secret=taskproc_config.get('secret'),
         mesos_address=mesos_address,
@@ -302,18 +293,10 @@ def build_executor_stack(
 
 def remote_run_start(args):
 
-    system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(args)
+    system_paasta_config, service, cluster, \
+            soa_dir, instance, instance_type, constraints = extract_args(args)
     overrides_dict = {}
 
-    constraints_json = args.constraints_json
-    if constraints_json:
-        try:
-            constraints = json.loads(constraints_json)
-        except Exception as e:
-            paasta_print("Error while parsing constraints: %s", e)
-
-        if constraints:
-            overrides_dict['constraints'] = constraints
 
     if args.cmd:
         overrides_dict['cmd'] = args.cmd
@@ -346,14 +329,22 @@ def remote_run_start(args):
     processor.load_plugin(provider_module='task_processing.plugins.stateful')
 
     MesosExecutor = processor.executor_cls(provider='mesos')
+
+    native_job_config = load_paasta_native_job_config(
+        service,
+        instance,
+        cluster,
+        soa_dir=soa_dir,
+        instance_type=instance_type,
+        config_overrides=config_overrides,
+    )
     try:
         task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
             **paasta_to_task_config_kwargs(
-                service,
-                instance,
-                cluster,
-                system_paasta_config,
-                instance_type,
+                service=service,
+                instance=instance,
+                system_paasta_config=system_paasta_config,
+                native_job_config=native_job_config,
                 soa_dir=soa_dir,
                 config_overrides=overrides_dict,
             ),
@@ -406,13 +397,14 @@ def remote_run_start(args):
 
     try:
         executor_stack = build_executor_stack(
-            processor,
-            service,
-            instance,
-            cluster,
-            run_id,
-            system_paasta_config,
-            args.staging_timeout,
+            processor=processor,
+            service=service,
+            instance=instance,
+            pool=native_job_config.get_pool(),
+            cluster=cluster,
+            run_id=run_id,
+            system_paastA_config=system_paasta_config,
+            staging_timeout=args.staging_timeout,
         )
         runner = Sync(executor_stack)
 
