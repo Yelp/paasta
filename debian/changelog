@@ -1,3 +1,11 @@
+paasta-tools (0.67.19) xenial; urgency=medium
+
+  * 0.67.19 tagged with 'make release'
+    Commit: Merge pull request #1576 from Yelp/PAASTA-13323-fix-cleanup-
+    chronos-jobs  Fix cleanup_chronos_jobs for jobs with no interval
+
+ -- Matthew Bentley <bentley@yelp.com>  Tue, 24 Oct 2017 04:42:29 -0700
+
 paasta-tools (0.67.18) xenial; urgency=medium
 
   * 0.67.18 tagged with 'make release'
