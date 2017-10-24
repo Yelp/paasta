@@ -19,7 +19,7 @@ import requests
 from paasta_tools.utils import get_user_agent
 
 _drain_methods = {}
-HACHECK_TIMEOUT = 15
+HACHECK_TIMEOUT = (3, 1)  # (connect timeout, read timeout)
 
 
 def register_drain_method(name):
@@ -157,13 +157,15 @@ class HacheckDrainMethod(DrainMethod):
     def post_spool(self, task, status):
         spool_url = self.spool_url(task)
         if spool_url is not None:
-            resp = requests.post(
-                self.spool_url(task),
-                data={
-                    'status': status,
+            data = {'status': status}
+            if status == 'down':
+                data.update({
                     'expiration': time.time() + self.expiration,
                     'reason': 'Drained by Paasta',
-                },
+                })
+            resp = requests.post(
+                self.spool_url(task),
+                data=data,
                 headers={'User-Agent': get_user_agent()},
                 timeout=HACHECK_TIMEOUT,
             )
