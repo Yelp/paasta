@@ -106,6 +106,12 @@ Decision policies
 
 The currently available decicion policies are:
 
+:proportional:
+  Uses a simple proportional model to decide the correct number of instances
+  to scale to, i.e. if load is 110% of the setpoint, scales up by 10%.
+  Includes correction for an offset, if your containers have a baseline
+  utilization independent of the number of containers.
+
 :pid:
   Uses a PID controller to determine when to autoscale a service. See `this
   page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on
