@@ -157,13 +157,15 @@ class HacheckDrainMethod(DrainMethod):
     def post_spool(self, task, status):
         spool_url = self.spool_url(task)
         if spool_url is not None:
-            resp = requests.post(
-                self.spool_url(task),
-                data={
-                    'status': status,
+            data = {'status': status}
+            if status == 'down':
+                data.update({
                     'expiration': time.time() + self.expiration,
                     'reason': 'Drained by Paasta',
-                },
+                })
+            resp = requests.post(
+                self.spool_url(task),
+                data=data,
                 headers={'User-Agent': get_user_agent()},
                 timeout=HACHECK_TIMEOUT,
             )
