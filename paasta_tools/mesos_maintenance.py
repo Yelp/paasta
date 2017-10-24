@@ -49,7 +49,7 @@ def base_api():
 
     def execute_request(method, endpoint, **kwargs):
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
-        timeout = 15
+        timeout = (3, 1)
         s = Session()
         s.auth = (get_principal(), get_secret())
         req = Request(method, url, **kwargs)
