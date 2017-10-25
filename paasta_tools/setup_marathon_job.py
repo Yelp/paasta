@@ -521,9 +521,9 @@ def deploy_service(
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
     existing_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
-        service,
-        instance,
-        marathon_apps_with_clients,
+        service=service,
+        instance=instance,
+        marathon_apps_with_clients=marathon_apps_with_clients,
     )
 
     new_client = clients.get_current_client_for_service(job_config)
