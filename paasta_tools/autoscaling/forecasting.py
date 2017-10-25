@@ -38,7 +38,7 @@ def trailing_window_historical_load(historical_load, window_size):
 
 
 @register_autoscaling_component('moving_average', FORECAST_POLICY_KEY)
-def moving_average_forecast_policy(historical_load, moving_average_window_seconds, **kwargs):
+def moving_average_forecast_policy(historical_load, moving_average_window_seconds=1800, **kwargs):
     """Does a simple average of all historical load data points within the moving average window. Weights all data
     points within the window equally."""
 

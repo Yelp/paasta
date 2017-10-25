@@ -112,12 +112,13 @@ The currently available decicion policies are:
 
   Extra parameters:
   :offset:
-    Float between 0.0 and 1.0, representing expected baseline load for each container
+    Float between 0.0 and 1.0, representing expected baseline load for each container. Defaults to 0.0.
   :forecast_policy:
     See "Forecast policies" below.
   :good_enough_window:
     An array of two utilization values [low, high]. If utilization per container at
-    the forecasted total load is within the window, instances will not scale.
+    the forecasted total load is within the window, instances will not scale. Optional
+    parameter (defaults to None).
 
 :pid:
   Uses a PID controller to determine when to autoscale a service. See `this
@@ -144,7 +145,8 @@ have been implemented:
 
   Extra parameters:
    :moving_average_window_seconds:
-     The number of seconds to load data points over in order to calculate the average.
+     The number of seconds to load data points over in order to calculate the average. Defaults
+     to 1800s (30m).
 
 How to create a custom (bespoke) autoscaling method
 ---------------------------------------------------
