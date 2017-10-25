@@ -469,6 +469,8 @@ def undrain_tasks(
     # `paasta mark-for-deployment`), then we should undrain them.
     for task in to_undrain:
         if task not in leave_draining:
+            if task.state == 'TASK_UNREACHABLE':
+                continue
             try:
                 drain_method.stop_draining(task)
             except Exception as e:
