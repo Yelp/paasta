@@ -162,6 +162,16 @@ class DeployDaemon(PaastaThread):
     def bounce(self, service_instance):
         self.inbox_q.put(service_instance)
 
+    @property
+    def watcher_threads_enabled(self):
+        disabled_watchers = self.config.get_disabled_watchers()
+        watcher_classes = [
+            obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
+            obj[1].__bases__[0] == watchers.PaastaWatcher
+        ]
+        enabled_watchers = [x for x in watcher_classes if x.__name__ not in disabled_watchers]  # noqa
+        return enabled_watchers
+
     def startup(self):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
@@ -259,11 +269,6 @@ class DeployDaemon(PaastaThread):
 
     def start_watchers(self):
         """ should block until all threads happy"""
-        disabled_watchers = self.config.get_disabled_watchers()
-        watcher_classes = [
-            obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
-            obj[1].__bases__[0] == watchers.PaastaWatcher
-        ]
         self.watcher_threads = [
             watcher(
                 inbox_q=self.inbox_q,
@@ -271,9 +276,8 @@ class DeployDaemon(PaastaThread):
                 zookeeper_client=self.zk,
                 config=self.config,
             )
-            for watcher in watcher_classes
+            for watcher in self.watcher_threads_enabled
         ]
-        self.watcher_threads = [x for x in self.watcher_threads if x.__class__.__name__ not in disabled_watchers]  # noqa
 
         self.log.info("Starting the following watchers {}".format(self.watcher_threads))
         for watcher in self.watcher_threads:
