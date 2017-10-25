@@ -1325,31 +1325,31 @@ def get_expected_instance_count_for_namespace(
     return total_expected
 
 
-def get_matching_appids(servicename: str, instance: str, client: MarathonClient) -> List[str]:
+def get_matching_appids(service: str, instance: str, client: MarathonClient) -> List[str]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     marathon_apps = get_all_marathon_apps(client)
-    return [app.id for app in marathon_apps if does_app_id_match(servicename, instance, app.id)]
+    return [app.id for app in marathon_apps if does_app_id_match(service, instance, app.id)]
 
 
-def get_matching_apps(servicename: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
+def get_matching_apps(service: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    return [app for app in marathon_apps if does_app_id_match(servicename, instance, app.id)]
+    return [app for app in marathon_apps if does_app_id_match(service, instance, app.id)]
 
 
 def get_matching_apps_with_clients(
-    servicename: str,
+    service: str,
     instance: str,
     marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
 ) -> List[Tuple[MarathonApp, MarathonClient]]:
-    return [(a, c) for a, c in marathon_apps_with_clients if does_app_id_match(servicename, instance, a.id)]
+    return [(a, c) for a, c in marathon_apps_with_clients if does_app_id_match(service, instance, a.id)]
 
 
-def does_app_id_match(servicename: str, instance: str, app_id: str) -> bool:
-    jobid = format_job_id(servicename, instance)
+def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
+    jobid = format_job_id(service, instance)
     expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
     return app_id.startswith(expected_prefix)
 
