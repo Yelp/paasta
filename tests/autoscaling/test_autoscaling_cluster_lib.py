@@ -1262,7 +1262,10 @@ class TestClusterAutoscaler(unittest.TestCase):
             'time.sleep', autospec=True,
         ), mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True,
-        ) as mock_is_safe_to_kill:
+        ) as mock_is_safe_to_kill, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.get_new_timeout_after_terminate',
+            autospec=True,
+        ):
             mock_terminate_instances = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
             mock_timer = mock.Mock()
