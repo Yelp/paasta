@@ -17,6 +17,7 @@ import logging
 import math
 import os
 import time
+from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
@@ -937,12 +938,14 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
-    autoscaling_scalers = []
+    autoscaling_scalers = defaultdict(list)
     utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings)
+    any_cancelled_pool = defaultdict(lambda: False)
+    any_scale_up_pool = defaultdict(lambda: False)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
-            autoscaling_scalers.append(get_scaler(resource['type'])(
+            scaler = get_scaler(resource['type'])(
                 resource=resource,
                 pool_settings=pool_settings,
                 config_folder=config_folder,
@@ -950,13 +953,28 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 log_level=log_level,
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
-            ))
+            )
+            autoscaling_scalers[resource['pool']].append(scaler)
+            any_scale_up_pool[resource['pool']] |= utilization_errors[(resource['region'], resource['pool'])] > 0
+            any_cancelled_pool[resource['pool']] |= scaler.is_resource_cancelled()
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
             continue
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
-    sorted_autoscaling_scalers = sorted(autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True)
+    filtered_autoscaling_scalers = []
+    for pool, scalers in autoscaling_scalers.items():
+        # if any resource in a pool is scaling up, don't look at cancelled resources
+        if any_scale_up_pool[pool]:
+            filtered_autoscaling_scalers += [s for s in scalers if not s.is_resource_cancelled()]
+        # if any resource in a pool is cancelled (and none are scaling up), only look at cancelled ones
+        elif any_cancelled_pool[pool]:
+            filtered_autoscaling_scalers += [s for s in scalers if s.is_resource_cancelled()]
+        else:
+            filtered_autoscaling_scalers += scalers
+    sorted_autoscaling_scalers = sorted(
+        filtered_autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True,
+    )
     event_loop = asyncio.get_event_loop()
     event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers))
     event_loop.close()
