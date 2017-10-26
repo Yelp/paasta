@@ -1,3 +1,12 @@
+paasta-tools (0.67.21) xenial; urgency=medium
+
+  * 0.67.21 tagged with 'make release'
+    Commit: Merge pull request #1582 from
+    Yelp/cluster_autoscaler_needs_full_state  The cluster autoscaler
+    needs to full state to calulate usage
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 26 Oct 2017 07:07:45 -0700
+
 paasta-tools (0.67.20) xenial; urgency=medium
 
   * 0.67.20 tagged with 'make release'

@@ -564,13 +564,14 @@ def unreserve_all_resources(hostnames):
         log.info("Unreserving all resources on %s" % hostname)
         slave_id = slave['id']
         resources = []
-        for resource in ['disk', 'mem', 'cpus']:
-            reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
-            resources.append(Resource(name=resource, amount=reserved_resource))
-        try:
-            unreserve(slave_id=slave_id, resources=resources)
-        except HTTPError:
-            raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+        if MAINTENANCE_ROLE in slave['reserved_resources']:
+            for resource in ['disk', 'mem', 'cpus']:
+                reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
+                resources.append(Resource(name=resource, amount=reserved_resource))
+            try:
+                unreserve(slave_id=slave_id, resources=resources)
+            except HTTPError:
+                raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
 
 
 def drain(hostnames, start, duration):

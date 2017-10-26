@@ -906,7 +906,7 @@ class PaastaAwsSlave(object):
 
 def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
     errors = {}
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = get_mesos_master().state
     for identifier, resource in autoscaling_resources.items():
         pool = resource['pool']
         region = resource['region']
