@@ -2,6 +2,7 @@
 coverage
 docutils==0.12
 flake8==2.5.0
+freezegun==0.3.7
 mock==2.0.0
 path.py==8.1
 pep8==1.5.7

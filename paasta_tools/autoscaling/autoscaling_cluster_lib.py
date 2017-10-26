@@ -37,6 +37,7 @@ from botocore.exceptions import ClientError
 from mypy_extensions import TypedDict
 from requests.exceptions import HTTPError
 
+from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.autoscaling import ec2_fitness
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
@@ -1225,14 +1226,17 @@ def get_mesos_utilization_error(
     log.debug(region_pool_utilization_dict)
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
-    free_percs = []
+    usage_percs = []
     for free, total in zip(free_pool_resources, total_pool_resources):
         if math.isclose(total, 0):
             continue
-        free_percs.append(float(free) / float(total))
+        current_load = total - free
+        boosted_load = cluster_boost.get_boosted_load(region, pool, current_load)
 
-    if len(free_percs) == 0:  # If all resource totals are close to 0 for some reason
+        usage_percs.append(boosted_load / float(total))
+
+    if len(usage_percs) == 0:  # If all resource totals are close to 0 for some reason
         return 0
 
-    utilization = 1.0 - min(free_percs)
+    utilization = max(usage_percs)
     return utilization - target_utilization
