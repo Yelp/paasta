@@ -106,6 +106,20 @@ Decision policies
 
 The currently available decicion policies are:
 
+:proportional:
+  Uses a simple proportional model to decide the correct number of instances
+  to scale to, i.e. if load is 110% of the setpoint, scales up by 10%.
+
+  Extra parameters:
+  :offset:
+    Float between 0.0 and 1.0, representing expected baseline load for each container. Defaults to 0.0.
+  :forecast_policy:
+    See "Forecast policies" below.
+  :good_enough_window:
+    An array of two utilization values [low, high]. If utilization per container at
+    the forecasted total load is within the window, instances will not scale. Optional
+    parameter (defaults to None).
+
 :pid:
   Uses a PID controller to determine when to autoscale a service. See `this
   page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on
@@ -116,6 +130,23 @@ The currently available decicion policies are:
 
 :bespoke:
   Allows a service author to implement their own autoscaling.
+
+Forecast policies
+^^^^^^^^^^^^^^^^^
+
+Forecast policies are used by the proportional decision policy. Two forecast policies
+have been implemented:
+
+:current:
+  Assumes current load will remain the same as the current value for the near future.
+
+:moving_average:
+  Assumes total load will remain near the average of data points within a window.
+
+  Extra parameters:
+   :moving_average_window_seconds:
+     The number of seconds to load data points over in order to calculate the average. Defaults
+     to 1800s (30m).
 
 How to create a custom (bespoke) autoscaling method
 ---------------------------------------------------
