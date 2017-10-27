@@ -525,20 +525,7 @@ class ClusterAutoscaler(ResourceLogMixin):
                                   slave_to_kill.instance_weight,
                                   target_capacity,
                               ))
-                if self.resource['type'] == 'aws_spot_fleet_request' and killed_slaves == 0:
-                    self.log.info(
-                        "This is a SFR so we must kill at least one slave to prevent the autoscaler "
-                        "getting stuck whilst scaling down gradually",
-                    )
-                    if new_capacity < 1 and self.sfr['SpotFleetRequestState'] == 'active':
-                        self.log.info(
-                            "Can't set target capacity to less than 1 for SFRs. No further "
-                            "action for this SFR",
-
-                        )
-                        break
-                else:
-                    break
+                break
 
             capacity_diff = new_capacity - current_capacity
             self.log.info("Starting async kill for %s" % slave_to_kill.hostname)
