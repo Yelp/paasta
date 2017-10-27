@@ -111,6 +111,10 @@ def test_status_marathon_job_verbose():
             soa_dir='/nail/blah',
             job_config=mock.Mock(),
         )
+        mock_get_marathon_apps_with_clients.assert_called_once_with(
+            [client],
+            embed_tasks=True,
+        )
         mock_get_matching_apps_with_clients.assert_called_once_with(
             service,
             instance,

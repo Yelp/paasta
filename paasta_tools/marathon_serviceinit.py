@@ -222,7 +222,7 @@ def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, jo
     # during a bounce we want to see the old and new ones.
 
     relevant_clients = clients.get_all_clients_for_service(job_config)
-    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients)
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients, embed_tasks=True)
     for app, client in marathon_tools.get_matching_apps_with_clients(service, instance, marathon_apps_with_clients):
         tasks, output = get_verbose_status_of_marathon_app(
             marathon_client=client,
