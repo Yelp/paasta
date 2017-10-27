@@ -1,3 +1,11 @@
+paasta-tools (0.67.22) xenial; urgency=medium
+
+  * 0.67.22 tagged with 'make release'
+    Commit: Merge pull request #1585 from fboxwala/PAASTA-1487  Update
+    autoscaling docs
+
+ -- Fatema Boxwala <fbox@yelp.com>  Thu, 26 Oct 2017 13:38:40 -0700
+
 paasta-tools (0.67.21) xenial; urgency=medium
 
   * 0.67.21 tagged with 'make release'
