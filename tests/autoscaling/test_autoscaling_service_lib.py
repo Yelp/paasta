@@ -501,11 +501,20 @@ def test_autoscale_marathon_instance():
         marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=1,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
-    ):
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.yelp_meteorite', autospec=True,
+    ) as mock_meteorite:
         autoscaling_service_lib.autoscale_marathon_instance(fake_marathon_service_config, [mock.Mock()], [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service', instance='fake-instance', instance_count=2,
         )
+        meteorite_dims = {
+            'service_name': 'fake-service',
+            'paasta_cluster': 'fake-cluster',
+            'decision_policy': 'pid',
+            'instance_name': 'fake-instance',
+        }
+        mock_meteorite.create_gauge.assert_called_once_with('paasta.service.autoscaler', meteorite_dims)
 
 
 def test_autoscale_marathon_instance_up_to_min_instances():
