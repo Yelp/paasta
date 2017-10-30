@@ -97,7 +97,7 @@ def test_get_instances_from_ip():
     assert ret == mock_instances
 
 
-def test_autoscale_local_cluster():
+def test_autoscale_local_cluster_with_cancelled():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
     ) as mock_get_paasta_config, mock.patch(
@@ -146,12 +146,70 @@ def test_autoscale_local_cluster():
             await asyncio.sleep(0.1)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
+        asyncio.set_event_loop(asyncio.new_event_loop())
         autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
         assert mock_get_paasta_config.called
         autoscaled_resources = [call[0][0].resource for call in mock_autoscale_cluster_resource.call_args_list]
         assert autoscaled_resources[0] == mock_scaling_resources['id3']
-        assert mock_scaling_resources['id1'] in autoscaled_resources[1:3]
-        assert mock_scaling_resources['id2'] in autoscaled_resources[1:3]
+        assert len(calls) == 1
+
+
+def test_autoscale_local_cluster():
+    with mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
+    ) as mock_get_paasta_config, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True,
+    ) as mock_autoscale_cluster_resource, mock.patch(
+        'time.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
+        autospec=True,
+    ) as mock_is_resource_cancelled, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
+    ) as mock_get_sfr, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
+    ) as mock_get_all_utilization_errors:
+        mock_get_sfr.return_value = False
+        mock_scaling_resources = {
+            'id1': {
+                'id': 'sfr-blah1', 'type': 'aws_spot_fleet_request',
+                'pool': 'default', 'region': 'westeros-1',
+            },
+            'id2': {
+                'id': 'sfr-blah2', 'type': 'aws_spot_fleet_request',
+                'pool': 'default', 'region': 'westeros-1',
+            },
+            'id4': {
+                'id': 'sfr-blah4', 'type': 'aws_spot_fleet_request',
+                'pool': 'default', 'region': 'westeros-1',
+            },
+        }
+        mock_resource_pool_settings = {'default': {'drain_timeout': 123, 'target_utilization': 0.75}}
+        mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_scaling_resources)
+        mock_get_resource_pool_settings = mock.Mock(return_value=mock_resource_pool_settings)
+        mock_is_resource_cancelled.side_effect = is_resource_cancelled_sideeffect
+        mock_get_resources = mock.Mock(
+            get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
+            get_resource_pool_settings=mock_get_resource_pool_settings,
+        )
+        mock_get_paasta_config.return_value = mock_get_resources
+        mock_get_all_utilization_errors.return_value = {
+            ('westeros-1', 'default'): -0.2,
+        }
+        calls = []
+
+        async def fake_autoscale(scaler):
+            calls.append(scaler)
+            await asyncio.sleep(0.1)
+        mock_autoscale_cluster_resource.side_effect = fake_autoscale
+
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
+        assert mock_get_paasta_config.called
+        autoscaled_resources = [call[0][0].resource for call in mock_autoscale_cluster_resource.call_args_list]
+        assert mock_scaling_resources['id2'] in autoscaled_resources
+        assert mock_scaling_resources['id1'] in autoscaled_resources
+        assert mock_scaling_resources['id4'] in autoscaled_resources
         assert len(calls) == 3
 
 
