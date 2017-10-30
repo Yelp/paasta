@@ -111,7 +111,9 @@ def test_autoscale_local_cluster_with_cancelled():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
     ) as mock_get_sfr, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
-    ) as mock_get_all_utilization_errors:
+    ) as mock_get_all_utilization_errors, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+    ) as mock_get_mesos_master:
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
             'id1': {
@@ -139,9 +141,12 @@ def test_autoscale_local_cluster_with_cancelled():
         mock_get_all_utilization_errors.return_value = {
             ('westeros-1', 'default'): -0.2,
         }
+        mock_mesos_state = mock.Mock()
+        mock_master = mock.Mock(state=mock_mesos_state)
+        mock_get_mesos_master.return_value = mock_master
         calls = []
 
-        async def fake_autoscale(scaler):
+        async def fake_autoscale(scaler, state):
             calls.append(scaler)
             await asyncio.sleep(0.1)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
@@ -226,9 +231,10 @@ def test_autoscale_cluster_resource():
     mock_scaler.metrics_provider = mock_metrics_provider
     mock_scaler.scale_resource = mock_scale_resource
     mock_scaler.resource = mock_scaling_resource
+    mock_state = mock.Mock()
 
     # test scale up
-    _run(autoscaling_cluster_lib.autoscale_cluster_resource(mock_scaler))
+    _run(autoscaling_cluster_lib.autoscale_cluster_resource(mock_scaler, mock_state))
     assert mock_metrics_provider.called
     assert (2, 6) in call
 
@@ -248,7 +254,7 @@ def test_get_autoscaling_info_for_all_resources():
 
     mock_autoscaling_info = mock.Mock()
 
-    def mock_autoscaling_info_for_resource_side_effect(resource, pool_settings):
+    def mock_autoscaling_info_for_resource_side_effect(resource, pool_settings, state):
         return {mock_resource_1: None, mock_resource_2: mock_autoscaling_info}[resource]
 
     with mock.patch(
@@ -258,8 +264,9 @@ def test_get_autoscaling_info_for_all_resources():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscaling_info_for_resource', autospec=True,
     ) as mock_autoscaling_info_for_resource:
         mock_autoscaling_info_for_resource.side_effect = mock_autoscaling_info_for_resource_side_effect
-        ret = autoscaling_cluster_lib.get_autoscaling_info_for_all_resources()
-        calls = [mock.call(mock_resource_1, {}), mock.call(mock_resource_2, {})]
+        mock_state = mock.Mock()
+        ret = autoscaling_cluster_lib.get_autoscaling_info_for_all_resources(mock_state)
+        calls = [mock.call(mock_resource_1, {}, mock_state), mock.call(mock_resource_2, {}, mock_state)]
         mock_autoscaling_info_for_resource.assert_has_calls(calls, any_order=True)
         assert ret == [mock_autoscaling_info]
 
@@ -286,7 +293,8 @@ def test_autoscaling_info_for_resources():
         )
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
+        mock_state = mock.Mock()
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
         assert mock_metrics_provider.called
         mock_scaler_class.assert_called_with(
             resource=mock_resources['sfr-blah'],
@@ -314,7 +322,7 @@ def test_autoscaling_info_for_resources():
         )
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',
             pool='default',
@@ -337,7 +345,7 @@ def test_autoscaling_info_for_resources():
         )
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {})
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',
             pool='default',
@@ -540,7 +548,7 @@ class TestAsgAutoscaler(unittest.TestCase):
 
             # cancelled ASG
             self.autoscaler.asg = None
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_cleanup_cancelled_config.assert_called_with(self.autoscaler, 'asg-blah', '/nail/blah', dry_run=False)
             assert not mock_get_aws_slaves.called
             assert ret == (0, 0)
@@ -549,7 +557,7 @@ class TestAsgAutoscaler(unittest.TestCase):
             self.autoscaler.asg = {'some': 'stuff'}
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_get_asg_delta.assert_called_with(self.autoscaler, float(0.3))
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
@@ -557,13 +565,13 @@ class TestAsgAutoscaler(unittest.TestCase):
             # active ASG with AWS still provisioning
             mock_cleanup_cancelled_config.reset_mock()
             mock_is_aws_launching_asg_instances.return_value = True
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (0, 0)
 
             # ASG with no instances
             self.autoscaler.instances = []
             mock_is_aws_launching_asg_instances.return_value = False
-            self.autoscaler.metrics_provider()
+            self.autoscaler.metrics_provider(mock_mesos_state)
             mock_get_asg_delta.assert_called_with(self.autoscaler, 1)
 
     def test_is_aws_launching_asg_instances(self):
@@ -818,7 +826,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             # cancelled SFR
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
             self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled'}
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_cleanup_cancelled_config.assert_called_with(self.autoscaler, 'sfr-blah', '/nail/blah', dry_run=False)
             assert not mock_get_mesos_master.called
             assert ret == (0, 0)
@@ -826,7 +834,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             # deleted SFR
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = None
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_cleanup_cancelled_config.assert_called_with(self.autoscaler, 'sfr-blah', '/nail/blah', dry_run=False)
             assert not mock_get_mesos_master.called
             assert ret == (0, 0)
@@ -834,7 +842,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             # active SFR
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_get_spot_fleet_delta.assert_called_with(self.autoscaler, float(0.3))
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
@@ -844,7 +852,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             mock_is_aws_launching_sfr_instances.return_value = True
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (1, 2)
             assert mock_get_spot_fleet_delta.called
 
@@ -852,27 +860,27 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_cleanup_cancelled_config.reset_mock()
             mock_get_spot_fleet_delta.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled_running'}
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert not mock_cleanup_cancelled_config.called
             assert ret == (0, 0)
             mock_get_spot_fleet_delta.return_value = 2, 1
             self.autoscaler.utilization_error = -0.2
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
 
             assert ret == (2, 0)
             mock_get_spot_fleet_delta.return_value = 4, 2
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (4, 2)
 
             # cancelled_running SFR with pool underprovisioned
             self.autoscaler.utilization_error = 0.2
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (0, 0)
 
             # SFR with no instances
             mock_get_mesos_master.reset_mock()
             self.autoscaler.instances = []
-            ret = self.autoscaler.metrics_provider()
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (0, 0)
             assert not mock_get_mesos_master.called
 
@@ -881,7 +889,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'not-a-state'}
             with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
-                ret = self.autoscaler.metrics_provider()
+                ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert not mock_get_mesos_master.called
 
 
