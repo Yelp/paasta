@@ -212,7 +212,7 @@ def main(argv=None):
             headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
             table = functools.reduce(
                 lambda x, y: x + [(y)],
-                get_autoscaling_info_for_all_resources(),
+                get_autoscaling_info_for_all_resources(mesos_state),
                 [headers],
             )
 

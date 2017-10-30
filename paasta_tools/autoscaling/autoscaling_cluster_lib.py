@@ -597,7 +597,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         )['ActiveInstances']
         return spot_fleet_instances
 
-    def metrics_provider(self):
+    def metrics_provider(self, mesos_state):
         if not self.sfr or self.sfr['SpotFleetRequestState'] == 'cancelled':
             self.log.error("SFR not found, removing config file.".format(self.resource['id']))
             self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
@@ -610,7 +610,6 @@ class SpotAutoscaler(ClusterAutoscaler):
                     "do nothing",
                 )
                 return 0, 0
-            mesos_state = get_mesos_master().state
             slaves = self.get_aws_slaves(mesos_state)
             self.check_expected_slaves(slaves, expected_instances)
             error = self.utilization_error
@@ -755,7 +754,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             self.log.warning("No ASG found in this account with name: {}".format(asg_name))
             return None
 
-    def metrics_provider(self):
+    def metrics_provider(self, mesos_state):
         if not self.asg:
             self.log.warning("ASG {} not found, removing config file".format(self.resource['id']))
             self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
@@ -773,7 +772,6 @@ class AsgAutoscaler(ClusterAutoscaler):
                 "launch first instance unless max/min capacity override",
             )
             return self.get_asg_delta(1)
-        mesos_state = get_mesos_master().state
         slaves = self.get_aws_slaves(mesos_state)
         self.check_expected_slaves(slaves, expected_instances)
         error = self.utilization_error
@@ -904,9 +902,8 @@ class PaastaAwsSlave(object):
             return 1
 
 
-def get_all_utilization_errors(autoscaling_resources, all_pool_settings):
+def get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state):
     errors = {}
-    mesos_state = get_mesos_master().state
     for identifier, resource in autoscaling_resources.items():
         pool = resource['pool']
         region = resource['region']
@@ -938,7 +935,8 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     autoscaling_scalers = []
-    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings)
+    mesos_state = get_mesos_master().state
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
@@ -958,14 +956,14 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         time.sleep(3)
     sorted_autoscaling_scalers = sorted(autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True)
     event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers))
+    event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers, mesos_state))
     event_loop.close()
 
 
-async def run_parallel_scalers(sorted_autoscaling_scalers):
+async def run_parallel_scalers(sorted_autoscaling_scalers, mesos_state):
     scaling_tasks = []
     for scaler in sorted_autoscaling_scalers:
-        scaling_tasks.append(asyncio.ensure_future(autoscale_cluster_resource(scaler)))
+        scaling_tasks.append(asyncio.ensure_future(autoscale_cluster_resource(scaler, mesos_state)))
         log.debug("Sleep 3s to throttle AWS API calls")
         await asyncio.sleep(3)
     for task in scaling_tasks:
@@ -982,10 +980,10 @@ def get_scaler(scaler_type):
     return scalers[scaler_type]
 
 
-async def autoscale_cluster_resource(scaler):
+async def autoscale_cluster_resource(scaler, mesos_state):
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
-        current, target = scaler.metrics_provider()
+        current, target = scaler.metrics_provider(mesos_state)
         log.info("Target capacity: {}, Capacity current: {}".format(target, current))
         await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
@@ -1002,18 +1000,18 @@ def get_instances_from_ip(ip, instance_descriptions):
     return instances
 
 
-def get_autoscaling_info_for_all_resources():
+def get_autoscaling_info_for_all_resources(mesos_state):
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     pool_settings = system_config.get_resource_pool_settings()
     vals = [
-        autoscaling_info_for_resource(resource, pool_settings)
+        autoscaling_info_for_resource(resource, pool_settings, mesos_state)
         for resource in autoscaling_resources.values()
     ]
     return [x for x in vals if x is not None]
 
 
-def autoscaling_info_for_resource(resource, pool_settings):
+def autoscaling_info_for_resource(resource, pool_settings, mesos_state):
     pool_settings.get(resource['pool'], {})
     scaler_ref = get_scaler(resource['type'])
     scaler = scaler_ref(
@@ -1026,7 +1024,7 @@ def autoscaling_info_for_resource(resource, pool_settings):
         log.info("no scaler for resource {}. ignoring".format(resource['id']))
         return None
     try:
-        current_capacity, target_capacity = scaler.metrics_provider()
+        current_capacity, target_capacity = scaler.metrics_provider(mesos_state)
     except ClusterAutoscalingError:
         current_capacity, target_capacity = scaler.current_capacity, "Exception"
     return AutoscalingInfo(

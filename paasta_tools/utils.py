@@ -1364,6 +1364,7 @@ SystemPaastaConfigDict = TypedDict(
         'cluster_autoscaling_draining_enabled': bool,
         'use_mesos_healthchecks': bool,
         'taskproc': Dict,
+        'disabled_watchers': List,
     },
     total=False,
 )
@@ -1689,6 +1690,9 @@ class SystemPaastaConfig(object):
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
+
+    def get_disabled_watchers(self) -> List:
+        return self.config_dict.get('disabled_watchers', [])
 
 
 def _run(

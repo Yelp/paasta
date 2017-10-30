@@ -422,6 +422,10 @@ class TestDeployDaemon(unittest.TestCase):
 
             class FakeWatcher(PaastaWatcher):
                 pass
+
+            class FakeWatcher2(PaastaWatcher):
+                pass
+
         with mock.patch(
             'paasta_tools.deployd.master.watchers', autospec=False, new=FakeWatchers,
         ), mock.patch(
@@ -431,8 +435,14 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.zk = mock_zk
             mock_start = mock.Mock()
             FakeWatchers.PaastaWatcher.start = mock_start
+            self.deployd.config.get_disabled_watchers = mock.Mock()
+            self.deployd.config.get_disabled_watchers.return_value = []
             self.deployd.start_watchers()
-            assert mock_start.call_count == 1
+            assert mock_start.call_count == 2
+
+            self.deployd.config.get_disabled_watchers.return_value = ['FakeWatcher2']
+            self.deployd.start_watchers()
+            assert mock_start.call_count == 3
 
             FakeWatchers.PaastaWatcher.is_ready = False
             mock_sleep.side_effect = LoopBreak
