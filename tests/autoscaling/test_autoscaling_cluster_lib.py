@@ -173,7 +173,9 @@ def test_autoscale_local_cluster():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
     ) as mock_get_sfr, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
-    ) as mock_get_all_utilization_errors:
+    ) as mock_get_all_utilization_errors, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
+    ) as mock_get_mesos_master:
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
             'id1': {
@@ -201,9 +203,12 @@ def test_autoscale_local_cluster():
         mock_get_all_utilization_errors.return_value = {
             ('westeros-1', 'default'): -0.2,
         }
+        mock_mesos_state = mock.Mock()
+        mock_master = mock.Mock(state=mock_mesos_state)
+        mock_get_mesos_master.return_value = mock_master
         calls = []
 
-        async def fake_autoscale(scaler):
+        async def fake_autoscale(scaler, state):
             calls.append(scaler)
             await asyncio.sleep(0.1)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
