@@ -86,6 +86,14 @@ def test_get_mesos_utilization_error():
         )
         assert ret == 0.5 - 0.8
 
+        ret = autoscaling_cluster_lib.get_mesos_utilization_error(
+            mesos_state=mock_mesos_state,
+            region="westeros-1",
+            pool="fake-pool",
+            target_utilization=0.8,
+        )
+        assert ret == 0
+
 
 def test_get_instances_from_ip():
     mock_instances = []

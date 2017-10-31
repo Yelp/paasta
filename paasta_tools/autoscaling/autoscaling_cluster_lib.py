@@ -1045,10 +1045,14 @@ def get_mesos_utilization_error(
     pool,
     target_utilization,
 ):
-    region_pool_utilization_dict = get_resource_utilization_by_grouping(
-        lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-        mesos_state,
-    )[(pool, region,)]
+    try:
+        region_pool_utilization_dict = get_resource_utilization_by_grouping(
+            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
+            mesos_state,
+        )[(pool, region,)]
+    except KeyError:
+        log.info("Failed to find utilization for region %s, pool %s, returning 0 error")
+        return 0
 
     log.debug(region_pool_utilization_dict)
     free_pool_resources = region_pool_utilization_dict['free']
