@@ -85,8 +85,7 @@ def test_status_desired_state():
 
 def test_status_marathon_job_verbose():
     client = mock.create_autospec(marathon.MarathonClient)
-    clients = mock.create_autospec(
-        marathon_tools.MarathonClients,
+    clients = mock.Mock(
         get_all_clients_for_service=mock.Mock(return_value=[client]),
     )
     app = mock.create_autospec(marathon.models.app.MarathonApp)
