@@ -1,3 +1,10 @@
+paasta-tools (0.68.0) xenial; urgency=medium
+
+  * 0.68.0 tagged with 'make release'
+    Commit: Merge branch "shard_marathon"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 30 Oct 2017 18:08:27 -0700
+
 paasta-tools (0.67.22) xenial; urgency=medium
 
   * 0.67.22 tagged with 'make release'
