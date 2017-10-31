@@ -822,20 +822,15 @@ def test_main():
         'paasta_tools.check_marathon_services_replication.load_system_paasta_config',
         autospec=True,
     ) as mock_load_system_paasta_config, mock.patch(
-        'paasta_tools.check_marathon_services_replication.marathon_tools.load_marathon_config',
+        'paasta_tools.check_marathon_services_replication.marathon_tools.get_marathon_clients',
         autospec=True,
-    ) as mock_load_marathon_config, mock.patch(
-        'paasta_tools.check_marathon_services_replication.marathon_tools.get_marathon_client',
-        autospec=True,
-    ) as mock_get_marathon_client, mock.patch(
+    ) as mock_get_marathon_clients, mock.patch(
         'paasta_tools.check_marathon_services_replication.get_slaves',
         autospec=True,
     ):
         mock_client = mock.Mock()
         mock_client.list_tasks.return_value = []
-        mock_get_marathon_client.return_value = mock_client
-        mock_config = mock.Mock()
-        mock_load_marathon_config.return_value = mock_config
+        mock_get_marathon_clients.return_value = mock.Mock(get_all_clients=mock.Mock(return_value=[mock_client]))
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()
