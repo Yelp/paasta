@@ -54,6 +54,14 @@ from paasta_tools.utils import mean
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
+try:
+    import yelp_meteorite
+except ImportError:
+    # Sorry to any non-yelpers but you won't
+    # get metrics emitted as our metrics library
+    # is currently not open source
+    yelp_meteorite = None
+
 ServiceAutoscalingInfo = namedtuple(
     'ServiceAutoscalingInfo', [
         'current_instances',
@@ -645,6 +653,15 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
             line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
             level='debug',
         )
+    meteorite_dims = {
+        'service_name': marathon_service_config.service,
+        'decision_policy': autoscaling_params[DECISION_POLICY_KEY],
+        'paasta_cluster': marathon_service_config.cluster,
+        'instance_name': marathon_service_config.instance,
+    }
+    if yelp_meteorite:
+        gauge = yelp_meteorite.create_gauge('paasta.service.autoscaler', meteorite_dims)
+        gauge.set(new_instance_count)
 
 
 def humanize_error(error):
