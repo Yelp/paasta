@@ -243,6 +243,7 @@ def test_autoscaling_info_for_resources():
             pool_settings={},
             config_folder=None,
             dry_run=True,
+            utilization_error=0,
         )
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',

@@ -1019,6 +1019,7 @@ def autoscaling_info_for_resource(resource, pool_settings, mesos_state):
         pool_settings=pool_settings,
         config_folder=None,
         dry_run=True,
+        utilization_error=0,
     )
     if not scaler.exists:
         log.info("no scaler for resource {}. ignoring".format(resource['id']))
