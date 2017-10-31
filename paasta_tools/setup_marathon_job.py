@@ -172,6 +172,8 @@ def drain_tasks_and_find_tasks_to_kill(
             all_draining_tasks.add((task, client))
 
     for task, client in all_draining_tasks:
+        if task.state == 'TASK_UNREACHABLE':
+            continue
         try:
             drain_method.drain(task)
         except Exception as e:
@@ -181,6 +183,8 @@ def drain_tasks_and_find_tasks_to_kill(
             tasks_to_kill.add((task, client))
 
     for task, client in all_draining_tasks:
+        if task.state == 'TASK_UNREACHABLE':
+            continue
         try:
             if drain_method.is_safe_to_kill(task):
                 tasks_to_kill.add((task, client))
