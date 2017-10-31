@@ -4,13 +4,14 @@ import mock
 
 from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import exponential_back_off
-from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaPriorityQueue
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -220,7 +221,9 @@ def test_get_service_instances_needing_update():
             })),
         ]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert mock_get_marathon_apps.called
         calls = [
             mock.call(
@@ -250,7 +253,9 @@ def test_get_service_instances_needing_update():
             })),
         ]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c137'), ('universe', 'c138')]
 
         mock_configs = [
@@ -261,7 +266,9 @@ def test_get_service_instances_needing_update():
             })),
         ]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c138')]
 
         mock_configs = [
@@ -272,7 +279,9 @@ def test_get_service_instances_needing_update():
             })),
         ]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c138')]
 
         mock_configs = [
@@ -283,14 +292,18 @@ def test_get_service_instances_needing_update():
             })),
         ]
         mock_load_marathon_service_config.side_effect = mock_configs
-        ret = get_service_instances_needing_update(mock.Mock(), mock_service_instances, 'westeros-prod')
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c138')]
 
 
-def test_get_marathon_client_from_config():
+def test_get_marathon_clients_from_config():
     with mock.patch(
-        'paasta_tools.deployd.common.load_marathon_config', autospec=True,
+        'paasta_tools.deployd.common.load_system_paasta_config', autospec=True,
     ), mock.patch(
-        'paasta_tools.deployd.common.get_marathon_client', autospec=True,
-    ) as mock_marathon_client:
-        assert get_marathon_client_from_config() == mock_marathon_client.return_value
+        'paasta_tools.deployd.common.get_marathon_servers', autospec=True,
+    ), mock.patch(
+        'paasta_tools.deployd.common.get_marathon_clients', autospec=True,
+    ) as mock_marathon_clients:
+        assert get_marathon_clients_from_config() == mock_marathon_clients.return_value

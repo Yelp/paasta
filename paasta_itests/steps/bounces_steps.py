@@ -109,6 +109,9 @@ def given_a_new_app_to_be_deployed_constraints(
             'force_bounce': None,
         },
     )
+    context.current_client = context.marathon_clients.get_current_client_for_service(
+        context.new_marathon_service_config,
+    )
 
 
 @given('an old app to be destroyed')
@@ -136,7 +139,8 @@ def given_an_old_app_to_be_destroyed_constraints(context, constraints):
         'backoff_factor': 1,
         'constraints': constraints,
     }
-    bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.marathon_client)
+
+    bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.current_client)
 
 
 @when('there are exactly {num:d} {which} {state} tasks')
@@ -155,7 +159,7 @@ def there_are_num_which_tasks(context, num, which, state, exact):
 
     # 180 * 0.5 = 90 seconds
     for _ in range(180):
-        app = context.marathon_client.get_app(app_id, embed_tasks=True)
+        app = context.current_client.get_app(app_id, embed_tasks=True)
         happy_tasks = get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config)
         happy_count = len(happy_tasks)
         if state == "healthy":
@@ -213,13 +217,16 @@ def when_setup_service_initiated(context):
         # 120 * 0.5 = 60 seconds
         for _ in range(120):
             try:
-                marathon_apps = marathon_tools.get_all_marathon_apps(context.marathon_client, embed_tasks=True)
+                marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+                    clients=context.marathon_clients.get_all_clients(),
+                    embed_tasks=True,
+                )
                 (code, message, bounce_again) = setup_marathon_job.setup_service(
                     service=context.service,
                     instance=context.instance,
-                    client=context.marathon_client,
-                    marathon_apps=marathon_apps,
-                    service_marathon_config=context.new_marathon_service_config,
+                    clients=context.marathon_clients,
+                    marathon_apps_with_clients=marathon_apps_with_clients,
+                    job_config=context.new_marathon_service_config,
                     soa_dir='/nail/etc/services',
                 )
                 assert code == 0, message
@@ -233,7 +240,7 @@ def when_setup_service_initiated(context):
 def when_the_which_app_is_down_to_num_instances(context, which, num):
     app_id = which_id(context, which)
     while True:
-        tasks = context.marathon_client.list_tasks(app_id)
+        tasks = context.current_client.list_tasks(app_id)
         if len([t for t in tasks if t.started_at]) <= int(num):
             return
         time.sleep(0.5)
@@ -241,7 +248,7 @@ def when_the_which_app_is_down_to_num_instances(context, which, num):
 
 @then('the {which} app should be running')
 def then_the_which_app_should_be_running(context, which):
-    assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is True
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.current_client) is True
 
 
 @then('the {which} app should be configured to have {num} instances')
@@ -249,7 +256,7 @@ def then_the_which_app_should_be_configured_to_have_num_instances(context, which
     app_id = which_id(context, which)
 
     for _ in range(retries):
-        app = context.marathon_client.get_app(app_id)
+        app = context.current_client.get_app(app_id)
         if app.instances == int(num):
             return
         time.sleep(0.5)
@@ -259,7 +266,7 @@ def then_the_which_app_should_be_configured_to_have_num_instances(context, which
 
 @then('the {which} app should be gone')
 def then_the_which_app_should_be_gone(context, which):
-    assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is False
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.current_client) is False
 
 
 @when('we wait a bit for the {which} app to disappear')
@@ -267,12 +274,12 @@ def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
     """ Marathon will not make the app disappear until after all the tasks have died
     https://github.com/mesosphere/marathon/issues/1431 """
     for _ in range(10):
-        if marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is True:
+        if marathon_tools.is_app_id_running(which_id(context, which), context.current_client) is True:
             time.sleep(0.5)
         else:
             return True
     # It better not be running by now!
-    assert marathon_tools.is_app_id_running(which_id(context, which), context.marathon_client) is False
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.current_client) is False
 
 
 @when('a task has drained')

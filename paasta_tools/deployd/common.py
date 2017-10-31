@@ -7,11 +7,12 @@ from threading import Thread
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
-from paasta_tools.marathon_tools import get_marathon_client
-from paasta_tools.marathon_tools import load_marathon_config
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
@@ -136,8 +137,11 @@ def exponential_back_off(failures, factor, base, max_time):
     return seconds if seconds < max_time else max_time
 
 
-def get_service_instances_needing_update(marathon_client, instances, cluster):
-    marathon_apps = {app.id: app for app in get_all_marathon_apps(marathon_client)}
+def get_service_instances_needing_update(marathon_clients, instances, cluster):
+    marathon_apps = {}
+    for marathon_client in marathon_clients.get_all_clients():
+        marathon_apps.update({app.id: app for app in get_all_marathon_apps(marathon_client)})
+
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
     for service, instance in instances:
@@ -160,10 +164,8 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
     return service_instances
 
 
-def get_marathon_client_from_config():
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        marathon_config.get_url(), marathon_config.get_username(),
-        marathon_config.get_password(),
-    )
-    return marathon_client
+def get_marathon_clients_from_config():
+    system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = get_marathon_clients(marathon_servers)
+    return marathon_clients

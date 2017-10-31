@@ -170,12 +170,8 @@ def working_paasta_cluster(context):
 
 @given('a working paasta cluster, with docker registry {docker_registry}')
 def working_paasta_cluster_with_registry(context, docker_registry):
-    """Adds a working marathon client and chronos client for the purposes of
+    """Adds a working marathon_clients and chronos client for the purposes of
     interacting with them in the test."""
-    if not hasattr(context, 'marathon_client'):
-        context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
-    else:
-        paasta_print('Marathon connection already established')
 
     if not hasattr(context, 'marathon_clients'):
         context.marathon_clients, context.marathon_servers, context.system_paasta_config = setup_marathon_clients()
@@ -198,7 +194,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
 
     write_etc_paasta(
         context, {
-            'marathon_config': context.marathon_config,
             'marathon_servers': context.system_paasta_config.get_marathon_servers(),
         },
         'marathon.json',
@@ -294,8 +289,9 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
     context.soa_dir = soa_dir
 
 
+@given('I have yelpsoa-configs for the marathon job "{job_id}" on shard {shard:d}, previous shard {previous_shard:d}')
 @given('I have yelpsoa-configs for the marathon job "{job_id}"')
-def write_soa_dir_marathon_job(context, job_id):
+def write_soa_dir_marathon_job(context, job_id, shard=None, previous_shard=None):
     (service, instance, _, __) = decompose_job_id(job_id)
     try:
         soa_dir = context.soa_dir
@@ -308,12 +304,15 @@ def write_soa_dir_marathon_job(context, job_id):
         str(instance): {
             'cpus': 0.1,
             'mem': 100,
+            'marathon_shard': shard,
+            'previous_marathon_shards': [previous_shard] if previous_shard else None,
         },
     }
     if hasattr(context, "cmd"):
         soa[instance]['cmd'] = context.cmd
     with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.safe_dump(soa))
+
     context.soa_dir = soa_dir
 
 

@@ -14,6 +14,7 @@
 import mock
 
 from paasta_tools import list_marathon_service_instances
+from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 
 
@@ -26,13 +27,17 @@ def test_get_desired_marathon_configs():
         'paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True,
     ):
         mock_app_dict = {'id': '/service.instance.git.configs'}
-        mock_get_services_for_cluster.return_value = [('service', 'instance')]
-        mock_load_marathon_service_config.return_value = mock.MagicMock(
+        mock_app = mock.MagicMock(
             format_marathon_app_dict=mock.MagicMock(return_value=mock_app_dict),
         )
+        mock_get_services_for_cluster.return_value = [('service', 'instance')]
+        mock_load_marathon_service_config.return_value = mock_app
         assert list_marathon_service_instances.get_desired_marathon_configs(
             '/fake/soa/dir',
-        ) == {'service.instance.git.configs': mock_app_dict}
+        ) == (
+            {'service.instance.git.configs': mock_app_dict},
+            {'service.instance.git.configs': mock_app},
+        )
 
 
 def test_get_desired_marathon_configs_handles_no_slaves():
@@ -48,7 +53,7 @@ def test_get_desired_marathon_configs_handles_no_slaves():
         )
         assert list_marathon_service_instances.get_desired_marathon_configs(
             '/fake/soadir/',
-        ) == {}
+        ) == ({}, {})
 
 
 def test_get_service_instances_that_need_bouncing():
@@ -59,18 +64,28 @@ def test_get_service_instances_that_need_bouncing():
     ) as mock_get_num_at_risk_tasks, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
     ):
-        mock_get_desired_marathon_configs.return_value = {
-            'fake--service.fake--instance.sha.config': {'instances': 5},
-            'fake--service2.fake--instance.sha.config': {'instances': 5},
-        }
+        mock_get_desired_marathon_configs.return_value = (
+            {
+                'fake--service.fake--instance.sha.config': {'instances': 5},
+                'fake--service2.fake--instance.sha.config': {'instances': 5},
+            },
+            {
+                'fake--service.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None)),
+                'fake--service2.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None)),
+            },
+        )
+
         fake_apps = [
             mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config2'),
             mock.MagicMock(instances=5, id='/fake--service2.fake--instance.sha.config'),
         ]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir',
+            marathon_clients=fake_clients,
+            soa_dir='/fake/soa/dir',
         )) == {'fake_service.fake_instance'}
 
 
@@ -82,17 +97,20 @@ def test_get_service_instances_that_need_bouncing_two_existing_services():
     ) as mock_get_num_at_risk_tasks, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
     ):
-        mock_get_desired_marathon_configs.return_value = {
-            'fake--service.fake--instance.sha.config': {'instances': 5},
-        }
+        mock_get_desired_marathon_configs.return_value = (
+            {'fake--service.fake--instance.sha.config': {'instances': 5}},
+            {'fake--service.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None))},
+        )
         fake_apps = [
             mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config'),
             mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config2'),
         ]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir',
+            marathon_clients=fake_clients,
+            soa_dir='/fake/soa/dir',
         )) == {'fake_service.fake_instance'}
 
 
@@ -104,12 +122,17 @@ def test_get_service_instances_that_need_bouncing_no_difference():
     ) as mock_get_num_at_risk_tasks, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
     ):
-        mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
+        mock_get_desired_marathon_configs.return_value = (
+            {'fake--service.fake--instance.sha.config': {'instances': 5}},
+            {'fake--service.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None))},
+        )
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir',
+            marathon_clients=fake_clients,
+            soa_dir='/fake/soa/dir',
         )) == set()
 
 
@@ -121,12 +144,17 @@ def test_get_service_instances_that_need_bouncing_instances_difference():
     ) as mock_get_num_at_risk_tasks, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
     ):
-        mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
+        mock_get_desired_marathon_configs.return_value = (
+            {'fake--service.fake--instance.sha.config': {'instances': 5}},
+            {'fake--service.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None))},
+        )
         fake_apps = [mock.MagicMock(instances=4, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
         mock_get_num_at_risk_tasks.return_value = 0
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir',
+            marathon_clients=fake_clients,
+            soa_dir='/fake/soa/dir',
         )) == {'fake_service.fake_instance'}
 
 
@@ -138,10 +166,15 @@ def test_get_service_instances_that_need_bouncing_at_risk():
     ) as mock_get_num_at_risk_tasks, mock.patch(
         'paasta_tools.list_marathon_service_instances.get_draining_hosts', autospec=True,
     ):
-        mock_get_desired_marathon_configs.return_value = {'fake--service.fake--instance.sha.config': {'instances': 5}}
+        mock_get_desired_marathon_configs.return_value = (
+            {'fake--service.fake--instance.sha.config': {'instances': 5}},
+            {'fake--service.fake--instance.sha.config': mock.Mock(get_marathon_shard=mock.Mock(return_value=None))},
+        )
         fake_apps = [mock.MagicMock(instances=5, id='/fake--service.fake--instance.sha.config')]
         mock_client = mock.MagicMock(list_apps=mock.MagicMock(return_value=fake_apps))
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
         mock_get_num_at_risk_tasks.return_value = 1
         assert set(list_marathon_service_instances.get_service_instances_that_need_bouncing(
-            mock_client, '/fake/soa/dir',
+            marathon_clients=fake_clients,
+            soa_dir='/fake/soa/dir',
         )) == {'fake_service.fake_instance'}
