@@ -965,9 +965,17 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
         # if any resource in a pool is scaling up, don't look at cancelled resources
         if any_scale_up_pool[pool]:
             filtered_autoscaling_scalers += [s for s in scalers if not s.is_resource_cancelled()]
+            skipped = [s for s in scalers if s.is_resource_cancelled()]
+            log.info(
+                "There are resources to scale up in pool %s, skipping canelled resources" % pool,
+            )
+            log.info("Skipped: %s" % skipped)
         # if any resource in a pool is cancelled (and none are scaling up), only look at cancelled ones
         elif any_cancelled_pool[pool]:
             filtered_autoscaling_scalers += [s for s in scalers if s.is_resource_cancelled()]
+            skipped = [s for s in scalers if s.is_resource_cancelled()]
+            log.info("There are cancelled resources in pool %s, skipping active resources" % pool)
+            log.info("Skipped: %s" % skipped)
         else:
             filtered_autoscaling_scalers += scalers
     sorted_autoscaling_scalers = sorted(
