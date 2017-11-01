@@ -67,8 +67,7 @@ log.addHandler(logging.NullHandler())
 
 class Timer(object):
     def __init__(self, timeout):
-        self.timeout = timedelta(seconds=timeout)
-        self.start()
+        self.reset_to(timeout)
 
     def start(self):
         self.last_start = datetime.now()
@@ -78,6 +77,10 @@ class Timer(object):
 
     def left(self):
         return self.last_start + self.timeout - datetime.now()
+
+    def reset_to(self, timeout):
+        self.timeout = timedelta(seconds=timeout)
+        self.start()
 
 
 class ResourceLogMixin(object):
@@ -230,6 +233,19 @@ class ClusterAutoscaler(ResourceLogMixin):
                 )
                 raise ClusterAutoscalingError(error_message)
 
+    def get_new_timeout_after_terminate(self, slave_to_kill):
+        """Gets a new timeout to set based on the running tasks on a slave about to be killed.
+        The new timeout will be 30s + 30s*(running_tasks), up to 300 seconds.
+        If the slave cannot be found in the state summary, just return the default 300 seconds
+        """
+        state = get_mesos_master().state_summary()
+        timeout = 300
+        for slave in state.get('slaves', []):
+            if slave.get('pid', None) == slave_to_kill.pid:
+                timeout = min(300, slave.get('TASK_RUNNING', 10) * 30 + 30)
+                break
+        return timeout
+
     def can_kill(self, hostname, should_drain, dry_run, timer):
         if dry_run:
             return True
@@ -298,6 +314,8 @@ class ClusterAutoscaler(ResourceLogMixin):
                 slave.pid,
             ))
             try:
+                new_timeout = self.get_new_timeout_after_terminate(slave)
+                timer.reset_to(new_timeout)
                 ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
             except ClientError as e:
                 if e.response['Error'].get('Code') == 'DryRunOperation':
