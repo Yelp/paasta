@@ -94,6 +94,9 @@
             "extra_docker_args": {
                 "type": "object",
                 "additionalProperties": { "type": "string" }
+            },
+            "pool": {
+                "type": "string"
             }
         }
     }
