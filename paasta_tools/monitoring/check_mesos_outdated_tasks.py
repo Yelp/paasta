@@ -42,7 +42,7 @@ def parse_args():
 
 
 def get_mesos_state():
-    state = get_mesos_master().state
+    state = get_mesos_master(use_mesos_cache=True).state
     return state
 
 
