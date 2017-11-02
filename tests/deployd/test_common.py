@@ -5,6 +5,7 @@ import mock
 from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import get_marathon_clients_from_config
+from paasta_tools.deployd.common import get_priority
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaPriorityQueue
 from paasta_tools.deployd.common import PaastaQueue
@@ -69,10 +70,11 @@ class TestPaastaPriorityQueue(unittest.TestCase):
 class TestServiceInstance(unittest.TestCase):
     def setUp(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True,
+            'paasta_tools.deployd.common.get_priority', autospec=True,
         ) as mock_get_priority:
             mock_get_priority.return_value = 1
-            self.service_instance = ServiceInstance(
+            # https://github.com/python/mypy/issues/2852
+            self.service_instance = ServiceInstance(  # type: ignore
                 service='universe',
                 instance='c137',
                 watcher='mywatcher',
@@ -82,7 +84,7 @@ class TestServiceInstance(unittest.TestCase):
 
     def test___new__(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True,
+            'paasta_tools.deployd.common.get_priority', autospec=True,
         ):
             expected = BaseServiceInstance(
                 service='universe',
@@ -104,7 +106,8 @@ class TestServiceInstance(unittest.TestCase):
                 bounce_timers=None,
                 priority=2,
             )
-            assert ServiceInstance(
+            # https://github.com/python/mypy/issues/2852
+            assert ServiceInstance(  # type: ignore
                 service='universe',
                 instance='c137',
                 watcher='mywatcher',
@@ -118,7 +121,7 @@ class TestServiceInstance(unittest.TestCase):
             'paasta_tools.deployd.common.load_marathon_service_config', autospec=True,
         ) as mock_load_marathon_service_config:
             mock_load_marathon_service_config.return_value = mock.Mock(get_bounce_priority=mock.Mock(return_value=1))
-            assert type(self.service_instance).get_priority('universe', 'c137', 'westeros-prod') == 1
+            assert get_priority('universe', 'c137', 'westeros-prod') == 1
             mock_load_marathon_service_config.assert_called_with(
                 service='universe',
                 instance='c137',
@@ -127,18 +130,18 @@ class TestServiceInstance(unittest.TestCase):
             )
 
             mock_load_marathon_service_config.side_effect = NoDockerImageError()
-            assert type(self.service_instance).get_priority('universe', 'c137', 'westeros-prod') == 0
+            assert get_priority('universe', 'c137', 'westeros-prod') == 0
 
             mock_load_marathon_service_config.side_effect = InvalidJobNameError()
-            assert type(self.service_instance).get_priority('universe', 'c137', 'westeros-prod') == 0
+            assert get_priority('universe', 'c137', 'westeros-prod') == 0
 
             mock_load_marathon_service_config.side_effect = NoDeploymentsAvailable()
-            assert type(self.service_instance).get_priority('universe', 'c137', 'westeros-prod') == 0
+            assert get_priority('universe', 'c137', 'westeros-prod') == 0
 
 
 def test_rate_limit_instances():
     with mock.patch(
-        'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+        'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
     ), mock.patch(
         'time.time', autospec=True,
     ) as mock_time:

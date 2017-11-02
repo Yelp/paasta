@@ -371,7 +371,7 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_prioritise_bouncing_services(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+            'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
         ), mock.patch(
             'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True,
         ) as mock_get_service_instances_that_need_bouncing, mock.patch(
