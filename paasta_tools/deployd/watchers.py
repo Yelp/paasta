@@ -2,6 +2,10 @@ import logging
 import os
 import time
 from functools import reduce
+from typing import Dict  # noqa: imported for typing
+from typing import List
+from typing import Set  # noqa: imported for typing
+from typing import Tuple  # noqa: imported for typing
 
 import pyinotify
 from kazoo.protocol.states import EventType
@@ -41,7 +45,7 @@ class AutoscalerWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super(AutoscalerWatcher, self).__init__(inbox_q, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
-        self.watchers = {}
+        self.watchers: Dict[str, PaastaWatcher] = {}
 
     def watch_folder(self, path):
         """recursive nonsense"""
@@ -67,7 +71,8 @@ class AutoscalerWatcher(PaastaWatcher):
             service, instance = event.path.split('/')[-3:-1]
             self.log.info("Number of instances changed or autoscaling enabled for first time"
                           " for {}.{}".format(service, instance))
-            service_instance = ServiceInstance(
+            # https://github.com/python/mypy/issues/2852
+            service_instance = ServiceInstance(  # type: ignore
                 service=service,
                 instance=instance,
                 cluster=self.config.get_cluster(),
@@ -148,7 +153,7 @@ class PublicConfigFileWatcher(PaastaWatcher):
 class MaintenanceWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super(MaintenanceWatcher, self).__init__(inbox_q, cluster, config)
-        self.draining = set()
+        self.draining: Set[str] = set()
         self.marathon_clients = get_marathon_clients_from_config()
 
     def get_new_draining_hosts(self):
@@ -169,7 +174,7 @@ class MaintenanceWatcher(PaastaWatcher):
         self.is_ready = True
         while True:
             new_draining_hosts = self.get_new_draining_hosts()
-            service_instances = []
+            service_instances: List[ServiceInstance] = []
             if new_draining_hosts:
                 self.log.info("Found new draining hosts: {}".format(new_draining_hosts))
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
@@ -177,15 +182,18 @@ class MaintenanceWatcher(PaastaWatcher):
                 self.inbox_q.put(service_instance)
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
-    def get_at_risk_service_instances(self, draining_hosts):
-        marathon_apps_with_clients = get_marathon_apps_with_clients(self.marathon_clients, embed_tasks=True)
+    def get_at_risk_service_instances(self, draining_hosts) -> List[ServiceInstance]:
+        marathon_apps_with_clients = get_marathon_apps_with_clients(
+            clients=self.marathon_clients.get_all_clients(),
+            embed_tasks=True,
+        )
         at_risk_tasks = []
         for app, client in marathon_apps_with_clients:
             for task in app.tasks:
                 if task.host in draining_hosts:
                     at_risk_tasks.append(task)
         self.log.info("At risk tasks: {}".format(at_risk_tasks))
-        service_instances = []
+        service_instances: List[ServiceInstance] = []
         for task in at_risk_tasks:
             app_id = task.app_id.strip('/')
             service, instance, _, __ = deformat_job_id(app_id)
@@ -193,7 +201,8 @@ class MaintenanceWatcher(PaastaWatcher):
             # no need to add the same instance to the bounce queue
             # more than once
             if not any([(service, instance) == (si.service, si.instance) for si in service_instances]):
-                service_instances.append(ServiceInstance(
+                # https://github.com/python/mypy/issues/2852
+                service_instances.append(ServiceInstance(  # type: ignore
                     service=service,
                     instance=instance,
                     cluster=self.config.get_cluster(),
@@ -236,7 +245,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             except ValueError:
                 self.log.error("Couldn't load public config, the JSON is invalid!")
                 return
-            service_instances = []
+            service_instances: List[Tuple[str, str]] = []
             if new_config != self.public_config:
                 self.log.info("Public config has changed, now checking if it affects any services config shas")
                 self.public_config = new_config
@@ -254,15 +263,14 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 self.log.info("Found config change affecting {} service instances, "
                               "now doing a staggered bounce".format(len(service_instances)))
                 bounce_rate = self.public_config.get_deployd_big_bounce_rate()
-                service_instances = rate_limit_instances(
+                for service_instance in rate_limit_instances(
                     instances=service_instances,
                     cluster=self.public_config.get_cluster(),
                     number_per_minute=bounce_rate,
                     watcher_name=type(self).__name__,
                     priority=99,
-                )
-            for service_instance in service_instances:
-                self.filewatcher.inbox_q.put(service_instance)
+                ):
+                    self.filewatcher.inbox_q.put(service_instance)
 
 
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
@@ -318,8 +326,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         )
         for service, instance in service_instances:
             self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
-        service_instances = [
-            ServiceInstance(
+        service_instances_to_queue = [
+            # https://github.com/python/mypy/issues/2852
+            ServiceInstance(  # type: ignore
                 service=service,
                 instance=instance,
                 cluster=self.filewatcher.cluster,
@@ -330,5 +339,5 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             )
             for service, instance in service_instances
         ]
-        for service_instance in service_instances:
+        for service_instance in service_instances_to_queue:
             self.filewatcher.inbox_q.put(service_instance)

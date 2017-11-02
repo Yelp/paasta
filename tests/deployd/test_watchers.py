@@ -13,15 +13,15 @@ class FakePyinotify(object):  # pragma: no cover
         pass
 
     @property
-    def WatchManager():
+    def WatchManager(self):
         pass
 
     @property
-    def EventsCodes():
+    def EventsCodes(self):
         pass
 
     @property
-    def Notifier():
+    def Notifier(self):
         pass
 
 
@@ -125,7 +125,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
 
     def test_process_node_event(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+            'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
         ), mock.patch(
             'paasta_tools.deployd.watchers.EventType', autospec=True,
         ) as mock_event_type, mock.patch(
@@ -345,7 +345,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+            'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
         ), mock.patch(
             'paasta_tools.deployd.watchers.get_marathon_apps_with_clients', autospec=True,
         ) as mock_get_marathon_apps, mock.patch(
@@ -552,7 +552,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
     def test_bounce_service(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+            'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
         ), mock.patch(
             'paasta_tools.deployd.watchers.list_all_instances_for_service', autospec=True,
         ) as mock_list_instances, mock.patch(
