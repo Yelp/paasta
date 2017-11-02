@@ -105,7 +105,7 @@ def add_subparser(subparsers):
 
 def missing_deployments_message(service):
     message = (
-        "%s No deployments in deployments.json yet.\n  "
+        f"{service} has no deployments in deployments.json yet.\n  "
         "Has Jenkins run?"
     )
     return message
