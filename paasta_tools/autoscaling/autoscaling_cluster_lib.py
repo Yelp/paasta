@@ -938,8 +938,7 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
     mesos_state = get_mesos_master().state
     utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
     autoscaling_scalers = defaultdict(list)
-    any_cancelled_pool = defaultdict(lambda: False)
-    any_scale_up_pool = defaultdict(lambda: False)
+    any_cancelled_in_pool = defaultdict(lambda: False)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
@@ -952,26 +951,17 @@ def autoscale_local_cluster(config_folder, dry_run=False, log_level=None):
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
             )
-            autoscaling_scalers[resource['pool']].append(scaler)
-            any_scale_up_pool[resource['pool']] |= utilization_errors[(resource['region'], resource['pool'])] > 0
-            any_cancelled_pool[resource['pool']] |= scaler.is_resource_cancelled()
+            autoscaling_scalers[(resource['region'], resource['pool'])].append(scaler)
+            any_cancelled_in_pool[(resource['region'], resource['pool'])] |= scaler.is_resource_cancelled()
         except KeyError:
             log.warning("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
             continue
         log.debug("Sleep 3s to throttle AWS API calls")
         time.sleep(3)
     filtered_autoscaling_scalers = []
-    for pool, scalers in autoscaling_scalers.items():
-        # if any resource in a pool is scaling up, don't look at cancelled resources
-        if any_scale_up_pool[pool]:
-            filtered_autoscaling_scalers += [s for s in scalers if not s.is_resource_cancelled()]
-            skipped = [s for s in scalers if s.is_resource_cancelled()]
-            log.info(
-                "There are resources to scale up in pool %s, skipping canelled resources" % pool,
-            )
-            log.info("Skipped: %s" % skipped)
-        # if any resource in a pool is cancelled (and none are scaling up), only look at cancelled ones
-        elif any_cancelled_pool[pool]:
+    for (region, pool), scalers in autoscaling_scalers.items():
+        # if any resource in a pool is cancelled (and it's not scaling up), only look at cancelled ones
+        if any_cancelled_in_pool[(region, pool)] and utilization_errors[(region, pool)] < 0:
             filtered_autoscaling_scalers += [s for s in scalers if s.is_resource_cancelled()]
             skipped = [s for s in scalers if s.is_resource_cancelled()]
             log.info("There are cancelled resources in pool %s, skipping active resources" % pool)
