@@ -90,7 +90,7 @@ def report_outdated_instances(task_id, gitsha, tasks, slave_id2hostname):
     output = []
     for t in tasks:
         deploy_time = datetime.datetime.fromtimestamp(int(t['statuses'][0]['timestamp'])).strftime('%Y-%m-%d %H:%M:%S')
-        container_name = "{}.{}".format(
+        container_name = "mesos-{}.{}".format(
             t['slave_id'],
             t['statuses'][0]['container_status']['container_id']['value'],
         )
