@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import datetime
 import sys
 import time
@@ -21,6 +22,23 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 OUTPUT_FORMAT = "{:<30}  {:<8}  {:<20}  {:<27}  {}"
+FRAMEWORK_NAME = "marathon"
+MAX_BOUNCE_TIME_IN_HOURS = 4
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Find all containers serving previous push versions.',
+    )
+    parser.add_argument(
+        '--bounce-time', dest="bounce_time", type=int,
+        default=MAX_BOUNCE_TIME_IN_HOURS,
+        help=(
+            "Ignore versions that were launched in the last BOUNCE_TIME hours "
+            "because they probably are still bouncing."
+        ),
+    )
+    return parser.parse_args()
 
 
 def get_mesos_state():
@@ -30,7 +48,7 @@ def get_mesos_state():
 
 def marathon_tasks(state):
     for framework in state.get('frameworks', []):
-        if framework['name'].lower().startswith('marathon'):
+        if framework['name'].lower().startswith(FRAMEWORK_NAME):
             for task in framework.get('tasks', []):
                 yield task
 
@@ -42,33 +60,33 @@ def create_slave_id_to_hostname_dict(state):
     return res
 
 
-def group_running_tasks_by_job_id_and_gitsha(state):
+def group_running_tasks_by_id_and_gitsha(state):
     res = {}
     for t in marathon_tasks(state):
         if t['state'] == 'TASK_RUNNING':
-            job_id = t['name'][:t['name'].find('.', t['name'].find('.') + 1)]
-            gitsha = t['name'][len(job_id) + 1:t['name'].find('.', len(job_id) + 1)]
-            res.setdefault(job_id, {}).setdefault(gitsha, []).append(t)
+            task_id = t['name'][:t['name'].find('.', t['name'].find('.') + 1)]
+            gitsha = t['name'][len(task_id) + 1:t['name'].find('.', len(task_id) + 1)]
+            res.setdefault(task_id, {}).setdefault(gitsha, []).append(t)
     return res
 
 
-def detect_outdated_gitshas(versions, max_bounce_time=4 * 3600):
-    """Find versions that should have drained more than bounce_time ago (in seconds)"""
+def detect_outdated_gitshas(versions, max_bounce_time_in_hours):
+    """Find versions that should have drained more than 'max_bounce_time_in_hours' ago"""
+    if len(versions) < 2:
+        return []
     deploy_time = {}
-    res = []
-    if len(versions) > 1:
-        latest_deploy = 0
-        for version, tasks in versions.items():
-            deploy_time[version] = sum(t['statuses'][0]['timestamp'] for t in tasks) / len(tasks)
-            if deploy_time[version] > latest_deploy and time.time() - deploy_time[version] > max_bounce_time:
-                latest_deploy = deploy_time[version]
-        for version, dtime in deploy_time.items():
-            if dtime + max_bounce_time < latest_deploy:
-                res.append(version)
-    return res
+    latest_deploy = 0
+    for version, tasks in versions.items():
+        deploy_time[version] = sum(t['statuses'][0]['timestamp'] for t in tasks) / len(tasks)
+        if (
+            deploy_time[version] > latest_deploy and
+            time.time() - deploy_time[version] > max_bounce_time_in_hours * 3600
+        ):
+            latest_deploy = deploy_time[version]
+    return [version for version, dtime in deploy_time.items() if dtime < latest_deploy]
 
 
-def report_outdated_instances(job_id, gitsha, tasks, slave_id2hostname):
+def report_outdated_instances(task_id, gitsha, tasks, slave_id2hostname):
     output = []
     for t in tasks:
         deploy_time = datetime.datetime.fromtimestamp(int(t['statuses'][0]['timestamp'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -80,7 +98,7 @@ def report_outdated_instances(job_id, gitsha, tasks, slave_id2hostname):
         hostname = hostname[:hostname.find('.')]
         output.append(
             OUTPUT_FORMAT.format(
-                job_id.replace('--', '_')[:30],
+                task_id.replace('--', '_')[:30],
                 gitsha[3:],
                 deploy_time,
                 hostname,
@@ -90,31 +108,32 @@ def report_outdated_instances(job_id, gitsha, tasks, slave_id2hostname):
     return output
 
 
-def check_mesos_tasks():
+def check_mesos_tasks(max_bounce_time_in_hours=MAX_BOUNCE_TIME_IN_HOURS):
     output = []
     state = get_mesos_state()
-    aggregated_tasks = group_running_tasks_by_job_id_and_gitsha(state)
+    aggregated_tasks = group_running_tasks_by_id_and_gitsha(state)
     slave_id2hostname = create_slave_id_to_hostname_dict(state)
-    for job_id, versions in aggregated_tasks.items():
-        for gitsha in detect_outdated_gitshas(versions):
+    for task_id, versions in aggregated_tasks.items():
+        for gitsha in detect_outdated_gitshas(versions, max_bounce_time_in_hours):
             output.extend(report_outdated_instances(
-                job_id, gitsha, versions[gitsha],
+                task_id, gitsha, versions[gitsha],
                 slave_id2hostname,
             ))
     return output
 
 
 def main():
+    args = parse_args()
     cluster = load_system_paasta_config().get_cluster()
-    output = check_mesos_tasks()
+    output = check_mesos_tasks(args.bounce_time)
     if output:
-        print("CRITICAL - There are {} outdated instances running in {}"
-              .format(len(output), cluster))
+        print("CRITICAL - There are {} tasks running in {} that are more than {}h older than their"
+              " last bounce.".format(len(output), cluster, args.bounce_time))
         print(OUTPUT_FORMAT.format('SERVICE.INSTANCE', 'COMMIT', 'CREATED', 'HOSTNAME', 'CONTAINER'))
         print('\n'.join(output))
         return 1
     else:
-        print("OK - There are no outdated instances in {}".format(cluster))
+        print("OK - There are no outdated tasks in {}".format(cluster))
         return 0
 
 
