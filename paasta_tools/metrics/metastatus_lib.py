@@ -271,13 +271,15 @@ def assert_chronos_frameworks(connected_chronos_frameworks):
 
 
 def assert_marathon_frameworks(connected_marathon_frameworks, configured_framework_ids):
+    configured_framework_ids = set(configured_framework_ids)
     connected_framework_ids = {x['id'] for x in connected_marathon_frameworks}
-    healthy = connected_framework_ids == set(configured_framework_ids)
+    healthy = configured_framework_ids.issubset(connected_framework_ids)
     if healthy:
-        output = "    Framework: marathon count: %d" % len(configured_framework_ids)
+        output = "    Framework: marathon count: %d" % len(connected_framework_ids)
     else:
-        output = ("    CRITICAL: There are %d marathon frameworks connected! (Expected %d)"
-                  % (len(connected_framework_ids), len(configured_framework_ids)))
+        diff = configured_framework_ids.difference(connected_framework_ids)
+        output = ("    CRITICAL: %d marathon frameworks are not connected to Mesos.\n"
+                  "      Disconnected marathon framework IDs: %s" % (len(diff), ', '.join(diff)))
     return (healthy, output)
 
 

@@ -261,7 +261,11 @@ def test_assert_framework_count_not_ok():
             },
             {
                 'name': 'chronos',
-                'id': 'id_chronos',
+                'id': 'id_chronos_1',
+            },
+            {
+                'name': 'chronos',
+                'id': 'id_chronos_2',
             },
         ],
     }
@@ -270,7 +274,7 @@ def test_assert_framework_count_not_ok():
         marathon_framework_ids=['id1', 'id2'],
     )
 
-    assert "CRITICAL: There are 3 marathon frameworks connected! (Expected 2)" in output
+    assert "CRITICAL: There are 2 connected chronos frameworks! (Expected 1)" in output
     assert not ok
 
 

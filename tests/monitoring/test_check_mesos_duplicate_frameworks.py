@@ -56,7 +56,7 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_marathon_framework_ids',
         autospec=True,
-        return_value=['id_marathon_1'],
+        return_value=['id_marathon_1', 'id_marathon_2'],
     ), mock.patch(
         'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
@@ -64,7 +64,7 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         mock_master.state = {
             'frameworks': [
                 {'name': 'marathon', 'id': 'id_marathon_1'},
-                {'name': 'marathon', 'id': 'id_marathon_2'},
+                {'name': 'marathon', 'id': 'id_marathon_3'},
                 {'name': 'chronos', 'id': 'id_chronos'},
                 {'name': 'foobar', 'id': 'id_foobar_1'},
                 {'name': 'foobar', 'id': 'id_foobar_2'},
@@ -76,7 +76,7 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
             check_mesos_no_duplicate_frameworks()
         out, err = capfd.readouterr()
         assert "CRITICAL" in out
-        assert "marathon" in out
+        assert "Disconnected marathon framework IDs: id_marathon_2" in out
         assert "chronos" in out
         assert "foobar" not in out
         assert error.value.code == 2
