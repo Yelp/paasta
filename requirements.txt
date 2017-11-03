@@ -15,7 +15,7 @@ gevent==1.1.1
 # so we pull from git
 git+git://github.com/thefactory/marathon-python@c8b776dc82e63865b0e3497b26cf7829bbbffb3f#egg=marathon
 # While task_processing is in rapid development mode, we install it from git
-git+git://github.com/Yelp/task_processing@4cf5e66#egg=task_processing[mesos_executor]
+git+git://github.com/Yelp/task_processing@dfbfe2c#egg=task_processing[mesos_executor]
 http-parser==0.8.3
 httplib2==0.9.2
 humanize==0.5.1
