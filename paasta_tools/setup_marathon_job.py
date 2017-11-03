@@ -184,7 +184,11 @@ def drain_tasks_and_find_tasks_to_kill(
         try:
             if task.state != 'TASK_RUNNING' or drain_method.is_safe_to_kill(task):
                 tasks_to_kill.add((task, client))
-                log_bounce_action(line='%s bounce killing not_running or drained task %s' % (bounce_method, task.id))
+                log_bounce_action(
+                    line='%s bounce killing not_running or drained task %s %s' % (
+                        bounce_method, task.id, task.state,
+                    ),
+                )
         except Exception as e:
             tasks_to_kill.add((task, client))
             log_bounce_action(

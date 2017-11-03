@@ -1857,7 +1857,9 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 
 class TestDrainTasksAndFindTasksToKill(object):
     def test_catches_exception_during_drain(self):
-        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {(mock.Mock(id='to_drain'), mock.Mock())}
+        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
+            (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),
+        }
         already_draining_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         at_risk_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         fake_drain_method = mock.Mock(
@@ -1878,11 +1880,13 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         fake_log_bounce_action.assert_any_call(
-            line="fake bounce killing not_running or drained task to_drain",
+            line="fake bounce killing not_running or drained task to_drain TASK_FOO",
         )
 
     def test_catches_exception_during_is_safe_to_kill(self):
-        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {(mock.Mock(id='to_drain'), mock.Mock())}
+        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
+            (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),
+        }
         already_draining_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         at_risk_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         fake_drain_method = mock.Mock(
@@ -1900,7 +1904,7 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         fake_log_bounce_action.assert_called_with(
-            line='fake bounce killing not_running or drained task to_drain',
+            line='fake bounce killing not_running or drained task to_drain TASK_FOO',
         )
 
 
