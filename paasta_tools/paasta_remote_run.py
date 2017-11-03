@@ -294,7 +294,7 @@ def build_executor_stack(
 def remote_run_start(args):
 
     system_paasta_config, service, cluster, \
-        soa_dir, instance, instance_type, constraints = extract_args(args)
+        soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
 
     constraints_json = args.constraints_json
