@@ -39,13 +39,20 @@ def _run(coro):
 
 def get_coro_with_exception(error):
     async def f(*args, **kwargs):
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
         raise error
     return f
 
 
+class AsyncNone(object):
+    """Same as asyncio.sleep(0), but needed to be able to patch asyncio.sleep"""
+
+    def __await__(self):
+        yield
+
+
 async def just_sleep(*a, **k):
-    await asyncio.sleep(0.01)
+    await AsyncNone()
 
 
 def pid_to_ip_sideeffect(pid):
@@ -113,6 +120,8 @@ def test_autoscale_local_cluster():
     ) as mock_autoscale_cluster_resource, mock.patch(
         'time.sleep', autospec=True,
     ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True, side_effect=just_sleep,
+    ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
         autospec=True,
     ) as mock_is_resource_cancelled, mock.patch(
@@ -156,7 +165,7 @@ def test_autoscale_local_cluster():
 
         async def fake_autoscale(scaler, state):
             calls.append(scaler)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
@@ -173,7 +182,7 @@ def test_autoscale_cluster_resource():
 
     async def mock_scale_resource(current, target):
         call.append((current, target))
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
     mock_scaling_resource = {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}
     mock_scaler = mock.Mock()
@@ -386,7 +395,9 @@ class TestAsgAutoscaler(unittest.TestCase):
             assert ret is None
 
     def test_set_asg_capacity(self):
-        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client, mock.patch(
+            'time.sleep', autospec=True,
+        ):
             mock_update_auto_scaling_group = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(update_auto_scaling_group=mock_update_auto_scaling_group)
             self.autoscaler.dry_run = True
@@ -1296,14 +1307,15 @@ class TestClusterAutoscaler(unittest.TestCase):
         with mock.patch(
             'boto3.client', autospec=True,
         ) as mock_ec2_client, mock.patch(
-            'time.sleep', autospec=True,
-        ), mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True,
+        ) as mock_sleep, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True,
         ) as mock_is_safe_to_kill:
             mock_terminate_instances = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
             mock_timer = mock.Mock()
             mock_timer.ready = lambda: False
+            mock_sleep.side_effect = just_sleep
 
             mock_is_safe_to_kill.return_value = True
             mock_slave_to_kill = mock.Mock(
