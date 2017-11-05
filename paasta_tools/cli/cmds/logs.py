@@ -782,6 +782,9 @@ class ScribeLogReader(LogReader):
         aggregated_logs, parser_fn=None, filter_fn=None,
         start_time=None, end_time=None,
     ):
+        print("STARTING FILTER_AND_AGG")
+        print(scribe_reader_ctx, scribe_env, stream_name,
+        levels, service, components, clusters, instances)
         with scribe_reader_ctx as scribe_reader:
             try:
                 for line in scribe_reader:
@@ -801,6 +804,7 @@ class ScribeLogReader(LogReader):
                                 timestamp = pytz.utc.localize(datetime.datetime.min)
 
                             line = {'raw_line': line, 'sort_key': timestamp}
+                            print("AGGREGATING log %s from scribereader %s" % (line, scribereader))
                             aggregated_logs.append(line)
             except StreamTailerSetupError as e:
                 if 'No data in stream' in str(e):
