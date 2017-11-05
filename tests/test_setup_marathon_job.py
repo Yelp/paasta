@@ -1432,7 +1432,7 @@ class TestSetupMarathonJob:
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
-        fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_marathon_apps = [mock.Mock(id=fake_id, tasks=[], instances=2), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_marathon_apps),
         )
@@ -1486,7 +1486,10 @@ class TestSetupMarathonJob:
         old_task_is_draining = mock.Mock(id="old_task_is_draining", app_id=old_app_id)
         old_task_dont_drain = mock.Mock(id="old_task_dont_drain", app_id=old_app_id)
 
-        old_app = mock.Mock(id="/%s" % old_app_id, tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain])
+        old_app = mock.Mock(
+            id="/%s" % old_app_id, tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain],
+            instances=2,
+        )
 
         fake_client = mock.MagicMock(  # pragma: no branch (only used for interface)
             list_apps=mock.Mock(return_value=[old_app]),

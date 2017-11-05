@@ -588,6 +588,12 @@ def deploy_service(
         draining_hosts=draining_hosts,
     )
 
+    # The first thing we need to do is take up the "slack" of old apps, to stop
+    # them from launching new things that we are going to have to end up draining
+    # and killing anyway.
+    for a, c in other_apps_with_clients:
+        marathon_tools.take_up_slack(app=a, client=c)
+
     num_at_risk_tasks = 0
     if new_app_running:
         num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=draining_hosts)
@@ -636,11 +642,7 @@ def deploy_service(
             # in marathon that don't have a launched task yet. When scaling down we want to
             # reduce this slack so marathon doesn't get a chance to launch a new task in
             # that space that we will then have to drain and kill again.
-            slack = max(new_app.instances - len(new_app.tasks), 0)
-            if slack > 0:
-                print("Scaling %s down from %d to %d instances to remove slack." %
-                      (new_app.id, new_app.instances, new_app.instances - slack))
-                new_client.scale_app(app_id=new_app.id, instances=(new_app.instances - slack), force=True)
+            marathon_tools.take_up_slack(client=new_client, app=new_app)
 
         # TODO: don't take actions in deploy_service.
         undrain_tasks(

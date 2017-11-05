@@ -1484,3 +1484,11 @@ def broadcast_log_all_services_running_here(line: str, component: str='monitorin
 
 def broadcast_log_all_services_running_here_from_stdin(component: str='monitoring') -> None:
     broadcast_log_all_services_running_here(sys.stdin.read().strip())
+
+
+def take_up_slack(client: MarathonClient, app: MarathonApp) -> None:
+    slack = max(app.instances - len(app.tasks), 0)
+    if slack > 0:
+        log.info("Scaling %s down from %d to %d instances to remove slack." %
+                 (app.id, app.instances, app.instances - slack))
+        client.scale_app(app_id=app.id, instances=(app.instances - slack), force=True)
