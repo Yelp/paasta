@@ -16,8 +16,12 @@ import argparse
 import logging
 import sys
 import traceback
+from typing import Dict  # noqa; imported for typing
+from typing import List  # noqa; imported for typing
+from typing import Optional
 
 import requests_cache
+from chronos import ChronosClient
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
@@ -39,7 +43,7 @@ log = logging.getLogger(__name__)
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Runs start/stop/restart/status on a PaaSTA service in a given cluster.',
     )
@@ -86,37 +90,36 @@ def parse_args():
     return args
 
 
-def get_deployment_version(actual_deployments, cluster, instance):
+def get_deployment_version(actual_deployments: Dict[str, str], cluster: str, instance: str) -> Optional[str]:
     key = '.'.join((cluster, instance))
     return actual_deployments[key][:8] if key in actual_deployments else None
 
 
 class PaastaClients():
+    _cached: bool
+    _marathon: Optional[marathon_tools.MarathonClients]
+    _chronos: Optional[ChronosClient]
 
-    def __init__(self, cached=False):
+    def __init__(self, cached: bool=False) -> None:
         self._cached = cached
         self._marathon = None
         self._chronos = None
 
-    def marathon(self):
+    def marathon(self) -> marathon_tools.MarathonClients:
         if self._marathon is None:
-            marathon_config = marathon_tools.load_marathon_config()
-            self._marathon = marathon_tools.get_marathon_client(
-                marathon_config.get_url(),
-                marathon_config.get_username(),
-                marathon_config.get_password(),
-                cached=self._cached,
-            )
+            system_paasta_config = load_system_paasta_config()
+            marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
+            self._marathon = marathon_tools.get_marathon_clients(marathon_servers)
         return self._marathon
 
-    def chronos(self):
+    def chronos(self) -> ChronosClient:
         if self._chronos is None:
             chronos_config = chronos_tools.load_chronos_config()
             self._chronos = chronos_tools.get_chronos_client(chronos_config, cached=self._cached)
         return self._chronos
 
 
-def main():
+def main() -> None:
     args = parse_args()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -145,7 +148,7 @@ def main():
     clients = PaastaClients(cached=(command == 'status'))
 
     instance_types = ['marathon', 'chronos', 'paasta_native', 'adhoc']
-    instance_types_map = {it: [] for it in instance_types}
+    instance_types_map: Dict[str, List[str]] = {it: [] for it in instance_types}
     for instance in instances:
         try:
             instance_type = validate_service_instance(
@@ -197,7 +200,7 @@ def main():
                         soa_dir=args.soa_dir,
                         app_id=args.app_id,
                         delta=args.delta,
-                        client=clients.marathon(),
+                        clients=clients.marathon(),
                     )
                 elif instance_type == 'chronos':
                     return_code = chronos_serviceinit.perform_command(

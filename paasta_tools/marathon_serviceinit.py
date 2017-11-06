@@ -210,7 +210,7 @@ def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, 
     return app.tasks, "\n".join(output)
 
 
-def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
+def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config):
     """Returns detailed information about a marathon apps for a service
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
@@ -220,21 +220,20 @@ def status_marathon_job_verbose(service, instance, client, cluster, soa_dir):
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
     # during a bounce we want to see the old and new ones.
-    for app_id in marathon_tools.get_matching_appids(service, instance, client):
-        if marathon_tools.is_app_id_running(app_id, client):
-            app = client.get_app(app_id)
-            tasks, output = get_verbose_status_of_marathon_app(
-                marathon_client=client,
-                app=app,
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
-            all_tasks.extend(tasks)
-            all_output.append(output)
-        else:
-            all_output.append("Warning: App %s is not running yet." % app_id)
+
+    relevant_clients = clients.get_all_clients_for_service(job_config)
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients, embed_tasks=True)
+    for app, client in marathon_tools.get_matching_apps_with_clients(service, instance, marathon_apps_with_clients):
+        tasks, output = get_verbose_status_of_marathon_app(
+            marathon_client=client,
+            app=app,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+        all_tasks.extend(tasks)
+        all_output.append(output)
     return all_tasks, "\n".join(all_output)
 
 
@@ -422,7 +421,7 @@ def status_mesos_tasks(service, instance, normal_instance_count):
         return "Error: talking to Mesos timed out. It may be overloaded."
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, client=None):
+def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, clients=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status
     :param service: service name
@@ -446,20 +445,17 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     normal_instance_count = job_config.get_instances()
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
-    if client is None:
-        marathon_config = marathon_tools.load_marathon_config()
-        client = marathon_tools.get_marathon_client(
-            marathon_config.get_url(),
-            marathon_config.get_username(),
-            marathon_config.get_password(),
-        )
+    if clients is None:
+        clients = marathon_tools.get_marathon_clients(system_config.get_marathon_servers())
+
+    current_client = clients.get_current_client_for_service(job_config)
 
     if command == 'restart':
-        restart_marathon_job(service, instance, app_id, client, cluster)
+        restart_marathon_job(service, instance, app_id, current_client, cluster)
     elif command == 'status':
-        paasta_print(status_desired_state(service, instance, client, job_config))
-        paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, client))
-        tasks, out = status_marathon_job_verbose(service, instance, client, cluster, soa_dir)
+        paasta_print(status_desired_state(service, instance, current_client, job_config))
+        paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, current_client))
+        tasks, out = status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config)
         if verbose > 0:
             paasta_print(out)
         paasta_print(status_mesos_tasks(service, instance, normal_instance_count))

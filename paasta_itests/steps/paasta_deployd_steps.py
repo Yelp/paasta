@@ -38,10 +38,11 @@ def start_deployd(context):
     timeout = start + 60
     while "Startup finished!" not in output:
         output = context.daemon.stderr.readline().decode('utf-8')
+        if not output:
+            raise Exception("deployd exited prematurely")
         print(output.rstrip('\n'))
-        time.sleep(1)
         if time.time() > timeout:
-            raise "deployd never ran"
+            raise Exception("deployd never ran")
     time.sleep(5)
 
 
@@ -98,12 +99,13 @@ def check_app_running(context, service_instance, seconds):
     context.app_id = context.marathon_config.format_marathon_app_dict()['id']
     step = 5
     attempts = 0
+    context.current_client = context.marathon_clients.get_current_client_for_service(context.marathon_config)
     while (attempts * step) < seconds:
-        if context.app_id in list_all_marathon_app_ids(context.marathon_client):
+        if context.app_id in list_all_marathon_app_ids(context.current_client):
             break
         time.sleep(step)
         attempts += 1
-    assert context.app_id in list_all_marathon_app_ids(context.marathon_client)
+    assert context.app_id in list_all_marathon_app_ids(context.current_client)
     context.old_app_id = context.app_id
 
 
@@ -112,11 +114,11 @@ def check_app_not_running(context, seconds):
     step = 5
     attempts = 0
     while (attempts * step) < seconds:
-        if context.old_app_id not in list_all_marathon_app_ids(context.marathon_client):
+        if context.old_app_id not in list_all_marathon_app_ids(context.current_client):
             return
         time.sleep(step)
         attempts += 1
-    assert context.old_app_id not in list_all_marathon_app_ids(context.marathon_client)
+    assert context.old_app_id not in list_all_marathon_app_ids(context.current_client)
 
 
 @then('we set a new command for our service instance to {cmd}')

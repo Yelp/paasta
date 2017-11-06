@@ -183,7 +183,7 @@ class TestDeployDaemon(unittest.TestCase):
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True,
         ) as self.mock_inbox, mock.patch(
-            'paasta_tools.deployd.master.get_marathon_client_from_config', autospec=True,
+            'paasta_tools.deployd.master.get_marathon_clients_from_config', autospec=True,
         ), mock.patch(
             'paasta_tools.deployd.master.load_system_paasta_config', autospec=True,
         ) as mock_config_getter:
@@ -371,7 +371,7 @@ class TestDeployDaemon(unittest.TestCase):
 
     def test_prioritise_bouncing_services(self):
         with mock.patch(
-            'paasta_tools.deployd.common.ServiceInstance.get_priority', autospec=True, return_value=0,
+            'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
         ), mock.patch(
             'paasta_tools.deployd.master.get_service_instances_that_need_bouncing', autospec=True,
         ) as mock_get_service_instances_that_need_bouncing, mock.patch(
@@ -382,7 +382,7 @@ class TestDeployDaemon(unittest.TestCase):
 
             self.deployd.prioritise_bouncing_services()
             mock_get_service_instances_that_need_bouncing.assert_called_with(
-                self.deployd.marathon_client,
+                self.deployd.marathon_clients,
                 '/nail/etc/services',
             )
             calls = [

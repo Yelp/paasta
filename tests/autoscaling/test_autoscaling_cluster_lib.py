@@ -39,13 +39,20 @@ def _run(coro):
 
 def get_coro_with_exception(error):
     async def f(*args, **kwargs):
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
         raise error
     return f
 
 
+class AsyncNone(object):
+    """Same as asyncio.sleep(0), but needed to be able to patch asyncio.sleep"""
+
+    def __await__(self):
+        yield
+
+
 async def just_sleep(*a, **k):
-    await asyncio.sleep(0.01)
+    await AsyncNone()
 
 
 def pid_to_ip_sideeffect(pid):
@@ -86,6 +93,14 @@ def test_get_mesos_utilization_error():
         )
         assert ret == 0.5 - 0.8
 
+        ret = autoscaling_cluster_lib.get_mesos_utilization_error(
+            mesos_state=mock_mesos_state,
+            region="westeros-1",
+            pool="fake-pool",
+            target_utilization=0.8,
+        )
+        assert ret == 0
+
 
 def test_get_instances_from_ip():
     mock_instances = []
@@ -104,6 +119,8 @@ def test_autoscale_local_cluster_with_cancelled():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscale_cluster_resource', autospec=True,
     ) as mock_autoscale_cluster_resource, mock.patch(
         'time.sleep', autospec=True,
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True, side_effect=just_sleep,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
         autospec=True,
@@ -148,7 +165,7 @@ def test_autoscale_local_cluster_with_cancelled():
 
         async def fake_autoscale(scaler, state):
             calls.append(scaler)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -228,7 +245,7 @@ def test_autoscale_cluster_resource():
 
     async def mock_scale_resource(current, target):
         call.append((current, target))
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
     mock_scaling_resource = {'id': 'sfr-blah', 'type': 'sfr', 'pool': 'default'}
     mock_scaler = mock.Mock()
@@ -245,8 +262,8 @@ def test_autoscale_cluster_resource():
 
 
 def test_get_autoscaling_info_for_all_resources():
-    mock_resource_1 = mock.Mock()
-    mock_resource_2 = mock.Mock()
+    mock_resource_1 = {'region': 'westeros-1', 'pool': 'default'}
+    mock_resource_2 = {'region': 'westeros-1', 'pool': 'not-default'}
     mock_resources = {
         'id1': mock_resource_1,
         'id2': mock_resource_2,
@@ -259,19 +276,31 @@ def test_get_autoscaling_info_for_all_resources():
 
     mock_autoscaling_info = mock.Mock()
 
-    def mock_autoscaling_info_for_resource_side_effect(resource, pool_settings, state):
-        return {mock_resource_1: None, mock_resource_2: mock_autoscaling_info}[resource]
+    def mock_autoscaling_info_for_resource_side_effect(resource, pool_settings, state, utilization_errors):
+        return {
+            (mock_resource_1['region'], mock_resource_1['pool'],): None,
+            (mock_resource_2['region'], mock_resource_2['pool'],): mock_autoscaling_info,
+        }[(resource['region'], resource['pool'],)]
 
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
         return_value=mock_system_config,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.autoscaling_info_for_resource', autospec=True,
-    ) as mock_autoscaling_info_for_resource:
+    ) as mock_autoscaling_info_for_resource, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_utilization_error', autospec=True,
+    ) as mock_get_utilization_error:
         mock_autoscaling_info_for_resource.side_effect = mock_autoscaling_info_for_resource_side_effect
         mock_state = mock.Mock()
+        mock_get_utilization_error.return_value = 0
         ret = autoscaling_cluster_lib.get_autoscaling_info_for_all_resources(mock_state)
-        calls = [mock.call(mock_resource_1, {}, mock_state), mock.call(mock_resource_2, {}, mock_state)]
+        utilization_errors = autoscaling_cluster_lib.get_all_utilization_errors(
+            mock_resources, {}, mock_state,
+        )
+        calls = [
+            mock.call(mock_resource_1, {}, mock_state, utilization_errors),
+            mock.call(mock_resource_2, {}, mock_state, utilization_errors),
+        ]
         mock_autoscaling_info_for_resource.assert_has_calls(calls, any_order=True)
         assert ret == [mock_autoscaling_info]
 
@@ -283,6 +312,7 @@ def test_autoscaling_info_for_resources():
         'max_capacity': 5,
         'pool': 'default',
         'type': 'sfr',
+        'region': 'westeros-1',
     }}
 
     with mock.patch(
@@ -299,13 +329,17 @@ def test_autoscaling_info_for_resources():
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
         mock_state = mock.Mock()
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
+        mock_utilization_errors = {('westeros-1', 'default',): 0}
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(
+            mock_resources['sfr-blah'], {}, mock_state, mock_utilization_errors,
+        )
         assert mock_metrics_provider.called
         mock_scaler_class.assert_called_with(
             resource=mock_resources['sfr-blah'],
             pool_settings={},
             config_folder=None,
             dry_run=True,
+            utilization_error=0,
         )
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',
@@ -327,7 +361,9 @@ def test_autoscaling_info_for_resources():
         )
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(
+            mock_resources['sfr-blah'], {}, mock_state, mock_utilization_errors,
+        )
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',
             pool='default',
@@ -350,7 +386,9 @@ def test_autoscaling_info_for_resources():
         )
         mock_scaler_class = mock.Mock(return_value=mock_scaler)
         mock_get_scaler.return_value = mock_scaler_class
-        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(mock_resources['sfr-blah'], {}, mock_state)
+        ret = autoscaling_cluster_lib.autoscaling_info_for_resource(
+            mock_resources['sfr-blah'], {}, mock_state, mock_utilization_errors,
+        )
         assert ret == autoscaling_cluster_lib.AutoscalingInfo(
             resource_id='sfr-blah',
             pool='default',
@@ -420,7 +458,9 @@ class TestAsgAutoscaler(unittest.TestCase):
             assert ret is None
 
     def test_set_asg_capacity(self):
-        with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
+        with mock.patch('boto3.client', autospec=True) as mock_ec2_client, mock.patch(
+            'time.sleep', autospec=True,
+        ):
             mock_update_auto_scaling_group = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(update_auto_scaling_group=mock_update_auto_scaling_group)
             self.autoscaler.dry_run = True
@@ -1330,14 +1370,15 @@ class TestClusterAutoscaler(unittest.TestCase):
         with mock.patch(
             'boto3.client', autospec=True,
         ) as mock_ec2_client, mock.patch(
-            'time.sleep', autospec=True,
-        ), mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True,
+        ) as mock_sleep, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True,
         ) as mock_is_safe_to_kill:
             mock_terminate_instances = mock.Mock()
             mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
             mock_timer = mock.Mock()
             mock_timer.ready = lambda: False
+            mock_sleep.side_effect = just_sleep
 
             mock_is_safe_to_kill.return_value = True
             mock_slave_to_kill = mock.Mock(

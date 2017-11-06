@@ -4,14 +4,21 @@ from collections import namedtuple
 from queue import PriorityQueue
 from queue import Queue
 from threading import Thread
+from typing import Any
+from typing import Collection
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
-from paasta_tools.marathon_tools import get_marathon_client
-from paasta_tools.marathon_tools import load_marathon_config
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
+from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
@@ -33,11 +40,21 @@ BaseServiceInstance = namedtuple(
 class ServiceInstance(BaseServiceInstance):
     __slots__ = ()
 
-    def __new__(cls, service, instance, watcher, cluster, bounce_by, failures=0, bounce_timers=None, priority=None):
+    def __new__(
+        _cls,
+        service: str,
+        instance: str,
+        watcher: str,
+        cluster: str,
+        bounce_by: float,
+        failures: int=0,
+        bounce_timers: Optional[BounceTimers]=None,
+        priority: Optional[int]=None,
+    ) -> 'ServiceInstance':
         if priority is None:
-            priority = cls.get_priority(service, instance, cluster)
-        return super().__new__(
-            _cls=cls,
+            priority = get_priority(service, instance, cluster)
+        return super().__new__(  # type: ignore
+            _cls=_cls,
             service=service,
             instance=instance,
             watcher=watcher,
@@ -47,56 +64,58 @@ class ServiceInstance(BaseServiceInstance):
             priority=priority,
         )
 
-    def get_priority(service, instance, cluster):
-        try:
-            config = load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=DEFAULT_SOA_DIR,
-            )
-        except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError) as e:
-            return 0
-        return config.get_bounce_priority()
+
+def get_priority(service: str, instance: str, cluster: str) -> int:
+    try:
+        config = load_marathon_service_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=DEFAULT_SOA_DIR,
+        )
+    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError) as e:
+        return 0
+    return config.get_bounce_priority()
 
 
 class PaastaThread(Thread):
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         name = '.'.join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
 
 class PaastaQueue(Queue):
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
         self.name = name
         super(PaastaQueue, self).__init__(*args, **kwargs)
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         name = '.'.join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, item, *args, **kwargs):
+    def put(self, item: Any, *args: Any, **kwargs: Any) -> None:
         self.log.debug("Adding {} to {} queue".format(item, self.name))
         super(PaastaQueue, self).put(item, *args, **kwargs)
 
 
 class PaastaPriorityQueue(PriorityQueue):
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
         self.name = name
         super(PaastaPriorityQueue, self).__init__(*args, **kwargs)
         self.counter = 0
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         name = '.'.join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, priority, item, *args, **kwargs):
+    # ignored because https://github.com/python/mypy/issues/1237
+    def put(self, priority: float, item: Any, *args: Any, **kwargs: Any) -> None:  # type: ignore
         self.log.debug("Adding {} to {} queue with priority {}".format(item, self.name, priority))
         # this counter is to preserve the FIFO nature of the queue, it increments on every put
         # and the python PriorityQueue sorts based on the first item in the tuple (priority)
@@ -105,11 +124,17 @@ class PaastaPriorityQueue(PriorityQueue):
         self.counter += 1
         super(PaastaPriorityQueue, self).put((priority, self.counter, item), *args, **kwargs)
 
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         return super(PaastaPriorityQueue, self).get(*args, **kwargs)[2]
 
 
-def rate_limit_instances(instances, cluster, number_per_minute, watcher_name, priority=None):
+def rate_limit_instances(
+    instances: Collection[Tuple[str, str]],
+    cluster: str,
+    number_per_minute: float,
+    watcher_name: str,
+    priority: Optional[float]=None,
+) -> List[ServiceInstance]:
     service_instances = []
     if not instances:
         return []
@@ -117,7 +142,8 @@ def rate_limit_instances(instances, cluster, number_per_minute, watcher_name, pr
     time_step = int(60 / number_per_minute)
     bounce_time = time_now
     for service, instance in instances:
-        service_instances.append(ServiceInstance(
+        # https://github.com/python/mypy/issues/2852
+        service_instances.append(ServiceInstance(  # type: ignore
             service=service,
             instance=instance,
             watcher=watcher_name,
@@ -131,13 +157,20 @@ def rate_limit_instances(instances, cluster, number_per_minute, watcher_name, pr
     return service_instances
 
 
-def exponential_back_off(failures, factor, base, max_time):
+def exponential_back_off(failures: int, factor: float, base: float, max_time: float) -> float:
     seconds = factor * base ** failures
     return seconds if seconds < max_time else max_time
 
 
-def get_service_instances_needing_update(marathon_client, instances, cluster):
-    marathon_apps = {app.id: app for app in get_all_marathon_apps(marathon_client)}
+def get_service_instances_needing_update(
+    marathon_clients: MarathonClients,
+    instances: Collection[Tuple[str, str]],
+    cluster: str,
+) -> List[Tuple[str, str]]:
+    marathon_apps = {}
+    for marathon_client in marathon_clients.get_all_clients():
+        marathon_apps.update({app.id: app for app in get_all_marathon_apps(marathon_client)})
+
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
     for service, instance in instances:
@@ -160,10 +193,8 @@ def get_service_instances_needing_update(marathon_client, instances, cluster):
     return service_instances
 
 
-def get_marathon_client_from_config():
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        marathon_config.get_url(), marathon_config.get_username(),
-        marathon_config.get_password(),
-    )
-    return marathon_client
+def get_marathon_clients_from_config() -> MarathonClients:
+    system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config)
+    marathon_clients = get_marathon_clients(marathon_servers)
+    return marathon_clients

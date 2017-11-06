@@ -1034,14 +1034,17 @@ def get_autoscaling_info_for_all_resources(mesos_state):
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     pool_settings = system_config.get_resource_pool_settings()
+    system_config = load_system_paasta_config()
+    all_pool_settings = system_config.get_resource_pool_settings()
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
     vals = [
-        autoscaling_info_for_resource(resource, pool_settings, mesos_state)
+        autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors)
         for resource in autoscaling_resources.values()
     ]
     return [x for x in vals if x is not None]
 
 
-def autoscaling_info_for_resource(resource, pool_settings, mesos_state):
+def autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors):
     pool_settings.get(resource['pool'], {})
     scaler_ref = get_scaler(resource['type'])
     scaler = scaler_ref(
@@ -1049,6 +1052,7 @@ def autoscaling_info_for_resource(resource, pool_settings, mesos_state):
         pool_settings=pool_settings,
         config_folder=None,
         dry_run=True,
+        utilization_error=utilization_errors[(resource['region'], resource['pool'])],
     )
     if not scaler.exists:
         log.info("no scaler for resource {}. ignoring".format(resource['id']))
@@ -1075,10 +1079,14 @@ def get_mesos_utilization_error(
     pool,
     target_utilization,
 ):
-    region_pool_utilization_dict = get_resource_utilization_by_grouping(
-        lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-        mesos_state,
-    )[(pool, region,)]
+    try:
+        region_pool_utilization_dict = get_resource_utilization_by_grouping(
+            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
+            mesos_state,
+        )[(pool, region,)]
+    except KeyError:
+        log.info("Failed to find utilization for region %s, pool %s, returning 0 error")
+        return 0
 
     log.debug(region_pool_utilization_dict)
     free_pool_resources = region_pool_utilization_dict['free']

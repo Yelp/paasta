@@ -13,13 +13,11 @@
 # limitations under the License.
 import os
 
-import requests_cache
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string
 from itest_utils import update_context_marathon_config
 
-from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
@@ -53,9 +51,3 @@ def run_cleanup_marathon_job(context, flags, expected_return_code):
     paasta_print(output)
 
     assert exit_code == int(expected_return_code)
-
-
-@then('we should not see it in the list of apps')
-def not_see_it_in_list(context):
-    with requests_cache.disabled():
-        assert context.app_id not in marathon_tools.list_all_marathon_app_ids(context.marathon_client)

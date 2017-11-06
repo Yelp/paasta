@@ -32,9 +32,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
 
     def test_setup(self):
         with mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.load_marathon_config', autospec=True,
+            'paasta_tools.deployd.workers.load_system_paasta_config', autospec=True,
         ), mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_marathon_client', autospec=True,
+            'paasta_tools.deployd.workers.marathon_tools.get_marathon_clients', autospec=True,
+        ), mock.patch(
+            'paasta_tools.deployd.workers.marathon_tools.get_marathon_servers', autospec=True,
         ):
             self.worker.setup()
 
@@ -144,16 +146,19 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.mock_inbox_q.put.assert_called_with(mock_queued_si)
 
     def test_process_service_instance(self):
+        mock_client = mock.Mock()
+        mock_app = mock.Mock()
+
         with mock.patch(
-            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True,
-        ) as mock_get_all_marathon_apps, mock.patch(
+            'paasta_tools.deployd.workers.marathon_tools.get_all_marathon_apps', autospec=True, return_value=[mock_app],
+        ), mock.patch(
             'paasta_tools.deployd.workers.PaastaDeployWorker.setup_timers', autospec=True,
         ) as mock_setup_timers, mock.patch(
             'paasta_tools.deployd.workers.deploy_marathon_service', autospec=True,
         ) as mock_deploy_marathon_service, mock.patch(
             'time.time', autospec=True, return_value=1,
         ):
-            self.worker.marathon_client = mock.Mock()
+            self.worker.marathon_clients = mock.Mock(get_all_clients=mock.Mock(return_value=[mock_client]))
             self.worker.marathon_config = mock.Mock()
             mock_deploy_marathon_service.return_value = (0, None)
             mock_si = mock.Mock(
@@ -169,9 +174,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
             mock_deploy_marathon_service.assert_called_with(
                 service='universe',
                 instance='c137',
-                client=self.worker.marathon_client,
+                clients=self.worker.marathon_clients,
                 soa_dir=DEFAULT_SOA_DIR,
-                marathon_apps=mock_get_all_marathon_apps.return_value,
+                marathon_apps_with_clients=[(mock_app, mock_client)],
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
             assert not mock_setup_timers.return_value.processed_by_worker.start.called
@@ -187,9 +192,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
             mock_deploy_marathon_service.assert_called_with(
                 service='universe',
                 instance='c137',
-                client=self.worker.marathon_client,
+                clients=self.worker.marathon_clients,
                 soa_dir=DEFAULT_SOA_DIR,
-                marathon_apps=mock_get_all_marathon_apps.return_value,
+                marathon_apps_with_clients=[(mock_app, mock_client)],
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
             assert mock_setup_timers.return_value.processed_by_worker.start.called

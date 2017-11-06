@@ -27,12 +27,16 @@ from collections import defaultdict
 from collections import namedtuple
 from math import ceil
 from typing import Any
+from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Sequence
+from typing import Set  # noqa: imported for typing
 from typing import Tuple
+from typing import TypeVar
 
 import requests
 import service_configuration_lib
@@ -94,7 +98,75 @@ log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 MarathonServers = namedtuple('MarathonServers', ['current', 'previous'])
-MarathonClients = namedtuple('MarathonClients', ['current', 'previous'])
+
+
+_RendezvousHashT = TypeVar('_RendezvousHashT')
+
+
+def rendezvous_hash(
+    choices: Sequence[_RendezvousHashT],
+    key: str,
+    salt: str='',
+    hash_func: Callable[[str], str]=get_config_hash,
+) -> _RendezvousHashT:
+    """For each choice, calculate the hash of the index of that choice combined with the key, then return the choice
+    whose corresponding hash is highest.
+
+    :param choices: A sequence of arbitrary values. The "winning" value will be returned."""
+    max_hash_value = None
+    max_hash_choice = None
+    for i, choice in enumerate(choices):
+        str_to_hash = MESOS_TASK_SPACER.join([str(i), key, salt])
+        hash_value = hash_func(str_to_hash)
+        if max_hash_value is None or hash_value > max_hash_value:
+            max_hash_value = hash_value
+            max_hash_choice = choice
+
+    return max_hash_choice
+
+
+class MarathonClients(object):
+    def __init__(self, current: List[MarathonClient], previous: List[MarathonClient]) -> None:
+        self.current = current
+        self.previous = previous
+
+    def get_current_client_for_service(self, job_config: 'MarathonServiceConfig') -> MarathonClient:
+        service_instance = compose_job_id(job_config.service, job_config.instance)
+        if job_config.get_marathon_shard() is not None:
+            return self.current[job_config.get_marathon_shard()]
+        else:
+            return rendezvous_hash(choices=self.current, key=service_instance)
+
+    def get_previous_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
+        service_instance = compose_job_id(job_config.service, job_config.instance)
+        if job_config.get_previous_marathon_shards() is not None:
+            return [self.previous[i] for i in job_config.get_previous_marathon_shards()]
+        else:
+            return [rendezvous_hash(choices=self.previous, key=service_instance)]
+
+    def get_all_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
+        """Return the set of all clients that a service might have apps on, with no duplicate clients."""
+        all_clients = [self.get_current_client_for_service(job_config)]
+        all_clients.extend(self.get_previous_clients_for_service(job_config))
+
+        return dedupe_clients(all_clients)
+
+    def get_all_clients(self) -> List[MarathonClient]:
+        """Return the set of all unique clients."""
+        return dedupe_clients(self.current + self.previous)
+
+
+def dedupe_clients(all_clients: Iterable[MarathonClient]) -> List[MarathonClient]:
+    """Return a subset of the clients with no servers in common. The assumption here is that if there's any overlap in
+    servers, then two clients are talking about the same cluster."""
+    all_seen_servers: Set[str] = set()
+    deduped_clients: List[MarathonClient] = []
+    for client in all_clients:
+        if not any(server in all_seen_servers for server in client.servers):
+            all_seen_servers.update(client.servers)
+            deduped_clients.append(client)
+
+    return deduped_clients
 
 
 def load_marathon_config() -> "MarathonConfig":
@@ -719,9 +791,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_marathon_shard(self) -> Optional[int]:
         """Returns the configued shard of Marathon to use.
-        Defaults to 0 currently as a fail-safe, but will default to None when we have more confidence in the sharding
-        code."""
-        return self.config_dict.get('marathon_shard', 0)
+        Defaults to None, which means MarathonClients will decide which shard to put this app on."""
+        return self.config_dict.get('marathon_shard', None)
 
     def get_previous_marathon_shards(self) -> Optional[List[int]]:
         """Returns a list of Marathon shards a service might have been on previously.
@@ -1200,7 +1271,7 @@ def get_app_queue_last_unused_offers(app_queue_item: Optional[MarathonQueueItem]
     return app_queue_item.last_unused_offers
 
 
-def summarize_unused_offers(app_queue: List[Dict]) -> Dict[str, int]:
+def summarize_unused_offers(app_queue: Optional[MarathonQueueItem]) -> Dict[str, int]:
     """Returns a summary of the reasons marathon rejected offers from mesos
 
     :param app_queue: An app queue item as returned from get_app_queue
@@ -1254,25 +1325,48 @@ def get_expected_instance_count_for_namespace(
     return total_expected
 
 
-def get_matching_appids(servicename: str, instance: str, client: MarathonClient) -> List[str]:
+def get_matching_appids(service: str, instance: str, client: MarathonClient) -> List[str]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     marathon_apps = get_all_marathon_apps(client)
-    return [app.id for app in get_matching_apps(servicename, instance, marathon_apps)]
+    return [app.id for app in marathon_apps if does_app_id_match(service, instance, app.id)]
 
 
-def get_matching_apps(servicename: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
+def get_matching_apps(service: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    jobid = format_job_id(servicename, instance)
+    return [app for app in marathon_apps if does_app_id_match(service, instance, app.id)]
+
+
+def get_matching_apps_with_clients(
+    service: str,
+    instance: str,
+    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+) -> List[Tuple[MarathonApp, MarathonClient]]:
+    return [(a, c) for a, c in marathon_apps_with_clients if does_app_id_match(service, instance, a.id)]
+
+
+def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
+    jobid = format_job_id(service, instance)
     expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
-    return [app for app in marathon_apps if app.id.startswith(expected_prefix)]
+    return app_id.startswith(expected_prefix)
 
 
 def get_all_marathon_apps(client: MarathonClient, embed_tasks: bool=False) -> List[MarathonApp]:
     return client.list_apps(embed_tasks=embed_tasks)
+
+
+def get_marathon_apps_with_clients(
+    clients: Collection[MarathonClient],
+    embed_tasks: bool=False,
+) -> List[Tuple[MarathonApp, MarathonClient]]:
+    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
+    for client in clients:
+        for app in get_all_marathon_apps(client, embed_tasks=embed_tasks):
+            marathon_apps_with_clients.append((app, client))
+    return marathon_apps_with_clients
 
 
 def kill_task(client: MarathonClient, app_id: str, task_id: str, scale: bool) -> Optional[MarathonTask]:

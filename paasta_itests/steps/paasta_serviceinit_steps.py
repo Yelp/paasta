@@ -47,7 +47,7 @@ def run_marathon_app(context, job_id, instances):
         'instances': instances,
         'constraints': [["hostname", "UNIQUE"]],
     }
-    paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
+    paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_clients.current[0])
 
 
 @then('marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
@@ -62,7 +62,7 @@ def status_marathon_job(context, status, job_id):
             instance,
             app_id,
             normal_instance_count,
-            context.marathon_client,
+            context.marathon_clients.current[0],
         )
     assert status in output
 
@@ -265,7 +265,7 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
 def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
-    client = context.marathon_client
+    client = context.marathon_clients.current[0]
     itest_utils.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
 
 
