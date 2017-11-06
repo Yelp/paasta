@@ -80,16 +80,16 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    config = marathon_tools.load_marathon_config()
-    client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
+    clients = marathon_tools.get_list_of_marathon_clients()
 
-    for deployment in client.list_deployments():
-        delete_deployment_if_too_old(
-            client=client,
-            deployment=deployment,
-            max_date=args.age,
-            dry_run=args.dry_run,
-        )
+    for client in clients:
+        for deployment in client.list_deployments():
+            delete_deployment_if_too_old(
+                client=client,
+                deployment=deployment,
+                max_date=args.age,
+                dry_run=args.dry_run,
+            )
 
 
 if __name__ == "__main__":
