@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import argparse
+import itertools
 
-from paasta_tools.marathon_tools import load_marathon_config
-from paasta_tools.paasta_metastatus import get_marathon_client
+from paasta_tools.marathon_tools import get_list_of_marathon_clients
 from paasta_tools.utils import paasta_print
 
 
@@ -16,10 +16,10 @@ def parse_args():
 
 
 def get_deployments():
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(marathon_config)
-    deployments = marathon_client.list_deployments()
-    return deployments
+    clients = get_list_of_marathon_clients()
+    return [deployment for deployment in itertools.chain.from_iterable(
+        c.list_deployments() for c in clients
+    )]
 
 
 def main():
