@@ -143,7 +143,7 @@ class ClusterAutoscaler(object):
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
 
-    def set_capacity(self, capacity: float) -> Optional:
+    def set_capacity(self, capacity: float) -> Optional[Any]:
         pass
 
     def get_instance_type_weights(self) -> Optional[Dict[str, float]]:
@@ -793,7 +793,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity: float) -> Optional:
+    def set_capacity(self, capacity: float) -> Optional[Any]:
         """ AWS won't modify a request that is already modifying. This
         function ensures we wait a few seconds in case we've just modified
         a SFR"""
@@ -935,7 +935,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity: float) -> Optional:
+    def set_capacity(self, capacity: float) -> Optional[Any]:
         if self.dry_run:
             return True
         asg_client = boto3.client('autoscaling', region_name=self.resource['region'])
