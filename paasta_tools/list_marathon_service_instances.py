@@ -31,9 +31,9 @@ import argparse
 import sys
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
-from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
-from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
@@ -77,17 +77,22 @@ def get_desired_marathon_configs(soa_dir):
         cluster=cluster,
         soa_dir=soa_dir,
     )
-    marathon_configs = dict()
+
+    job_configs = dict()
+    formatted_marathon_configs = dict()
 
     for service, instance in instances:
         try:
-            marathon_config = load_marathon_service_config(
+            job_config = load_marathon_service_config(
                 service=service,
                 instance=instance,
                 cluster=cluster,
                 soa_dir=soa_dir,
-            ).format_marathon_app_dict()
-            marathon_configs[marathon_config['id'].lstrip('/')] = marathon_config
+            )
+
+            formatted_config = job_config.format_marathon_app_dict()
+            formatted_marathon_configs[formatted_config['id'].lstrip('/')] = formatted_config
+            job_configs[formatted_config['id'].lstrip('/')] = job_config
         except NoSlavesAvailableError as errormsg:
             _log(
                 service=service,
@@ -99,27 +104,31 @@ def get_desired_marathon_configs(soa_dir):
             )
         except (NoDeploymentsAvailable, NoDockerImageError):
             pass
-    return marathon_configs
+    return formatted_marathon_configs, job_configs
 
 
 @use_requests_cache('list_marathon_services')
-def get_service_instances_that_need_bouncing(marathon_client, soa_dir):
-    desired_marathon_configs = get_desired_marathon_configs(soa_dir)
-    desired_ids = set(desired_marathon_configs.keys())
+def get_service_instances_that_need_bouncing(marathon_clients, soa_dir):
+    desired_marathon_configs_formatted, desired_job_configs = get_desired_marathon_configs(soa_dir)
+    desired_ids_and_clients = set()
+    for app_id, job_config in desired_job_configs.items():
+        desired_ids_and_clients.add((app_id, marathon_clients.get_current_client_for_service(job_config)))
 
-    current_apps = {app.id.lstrip('/'): app for app in marathon_client.list_apps()}
-    actual_ids = set(current_apps.keys())
+    current_apps_with_clients = {}
+    for client in marathon_clients.get_all_clients():
+        current_apps_with_clients.update({(app.id.lstrip('/'), client): app for app in client.list_apps()})
+    actual_ids_and_clients = set(current_apps_with_clients.keys())
 
-    apps_that_need_bouncing = actual_ids.symmetric_difference(desired_ids)
-    apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id in apps_that_need_bouncing}
+    undesired_apps_and_clients = actual_ids_and_clients.symmetric_difference(desired_ids_and_clients)
+    apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id, client in undesired_apps_and_clients}
 
     draining_hosts = get_draining_hosts()
 
-    for app_id, app in current_apps.items():
+    for (app_id, client), app in current_apps_with_clients.items():
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
             if (
-                app.instances != desired_marathon_configs[app_id]['instances'] or
+                app.instances != desired_marathon_configs_formatted[app_id]['instances'] or
                 get_num_at_risk_tasks(app, draining_hosts) != 0
             ):
                 apps_that_need_bouncing.add(short_app_id)
@@ -132,14 +141,11 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     if args.minimal:
-        marathon_config = load_marathon_config()
-        marathon_client = get_marathon_client(
-            url=marathon_config.get_url(),
-            user=marathon_config.get_username(),
-            passwd=marathon_config.get_password(),
-        )
+        system_paasta_config = load_system_paasta_config()
+        marathon_servers = get_marathon_servers(system_paasta_config)
+        marathon_clients = get_marathon_clients(marathon_servers)
         service_instances = get_service_instances_that_need_bouncing(
-            marathon_client=marathon_client, soa_dir=soa_dir,
+            marathon_clients=marathon_clients, soa_dir=soa_dir,
         )
     else:
         instances = get_services_for_cluster(

@@ -68,3 +68,19 @@ Feature: setup_marathon_job can create a "complete" app
       And there are exactly 2 new healthy tasks
       And setup_service is initiated
      Then there should be 0 tasks on that at-risk host
+
+  Scenario: marathon shards can be changed
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.main" on shard 0, previous shard 0
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we create a marathon app called "test-service.main" with 1 instance(s)
+     Then we should see it in the list of apps on shard 0
+     When there are exactly 1 new healthy tasks
+    Given I have yelpsoa-configs for the marathon job "test-service.main" on shard 1, previous shard 1
+     When we create a marathon app called "test-service.main" with 1 instance(s)
+     Then we should see it in the list of apps on shard 1
+      And we should see it in the list of apps on shard 0
+     When there are exactly 1 new healthy tasks
+      And we create a marathon app called "test-service.main" with 1 instance(s)
+     Then we should see it in the list of apps on shard 1
+      And we should not see it in the list of apps on shard 0

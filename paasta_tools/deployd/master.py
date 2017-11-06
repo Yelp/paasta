@@ -10,7 +10,7 @@ from queue import Empty
 import service_configuration_lib
 
 from paasta_tools.deployd import watchers
-from paasta_tools.deployd.common import get_marathon_client_from_config
+from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import PaastaPriorityQueue
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
@@ -135,7 +135,7 @@ class DeployDaemon(PaastaThread):
         self.inbox_q = PaastaQueue("InboxQueue")
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(self.inbox_q, self.bounce_q)
-        self.marathon_client = get_marathon_client_from_config()
+        self.marathon_clients = get_marathon_clients_from_config()
 
     def setup_logging(self):
         root_logger = logging.getLogger()
@@ -251,7 +251,7 @@ class DeployDaemon(PaastaThread):
 
     def prioritise_bouncing_services(self):
         service_instances = get_service_instances_that_need_bouncing(
-            self.marathon_client,
+            self.marathon_clients,
             DEFAULT_SOA_DIR,
         )
         for service_instance in service_instances:

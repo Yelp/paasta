@@ -85,26 +85,40 @@ def test_status_desired_state():
 
 def test_status_marathon_job_verbose():
     client = mock.create_autospec(marathon.MarathonClient)
+    clients = mock.Mock(
+        get_all_clients_for_service=mock.Mock(return_value=[client]),
+    )
     app = mock.create_autospec(marathon.models.app.MarathonApp)
     client.get_app.return_value = app
     service = 'my_service'
     instance = 'my_instance'
     task = mock.Mock()
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids', autospec=True,
-    ) as mock_get_matching_appids, mock.patch(
+        'paasta_tools.marathon_serviceinit.marathon_tools.get_marathon_apps_with_clients', autospec=True,
+    ) as mock_get_marathon_apps_with_clients, mock.patch(
+        'paasta_tools.marathon_serviceinit.marathon_tools.get_matching_apps_with_clients', autospec=True,
+    ) as mock_get_matching_apps_with_clients, mock.patch(
         'paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True,
-    ) as mock_get_verbose_app, mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as mock_is_app_id_running:
-        mock_get_matching_appids.return_value = ['/app1']
+    ) as mock_get_verbose_app:
+        mock_get_matching_apps_with_clients.return_value = [(app, client)]
         mock_get_verbose_app.return_value = ([task], 'fake_return')
         tasks, out = marathon_serviceinit.status_marathon_job_verbose(
-            service, instance, client, 'fake_cluster',
-            '/nail/blah',
+            service=service,
+            instance=instance,
+            clients=clients,
+            cluster='fake_cluster',
+            soa_dir='/nail/blah',
+            job_config=mock.Mock(),
         )
-        mock_is_app_id_running.assert_called_once_with('/app1', client)
-        mock_get_matching_appids.assert_called_once_with(service, instance, client)
+        mock_get_marathon_apps_with_clients.assert_called_once_with(
+            [client],
+            embed_tasks=True,
+        )
+        mock_get_matching_apps_with_clients.assert_called_once_with(
+            service,
+            instance,
+            mock_get_marathon_apps_with_clients.return_value,
+        )
         mock_get_verbose_app.assert_called_once_with(
             marathon_client=client,
             app=app,
@@ -115,30 +129,6 @@ def test_status_marathon_job_verbose():
         )
         assert tasks == [task]
         assert 'fake_return' in out
-
-
-def test_status_marathon_job_verbose_when_not_running():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
-    client.get_app.return_value = app
-    service = 'my_service'
-    instance = 'my_instance'
-    with mock.patch(
-        'paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids', autospec=True,
-    ) as mock_get_matching_appids, mock.patch(
-        'paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True,
-    ) as mock_get_verbose_app, mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=False, autospec=True,
-    ) as mock_is_app_id_running:
-        mock_get_matching_appids.return_value = ['/app1']
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(
-            service, instance, client, 'fake_cluster',
-            '/nail/blah',
-        )
-        mock_is_app_id_running.assert_called_once_with('/app1', client)
-        assert not mock_get_verbose_app.called
-        assert tasks == []
-        assert 'not running' in out
 
 
 def test_get_verbose_status_of_marathon_app():

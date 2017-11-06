@@ -16,7 +16,7 @@ import mock
 from pytest import raises
 
 from paasta_tools import cleanup_marathon_jobs
-from paasta_tools import marathon_tools
+from paasta_tools import utils
 
 
 class TestCleanupMarathonJobs:
@@ -24,12 +24,20 @@ class TestCleanupMarathonJobs:
     cleanup_marathon_jobs.log = mock.Mock()
     fake_docker_registry = 'http://del.icio.us/'
     fake_cluster = 'fake_test_cluster'
-    fake_marathon_config = marathon_tools.MarathonConfig({
-        'url': 'http://mess_url',
-        'user': 'namnin',
-        'password': 'pass_nememim',
-    })
+    fake_system_config = utils.SystemPaastaConfig(
+        {
+            "marathon_servers": [{
+                'url': 'http://mess_url',
+                'user': 'namnin',
+                'password': 'pass_nememim',
+            }],
+        },
+        directory='/fake/etc/paasta',
+    )
     fake_marathon_client = mock.Mock()
+    fake_marathon_clients = mock.Mock(
+        get_all_clients=mock.Mock(return_value=[fake_marathon_client]),
+    )
 
     def test_main(self):
         soa_dir = 'paasta_maaaachine'
@@ -51,23 +59,19 @@ class TestCleanupMarathonJobs:
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
             return_value=expected_apps, autospec=True,
         ) as get_services_for_cluster_patch, mock.patch(
-                'paasta_tools.marathon_tools.load_marathon_config',
+                'paasta_tools.cleanup_marathon_jobs.load_system_paasta_config',
                 autospec=True,
-                return_value=self.fake_marathon_config,
+                return_value=self.fake_system_config,
         ) as config_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_marathon_client', autospec=True,
-            return_value=self.fake_marathon_client,
-        ) as client_patch, mock.patch(
+            'paasta_tools.marathon_tools.get_marathon_clients', autospec=True,
+            return_value=self.fake_marathon_clients,
+        ) as clients_patch, mock.patch(
             'paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True,
         ) as delete_patch:
             cleanup_marathon_jobs.cleanup_apps(soa_dir)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(
-                self.fake_marathon_config.get_url(),
-                self.fake_marathon_config.get_username(),
-                self.fake_marathon_config.get_password(),
-            )
+            clients_patch.assert_called_once_with(mock.ANY)
             delete_patch.assert_called_once_with(
                 app_id='not-here.oh.no.weirdo',
                 client=self.fake_marathon_client,
@@ -86,24 +90,20 @@ class TestCleanupMarathonJobs:
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
             return_value=expected_apps, autospec=True,
         ) as get_services_for_cluster_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_config',
+            'paasta_tools.cleanup_marathon_jobs.load_system_paasta_config',
             autospec=True,
-            return_value=self.fake_marathon_config,
+            return_value=self.fake_system_config,
         ) as config_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_marathon_client', autospec=True,
-            return_value=self.fake_marathon_client,
-        ) as client_patch, mock.patch(
+            'paasta_tools.marathon_tools.get_marathon_clients', autospec=True,
+            return_value=self.fake_marathon_clients,
+        ) as clients_patch, mock.patch(
             'paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True,
         ) as delete_patch:
             with raises(cleanup_marathon_jobs.DontKillEverythingError):
                 cleanup_marathon_jobs.cleanup_apps(soa_dir)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(
-                self.fake_marathon_config.get_url(),
-                self.fake_marathon_config.get_username(),
-                self.fake_marathon_config.get_password(),
-            )
+            clients_patch.assert_called_once_with(mock.ANY)
 
             assert delete_patch.call_count == 0
 
@@ -121,23 +121,19 @@ class TestCleanupMarathonJobs:
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
             return_value=expected_apps, autospec=True,
         ) as get_services_for_cluster_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_config',
+            'paasta_tools.cleanup_marathon_jobs.load_system_paasta_config',
             autospec=True,
-            return_value=self.fake_marathon_config,
+            return_value=self.fake_system_config,
         ) as config_patch, mock.patch(
-            'paasta_tools.marathon_tools.get_marathon_client', autospec=True,
-            return_value=self.fake_marathon_client,
-        ) as client_patch, mock.patch(
+            'paasta_tools.marathon_tools.get_marathon_clients', autospec=True,
+            return_value=self.fake_marathon_clients,
+        ) as clients_patch, mock.patch(
             'paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True,
         ) as delete_patch:
             cleanup_marathon_jobs.cleanup_apps(soa_dir, force=True)
             config_patch.assert_called_once_with()
             get_services_for_cluster_patch.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-            client_patch.assert_called_once_with(
-                self.fake_marathon_config.get_url(),
-                self.fake_marathon_config.get_username(),
-                self.fake_marathon_config.get_password(),
-            )
+            clients_patch.assert_called_once_with(mock.ANY)
             assert delete_patch.call_count == 3
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):
@@ -149,12 +145,12 @@ class TestCleanupMarathonJobs:
             'paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
             return_value=expected_apps, autospec=True,
         ), mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_config',
+            'paasta_tools.cleanup_marathon_jobs.load_system_paasta_config',
             autospec=True,
-            return_value=self.fake_marathon_config,
+            return_value=self.fake_system_config,
         ), mock.patch(
-            'paasta_tools.marathon_tools.get_marathon_client', autospec=True,
-            return_value=self.fake_marathon_client,
+            'paasta_tools.marathon_tools.get_marathon_clients', autospec=True,
+            return_value=self.fake_marathon_clients,
         ), mock.patch(
             'paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True,
         ) as delete_patch:

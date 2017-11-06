@@ -7,6 +7,7 @@ from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.setup_marathon_job import deploy_marathon_service
+from paasta_tools.utils import load_system_paasta_config
 
 BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'return_code', 'bounce_timers'])
 
@@ -24,12 +25,9 @@ class PaastaDeployWorker(PaastaThread):
         self.setup()
 
     def setup(self):
-        self.marathon_config = marathon_tools.load_marathon_config()
-        self.marathon_client = marathon_tools.get_marathon_client(
-            self.marathon_config.get_url(),
-            self.marathon_config.get_username(),
-            self.marathon_config.get_password(),
-        )
+        system_paasta_config = load_system_paasta_config()
+        self.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
+        self.marathon_clients = marathon_tools.get_marathon_clients(self.marathon_servers)
 
     def setup_timers(self, service_instance):
         bounce_timers = service_instance.bounce_timers
@@ -99,14 +97,18 @@ class PaastaDeployWorker(PaastaThread):
     def process_service_instance(self, service_instance):
         bounce_timers = self.setup_timers(service_instance)
         self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
-        marathon_apps = marathon_tools.get_all_marathon_apps(self.marathon_client, embed_tasks=True)
+
+        # TODO: change this to use get_all_clients_for_service() instead.
+        unique_clients = self.marathon_clients.get_all_clients()
+        marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(unique_clients, embed_tasks=True)
+
         bounce_timers.setup_marathon.start()
         return_code, bounce_again_in_seconds = deploy_marathon_service(
             service=service_instance.service,
             instance=service_instance.instance,
-            client=self.marathon_client,
+            clients=self.marathon_clients,
             soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-            marathon_apps=marathon_apps,
+            marathon_apps_with_clients=marathon_apps_with_clients,
         )
 
         bounce_timers.setup_marathon.stop()

@@ -1301,7 +1301,7 @@ MarathonConfigDict = TypedDict(
     },
     total=False,
 )
-MarathonServers = List[MarathonConfigDict]
+
 LocalRunConfig = TypedDict(
     'LocalRunConfig',
     {
@@ -1592,10 +1592,10 @@ class SystemPaastaConfig(object):
         :returns: The marathon config dictionary"""
         return self.config_dict.get('marathon_config', {})
 
-    def get_marathon_servers(self) -> MarathonServers:
+    def get_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get('marathon_servers', [])
 
-    def get_previous_marathon_servers(self) -> MarathonServers:
+    def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get('previous_marathon_servers', [])
 
     def get_local_run_config(self) -> LocalRunConfig:

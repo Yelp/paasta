@@ -440,10 +440,8 @@ class NativeScheduler(Scheduler):
             new_config={"instances": desired_instances},
             new_app_running=True,
             happy_new_tasks=happy_new_tasks_with_params.keys(),
-            old_app_live_happy_tasks=self.group_tasks_by_version(
-                list(old_happy_tasks_with_params.keys()) + new_task_ids_to_kill,
-            ),
-            old_app_live_unhappy_tasks=self.group_tasks_by_version(old_unhappy_task_ids),
+            old_app_live_happy_tasks=list(old_happy_tasks_with_params.keys()) + new_task_ids_to_kill,
+            old_app_live_unhappy_tasks=old_unhappy_task_ids,
         )
 
         for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):

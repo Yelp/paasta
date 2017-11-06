@@ -19,11 +19,13 @@ import math
 import os
 import time
 from contextlib import contextmanager
+from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
-from typing import List
 from typing import Mapping
+from typing import Set
+from typing import TypeVar
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
@@ -56,7 +58,7 @@ BounceMethodResult = TypedDict(
     'BounceMethodResult',
     {
         "create_app": bool,
-        "tasks_to_drain": List,
+        "tasks_to_drain": Set,
     },
 )
 
@@ -65,8 +67,8 @@ BounceMethod = Callable[
         Arg(BounceMethodConfigDict, 'new_config'),
         Arg(bool, 'new_app_running'),
         Arg(Collection, 'happy_new_tasks'),
-        Arg(Mapping[str, Collection], 'old_app_live_happy_tasks'),
-        Arg(Mapping[str, Collection], 'old_app_live_unhappy_tasks'),
+        Arg(Collection, 'old_app_live_happy_tasks'),
+        Arg(Collection, 'old_app_live_unhappy_tasks'),
         DefaultArg(float, 'margin_factor'),
     ],
     BounceMethodResult
@@ -89,7 +91,7 @@ def get_bounce_method_func(name) -> BounceMethod:
     return _bounce_method_funcs[name]
 
 
-def list_bounce_methods() -> List[str]:
+def list_bounce_methods() -> Collection[str]:
     return _bounce_method_funcs.keys()
 
 
@@ -258,7 +260,10 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
     return happy
 
 
-def flatten_tasks(tasks_by_app_id):
+_Flatten_Tasks_T = TypeVar('_Flatten_Tasks_T')
+
+
+def flatten_tasks(tasks_by_app_id: Mapping[Any, Collection[_Flatten_Tasks_T]]) -> Set[_Flatten_Tasks_T]:
     """Takes a dictionary of app_id -> set([task, task, ...]) and returns the union of all the task sets.
 
     :param tasks_by_app_id: A dictionary of app_id -> set(Tasks), such as the old_app_live_happy_tasks or
@@ -273,10 +278,10 @@ def brutal_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Mapping[str, Collection],
-    old_app_live_unhappy_tasks: Mapping[str, Collection],
+    old_app_live_happy_tasks: Collection,
+    old_app_live_unhappy_tasks: Collection,
     margin_factor=1.0,
-):
+) -> BounceMethodResult:
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
     but might be tolerable for some services.
@@ -294,8 +299,7 @@ def brutal_bounce(
     """
     return {
         "create_app": not new_app_running,
-        # set.union doesn't like getting zero arguments
-        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
+        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
     }
 
 
@@ -304,10 +308,10 @@ def upthendown_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Mapping[str, Collection],
-    old_app_live_unhappy_tasks: Mapping[str, Collection],
+    old_app_live_happy_tasks: Collection,
+    old_app_live_unhappy_tasks: Collection,
     margin_factor=1.0,
-):
+) -> BounceMethodResult:
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
     See the docstring for brutal_bounce() for parameters and return value.
@@ -315,8 +319,7 @@ def upthendown_bounce(
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
             "create_app": False,
-            # set.union doesn't like getting zero arguments
-            "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
+            "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
         }
     else:
         return {
@@ -330,10 +333,10 @@ def crossover_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Mapping[str, Collection],
-    old_app_live_unhappy_tasks: Mapping[str, Collection],
+    old_app_live_happy_tasks: Collection,
+    old_app_live_unhappy_tasks: Collection,
     margin_factor=1.0,
-):
+) -> BounceMethodResult:
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
     See the docstring for brutal_bounce() for parameters and return value.
@@ -347,15 +350,7 @@ def crossover_bounce(
         len(happy_new_tasks), 0,
     )
 
-    old_tasks = []
-    for app, tasks in old_app_live_happy_tasks.items():
-        for task in tasks:
-            old_tasks.append(task)
-
-    for app, tasks in old_app_live_unhappy_tasks.items():
-        for task in tasks:
-            old_tasks.append(task)
-
+    old_tasks = list(old_app_live_happy_tasks) + list(old_app_live_unhappy_tasks)
     return {
         "create_app": not new_app_running,
         "tasks_to_drain": set(old_tasks[needed_count:]),
@@ -367,18 +362,17 @@ def downthenup_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Mapping[str, Collection],
-    old_app_live_unhappy_tasks: Mapping[str, Collection],
+    old_app_live_happy_tasks: Collection,
+    old_app_live_unhappy_tasks: Collection,
     margin_factor=1.0,
-):
+) -> BounceMethodResult:
     """Stops any old apps and waits for them to die before starting a new one.
 
     See the docstring for brutal_bounce() for parameters and return value.
     """
     return {
         "create_app": not old_app_live_happy_tasks and not new_app_running,
-        # set.union doesn't like getting zero arguments,
-        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
+        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
     }
 
 
@@ -387,17 +381,17 @@ def down_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Mapping[str, Collection],
-    old_app_live_unhappy_tasks: Mapping[str, Collection],
+    old_app_live_happy_tasks: Collection,
+    old_app_live_unhappy_tasks: Collection,
     margin_factor=1.0,
-):
+) -> BounceMethodResult:
     """
     Stops old apps, doesn't start any new apps.
     Used for the graceful_app_drain script.
     """
     return {
         "create_app": False,
-        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
+        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
     }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

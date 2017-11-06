@@ -1065,11 +1065,7 @@ def autoscale_local_cluster(
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     mesos_state = get_mesos_master().state
-    utilization_errors = get_all_utilization_errors(
-        autoscaling_resources,
-        all_pool_settings,
-        mesos_state,
-    )
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
     autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
@@ -1109,9 +1105,8 @@ def filter_scalers(
     any_cancelled_in_pool: Dict[Tuple[str, str], bool] = defaultdict(lambda: False)
     for (region, pool), scalers in autoscaling_scalers.items():
         for scaler in scalers:
-            any_cancelled_in_pool[
-                (region, pool)
-            ] = any_cancelled_in_pool[(region, pool)] or scaler.is_resource_cancelled()
+            if scaler.is_resource_cancelled():
+                any_cancelled_in_pool[(region, pool)] = True
 
     filtered_autoscaling_scalers: List[ClusterAutoscaler] = []
 
@@ -1174,8 +1169,11 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     pool_settings = system_config.get_resource_pool_settings()
+    system_config = load_system_paasta_config()
+    all_pool_settings = system_config.get_resource_pool_settings()
+    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
     vals = [
-        autoscaling_info_for_resource(resource, pool_settings, mesos_state)
+        autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors)
         for resource in autoscaling_resources.values()
     ]
     return [x for x in vals if x is not None]
@@ -1185,6 +1183,7 @@ def autoscaling_info_for_resource(
     resource: Dict[str, str],
     pool_settings: Dict[str, Dict],
     mesos_state: MesosState,
+    utilization_errors: Dict[Tuple[str, str], float],
 ) -> Optional[AutoscalingInfo]:
     scaler_ref = get_scaler(resource['type'])
     scaler = scaler_ref(
@@ -1192,6 +1191,7 @@ def autoscaling_info_for_resource(
         pool_settings=pool_settings,
         config_folder=None,
         dry_run=True,
+        utilization_error=utilization_errors[(resource['region'], resource['pool'])],
     )
     if not scaler.exists:
         log.info("no scaler for resource {}. ignoring".format(resource['id']))
@@ -1218,10 +1218,14 @@ def get_mesos_utilization_error(
     pool: str,
     target_utilization: float,
 ) -> float:
-    region_pool_utilization_dict = get_resource_utilization_by_grouping(
-        lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
-        mesos_state,
-    )[(pool, region,)]
+    try:
+        region_pool_utilization_dict = get_resource_utilization_by_grouping(
+            lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
+            mesos_state,
+        )[(pool, region,)]
+    except KeyError:
+        log.info("Failed to find utilization for region %s, pool %s, returning 0 error")
+        return 0
 
     log.debug(region_pool_utilization_dict)
     free_pool_resources = region_pool_utilization_dict['free']

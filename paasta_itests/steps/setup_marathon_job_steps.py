@@ -104,6 +104,7 @@ def create_app_with_instances_constraints(context, job_id, number, constraints, 
     context.constraints = constraints
     update_context_marathon_config(context)
     context.app_id = context.marathon_complete_config['id']
+    context.new_id = context.app_id  # for compatibility with bounces_steps.there_are_num_which_tasks
     if no_apps_running:
         run_setup_marathon_job_no_apps_found(context)
     else:
@@ -124,9 +125,9 @@ def run_until_number_tasks(context, number):
             )
             run_setup_marathon_job(context)
         sleep(0.5)
-        if context.marathon_client.get_app(context.app_id).instances == number:
+        if context.current_client.get_app(context.app_id).instances == number:
             return
-    assert context.marathon_client.get_app(context.app_id).instances == number
+    assert context.current_client.get_app(context.app_id).instances == number
 
 
 @when('we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
@@ -135,14 +136,35 @@ def zookeeper_scale_job(context, service, instance, number):
         set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
+@then('we should see it in the list of apps on shard {shard_number:d}')
 @then('we should see it in the list of apps')
-def see_it_in_list(context):
-    assert context.app_id in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+def see_it_in_list(context, shard_number=None):
+    full_list = []
+    if shard_number is None:
+        for client in context.marathon_clients.get_all_clients():
+            full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+    else:
+        full_list.extend(marathon_tools.list_all_marathon_app_ids(context.marathon_clients.current[shard_number]))
+
+    assert context.app_id in full_list
+
+
+@then('we should not see it in the list of apps on shard {shard_number:d}')
+@then('we should not see it in the list of apps')
+def not_see_it_in_list(context, shard_number=None):
+    full_list = []
+    if shard_number is None:
+        for client in context.marathon_clients.get_all_clients():
+            full_list.extend(marathon_tools.list_all_marathon_app_ids(client))
+    else:
+        full_list.extend(marathon_tools.list_all_marathon_app_ids(context.marathon_clients.current[shard_number]))
+
+    assert context.app_id not in full_list
 
 
 @then('we can run get_app')
 def can_run_get_app(context):
-    assert context.marathon_client.get_app(context.app_id)
+    assert context.current_client.get_app(context.app_id)
 
 
 @then('we should see the number of instances become {number:d}')
@@ -150,17 +172,17 @@ def assert_instances_equals(context, number):
     attempts = 0
     while attempts < 10:
         try:
-            assert context.marathon_client.get_app(context.app_id).instances == number
+            assert context.current_client.get_app(context.app_id).instances == number
             return
         except AssertionError:
             attempts += 1
             sleep(5)
-    assert context.marathon_client.get_app(context.app_id).instances == number
+    assert context.current_client.get_app(context.app_id).instances == number
 
 
 @when('we mark a host it is running on as at-risk')
 def mark_host_running_on_at_risk(context):
-    app = context.marathon_client.get_app(context.new_id)
+    app = context.current_client.get_app(context.new_id)
     tasks = app.tasks
     host = tasks[0].host
     mark_host_at_risk(context, host)
@@ -190,7 +212,7 @@ def tasks_on_that_at_risk_host_drained(context, number):
 @then('there should be {number:d} tasks on the host "{host}"')
 def tasks_on_host_drained(context, number, host):
     app_id = context.new_id
-    tasks = context.marathon_client.list_tasks(app_id)
+    tasks = context.current_client.list_tasks(app_id)
     count = 0
     for task in tasks:
         if task.host == host:
