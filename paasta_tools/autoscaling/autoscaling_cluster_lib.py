@@ -143,7 +143,7 @@ class ClusterAutoscaler(object):
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
 
-    def set_capacity(self, capacity: float) -> Optional[bool]:
+    def set_capacity(self, capacity: float) -> Optional:
         pass
 
     def get_instance_type_weights(self) -> Optional[Dict[str, float]]:
@@ -322,7 +322,7 @@ class ClusterAutoscaler(object):
         timer: Timer,
         region: Optional[str]=None,
         should_drain: bool=True,
-    ):
+    ) -> None:
         """Waits for slave to be drained and then terminate
 
         :param slave: dict of slave to kill
@@ -503,15 +503,12 @@ class ClusterAutoscaler(object):
         instance_statuses = self.instance_status_for_instance_ids(
             instance_ids=[instance['InstanceId'] for instance in self.instances],
         )
-        # Dict[str, List[Dict[str, Any]]
         instance_descriptions = self.instance_descriptions_for_ips(slave_ips)
-        # List[Dict[str, Any]]
 
         paasta_aws_slaves = []
         for slave in slaves:
             slave_ip = slave_pid_to_ip(slave['task_counts'].slave['pid'])
             matching_descriptions = self.filter_instance_description_for_ip(slave_ip, instance_descriptions)
-            # List[Dict[str, Any]]
             if matching_descriptions:
                 assert len(matching_descriptions) == 1, (
                     "There should be only one instance with the same IP."
@@ -524,12 +521,10 @@ class ClusterAutoscaler(object):
                     )
                 )
                 description = matching_descriptions[0]
-                # Dict[str, Any]
                 matching_status = self.filter_instance_status_for_instance_id(
                     instance_id=description['InstanceId'],
                     instance_statuses=instance_statuses,
                 )
-                # List[Dict[str, Any]]
                 assert len(matching_status) == 1, "There should be only one InstanceStatus per instance"
             else:
                 description = None
@@ -798,7 +793,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity: float) -> Optional[bool]:
+    def set_capacity(self, capacity: float) -> Optional:
         """ AWS won't modify a request that is already modifying. This
         function ensures we wait a few seconds in case we've just modified
         a SFR"""
@@ -826,7 +821,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         if self.dry_run:
             return True
         try:
-            ec2_client.modify_spot_fleet_request(
+            ret = ec2_client.modify_spot_fleet_request(
                 SpotFleetRequestId=self.resource['id'], TargetCapacity=rounded_capacity,
                 ExcessCapacityTerminationPolicy='noTermination',
             )
@@ -834,7 +829,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             self.log.error("Error modifying spot fleet request: {}".format(e))
             raise FailSetResourceCapacity
         self.capacity = capacity
-        return True
+        return ret
 
     def is_resource_cancelled(self) -> bool:
         if not self.sfr:
@@ -940,12 +935,12 @@ class AsgAutoscaler(ClusterAutoscaler):
             )
         return current_capacity, new_capacity
 
-    def set_capacity(self, capacity: float) -> Optional[bool]:
+    def set_capacity(self, capacity: float) -> Optional:
         if self.dry_run:
             return True
         asg_client = boto3.client('autoscaling', region_name=self.resource['region'])
         try:
-            asg_client.update_auto_scaling_group(
+            ret = asg_client.update_auto_scaling_group(
                 AutoScalingGroupName=self.resource['id'],
                 DesiredCapacity=capacity,
             )
@@ -953,7 +948,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             self.log.error("Error modifying ASG: {}".format(e))
             raise FailSetResourceCapacity
         self.capacity = capacity
-        return True
+        return ret
 
     def is_resource_cancelled(self) -> bool:
         return not self.asg
