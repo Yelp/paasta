@@ -105,7 +105,7 @@ def maintenance_api():
     """
     def execute_schedule_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
-        return master_api_client(method, "/maintenance%s" % endpoint, timeout=(3, 3), **kwargs)
+        return master_api_client(method, "/maintenance%s" % endpoint, timeout=(3, 10), **kwargs)
     return execute_schedule_api_request
 
 
