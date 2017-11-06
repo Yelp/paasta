@@ -1,3 +1,12 @@
+paasta-tools (0.68.2) xenial; urgency=medium
+
+  * 0.68.2 tagged with 'make release'
+    Commit: Merge pull request #1584 from Yelp/fix-logic-around-scaling-
+    cancelled-resources  [cluster autoscaler] expand logic around
+    scaling cancelled resources
+
+ -- Evan Krall <krall@yelp.com>  Mon, 06 Nov 2017 13:23:51 -0800
+
 paasta-tools (0.68.1) xenial; urgency=medium
 
   * 0.68.1 tagged with 'make release'

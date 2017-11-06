@@ -12,6 +12,7 @@ Submodules
    paasta_tools.monitoring.check_marathon_has_apps
    paasta_tools.monitoring.check_mesos_active_frameworks
    paasta_tools.monitoring.check_mesos_duplicate_frameworks
+   paasta_tools.monitoring.check_mesos_outdated_tasks
    paasta_tools.monitoring.check_mesos_quorum
    paasta_tools.monitoring.check_synapse_replication
    paasta_tools.monitoring.config_providers
