@@ -184,6 +184,8 @@ def test_autoscale_local_cluster():
     ) as mock_autoscale_cluster_resource, mock.patch(
         'time.sleep', autospec=True,
     ), mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True,
+    ) as mock_sleep, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_resource_cancelled',
         autospec=True,
     ) as mock_is_resource_cancelled, mock.patch(
@@ -193,6 +195,7 @@ def test_autoscale_local_cluster():
     ) as mock_get_all_utilization_errors, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
     ) as mock_get_mesos_master:
+        mock_sleep.side_effect = just_sleep
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
             'id1': {
@@ -227,7 +230,7 @@ def test_autoscale_local_cluster():
 
         async def fake_autoscale(scaler, state):
             calls.append(scaler)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0)
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         asyncio.set_event_loop(asyncio.new_event_loop())
