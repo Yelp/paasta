@@ -240,6 +240,29 @@ def test_autoscale_local_cluster():
         assert len(calls) == 3
 
 
+def test_filter_scalers():
+    resource1 = mock.Mock(is_resource_cancelled=lambda: False)
+    resource2 = mock.Mock(is_resource_cancelled=lambda: False)
+    resource3 = mock.Mock(is_resource_cancelled=lambda: True)
+    resource4 = mock.Mock(is_resource_cancelled=lambda: False)
+    resource5 = mock.Mock(is_resource_cancelled=lambda: True)
+    resource6 = mock.Mock(is_resource_cancelled=lambda: False)
+    autoscaling_scalers = {
+        ('westeros-1', 'default'): [resource1, resource2],
+        ('westeros-2', 'default'): [resource3, resource4],
+        ('westeros-3', 'default'): [resource5, resource6],
+    }
+    utilization_errors = {
+        ('westeros-1', 'default'): -0.2,
+        ('westeros-2', 'default'): -0.2,
+        ('westeros-3', 'default'): 0.2,
+    }
+
+    ret = autoscaling_cluster_lib.filter_scalers(autoscaling_scalers, utilization_errors)
+    assert len(ret) == 5
+    assert resource4 not in ret
+
+
 def test_autoscale_cluster_resource():
     call = []
 
