@@ -262,6 +262,13 @@ def build_executor_stack(
         initial_decline_delay=0.5,
     )
 
+    task_logging_executor = processor.executor_from_config(
+        provider='logging',
+        provider_config={
+            'downstream_executor': mesos_executor,
+        },
+    )
+
     credentials_file = taskproc_config.get('boto_credential_file')
     if credentials_file:
         with open(credentials_file) as f:
@@ -280,7 +287,7 @@ def build_executor_stack(
 
     StatefulExecutor = processor.executor_cls(provider='stateful')
     stateful_executor = StatefulExecutor(
-        downstream_executor=mesos_executor,
+        downstream_executor=task_logging_executor,
         persister=DynamoDBPersister(
             table_name="taskproc_events_%s" % cluster,
             session=session,
@@ -354,7 +361,6 @@ def remote_run_start(args):
                 instance=instance,
                 system_paasta_config=system_paasta_config,
                 native_job_config=native_job_config,
-                soa_dir=soa_dir,
                 config_overrides=overrides_dict,
             ),
         )
@@ -413,7 +419,7 @@ def remote_run_start(args):
             cluster=cluster,
             run_id=run_id,
             system_paasta_config=system_paasta_config,
-            staging_timeout=args.staging_timeout,
+            framework_staging_timeout=args.staging_timeout,
         )
         runner = Sync(executor_stack)
 
