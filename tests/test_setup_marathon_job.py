@@ -364,7 +364,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
@@ -469,7 +469,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
@@ -546,7 +546,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
