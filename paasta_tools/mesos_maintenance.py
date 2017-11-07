@@ -47,9 +47,8 @@ def base_api():
     """
     leader = get_mesos_leader()
 
-    def execute_request(method, endpoint, **kwargs):
+    def execute_request(method, endpoint, timeout=(3, 1), **kwargs):
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
-        timeout = (3, 1)
         s = Session()
         s.auth = (get_principal(), get_secret())
         req = Request(method, url, **kwargs)
@@ -106,7 +105,7 @@ def maintenance_api():
     """
     def execute_schedule_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
-        return master_api_client(method, "/maintenance%s" % endpoint, **kwargs)
+        return master_api_client(method, "/maintenance%s" % endpoint, timeout=(3, 10), **kwargs)
     return execute_schedule_api_request
 
 
