@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-import functools
+import getpass
+import hashlib
 import json
 import os
 import socket
@@ -57,7 +58,16 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
-pick_random_port = functools.partial(ephemeral_port_reserve.reserve, '0.0.0.0')
+def pick_random_port(service_name):
+    """Return a random port.
+
+    Tries to return the same port for the same service each time, when
+    possible.
+    """
+    hash_key = f'{service_name},{getpass.getuser()}'.encode('utf8')
+    hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
+    preferred_port = 33000 + (hash_number % 25000)
+    return ephemeral_port_reserve.reserve('0.0.0.0', preferred_port)
 
 
 def perform_http_healthcheck(url, timeout):
@@ -557,7 +567,7 @@ def run_docker_container(
             )
             sys.exit(1)
     else:
-        chosen_port = pick_random_port()
+        chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config,
