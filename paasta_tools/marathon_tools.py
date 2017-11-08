@@ -18,7 +18,6 @@ make the PaaSTA stack work.
 """
 import copy
 import datetime
-import itertools
 import json
 import logging
 import os
@@ -897,11 +896,7 @@ def get_list_of_marathon_clients(
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config)
-    marathon_clients = get_marathon_clients(marathon_servers, cached=cached)
-    return [c for c in itertools.chain(
-        marathon_clients.current,
-        marathon_clients.previous,
-    )]
+    return get_marathon_clients(marathon_servers, cached=cached).get_all_clients()
 
 
 def format_job_id(service: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None) -> str:

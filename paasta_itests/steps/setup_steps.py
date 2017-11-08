@@ -60,6 +60,8 @@ def setup_system_paasta_config():
                 'password': None,
             },
             'marathon_servers': [
+                # if you're updating this list, you should update
+                # paasta_tools/yelp_package/dockerfiles/itest/api/marathon.json as well
                 {
                     'url': _get_marathon_connection_string('marathon'),
                     'user': None,

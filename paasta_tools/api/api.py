@@ -85,14 +85,11 @@ def setup_paasta_api():
     # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
-    # Exit on exceptions while loading settings
-    settings.cluster = load_system_paasta_config().get_cluster()
+    system_paasta_config = load_system_paasta_config()
+    settings.cluster = system_paasta_config.get_cluster()
 
-    marathon_config = marathon_tools.load_marathon_config()
-    settings.marathon_client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(),
-        marathon_config.get_username(),
-        marathon_config.get_password(),
+    settings.marathon_clients = marathon_tools.get_marathon_clients(
+        marathon_tools.get_marathon_servers(system_paasta_config),
     )
 
     # Set up transparent cache for http API calls. With expire_after, responses
