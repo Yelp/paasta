@@ -170,21 +170,25 @@ def drain_tasks_and_find_tasks_to_kill(
             )
         for task, client in tasks_to_drain:
             all_draining_tasks.add((task, client))
-
-    for task, client in all_draining_tasks:
-        try:
-            drain_method.drain(task)
-        except Exception as e:
-            log_bounce_action(
-                line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
-            )
-            tasks_to_kill.add((task, client))
-
-    for task, client in all_draining_tasks:
-        try:
-            if drain_method.is_safe_to_kill(task):
+            if task.state == 'TASK_UNREACHABLE':
+                continue
+            try:
+                drain_method.drain(task)
+            except Exception as e:
+                log_bounce_action(
+                    line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
+                )
                 tasks_to_kill.add((task, client))
-                log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+
+    for task, client in all_draining_tasks:
+        try:
+            if task.state != 'TASK_RUNNING' or drain_method.is_safe_to_kill(task):
+                tasks_to_kill.add((task, client))
+                log_bounce_action(
+                    line='%s bounce killing not_running or drained task %s %s' % (
+                        bounce_method, task.id, task.state,
+                    ),
+                )
         except Exception as e:
             tasks_to_kill.add((task, client))
             log_bounce_action(

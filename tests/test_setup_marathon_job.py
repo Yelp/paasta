@@ -364,7 +364,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
@@ -396,7 +396,7 @@ class TestSetupMarathonJob:
                 soa_dir='fake_soa_dir',
                 job_config=self.fake_marathon_service_config,
             )
-            assert mock_log.call_count == 3
+            assert mock_log.call_count == 4
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
@@ -469,7 +469,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
@@ -505,11 +505,11 @@ class TestSetupMarathonJob:
             assert '%s new tasks' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert 'draining %s old tasks' % expected_drain_task_count in second_logged_line
-            assert mock_log.call_count == 2
+            assert mock_log.call_count == 4
 
             assert mock_create_marathon_app.call_count == 0
             assert fake_client.kill_task.call_count == 0
-            assert mock_kill_old_ids.call_count == 0
+            assert mock_kill_old_ids.call_count == 1
             assert fake_drain_method.drain.call_count == len(fake_bounce_func_return["tasks_to_drain"])
 
     def test_do_bounce_when_tasks_to_drain(self):
@@ -546,7 +546,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
         expected_drain_task_count = len(fake_bounce_func_return['tasks_to_drain'])
@@ -587,7 +587,7 @@ class TestSetupMarathonJob:
 
             assert mock_create_marathon_app.call_count == 0
             assert fake_client.kill_task.call_count == 0
-            assert mock_kill_old_ids.call_count == 0
+            assert mock_kill_old_ids.call_count == 1
             assert fake_drain_method.drain.call_count == expected_drain_task_count
 
     def test_do_bounce_when_apps_to_kill(self):
@@ -810,7 +810,7 @@ class TestSetupMarathonJob:
             # Since the old tasks are all unhappy, we should drain all of them
             assert fake_drain_method.drain.call_count == 3
             # But since they haven't drained yet, we should not kill the app.
-            assert mock_kill_old_ids.call_count == 0
+            assert mock_kill_old_ids.call_count == 1
 
     def test_deploy_service_scale_up(self):
         fake_service = 'fake_service'
@@ -1556,8 +1556,7 @@ class TestSetupMarathonJob:
                 margin_factor=1,
             )
 
-            assert fake_drain_method.drain.call_count == 2
-            fake_drain_method.drain.assert_any_call(old_task_is_draining)
+            assert fake_drain_method.drain.call_count == 1
             fake_drain_method.drain.assert_any_call(old_task_to_drain)
 
             assert fake_client.kill_given_tasks.call_count == 1
@@ -1858,7 +1857,9 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
 
 class TestDrainTasksAndFindTasksToKill(object):
     def test_catches_exception_during_drain(self):
-        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {(mock.Mock(id='to_drain'), mock.Mock())}
+        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
+            (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),
+        }
         already_draining_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         at_risk_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         fake_drain_method = mock.Mock(
@@ -1879,11 +1880,13 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         fake_log_bounce_action.assert_any_call(
-            line="fake bounce killing task to_drain due to exception when draining: Hello",
+            line="fake bounce killing not_running or drained task to_drain TASK_FOO",
         )
 
     def test_catches_exception_during_is_safe_to_kill(self):
-        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {(mock.Mock(id='to_drain'), mock.Mock())}
+        tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
+            (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),
+        }
         already_draining_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         at_risk_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         fake_drain_method = mock.Mock(
@@ -1901,7 +1904,7 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         fake_log_bounce_action.assert_called_with(
-            line='fake bounce killing task to_drain due to exception in is_safe_to_kill: Hello',
+            line='fake bounce killing not_running or drained task to_drain TASK_FOO',
         )
 
 
