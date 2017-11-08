@@ -11,15 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import getpass
 import json
 
 import docker
+import ephemeral_port_reserve
 import mock
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cli import main
+from paasta_tools.cli.cmds import local_run
 from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
@@ -40,6 +43,27 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
+
+
+def test_pick_random_port():
+    def fake_epr(ip, port):
+        return port
+
+    with mock.patch.object(
+        ephemeral_port_reserve, 'reserve', side_effect=fake_epr,
+    ), mock.patch.object(
+        getpass, 'getuser', return_value='nobody', autospec=True,
+    ):
+        # Two calls with the same service should try to reserve the same port.
+        port1 = local_run.pick_random_port('fake_service')
+        port2 = local_run.pick_random_port('fake_service')
+        assert port1 == port2
+        assert 33000 <= port1 < 58000
+
+        # A third call with a different service should try to reserve a different port.
+        port3 = local_run.pick_random_port('different_fake_service')
+        assert port1 != port3
+        assert 33000 <= port3 < 58000
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
@@ -862,7 +886,7 @@ def test_run_docker_container_non_interactive(
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
-    mock_pick_random_port.assert_called_once_with()
+    mock_pick_random_port.assert_called_once_with('fake_service')
     assert mock_get_docker_run_cmd.call_count == 1
     assert mock_get_healthcheck_for_instance.call_count == 1
     assert mock_execlp.call_count == 0
@@ -912,7 +936,7 @@ def test_run_docker_container_interactive(
         instance_config=mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
-    mock_pick_random_port.assert_called_once_with()
+    mock_pick_random_port.assert_called_once_with('fake_service')
     assert mock_get_docker_run_cmd.call_count == 1
     assert mock_get_healthcheck_for_instance.call_count == 1
     assert mock_execlp.call_count == 1
@@ -1208,7 +1232,7 @@ def test_run_docker_container_with_user_specified_port(
     )
     mock_service_manifest.get_mem.assert_called_once_with()
     assert mock_check_if_port_free.call_count == 1
-    mock_pick_random_port.assert_not_called()  # Don't pick a random port, use the user chosen one
+    assert mock_pick_random_port.called is False  # Don't pick a random port, use the user chosen one
     docker_run_args = mock_run.call_args[0][0]
     assert "--publish=1234:8888" in docker_run_args
 
