@@ -125,6 +125,7 @@ class ClusterAutoscaler(object):
         utilization_error: float,
         log_level: str=None,
         draining_enabled: bool=True,
+        enable_metrics: bool=False,
     ) -> None:
         self.resource = resource
         self.pool_settings = pool_settings
@@ -136,6 +137,10 @@ class ClusterAutoscaler(object):
             self.log.setLevel(log_level)
         self.instances: List[Dict] = []
         self.sfr: Optional[Dict[str, Any]] = None
+        self.enable_metrics = enable_metrics
+
+        if yelp_meteorite is not None:
+            self.setup_metrics()
 
         if yelp_meteorite is not None:
             self.setup_metrics()
@@ -145,7 +150,6 @@ class ClusterAutoscaler(object):
         resource_id = self.resource.get("id", "unknown")
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
-
 
     def _make_gauge(self, name: str) -> 'yelp_meteorite.metrics.Gauge':
         return yelp_meteorite.create_gauge(
@@ -158,7 +162,7 @@ class ClusterAutoscaler(object):
         )
 
     def setup_metrics(self) -> None:
-        if yelp_meteorite is None:
+        if yelp_meteorite is None or not self.enable_metrics:
             return None
         self.target_gauge = self._make_gauge('target_capacity')
         self.current_gauge = self._make_gauge('current_capacity')
@@ -173,7 +177,7 @@ class ClusterAutoscaler(object):
         target: float,
         ideal: float,
     ) -> None:
-        if yelp_meteorite is None:
+        if yelp_meteorite is None or not self.enable_metrics:
             return None
         self.current_gauge.set(current)
         self.target_gauge.set(target)
@@ -1112,6 +1116,7 @@ def autoscale_local_cluster(
                 log_level=log_level,
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
+                enable_metrics=True,
             )
             autoscaling_scalers[(resource['region'], resource['pool'])].append(scaler)
         except KeyError:
