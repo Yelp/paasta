@@ -33,23 +33,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-    full_appid = args.appname.lstrip('/')
-    soa_dir = args.soa_dir
-    marathon_config = marathon_tools.load_marathon_config()
-    client = marathon_tools.get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password(),
-    )
-
-    if not marathon_tools.is_app_id_running(app_id=full_appid, client=client):
-        paasta_print("Couldn't find an app named {}".format(full_appid))
-        sys.exit(1)
-
+def kill_marathon_app(full_appid, cluster, client, soa_dir):
     service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
-    cluster = load_system_paasta_config().get_cluster()
     service_instance_config = marathon_tools.load_marathon_service_config(
         service=service,
         instance=instance,
@@ -109,5 +94,29 @@ def main():
     paasta_print("Sucessfully killed {}".format(full_appid))
 
 
+def main():
+    exit_code = 1
+    args = parse_args()
+    full_appid = args.appname.lstrip('/')
+
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+    clients = marathon_tools.get_list_of_marathon_clients(system_paasta_config=system_paasta_config)
+
+    for client in clients:
+        if marathon_tools.is_app_id_running(app_id=full_appid, client=client):
+            kill_marathon_app(
+                full_appid=full_appid,
+                cluster=cluster,
+                client=client,
+                soa_dir=args.soa_dir,
+            )
+            exit_code = 0
+
+    if exit_code:
+        paasta_print("Couldn't find an app named {}".format(full_appid))
+    return exit_code
+
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
