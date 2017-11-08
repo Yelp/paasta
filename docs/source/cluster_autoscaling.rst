@@ -83,7 +83,7 @@ Current utilization
 
 PaaSTA will first add up all cpu, disk, and memory used by tasks in the
 region✕pool, and the total cpu, disk, and memory available in the same, and uses
-this to calculate the percent utilization of cpus, disk, and mem.  THe current
+this to calculate the percent utilization of cpus, disk, and mem.  The current
 utilization is the maximum of those three.
 
 The result of this is the cluster autoscaler will scale so the most used
@@ -102,13 +102,13 @@ Scaling down
 ------------
 
 Scaling down happens when the error is negative.  It takes more work as we
-cannot just terminate enough instances to get to the target capaicty without the
+cannot just terminate enough instances to get to the target capacity without the
 risk that services become under-replicated.
 
 To scale down safely, the cluster autoscaler will start draining instances until
 enough capacity worth of instances are draining to bring it to just above the
 target, then kill instances as they become safe to kill, or one every 5 minutes.
-This happens independantly per resource (SFR/ASG), so with 4 SFRs at least 4
+This happens independently per resource (SFR/ASG), so with 4 SFRs at least 4
 instances could be terminated every 5 minutes.
 
 Draining can be disabled by setting ``"cluster_autoscaling_draining_enabled": false``
@@ -121,7 +121,7 @@ Notes on Spot Fleet Requests
 target_capacity
 ---------------
 
-The target capacity for a spot fleet is an interger.  However, spot fleet requests
+The target capacity for a spot fleet is an integer.  However, spot fleet requests
 can be made will multiple instance types included, each with a different (possibly
 decimal) weight.  When scaling up, spot fleet will attempt to get the capacity
 just at or above the target.
@@ -149,6 +149,6 @@ terminate the remaining instances.
 Additionally, if the region✕pool needs to scale up, the cluster autoscaler
 will ignore ``cancelled_running`` SFRs.
 
-If the region✕pool neeeds to scale down, and ``cancelled_running`` SFRs exist
+If the region✕pool needs to scale down, and ``cancelled_running`` SFRs exist
 in said region✕pool, the cluster autoscaler will ignore active ASGs and SFRs
 in that region✕pool.
