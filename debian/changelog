@@ -1,3 +1,11 @@
+paasta-tools (0.68.3) xenial; urgency=medium
+
+  * 0.68.3 tagged with 'make release'
+    Commit: Merge pull request #1606 from Yelp/cluster-autoscaler-typing
+    Cluster autoscaler typing
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 08 Nov 2017 05:48:07 -0800
+
 paasta-tools (0.68.2) xenial; urgency=medium
 
   * 0.68.2 tagged with 'make release'
