@@ -371,9 +371,11 @@ def main():
         cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir,
     )
 
-    config = marathon_tools.load_marathon_config()
-    client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
-    all_tasks = client.list_tasks()
+    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
+    all_clients = clients.get_all_clients()
+    all_tasks = []
+    for client in all_clients:
+        all_tasks.extend(client.list_tasks())
     mesos_slaves = get_slaves()
     smartstack_replication_checker = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
     for service, instance in service_instances:
