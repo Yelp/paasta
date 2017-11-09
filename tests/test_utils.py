@@ -374,9 +374,9 @@ def test_SystemPaastaConfig_get_sensu_port():
     assert actual == expected
 
 
-def test_SystemPaastaConfig_get_deployd_metrics_provider():
+def test_SystemPaastaConfig_get_metrics_provider():
     fake_config = utils.SystemPaastaConfig({"deployd_metrics_provider": 'bar'}, '/some/fake/dir')
-    actual = fake_config.get_deployd_metrics_provider()
+    actual = fake_config.get_metrics_provider()
     expected = 'bar'
     assert actual == expected
 

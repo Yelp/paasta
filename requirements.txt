@@ -45,6 +45,7 @@ simplejson==3.10.0
 six>=1.9.0
 syslogmp==0.2.2
 thriftpy==0.1.15
+typing_extensions==3.6.2.1
 ujson==1.35
 wsgicors==0.7.0
 yelp-clog==2.7.2
