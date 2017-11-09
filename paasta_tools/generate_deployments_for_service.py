@@ -43,6 +43,12 @@ import logging
 import os
 import re
 from collections import defaultdict
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Tuple
+
+from mypy_extensions import TypedDict
 
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -54,7 +60,38 @@ log = logging.getLogger(__name__)
 TARGET_FILE = 'deployments.json'
 
 
-def parse_args():
+V1_Mapping = TypedDict(
+    'V1_Mapping',
+    {
+        "docker_image": str,
+        "desired_state": str,
+        "force_bounce": str,
+    },
+)
+V2_Deployment = TypedDict(
+    'V2_Deployment',
+    {
+        'docker_image': str,
+        'git_sha': str,
+    },
+)
+V2_Control = TypedDict(
+    'V2_Control',
+    {
+        'desired_state': str,
+        'force_bounce': str,
+    },
+)
+V2_Mappings = TypedDict(
+    'V2_Mappings',
+    {
+        'deployments': Dict[str, V2_Deployment],
+        'controls': Dict[str, V2_Control],
+    },
+)
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument(
         '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
@@ -73,7 +110,12 @@ def parse_args():
     return args
 
 
-def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None, type_filter=None):
+def get_cluster_instance_map_for_service(
+    soa_dir: str,
+    service: str,
+    deploy_group: str=None,
+    type_filter: List[str]=[],
+) -> Dict[str, Dict[str, List[str]]]:
     if deploy_group:
         instances = [
             config for config in get_instance_configs_for_service(
@@ -83,13 +125,13 @@ def get_cluster_instance_map_for_service(soa_dir, service, deploy_group=None, ty
         ]
     else:
         instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service, type_filter=type_filter)
-    cluster_map = defaultdict(lambda: defaultdict(list))
+    cluster_map: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
     for instance_config in instances:
         cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
     return cluster_map
 
 
-def get_latest_deployment_tag(refs, deploy_group):
+def get_latest_deployment_tag(refs, deploy_group: str) -> Tuple[str, str]:
     """Gets the latest deployment tag and sha for the specified deploy_group
 
     :param refs: A dictionary mapping git refs to shas
@@ -114,7 +156,11 @@ def get_latest_deployment_tag(refs, deploy_group):
     return most_recent_ref, most_recent_sha
 
 
-def get_deploy_group_mappings(soa_dir, service, old_mappings=None):
+def get_deploy_group_mappings(
+    soa_dir: str,
+    service: str,
+    old_mappings=None,
+) -> Tuple[Dict[str, V1_Mapping], V2_Mappings]:
     """Gets mappings from service:deploy_group to services-service:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
@@ -133,11 +179,8 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings=None):
       value should trigger a bounce, even if the other properties of this app
       have not changed.
     """
-    mappings = {}
-    v2_mappings = {
-        'deployments': {},
-        'controls': {},
-    }
+    mappings: Dict[str, V1_Mapping] = {}
+    v2_mappings: V2_Mappings = {'deployments': {}, 'controls': {}}
 
     service_configs = get_instance_configs_for_service(
         soa_dir=soa_dir,
@@ -150,7 +193,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings=None):
     }
     if not deploy_group_branch_mappings:
         log.info('Service %s has no valid deploy groups. Skipping.', service)
-        return {}
+        return mappings, v2_mappings
 
     git_url = get_git_url(
         service=service,
@@ -165,29 +208,34 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings=None):
             control_branch_alias = '%s:paasta-%s' % (service, control_branch)
             control_branch_alias_v2 = '%s:%s' % (service, control_branch)
             docker_image = build_docker_image_name(service, commit_sha)
-            log.info('Mapping %s to docker image %s', control_branch, docker_image)
-            mapping = mappings.setdefault(control_branch_alias, {})
-            mapping['docker_image'] = docker_image
-            v2_mappings['deployments'].setdefault(deploy_group, {})['docker_image'] = docker_image
-            v2_mappings['deployments'][deploy_group]['git_sha'] = commit_sha
-
             desired_state, force_bounce = get_desired_state(
                 branch=control_branch,
                 remote_refs=remote_refs,
                 deploy_group=deploy_group,
             )
-            mapping['desired_state'] = desired_state
-            mapping['force_bounce'] = force_bounce
-            v2_mappings['controls'].setdefault(control_branch_alias_v2, {})['desired_state'] = desired_state
-            v2_mappings['controls'][control_branch_alias_v2]['force_bounce'] = force_bounce
+            log.info('Mapping %s to docker image %s', control_branch, docker_image)
+
+            v2_mappings['deployments'][deploy_group] = {
+                'docker_image': docker_image,
+                'git_sha': commit_sha,
+            }
+            mappings[control_branch_alias] = {
+                'docker_image': docker_image,
+                'desired_state': desired_state,
+                'force_bounce': force_bounce,
+            }
+            v2_mappings['controls'][control_branch_alias_v2] = {
+                'desired_state': desired_state,
+                'force_bounce': force_bounce,
+            }
     return mappings, v2_mappings
 
 
-def build_docker_image_name(service, sha):
+def build_docker_image_name(service: str, sha: str) -> str:
     return 'services-%s:paasta-%s' % (service, sha)
 
 
-def get_service_from_docker_image(image_name):
+def get_service_from_docker_image(image_name: str) -> str:
     """Does the opposite of build_docker_image_name and retrieves the
     name of a service our of a provided docker image
 
@@ -198,7 +246,7 @@ def get_service_from_docker_image(image_name):
     return matches.group(1)
 
 
-def get_desired_state(branch, remote_refs, deploy_group):
+def get_desired_state(branch: str, remote_refs, deploy_group: str) -> Tuple[str, Any]:
     """Gets the desired state (start or stop) from the given repo, as well as
     an arbitrary value (which may be None) that will change when a restart is
     desired.
@@ -232,6 +280,7 @@ def get_deployments_dict_from_deploy_group_mappings(deploy_group_mappings, v2_de
 
 def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
     try:
+        print("Got v1")
         return deployments_dict['v1']
     except KeyError:
         deploy_group_mappings = {}
@@ -242,15 +291,17 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
                     'desired_state': 'start',
                     'force_bounce': None,
                 }
+        print("Got v2")
+        print(deploy_group_mappings)
         return deploy_group_mappings
 
 
-def generate_deployments_for_service(service, soa_dir):
+def generate_deployments_for_service(service: str, soa_dir: str) -> None:
     try:
-        with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as f:
-            old_deployments_dict = json.load(f)
+        with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as oldf:
+            old_deployments_dict = json.load(oldf)
             old_mappings = get_deploy_group_mappings_from_deployments_dict(old_deployments_dict)
-    except (IOError, ValueError):
+    except (IOError, ValueError) as e:
         old_mappings = {}
         old_deployments_dict = {}
     mappings, v2_mappings = get_deploy_group_mappings(
@@ -261,11 +312,11 @@ def generate_deployments_for_service(service, soa_dir):
 
     deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings, v2_mappings)
     if deployments_dict != old_deployments_dict:
-        with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
-            json.dump(deployments_dict, f)
+        with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as newf:
+            json.dump(deployments_dict, newf)
 
 
-def main():
+def main() -> None:
     args = parse_args()
     soa_dir = os.path.abspath(args.soa_dir)
     service = args.service
