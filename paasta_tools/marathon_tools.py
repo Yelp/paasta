@@ -1426,13 +1426,13 @@ def is_task_healthy(task: MarathonTask, require_all: bool=True, default_healthy:
     return default_healthy
 
 
-def is_old_task_missing_healthchecks(task: MarathonTask, marathon_client: MarathonClient) -> bool:
+def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bool:
     """We check this because versions of Marathon (at least up to 1.1)
     sometimes stop healthchecking tasks, leaving no results. We can normally
     assume that an "old" task which has no healthcheck results is still up
     and healthy but marathon has simply decided to stop healthchecking it.
     """
-    health_checks = marathon_client.get_app(task.app_id).health_checks
+    health_checks = app.health_checks
     if not task.health_check_results and health_checks and task.started_at:
         healthcheck_startup_time = datetime.timedelta(seconds=health_checks[0].grace_period_seconds) + \
             datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)

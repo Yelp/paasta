@@ -99,7 +99,15 @@ def test_status_marathon_job_verbose():
         'paasta_tools.marathon_serviceinit.marathon_tools.get_matching_apps_with_clients', autospec=True,
     ) as mock_get_matching_apps_with_clients, mock.patch(
         'paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True,
-    ) as mock_get_verbose_app:
+    ) as mock_get_verbose_app, mock.patch(
+        'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=ServiceAutoscalingInfo(
+            current_instances='1',
+            max_instances='2',
+            min_instances='3',
+            current_utilization='4',
+            target_instances='5',
+        ),
+    ):
         mock_get_matching_apps_with_clients.return_value = [(app, client)]
         mock_get_verbose_app.return_value = ([task], 'fake_return')
         tasks, out = marathon_serviceinit.status_marathon_job_verbose(
@@ -129,6 +137,7 @@ def test_status_marathon_job_verbose():
         )
         assert tasks == [task]
         assert 'fake_return' in out
+        assert '  Autoscaling Info:' in out
 
 
 def test_get_verbose_status_of_marathon_app():
@@ -166,7 +175,6 @@ def test_get_verbose_status_of_marathon_app():
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
         assert 'fake_deployed_host:6666' in out
-        assert 'Autoscaling Info' in out
         assert tasks == [fake_task]
 
 

@@ -173,13 +173,6 @@ def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, 
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
 
-    autoscaling_info = get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir)
-    if autoscaling_info:
-        output.append("    Autoscaling Info:")
-        headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
-        table = [headers, autoscaling_info]
-        output.append('\n'.join(["      %s" % line for line in format_table(table)]))
-
     output.append("    Tasks:")
     rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for task in app.tasks:
@@ -223,6 +216,14 @@ def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, jo
 
     relevant_clients = clients.get_all_clients_for_service(job_config)
     marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients, embed_tasks=True)
+
+    autoscaling_info = get_autoscaling_info(clients, job_config)
+    if autoscaling_info:
+        all_output.append("  Autoscaling Info:")
+        headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
+        table = [headers, autoscaling_info]
+        all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
+
     for app, client in marathon_tools.get_matching_apps_with_clients(service, instance, marathon_apps_with_clients):
         tasks, output = get_verbose_status_of_marathon_app(
             marathon_client=client,
