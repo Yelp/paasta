@@ -30,7 +30,7 @@ def parse_args():
         '-r', '--region',
         type=str,
         required=True,
-        help="name of the region where the pool is. eg: useast1-prod",
+        help="name of the AWS region where the pool is. eg: us-east-1",
     )
     parser.add_argument(
         '-p', '--pool',
@@ -86,7 +86,7 @@ def check_pool_exist(pool: str, region: str) -> bool:
     region_pool_pairs = []
     for slave in expected_slave_attributes:
         slave_pool = slave['pool']
-        slave_region = slave['region']
+        slave_region = slave['datacenter']
         region_pool_pair = (slave_region, slave_pool)
         if region_pool_pair not in region_pool_pairs:
             region_pool_pairs.append(region_pool_pair)

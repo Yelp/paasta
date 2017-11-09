@@ -58,7 +58,7 @@ def add_subparser(subparsers):
         '-r', '--region',
         type=str,
         required=True,
-        help="name of the region where the pool is. eg: useast1-prod",
+        help="name of the AWS region where the pool is. eg: us-east-1",
     )
     boost_parser.add_argument(
         '-p', '--pool',
