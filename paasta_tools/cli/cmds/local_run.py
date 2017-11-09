@@ -53,6 +53,7 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import timed_flock
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
@@ -428,15 +429,17 @@ def docker_pull_image(docker_url):
     bindings due to the docker auth/registry transition. Once we are past Docker 1.6
     we can use better credential management, but for now this function assumes the
     user running the command has already been authorized for the registry"""
-    paasta_print("Please wait while the image (%s) is pulled..." % docker_url, file=sys.stderr)
+    paasta_print("Please wait while the image (%s) is pulled (times out after 30m)..." % docker_url, file=sys.stderr)
     DEVNULL = open(os.devnull, 'wb')
-    ret, output = _run('docker pull %s' % docker_url, stream=True, stdin=DEVNULL)
-    if ret != 0:
-        paasta_print(
-            "\nPull failed. Are you authorized to run docker commands?",
-            file=sys.stderr,
-        )
-        sys.exit(ret)
+    with open('/tmp/paasta-local-run-pull.lock', 'w') as f:
+        with timed_flock(f, seconds=1800):
+            ret, output = _run('docker pull %s' % docker_url, stream=True, stdin=DEVNULL)
+            if ret != 0:
+                paasta_print(
+                    "\nPull failed. Are you authorized to run docker commands?",
+                    file=sys.stderr,
+                )
+                sys.exit(ret)
 
 
 def get_container_id(docker_client, container_name):
