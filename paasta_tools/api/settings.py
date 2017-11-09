@@ -18,4 +18,4 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 
 soa_dir = DEFAULT_SOA_DIR
 cluster = None
-marathon_client = None
+marathon_clients = None

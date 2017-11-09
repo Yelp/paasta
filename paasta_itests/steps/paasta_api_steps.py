@@ -26,7 +26,6 @@ def service_instance_status(context, app_count, job_id):
     ).result()
 
     assert response['marathon']['app_count'] == int(app_count), response
-#    assert response['marathon']['running_instance_count'] == response['marathon']['expected_instance_count'], response
 
 
 @then('instance GET should return chronos desired_state "{desired_state}" for "{job_id}"')
