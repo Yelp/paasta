@@ -175,7 +175,7 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
-        self.metrics = get_metrics_interface(self.config.get_metrics_provider('paasta.deployd'))
+        self.metrics = get_metrics_interface('paasta_deployd')
         QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
