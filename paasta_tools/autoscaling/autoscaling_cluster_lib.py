@@ -1214,6 +1214,13 @@ def get_mesos_utilization_error(
     pool: str,
     target_utilization: float,
 ) -> float:
+    """Return the relative capacity needed to reach the cluster target usage.
+    Example: If the current capacity is 10 unit (could be CPU, memory, disk, gpu...)
+    If the target usage is 0.8 and the current usage is 9 units. We will return 1.125:
+    An 12.5% increase in capacity is required => 9/11.25 = 80% usage
+    When the boost feature is enabled, the current_load will be artifically increased
+    and stored into boosted_load. If the boost is disabled, boosted_load = current_load
+    """
     try:
         region_pool_utilization_dict = get_resource_utilization_by_grouping(
             lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),

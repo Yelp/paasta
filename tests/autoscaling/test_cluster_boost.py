@@ -31,7 +31,10 @@ def patch_zk_client(mock_values=None):
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
     ):
         def mock_get(key):
-            return (mock_values.get(key, None), None) if mock_values else None
+            if not mock_values or key not in mock_values:
+                raise cluster_boost.NoNodeError
+
+            return (mock_values[key], None)
 
         mock_client.return_value = mock.Mock(get=mock_get)
         yield mock_client()
@@ -49,7 +52,7 @@ def test_get_boost_values():
     fake_pool = 'default'
     base_path = cluster_boost.get_zk_boost_path(fake_region, fake_pool)
 
-    fake_end_time = 12345
+    fake_end_time = 12345.0
     fake_boost_factor = 1.5
     fake_expected_load = 80
 
@@ -59,11 +62,19 @@ def test_get_boost_values():
         base_path + '/expected_load': str(fake_expected_load).encode('utf-8'),
     }) as mock_zk_client:
 
-        assert cluster_boost.get_boost_values(fake_region, fake_pool, mock_zk_client) == (
-            fake_end_time,
-            fake_boost_factor,
-            fake_expected_load,
+        assert cluster_boost.get_boost_values(
+            region=fake_region,
+            pool=fake_pool,
+            zk=mock_zk_client,
+        ) == cluster_boost.BoostValues(
+            end_time=fake_end_time,
+            boost_factor=fake_boost_factor,
+            expected_load=fake_expected_load,
         )
+
+
+def test_get_boost_values_when_no_values_exist():
+    pass
 
 
 @freeze_time(TEST_CURRENT_TIME)
@@ -75,7 +86,7 @@ def test_set_boost_factor_with_defaults():
     with patch_zk_client() as mock_zk_client:
         cluster_boost.set_boost_factor(fake_region, fake_pool)
 
-    expected_end_time = int(TEST_CURRENT_TIME.timestamp()) + 60 * cluster_boost.DEFAULT_BOOST_DURATION
+    expected_end_time = float(TEST_CURRENT_TIME.timestamp()) + 60 * cluster_boost.DEFAULT_BOOST_DURATION
 
     assert mock_zk_client.set.call_args_list == [
         mock.call(
@@ -97,12 +108,60 @@ def test_set_boost_factor():
     pass
 
 
+@freeze_time(TEST_CURRENT_TIME)
 def test_set_boost_factor_with_active_boost():
-    pass
+    fake_region = 'westeros-1'
+    fake_pool = 'default'
+    base_path = cluster_boost.get_zk_boost_path(fake_region, fake_pool)
+
+    fake_end_time = float(TEST_CURRENT_TIME.timestamp()) + 10
+    fake_boost_factor = 1.5
+    fake_expected_load = 80
+
+    # patch zk client so that it returns an end time that
+    # indicates an active boost
+    with patch_zk_client({
+        base_path + '/end_time': str(fake_end_time).encode('utf-8'),
+        base_path + '/factor': str(fake_boost_factor).encode('utf-8'),
+        base_path + '/expected_load': str(fake_expected_load).encode('utf-8'),
+    }):
+        # by default, set boost should not go through if there's an active boost
+        assert not cluster_boost.set_boost_factor(region=fake_region, pool=fake_pool)
 
 
+@freeze_time(TEST_CURRENT_TIME)
 def test_set_boost_factor_with_active_boost_override():
-    pass
+    fake_region = 'westeros-1'
+    fake_pool = 'default'
+    base_path = cluster_boost.get_zk_boost_path(fake_region, fake_pool)
+
+    fake_end_time = float(TEST_CURRENT_TIME.timestamp()) + 10
+    fake_boost_factor = 1.5
+    fake_expected_load = 80
+
+    mock_boost_values = {
+        base_path + '/end_time': str(fake_end_time).encode('utf-8'),
+        base_path + '/factor': str(fake_boost_factor).encode('utf-8'),
+        base_path + '/expected_load': str(fake_expected_load).encode('utf-8'),
+    }
+
+    # patch zk client so that it returns an end time that
+    # indicates an active boost
+    with patch_zk_client(mock_boost_values) as mock_zk_client:
+
+        # we need the zk.set to actually override the initial mocked values
+        def mock_set(key, value):
+            if key in mock_boost_values:
+                mock_boost_values[key] = value
+
+        mock_zk_client.set = mock_set
+
+        # set boost will go through with an active boost if override is toggled on
+        assert cluster_boost.set_boost_factor(
+            region=fake_region,
+            pool=fake_pool,
+            override=True,
+        )
 
 
 def test_clear_boost():

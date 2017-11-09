@@ -98,7 +98,7 @@ def print_cluster_status(
     use_mesos_cache=False,
 ):
     """With a given cluster and verboseness, returns the status of the cluster
-    output is printed directly to provide dashbaords even if the cluster is unavailable"""
+    output is printed directly to provide dashboards even if the cluster is unavailable"""
     return_code, output = execute_paasta_metastatus_on_remote_master(
         cluster=cluster,
         system_paasta_config=system_paasta_config,
