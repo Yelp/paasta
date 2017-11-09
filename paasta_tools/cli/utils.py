@@ -596,6 +596,27 @@ def execute_paasta_metastatus_on_remote_master(
     )
 
 
+def run_pause_service_autoscaler(master, pause_duration):
+    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo pause_service_autoscaler --timeout %s' % (
+        master,
+        pause_duration,
+    )).strip()
+    return_code, output = _run(command, timeout=120)
+    return return_code, output
+
+
+def execute_pause_service_autoscaler_on_remote_master(cluster, system_paasta_config, pause_duration):
+    """Returns a string containing an error message if an error occurred.
+    Otherwise returns the output of pause_service_autoscaler().
+    """
+    try:
+        master = connectable_master(cluster, system_paasta_config)
+    except NoMasterError as e:
+        return (255, str(e))
+
+    return run_pause_service_autoscaler(master, pause_duration)
+
+
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
