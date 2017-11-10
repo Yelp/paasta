@@ -249,6 +249,16 @@ def test_run_paasta_metastatus_very_verbose(mock_run):
     assert actual == mock_run.return_value[1]
 
 
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_pause_service_autoscaler(mock_run):
+    mock_run.return_value = (0, 'fake_output')
+    exp_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo pause_service_autoscaler --timeout 30'
+    return_code, actual = utils.run_pause_service_autoscaler('fake_master', '30')
+    mock_run.assert_called_once_with(exp_command, timeout=120)
+    assert return_code == 0
+    assert actual == mock_run.return_value[1]
+
+
 @patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
 @patch('paasta_tools.cli.utils.run_paasta_serviceinit', autospec=True)

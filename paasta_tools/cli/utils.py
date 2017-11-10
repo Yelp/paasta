@@ -614,7 +614,7 @@ def execute_pause_service_autoscaler_on_remote_master(cluster, system_paasta_con
     except NoMasterError as e:
         return (255, str(e))
 
-    return run_pause_service_autoscaler(master, pause_duration)
+    return run_pause_service_autoscaler(master, str(pause_duration))
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):

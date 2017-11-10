@@ -47,19 +47,20 @@ def add_subparser(subparsers):
         dest='force',
         default=False,
     )
-    status_parser.set_defaults(command=pause_autoscaler)
+    status_parser.set_defaults(command=paasta_pause_autoscaler)
 
 
-def pause_autoscaler(args):
+def paasta_pause_autoscaler(args):
     """With a given cluster and duration, pauses the paasta service autoscaler
        in that cluster for duration minutes"""
     if args.duration > MAX_PAUSE_DURATION:
         if not args.force:
             paasta_print('Specified duration: {d} longer than max: {m}'.format(
-                d=args.duration,
+                d=str(args.duration),
                 m=MAX_PAUSE_DURATION,
             ))
             paasta_print('If you are really sure, run again with --force')
+            return 2
 
     return_code, output = execute_pause_service_autoscaler_on_remote_master(
         cluster=args.cluster,

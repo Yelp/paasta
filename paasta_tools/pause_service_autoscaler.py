@@ -14,7 +14,6 @@
 # limitations under the License.
 import argparse
 import logging
-import sys
 from datetime import datetime
 
 from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
@@ -24,7 +23,7 @@ from paasta_tools.utils import ZookeeperPool
 
 log = logging.getLogger(__name__)
 
-MAX_PAUSE_DURATION = 120
+DEFAULT_PAUSE_DURATION = 30
 
 
 def parse_args(argv):
@@ -35,7 +34,7 @@ def parse_args(argv):
         '-t',
         '--timeout',
         type=int,
-        default=30,
+        default=DEFAULT_PAUSE_DURATION,
         dest="timeout",
         help='amount of time to pause autoscaler for, in minutes',
     )
@@ -43,24 +42,30 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+# Wrapping zk contextmanager calls so I can write a better unit test
+def set_zk(path, val):
+    with ZookeeperPool() as zk:
+        zk.set(path, val)
+
+
+def ensure_path_zk(path):
+    with ZookeeperPool() as zk:
+        zk.ensure_path(path)
+
+
 def main(argv=None):
     args = parse_args(argv)
-    if args.timeout > MAX_PAUSE_DURATION:
-        log.warning('Duration of autoscale pause exceeds max duration. Not pausing.')
-        sys.exit(1)
-
     current_time = int(datetime.now().timestamp())
     expiry_time = current_time + (60 * args.timeout)
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     cluster = load_system_paasta_config().get_cluster()
 
-    with ZookeeperPool() as zk:
-        try:
-            zk.ensure_path(zk_pause_autoscale_path)
-            zk.set(zk_pause_autoscale_path, str(expiry_time).encode('utf-8'))
-        except Exception:
-            log.error('Could not set pause node in Zookeeper')
-            raise
+    try:
+        ensure_path_zk(zk_pause_autoscale_path)
+        set_zk(zk_pause_autoscale_path, str(expiry_time).encode('utf-8'))
+    except Exception:
+        log.error('Could not set pause node in Zookeeper')
+        raise
 
     log.info('Service autoscaler paused in {c}, for {m} minutes'.format(c=cluster, m=str(args.timeout)))
     paasta_print('Service autoscaler paused in {c}, for {m} minutes'.format(c=cluster, m=str(args.timeout)))
