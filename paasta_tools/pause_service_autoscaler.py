@@ -38,6 +38,13 @@ def parse_args(argv):
         dest="timeout",
         help='amount of time to pause autoscaler for, in minutes',
     )
+    parser.add_argument(
+        '-r', '--resume',
+        help='Resume autoscaling (unpause) in a cluster',
+        action='store_true',
+        dest='resume',
+        default=False,
+    )
 
     return parser.parse_args(argv)
 
@@ -45,7 +52,11 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv)
     current_time = time.time()
-    expiry_time = current_time + (60 * args.timeout)
+    expiry_time = 0
+    if args.resume:
+        expiry_time = current_time - 10
+    else:
+        expiry_time = current_time + (60 * args.timeout)
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     cluster = load_system_paasta_config().get_cluster()
 

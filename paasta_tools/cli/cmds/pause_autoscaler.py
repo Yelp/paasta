@@ -25,7 +25,7 @@ def add_subparser(subparsers):
         help="Pause the servicce autoscaler for an entire cluster",
         description=(
             "'paasta pause_autoscaler is used to pause the paasta service autoscaler "
-            "for an entire paasta cluster. Use it sparingly. "
+            "for an entire paasta cluster. Use -r to resume autoscaling. Use it sparingly. "
         ),
     )
     status_parser.add_argument(
@@ -47,6 +47,14 @@ def add_subparser(subparsers):
         dest='force',
         default=False,
     )
+    status_parser.add_argument(
+        '-r', '--resume',
+        help='Resume autoscaling (unpause) in a cluster',
+        action='store_true',
+        dest='resume',
+        default=False,
+    )
+
     status_parser.set_defaults(command=paasta_pause_autoscaler)
 
 
@@ -66,6 +74,7 @@ def paasta_pause_autoscaler(args):
         cluster=args.cluster,
         system_paasta_config=load_system_paasta_config(),
         pause_duration=args.duration,
+        resume=args.resume,
     )
 
     paasta_print("Cluster: %s" % args.cluster)

@@ -21,6 +21,7 @@ def test_pause_autoscaler_defaults():
     args = mock.Mock(
         cluster='cluster1',
         duration=30,
+        resume=False,
     )
 
     with mock.patch(
@@ -35,7 +36,7 @@ def test_pause_autoscaler_defaults():
         mock_exc.return_value = (0, '')
 
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 30)
+        mock_exc.assert_called_once_with('cluster1', mock_config, 30, False)
         assert return_code == 0
 
 
@@ -44,6 +45,7 @@ def test_pause_autoscaler_long():
         cluster='cluster1',
         duration=MAX_PAUSE_DURATION + 10,
         force=False,
+        resume=False,
     )
 
     with mock.patch(
@@ -61,11 +63,12 @@ def test_pause_autoscaler_long():
         assert return_code == 2
 
 
-def test_pause_autoscaler_force():
+def test_pause_autoscaler_resume():
     args = mock.Mock(
         cluster='cluster1',
-        duration=MAX_PAUSE_DURATION + 10,
-        force=True,
+        duration=120,
+        force=False,
+        resume=True,
     )
 
     with mock.patch(
@@ -80,5 +83,29 @@ def test_pause_autoscaler_force():
         mock_exc.return_value = (0, '')
 
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 330)
+        mock_exc.assert_called_once_with('cluster1', mock_config, 120, True)
+        assert return_code == 0
+
+
+def test_pause_autoscaler_force():
+    args = mock.Mock(
+        cluster='cluster1',
+        duration=MAX_PAUSE_DURATION + 10,
+        force=True,
+        resume=False,
+    )
+
+    with mock.patch(
+        'paasta_tools.cli.cmds.pause_autoscaler.execute_pause_service_autoscaler_on_remote_master',
+        autospec=True,
+    ) as mock_exc, mock.patch(
+        'paasta_tools.cli.cmds.pause_autoscaler.load_system_paasta_config', autospec=True,
+    ) as mock_config_fn:
+
+        mock_config = mock.Mock()
+        mock_config_fn.return_value = mock_config
+        mock_exc.return_value = (0, '')
+
+        return_code = paasta_pause_autoscaler(args)
+        mock_exc.assert_called_once_with('cluster1', mock_config, 330, False)
         assert return_code == 0

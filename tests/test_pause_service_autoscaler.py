@@ -34,6 +34,7 @@ def test_main_default():
 
         parsed_args_mock = Mock()
         parsed_args_mock.timeout = pause_service_autoscaler.DEFAULT_PAUSE_DURATION
+        parsed_args_mock.resume = False
         args_mock.return_value = parsed_args_mock
 
         mock_zk_set = Mock()
@@ -43,3 +44,31 @@ def test_main_default():
         pause_service_autoscaler.main()
         mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
         mock_zk_set.assert_called_once_with('/autoscaling/paused', b'7200')
+
+
+def test_main_resume():
+    with patch(
+        'paasta_tools.pause_service_autoscaler.time', autospec=True,
+    ) as time_mock, patch(
+        'paasta_tools.utils.KazooClient', autospec=True,
+    ) as zk_mock, patch(
+        'paasta_tools.pause_service_autoscaler.parse_args', autospec=True,
+    ) as args_mock, patch(
+        'paasta_tools.pause_service_autoscaler.load_system_paasta_config', autospec=True,
+    ), patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+    ):
+        time_mock.time = Mock(return_value=0)
+
+        parsed_args_mock = Mock()
+        parsed_args_mock.timeout = pause_service_autoscaler.DEFAULT_PAUSE_DURATION
+        parsed_args_mock.resume = True
+        args_mock.return_value = parsed_args_mock
+
+        mock_zk_set = Mock()
+        mock_zk_ensure = Mock()
+        zk_mock.return_value = Mock(set=mock_zk_set, ensure_path=mock_zk_ensure)
+
+        pause_service_autoscaler.main()
+        mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
+        mock_zk_set.assert_called_once_with('/autoscaling/paused', b'-10')
