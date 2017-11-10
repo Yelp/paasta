@@ -1365,6 +1365,7 @@ SystemPaastaConfigDict = TypedDict(
         'use_mesos_healthchecks': bool,
         'taskproc': Dict,
         'disabled_watchers': List,
+        'vault_environment': str,
     },
     total=False,
 )
@@ -1693,6 +1694,12 @@ class SystemPaastaConfig(object):
 
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get('disabled_watchers', [])
+
+    def get_vault_environment(self) -> Optional[str]:
+        """ Get the environment name for the vault cluster
+        This must match the environment keys in the secret json files
+        used by all services in this cluster"""
+        return self.config_dict.get('vault_environment')
 
 
 def _run(

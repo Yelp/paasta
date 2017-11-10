@@ -205,6 +205,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         context, {
             "cluster": "testcluster",
             "zookeeper": "zk://zookeeper/mesos-testcluster",
+            "vault_environment": 'devc',
             "docker_registry": docker_registry,
         }, 'cluster.json',
     )

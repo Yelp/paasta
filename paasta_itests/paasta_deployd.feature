@@ -35,6 +35,21 @@ Feature: paasta-deployd deploys apps
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
 
+  Scenario: deployd will re-deploy an app if a secret json file is updated and the secret's HMAC changes
+    Given a working paasta cluster
+      And paasta-deployd is running
+      And we have a secret called "test-secret" for the service "test-service" with signature "notArealHMAC"
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we set the an environment variable called "SOME_SECRET" to "SECRET(test-secret)" for service "test-service" and instance "main" for framework "marathon"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     Then we should see "test-service.main" listed in marathon after 60 seconds
+     Then we can run get_app
+    Given we have a secret called "test-secret" for the service "test-service" with signature "StillNotArealHMAC"
+     Then the appid for "test-service.main" should have changed
+     Then we should not see the old version listed in marathon after 70 seconds
+     Then we should see "test-service.main" listed in marathon after 60 seconds
+     Then we can run get_app
+
   Scenario: deployd will re-deploy an app if the public config changes
     Given a working paasta cluster
       And paasta-deployd is running
