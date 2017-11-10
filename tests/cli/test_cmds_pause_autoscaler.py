@@ -14,7 +14,7 @@
 import mock
 
 from paasta_tools.cli.cmds.pause_autoscaler import MAX_PAUSE_DURATION
-from paasta_tools.cli.cmds.pause_autoscaler import pause_autoscaler
+from paasta_tools.cli.cmds.pause_autoscaler import paasta_pause_autoscaler
 
 
 def test_pause_autoscaler_defaults():
@@ -34,7 +34,7 @@ def test_pause_autoscaler_defaults():
         mock_config_fn.return_value = mock_config
         mock_exc.return_value = (0, '')
 
-        return_code = pause_autoscaler(args)
+        return_code = paasta_pause_autoscaler(args)
         mock_exc.assert_called_once_with('cluster1', mock_config, 30)
         assert return_code == 0
 
@@ -57,7 +57,7 @@ def test_pause_autoscaler_long():
         mock_config_fn.return_value = mock_config
         mock_exc.return_value = (0, '')
 
-        return_code = pause_autoscaler(args)
+        return_code = paasta_pause_autoscaler(args)
         assert return_code == 2
 
 
@@ -79,6 +79,6 @@ def test_pause_autoscaler_force():
         mock_config_fn.return_value = mock_config
         mock_exc.return_value = (0, '')
 
-        return_code = pause_autoscaler(args)
+        return_code = paasta_pause_autoscaler(args)
         mock_exc.assert_called_once_with('cluster1', mock_config, 130)
         assert return_code == 0

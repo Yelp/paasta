@@ -696,18 +696,25 @@ def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
     return configs
 
 
-@use_requests_cache('service_autoscaler')
-def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
+def autoscaling_is_paused():
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
         try:
             pause_until = zk.get(zk_pause_autoscale_path)[0].decode('utf8')
-            int(pause_until)
+            pause_until = int(pause_until)
         except (NoNodeError, ValueError) as e:
             pause_until = 0
 
     if int(datetime.now().timestamp()) < pause_until:
-        log.warning("Skipping autoscaling because autoscaler paused until {}".format(str(pause_until)))
+        return False
+    else:
+        return True
+
+
+@use_requests_cache('service_autoscaler')
+def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
+    if autoscaling_is_paused():
+        log.warning("Skipping autoscaling because autoscaler paused")
         return
 
     try:

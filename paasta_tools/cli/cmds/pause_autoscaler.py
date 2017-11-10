@@ -40,7 +40,7 @@ def add_subparser(subparsers):
         type=int,
         help="How long to pause the autoscaler for, defaults to 30 minutes",
     )
-    status_parser.add_argumet(
+    status_parser.add_argument(
         '-f', '--force',
         help='Force pause for longer than max duration',
         action='store_true',
