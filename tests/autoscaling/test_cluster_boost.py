@@ -74,7 +74,19 @@ def test_get_boost_values():
 
 
 def test_get_boost_values_when_no_values_exist():
-    pass
+    fake_region = 'westeros-1'
+    fake_pool = 'default'
+    with patch_zk_client() as mock_zk_client:
+
+        assert cluster_boost.get_boost_values(
+            region=fake_region,
+            pool=fake_pool,
+            zk=mock_zk_client,
+        ) == cluster_boost.BoostValues(
+            end_time=0,
+            boost_factor=1.0,
+            expected_load=0,
+        )
 
 
 @freeze_time(TEST_CURRENT_TIME)
@@ -151,8 +163,7 @@ def test_set_boost_factor_with_active_boost_override():
 
         # we need the zk.set to actually override the initial mocked values
         def mock_set(key, value):
-            if key in mock_boost_values:
-                mock_boost_values[key] = value
+            mock_boost_values[key] = value
 
         mock_zk_client.set = mock_set
 
