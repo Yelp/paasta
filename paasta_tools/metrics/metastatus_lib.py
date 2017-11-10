@@ -17,6 +17,9 @@ import itertools
 import math
 from collections import Counter
 from collections import namedtuple
+from collections import OrderedDict
+from typing import Dict
+from typing import List
 
 from humanize import naturalsize
 
@@ -254,6 +257,43 @@ def assert_tasks_running(metrics):
     return HealthCheckResult(
         message="Tasks: running: %d staging: %d starting: %d" % (running, staging, starting),
         healthy=True,
+    )
+
+
+def assert_no_duplicate_frameworks(state: Dict, frameworks_list: List[str]):
+    """A function which asserts that there are no duplicate frameworks running, where
+    frameworks are identified by their name.
+
+    Note the extra spaces in the output strings: this is to account for the extra indentation
+    we add, so we can have:
+
+        frameworks:
+          framework: marathon count: 1
+
+    :param state: the state info from the Mesos master
+    :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
+        indicating if there are any duplicate frameworks.
+    """
+    frameworks = state['frameworks']
+    framework_counts = OrderedDict(
+        sorted(Counter([
+            fw['name'] for fw in frameworks
+            for name in frameworks_list if fw['name'].startswith(name)
+        ]).items()),
+    )
+    output = ["Frameworks:"]
+    ok = True
+
+    for framework, count in framework_counts.items():
+        if count > 1:
+            ok = False
+            output.append("    CRITICAL: There are %d connected %s frameworks! "
+                          "(Expected 1)" % (count, framework))
+        else:
+            output.append("    Framework: %s count: %d" % (framework, count))
+    return HealthCheckResult(
+        message=("\n").join(output),
+        healthy=ok,
     )
 
 

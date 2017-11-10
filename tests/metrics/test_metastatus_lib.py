@@ -244,6 +244,86 @@ def test_disk_health_mesos_reports_zero():
     assert failure_health is False
 
 
+def test_assert_no_duplicate_frameworks():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+            {
+                'name': 'test_framework3',
+            },
+            {
+                'name': 'test_framework4',
+            },
+        ],
+    }
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+    )
+
+    expected_output = "\n".join(
+        ["Frameworks:"] +
+        ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']],
+    )
+    assert output == expected_output
+    assert ok
+
+
+def test_duplicate_frameworks():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+        ],
+    }
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+    )
+    assert "    CRITICAL: There are 3 connected test_framework1 frameworks! (Expected 1)" in output
+    assert not ok
+
+
+def test_duplicate_frameworks_not_checked():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+        ],
+    }
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework2', 'test_framework3', 'test_framework4'],
+    )
+    assert "test_framework2" in output
+    assert ok
+
+
 def test_assert_framework_count_not_ok():
     state = {
         'frameworks': [
