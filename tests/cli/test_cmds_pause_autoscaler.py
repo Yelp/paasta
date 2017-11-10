@@ -80,5 +80,5 @@ def test_pause_autoscaler_force():
         mock_exc.return_value = (0, '')
 
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 130)
+        mock_exc.assert_called_once_with('cluster1', mock_config, 330)
         assert return_code == 0

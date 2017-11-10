@@ -252,8 +252,8 @@ def test_run_paasta_metastatus_very_verbose(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_pause_service_autoscaler(mock_run):
     mock_run.return_value = (0, 'fake_output')
-    exp_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo pause_service_autoscaler --timeout 30'
-    return_code, actual = utils.run_pause_service_autoscaler('fake_master', '30')
+    exp_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo pause_service_autoscaler --timeout 120'
+    return_code, actual = utils.run_pause_service_autoscaler('fake_master', '120')
     mock_run.assert_called_once_with(exp_command, timeout=120)
     assert return_code == 0
     assert actual == mock_run.return_value[1]

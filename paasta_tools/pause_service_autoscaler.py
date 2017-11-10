@@ -14,7 +14,7 @@
 # limitations under the License.
 import argparse
 import logging
-from datetime import datetime
+import time
 
 from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.utils import load_system_paasta_config
@@ -23,7 +23,7 @@ from paasta_tools.utils import ZookeeperPool
 
 log = logging.getLogger(__name__)
 
-DEFAULT_PAUSE_DURATION = 30
+DEFAULT_PAUSE_DURATION = 120
 
 
 def parse_args(argv):
@@ -44,7 +44,7 @@ def parse_args(argv):
 
 def main(argv=None):
     args = parse_args(argv)
-    current_time = int(datetime.now().timestamp())
+    current_time = time.time()
     expiry_time = current_time + (60 * args.timeout)
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     cluster = load_system_paasta_config().get_cluster()

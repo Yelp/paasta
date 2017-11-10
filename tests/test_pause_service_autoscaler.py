@@ -20,7 +20,7 @@ from paasta_tools import pause_service_autoscaler
 
 def test_main_default():
     with patch(
-        'paasta_tools.pause_service_autoscaler.datetime', autospec=True,
+        'paasta_tools.pause_service_autoscaler.time', autospec=True,
     ) as time_mock, patch(
         'paasta_tools.utils.KazooClient', autospec=True,
     ) as zk_mock, patch(
@@ -30,9 +30,7 @@ def test_main_default():
     ), patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
     ):
-        mock_ts = Mock()
-        mock_ts.timestamp.return_value = '0'
-        time_mock.now.return_value = mock_ts
+        time_mock.time = Mock(return_value=0)
 
         parsed_args_mock = Mock()
         parsed_args_mock.timeout = pause_service_autoscaler.DEFAULT_PAUSE_DURATION
@@ -44,4 +42,4 @@ def test_main_default():
 
         pause_service_autoscaler.main()
         mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
-        mock_zk_set.assert_called_once_with('/autoscaling/paused', b'1800')
+        mock_zk_set.assert_called_once_with('/autoscaling/paused', b'7200')

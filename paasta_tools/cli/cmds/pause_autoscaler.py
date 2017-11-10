@@ -16,7 +16,7 @@ from paasta_tools.cli.utils import execute_pause_service_autoscaler_on_remote_ma
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
-MAX_PAUSE_DURATION = 120
+MAX_PAUSE_DURATION = 320
 
 
 def add_subparser(subparsers):
@@ -35,7 +35,7 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-d', '--pause-duration',
-        default=30,
+        default=120,
         dest="duration",
         type=int,
         help="How long to pause the autoscaler for, defaults to 30 minutes",

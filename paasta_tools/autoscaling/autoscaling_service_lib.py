@@ -705,7 +705,7 @@ def autoscaling_is_paused():
         except (NoNodeError, ValueError) as e:
             pause_until = 0
 
-    if int(datetime.now().timestamp()) < pause_until:
+    if time.time() < pause_until:
         return False
     else:
         return True

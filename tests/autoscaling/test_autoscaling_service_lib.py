@@ -1080,14 +1080,11 @@ def test_autoscaling_is_paused():
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
     ) as mock_zk, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
-    ) as mock_dt, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.time', autospec=True,
+    ) as mock_time, mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
     ):
-        mock_dt.now = mock.Mock()
-        mock_ts = mock.Mock()
-        mock_ts.return_value = '200'
-        mock_dt.now.return_value.timestamp = mock_ts
+        mock_time.time = mock.Mock(return_value=200)
 
         mock_zk_get = mock.Mock(return_value=(b'100', None))
         mock_zk.return_value = mock.Mock(get=mock_zk_get)
