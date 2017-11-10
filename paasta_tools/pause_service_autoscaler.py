@@ -42,17 +42,6 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-# Wrapping zk contextmanager calls so I can write a better unit test
-def set_zk(path, val):
-    with ZookeeperPool() as zk:
-        zk.set(path, val)
-
-
-def ensure_path_zk(path):
-    with ZookeeperPool() as zk:
-        zk.ensure_path(path)
-
-
 def main(argv=None):
     args = parse_args(argv)
     current_time = int(datetime.now().timestamp())
@@ -60,12 +49,13 @@ def main(argv=None):
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     cluster = load_system_paasta_config().get_cluster()
 
-    try:
-        ensure_path_zk(zk_pause_autoscale_path)
-        set_zk(zk_pause_autoscale_path, str(expiry_time).encode('utf-8'))
-    except Exception:
-        log.error('Could not set pause node in Zookeeper')
-        raise
+    with ZookeeperPool() as zk:
+        try:
+            zk.ensure_path(zk_pause_autoscale_path)
+            zk.set(zk_pause_autoscale_path, str(expiry_time).encode('utf-8'))
+        except Exception:
+            log.error('Could not set pause node in Zookeeper')
+            raise
 
     log.info('Service autoscaler paused in {c}, for {m} minutes'.format(c=cluster, m=str(args.timeout)))
     paasta_print('Service autoscaler paused in {c}, for {m} minutes'.format(c=cluster, m=str(args.timeout)))
