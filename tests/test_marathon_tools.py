@@ -2573,42 +2573,38 @@ def test_is_old_task_missing_healthchecks():
         interval_seconds=10,
     )
     mock_marathon_app = mock.Mock(health_checks=[mock_health_check])
-    mock_get_app = mock.Mock(return_value=mock_marathon_app)
-    mock_marathon_client = mock.Mock(get_app=mock_get_app)
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=datetime.datetime(year=1990, month=1, day=1),
     )
 
     # test old task missing hcrs
-    assert marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test new task missing hcrs
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=datetime.datetime.now(),
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test new task with hcrs
     mock_task = mock.Mock(
         health_check_results=["SOMERESULTS"],
         started_at=datetime.datetime.now(),
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test missing started at time
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=None,
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test no health checks
     mock_marathon_app = mock.Mock(health_checks=[])
-    mock_get_app = mock.Mock(return_value=mock_marathon_app)
-    mock_marathon_client = mock.Mock(get_app=mock_get_app)
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
 
 def test_kill_given_tasks():

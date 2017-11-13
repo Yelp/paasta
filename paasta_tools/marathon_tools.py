@@ -116,6 +116,10 @@ def rendezvous_hash(
     :param choices: A sequence of arbitrary values. The "winning" value will be returned."""
     max_hash_value = None
     max_hash_choice = None
+
+    if len(choices) == 0:
+        raise ValueError("Must pass at least one choice to rendezvous_hash")
+
     for i, choice in enumerate(choices):
         str_to_hash = MESOS_TASK_SPACER.join([str(i), key, salt])
         hash_value = hash_func(str_to_hash)
@@ -143,7 +147,10 @@ class MarathonClients(object):
         if job_config.get_previous_marathon_shards() is not None:
             return [self.previous[i] for i in job_config.get_previous_marathon_shards()]
         else:
-            return [rendezvous_hash(choices=self.previous, key=service_instance)]
+            try:
+                return [rendezvous_hash(choices=self.previous, key=service_instance)]
+            except ValueError:
+                return []
 
     def get_all_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
         """Return the set of all clients that a service might have apps on, with no duplicate clients."""
@@ -1451,13 +1458,13 @@ def is_task_healthy(task: MarathonTask, require_all: bool=True, default_healthy:
     return default_healthy
 
 
-def is_old_task_missing_healthchecks(task: MarathonTask, marathon_client: MarathonClient) -> bool:
+def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bool:
     """We check this because versions of Marathon (at least up to 1.1)
     sometimes stop healthchecking tasks, leaving no results. We can normally
     assume that an "old" task which has no healthcheck results is still up
     and healthy but marathon has simply decided to stop healthchecking it.
     """
-    health_checks = marathon_client.get_app(task.app_id).health_checks
+    health_checks = app.health_checks
     if not task.health_check_results and health_checks and task.started_at:
         healthcheck_startup_time = datetime.timedelta(seconds=health_checks[0].grace_period_seconds) + \
             datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)
