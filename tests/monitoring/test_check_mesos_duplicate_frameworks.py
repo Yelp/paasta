@@ -42,9 +42,8 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
             check_mesos_no_duplicate_frameworks()
         out, err = capfd.readouterr()
         assert "OK" in out
-        assert "marathon" in out
-        assert "marathon1" in out
-        assert "chronos" in out
+        assert "Framework: marathon count: 2" in out
+        assert "Framework: chronos count: 1" in out
         assert "foobar" not in out
         assert error.value.code == 0
 

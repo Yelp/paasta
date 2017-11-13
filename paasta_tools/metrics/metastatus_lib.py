@@ -260,7 +260,7 @@ def assert_tasks_running(metrics):
     )
 
 
-def assert_no_duplicate_frameworks(state: Dict, frameworks_list: List[str]):
+def assert_no_duplicate_frameworks(state: Dict, framework_list: List[str]=['marathon', 'chronos']):
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
@@ -274,26 +274,21 @@ def assert_no_duplicate_frameworks(state: Dict, frameworks_list: List[str]):
     :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
         indicating if there are any duplicate frameworks.
     """
+    output = ['Frameworks:']
+    status = True
     frameworks = state['frameworks']
-    framework_counts = OrderedDict(
-        sorted(Counter([
-            fw['name'] for fw in frameworks
-            for name in frameworks_list if fw['name'].startswith(name)
-        ]).items()),
-    )
-    output = ["Frameworks:"]
-    ok = True
+    for name in framework_list:
+        shards = [x['name'] for x in frameworks if x['name'].startswith(name)]
+        for framework, count in OrderedDict(sorted(Counter(shards).items())).items():
+            if count > 1:
+                status = False
+                output.append("    CRITICAL: There are %d connected %s frameworks! "
+                              "(Expected 1)" % (count, framework))
+        output.append("    Framework: %s count: %d" % (name, len(shards)))
 
-    for framework, count in framework_counts.items():
-        if count > 1:
-            ok = False
-            output.append("    CRITICAL: There are %d connected %s frameworks! "
-                          "(Expected 1)" % (count, framework))
-        else:
-            output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
         message=("\n").join(output),
-        healthy=ok,
+        healthy=status,
     )
 
 
@@ -321,36 +316,6 @@ def assert_marathon_frameworks(connected_marathon_frameworks, configured_framewo
         output = ("    CRITICAL: %d marathon frameworks are not connected to Mesos.\n"
                   "      Disconnected marathon framework IDs: %s" % (len(diff), ', '.join(diff)))
     return (healthy, output)
-
-
-def assert_framework_count(state, marathon_framework_ids):
-    """A function which asserts that the number of marathon and chronos frameworks running
-    matches the number of configured frameworks.
-
-    :param state: the state info from the Mesos master
-    :param marathon_framework_ids: Framework IDs of all marathon frameworks that are supposed to be connected.
-    :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
-        indicating if there are any problems.
-    """
-
-    frameworks = state['frameworks']
-    chronos_healthy, chronos_output = \
-        assert_chronos_frameworks(
-            connected_chronos_frameworks=[x for x in frameworks if x['name'].startswith('chronos')],
-        )
-
-    marathon_healthy, marathon_output = \
-        assert_marathon_frameworks(
-            connected_marathon_frameworks=[x for x in frameworks if x['name'].startswith('marathon')],
-            configured_framework_ids=marathon_framework_ids,
-        )
-
-    output = ["Frameworks:", marathon_output, chronos_output]
-
-    return HealthCheckResult(
-        message=("\n").join(output),
-        healthy=marathon_healthy and chronos_healthy,
-    )
 
 
 def assert_frameworks_exist(state, expected):
@@ -591,7 +556,7 @@ def get_mesos_resource_utilization_health(mesos_metrics, mesos_state):
     ]
 
 
-def get_mesos_state_status(mesos_state, marathon_framework_ids):
+def get_mesos_state_status(mesos_state):
     """Perform healthchecks against mesos state.
     :param mesos_state: a dict exposing the mesos state described in
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
@@ -599,10 +564,7 @@ def get_mesos_state_status(mesos_state, marathon_framework_ids):
     """
     return [
         assert_quorum_size(),
-        assert_framework_count(
-            state=mesos_state,
-            marathon_framework_ids=marathon_framework_ids,
-        ),
+        assert_no_duplicate_frameworks(state=mesos_state, framefork_list=['marathon', 'chronos']),
     ]
 
 
