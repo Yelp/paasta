@@ -1,3 +1,27 @@
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:18:04 -0800
+
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:17:39 -0800
+
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:17:11 -0800
+
 paasta-tools (0.68.4) xenial; urgency=medium
 
   * 0.68.4 tagged with 'make release'
