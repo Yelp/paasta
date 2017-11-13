@@ -292,32 +292,6 @@ def assert_no_duplicate_frameworks(state: Dict, framework_list: List[str]=['mara
     )
 
 
-def assert_chronos_frameworks(connected_chronos_frameworks):
-    framework_count = len(connected_chronos_frameworks)
-    healthy = framework_count == 1
-    if healthy:
-        output = "    Framework: chronos count: %d" % framework_count
-    else:
-        output = (
-            "    CRITICAL: There are %d connected chronos frameworks!"
-            " (Expected 1)" % framework_count
-        )
-    return (healthy, output)
-
-
-def assert_marathon_frameworks(connected_marathon_frameworks, configured_framework_ids):
-    configured_framework_ids = set(configured_framework_ids)
-    connected_framework_ids = {x['id'] for x in connected_marathon_frameworks}
-    healthy = configured_framework_ids.issubset(connected_framework_ids)
-    if healthy:
-        output = "    Framework: marathon count: %d" % len(connected_framework_ids)
-    else:
-        diff = configured_framework_ids.difference(connected_framework_ids)
-        output = ("    CRITICAL: %d marathon frameworks are not connected to Mesos.\n"
-                  "      Disconnected marathon framework IDs: %s" % (len(diff), ', '.join(diff)))
-    return (healthy, output)
-
-
 def assert_frameworks_exist(state, expected):
     frameworks = [f['name'] for f in state['frameworks']]
     not_found = []
@@ -564,7 +538,7 @@ def get_mesos_state_status(mesos_state):
     """
     return [
         assert_quorum_size(),
-        assert_no_duplicate_frameworks(state=mesos_state, framefork_list=['marathon', 'chronos']),
+        assert_no_duplicate_frameworks(state=mesos_state, framework_list=['marathon', 'chronos']),
     ]
 
 
