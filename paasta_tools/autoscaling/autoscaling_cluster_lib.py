@@ -1238,7 +1238,7 @@ def get_mesos_utilization_error(
         if math.isclose(total, 0):
             continue
         current_load = total - free
-        boosted_load = cluster_boost.get_boosted_load(region, pool, current_load)
+        boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
 
         usage_percs.append(boosted_load / float(total))
 
