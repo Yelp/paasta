@@ -704,7 +704,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
             configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
 
             marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
-            apps_with_clients = get_marathon_apps_with_clients(marathon_clients, embed_tasks=True)
+            apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
             all_mesos_tasks = get_all_running_tasks()
             if configs:
                 with ZookeeperPool():
