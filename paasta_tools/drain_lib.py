@@ -13,6 +13,7 @@
 # limitations under the License.
 import re
 import time
+from typing import Set
 
 import requests
 
@@ -97,8 +98,8 @@ class TestDrainMethod(DrainMethod):
     """This drain policy is meant for integration testing. Do not use."""
 
     # These are variables on the class for ease of use in testing.
-    downed_task_ids = set()
-    safe_to_kill_task_ids = set()
+    downed_task_ids: Set[str] = set()
+    safe_to_kill_task_ids: Set[str] = set()
 
     def drain(self, task):
         if task.id not in self.safe_to_kill_task_ids:

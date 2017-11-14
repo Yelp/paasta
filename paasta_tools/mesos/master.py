@@ -280,7 +280,7 @@ class MesosMaster(object):
     def metrics_snapshot(self):
         return self.fetch("/metrics/snapshot").json()
 
-    @property
+    @property  # type: ignore
     @util.memoize
     def log(self):
         return mesos_file.File(self, path="/master/log")

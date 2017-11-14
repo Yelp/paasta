@@ -115,7 +115,7 @@ class MesosSlave(object):
         else:
             return stats[0]["statistics"]
 
-    @property
+    @property  # type: ignore
     @util.memoize
     def log(self):
         return mesos_file.File(self, path="/slave/log")
