@@ -21,7 +21,6 @@ from collections import namedtuple
 from humanize import naturalsize
 
 from paasta_tools import chronos_tools
-from paasta_tools import marathon_tools
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
@@ -644,20 +643,6 @@ def get_chronos_status(chronos_client):
             assert_chronos_scheduled_jobs,
             assert_chronos_queued_jobs,
         ],
-    )
-
-
-def get_marathon_client(marathon_config, cached=False):
-    """Given a MarathonConfig object, return
-    a client.
-    :param marathon_config: a MarathonConfig object
-    :returns client: a marathon client
-    """
-    return marathon_tools.get_marathon_client(
-        marathon_config.get_url(),
-        marathon_config.get_username(),
-        marathon_config.get_password(),
-        cached=cached,
     )
 
 

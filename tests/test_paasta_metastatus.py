@@ -103,8 +103,6 @@ def test_main_marathon_jsondecode_error():
     ) as get_mesos_state_status_patch, patch(
         'paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health', autospec=True,
     ) as get_mesos_resource_utilization_health_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_marathon_client', autospec=True,
-    ) as get_marathon_client_patch, patch(
         'paasta_tools.metrics.metastatus_lib.get_marathon_status', autospec=True,
     ) as get_marathon_status_patch:
         fake_master = Mock(autospace=True)
@@ -112,7 +110,6 @@ def test_main_marathon_jsondecode_error():
         get_mesos_master.return_value = fake_master
 
         load_marathon_config_patch.return_value = {"url": "http://foo"}
-        get_marathon_client_patch.return_value = Mock()
 
         get_marathon_status_patch.side_effect = ValueError('could not decode json')
 
