@@ -4,12 +4,14 @@ from typing import Any
 from typing import Union
 
 from paasta_tools.metrics.metrics_lib import BaseMetrics
+from paasta_tools.metrics.metrics_lib import GaugeProtocol
 from paasta_tools.metrics.metrics_lib import register_metrics_interface
+from paasta_tools.metrics.metrics_lib import TimerProtocol
 
 log = logging.getLogger(__name__)
 
 
-class Timer:
+class Timer(TimerProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
 
@@ -20,7 +22,7 @@ class Timer:
         log.debug("timer {} stop at {}".format(self.name, time.time()))
 
 
-class Gauge:
+class Gauge(GaugeProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
 
