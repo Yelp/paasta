@@ -596,31 +596,27 @@ def execute_paasta_metastatus_on_remote_master(
     )
 
 
-def run_pause_service_autoscaler(master, pause_duration, resume):
-    command = ''
-    if resume:
-        command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo pause_service_autoscaler --resume' % (
-            master,
-        ))
-    else:
-        command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo pause_service_autoscaler --timeout %s' % (
-            master,
-            pause_duration,
-        )).strip()
-    return_code, output = _run(command, timeout=120)
-    return return_code, output
+def get_autoscale_pause_time(cluster):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        return 1
+    pause_time, http = api.pauseAutoscaler.get_autoscaler_pause().result()
+    if http.status_code == 500:
+        return 2
+    pause_time = int(pause_time)
+    return pause_time
 
 
-def execute_pause_service_autoscaler_on_remote_master(cluster, system_paasta_config, pause_duration, resume):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of pause_service_autoscaler().
-    """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (255, str(e))
+def update_autoscale_pause_time(cluster, mins):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        return 1
+    body = {'minutes': mins}
+    res, http = api.pauseAutoscaler.update_autoscaler_pause(json_body=body).result()
+    if http.status_code == 500:
+        return 2
 
-    return run_pause_service_autoscaler(master, str(pause_duration), resume)
+    return 0
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):

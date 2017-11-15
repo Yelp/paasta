@@ -76,6 +76,8 @@ def make_app(global_config=None):
     config.add_route('service.list', '/v1/services/{service}')
     config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
+    config.add_route('pause_autoscaler.post', '/v1/pauseAutoscaler', request_method="POST")
+    config.add_route('pause_autoscaler.get', '/v1/pauseAutoscaler', request_method="GET")
     config.add_route('version', '/v1/version')
     config.scan()
     return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")

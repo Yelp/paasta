@@ -20,23 +20,18 @@ from paasta_tools.cli.cmds.pause_autoscaler import paasta_pause_autoscaler
 def test_pause_autoscaler_defaults():
     args = mock.Mock(
         cluster='cluster1',
-        duration=30,
+        duration='30',
         resume=False,
+        info=False,
     )
 
     with mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.execute_pause_service_autoscaler_on_remote_master',
+        'paasta_tools.cli.cmds.pause_autoscaler.update_autoscale_pause_time',
         autospec=True,
-    ) as mock_exc, mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.load_system_paasta_config', autospec=True,
-    ) as mock_config_fn:
-
-        mock_config = mock.Mock()
-        mock_config_fn.return_value = mock_config
-        mock_exc.return_value = (0, '')
-
+    ) as mock_exc:
+        mock_exc.return_value = 0
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 30, False)
+        mock_exc.assert_called_once_with('cluster1', '30')
         assert return_code == 0
 
 
@@ -46,21 +41,15 @@ def test_pause_autoscaler_long():
         duration=MAX_PAUSE_DURATION + 10,
         force=False,
         resume=False,
+        info=False,
     )
 
     with mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.execute_pause_service_autoscaler_on_remote_master',
+        'paasta_tools.cli.cmds.pause_autoscaler.update_autoscale_pause_time',
         autospec=True,
-    ) as mock_exc, mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.load_system_paasta_config', autospec=True,
-    ) as mock_config_fn:
-
-        mock_config = mock.Mock()
-        mock_config_fn.return_value = mock_config
-        mock_exc.return_value = (0, '')
-
+    ):
         return_code = paasta_pause_autoscaler(args)
-        assert return_code == 2
+        assert return_code == 3
 
 
 def test_pause_autoscaler_resume():
@@ -69,43 +58,64 @@ def test_pause_autoscaler_resume():
         duration=120,
         force=False,
         resume=True,
+        info=False,
     )
 
     with mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.execute_pause_service_autoscaler_on_remote_master',
+        'paasta_tools.cli.cmds.pause_autoscaler.update_autoscale_pause_time',
         autospec=True,
-    ) as mock_exc, mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.load_system_paasta_config', autospec=True,
-    ) as mock_config_fn:
-
-        mock_config = mock.Mock()
-        mock_config_fn.return_value = mock_config
-        mock_exc.return_value = (0, '')
-
+    ) as mock_exc:
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 120, True)
+        mock_exc.assert_called_once_with('cluster1', '0')
         assert return_code == 0
 
 
 def test_pause_autoscaler_force():
     args = mock.Mock(
         cluster='cluster1',
-        duration=MAX_PAUSE_DURATION + 10,
+        duration=str(MAX_PAUSE_DURATION + 10),
         force=True,
         resume=False,
+        info=False,
     )
 
     with mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.execute_pause_service_autoscaler_on_remote_master',
+        'paasta_tools.cli.cmds.pause_autoscaler.update_autoscale_pause_time',
+        autospec=True,
+    ) as mock_exc:
+        return_code = paasta_pause_autoscaler(args)
+        assert return_code == 0
+        mock_exc.assert_called_once_with('cluster1', '330')
+
+
+def test_pause_autoscaler_info():
+    args = mock.Mock(
+        cluster='cluster1',
+        duration='30',
+        force=False,
+        resume=False,
+        info=True,
+    )
+
+    with mock.patch(
+        'paasta_tools.cli.cmds.pause_autoscaler.get_autoscale_pause_time',
         autospec=True,
     ) as mock_exc, mock.patch(
-        'paasta_tools.cli.cmds.pause_autoscaler.load_system_paasta_config', autospec=True,
-    ) as mock_config_fn:
-
-        mock_config = mock.Mock()
-        mock_config_fn.return_value = mock_config
-        mock_exc.return_value = (0, '')
-
+        'paasta_tools.cli.cmds.pause_autoscaler.time',
+        autospec=True,
+    ) as mock_time, mock.patch(
+        'paasta_tools.cli.cmds.pause_autoscaler.paasta_print',
+        autospec=True,
+    ) as mock_print:
+        mock_exc.return_value = 3
+        mock_time.time.return_value = 6
         return_code = paasta_pause_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', mock_config, 330, False)
+        mock_exc.assert_called_once_with('cluster1')
+        mock_print.assert_called_once_with('Autoscaler is not paused')
+        assert return_code == 0
+
+        mock_exc.return_value = 3
+        mock_time.time.return_value = 0
+        return_code = paasta_pause_autoscaler(args)
+        mock_print.assert_called_with('Autoscaler is paused until 00:00:03 1970-01-01')
         assert return_code == 0

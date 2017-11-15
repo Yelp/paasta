@@ -29,6 +29,49 @@
         "operationId": "showVersion"
       }
     },
+    "/pauseAutoscaler": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "The time until which the autoscaler is paused for",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "summary": "Get autoscaling pause time",
+        "operationId": "get_autoscaler_pause"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Autoscaler successfully paused"
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "operationId": "update_autoscaler_pause",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "json_body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "minutes": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "/resources/utilization": {
       "get": {
         "responses": {

@@ -12,8 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paasta_tools.cli.utils import execute_pause_service_autoscaler_on_remote_master
-from paasta_tools.utils import load_system_paasta_config
+import time
+from datetime import datetime
+
+from paasta_tools.cli.utils import get_autoscale_pause_time
+from paasta_tools.cli.utils import update_autoscale_pause_time
 from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
@@ -35,16 +38,22 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-d', '--pause-duration',
-        default=120,
+        default='120',
         dest="duration",
-        type=int,
-        help="How long to pause the autoscaler for, defaults to 30 minutes",
+        help="How long to pause the autoscaler for, defaults to 120 minutes",
     )
     status_parser.add_argument(
         '-f', '--force',
         help='Force pause for longer than max duration',
         action='store_true',
         dest='force',
+        default=False,
+    )
+    status_parser.add_argument(
+        '-i', '--info',
+        help='Print when the autoscaler is paused until',
+        action='store_true',
+        dest='info',
         default=False,
     )
     status_parser.add_argument(
@@ -61,24 +70,39 @@ def add_subparser(subparsers):
 def paasta_pause_autoscaler(args):
     """With a given cluster and duration, pauses the paasta service autoscaler
        in that cluster for duration minutes"""
-    if args.duration > MAX_PAUSE_DURATION:
+    if int(args.duration) > MAX_PAUSE_DURATION:
         if not args.force:
             paasta_print('Specified duration: {d} longer than max: {m}'.format(
-                d=str(args.duration),
+                d=args.duration,
                 m=MAX_PAUSE_DURATION,
             ))
             paasta_print('If you are really sure, run again with --force')
-            return 2
+            return 3
 
-    return_code, output = execute_pause_service_autoscaler_on_remote_master(
-        cluster=args.cluster,
-        system_paasta_config=load_system_paasta_config(),
-        pause_duration=args.duration,
-        resume=args.resume,
-    )
+    minutes = args.duration
+    retval = 0
+    if args.resume:
+        minutes = '0'
 
-    paasta_print("Cluster: %s" % args.cluster)
-    paasta_print(output)
-    paasta_print()
+    if args.info:
+        retval = get_autoscale_pause_time(args.cluster)
+    else:
+        retval = update_autoscale_pause_time(args.cluster, minutes)
 
-    return return_code
+    if retval == 1:
+        paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
+        return 1
+    elif retval == 2:
+        paasta_print('Could not connect to zookeeper server')
+        return 2
+
+    elif args.info:
+        if retval < time.time():
+            paasta_print('Autoscaler is not paused')
+            return 0
+        else:
+            paused_readable = datetime.fromtimestamp(retval).strftime('%H:%M:%S %Y-%m-%d')
+            paasta_print('Autoscaler is paused until {}'.format(paused_readable))
+            return 0
+
+    return 0

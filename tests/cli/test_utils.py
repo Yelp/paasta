@@ -229,6 +229,52 @@ def test_run_paasta_metastatus(mock_run):
     assert actual == mock_run.return_value[1]
 
 
+@patch('paasta_tools.cli.utils.client', autospec=True)
+def test_get_autoscale_pause_time(mock_client):
+    mock_client.get_paasta_api_client.return_value = None
+    return_code = utils.get_autoscale_pause_time('cluster1')
+    assert return_code == 1
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+
+    mock_api = mock.Mock()
+    mock_client.get_paasta_api_client.return_value = mock_api
+    mock_http_result = mock.Mock(status_code=500)
+    mock_result = mock.Mock(return_value=(None, mock_http_result))
+    mock_api.pauseAutoscaler.get_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    return_code = utils.get_autoscale_pause_time('cluster1')
+    assert return_code == 2
+
+    mock_http_result = mock.Mock(status_code=200)
+    mock_result = mock.Mock(return_value=('1234', mock_http_result))
+    mock_api.pauseAutoscaler.get_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    return_code = utils.get_autoscale_pause_time('cluster1')
+    assert return_code == 1234
+
+
+@patch('paasta_tools.cli.utils.client', autospec=True)
+def test_update_autoscale_pause_time(mock_client):
+    mock_client.get_paasta_api_client.return_value = None
+    return_code = utils.update_autoscale_pause_time('cluster1', '2')
+    assert return_code == 1
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+
+    mock_api = mock.Mock()
+    mock_client.get_paasta_api_client.return_value = mock_api
+    mock_http_result = mock.Mock(status_code=500)
+    mock_result = mock.Mock(return_value=(None, mock_http_result))
+    update_mock = mock.Mock(return_value=mock.Mock(result=mock_result))
+    mock_api.pauseAutoscaler.update_autoscaler_pause = update_mock
+    return_code = utils.update_autoscale_pause_time('cluster1', '3')
+    update_mock.assert_called_once_with(json_body={'minutes': '3'})
+    assert return_code == 2
+
+    mock_http_result = mock.Mock(status_code=200)
+    mock_result = mock.Mock(return_value=(None, mock_http_result))
+    mock_api.pauseAutoscaler.update_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    return_code = utils.update_autoscale_pause_time('cluster1', '2')
+    assert return_code == 0
+
+
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')
@@ -245,26 +291,6 @@ def test_run_paasta_metastatus_very_verbose(mock_run):
     return_code, actual = utils.run_paasta_metastatus('fake_master', False, [], 2, False)
     expected_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -vv'
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert return_code == 0
-    assert actual == mock_run.return_value[1]
-
-
-@patch('paasta_tools.cli.utils._run', autospec=True)
-def test_run_pause_service_autoscaler(mock_run):
-    mock_run.return_value = (0, 'fake_output')
-    exp_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo pause_service_autoscaler --timeout 120'
-    return_code, actual = utils.run_pause_service_autoscaler('fake_master', '120', False)
-    mock_run.assert_called_once_with(exp_command, timeout=120)
-    assert return_code == 0
-    assert actual == mock_run.return_value[1]
-
-
-@patch('paasta_tools.cli.utils._run', autospec=True)
-def test_run_pause_service_autoscaler_resume(mock_run):
-    mock_run.return_value = (0, 'fake_output')
-    exp_command = 'ssh -A -n -o StrictHostKeyChecking=no fake_master sudo pause_service_autoscaler --resume'
-    return_code, actual = utils.run_pause_service_autoscaler('fake_master', '120', True)
-    mock_run.assert_called_once_with(exp_command, timeout=120)
     assert return_code == 0
     assert actual == mock_run.return_value[1]
 
