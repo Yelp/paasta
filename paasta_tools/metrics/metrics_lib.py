@@ -1,5 +1,6 @@
 import logging
-import time
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -34,15 +35,22 @@ class GaugeProtocol(Protocol):
         ...
 
 
-class BaseMetrics(Protocol):
+class BaseMetrics(ABC):
     def __init__(self, base_name: str) -> None:
         self.base_name = base_name
 
+    @abstractmethod
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
-        raise NotImplementedError()
+        ...
+
+
+def get_metrics_interface(base_name: str) -> BaseMetrics:
+    metrics_provider = load_system_paasta_config().get_metrics_provider()
+    return _metrics_interfaces[metrics_provider](base_name)
 
 
 def register_metrics_interface(name: Optional[str]) -> Callable[[Type[BaseMetrics]], Type[BaseMetrics]]:
@@ -52,39 +60,8 @@ def register_metrics_interface(name: Optional[str]) -> Callable[[Type[BaseMetric
     return outer
 
 
-class Timer:
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    def start(self) -> None:
-        log.debug("timer {} start at {}".format(self.name, time.time()))
-
-    def stop(self) -> None:
-        log.debug("timer {} stop at {}".format(self.name, time.time()))
-
-
-class Gauge:
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    def set(self, value: Union[int, float]) -> None:
-        log.debug("gauge {} set to {}".format(self.name, value))
-
-
-@register_metrics_interface(None)
-class NoMetrics:
-    def __init__(self, base_name: str) -> None:
-        self.base_name = base_name
-
-    def create_timer(self, name: str, **kwargs: Any) -> Timer:
-        return Timer(self.base_name + '.' + name)
-
-    def create_gauge(self, name: str, **kwargs: Any) -> Gauge:
-        return Gauge(self.base_name + '.' + name)
-
-
 @register_metrics_interface('meteorite')
-class MeteoriteMetrics:
+class MeteoriteMetrics(BaseMetrics):
     def __init__(self, base_name: str) -> None:
         self.base_name = base_name
         if yelp_meteorite is None:
@@ -95,8 +72,3 @@ class MeteoriteMetrics:
 
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
         return yelp_meteorite.create_gauge(self.base_name + '.' + name, kwargs)
-
-
-def get_metrics_interface(base_name: str) -> BaseMetrics:
-    metrics_provider = load_system_paasta_config().get_metrics_provider()
-    return _metrics_interfaces[metrics_provider](base_name)
