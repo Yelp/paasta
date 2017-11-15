@@ -67,11 +67,6 @@ class TestMarathonTools:
         'vip': None,
     }
     fake_docker_registry = 'remote_registry.com'
-    fake_marathon_config = marathon_tools.MarathonConfig({
-        'url': ['http://test_url'],
-        'user': 'admin',
-        'password': 'admin_pass',
-    })
     fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     def test_load_marathon_service_config_happy_path(self):

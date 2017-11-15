@@ -43,7 +43,6 @@ def _get_zookeeper_connection_string(chroot):
 
 
 def setup_system_paasta_config():
-    marathon_connection_string = _get_marathon_connection_string()
     zk_connection_string = _get_zookeeper_connection_string('mesos-testcluster')
     chronos_connection_string = _get_chronos_connection_string()
     system_paasta_config = utils.SystemPaastaConfig(
@@ -54,11 +53,6 @@ def setup_system_paasta_config():
             'docker_registry': 'docker-dev.yelpcorp.com',
             'zookeeper': zk_connection_string,
             'synapse_port': 3212,
-            'marathon_config': {
-                'url': marathon_connection_string,
-                'user': None,
-                'password': None,
-            },
             'marathon_servers': [
                 # if you're updating this list, you should update
                 # paasta_tools/yelp_package/dockerfiles/itest/api/marathon.json as well
