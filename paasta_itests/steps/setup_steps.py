@@ -88,16 +88,6 @@ def setup_system_paasta_config():
     return system_paasta_config
 
 
-def setup_marathon_client():
-    system_paasta_config = setup_system_paasta_config()
-    marathon_config = marathon_tools.MarathonConfig(system_paasta_config.get_marathon_config())
-    client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(), marathon_config.get_username(),
-        marathon_config.get_password(),
-    )
-    return (client, marathon_config, system_paasta_config)
-
-
 def setup_marathon_clients():
     system_paasta_config = setup_system_paasta_config()
     marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)

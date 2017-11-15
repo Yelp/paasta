@@ -1074,8 +1074,6 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     fake_cluster = 'fake_cluster'
     soa_dir = 'fake_soa_dir'
     with mock.patch(
-        'paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True,
-    ), mock.patch(
         'paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True,
         return_value=mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
     ), mock.patch(
