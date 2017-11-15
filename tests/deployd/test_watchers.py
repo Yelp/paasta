@@ -494,17 +494,32 @@ class TestYelpSoaEventHandler(unittest.TestCase):
     def test_log(self):
         self.handler.log.info('WHAAAAAT')
 
-    def test_filter_event(self):
+    def test_get_service_name_from_event(self):
         mock_event = mock.Mock()
         name = mock.PropertyMock(return_value='marathon-cluster.yaml')
         type(mock_event).name = name
-        assert mock_event == self.handler.filter_event(mock_event)
+        mock_event.path = '/blah/test-service'
+        assert "test-service" == self.handler.get_service_name_from_event(mock_event)
+
         name = mock.PropertyMock(return_value='deployments.json')
         type(mock_event).name = name
-        assert mock_event == self.handler.filter_event(mock_event)
+        mock_event.path = '/blah/test-service'
+        assert "test-service" == self.handler.get_service_name_from_event(mock_event)
+
+        name = mock.PropertyMock(return_value='test-secret.json')
+        type(mock_event).name = name
+        mock_event.path = '/blah/test-service/secrets'
+        assert "test-service" == self.handler.get_service_name_from_event(mock_event)
+
+        name = mock.PropertyMock(return_value='something.json')
+        type(mock_event).name = name
+        mock_event.path = '/blah/test-service'
+        assert self.handler.get_service_name_from_event(mock_event) is None
+
         name = mock.PropertyMock(return_value='another.file')
         type(mock_event).name = name
-        assert self.handler.filter_event(mock_event) is None
+        mock_event.path = '/nail/blah/test-ervice'
+        assert self.handler.get_service_name_from_event(mock_event) is None
 
     def test_watch_new_folder(self):
         with mock.patch(
@@ -537,17 +552,24 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
     def test_process_default(self):
         mock_event = mock.Mock(path='/folder/universe')
+        type(mock_event).name = 'marathon-blah.yaml'
         with mock.patch(
             'paasta_tools.deployd.watchers.YelpSoaEventHandler.bounce_service', autospec=True,
         ) as mock_bounce_service, mock.patch(
             'paasta_tools.deployd.watchers.YelpSoaEventHandler.watch_new_folder', autospec=True,
         ) as mock_watch_folder, mock.patch(
-            'paasta_tools.deployd.watchers.YelpSoaEventHandler.filter_event', autospec=True,
-        ) as mock_filter_event:
-            mock_filter_event.return_value = mock_event
+            'paasta_tools.deployd.watchers.YelpSoaEventHandler.get_service_name_from_event', autospec=True,
+        ) as mock_get_service_name_from_event:
+            mock_get_service_name_from_event.return_value = None
             self.handler.process_default(mock_event)
             mock_watch_folder.assert_called_with(self.handler, mock_event)
-            mock_filter_event.assert_called_with(self.handler, mock_event)
+            mock_get_service_name_from_event.assert_called_with(self.handler, mock_event)
+            assert not mock_bounce_service.called
+
+            mock_get_service_name_from_event.return_value = 'universe'
+            self.handler.process_default(mock_event)
+            mock_watch_folder.assert_called_with(self.handler, mock_event)
+            mock_get_service_name_from_event.assert_called_with(self.handler, mock_event)
             mock_bounce_service.assert_called_with(self.handler, 'universe')
 
     def test_bounce_service(self):

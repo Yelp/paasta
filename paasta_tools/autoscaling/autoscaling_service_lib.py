@@ -37,10 +37,11 @@ from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import get_marathon_apps_with_clients
+from paasta_tools.marathon_tools import get_marathon_clients
+from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
-from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import get_all_running_tasks
@@ -492,21 +493,15 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
         return 0.0
 
 
-def get_autoscaling_info(marathon_client, service, instance, cluster, soa_dir):
-    service_config = load_marathon_service_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-    )
+def get_autoscaling_info(marathon_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
+        apps_with_clients = get_marathon_apps_with_clients(marathon_clients, embed_tasks=True)
+        all_mesos_tasks = get_all_running_tasks()
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         try:
             marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
-                marathon_client,
-                all_marathon_tasks,
+                [app for (app, client) in apps_with_clients],
                 all_mesos_tasks,
                 service_config,
             )
@@ -704,22 +699,19 @@ def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     try:
         with create_autoscaling_lock():
-            cluster = load_system_paasta_config().get_cluster()
+            system_paasta_config = load_system_paasta_config()
+            cluster = system_paasta_config.get_cluster()
             configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
-            marathon_config = load_marathon_config()
-            marathon_client = get_marathon_client(
-                url=marathon_config.get_url(),
-                user=marathon_config.get_username(),
-                passwd=marathon_config.get_password(),
-            )
-            all_marathon_tasks, all_mesos_tasks = get_all_marathon_mesos_tasks(marathon_client)
+
+            marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
+            apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
+            all_mesos_tasks = get_all_running_tasks()
             if configs:
                 with ZookeeperPool():
                     for config in configs:
                         try:
                             marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
-                                marathon_client,
-                                all_marathon_tasks,
+                                [app for (app, client) in apps_with_clients],
                                 all_mesos_tasks,
                                 config,
                             )
@@ -730,13 +722,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
         log.warning("Skipping autoscaling run for services because the lock is held")
 
 
-def get_all_marathon_mesos_tasks(marathon_client):
-    all_marathon_tasks = marathon_client.list_tasks()
-    all_mesos_tasks = get_all_running_tasks()
-    return all_marathon_tasks, all_mesos_tasks
-
-
-def filter_autoscaling_tasks(marathon_client, all_marathon_tasks, all_mesos_tasks, config):
+def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
     job_id_prefix = "%s%s" % (format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
 
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
@@ -745,11 +731,16 @@ def filter_autoscaling_tasks(marathon_client, all_marathon_tasks, all_mesos_task
     # assume that marathon has screwed up and stopped healthchecking but that
     # they are healthy
     log.info("Inspecting %s for autoscaling" % job_id_prefix)
-    marathon_tasks = {task.id: task for task in all_marathon_tasks
-                      if task.id.startswith(job_id_prefix) and
-                      (is_task_healthy(task) or not
-                       marathon_client.get_app(task.app_id).health_checks or
-                       is_old_task_missing_healthchecks(task, marathon_client))}
+    marathon_tasks = {}
+    for app in marathon_apps:
+        for task in app.tasks:
+            if task.id.startswith(job_id_prefix) and (
+                is_task_healthy(task) or not
+                app.health_checks or
+                is_old_task_missing_healthchecks(task, app)
+            ):
+                marathon_tasks[task.id] = task
+
     if not marathon_tasks:
         raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
     mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]

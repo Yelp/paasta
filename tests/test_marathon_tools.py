@@ -25,10 +25,13 @@ from pytest import raises
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
-from paasta_tools.marathon_tools import MarathonServiceConfigDict
+from paasta_tools.marathon_tools import FormattedMarathonAppDict  # noqa, imported for typing.
+from paasta_tools.marathon_tools import MarathonContainerInfo  # noqa, imported for typing.
+from paasta_tools.marathon_tools import MarathonServiceConfigDict  # noqa, imported for typing.
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import SystemPaastaConfig
@@ -1714,6 +1717,101 @@ class TestMarathonServiceConfig(object):
         )
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
+    def test_sanitize_for_config_hash(self):
+        with mock.patch(
+            'paasta_tools.marathon_tools.MarathonServiceConfig.format_docker_parameters', autospec=True,
+        ) as mock_format_docker_parameters, mock.patch(
+            'paasta_tools.marathon_tools.MarathonServiceConfig.get_secret_hashes', autospec=True,
+        ) as mock_get_secret_hashes:
+            mock_get_secret_hashes.return_value = {}
+            mock_system_config = mock.Mock()
+            marathon_conf: MarathonServiceConfigDict = {
+                'env': {'SOME_VAR': 'SOME_VAL'},
+                'instances': 1,
+            }
+            container_dict: MarathonContainerInfo = {
+                'docker': {
+                    'parameters': None,
+                    'image': 'blah',
+                    'network': 'blah',
+                    'portMappings': [],
+                },
+                'type': 'blah',
+                'volumes': [],
+            }
+            f_marathon_conf: FormattedMarathonAppDict = {
+                'env': {'SOME_VAR': 'SOME_VAL'},
+                'container': container_dict,
+                'instances': 1,
+            }
+            marathon_config = marathon_tools.MarathonServiceConfig(
+                service='service',
+                cluster='cluster',
+                instance='instance',
+                config_dict=marathon_conf,
+                branch_dict={},
+            )
+            expected = {
+                'env': {'SOME_VAR': 'SOME_VAL'},
+                'container': {
+                    'docker': {
+                        'parameters': mock_format_docker_parameters.return_value,
+                        'image': 'blah',
+                        'network': 'blah',
+                        'portMappings': [],
+                    },
+                    'type': 'blah',
+                    'volumes': [],
+                },
+            }
+            assert marathon_config.sanitize_for_config_hash(f_marathon_conf, mock_system_config) == expected
+
+            mock_get_secret_hashes.return_value = {'some': 'thing'}
+            expected = {
+                'env': {'SOME_VAR': 'SOME_VAL'},
+                'container': {
+                    'docker': {
+                        'parameters': mock_format_docker_parameters.return_value,
+                        'image': 'blah',
+                        'network': 'blah',
+                        'portMappings': [],
+                    },
+                    'type': 'blah',
+                    'volumes': [],
+                },
+                'paasta_secrets': {'some': 'thing'},
+            }
+            assert marathon_config.sanitize_for_config_hash(f_marathon_conf, mock_system_config) == expected
+
+    def test_get_secret_hashes(self):
+        with mock.patch(
+            'paasta_tools.marathon_tools.is_secret_ref', autospec=True, return_value=False,
+        ) as mock_is_secret_ref, mock.patch(
+            'paasta_tools.marathon_tools.get_hmac_for_secret', autospec=True,
+        ) as mock_get_hmac_for_secret:
+            conf: MarathonServiceConfigDict = {'env': {'SOME_VAR': 'SOME_VAL'}}
+            marathon_config = marathon_tools.MarathonServiceConfig(
+                service='service',
+                cluster='cluster',
+                instance='instance',
+                config_dict=conf,
+                branch_dict={},
+            )
+            assert marathon_config.get_secret_hashes(conf['env'], 'dev') == {}
+            mock_is_secret_ref.assert_called_with("SOME_VAL")
+            assert not mock_get_hmac_for_secret.called
+
+            mock_is_secret_ref.return_value = True
+            expected = {"SOME_VAL": mock_get_hmac_for_secret.return_value}
+            assert marathon_config.get_secret_hashes(conf['env'], 'dev') == expected
+            mock_is_secret_ref.assert_called_with("SOME_VAL")
+            mock_get_hmac_for_secret.assert_called_with(
+                env_var_val="SOME_VAL",
+                service="service",
+                soa_dir=DEFAULT_SOA_DIR,
+                vault_environment='dev',
+            )
+
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -2475,42 +2573,38 @@ def test_is_old_task_missing_healthchecks():
         interval_seconds=10,
     )
     mock_marathon_app = mock.Mock(health_checks=[mock_health_check])
-    mock_get_app = mock.Mock(return_value=mock_marathon_app)
-    mock_marathon_client = mock.Mock(get_app=mock_get_app)
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=datetime.datetime(year=1990, month=1, day=1),
     )
 
     # test old task missing hcrs
-    assert marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test new task missing hcrs
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=datetime.datetime.now(),
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test new task with hcrs
     mock_task = mock.Mock(
         health_check_results=["SOMERESULTS"],
         started_at=datetime.datetime.now(),
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test missing started at time
     mock_task = mock.Mock(
         health_check_results=[],
         started_at=None,
     )
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
     # test no health checks
     mock_marathon_app = mock.Mock(health_checks=[])
-    mock_get_app = mock.Mock(return_value=mock_marathon_app)
-    mock_marathon_client = mock.Mock(get_app=mock_get_app)
-    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_client)
+    assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
 
 
 def test_kill_given_tasks():

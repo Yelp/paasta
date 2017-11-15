@@ -128,16 +128,17 @@ def marathon_job_status(mstatus, client, job_config, verbose):
 
 def marathon_instance_status(instance_status, service, instance, verbose):
     mstatus = {}
-    apps = marathon_tools.get_matching_appids(service, instance, settings.marathon_client)
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir,
     )
+    client = settings.marathon_clients.get_current_client_for_service(job_config)
+    apps = marathon_tools.get_matching_appids(service, instance, client)
 
     # bouncing status can be inferred from app_count, ref get_bouncing_status
     mstatus['app_count'] = len(apps)
     mstatus['desired_state'] = job_config.get_desired_state()
     mstatus['bounce_method'] = job_config.get_bounce_method()
-    marathon_job_status(mstatus, settings.marathon_client, job_config, verbose)
+    marathon_job_status(mstatus, client, job_config, verbose)
     return mstatus
 
 
@@ -225,10 +226,10 @@ def instance_tasks(request):
 def instance_delay(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    client = settings.marathon_client
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir,
     )
+    client = settings.marathon_clients.get_current_client_for_service(job_config)
     app_id = job_config.format_marathon_app_dict()['id']
     app_queue = marathon_tools.get_app_queue(client, app_id)
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)

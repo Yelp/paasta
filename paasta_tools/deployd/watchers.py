@@ -284,10 +284,19 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         name = '.'.join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
-    def filter_event(self, event):
+    def get_service_name_from_event(self, event):
+        """Get service_name from the file inotify event,
+        returns None if it is not an event we're interested in"""
         starts_with = ['marathon-', 'deployments.json']
         if any([event.name.startswith(x) for x in starts_with]):
-            return event
+            service_name = event.path.split('/')[-1]
+        elif event.name.endswith('.json') and event.path.split('/')[-1] == 'secrets':
+            # this is needed because we put the secrets json files in a
+            # subdirectory so the service name would be "secrets" otherwise
+            service_name = event.path.split('/')[-2]
+        else:
+            service_name = None
+        return service_name
 
     def watch_new_folder(self, event):
         if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
@@ -303,10 +312,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
     def process_default(self, event):
         self.log.debug(event)
         self.watch_new_folder(event)
-        event = self.filter_event(event)
-        if event:
+        service_name = self.get_service_name_from_event(event)
+        if service_name:
             self.log.info("Change of {} in {}".format(event.name, event.path))
-            service_name = event.path.split('/')[-1]
             self.bounce_service(service_name)
 
     def bounce_service(self, service_name):

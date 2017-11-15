@@ -27,13 +27,20 @@ from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
 
 @when('we run the marathon app "{job_id}" with "{instances:d}" instances')
 def run_marathon_app(context, job_id, instances):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
+    job_config = marathon_tools.load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=load_system_paasta_config().get_cluster(),
+        soa_dir=context.soa_dir,
+    )
+    app_id = job_config.format_marathon_app_dict()['id']
     app_config = {
         'id': app_id,
         'cmd': '/bin/sleep 1m',
@@ -47,14 +54,24 @@ def run_marathon_app(context, job_id, instances):
         'instances': instances,
         'constraints': [["hostname", "UNIQUE"]],
     }
-    paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_clients.current[0])
+    paasta_tools.bounce_lib.create_marathon_app(
+        app_id=app_id,
+        config=app_config,
+        client=context.marathon_clients.get_current_client_for_service(job_config),
+    )
 
 
 @then('marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
 def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
+    job_config = marathon_tools.load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=load_system_paasta_config().get_cluster(),
+        soa_dir=context.soa_dir,
+    )
+    app_id = job_config.format_marathon_app_dict()['id']
 
     with requests_cache.disabled():
         output = marathon_serviceinit.status_marathon_job(
@@ -62,7 +79,7 @@ def status_marathon_job(context, status, job_id):
             instance,
             app_id,
             normal_instance_count,
-            context.marathon_clients.current[0],
+            context.marathon_clients.get_current_client_for_service(job_config),
         )
     assert status in output
 
@@ -264,8 +281,14 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
 @when('we wait for "{job_id}" to launch exactly {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
-    client = context.marathon_clients.current[0]
+    job_config = marathon_tools.load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=load_system_paasta_config().get_cluster(),
+        soa_dir=context.soa_dir,
+    )
+    app_id = job_config.format_marathon_app_dict()['id']
+    client = context.marathon_clients.get_current_client_for_service(job_config)
     itest_utils.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
 
 

@@ -65,6 +65,7 @@ Submodules
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
+   paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
    paasta_tools.setup_marathon_job
    paasta_tools.smartstack_tools

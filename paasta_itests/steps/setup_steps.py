@@ -60,6 +60,8 @@ def setup_system_paasta_config():
                 'password': None,
             },
             'marathon_servers': [
+                # if you're updating this list, you should update
+                # paasta_tools/yelp_package/dockerfiles/itest/api/marathon.json as well
                 {
                     'url': _get_marathon_connection_string('marathon'),
                     'user': None,
@@ -203,6 +205,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         context, {
             "cluster": "testcluster",
             "zookeeper": "zk://zookeeper/mesos-testcluster",
+            "vault_environment": 'devc',
             "docker_registry": docker_registry,
         }, 'cluster.json',
     )

@@ -44,14 +44,7 @@ def test_instances_status_marathon(
     }
     mock_validate_service_instance.return_value = 'marathon'
 
-    mock_marathon_config = marathon_tools.MarathonConfig(
-        {'url': 'fake_url', 'user': 'fake_user', 'password': 'fake_password'},
-    )
-    settings.marathon_client = marathon_tools.get_marathon_client(
-        mock_marathon_config.get_url(),
-        mock_marathon_config.get_username(),
-        mock_marathon_config.get_password(),
-    )
+    settings.marathon_clients = mock.Mock()
 
     mock_get_matching_appids.return_value = ['a', 'b']
     mock_service_config = marathon_tools.MarathonServiceConfig(
@@ -275,7 +268,6 @@ def test_instance_delay(mock_load_config, mock_get_app_queue):
     request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
 
     response = instance.instance_delay(request)
-    print(response)
     assert response['foo'] == 1
     assert response['bar'] == 2
     assert response['baz'] == 1

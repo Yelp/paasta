@@ -1,5 +1,6 @@
 import errno
 import fcntl
+import json
 import os
 import time
 from subprocess import PIPE
@@ -10,6 +11,7 @@ from behave import given
 from behave import then
 from itest_utils import get_service_connection_string
 from kazoo.exceptions import NodeExistsError
+from steps.setup_steps import modify_configs
 
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
@@ -132,3 +134,30 @@ def check_sha_changed(context, service_instance):
     service_configuration_lib._yaml_cache = {}
     context.marathon_config = load_marathon_service_config_no_cache(service, instance, context.cluster)
     assert context.app_id != context.marathon_config.format_marathon_app_dict()['id']
+
+
+@given('we have a secret called "{secret_name}" for the service "{service}" with signature "{signature}"')
+def create_secret_json_file(context, secret_name, service, signature):
+    secret = {
+        'environments': {
+            'devc': {
+                'ciphertext': 'ScrambledNonsense',
+                'signature': signature,
+            },
+        },
+    }
+    if not os.path.exists(os.path.join(context.soa_dir, service, "secrets")):
+        os.makedirs(os.path.join(context.soa_dir, service, "secrets"))
+
+    with open(os.path.join(context.soa_dir, service, "secrets", "{}.json".format(secret_name)), "w") as secret_file:
+        json.dump(secret, secret_file)
+
+
+@given(
+    'we set the an environment variable called "{var}" to "{val}" for '
+    'service "{service}" and instance "{instance}" for framework "{framework}"',
+)
+def add_env_var(context, var, val, service, instance, framework):
+    field = 'env'
+    value = {var: val}
+    modify_configs(context, field, framework, service, instance, value)

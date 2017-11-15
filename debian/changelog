@@ -1,3 +1,49 @@
+paasta-tools (0.68.6) xenial; urgency=medium
+
+  * 0.68.6 tagged with 'make release'
+    Commit: Fix silly bug in sharded cluster autoscaler
+
+ -- Evan Krall <krall@yelp.com>  Tue, 14 Nov 2017 11:03:39 -0800
+
+paasta-tools (0.68.6) xenial; urgency=medium
+
+  * 0.68.6 tagged with 'make release'
+    Commit: Fix silly bug in sharded cluster autoscaler
+
+ -- Evan Krall <krall@yelp.com>  Tue, 14 Nov 2017 11:01:29 -0800
+
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:18:04 -0800
+
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:17:39 -0800
+
+paasta-tools (0.68.5) xenial; urgency=medium
+
+  * 0.68.5 tagged with 'make release'
+    Commit: Merge pull request #1618 from Yelp/shard_service_autoscaler
+    Make service autoscaler work with multiple marathon shards.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 Nov 2017 14:17:11 -0800
+
+paasta-tools (0.68.4) xenial; urgency=medium
+
+  * 0.68.4 tagged with 'make release'
+    Commit: Merge pull request #1607 from Yelp/add-secrets-json-bounce-
+    logic  Add bounce logic for json secret files
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 10 Nov 2017 04:26:32 -0800
+
 paasta-tools (0.68.3) xenial; urgency=medium
 
   * 0.68.3 tagged with 'make release'

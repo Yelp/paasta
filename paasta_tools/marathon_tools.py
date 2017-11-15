@@ -18,7 +18,6 @@ make the PaaSTA stack work.
 """
 import copy
 import datetime
-import itertools
 import json
 import logging
 import os
@@ -59,6 +58,8 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.secret_tools import get_hmac_for_secret
+from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.utils import _log
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id
@@ -115,6 +116,10 @@ def rendezvous_hash(
     :param choices: A sequence of arbitrary values. The "winning" value will be returned."""
     max_hash_value = None
     max_hash_choice = None
+
+    if len(choices) == 0:
+        raise ValueError("Must pass at least one choice to rendezvous_hash")
+
     for i, choice in enumerate(choices):
         str_to_hash = MESOS_TASK_SPACER.join([str(i), key, salt])
         hash_value = hash_func(str_to_hash)
@@ -142,7 +147,10 @@ class MarathonClients(object):
         if job_config.get_previous_marathon_shards() is not None:
             return [self.previous[i] for i in job_config.get_previous_marathon_shards()]
         else:
-            return [rendezvous_hash(choices=self.previous, key=service_instance)]
+            try:
+                return [rendezvous_hash(choices=self.previous, key=service_instance)]
+            except ValueError:
+                return []
 
     def get_all_clients_for_service(self, job_config: 'MarathonServiceConfig') -> Sequence[MarathonClient]:
         """Return the set of all clients that a service might have apps on, with no duplicate clients."""
@@ -674,7 +682,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         code_sha = get_code_sha_from_dockerurl(docker_url)
 
         config_hash = get_config_hash(
-            self.sanitize_for_config_hash(complete_config),
+            self.sanitize_for_config_hash(complete_config, system_paasta_config),
             force_bounce=self.get_force_bounce(),
         )
         complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
@@ -682,16 +690,44 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
-    def sanitize_for_config_hash(self, config: FormattedMarathonAppDict) -> Dict[str, Any]:
-        """Removes some data from complete_config to make it suitable for
+    def sanitize_for_config_hash(
+        self,
+        config: FormattedMarathonAppDict,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> Dict[str, Any]:
+        """Removes some data from config to make it suitable for
         calculation of config hash.
+
+        Also adds secret HMACs so that we bounce if secret data has changed.
+        We need this because the reference to the secret is all Marathon gets
+        and this will not change.
 
         :param config: complete_config hash to sanitize
         :returns: sanitized copy of complete_config hash
         """
         ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
         ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)  # type: ignore
+        secret_hashes = self.get_secret_hashes(config['env'], system_paasta_config.get_vault_environment())
+        if secret_hashes:
+            ahash['paasta_secrets'] = secret_hashes
         return ahash
+
+    def get_secret_hashes(
+        self,
+        env: Dict[str, str],
+        vault_environment: str,
+    ) -> Dict[str, str]:
+
+        secret_hashes = {}
+        for _, env_var_val in env.items():
+            if is_secret_ref(env_var_val):
+                secret_hashes[env_var_val] = get_hmac_for_secret(
+                    env_var_val=env_var_val,
+                    service=self.service,
+                    soa_dir=self.soa_dir,
+                    vault_environment=vault_environment,
+                )
+        return secret_hashes
 
     def get_healthchecks(
         self,
@@ -897,11 +933,7 @@ def get_list_of_marathon_clients(
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config)
-    marathon_clients = get_marathon_clients(marathon_servers, cached=cached)
-    return [c for c in itertools.chain(
-        marathon_clients.current,
-        marathon_clients.previous,
-    )]
+    return get_marathon_clients(marathon_servers, cached=cached).get_all_clients()
 
 
 def format_job_id(service: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None) -> str:
@@ -1426,13 +1458,13 @@ def is_task_healthy(task: MarathonTask, require_all: bool=True, default_healthy:
     return default_healthy
 
 
-def is_old_task_missing_healthchecks(task: MarathonTask, marathon_client: MarathonClient) -> bool:
+def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bool:
     """We check this because versions of Marathon (at least up to 1.1)
     sometimes stop healthchecking tasks, leaving no results. We can normally
     assume that an "old" task which has no healthcheck results is still up
     and healthy but marathon has simply decided to stop healthchecking it.
     """
-    health_checks = marathon_client.get_app(task.app_id).health_checks
+    health_checks = app.health_checks
     if not task.health_check_results and health_checks and task.started_at:
         healthcheck_startup_time = datetime.timedelta(seconds=health_checks[0].grace_period_seconds) + \
             datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)
