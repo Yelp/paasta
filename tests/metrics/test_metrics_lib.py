@@ -4,13 +4,12 @@ import mock
 from py.test import raises
 
 from paasta_tools.metrics import metrics_lib
-from paasta_tools.metrics import noop_metrics
 
 
 class TestNoMetrics(unittest.TestCase):
 
     def setUp(self):
-        self.metrics = noop_metrics.NoMetrics('paasta.deployd')
+        self.metrics = metrics_lib.NoMetrics('paasta.deployd')
 
     def test_timer(self):
         timer = self.metrics.create_timer('name', dimension='thing')
