@@ -511,7 +511,7 @@ def test_autoscale_marathon_instance():
         meteorite_dims = {
             'service_name': 'fake-service',
             'paasta_cluster': 'fake-cluster',
-            'decision_policy': 'pid',
+            'decision_policy': 'proportional',
             'instance_name': 'fake-instance',
         }
         mock_meteorite.create_gauge.assert_called_once_with('paasta.service.autoscaler', meteorite_dims)
