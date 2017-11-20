@@ -45,6 +45,7 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import get_resource_utilization_by_grouping
+from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import Timeout
@@ -139,11 +140,7 @@ class ClusterAutoscaler(object):
         self.sfr: Optional[Dict[str, Any]] = None
         self.enable_metrics = enable_metrics
 
-        if yelp_meteorite is not None:
-            self.setup_metrics()
-
-        if yelp_meteorite is not None:
-            self.setup_metrics()
+        self.setup_metrics()
 
     @property
     def log(self) -> logging.Logger:
@@ -151,25 +148,24 @@ class ClusterAutoscaler(object):
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
 
-    def _make_gauge(self, name: str) -> 'yelp_meteorite.metrics.Gauge':
-        return yelp_meteorite.create_gauge(
-            'paasta.autoscaling.cluster.{}'.format(name),
-            paasta_cluster=load_system_paasta_config().get_cluster(),
-            region=self.resource.get('region', 'unknown'),
-            pool=self.resource.get('pool', 'unknown'),
-            resource_id=self.resource.get('id', 'unknown'),
-            resource_type=self.__class__.__name__,
-        )
-
     def setup_metrics(self) -> None:
-        if yelp_meteorite is None or not self.enable_metrics:
+        if not self.enable_metrics:
             return None
-        self.target_gauge = self._make_gauge('target_capacity')
-        self.current_gauge = self._make_gauge('current_capacity')
-        self.ideal_gauge = self._make_gauge('ideal_capacity')
-        self.max_gauge = self._make_gauge('max_capacity')
-        self.min_gauge = self._make_gauge('min_capacity')
-        self.mesos_error_gauge = self._make_gauge('mesos_error')
+        config = load_system_paasta_config()
+        dims = {
+            'paasta_cluster': config.get_cluster(),
+            'region': self.resource.get('region', 'unknown'),
+            'pool': self.resource.get('pool', 'unknown'),
+            'resource_id': self.resource.get('id', 'unknown'),
+            'resource_type': self.__class__.__name__,
+        }
+        self.metrics = get_metrics_interface('cluster_autoscaler')
+        self.target_gauge = self.metrics.create_gauge('target_capacity', **dims)
+        self.current_gauge = self.metrics.create_gauge('current_capacity', **dims)
+        self.ideal_gauge = self.metrics.create_gauge('ideal_capacity', **dims)
+        self.max_gauge = self.metrics.create_gauge('max_capacity', **dims)
+        self.min_gauge = self.metrics.create_gauge('min_capacity', **dims)
+        self.mesos_error_gauge = self.metrics.create_gauge('mesos_error', **dims)
 
     def emit_metrics(
         self,
@@ -177,7 +173,7 @@ class ClusterAutoscaler(object):
         target: float,
         ideal: float,
     ) -> None:
-        if yelp_meteorite is None or not self.enable_metrics:
+        if not self.enable_metrics:
             return None
         self.current_gauge.set(current)
         self.target_gauge.set(target)
