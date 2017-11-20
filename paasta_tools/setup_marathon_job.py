@@ -599,6 +599,7 @@ def deploy_service(
         marathon_tools.take_up_slack(app=a, client=c)
 
     num_at_risk_tasks = 0
+    scaling_app_unhappy_tasks = None
     if new_app_running:
         num_at_risk_tasks = get_num_at_risk_tasks(new_app, draining_hosts=draining_hosts)
         if new_app.instances < config['instances'] + num_at_risk_tasks:
@@ -649,8 +650,12 @@ def deploy_service(
             marathon_tools.take_up_slack(client=new_client, app=new_app)
 
         # TODO: don't take actions in deploy_service.
+        if scaling_app_unhappy_tasks is None:
+            to_undrain = new_app.tasks
+        else:
+            to_undrain = [task for task in new_app.tasks if task not in scaling_app_unhappy_tasks]
         undrain_tasks(
-            to_undrain=new_app.tasks,
+            to_undrain=to_undrain,
             leave_draining=old_app_draining_tasks.get((new_app.id, new_client), []),
             drain_method=drain_method,
             log_deploy_error=log_deploy_error,
