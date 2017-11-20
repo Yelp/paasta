@@ -25,7 +25,7 @@ from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.utils import ZookeeperPool
 
 
-@view_config(route_name='pause_service_autoscaler.get', request_method='GET', renderer='json')
+@view_config(route_name='service_autoscaler.pause.get', request_method='GET', renderer='json')
 def get_service_autoscaler_pause(request):
     zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
@@ -39,7 +39,7 @@ def get_service_autoscaler_pause(request):
     return pause_until
 
 
-@view_config(route_name='pause_service_autoscaler.post', request_method='POST', renderer='json')
+@view_config(route_name='service_autoscaler.pause.post', request_method='POST', renderer='json')
 def update_service_autoscaler_pause(request):
     minutes = request.swagger_data.get('json_body')['minutes']
     current_time = time.time()

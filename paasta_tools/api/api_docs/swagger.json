@@ -29,7 +29,7 @@
         "operationId": "showVersion"
       }
     },
-    "/pauseServiceAutoscaler": {
+    "/service_autoscaler/pause": {
       "get": {
         "responses": {
           "200": {

@@ -600,7 +600,7 @@ def get_service_autoscale_pause_time(cluster):
     api = client.get_paasta_api_client(cluster=cluster, http_res=True)
     if not api:
         return 1
-    pause_time, http = api.pauseServiceAutoscaler.get_service_autoscaler_pause().result()
+    pause_time, http = api.service_autoscaler.get_service_autoscaler_pause().result()
     if http.status_code == 500:
         return 2
     pause_time = int(pause_time)
@@ -612,7 +612,7 @@ def update_service_autoscale_pause_time(cluster, mins):
     if not api:
         return 1
     body = {'minutes': mins}
-    res, http = api.pauseServiceAutoscaler.update_service_autoscaler_pause(json_body=body).result()
+    res, http = api.service_autoscaler.update_service_autoscaler_pause(json_body=body).result()
     if http.status_code == 500:
         return 2
 

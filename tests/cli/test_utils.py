@@ -240,13 +240,13 @@ def test_get_service_autoscale_pause_time(mock_client):
     mock_client.get_paasta_api_client.return_value = mock_api
     mock_http_result = mock.Mock(status_code=500)
     mock_result = mock.Mock(return_value=(None, mock_http_result))
-    mock_api.pauseServiceAutoscaler.get_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    mock_api.service_autoscaler.get_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
     return_code = utils.get_service_autoscale_pause_time('cluster1')
     assert return_code == 2
 
     mock_http_result = mock.Mock(status_code=200)
     mock_result = mock.Mock(return_value=('1234', mock_http_result))
-    mock_api.pauseServiceAutoscaler.get_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    mock_api.service_autoscaler.get_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
     return_code = utils.get_service_autoscale_pause_time('cluster1')
     assert return_code == 1234
 
@@ -263,14 +263,14 @@ def test_update_service_utoscale_pause_time(mock_client):
     mock_http_result = mock.Mock(status_code=500)
     mock_result = mock.Mock(return_value=(None, mock_http_result))
     update_mock = mock.Mock(return_value=mock.Mock(result=mock_result))
-    mock_api.pauseServiceAutoscaler.update_service_autoscaler_pause = update_mock
+    mock_api.service_autoscaler.update_service_autoscaler_pause = update_mock
     return_code = utils.update_service_autoscale_pause_time('cluster1', '3')
     update_mock.assert_called_once_with(json_body={'minutes': '3'})
     assert return_code == 2
 
     mock_http_result = mock.Mock(status_code=200)
     mock_result = mock.Mock(return_value=(None, mock_http_result))
-    mock_api.pauseServiceAutoscaler.update_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    mock_api.service_autoscaler.update_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
     return_code = utils.update_service_autoscale_pause_time('cluster1', '2')
     assert return_code == 0
 
