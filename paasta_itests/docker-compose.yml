@@ -11,6 +11,7 @@ services:
 
   mesosmaster:
     build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5050
     command: 'mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_slaves --work_dir=/tmp/mesos --credentials=/etc/mesos-secrets'
@@ -18,7 +19,7 @@ services:
       - zookeeper
 
   mesosslave:
-    build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5051
     environment:
@@ -30,7 +31,7 @@ services:
       - zookeeper
 
   mesosslave2:
-    build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5051
     environment:
@@ -42,7 +43,7 @@ services:
       - zookeeper
 
   mesosslave3:
-    build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5051
     environment:
@@ -54,7 +55,7 @@ services:
       - zookeeper
 
   mesosslave4:
-    build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5051
     environment:
@@ -66,7 +67,7 @@ services:
       - zookeeper
 
   mesosslave5:
-    build: ../yelp_package/dockerfiles/itest/mesos/
+    image: paasta_itest_mesos:latest
     ports:
       - 5051
     environment:
@@ -79,6 +80,7 @@ services:
 
   marathon:
     build: ../yelp_package/dockerfiles/itest/marathon/
+    image: paasta_itest_marathon:latest
     ports:
       - 8080
     environment:
@@ -88,7 +90,7 @@ services:
       - zookeeper
 
   marathon1:
-    build: ../yelp_package/dockerfiles/itest/marathon/
+    image: paasta_itest_marathon:latest
     ports:
       - 8080
     environment:
@@ -98,7 +100,7 @@ services:
       - zookeeper
 
   marathon2:
-    build: ../yelp_package/dockerfiles/itest/marathon/
+    image: paasta_itest_marathon:latest
     ports:
       - 8080
     environment:

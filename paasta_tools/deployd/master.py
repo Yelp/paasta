@@ -17,11 +17,11 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
-from paasta_tools.deployd.metrics import get_metrics_interface
 from paasta_tools.deployd.metrics import QueueMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.list_marathon_service_instances import get_service_instances_that_need_bouncing
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
@@ -175,7 +175,7 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
-        self.metrics = get_metrics_interface(self.config.get_deployd_metrics_provider())
+        self.metrics = get_metrics_interface('paasta.deployd')
         QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")

@@ -41,7 +41,7 @@ utilization of your service. If a metrics provider isn't provided, the
 ``"mesos_cpu"`` metrics provider will be used. Within the ``autoscaling``
 attribute, setting a ``decision_policy`` will allow you to specify the logic
 that determines when to autoscale your service. If a decision policy isn't
-provided, the ``"pid"`` decision policy will be used. Specifying a ``setpoint``
+provided, the ``"proportional"`` decision policy will be used. Specifying a ``setpoint``
 allows you to specify a target utilization for your service. The default
 ``setpoint`` is 0.8 (80%). Decision policies and metrics providers have their
 own optional keyword arguments that may be placed into the ``autoscaling``
