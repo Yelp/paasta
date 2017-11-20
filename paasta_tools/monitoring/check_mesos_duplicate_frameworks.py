@@ -12,19 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import sys
 
-from marathon.exceptions import MarathonError
-
-from paasta_tools import marathon_tools
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.metrics.metastatus_lib import assert_framework_count
-from paasta_tools.paasta_metastatus import get_marathon_framework_ids
+from paasta_tools.metrics.metastatus_lib import assert_no_duplicate_frameworks
 from paasta_tools.utils import paasta_print
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        '--check', '-C', dest='check', type=str, default='',
+        help='Comma separated list of frameworks to check for duplicates',
+    )
+    return parser.parse_args()
+
+
 def check_mesos_no_duplicate_frameworks():
+    options = parse_args()
+    check = options.check.split(',')
     master = get_mesos_master()
     try:
         state = master.state
@@ -32,22 +41,12 @@ def check_mesos_no_duplicate_frameworks():
         paasta_print("CRITICAL: %s" % e.message)
         sys.exit(2)
 
-    marathon_clients = marathon_tools.get_list_of_marathon_clients()
-    try:
-        framework_ids = get_marathon_framework_ids(marathon_clients)
-    except (MarathonError, ValueError) as e:
-        paasta_print("CRITICAL: Unable to contact Marathon cluster: {}".format(e))
-        sys.exit(2)
-
-    result = assert_framework_count(
-        state=state,
-        marathon_framework_ids=framework_ids,
-    )
+    result = assert_no_duplicate_frameworks(state, check)
     if result.healthy:
         paasta_print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print("CRITICAL: %s" % result.message)
+        paasta_print(result.message)
         sys.exit(2)
 
 
