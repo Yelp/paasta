@@ -1333,6 +1333,7 @@ SystemPaastaConfigDict = TypedDict(
         'log_reader': LogReaderConfig,
         'log_writer': LogWriterConfig,
         'deployd_metrics_provider': str,
+        'metrics_provider': str,
         'deployd_worker_failure_backoff_factor': int,
         'deployd_maintenance_polling_frequency': int,
         'sensu_host': str,
@@ -1489,12 +1490,15 @@ class SystemPaastaConfig(object):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
 
-    def get_deployd_metrics_provider(self) -> str:
+    def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config
 
         :returns: A string identifying the metrics_provider
         """
-        return self.config_dict.get('deployd_metrics_provider')
+        deployd_metrics_provider = self.config_dict.get('deployd_metrics_provider')
+        if deployd_metrics_provider is not None:
+            return deployd_metrics_provider
+        return self.config_dict.get('metrics_provider')
 
     def get_deployd_worker_failure_backoff_factor(self) -> int:
         """Get the factor for calculating exponential backoff when a deployd worker
