@@ -130,7 +130,9 @@ def test_autoscale_local_cluster_with_cancelled():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
     ) as mock_get_all_utilization_errors, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
-    ) as mock_get_mesos_master:
+    ) as mock_get_mesos_master, mock.patch(
+        'paasta_tools.metrics.metrics_lib.load_system_paasta_config', autospec=True,
+    ) as mock_get_metrics_system_paasta_config:
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
             'id1': {
@@ -153,8 +155,10 @@ def test_autoscale_local_cluster_with_cancelled():
         mock_get_resources = mock.Mock(
             get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
             get_resource_pool_settings=mock_get_resource_pool_settings,
+            get_metrics_provider=lambda: None,
         )
         mock_get_paasta_config.return_value = mock_get_resources
+        mock_get_metrics_system_paasta_config.return_value = mock_get_resources
         mock_get_all_utilization_errors.return_value = {
             ('westeros-1', 'default'): -0.2,
         }
@@ -194,7 +198,9 @@ def test_autoscale_local_cluster():
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_all_utilization_errors', autospec=True,
     ) as mock_get_all_utilization_errors, mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
-    ) as mock_get_mesos_master:
+    ) as mock_get_mesos_master, mock.patch(
+        'paasta_tools.metrics.metrics_lib.load_system_paasta_config', autospec=True,
+    ) as mock_get_metrics_system_paasta_config:
         mock_sleep.side_effect = just_sleep
         mock_get_sfr.return_value = False
         mock_scaling_resources = {
@@ -218,8 +224,10 @@ def test_autoscale_local_cluster():
         mock_get_resources = mock.Mock(
             get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
             get_resource_pool_settings=mock_get_resource_pool_settings,
+            get_metrics_provider=lambda: None,
         )
         mock_get_paasta_config.return_value = mock_get_resources
+        mock_get_metrics_system_paasta_config.return_value = mock_get_resources
         mock_get_all_utilization_errors.return_value = {
             ('westeros-1', 'default'): -0.2,
         }

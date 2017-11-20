@@ -45,6 +45,7 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import get_resource_utilization_by_grouping
+from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import Timeout
@@ -125,6 +126,7 @@ class ClusterAutoscaler(object):
         utilization_error: float,
         log_level: str=None,
         draining_enabled: bool=True,
+        enable_metrics: bool=False,
     ) -> None:
         self.resource = resource
         self.pool_settings = pool_settings
@@ -136,12 +138,49 @@ class ClusterAutoscaler(object):
             self.log.setLevel(log_level)
         self.instances: List[Dict] = []
         self.sfr: Optional[Dict[str, Any]] = None
+        self.enable_metrics = enable_metrics
+
+        self.setup_metrics()
 
     @property
     def log(self) -> logging.Logger:
         resource_id = self.resource.get("id", "unknown")
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
+
+    def setup_metrics(self) -> None:
+        if not self.enable_metrics:
+            return None
+        config = load_system_paasta_config()
+        dims = {
+            'paasta_cluster': config.get_cluster(),
+            'region': self.resource.get('region', 'unknown'),
+            'pool': self.resource.get('pool', 'unknown'),
+            'resource_id': self.resource.get('id', 'unknown'),
+            'resource_type': self.__class__.__name__,
+        }
+        self.metrics = get_metrics_interface('cluster_autoscaler')
+        self.target_gauge = self.metrics.create_gauge('target_capacity', **dims)
+        self.current_gauge = self.metrics.create_gauge('current_capacity', **dims)
+        self.ideal_gauge = self.metrics.create_gauge('ideal_capacity', **dims)
+        self.max_gauge = self.metrics.create_gauge('max_capacity', **dims)
+        self.min_gauge = self.metrics.create_gauge('min_capacity', **dims)
+        self.mesos_error_gauge = self.metrics.create_gauge('mesos_error', **dims)
+
+    def emit_metrics(
+        self,
+        current: float,
+        target: float,
+        ideal: float,
+    ) -> None:
+        if not self.enable_metrics:
+            return None
+        self.current_gauge.set(current)
+        self.target_gauge.set(target)
+        self.ideal_gauge.set(ideal)
+        self.min_gauge.set(self.resource['min_capacity'])
+        self.max_gauge.set(self.resource['max_capacity'])
+        self.mesos_error_gauge.set(self.utilization_error)
 
     def set_capacity(self, capacity: float) -> Optional[Any]:
         pass
@@ -1073,6 +1112,7 @@ def autoscale_local_cluster(
                 log_level=log_level,
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
+                enable_metrics=True,
             )
             autoscaling_scalers[(resource['region'], resource['pool'])].append(scaler)
         except KeyError:
