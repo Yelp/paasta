@@ -15,8 +15,8 @@
 import time
 from datetime import datetime
 
-from paasta_tools.cli.utils import get_autoscale_pause_time
-from paasta_tools.cli.utils import update_autoscale_pause_time
+from paasta_tools.cli.utils import get_service_autoscale_pause_time
+from paasta_tools.cli.utils import update_service_autoscale_pause_time
 from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
@@ -24,11 +24,11 @@ MAX_PAUSE_DURATION = 320
 
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
-        'pause_autoscaler',
-        help="Pause the servicce autoscaler for an entire cluster",
+        'pause_service_autoscaler',
+        help="Pause the service autoscaler for an entire cluster",
         description=(
-            "'paasta pause_autoscaler is used to pause the paasta service autoscaler "
-            "for an entire paasta cluster. Use -r to resume autoscaling. Use it sparingly. "
+            "'paasta pause_service_autoscaler is used to pause the paasta service autoscaler "
+            "for an entire paasta cluster. "
         ),
     )
     status_parser.add_argument(
@@ -64,10 +64,10 @@ def add_subparser(subparsers):
         default=False,
     )
 
-    status_parser.set_defaults(command=paasta_pause_autoscaler)
+    status_parser.set_defaults(command=paasta_pause_service_autoscaler)
 
 
-def paasta_pause_autoscaler(args):
+def paasta_pause_service_autoscaler(args):
     """With a given cluster and duration, pauses the paasta service autoscaler
        in that cluster for duration minutes"""
     if int(args.duration) > MAX_PAUSE_DURATION:
@@ -85,9 +85,9 @@ def paasta_pause_autoscaler(args):
         minutes = '0'
 
     if args.info:
-        retval = get_autoscale_pause_time(args.cluster)
+        retval = get_service_autoscale_pause_time(args.cluster)
     else:
-        retval = update_autoscale_pause_time(args.cluster, minutes)
+        retval = update_service_autoscale_pause_time(args.cluster, minutes)
 
     if retval == 1:
         paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
@@ -98,11 +98,11 @@ def paasta_pause_autoscaler(args):
 
     elif args.info:
         if retval < time.time():
-            paasta_print('Autoscaler is not paused')
+            paasta_print('Service autoscaler is not paused')
             return 0
         else:
             paused_readable = datetime.fromtimestamp(retval).strftime('%H:%M:%S %Y-%m-%d')
-            paasta_print('Autoscaler is paused until {}'.format(paused_readable))
+            paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
             return 0
 
     return 0

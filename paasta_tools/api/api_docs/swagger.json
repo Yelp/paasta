@@ -29,11 +29,11 @@
         "operationId": "showVersion"
       }
     },
-    "/pauseAutoscaler": {
+    "/pauseServiceAutoscaler": {
       "get": {
         "responses": {
           "200": {
-            "description": "The time until which the autoscaler is paused for",
+            "description": "The time until which the servcie autoscaler is paused for",
             "schema": {
               "type": "string"
             }
@@ -43,18 +43,18 @@
           }
         },
         "summary": "Get autoscaling pause time",
-        "operationId": "get_autoscaler_pause"
+        "operationId": "get_service_autoscaler_pause"
       },
       "post": {
         "responses": {
           "200": {
-            "description": "Autoscaler successfully paused"
+            "description": "Service autoscaler successfully paused"
           },
           "500": {
             "description": "Unable to talk to zookeeper"
           }
         },
-        "operationId": "update_autoscaler_pause",
+        "operationId": "update_service_autoscaler_pause",
         "parameters": [
           {
             "in": "body",

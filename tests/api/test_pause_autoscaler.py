@@ -17,7 +17,7 @@ from pyramid import testing
 from paasta_tools.api.views import pause_autoscaler
 
 
-def test_get_autoscaler_pause():
+def test_get_service_autoscaler_pause():
     with mock.patch(
         'paasta_tools.utils.KazooClient',
         autospec=True,
@@ -29,7 +29,7 @@ def test_get_autoscaler_pause():
         mock_zk_get = mock.Mock(return_value=(b'100', None))
         mock_zk.return_value = mock.Mock(get=mock_zk_get)
 
-        response = pause_autoscaler.get_autoscaler_pause(request)
+        response = pause_autoscaler.get_service_autoscaler_pause(request)
         mock_zk_get.assert_called_once_with('/autoscaling/paused')
         assert response == '100'
 
@@ -55,7 +55,7 @@ def test_update_autoscaler_pause():
 
         mock_time.time = mock.Mock(return_value=0)
 
-        response = pause_autoscaler.update_autoscaler_pause(request)
+        response = pause_autoscaler.update_service_autoscaler_pause(request)
         mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
         mock_zk_set.assert_called_once_with('/autoscaling/paused', b'6000')
         assert response is None
