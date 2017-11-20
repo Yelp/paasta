@@ -1,3 +1,11 @@
+paasta-tools (0.68.8) xenial; urgency=medium
+
+  * 0.68.8 tagged with 'make release'
+    Commit: Merge pull request #1623 from Yelp/fix_draining_bug  Always
+    consider num_at_risk_tasks when calculating instance_counts du…
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 20 Nov 2017 11:01:26 -0800
+
 paasta-tools (0.68.7) xenial; urgency=medium
 
   * 0.68.7 tagged with 'make release'
