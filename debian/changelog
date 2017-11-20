@@ -1,3 +1,11 @@
+paasta-tools (0.68.7) xenial; urgency=medium
+
+  * 0.68.7 tagged with 'make release'
+    Commit: Merge pull request #1614 from Yelp/emit-cluster-autoscaler-
+    metrics  Emit metrics from cluster autoscaler
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 20 Nov 2017 07:48:15 -0800
+
 paasta-tools (0.68.6) xenial; urgency=medium
 
   * 0.68.6 tagged with 'make release'
