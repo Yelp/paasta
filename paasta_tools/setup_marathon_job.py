@@ -601,7 +601,7 @@ def deploy_service(
             new_client.scale_app(app_id=new_app.id, instances=config['instances'] + num_at_risk_tasks, force=True)
         # If we have more than the specified number of instances running, we will want to drain some of them.
         # We will start by draining any tasks running on at-risk hosts.
-        elif new_app.instances > config['instances'] + num_at_risk_tasks:
+        elif new_app.instances > config['instances']:
             num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
             task_dict = get_tasks_by_state_for_app(
                 app=new_app,
