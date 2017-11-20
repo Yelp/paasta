@@ -77,6 +77,7 @@ def make_app(global_config=None):
     config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
     config.add_route('service_autoscaler.pause.post', '/v1/service_austoscaler/pause', request_method="POST")
+    config.add_route('service_autoscaler.pause.delete', '/v1/service_austoscaler/pause', request_method="DELETE")
     config.add_route('service_autoscaler.pause.get', '/v1/service_autoscaler/pause', request_method="GET")
     config.add_route('version', '/v1/version')
     config.scan()

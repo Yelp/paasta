@@ -15,6 +15,7 @@
 import time
 from datetime import datetime
 
+from paasta_tools.cli.utils import delete_service_autoscale_pause_time
 from paasta_tools.cli.utils import get_service_autoscale_pause_time
 from paasta_tools.cli.utils import update_service_autoscale_pause_time
 from paasta_tools.utils import paasta_print
@@ -81,11 +82,11 @@ def paasta_pause_service_autoscaler(args):
 
     minutes = args.duration
     retval = 0
-    if args.resume:
-        minutes = '0'
 
     if args.info:
         retval = get_service_autoscale_pause_time(args.cluster)
+    elif args.resume:
+        retval = delete_service_autoscale_pause_time(args.cluster)
     else:
         retval = update_service_autoscale_pause_time(args.cluster, minutes)
 

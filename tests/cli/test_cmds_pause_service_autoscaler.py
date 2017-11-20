@@ -62,11 +62,11 @@ def test_pause_autoscaler_resume():
     )
 
     with mock.patch(
-        'paasta_tools.cli.cmds.pause_service_autoscaler.update_service_autoscale_pause_time',
+        'paasta_tools.cli.cmds.pause_service_autoscaler.delete_service_autoscale_pause_time',
         autospec=True,
     ) as mock_exc:
         return_code = paasta_pause_service_autoscaler(args)
-        mock_exc.assert_called_once_with('cluster1', '0')
+        mock_exc.assert_called_once_with('cluster1')
         assert return_code == 0
 
 

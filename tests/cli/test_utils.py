@@ -275,6 +275,30 @@ def test_update_service_utoscale_pause_time(mock_client):
     assert return_code == 0
 
 
+@patch('paasta_tools.cli.utils.client', autospec=True)
+def test_delete_service_utoscale_pause_time(mock_client):
+    mock_client.get_paasta_api_client.return_value = None
+    return_code = utils.delete_service_autoscale_pause_time('cluster1')
+    assert return_code == 1
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+
+    mock_api = mock.Mock()
+    mock_client.get_paasta_api_client.return_value = mock_api
+    mock_http_result = mock.Mock(status_code=500)
+    mock_result = mock.Mock(return_value=(None, mock_http_result))
+    delete_mock = mock.Mock(return_value=mock.Mock(result=mock_result))
+    mock_api.service_autoscaler.delete_service_autoscaler_pause = delete_mock
+    return_code = utils.delete_service_autoscale_pause_time('cluster1')
+    delete_mock.assert_called_once_with()
+    assert return_code == 2
+
+    mock_http_result = mock.Mock(status_code=200)
+    mock_result = mock.Mock(return_value=(None, mock_http_result))
+    mock_api.service_autoscaler.delete_service_autoscaler_pause.return_value = mock.Mock(result=mock_result)
+    return_code = utils.delete_service_autoscale_pause_time('cluster1')
+    assert return_code == 0
+
+
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_verbose(mock_run):
     mock_run.return_value = (0, 'fake_output')

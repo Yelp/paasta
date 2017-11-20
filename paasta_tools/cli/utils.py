@@ -619,6 +619,17 @@ def update_service_autoscale_pause_time(cluster, mins):
     return 0
 
 
+def delete_service_autoscale_pause_time(cluster):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        return 1
+    res, http = api.service_autoscaler.delete_service_autoscaler_pause().result()
+    if http.status_code == 500:
+        return 2
+
+    return 0
+
+
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']

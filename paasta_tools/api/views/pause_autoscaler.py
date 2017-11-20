@@ -53,3 +53,15 @@ def update_service_autoscaler_pause(request):
             raise ApiFailure(e, 500)
 
     return
+
+
+@view_config(route_name='service_autoscaler.pause.delete', request_method='DELETE', renderer='json')
+def delete_service_autoscaler_pause(request):
+    zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
+    with ZookeeperPool() as zk:
+        try:
+            zk.ensure_path(zk_pause_autoscale_path)
+            zk.set(zk_pause_autoscale_path, str(time.time()))
+        except Exception as e:
+            raise ApiFailure(e, 500)
+    return

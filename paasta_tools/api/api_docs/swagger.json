@@ -70,6 +70,18 @@
             }
           }
         ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Service autoscaler successfully unpaused"
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "summary": "Unpause the autoscaler",
+        "operationId": "delete_service_autoscaler_pause"
       }
     },
     "/resources/utilization": {
