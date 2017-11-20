@@ -465,7 +465,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def get_autoscaling_params(self) -> AutoscalingParamsDict:
         default_params: AutoscalingParamsDict = {
             'metrics_provider': 'mesos_cpu',
-            'decision_policy': 'pid',
+            'decision_policy': 'proportional',
             'setpoint': 0.8,
         }
         return deep_merge_dictionaries(
