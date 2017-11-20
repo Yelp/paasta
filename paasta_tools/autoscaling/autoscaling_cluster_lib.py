@@ -159,7 +159,7 @@ class ClusterAutoscaler(object):
             'resource_id': self.resource.get('id', 'unknown'),
             'resource_type': self.__class__.__name__,
         }
-        self.metrics = get_metrics_interface('cluster_autoscaler')
+        self.metrics = get_metrics_interface('paasta.cluster_autoscaler')
         self.target_gauge = self.metrics.create_gauge('target_capacity', **dims)
         self.current_gauge = self.metrics.create_gauge('current_capacity', **dims)
         self.ideal_gauge = self.metrics.create_gauge('ideal_capacity', **dims)
