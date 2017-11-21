@@ -138,8 +138,10 @@ def get_cluster_dashboards(cluster):
     else:
         output = ['Dashboards:']
         spacing = max((len(label) for label in dashboards.keys())) + 1
-        for label, url in dashboards.items():
-            output.append('  %s:%s%s' % (label, SPACER * (spacing - len(label)), PaastaColors.cyan(url)))
+        for label, urls in dashboards.items():
+            if isinstance(urls, list):
+                urls = "\n    %s" % '\n    '.join(urls)
+            output.append('  %s:%s%s' % (label, SPACER * (spacing - len(label)), PaastaColors.cyan(urls)))
     return '\n'.join(output)
 
 
