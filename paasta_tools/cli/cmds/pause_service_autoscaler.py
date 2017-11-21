@@ -12,12 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
-from datetime import datetime
-
-from paasta_tools.cli.utils import delete_service_autoscale_pause_time
-from paasta_tools.cli.utils import get_service_autoscale_pause_time
-from paasta_tools.cli.utils import update_service_autoscale_pause_time
+from paasta_tools.pause_service_autoscaler import delete_service_autoscale_pause_time
+from paasta_tools.pause_service_autoscaler import get_service_autoscale_pause_time
+from paasta_tools.pause_service_autoscaler import update_service_autoscale_pause_time
 from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
@@ -80,30 +77,12 @@ def paasta_pause_service_autoscaler(args):
             paasta_print('If you are really sure, run again with --force')
             return 3
 
-    minutes = args.duration
-    retval = 0
-
     if args.info:
-        retval = get_service_autoscale_pause_time(args.cluster)
+        return_code = get_service_autoscale_pause_time(args.cluster)
     elif args.resume:
-        retval = delete_service_autoscale_pause_time(args.cluster)
+        return_code = delete_service_autoscale_pause_time(args.cluster)
     else:
-        retval = update_service_autoscale_pause_time(args.cluster, minutes)
+        minutes = args.duration
+        return_code = update_service_autoscale_pause_time(args.cluster, minutes)
 
-    if retval == 1:
-        paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
-        return 1
-    elif retval == 2:
-        paasta_print('Could not connect to zookeeper server')
-        return 2
-
-    elif args.info:
-        if retval < time.time():
-            paasta_print('Service autoscaler is not paused')
-            return 0
-        else:
-            paused_readable = datetime.fromtimestamp(retval).strftime('%H:%M:%S %Y-%m-%d')
-            paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
-            return 0
-
-    return 0
+    return return_code

@@ -596,40 +596,6 @@ def execute_paasta_metastatus_on_remote_master(
     )
 
 
-def get_service_autoscale_pause_time(cluster):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
-    if not api:
-        return 1
-    pause_time, http = api.service_autoscaler.get_service_autoscaler_pause().result()
-    if http.status_code == 500:
-        return 2
-    pause_time = int(pause_time)
-    return pause_time
-
-
-def update_service_autoscale_pause_time(cluster, mins):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
-    if not api:
-        return 1
-    body = {'minutes': mins}
-    res, http = api.service_autoscaler.update_service_autoscaler_pause(json_body=body).result()
-    if http.status_code == 500:
-        return 2
-
-    return 0
-
-
-def delete_service_autoscale_pause_time(cluster):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
-    if not api:
-        return 1
-    res, http = api.service_autoscaler.delete_service_autoscaler_pause().result()
-    if http.status_code == 500:
-        return 2
-
-    return 0
-
-
 def run_chronos_rerun(master, service, instancename, **kwargs):
     timeout = 60
     verbose_flags = '-v ' * kwargs['verbose']
