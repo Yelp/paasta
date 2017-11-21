@@ -34,9 +34,9 @@ from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
-from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
+from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -697,10 +697,9 @@ def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def autoscaling_is_paused():
-    zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
         try:
-            pause_until = zk.get(zk_pause_autoscale_path)[0].decode('utf8')
+            pause_until = zk.get(ZK_PAUSE_AUTOSCALE_PATH)[0].decode('utf8')
             pause_until = int(pause_until)
         except (NoNodeError, ValueError) as e:
             pause_until = 0

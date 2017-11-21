@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paasta_tools.pause_service_autoscaler import delete_service_autoscale_pause_time
-from paasta_tools.pause_service_autoscaler import get_service_autoscale_pause_time
-from paasta_tools.pause_service_autoscaler import update_service_autoscale_pause_time
+from paasta_tools.autoscaling.pause_service_autoscaler import delete_service_autoscale_pause_time
+from paasta_tools.autoscaling.pause_service_autoscaler import get_service_autoscale_pause_time
+from paasta_tools.autoscaling.pause_service_autoscaler import update_service_autoscale_pause_time
 from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320

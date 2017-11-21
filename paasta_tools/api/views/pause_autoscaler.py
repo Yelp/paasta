@@ -21,16 +21,15 @@ from kazoo.exceptions import NoNodeError
 from pyramid.view import view_config
 
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
+from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.utils import ZookeeperPool
 
 
 @view_config(route_name='service_autoscaler.pause.get', request_method='GET', renderer='json')
 def get_service_autoscaler_pause(request):
-    zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
         try:
-            pause_until = zk.get(zk_pause_autoscale_path)[0].decode('utf8')
+            pause_until = zk.get(ZK_PAUSE_AUTOSCALE_PATH)[0].decode('utf8')
         except (NoNodeError, ValueError):
             pause_until = '0'
         except Exception as e:
@@ -44,11 +43,10 @@ def update_service_autoscaler_pause(request):
     minutes = request.swagger_data.get('json_body')['minutes']
     current_time = time.time()
     expiry_time = current_time + minutes * 60
-    zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
         try:
-            zk.ensure_path(zk_pause_autoscale_path)
-            zk.set(zk_pause_autoscale_path, str(expiry_time).encode('utf-8'))
+            zk.ensure_path(ZK_PAUSE_AUTOSCALE_PATH)
+            zk.set(ZK_PAUSE_AUTOSCALE_PATH, str(expiry_time).encode('utf-8'))
         except Exception as e:
             raise ApiFailure(e, 500)
 
@@ -57,11 +55,10 @@ def update_service_autoscaler_pause(request):
 
 @view_config(route_name='service_autoscaler.pause.delete', request_method='DELETE', renderer='json')
 def delete_service_autoscaler_pause(request):
-    zk_pause_autoscale_path = '{}/paused'.format(AUTOSCALING_ZK_ROOT)
     with ZookeeperPool() as zk:
         try:
-            zk.ensure_path(zk_pause_autoscale_path)
-            zk.set(zk_pause_autoscale_path, str(time.time()))
+            zk.ensure_path(ZK_PAUSE_AUTOSCALE_PATH)
+            zk.set(ZK_PAUSE_AUTOSCALE_PATH, str(time.time()))
         except Exception as e:
             raise ApiFailure(e, 500)
     return
