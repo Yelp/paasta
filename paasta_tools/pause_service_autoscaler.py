@@ -19,7 +19,7 @@ def get_service_autoscale_pause_time(cluster):
     if pause_time < time.time():
         paasta_print('Service autoscaler is not paused')
     else:
-        paused_readable = datetime.fromtimestamp(pause_time).strftime('%H:%M:%S %Y-%m-%d')
+        paused_readable = datetime.fromtimestamp(pause_time).strftime('%F %H:%M:%S UTC')
         paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
 
     return 0

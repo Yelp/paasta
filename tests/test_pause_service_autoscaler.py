@@ -49,8 +49,7 @@ def test_get_service_autoscale_pause_time_paused(mock_client, mock_time, mock_pr
 
     mock_time.time.return_value = 2
     return_code = get_service_autoscale_pause_time('cluster1')
-    mock_print.assert_called_with('Service autoscaler is paused until 00:00:03 1970-01-01')
-
+    mock_print.assert_called_with('Service autoscaler is paused until 1970-01-01 00:00:03 UTC')
     assert return_code == 0
 
 
