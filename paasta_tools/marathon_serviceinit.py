@@ -217,7 +217,7 @@ def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, jo
     relevant_clients = clients.get_all_clients_for_service(job_config)
     marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients, embed_tasks=True)
 
-    autoscaling_info = get_autoscaling_info(clients, job_config)
+    autoscaling_info = get_autoscaling_info(relevant_clients, job_config)
     if autoscaling_info:
         all_output.append("  Autoscaling Info:")
         headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
