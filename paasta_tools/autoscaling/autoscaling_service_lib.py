@@ -495,7 +495,7 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
 
 def get_autoscaling_info(marathon_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        apps_with_clients = get_marathon_apps_with_clients(marathon_clients, embed_tasks=True)
+        apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
         all_mesos_tasks = get_all_running_tasks()
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
