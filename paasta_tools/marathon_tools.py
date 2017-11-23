@@ -1524,3 +1524,19 @@ def take_up_slack(client: MarathonClient, app: MarathonApp) -> None:
         log.info("Scaling %s down from %d to %d instances to remove slack." %
                  (app.id, app.instances, app.instances - slack))
         client.scale_app(app_id=app.id, instances=(app.instances - slack), force=True)
+
+
+def marathon_dashboard_base_url(job_config, system_paasta_config):
+    cluster = system_paasta_config.get_cluster()
+    try:
+        links = system_paasta_config.get_dashboard_links().get(cluster).get('Marathon RO')
+    except KeyError:
+        links = ''
+    if isinstance(links, list):
+        pinned_shard = job_config.get_marathon_shard()
+        if pinned_shard:
+            return links[pinned_shard]
+        else:
+            service_instance = compose_job_id(job_config.service, job_config.instance)
+            return rendezvous_hash(choices=links, key=service_instance)
+    return links

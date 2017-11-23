@@ -455,7 +455,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
         restart_marathon_job(service, instance, app_id, current_client, cluster)
     elif command == 'status':
         paasta_print(status_desired_state(service, instance, current_client, job_config))
-        paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, current_client))
+        paasta_print(
+            "%s. Dashboard: %s" % (
+                status_marathon_job(service, instance, app_id, normal_instance_count, current_client),
+                marathon_tools.marathon_dashboard_base_url(job_config, system_config),
+            ),
+        )
         tasks, out = status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config)
         if verbose > 0:
             paasta_print(out)
