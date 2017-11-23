@@ -1,3 +1,11 @@
+paasta-tools (0.68.9) xenial; urgency=medium
+
+  * 0.68.9 tagged with 'make release'
+    Commit: Merge pull request #1634 from Yelp/fix-autoscaling-shard
+    fix bug in autoscaler for sharded marathon
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 23 Nov 2017 03:05:20 -0800
+
 paasta-tools (0.68.8) xenial; urgency=medium
 
   * 0.68.8 tagged with 'make release'
