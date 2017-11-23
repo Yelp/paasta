@@ -177,7 +177,7 @@ def main():
         if all([f(args, instance) for f in instance_checks]):
             good_instances.append(instance)
 
-    good_instances = sorted(good_instances, key=lambda i: i['ECU per vCPU'])
+    good_instances = sorted(good_instances, key=lambda i: i['ECU per vCPU'], reverse=True)
 
     if args.max_returned:
         good_instances = good_instances[:args.max_returned]
