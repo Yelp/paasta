@@ -704,9 +704,11 @@ def autoscaling_is_paused():
         except (NoNodeError, ValueError) as e:
             pause_until = 0
 
-    if time.time() < pause_until:
+    remaining = pause_until - time.time()
+    if remaining >= 0:
         return False
     else:
+        log.debug("Autoscaling is paused for {} minutes".format(str(remaining)))
         return True
 
 

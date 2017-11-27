@@ -73,13 +73,13 @@ def test_delete_autoscaler_pause():
         autospec=True,
     ):
         request = testing.DummyRequest()
-        mock_zk_set = mock.Mock()
+        mock_zk_del = mock.Mock()
         mock_zk_ensure = mock.Mock()
-        mock_zk.return_value = mock.Mock(set=mock_zk_set, ensure_path=mock_zk_ensure)
+        mock_zk.return_value = mock.Mock(delete=mock_zk_del, ensure_path=mock_zk_ensure)
 
         mock_time.time = mock.Mock(return_value=0)
 
         response = pause_autoscaler.delete_service_autoscaler_pause(request)
         mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
-        mock_zk_set.assert_called_once_with('/autoscaling/paused', '0')
+        mock_zk_del.assert_called_once_with('/autoscaling/paused')
         assert response is None

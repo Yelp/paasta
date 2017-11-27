@@ -58,7 +58,7 @@ def delete_service_autoscaler_pause(request):
     with ZookeeperPool() as zk:
         try:
             zk.ensure_path(ZK_PAUSE_AUTOSCALE_PATH)
-            zk.set(ZK_PAUSE_AUTOSCALE_PATH, str(time.time()))
+            zk.delete(ZK_PAUSE_AUTOSCALE_PATH)
         except Exception as e:
             raise ApiFailure(e, 500)
     return
