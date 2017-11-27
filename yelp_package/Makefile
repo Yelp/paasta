@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.68.9
+RELEASE=0.68.10
 
 SHELL=/bin/bash
 
@@ -84,7 +84,7 @@ release:
 	dch -v $(RELEASE) --distribution xenial --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/__version__ = .*/__version__ = '$(VERSION)'/" ../paasta_tools/__init__.py
 	@echo "$(RELEASE) has the changelog set."
-	github_changelog_generator -u Yelp -p paasta --since-tag v0.66.0 --max-issues=300 --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!!
+	github_changelog_generator -u Yelp -p paasta --since-tag v0.68.0 --max-issues=200 --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!!
 	cd .. && make docs
 	@git diff
 	@echo "Now Run:"
