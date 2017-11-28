@@ -14,9 +14,13 @@
 # limitations under the License.
 import datetime
 import logging
+from typing import Dict
+from typing import List
+from typing import Tuple
 
 import humanize
 import isodate
+from marathon.models.app import MarathonTask
 from requests.exceptions import ReadTimeout
 
 from paasta_tools import marathon_tools
@@ -212,21 +216,30 @@ def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, 
     return app.tasks, "\n".join(output)
 
 
-def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config, dashboards):
+def status_marathon_job_verbose(
+    service: str,
+    instance: str,
+    clients: marathon_tools.MarathonClients,
+    cluster: str,
+    soa_dir: str,
+    job_config: marathon_tools.MarathonServiceConfig,
+    dashboards: Dict[marathon_tools.MarathonClient, str],
+) -> Tuple[List[MarathonTask], str]:
     """Returns detailed information about a marathon apps for a service
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
     that match the given service.instance"""
-    all_tasks = []
-    all_output = []
+    all_tasks: List[MarathonTask] = []
+    all_output: List[str] = []
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
     # during a bounce we want to see the old and new ones.
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+        clients=clients.get_all_clients_for_service(job_config),
+        embed_tasks=True,
+    )
 
-    relevant_clients = clients.get_all_clients_for_service(job_config)
-    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(relevant_clients, embed_tasks=True)
-
-    autoscaling_info = get_autoscaling_info(relevant_clients, job_config)
+    autoscaling_info = get_autoscaling_info(clients, job_config)
     if autoscaling_info:
         all_output.append("  Autoscaling Info:")
         headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
