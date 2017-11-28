@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
+from typing import Set
 
 from . import exceptions
 from . import parallel
 from paasta_tools.utils import paasta_print
 
-missing_slave = set()
+missing_slave: Set[str] = set()
 
 
 def get_files_for_tasks(task_list, file_list, max_workers):

@@ -91,6 +91,15 @@ V2_Mappings = TypedDict(
 )
 
 
+DeploymentsDict = TypedDict(
+    'DeploymentsDict',
+    {
+        'v1': Dict[str, V1_Mapping],
+        'v2': V2_Mappings,
+    },
+)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument(
@@ -131,7 +140,7 @@ def get_cluster_instance_map_for_service(
     return cluster_map
 
 
-def get_latest_deployment_tag(refs, deploy_group: str) -> Tuple[str, str]:
+def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[str, str]:
     """Gets the latest deployment tag and sha for the specified deploy_group
 
     :param refs: A dictionary mapping git refs to shas
@@ -159,15 +168,12 @@ def get_latest_deployment_tag(refs, deploy_group: str) -> Tuple[str, str]:
 def get_deploy_group_mappings(
     soa_dir: str,
     service: str,
-    old_mappings=None,
 ) -> Tuple[Dict[str, V1_Mapping], V2_Mappings]:
     """Gets mappings from service:deploy_group to services-service:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :param old_mappings_DEPRECATED: A dictionary like the return dictionary.
-      Used for fallback if there is a problem with a new mapping.
     :returns: A dictionary mapping service:deploy_group to a dictionary
       containing:
 
@@ -246,7 +252,7 @@ def get_service_from_docker_image(image_name: str) -> str:
     return matches.group(1)
 
 
-def get_desired_state(branch: str, remote_refs, deploy_group: str) -> Tuple[str, Any]:
+def get_desired_state(branch: str, remote_refs: Dict[str, str], deploy_group: str) -> Tuple[str, Any]:
     """Gets the desired state (start or stop) from the given repo, as well as
     an arbitrary value (which may be None) that will change when a restart is
     desired.
@@ -274,40 +280,22 @@ def get_desired_state(branch: str, remote_refs, deploy_group: str) -> Tuple[str,
         return ('start', None)
 
 
-def get_deployments_dict_from_deploy_group_mappings(deploy_group_mappings, v2_deploy_group_mappings):
+def get_deployments_dict_from_deploy_group_mappings(
+    deploy_group_mappings: Dict[str, V1_Mapping],
+    v2_deploy_group_mappings: V2_Mappings,
+) -> DeploymentsDict:
     return {'v1': deploy_group_mappings, 'v2': v2_deploy_group_mappings}
-
-
-def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
-    try:
-        print("Got v1")
-        return deployments_dict['v1']
-    except KeyError:
-        deploy_group_mappings = {}
-        for deploy_group, image in deployments_dict.items():
-            if isinstance(image, str):
-                deploy_group_mappings[deploy_group] = {
-                    'docker_image': image,
-                    'desired_state': 'start',
-                    'force_bounce': None,
-                }
-        print("Got v2")
-        print(deploy_group_mappings)
-        return deploy_group_mappings
 
 
 def generate_deployments_for_service(service: str, soa_dir: str) -> None:
     try:
         with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as oldf:
             old_deployments_dict = json.load(oldf)
-            old_mappings = get_deploy_group_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError) as e:
-        old_mappings = {}
         old_deployments_dict = {}
     mappings, v2_mappings = get_deploy_group_mappings(
         soa_dir=soa_dir,
         service=service,
-        old_mappings=old_mappings,
     )
 
     deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings, v2_mappings)

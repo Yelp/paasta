@@ -46,7 +46,6 @@ def test_get_deploy_group_mappings():
         'refs/tags/paasta-nah-20160308T053933-deploy': 'j8yiomwer',
     }
 
-    fake_old_mappings = ['']
     expected = {
         'fake_service:paasta-clusterA.main': {
             'docker_image': 'services-fake_service:paasta-789009',
@@ -90,7 +89,7 @@ def test_get_deploy_group_mappings():
     ) as list_remote_refs_patch:
         actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(
             fake_soa_dir,
-            fake_service, fake_old_mappings,
+            fake_service,
         )
         get_instance_configs_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
@@ -174,7 +173,6 @@ def test_main():
         mappings_patch.assert_called_once_with(
             soa_dir='ABSOLUTE',
             service='fake_service',
-            old_mappings={'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
         ),
 
         join_patch.assert_any_call('ABSOLUTE', 'fake_service', generate_deployments_for_service.TARGET_FILE),
