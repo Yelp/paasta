@@ -70,11 +70,11 @@ def create_marathon_dashboard(cluster, soa_dir=DEFAULT_SOA_DIR, marathon_clients
             soa_dir=soa_dir,
         )
         client = marathon_clients.get_current_client_for_service(job_config=service_config)
-        shard = client.servers[0]
+        shard_url = client.servers[0]
         service_info = {
             'service': service,
             'instance': instance,
-            'shard': shard,
+            'shard_url': shard_url,
         }
         dashboard[cluster].append(service_info)
     return dashboard

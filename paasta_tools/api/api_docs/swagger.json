@@ -702,7 +702,7 @@
           "type": "string",
           "description": "Instance name"
         },
-        "shard": {
+        "shard_url": {
           "type": "string",
           "description": "Marathon Shard URL"
         }
