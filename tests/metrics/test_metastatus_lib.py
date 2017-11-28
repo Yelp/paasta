@@ -243,63 +243,83 @@ def test_disk_health_mesos_reports_zero():
     assert failure_health is False
 
 
-def test_assert_framework_count_not_ok():
+def test_assert_no_duplicate_frameworks():
     state = {
         'frameworks': [
             {
-                'name': 'marathon',
-                'id': 'id1',
+                'name': 'test_framework1',
             },
             {
-                'name': 'marathon1',
-                'id': 'id2',
+                'name': 'test_framework2',
             },
             {
-                'name': 'marathon2',
-                'id': 'id3',
+                'name': 'test_framework3',
             },
             {
-                'name': 'chronos',
-                'id': 'id_chronos',
+                'name': 'test_framework4',
             },
         ],
     }
-    output, ok = metastatus_lib.assert_framework_count(
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
         state,
-        marathon_framework_ids=['id1', 'id2'],
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
     )
 
-    assert "CRITICAL: There are 3 marathon frameworks connected! (Expected 2)" in output
+    expected_output = "\n".join(
+        ["Frameworks:"] +
+        ['    Framework: %s count: 1' % x['name'] for x in state['frameworks']],
+    )
+    assert output == expected_output
+    assert ok
+
+
+def test_duplicate_frameworks():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+        ],
+    }
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
+        state,
+        ['test_framework1', 'test_framework2', 'test_framework3', 'test_framework4'],
+    )
+    assert "    CRITICAL: There are 3 connected test_framework1 frameworks! (Expected 1)" in output
     assert not ok
 
 
-def test_assert_framework_count_ok():
+def test_duplicate_frameworks_not_checked():
     state = {
         'frameworks': [
             {
-                'name': 'chronos',
-                'id': 'id_chronos',
+                'name': 'test_framework1',
             },
             {
-                'name': 'marathon',
-                'id': 'id1',
+                'name': 'test_framework1',
             },
             {
-                'name': 'marathon1',
-                'id': 'id2',
+                'name': 'test_framework1',
             },
             {
-                'name': 'test_framework',
-                'id': 'id_test',
+                'name': 'test_framework2',
             },
         ],
     }
-    output, ok = metastatus_lib.assert_framework_count(
+    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
         state,
-        marathon_framework_ids=['id1', 'id2'],
+        ['test_framework2', 'test_framework3', 'test_framework4'],
     )
-    assert "Framework: marathon count: 2" in output
-    assert "Framework: chronos count: 1" in output
+    assert "test_framework2" in output
     assert ok
 
 

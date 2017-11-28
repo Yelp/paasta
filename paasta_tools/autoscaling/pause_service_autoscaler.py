@@ -1,0 +1,54 @@
+import time
+from datetime import datetime
+
+from paasta_tools.api import client
+from paasta_tools.utils import paasta_print
+
+
+def get_service_autoscale_pause_time(cluster):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
+        return 1
+    pause_time, http = api.service_autoscaler.get_service_autoscaler_pause().result()
+    if http.status_code == 500:
+        paasta_print('Could not connect to zookeeper server')
+        return 2
+
+    pause_time = int(pause_time)
+    if pause_time < time.time():
+        paasta_print('Service autoscaler is not paused')
+    else:
+        paused_readable = datetime.fromtimestamp(pause_time).strftime('%F %H:%M:%S UTC')
+        paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
+
+    return 0
+
+
+def update_service_autoscale_pause_time(cluster, mins):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
+        return 1
+    body = {'minutes': mins}
+    res, http = api.service_autoscaler.update_service_autoscaler_pause(json_body=body).result()
+    if http.status_code == 500:
+        paasta_print('Could not connect to zookeeper server')
+        return 2
+
+    paasta_print('Service autoscaler is paused for {}'.format(mins))
+    return 0
+
+
+def delete_service_autoscale_pause_time(cluster):
+    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    if not api:
+        paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
+        return 1
+    res, http = api.service_autoscaler.delete_service_autoscaler_pause().result()
+    if http.status_code == 500:
+        paasta_print('Could not connect to zookeeper server')
+        return 2
+
+    paasta_print('Service autoscaler is unpaused')
+    return 0

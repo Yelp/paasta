@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,23 +14,25 @@
 
 FROM ubuntu:trusty
 
-# Need python3.6
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+# Install packages to allow apt to use a repository over HTTPS
+# https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#trusty-1404
+RUN apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
-    echo "deb http://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv 58118E89F3A912897C070ADBF76221572C52609D && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv 9DC858229FC7DD38854AE2D88D81803C0EBFCD88 && \
     apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        docker-engine=1.10.3-0~trusty \
+        docker-ce=17.03.2~ce-0~ubuntu-trusty \
         libsasl2-modules \
         mesos=1.3.0-2.0.3 > /dev/null && \
     apt-get clean
 
-ADD mesos-secrets /etc/mesos-secrets
-ADD mesos-slave-secret /etc/mesos-slave-secret
+COPY mesos-secrets mesos-slave-secret /etc/
 RUN echo '{}' > /root/.dockercfg
 RUN chmod 600 /etc/mesos-secrets

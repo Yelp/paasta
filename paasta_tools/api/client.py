@@ -29,7 +29,7 @@ from paasta_tools.utils import load_system_paasta_config
 log = logging.getLogger(__name__)
 
 
-def get_paasta_api_client(cluster=None, system_paasta_config=None):
+def get_paasta_api_client(cluster=None, system_paasta_config=None, http_res=False):
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -59,4 +59,10 @@ def get_paasta_api_client(cluster=None, system_paasta_config=None):
         spec_dict = json.load(f)
     # replace localhost in swagger.json with actual api server
     spec_dict['host'] = api_server
-    return SwaggerClient.from_spec(spec_dict=spec_dict)
+
+    # sometimes we want the status code
+    if http_res:
+        config = {'also_return_response': True}
+        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config)
+    else:
+        return SwaggerClient.from_spec(spec_dict=spec_dict)

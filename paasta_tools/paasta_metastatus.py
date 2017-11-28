@@ -79,17 +79,8 @@ def get_marathon_framework_ids(marathon_clients):
     return [client.get_info().framework_id for client in marathon_clients]
 
 
-def _run_mesos_checks(mesos_master, mesos_state, marathon_clients):
-    try:
-        marathon_framework_ids = get_marathon_framework_ids(marathon_clients)
-    except (MarathonError, ValueError) as e:
-        paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon cluster: {}".format(e)))
-        sys.exit(2)
-
-    mesos_state_status = metastatus_lib.get_mesos_state_status(
-        mesos_state=mesos_state,
-        marathon_framework_ids=marathon_framework_ids,
-    )
+def _run_mesos_checks(mesos_master, mesos_state):
+    mesos_state_status = metastatus_lib.get_mesos_state_status(mesos_state)
 
     metrics = mesos_master.metrics_snapshot()
     mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(
@@ -133,7 +124,6 @@ def main(argv=None):
         all_mesos_results = _run_mesos_checks(
             mesos_master=master,
             mesos_state=mesos_state,
-            marathon_clients=marathon_clients,
         )
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,10 +37,9 @@ RUN virtualenv /venv -ppython3.6
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 
-ADD yelp_package/dockerfiles/itest/api/mesos-cli.json /nail/etc/
-ADD yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
-ADD yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
-ADD yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
+COPY yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
+COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+COPY yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
 
 ADD . /work/
 RUN pip install -e /work/

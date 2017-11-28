@@ -29,6 +29,61 @@
         "operationId": "showVersion"
       }
     },
+    "/service_autoscaler/pause": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "The time until which the servcie autoscaler is paused for",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "summary": "Get autoscaling pause time",
+        "operationId": "get_service_autoscaler_pause"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Service autoscaler successfully paused"
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "operationId": "update_service_autoscaler_pause",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "json_body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "minutes": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Service autoscaler successfully unpaused"
+          },
+          "500": {
+            "description": "Unable to talk to zookeeper"
+          }
+        },
+        "summary": "Unpause the autoscaler",
+        "operationId": "delete_service_autoscaler_pause"
+      }
+    },
     "/resources/utilization": {
       "get": {
         "responses": {

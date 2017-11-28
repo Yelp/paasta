@@ -1,3 +1,43 @@
+paasta-tools (0.68.11) xenial; urgency=medium
+
+  * 0.68.11 tagged with 'make release'
+    Commit: Use unambiguous variable name in
+    test_check_marathon_has_apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 28 Nov 2017 10:46:53 -0800
+
+paasta-tools (0.68.10) xenial; urgency=medium
+
+  * 0.68.10 tagged with 'make release'
+    Commit: Merge pull request #1622 from fboxwala/PAASTA-10561  Add
+    feature to manually pause the autoscaler
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 27 Nov 2017 14:36:19 -0800
+
+paasta-tools (0.68.9) xenial; urgency=medium
+
+  * 0.68.9 tagged with 'make release'
+    Commit: Merge pull request #1634 from Yelp/fix-autoscaling-shard
+    fix bug in autoscaler for sharded marathon
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 23 Nov 2017 03:05:20 -0800
+
+paasta-tools (0.68.8) xenial; urgency=medium
+
+  * 0.68.8 tagged with 'make release'
+    Commit: Merge pull request #1623 from Yelp/fix_draining_bug  Always
+    consider num_at_risk_tasks when calculating instance_counts du…
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 20 Nov 2017 11:01:26 -0800
+
+paasta-tools (0.68.7) xenial; urgency=medium
+
+  * 0.68.7 tagged with 'make release'
+    Commit: Merge pull request #1614 from Yelp/emit-cluster-autoscaler-
+    metrics  Emit metrics from cluster autoscaler
+
+ -- Matthew Bentley <bentley@yelp.com>  Mon, 20 Nov 2017 07:48:15 -0800
+
 paasta-tools (0.68.6) xenial; urgency=medium
 
   * 0.68.6 tagged with 'make release'

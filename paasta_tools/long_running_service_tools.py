@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 AUTOSCALING_ZK_ROOT = '/autoscaling'
+ZK_PAUSE_AUTOSCALE_PATH = '/autoscaling/paused'
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):

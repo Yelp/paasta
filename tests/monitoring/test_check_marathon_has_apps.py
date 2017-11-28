@@ -30,13 +30,13 @@ def test_check_marathon_jobs_no_config(capfd):
 
 
 def test_marathon_jobs_no_jobs(capfd):
-    l = mock.MagicMock()
-    l.list_apps.return_value = []
+    mock_client = mock.MagicMock()
+    mock_client.list_apps.return_value = []
     with mock.patch(
         # We expect this is tested properly elsewhere
         'paasta_tools.marathon_tools.get_list_of_marathon_clients',
         autospec=True,
-        return_value=[l],
+        return_value=[mock_client],
     ):
         with pytest.raises(SystemExit) as error:
             check_marathon_apps()
@@ -46,13 +46,13 @@ def test_marathon_jobs_no_jobs(capfd):
 
 
 def test_marathon_jobs_some_jobs(capfd):
-    l = mock.MagicMock()
-    l.list_apps.return_value = ['foo', 'bar']
+    mock_client = mock.MagicMock()
+    mock_client.list_apps.return_value = ['foo', 'bar']
     with mock.patch(
         # We expect this is tested properly elsewhere
         'paasta_tools.marathon_tools.get_list_of_marathon_clients',
         autospec=True,
-        return_value=[l],
+        return_value=[mock_client],
     ):
         with pytest.raises(SystemExit) as error:
             check_marathon_apps()
