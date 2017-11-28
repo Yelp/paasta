@@ -18,7 +18,7 @@ inotify==0.2.8
 isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.2
-marathon==0.9.2
+marathon==0.9.3
 mypy_extensions
 ply==3.4
 progressbar2==3.10.1
