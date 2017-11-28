@@ -117,6 +117,7 @@ def test_status_marathon_job_verbose():
             cluster='fake_cluster',
             soa_dir='/nail/blah',
             job_config=mock.Mock(),
+            dashboards=None,
         )
         mock_get_marathon_apps_with_clients.assert_called_once_with(
             [client],
@@ -134,6 +135,7 @@ def test_status_marathon_job_verbose():
             instance=instance,
             cluster='fake_cluster',
             soa_dir='/nail/blah',
+            dashboards=None,
         )
         assert tasks == [task]
         assert 'fake_return' in out
@@ -170,9 +172,10 @@ def test_get_verbose_status_of_marathon_app():
             'main',
             'fake_cluster',
             '/nail/blah',
+            dashboards={mock_marathon_client: "http://marathon/"},
         )
         assert 'fake_task_id' in out
-        assert '/fake--service' in out
+        assert 'http://marathon/ui/#/apps/%2Ffake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
         assert 'fake_deployed_host:6666' in out
         assert tasks == [fake_task]
@@ -200,6 +203,7 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
             'main',
             'fake_cluster',
             '/nail/blah',
+            dashboards=None,
         )
         assert 'fake_task_id' in out
         assert '/fake--service' in out
@@ -240,6 +244,7 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
             'main',
             'fake_cluster',
             '/nail/blah',
+            dashboards={mock_marathon_client: 'http://marathon'},
         )
         (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
         assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
@@ -1152,5 +1157,27 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             '    place3 - Healthy - in haproxy with (1/1) total backends UP in this namespace.',
             '      host3:1234  L7OK/200 in 4ms  now         UP',
         ]
+
+
+def test_get_marathon_dashboard_links():
+    system_paasta_config = SystemPaastaConfig(
+        config={
+            'cluster': 'fake_cluster',
+            'dashboard_links': {'fake_cluster':
+                                {"Marathon RO": ['http://marathon', 'http://marathon1', 'http://marathon2']}},
+        },
+        directory='/fake/config',
+    )
+
+    marathon_clients = mock.Mock(current=['client', 'client1', 'client2'])
+    assert marathon_serviceinit.get_marathon_dashboard_links(marathon_clients, system_paasta_config) == \
+        {'client': 'http://marathon', 'client1': 'http://marathon1', 'client2': 'http://marathon2'}
+
+    marathon_clients = mock.Mock(current=['client', 'client1', 'client2', 'client3'])
+    assert marathon_serviceinit.get_marathon_dashboard_links(marathon_clients, system_paasta_config) is None
+
+    marathon_clients = mock.Mock(current=['client', 'client1'])
+    assert marathon_serviceinit.get_marathon_dashboard_links(marathon_clients, system_paasta_config) == \
+        {'client': 'http://marathon', 'client1': 'http://marathon1'}
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
