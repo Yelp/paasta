@@ -165,16 +165,21 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     )
 
 
-def get_verbose_status_of_marathon_app(marathon_client, app, job_config, system_paasta_config):
+def get_marathon_dashboard(client, dashboards, app_id):
+    if dashboards is not None:
+        base_url = dashboards.get(client)
+        if base_url:
+            url = "{}/ui/#/apps/%2F{}".format(base_url.rstrip('/'), app_id.lstrip('/'))
+            return "  Marathon dashboard: %s" % PaastaColors.blue(url)
+    return PaastaColors.red("Please update Marathon dashboard URLs in /etc/paasta/dashboard_links.json")
+
+
+def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir, dashboards):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
-    url = ("%s/ui/#/apps/%2F%s" % (
-        marathon_tools.marathon_dashboard_base_url(job_config, system_paasta_config).rstrip('/'),
-        app.id.lstrip('/'),
-    ))
-    output.append("  Marathon dashboard: %s" % PaastaColors.blue(url))
+    output.append(get_marathon_dashboard(marathon_client, dashboards, app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
 
     output.append("    Tasks:")
@@ -207,7 +212,7 @@ def get_verbose_status_of_marathon_app(marathon_client, app, job_config, system_
     return app.tasks, "\n".join(output)
 
 
-def status_marathon_job_verbose(job_config, clients, system_paasta_config):
+def status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config, dashboards):
     """Returns detailed information about a marathon apps for a service
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
@@ -228,16 +233,15 @@ def status_marathon_job_verbose(job_config, clients, system_paasta_config):
         table = [headers, autoscaling_info]
         all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
 
-    for app, client in marathon_tools.get_matching_apps_with_clients(
-        service=job_config.service,
-        instance=job_config.instance,
-        marathon_apps_with_clients=marathon_apps_with_clients,
-    ):
+    for app, client in marathon_tools.get_matching_apps_with_clients(service, instance, marathon_apps_with_clients):
         tasks, output = get_verbose_status_of_marathon_app(
             marathon_client=client,
             app=app,
-            job_config=job_config,
-            system_paasta_config=system_paasta_config,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=dashboards,
         )
         all_tasks.extend(tasks)
         all_output.append(output)
@@ -428,6 +432,18 @@ def status_mesos_tasks(service, instance, normal_instance_count):
         return "Error: talking to Mesos timed out. It may be overloaded."
 
 
+def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
+    """Return a dict of marathon clients and their corresponding dashboard URLs"""
+    cluster = system_paasta_config.get_cluster()
+    try:
+        links = system_paasta_config.get_dashboard_links().get(cluster).get('Marathon RO')
+    except KeyError:
+        pass
+    if isinstance(links, list) and len(links) >= len(marathon_clients.current):
+        return {client: url for client, url in zip(marathon_clients.current, links)}
+    return None
+
+
 def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, clients=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status
@@ -462,7 +478,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     elif command == 'status':
         paasta_print(status_desired_state(service, instance, current_client, job_config))
         paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, current_client))
-        tasks, out = status_marathon_job_verbose(job_config, clients, system_config)
+        dashboards = get_marathon_dashboard_links(clients, system_config)
+        tasks, out = status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config, dashboards)
         if verbose > 0:
             paasta_print(out)
         paasta_print(status_mesos_tasks(service, instance, normal_instance_count))
