@@ -171,7 +171,7 @@ def get_marathon_dashboard(client, dashboards, app_id):
         if base_url:
             url = "{}/ui/#/apps/%2F{}".format(base_url.rstrip('/'), app_id.lstrip('/'))
             return "  Marathon dashboard: %s" % PaastaColors.blue(url)
-    return PaastaColors.red("Please update Marathon dashboard URLs in /etc/paasta/dashboard_links.json")
+    return "  Marathon app ID: %s" % PaastaColors.bold(app_id)
 
 
 def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir, dashboards):

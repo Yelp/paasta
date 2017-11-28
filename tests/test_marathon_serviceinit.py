@@ -203,10 +203,10 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
             'main',
             'fake_cluster',
             '/nail/blah',
-            dashboards={mock_marathon_client: "http://marathon/"},
+            dashboards=None,
         )
         assert 'fake_task_id' in out
-        assert 'http://marathon/ui/#/apps/%2Ffake--service' in out
+        assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
         assert 'fake_deployed_host:6666' in out
         assert 'Autoscaling Info' not in out
