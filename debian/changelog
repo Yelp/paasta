@@ -1,3 +1,27 @@
+paasta-tools (0.68.11) xenial; urgency=medium
+
+  * 0.68.11 tagged with 'make release'
+    Commit: Use unambiguous variable name in
+    test_check_marathon_has_apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 28 Nov 2017 10:46:53 -0800
+
+paasta-tools (0.68.10) xenial; urgency=medium
+
+  * 0.68.10 tagged with 'make release'
+    Commit: Merge pull request #1622 from fboxwala/PAASTA-10561  Add
+    feature to manually pause the autoscaler
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 27 Nov 2017 14:36:19 -0800
+
+paasta-tools (0.68.9) xenial; urgency=medium
+
+  * 0.68.9 tagged with 'make release'
+    Commit: Merge pull request #1634 from Yelp/fix-autoscaling-shard
+    fix bug in autoscaler for sharded marathon
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 23 Nov 2017 03:05:20 -0800
+
 paasta-tools (0.68.8) xenial; urgency=medium
 
   * 0.68.8 tagged with 'make release'

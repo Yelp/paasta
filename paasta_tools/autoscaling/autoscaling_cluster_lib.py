@@ -325,10 +325,15 @@ class ClusterAutoscaler(object):
                     "We currently have %d instances active in mesos out of a desired %d.\n"
                     "Refusing to scale because we either need to wait for the requests to be "
                     "filled, or the new instances are not healthy for some reason.\n"
-                    "(cowardly refusing to go past %.2f%% missing instances)"
                 ) % (
-                    current_instances, expected_instances, MISSING_SLAVE_PANIC_THRESHOLD,
+                    current_instances, expected_instances,
                 )
+                if self.sfr and self.sfr['SpotFleetRequestState'] == 'cancelled_running':
+                    log.warn(
+                        error_message + "But this is an sfr in cancelled_running state, so continuing anyways",
+                    )
+                    return None
+                error_message += "(refusing to go past %.2f%% missing instances)" % MISSING_SLAVE_PANIC_THRESHOLD
                 raise ClusterAutoscalingError(error_message)
 
     def can_kill(
