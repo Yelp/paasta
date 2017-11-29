@@ -135,7 +135,7 @@ class MarathonClients(object):
         self.current = current
         self.previous = previous
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Current: %s | Previous: %s' % (self.current, self.previous)
 
     def get_current_client_for_service(self, job_config: 'MarathonServiceConfig') -> MarathonClient:
