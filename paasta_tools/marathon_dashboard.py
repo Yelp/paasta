@@ -72,9 +72,9 @@ def create_marathon_dashboard(cluster, soa_dir=DEFAULT_SOA_DIR, marathon_clients
         client = marathon_clients.get_current_client_for_service(job_config=service_config)
         dashboard_links = system_paasta_config.get_dashboard_links()
         shard_url = client.servers[0]
-        for shard_number in marathon_servers.current:
-            if marathon_servers.current[shard_number].url == shard_url:
-                shard_url = dashboard_links[shard_number]
+        for shard_number, shard in enumerate(marathon_servers.current):
+            if shard.url[0] == shard_url:
+                shard_url = dashboard_links[cluster]['Marathon RO'][shard_number]
         service_info = {
             'service': service,
             'instance': instance,
