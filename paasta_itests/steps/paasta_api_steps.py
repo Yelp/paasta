@@ -83,4 +83,4 @@ def marathon_dashboard(context, service, instance, cluster, shard):
     dashboard = response[cluster]
     for marathon_dashboard_item in dashboard:
         if marathon_dashboard_item['service'] == service and marathon_dashboard_item['instance'] == instance:
-            assert marathon_dashboard_item['shard'] == context.marathon_servers.current[shard].url, response
+            assert marathon_dashboard_item['shard_url'] == context.marathon_servers.current[shard].url, response
