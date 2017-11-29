@@ -1,5 +1,18 @@
 # Change Log
 
+## [0.68.12](https://github.com/Yelp/paasta/tree/0.68.12) (2017-11-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.11...0.68.12)
+
+**Merged pull requests:**
+
+- Pass MarathonClients, not list of MarathonClient, to get\_autoscaling\_info in status\_marathon\_job\_verbose. [\#1639](https://github.com/Yelp/paasta/pull/1639) ([EvanKrall](https://github.com/EvanKrall))
+- Don't docker-compose pull in example\_cluster; see bc3029fb3f01eadb931105eea480c9ec21c18ea8 [\#1638](https://github.com/Yelp/paasta/pull/1638) ([EvanKrall](https://github.com/EvanKrall))
+- Show marathon dashboard links in paasta status [\#1636](https://github.com/Yelp/paasta/pull/1636) ([oktopuz](https://github.com/oktopuz))
+- Tweak mypy settings to allow for more granular type checking [\#1627](https://github.com/Yelp/paasta/pull/1627) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.68.11](https://github.com/Yelp/paasta/tree/v0.68.11) (2017-11-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.10...v0.68.11)
+
 ## [v0.68.10](https://github.com/Yelp/paasta/tree/v0.68.10) (2017-11-27)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.9...v0.68.10)
 

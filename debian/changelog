@@ -1,3 +1,12 @@
+paasta-tools (0.68.12) xenial; urgency=medium
+
+  * 0.68.12 tagged with 'make release'
+    Commit: Merge pull request #1638 from Yelp/fix_example_cluster
+    Don"t docker-compose pull in example_cluster; see
+    bc3029fb3f01eadb931105eea480c9ec21c18ea8
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 29 Nov 2017 09:59:34 -0800
+
 paasta-tools (0.68.11) xenial; urgency=medium
 
   * 0.68.11 tagged with 'make release'
