@@ -56,8 +56,8 @@ def create_marathon_dashboard(cluster, soa_dir=DEFAULT_SOA_DIR, marathon_clients
         instances = []
     dashboard = {cluster: []}
     system_paasta_config = load_system_paasta_config()
+    marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
     if marathon_clients is None:
-        marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
         marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)
     for service_instance in instances:
         service = service_instance[0]
