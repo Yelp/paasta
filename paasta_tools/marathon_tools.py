@@ -177,10 +177,6 @@ def dedupe_clients(all_clients: Iterable[MarathonClient]) -> List[MarathonClient
     return deduped_clients
 
 
-def load_marathon_config() -> "MarathonConfig":
-    return MarathonConfig(load_system_paasta_config().get_marathon_config())
-
-
 def get_marathon_servers(system_paasta_config: SystemPaastaConfig) -> MarathonServers:
     """
     :param system_paasta_config: A SystemPaastaConfig object representing the system

@@ -1,4 +1,4 @@
-{"marathon_config": {"url": "http://marathon:8080", "password": null, "user": null},
+{
   "marathon_servers": [
     {"user": null, "password": null, "url": ["http://marathon:8080"]},
     {"user": null, "password": null, "url": ["http://marathon1:8080"]},

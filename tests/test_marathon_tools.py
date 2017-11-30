@@ -67,11 +67,6 @@ class TestMarathonTools:
         'vip': None,
     }
     fake_docker_registry = 'remote_registry.com'
-    fake_marathon_config = marathon_tools.MarathonConfig({
-        'url': ['http://test_url'],
-        'user': 'admin',
-        'password': 'admin_pass',
-    })
     fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
 
     def test_load_marathon_service_config_happy_path(self):
@@ -222,38 +217,6 @@ class TestMarathonTools:
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
-
-    def test_load_marathon_config(self):
-        expected = {'foo': 'bar'}
-        from_file = {'marathon_config': {'foo': 'bar'}}
-        open_mock = mock.mock_open()
-        with mock.patch(
-            'builtins.open', open_mock, autospec=None,
-        ) as open_file_patch, mock.patch(
-            'json.load', autospec=True, return_value=from_file,
-        ) as json_patch, mock.patch(
-            'os.path.isdir', autospec=True, return_value=True,
-        ), mock.patch(
-            'os.access', autospec=True, return_value=True,
-        ), mock.patch(
-            'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
-            return_value=['/some/fake/dir/some_file.json'],
-        ):
-            assert marathon_tools.load_marathon_config() == expected
-            open_file_patch.assert_called()
-            json_patch.assert_called_with(open_mock.return_value.__enter__.return_value)
-
-    def test_load_marathon_config_path_dne(self):
-        expected = marathon_tools.MarathonConfig({})
-        with mock.patch(
-            'paasta_tools.marathon_tools.open',
-            create=True, side_effect=IOError(2, 'a', 'b'), autospec=None,
-        ), mock.patch(
-            'os.path.isdir', autospec=True, return_value=True,
-        ), mock.patch(
-            'os.access', autospec=True, return_value=True,
-        ):
-            assert marathon_tools.load_marathon_config() == expected
 
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'

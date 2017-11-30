@@ -1189,10 +1189,6 @@ class TestSetupMarathonJob:
             return_value=fake_complete,
             autospec=True,
         ) as format_marathon_app_dict_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_config',
-            return_value=self.fake_marathon_config,
-            autospec=True,
-        ), mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=mock.MagicMock(),
             autospec=True,

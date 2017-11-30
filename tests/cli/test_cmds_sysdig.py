@@ -28,9 +28,10 @@ def test_add_subparser(mock_get_subparser):
 
 
 @patch.object(sys, 'argv', ['paasta', 'sysdig', 'blah', 'blah'])
+@patch('paasta_tools.cli.cmds.sysdig.load_marathon_service_config', autospec=True)
+@patch('paasta_tools.cli.cmds.sysdig.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.format_mesos_command', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.get_mesos_master', autospec=True)
-@patch('paasta_tools.cli.cmds.sysdig.load_marathon_config', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig._run', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.get_any_mesos_master', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.subprocess', autospec=True)
@@ -42,9 +43,10 @@ def test_paasta_sysdig(
     mock_subprocess,
     mock_get_any_mesos_master,
     mock__run,
-    mock_load_marathon_config,
     mock_get_mesos_master,
     mock_format_mesos_command,
+    mock_load_system_paasta_config,
+    mock_load_marathon_service_config,
 ):
 
     mock_status = mock.Mock(marathon=mock.Mock(app_id='appID1'))
@@ -62,7 +64,10 @@ def test_paasta_sysdig(
     mock__run.return_value = (0, 'slave:command123')
 
     sysdig.paasta_sysdig(mock_args)
-    mock_get_any_mesos_master.assert_called_with(cluster='cluster1')
+    mock_get_any_mesos_master.assert_called_with(
+        cluster='cluster1',
+        system_paasta_config=mock_load_system_paasta_config.return_value,
+    )
     mock__run.assert_called_with(
         'ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET master1 '
         '"sudo paasta sysdig blah blah --local"',
@@ -82,11 +87,19 @@ def test_paasta_sysdig(
         local=True,
     )
     mock_pick_slave_from_status.return_value = 'slave1'
-    mock_load_marathon_config.return_value = mock.Mock(
-        get_url=mock.Mock(return_value=['http://blah']),
-        get_username=mock.Mock(return_value='user'),
-        get_password=mock.Mock(return_value='pass'),
+    fake_server_config = {
+        'url': ['http://blah'],
+        'user': 'user',
+        'password': 'pass',
+    }
+    mock_load_system_paasta_config.return_value.get_marathon_servers = mock.Mock(
+        return_value=[fake_server_config],
     )
+    mock_load_system_paasta_config.return_value.get_previous_marathon_servers = mock.Mock(
+        return_value=[fake_server_config],
+    )
+    mock_load_marathon_service_config().get_marathon_shard.return_value = None
+
     mock_get_mesos_master.return_value = mock.Mock(host='http://foo')
     sysdig.paasta_sysdig(mock_args)
     mock_get_status_for_instance.assert_called_with(
@@ -98,7 +111,6 @@ def test_paasta_sysdig(
         status=mock_status,
         host='host1',
     )
-    assert mock_load_marathon_config.called
     mock_format_mesos_command.assert_called_with('slave1', 'appID1', 'http://foo', 'http://user:pass@blah')
 
 
@@ -108,25 +120,26 @@ def test_format_mesos_command():
     assert ret == expected
 
 
-@patch('paasta_tools.cli.cmds.sysdig.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.find_connectable_master', autospec=True)
-def test_get_any_mesos_master(mock_find_connectable_master, mock_calculate_remote_masters, mock_load_system_config):
+def test_get_any_mesos_master(mock_find_connectable_master, mock_calculate_remote_masters):
     mock_calculate_remote_masters.return_value = ([], 'fakeERROR')
+
+    fake_system_paasta_config = mock.Mock()
+
     with raises(SystemExit):
-        sysdig.get_any_mesos_master('cluster1')
-    assert mock_load_system_config.called
+        sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config)
     mock_calculate_remote_masters.assert_called_with(
         'cluster1',
-        mock_load_system_config.return_value,
+        fake_system_paasta_config,
     )
 
     mock_masters = mock.Mock()
     mock_calculate_remote_masters.return_value = (mock_masters, 'fake')
     mock_find_connectable_master.return_value = (False, 'fakeERROR')
     with raises(SystemExit):
-        sysdig.get_any_mesos_master('cluster1')
+        sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config)
 
     mock_master = mock.Mock()
     mock_find_connectable_master.return_value = (mock_master, 'fake')
-    assert sysdig.get_any_mesos_master('cluster1') == mock_master
+    assert sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config) == mock_master
