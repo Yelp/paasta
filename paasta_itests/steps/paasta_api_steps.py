@@ -81,6 +81,7 @@ def resources_groupings(context, groupings, num):
 def marathon_dashboard(context, service, instance, cluster, shard):
     response = context.paasta_api_client.marathon_dashboard.marathon_dashboard().result()
     dashboard = response[cluster]
+    shard_url = context.system_paasta_config.get_dashboard_links()[cluster]['Marathon RO'][shard]
     for marathon_dashboard_item in dashboard:
         if marathon_dashboard_item['service'] == service and marathon_dashboard_item['instance'] == instance:
-            assert marathon_dashboard_item['shard_url'] == context.marathon_servers.current[shard].url, response
+            assert marathon_dashboard_item['shard_url'] == shard_url

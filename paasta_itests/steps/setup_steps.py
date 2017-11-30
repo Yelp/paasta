@@ -235,6 +235,19 @@ def working_paasta_cluster_with_registry(context, docker_registry):
             },
         }, 'api_endpoints.json',
     )
+    write_etc_paasta(
+        context, {
+            'dashboard_links': {
+                'testcluster': {
+                    'Marathon RO': [
+                        'http://accessible-marathon',
+                        'http://accessible-marathon1',
+                        'http://accessible-marathon2',
+                    ],
+                },
+            },
+        }, 'dashboard_links.json',
+    )
 
 
 @given('we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
