@@ -45,7 +45,12 @@ def parse_args(argv):
     return args
 
 
-def create_marathon_dashboard(cluster, soa_dir=DEFAULT_SOA_DIR, marathon_clients=None):
+def create_marathon_dashboard(
+        cluster,
+        soa_dir=DEFAULT_SOA_DIR,
+        marathon_clients=None,
+        system_paasta_config=load_system_paasta_config(),
+):
     try:
         instances = get_services_for_cluster(
             cluster=cluster,
@@ -55,7 +60,6 @@ def create_marathon_dashboard(cluster, soa_dir=DEFAULT_SOA_DIR, marathon_clients
     except FileNotFoundError:
         instances = []
     dashboard = {cluster: []}
-    system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
     if marathon_clients is None:
         marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)

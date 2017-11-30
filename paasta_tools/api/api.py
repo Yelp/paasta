@@ -89,14 +89,14 @@ def setup_paasta_api():
     # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
-    system_paasta_config = load_system_paasta_config()
-    settings.cluster = system_paasta_config.get_cluster()
+    settings.system_paasta_config = load_system_paasta_config()
+    settings.cluster = settings.system_paasta_config.get_cluster()
 
     settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(system_paasta_config),
+        marathon_tools.get_marathon_servers(settings.system_paasta_config),
     )
 
-    settings.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config=system_paasta_config)
+    settings.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config=settings.system_paasta_config)
     settings.marathon_clients = marathon_tools.get_marathon_clients(
         marathon_servers=settings.marathon_servers,
         cached=False,

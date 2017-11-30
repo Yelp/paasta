@@ -27,4 +27,5 @@ def marathon_dashboard(request):
         cluster=settings.cluster,
         soa_dir=settings.soa_dir,
         marathon_clients=settings.marathon_clients,
+        system_paasta_config=settings.system_paasta_config,
     )
