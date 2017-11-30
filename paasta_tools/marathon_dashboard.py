@@ -49,7 +49,7 @@ def create_marathon_dashboard(
         cluster,
         soa_dir=DEFAULT_SOA_DIR,
         marathon_clients=None,
-        system_paasta_config=load_system_paasta_config(),
+        system_paasta_config=None,
 ):
     try:
         instances = get_services_for_cluster(
@@ -60,6 +60,8 @@ def create_marathon_dashboard(
     except FileNotFoundError:
         instances = []
     dashboard = {cluster: []}
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
     if marathon_clients is None:
         marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)

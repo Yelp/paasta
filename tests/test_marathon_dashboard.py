@@ -18,9 +18,11 @@ from paasta_tools import marathon_dashboard
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def test_main():
+@mock.patch('paasta_tools.marathon_dashboard.load_system_paasta_config', autospec=True)
+def test_main(mock_load_system_paasta_config):
     soa_dir = '/fake/soa/dir'
     cluster = 'fake_cluster'
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, 'fake_directory')
     with mock.patch(
         'paasta_tools.marathon_dashboard.create_marathon_dashboard',
         autospec=True,
