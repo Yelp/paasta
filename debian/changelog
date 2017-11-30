@@ -1,3 +1,12 @@
+paasta-tools (0.69.0) xenial; urgency=medium
+
+  * 0.69.0 tagged with 'make release'
+    Commit: Merge pull request #1628 from Yelp/clean_up_marathon_client
+    Convert cli/cmds/sysdig.py to sharded marathon and clean up
+    unsharded code/test config.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 30 Nov 2017 11:15:31 -0800
+
 paasta-tools (0.68.12) xenial; urgency=medium
 
   * 0.68.12 tagged with 'make release'
