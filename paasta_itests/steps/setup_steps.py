@@ -77,6 +77,11 @@ def setup_system_paasta_config():
                 'password': None,
                 'url': [chronos_connection_string],
             },
+            'dashboard_links': {
+                'testcluster': {
+                    'Marathon RO': ['http://accessible-marathon', 'http://accessible-marathon1', 'http://accessible-marathon2']
+                }
+            }
         }, '/some_fake_path_to_config_dir/',
     )
     return system_paasta_config
