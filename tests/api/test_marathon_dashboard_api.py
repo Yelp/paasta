@@ -53,9 +53,9 @@ def test_list_instances(mock_load_system_paasta_config):
                     "http://accessible-marathon",
                     "http://accessible-marathon1",
                     "http://accessible-marathon2",
-                ]
-            }
-        }
+                ],
+            },
+        },
     }
     system_paasta_config = SystemPaastaConfig(config=system_paasta_config_dict, directory='unused')
     marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
