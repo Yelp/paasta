@@ -701,15 +701,15 @@ def autoscaling_is_paused():
         try:
             pause_until = zk.get(ZK_PAUSE_AUTOSCALE_PATH)[0].decode('utf8')
             pause_until = int(pause_until)
-        except (NoNodeError, ValueError) as e:
+        except (NoNodeError, ValueError, AttributeError) as e:
             pause_until = 0
 
     remaining = pause_until - time.time()
     if remaining >= 0:
-        return False
-    else:
-        log.debug("Autoscaling is paused for {} minutes".format(str(remaining)))
+        log.debug("Autoscaling is paused for {} more seconds".format(str(remaining)))
         return True
+    else:
+        return False
 
 
 @use_requests_cache('service_autoscaler')
