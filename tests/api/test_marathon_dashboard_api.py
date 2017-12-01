@@ -49,7 +49,11 @@ def test_list_instances(mock_load_system_paasta_config):
         ],
         "dashboard_links": {
             "testcluster": {
-                "Marathon RO": ["http://accessible-marathon", "http://accessible-marathon1", "http://accessible-marathon2"]
+                "Marathon RO": [
+                    "http://accessible-marathon",
+                    "http://accessible-marathon1",
+                    "http://accessible-marathon2",
+                ]
             }
         }
     }
