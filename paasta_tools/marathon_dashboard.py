@@ -15,19 +15,27 @@
 import argparse
 import json
 import logging
+from typing import Dict
+from typing import List
+
+from mypy_extensions import TypedDict
 
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import MarathonClient  # noqa; imported for typing
+from paasta_tools.marathon_tools import MarathonClients  # noqa; imported for typing
+from paasta_tools.marathon_tools import MarathonServiceConfig  # noqa; imported for typing
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 
 log = logging.getLogger(__name__)
 
 
-def parse_args(argv):
+def parse_args(argv) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Generates links from marathon instances to their respective web dashboard.',
     )
@@ -45,43 +53,47 @@ def parse_args(argv):
     return args
 
 
+Marathon_Dashboard_Item = TypedDict('Marathon_Dashboard_Item', {'service': str, 'instance': str, 'shard_url': str})
+Marathon_Dashboard = Dict[str, List[Marathon_Dashboard_Item]]
+
+
 def create_marathon_dashboard(
-        cluster,
-        soa_dir=DEFAULT_SOA_DIR,
-        marathon_clients=None,
-        system_paasta_config=None,
-):
+        cluster: str,
+        soa_dir: str=DEFAULT_SOA_DIR,
+        marathon_clients: MarathonClients=None,
+        system_paasta_config: SystemPaastaConfig=None,
+) -> Marathon_Dashboard:
     try:
-        instances = get_services_for_cluster(
+        instances: List = get_services_for_cluster(
             cluster=cluster,
             instance_type='marathon',
             soa_dir=soa_dir,
         )
     except FileNotFoundError:
         instances = []
-    dashboard = {cluster: []}
+    dashboard: Marathon_Dashboard = {cluster: []}
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
     if marathon_clients is None:
         marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)
     for service_instance in instances:
-        service = service_instance[0]
-        instance = service_instance[1]
-        service_config = load_marathon_service_config(
+        service: str = service_instance[0]
+        instance: str = service_instance[1]
+        service_config: MarathonServiceConfig = load_marathon_service_config(
             service=service,
             instance=instance,
             cluster=cluster,
             load_deployments=False,
             soa_dir=soa_dir,
         )
-        client = marathon_clients.get_current_client_for_service(job_config=service_config)
-        dashboard_links = system_paasta_config.get_dashboard_links()
-        shard_url = client.servers[0]
+        client: MarathonClient = marathon_clients.get_current_client_for_service(job_config=service_config)
+        dashboard_links: Dict = system_paasta_config.get_dashboard_links()
+        shard_url: str = client.servers[0]
         for shard_number, shard in enumerate(marathon_servers.current):
             if shard.url[0] == shard_url:
                 shard_url = dashboard_links[cluster]['Marathon RO'][shard_number]
-        service_info = {
+        service_info: Marathon_Dashboard_Item = {
             'service': service,
             'instance': instance,
             'shard_url': shard_url,
@@ -90,9 +102,9 @@ def create_marathon_dashboard(
     return dashboard
 
 
-def main(argv=None):
+def main(argv=None) -> None:
     args = parse_args(argv)
-    dashboard = create_marathon_dashboard(cluster=args.cluster, soa_dir=args.soa_dir)
+    dashboard: Marathon_Dashboard = create_marathon_dashboard(cluster=args.cluster, soa_dir=args.soa_dir)
     print(json.dumps(dashboard))
 
 
