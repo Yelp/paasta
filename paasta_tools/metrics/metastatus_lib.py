@@ -18,10 +18,16 @@ import math
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
+from typing import Callable
+from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Tuple
+from typing import TypeVar
 
 from humanize import naturalsize
+from mypy_extensions import TypedDict
+from typing_extensions import Counter as _Counter  # noqa
 
 from paasta_tools import chronos_tools
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
@@ -347,15 +353,26 @@ def key_func_for_attribute(attribute):
     return key_func
 
 
-def key_func_for_attribute_multi(attributes):
+def key_func_for_attribute_multi(
+    attributes: Collection[str],
+) -> Callable[
+    ...,
+    Tuple[Tuple[str, str], ...],
+]:
     """ Return a closure that given a slave, will return the value of a list of
-    attributes, compiled into a hashable frozenset
+    attributes, compiled into a hashable tuple
 
     :param attributes: the attribues to inspect in the slave
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
+    def get_attribute(slave, attribute):
+        if attribute == "hostname":
+            return slave["hostname"]
+        else:
+            return slave["attributes"].get(attribute, 'unknown')
+
     def key_func(slave):
-        return frozenset({a: slave['attributes'].get(a, 'unknown') for a in sorted(attributes)}.items())
+        return tuple((a, get_attribute(slave, a)) for a in attributes)
     return key_func
 
 
@@ -367,7 +384,15 @@ def sort_func_for_attributes(attributes):
     return sort
 
 
-def group_slaves_by_key_func(key_func, slaves, sort_func=None):
+_KeyFuncRetT = TypeVar('_KeyFuncRetT')
+_SlaveT = TypeVar('_SlaveT')
+
+
+def group_slaves_by_key_func(
+    key_func: Callable[..., _KeyFuncRetT],
+    slaves: Collection[_SlaveT],
+    sort_func: Callable=None,
+) -> Dict[_KeyFuncRetT, List[_SlaveT]]:
     """ Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
@@ -385,7 +410,17 @@ def group_slaves_by_key_func(key_func, slaves, sort_func=None):
     return {k: list(v) for k, v in itertools.groupby(sorted_slaves, key=key_func)}
 
 
-def calculate_resource_utilization_for_slaves(slaves, tasks):
+ResourceUtilizationDict = TypedDict(
+    'ResourceUtilizationDict',
+    {
+        'free': ResourceInfo,
+        'total': ResourceInfo,
+        'slave_count': int,
+    },
+)
+
+
+def calculate_resource_utilization_for_slaves(slaves: List, tasks: List) -> ResourceUtilizationDict:
     """ Given a list of slaves and a list of tasks, calculate the total available
     resource available in that list of slaves, and the resources consumed by tasks
     running on those slaves.
@@ -395,7 +430,7 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
     :returns: a dict, containing keys for "free" and "total" resources. Each of these keys
     is a ResourceInfo tuple, exposing a number for cpu, disk and mem.
     """
-    resource_total_dict = Counter()
+    resource_total_dict: _Counter[str] = Counter()
     for slave in slaves:
         filtered_resources = filter_mesos_state_metrics(slave['resources'])
         resource_total_dict.update(Counter(filtered_resources))
@@ -459,7 +494,12 @@ def filter_slaves(slaves, filters):
     return [s for s in slaves if all([f(s) for f in filters])]
 
 
-def get_resource_utilization_by_grouping(grouping_func, mesos_state, filters=[], sort_func=None):
+def get_resource_utilization_by_grouping(
+    grouping_func: Callable[..., _KeyFuncRetT],
+    mesos_state: Dict,
+    filters: List[Callable]=[],
+    sort_func=None,
+) -> Dict[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
@@ -718,7 +758,7 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
     ]
 
 
-def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, humanize):
+def get_table_rows_for_resource_info_dict(attribute_values, healthcheck_utilization_pairs, humanize):
     """ A wrapper method to join together
 
     :param attribute: The attribute value and formatted columns to be shown in
@@ -729,9 +769,7 @@ def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilizati
     :param humanize: a boolean indicating whether the outut strings should be 'humanized'
     :returns: a list of strings, representing a row in a table to be formatted.
     """
-    row = [attribute_value]
-    row.extend(format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize))
-    return row
+    return attribute_values + format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize)
 
 
 def reserved_maintenence_resources(resources):

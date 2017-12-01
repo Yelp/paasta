@@ -1267,7 +1267,7 @@ def get_mesos_utilization_error(
         log.info("Failed to find utilization for region %s, pool %s, returning 0 error")
         return 0
 
-    log.debug(region_pool_utilization_dict)
+    log.debug(repr(region_pool_utilization_dict))
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
     free_percs = []
