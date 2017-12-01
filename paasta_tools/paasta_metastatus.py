@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import functools
 import itertools
 import logging
 import sys
+from typing import List
+from typing import Optional
 
 import chronos
 from marathon.exceptions import MarathonError
@@ -103,7 +104,7 @@ def all_marathon_clients(marathon_clients):
     return [c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)]
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]]=None) -> None:
     chronos_config = None
     args = parse_args(argv)
 
@@ -128,7 +129,7 @@ def main(argv=None):
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % '\n'.join(e.args)))
         sys.exit(2)
 
     # Check to see if Chronos should be running here by checking for config
@@ -200,11 +201,7 @@ def main(argv=None):
         if args.autoscaling_info:
             print_with_indent("Autoscaling resources:", 2)
             headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
-            table = functools.reduce(
-                lambda x, y: x + [(y)],
-                get_autoscaling_info_for_all_resources(mesos_state),
-                [headers],
-            )
+            table = [headers] + [[str(x) for x in asi] for asi in get_autoscaling_info_for_all_resources(mesos_state)]
 
             for line in format_table(table):
                 print_with_indent(line, 4)
