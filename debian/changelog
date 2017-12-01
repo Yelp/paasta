@@ -1,3 +1,12 @@
+paasta-tools (0.69.2) xenial; urgency=medium
+
+  * 0.69.2 tagged with 'make release'
+    Commit: Merge pull request #1643 from Yelp/OPS-12441-local-run-port
+    paasta local-run --no-healthcheck shouldn"t publish a container"s
+    ports
+
+ -- Alexander Dudko <adudko@yelp.com>  Fri, 01 Dec 2017 13:42:51 -0800
+
 paasta-tools (0.69.1) xenial; urgency=medium
 
   * 0.69.1 tagged with 'make release'
