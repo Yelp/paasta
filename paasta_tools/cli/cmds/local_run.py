@@ -589,6 +589,8 @@ def run_docker_container(
     if healthcheck_mode is None:
         container_port = None
         interactive = True
+    elif not user_port and not healthcheck and not healthcheck_only:
+        container_port = None
     else:
         try:
             container_port = instance_config.get_container_port()
@@ -651,7 +653,7 @@ def run_docker_container(
         paasta_print('Found our container running with CID %s' % container_id)
 
         # If the service has a healthcheck, simulate it
-        if healthcheck_mode is not None:
+        if healthcheck and healthcheck_mode is not None:
             healthcheck_result = simulate_healthcheck_on_service(
                 instance_config=instance_config,
                 docker_client=docker_client,
