@@ -65,6 +65,7 @@ def test_list_instances(mock_load_system_paasta_config):
     )
     request = testing.DummyRequest()
 
+    settings.system_paasta_config = system_paasta_config
     mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, 'fake_directory')
     response = marathon_dashboard(request)
     expected_output = {settings.cluster: []}
