@@ -19,7 +19,6 @@ import pytest
 from paasta_tools.monitoring.check_synapse_replication import check_replication
 from paasta_tools.monitoring.check_synapse_replication import parse_range
 from paasta_tools.monitoring.check_synapse_replication import run_synapse_check
-from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_check_replication():
@@ -60,7 +59,7 @@ def test_parse_range():
     assert computed_ranges == expected_ranges
 
 
-def test_run_synapse_check():
+def test_run_synapse_check(system_paasta_config):
     module = 'paasta_tools.monitoring.check_synapse_replication'
     parse_method = module + '.parse_synapse_check_options'
     replication_method = module + '.get_replication_for_services'
@@ -81,7 +80,7 @@ def test_run_synapse_check():
             check_replication_method, return_value=(return_value, 'CHECK'), autospec=True,
         ), mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
-            return_value=SystemPaastaConfig({}, '/fake/config'),
+            return_value=system_paasta_config,
         ):
             with pytest.raises(SystemExit) as error:
                 run_synapse_check()
@@ -101,7 +100,7 @@ def test_run_synapse_check():
         check_replication_method, new=mock_check, autospec=None,
     ), mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
-        return_value=SystemPaastaConfig({}, '/fake/config'),
+        return_value=system_paasta_config,
     ):
         with pytest.raises(SystemExit) as error:
             run_synapse_check()

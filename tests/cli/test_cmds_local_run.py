@@ -41,7 +41,6 @@ from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
@@ -78,13 +77,12 @@ def test_dry_run(
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     capfd,
+    system_paasta_config,
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/',
-    )
+    mock_load_system_paasta_config.return_value = system_paasta_config
     mock_figure_out_service_name.return_value = 'fake_service'
 
     # Should pass and produce something
@@ -111,6 +109,7 @@ def test_dry_run_json_dict(
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     capfd,
+    system_paasta_config,
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
@@ -124,9 +123,7 @@ def test_dry_run_json_dict(
     mock_get_instance_config.return_value.get_container_port.return_value = 8888
     mock_validate_service_instance.return_value = 'marathon'
     mock_paasta_cook_image.return_value = 0
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/',
-    )
+    mock_load_system_paasta_config.return_value = system_paasta_config
     mock_figure_out_service_name.return_value = 'fake_service'
 
     # Should pass and produce something
@@ -359,15 +356,13 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
+    system_paasta_config,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
     mock_run_docker_container.return_value = 0
 
-    mock_system_paasta_config = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/',
-    )
     fake_service = 'fake_service'
     docker_hash = '8' * 40
     args = mock.MagicMock()
@@ -386,7 +381,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         service=fake_service,
         instance='fake_instance',
         cluster='fake_cluster',
-        system_paasta_config=mock_system_paasta_config,
+        system_paasta_config=system_paasta_config,
         args=args,
     )
     assert return_code == 0
@@ -416,14 +411,12 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
+    system_paasta_config,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_run_docker_container.return_value = 0
 
-    mock_system_paasta_config = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/',
-    )
     fake_service = 'fake_service'
     docker_hash = '8' * 40
     args = mock.MagicMock()
@@ -442,7 +435,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         service=fake_service,
         instance='fake_instance',
         cluster='fake_cluster',
-        system_paasta_config=mock_system_paasta_config,
+        system_paasta_config=system_paasta_config,
         args=args,
     )
     assert return_code == 0
@@ -474,14 +467,12 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_get_instance_config,
     mock_run_docker_container,
     mock_docker_pull_image,
+    system_paasta_config,
 ):
     mock_validate_service_instance.return_value = 'marathon'
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_run_docker_container.return_value = 0
 
-    mock_system_paasta_config = SystemPaastaConfig(
-        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/',
-    )
     fake_instance_config = mock.MagicMock(InstanceConfig)
     fake_instance_config.get_docker_registry.return_value = 'fake_registry'
     fake_instance_config.get_docker_image.return_value = 'fake_image'
@@ -505,7 +496,7 @@ def test_configure_and_run_pulls_image_when_asked(
         instance='fake_instance',
         cluster='fake_cluster',
         args=args,
-        system_paasta_config=mock_system_paasta_config,
+        system_paasta_config=system_paasta_config,
         pull_image=True,
     )
     assert return_code == 0
@@ -529,7 +520,9 @@ def test_configure_and_run_pulls_image_when_asked(
     )
 
 
-def test_configure_and_run_docker_container_defaults_to_interactive_instance():
+def test_configure_and_run_docker_container_defaults_to_interactive_instance(
+    system_paasta_config,
+):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True,
     ) as mock_stdin, mock.patch(
@@ -543,9 +536,6 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
 
-        mock_system_paasta_config = SystemPaastaConfig(
-            {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/',
-        )
         args = mock.MagicMock()
         args.cmd = None
         args.service = 'fake_service'
@@ -564,7 +554,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance():
             instance=None,
             cluster='fake_cluster',
             args=args,
-            system_paasta_config=mock_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert return_code == 0
         mock_run_docker_container.assert_called_once_with(
@@ -1530,7 +1520,7 @@ def test_get_local_run_environment_vars_other(
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=True, autospec=True)
-def test_volumes_are_deduped(mock_exists):
+def test_volumes_are_deduped(mock_exists, system_paasta_config):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container',
         autospec=True,
@@ -1563,16 +1553,7 @@ def test_volumes_are_deduped(mock_exists):
             service='service',
             instance='instance',
             cluster='cluster',
-            system_paasta_config=SystemPaastaConfig(
-                {
-                    'volumes': [{
-                        "hostPath": "/hostPath",
-                        "containerPath": "/containerPath",
-                        "mode": "RO",
-                    }],
-                },
-                '/etc/paasta',
-            ),
+            system_paasta_config=system_paasta_config,
             args=mock.Mock(
                 yelpsoa_config_root='/blurp/durp',
             ),
@@ -1582,7 +1563,7 @@ def test_volumes_are_deduped(mock_exists):
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=False, autospec=True)
-def test_missing_volumes_skipped(mock_exists):
+def test_missing_volumes_skipped(mock_exists, system_paasta_config):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container',
         autospec=True,
@@ -1615,16 +1596,7 @@ def test_missing_volumes_skipped(mock_exists):
             service='service',
             instance='instance',
             cluster='cluster',
-            system_paasta_config=SystemPaastaConfig(
-                {
-                    'volumes': [{
-                        "hostPath": "/hostPath",
-                        "containerPath": "/containerPath",
-                        "mode": "RO",
-                    }],
-                },
-                '/etc/paasta',
-            ),
+            system_paasta_config=system_paasta_config,
             args=mock.Mock(
                 yelpsoa_config_root='/blurp/durp',
             ),
