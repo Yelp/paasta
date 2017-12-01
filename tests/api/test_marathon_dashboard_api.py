@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
 from pyramid import testing
 
 from paasta_tools import marathon_tools
@@ -20,8 +19,7 @@ from paasta_tools.api.views.marathon_dashboard import marathon_dashboard
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@mock.patch('paasta_tools.marathon_dashboard.load_system_paasta_config', autospec=True)
-def test_list_instances(mock_load_system_paasta_config):
+def test_list_instances():
     settings.cluster = 'fake_cluster'
     system_paasta_config_dict = {
         "marathon_servers": [
@@ -66,7 +64,6 @@ def test_list_instances(mock_load_system_paasta_config):
     request = testing.DummyRequest()
 
     settings.system_paasta_config = system_paasta_config
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, 'fake_directory')
     response = marathon_dashboard(request)
     expected_output = {settings.cluster: []}
     assert response == expected_output
