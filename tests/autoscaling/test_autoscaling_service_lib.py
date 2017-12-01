@@ -1084,18 +1084,21 @@ def test_autoscaling_is_paused():
     ) as mock_time, mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
     ):
-        mock_time.time = mock.Mock(return_value=200)
 
+        # Pausing expired 100 seconds ago
         mock_zk_get = mock.Mock(return_value=(b'100', None))
         mock_zk.return_value = mock.Mock(get=mock_zk_get)
+        mock_time.time = mock.Mock(return_value=200)
+        assert not autoscaling_is_paused()
 
-        retval = autoscaling_is_paused()
-        mock_zk_get.assert_called_once_with('/autoscaling/paused')
-        assert retval
-
+        # Pause set until 300, still has 100 more seconds of pausing
         mock_zk_get.return_value = (b'300', None)
-        retval = autoscaling_is_paused()
-        assert not retval
+        mock_time.time = mock.Mock(return_value=200)
+        assert autoscaling_is_paused()
+
+        # With 0 we should be unpaused
+        mock_zk_get.return_value = (b'0', None)
+        assert not autoscaling_is_paused()
 
 
 def test_filter_autoscaling_tasks():
