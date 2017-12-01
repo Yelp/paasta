@@ -53,7 +53,6 @@ Feature: paasta_api
       And resources GET with groupings "pool" and filters "region:fakeregion" should return 2 groups
       And resources GET with groupings "pool" and filters "ssd:true|region:fakeregion" should return 1 groups
 
-  @wip
   Scenario: Marathon Dashboard
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
