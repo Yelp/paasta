@@ -1,3 +1,11 @@
+paasta-tools (0.69.1) xenial; urgency=medium
+
+  * 0.69.1 tagged with 'make release'
+    Commit: Merge pull request #1640 from Yelp/fix_autoscaler_pausing
+    Fix paused autoscaler logic bug
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 01 Dec 2017 11:34:55 -0800
+
 paasta-tools (0.69.0) xenial; urgency=medium
 
   * 0.69.0 tagged with 'make release'

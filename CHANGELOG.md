@@ -1,7 +1,21 @@
 # Change Log
 
-## [0.68.12](https://github.com/Yelp/paasta/tree/0.68.12) (2017-11-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.11...0.68.12)
+## [0.69.1](https://github.com/Yelp/paasta/tree/0.69.1) (2017-12-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.0...0.69.1)
+
+**Merged pull requests:**
+
+- Fix paused autoscaler logic bug [\#1640](https://github.com/Yelp/paasta/pull/1640) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.69.0](https://github.com/Yelp/paasta/tree/v0.69.0) (2017-11-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.12...v0.69.0)
+
+**Merged pull requests:**
+
+- Convert cli/cmds/sysdig.py to sharded marathon and clean up unsharded code/test config. [\#1628](https://github.com/Yelp/paasta/pull/1628) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.68.12](https://github.com/Yelp/paasta/tree/v0.68.12) (2017-11-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.68.11...v0.68.12)
 
 **Merged pull requests:**
 
