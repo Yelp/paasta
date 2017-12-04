@@ -37,6 +37,7 @@ from botocore.exceptions import ClientError
 from mypy_extensions import TypedDict
 from requests.exceptions import HTTPError
 
+from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.autoscaling import ec2_fitness
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
@@ -1258,6 +1259,13 @@ def get_mesos_utilization_error(
     pool: str,
     target_utilization: float,
 ) -> float:
+    """Return the relative capacity needed to reach the cluster target usage.
+    Example: If the current capacity is 10 unit (could be CPU, memory, disk, gpu...)
+    If the target usage is 0.8 and the current usage is 9 units. We will return 1.125:
+    An 12.5% increase in capacity is required => 9/11.25 = 80% usage
+    When the boost feature is enabled, the current_load will be artifically increased
+    and stored into boosted_load. If the boost is disabled, boosted_load = current_load
+    """
     try:
         region_pool_utilization_dict = get_resource_utilization_by_grouping(
             lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
@@ -1270,14 +1278,17 @@ def get_mesos_utilization_error(
     log.debug(region_pool_utilization_dict)
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
-    free_percs = []
+    usage_percs = []
     for free, total in zip(free_pool_resources, total_pool_resources):
         if math.isclose(total, 0):
             continue
-        free_percs.append(float(free) / float(total))
+        current_load = total - free
+        boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
 
-    if len(free_percs) == 0:  # If all resource totals are close to 0 for some reason
+        usage_percs.append(boosted_load / float(total))
+
+    if len(usage_percs) == 0:  # If all resource totals are close to 0 for some reason
         return 0
 
-    utilization = 1.0 - min(free_percs)
+    utilization = max(usage_percs)
     return utilization - target_utilization
