@@ -23,7 +23,6 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import EXECUTION_DATE_FORMAT
 from paasta_tools.cli.cmds.rerun import add_subparser
 from paasta_tools.cli.cmds.rerun import paasta_rerun
-from paasta_tools.utils import SystemPaastaConfig
 
 
 _user_supplied_execution_date = '2016-04-08T02:37:27'
@@ -131,7 +130,7 @@ _service_name = 'a_service'
         ],
     ],
 )
-def test_rerun_validations(test_case, capfd):
+def test_rerun_validations(test_case, capfd, system_paasta_config):
     with patch(
         'paasta_tools.cli.cmds.rerun.figure_out_service_name', autospec=True,
     ) as mock_figure_out_service_name, patch(
@@ -178,7 +177,7 @@ def test_rerun_validations(test_case, capfd):
         default_date = datetime.datetime(2002, 2, 2, 2, 2, 2, 2)
         mock_get_default_execution_date.return_value = default_date
         mock_execute_rerun_remote.return_value = (0, '')
-        mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, '/fake/config')
+        mock_load_system_paasta_config.return_value = system_paasta_config
 
         mock_read_chronos_jobs_for_service.return_value = {
             'instance1': {},

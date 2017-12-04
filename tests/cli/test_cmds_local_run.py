@@ -41,6 +41,7 @@ from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
@@ -1520,7 +1521,7 @@ def test_get_local_run_environment_vars_other(
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=True, autospec=True)
-def test_volumes_are_deduped(mock_exists, system_paasta_config):
+def test_volumes_are_deduped(mock_exists):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container',
         autospec=True,
@@ -1553,7 +1554,16 @@ def test_volumes_are_deduped(mock_exists, system_paasta_config):
             service='service',
             instance='instance',
             cluster='cluster',
-            system_paasta_config=system_paasta_config,
+            system_paasta_config=SystemPaastaConfig(
+                {
+                    'volumes': [{
+                        "hostPath": "/hostPath",
+                        "containerPath": "/containerPath",
+                        "mode": "RO",
+                    }],
+                },
+                '/etc/paasta',
+            ),
             args=mock.Mock(
                 yelpsoa_config_root='/blurp/durp',
             ),
@@ -1563,7 +1573,7 @@ def test_volumes_are_deduped(mock_exists, system_paasta_config):
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.os.path.exists', return_value=False, autospec=True)
-def test_missing_volumes_skipped(mock_exists, system_paasta_config):
+def test_missing_volumes_skipped(mock_exists):
     with mock.patch(
         'paasta_tools.cli.cmds.local_run.run_docker_container',
         autospec=True,
@@ -1596,7 +1606,16 @@ def test_missing_volumes_skipped(mock_exists, system_paasta_config):
             service='service',
             instance='instance',
             cluster='cluster',
-            system_paasta_config=system_paasta_config,
+            system_paasta_config=SystemPaastaConfig(
+                {
+                    'volumes': [{
+                        "hostPath": "/hostPath",
+                        "containerPath": "/containerPath",
+                        "mode": "RO",
+                    }],
+                },
+                '/etc/paasta',
+            ),
             args=mock.Mock(
                 yelpsoa_config_root='/blurp/durp',
             ),
