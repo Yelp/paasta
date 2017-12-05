@@ -678,7 +678,7 @@
     },
     "MarathonDashboard": {
       "type": "object",
-      "description": "A list of Marathon service, instance, and shard number for one or more clusters",
+      "description": "A list of Marathon service, instance, and shard url for one or more clusters",
       "additionalProperties": {
         "$ref": "#/definitions/MarathonDashboardCluster"
       }
@@ -692,7 +692,7 @@
     },
     "MarathonDashboardItem": {
       "type": "object",
-      "description": "Marathon service, instance, and shard number",
+      "description": "Marathon service, instance, and shard url",
       "properties": {
         "service": {
           "type": "string",
