@@ -13,6 +13,7 @@ from collections import namedtuple
 from datetime import datetime
 from time import time as get_time
 
+from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.utils import ZookeeperPool
@@ -91,12 +92,12 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
 def get_boost_values(
     region: str,
     pool: str,
-    zk: ZookeeperPool,
+    zk: KazooClient,
 ) -> BoostValues:
     # Default values, non-boost.
-    end_time = 0
-    boost_factor = 1.0
-    expected_load = 0
+    end_time: float = 0
+    boost_factor: float = 1.0
+    expected_load: float = 0
 
     try:
         zk_boost_path = get_zk_boost_path(region, pool)
