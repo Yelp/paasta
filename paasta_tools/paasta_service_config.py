@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from typing import Any
+from typing import Dict
+from typing import no_type_check
 
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
@@ -57,14 +60,14 @@ class PaastaServiceConfig():
     >>>
     """
 
-    def __init__(self, service: str, soa_dir: str=DEFAULT_SOA_DIR, load_deployments: bool=True):
+    def __init__(self, service: str, soa_dir: str=DEFAULT_SOA_DIR, load_deployments: bool=True) -> None:
         self._service = service
         self._soa_dir = soa_dir
         self._load_deployments = load_deployments
         self._clusters = None
         self._general_config = None
         self._deployments_json = None
-        self._framework_configs = {}
+        self._framework_configs: Dict[Any, Any] = {}
         self._deployments_json = None
 
     @property
@@ -148,7 +151,8 @@ class PaastaServiceConfig():
         )
         self._framework_configs[(cluster, instance_type)] = instances
 
-    def _get_branch_dict(self, cluster: str, instance: str, config: dict):
+    @no_type_check
+    def _get_branch_dict(self, cluster: str, instance: str, config: Dict[Any, Any]):
         if self._load_deployments:
             if self._deployments_json is None:
                 self._deployments_json = load_deployments_json(self._service, soa_dir=self._soa_dir)
@@ -157,7 +161,8 @@ class PaastaServiceConfig():
         else:
             return {}
 
-    def _get_branch_dict_v2(self, cluster: str, instance: str, config: dict):
+    @no_type_check
+    def _get_branch_dict_v2(self, cluster: str, instance: str, config: Dict[Any, Any]):
         if self._load_deployments:
             if self._deployments_json is None:
                 self._deployments_json = load_v2_deployments_json(self._service, soa_dir=self._soa_dir)
