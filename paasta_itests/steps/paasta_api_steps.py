@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -75,3 +75,13 @@ def resources_groupings_filters(context, groupings, filters, num):
 @then('resources GET with groupings "{groupings}" should return {num:d} groups')
 def resources_groupings(context, groupings, num):
     return resources_groupings_filters(context, groupings, [], num)
+
+
+@then('marathon_dashboard GET should return "{service}.{instance}" in cluster "{cluster}" with shard {shard:d}')
+def marathon_dashboard(context, service, instance, cluster, shard):
+    response = context.paasta_api_client.marathon_dashboard.marathon_dashboard().result()
+    dashboard = response[cluster]
+    shard_url = context.system_paasta_config.get_dashboard_links()[cluster]['Marathon RO'][shard]
+    for marathon_dashboard_item in dashboard:
+        if marathon_dashboard_item['service'] == service and marathon_dashboard_item['instance'] == instance:
+            assert marathon_dashboard_item['shard_url'] == shard_url

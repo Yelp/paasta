@@ -77,6 +77,15 @@ def setup_system_paasta_config():
                 'password': None,
                 'url': [chronos_connection_string],
             },
+            'dashboard_links': {
+                'testcluster': {
+                    'Marathon RO': [
+                        'http://accessible-marathon',
+                        'http://accessible-marathon1',
+                        'http://accessible-marathon2',
+                    ],
+                },
+            },
         }, '/some_fake_path_to_config_dir/',
     )
     return system_paasta_config
@@ -225,6 +234,19 @@ def working_paasta_cluster_with_registry(context, docker_registry):
                 'testcluster': get_paasta_api_url(),
             },
         }, 'api_endpoints.json',
+    )
+    write_etc_paasta(
+        context, {
+            'dashboard_links': {
+                'testcluster': {
+                    'Marathon RO': [
+                        'http://accessible-marathon',
+                        'http://accessible-marathon1',
+                        'http://accessible-marathon2',
+                    ],
+                },
+            },
+        }, 'dashboard_links.json',
     )
 
 

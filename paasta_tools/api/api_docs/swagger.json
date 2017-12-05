@@ -5,9 +5,15 @@
     "version": "1.0.0"
   },
   "basePath": "/v1",
-  "schemes": ["http"],
-  "consumes": ["application/x-www-form-urlencoded"],
-  "produces": ["application/json"],
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/x-www-form-urlencoded"
+  ],
+  "produces": [
+    "application/json"
+  ],
   "tags": [
     {
       "name": "service",
@@ -84,13 +90,30 @@
         "operationId": "delete_service_autoscaler_pause"
       }
     },
+    "/marathon_dashboard": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of service instances and information on their Marathon shard",
+            "schema": {
+              "$ref": "#/definitions/MarathonDashboard"
+            }
+          }
+        },
+        "summary": "Get marathon service instances and their shards",
+        "operationId": "marathon_dashboard",
+        "tags": [
+          "marathon_dashboard"
+        ]
+      }
+    },
     "/resources/utilization": {
       "get": {
         "responses": {
           "200": {
             "description": "Resources in the cluster, filtered and grouped by parameters",
             "schema": {
-              "$ref":"#/definitions/Resource"
+              "$ref": "#/definitions/Resource"
             }
           },
           "400": {
@@ -99,7 +122,9 @@
         },
         "summary": "Get resources in the cluster",
         "operationId": "resources",
-        "tags": ["resources"],
+        "tags": [
+          "resources"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -108,7 +133,9 @@
             "required": false,
             "type": "array",
             "collectionFormat": "csv",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           {
             "in": "query",
@@ -135,7 +162,9 @@
               "properties": {
                 "instances": {
                   "type": "array",
-                  "items": {"type": "string"}
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -143,7 +172,9 @@
         },
         "summary": "List instances of service_name",
         "operationId": "list_instances",
-        "tags": ["service"],
+        "tags": [
+          "service"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -161,7 +192,7 @@
           "200": {
             "description": "Detailed status of an instance",
             "schema": {
-                "$ref":"#/definitions/InstanceStatus"
+              "$ref": "#/definitions/InstanceStatus"
             }
           },
           "404": {
@@ -173,7 +204,9 @@
         },
         "summary": "Get status of service_name.instance_name",
         "operationId": "status_instance",
-        "tags": ["service"],
+        "tags": [
+          "service"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -238,14 +271,14 @@
           "200": {
             "description": "List of tasks associated with an instance",
             "schema": {
-                "$ref":"#/definitions/InstanceTasks"
+              "$ref": "#/definitions/InstanceTasks"
             }
-          },
-          "404": {
-            "description": "Deployment key not found"
           },
           "400": {
             "description": "Bad request"
+          },
+          "404": {
+            "description": "Deployment key not found"
           },
           "500": {
             "description": "Instance failure"
@@ -253,7 +286,9 @@
         },
         "summary": "Get mesos tasks of service_name.instance_name",
         "operationId": "tasks_instance",
-        "tags": ["service"],
+        "tags": [
+          "service"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -275,14 +310,14 @@
             "name": "slave_hostname",
             "required": false,
             "type": "string"
-	  },
+          },
           {
             "in": "query",
             "description": "Return slave and executor for task",
             "name": "verbose",
             "required": false,
             "type": "boolean"
-	  }
+          }
         ]
       }
     },
@@ -292,14 +327,14 @@
           "200": {
             "description": "Task associated with an instance with specified ID",
             "schema": {
-                "$ref":"#/definitions/InstanceTask"
+              "$ref": "#/definitions/InstanceTask"
             }
-          },
-          "404": {
-            "description": "Task with ID not found"
           },
           "400": {
             "description": "Bad request"
+          },
+          "404": {
+            "description": "Task with ID not found"
           },
           "500": {
             "description": "Instance failure"
@@ -307,7 +342,9 @@
         },
         "summary": "Get mesos task of service_name.instance_name by task_id",
         "operationId": "task_instance",
-        "tags": ["service"],
+        "tags": [
+          "service"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -329,14 +366,14 @@
             "name": "task_id",
             "required": true,
             "type": "string"
-	  },
+          },
           {
             "in": "query",
             "description": "Return slave and executor for task",
             "name": "verbose",
             "required": false,
             "type": "boolean"
-	  }
+          }
         ]
       }
     },
@@ -363,7 +400,9 @@
         },
         "summary": "Get status of service_name.instance_name",
         "operationId": "get_autoscaler_count",
-        "tags": ["autoscaler"],
+        "tags": [
+          "autoscaler"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -406,7 +445,9 @@
         },
         "summary": "Get status of service_name.instance_name",
         "operationId": "update_autoscaler_count",
-        "tags": ["autoscaler"],
+        "tags": [
+          "autoscaler"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -474,7 +515,10 @@
         "desired_state": {
           "type": "string",
           "description": "Desired state of a service, for both Marathon and Chronos",
-          "enum": ["start", "stop"]
+          "enum": [
+            "start",
+            "stop"
+          ]
         },
         "app_count": {
           "type": "integer",
@@ -488,12 +532,24 @@
         "bounce_method": {
           "type": "string",
           "description": "Method to transit between new and old versions of a service",
-          "enum": ["brutal", "upthendown", "downthenup", "crossover"]
+          "enum": [
+            "brutal",
+            "upthendown",
+            "downthenup",
+            "crossover"
+          ]
         },
         "deploy_status": {
           "type": "string",
           "description": "Deploy status of a marathon service",
-          "enum": ["Running", "Deploying", "Stopped", "Delayed", "Waiting", "NotRunning"]
+          "enum": [
+            "Running",
+            "Deploying",
+            "Stopped",
+            "Delayed",
+            "Waiting",
+            "NotRunning"
+          ]
         },
         "backoff_seconds": {
           "type": "integer",
@@ -527,12 +583,18 @@
         "desired_state": {
           "type": "string",
           "description": "Desired state of a service, for both Marathon and Chronos",
-          "enum": ["start", "stop"]
+          "enum": [
+            "start",
+            "stop"
+          ]
         },
         "schedule_type": {
           "type": "string",
           "description": "The type of schedule, dependent or shceduled",
-          "enum": ["parents", "schedule"]
+          "enum": [
+            "parents",
+            "schedule"
+          ]
         },
         "schedule_parents": {
           "type": "array",
@@ -562,7 +624,10 @@
           "properties": {
             "disabled_state": {
               "type": "string",
-              "enum": ["not_scheduled", "scheduled"]
+              "enum": [
+                "not_scheduled",
+                "scheduled"
+              ]
             },
             "chronos_state": {
               "type": "string"
@@ -570,7 +635,10 @@
             "mesos_state": {
               "type": "string",
               "description": "The status in mesos",
-              "enum": ["running", "not_running"]
+              "enum": [
+                "running",
+                "not_running"
+              ]
             }
           }
         },
@@ -601,14 +669,50 @@
     "InstanceTasks": {
       "type": "array",
       "description": "List of tasks associated with instance",
-      "items": {"$ref": "#/definitions/InstanceTask"}
+      "items": {
+        "$ref": "#/definitions/InstanceTask"
+      }
     },
     "InstanceTask": {
       "type": "object"
     },
+    "MarathonDashboard": {
+      "type": "object",
+      "description": "A list of Marathon service, instance, and shard url for one or more clusters",
+      "additionalProperties": {
+        "$ref": "#/definitions/MarathonDashboardCluster"
+      }
+    },
+    "MarathonDashboardCluster": {
+      "type": "array",
+      "description": "List of all the MarathonDashboardItems for a cluster",
+      "items": {
+        "$ref": "#/definitions/MarathonDashboardItem"
+      }
+    },
+    "MarathonDashboardItem": {
+      "type": "object",
+      "description": "Marathon service, instance, and shard url",
+      "properties": {
+        "service": {
+          "type": "string",
+          "description": "Service name"
+        },
+        "instance": {
+          "type": "string",
+          "description": "Instance name"
+        },
+        "shard_url": {
+          "type": "string",
+          "description": "Marathon Shard URL"
+        }
+      }
+    },
     "Resource": {
       "type": "array",
-      "items": {"$ref": "#/definitions/ResourceItem"}
+      "items": {
+        "$ref": "#/definitions/ResourceItem"
+      }
     },
     "ResourceItem": {
       "type": "object",
@@ -630,9 +734,15 @@
     "ResourceValue": {
       "type": "object",
       "properties": {
-        "free": {"type": "number"},
-        "used": {"type": "number"},
-        "total": {"type": "number"}
+        "free": {
+          "type": "number"
+        },
+        "used": {
+          "type": "number"
+        },
+        "total": {
+          "type": "number"
+        }
       }
     }
   }
