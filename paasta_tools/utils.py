@@ -1346,7 +1346,6 @@ SystemPaastaConfigDict = TypedDict(
         'resource_pool_settings': ResourcePoolSettings,
         'cluster_fqdn_format': str,
         'chronos_config': ChronosConfig,
-        'marathon_config': MarathonConfigDict,
         'marathon_servers': List[MarathonConfigDict],
         'previous_marathon_servers': List[MarathonConfigDict],
         'local_run_config': LocalRunConfig,
@@ -1590,12 +1589,6 @@ class SystemPaastaConfig(object):
 
         :returns: The chronos config dictionary"""
         return self.config_dict.get('chronos_config', {})
-
-    def get_marathon_config(self) -> MarathonConfigDict:
-        """Get the marathon config
-
-        :returns: The marathon config dictionary"""
-        return self.config_dict.get('marathon_config', {})
 
     def get_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get('marathon_servers', [])

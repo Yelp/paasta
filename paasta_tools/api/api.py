@@ -76,7 +76,11 @@ def make_app(global_config=None):
     config.add_route('service.list', '/v1/services/{service}')
     config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
+    config.add_route('service_autoscaler.pause.post', '/v1/service_autoscaler/pause', request_method="POST")
+    config.add_route('service_autoscaler.pause.delete', '/v1/service_autoscaler/pause', request_method="DELETE")
+    config.add_route('service_autoscaler.pause.get', '/v1/service_autoscaler/pause', request_method="GET")
     config.add_route('version', '/v1/version')
+    config.add_route('marathon_dashboard', '/v1/marathon_dashboard', request_method="GET")
     config.scan()
     return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
 
@@ -85,11 +89,17 @@ def setup_paasta_api():
     # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
-    system_paasta_config = load_system_paasta_config()
-    settings.cluster = system_paasta_config.get_cluster()
+    settings.system_paasta_config = load_system_paasta_config()
+    settings.cluster = settings.system_paasta_config.get_cluster()
 
     settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(system_paasta_config),
+        marathon_tools.get_marathon_servers(settings.system_paasta_config),
+    )
+
+    settings.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config=settings.system_paasta_config)
+    settings.marathon_clients = marathon_tools.get_marathon_clients(
+        marathon_servers=settings.marathon_servers,
+        cached=False,
     )
 
     # Set up transparent cache for http API calls. With expire_after, responses

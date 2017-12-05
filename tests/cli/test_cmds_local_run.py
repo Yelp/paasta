@@ -1076,7 +1076,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             volumes=[],
             interactive=False,
             command='fake_command',
-            healthcheck=False,
+            healthcheck=True,
             healthcheck_only=True,
             user_port=None,
             instance_config=mock_service_manifest,

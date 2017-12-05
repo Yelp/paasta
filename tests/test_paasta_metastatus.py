@@ -20,12 +20,12 @@ from paasta_tools import paasta_metastatus
 from paasta_tools.metrics.metastatus_lib import HealthCheckResult
 
 
-def test_main_no_marathon_config():
+def test_main_no_marathon_servers():
     with patch(
         'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
     ), patch(
-        'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
-    ) as load_marathon_config_patch, patch(
+        'paasta_tools.marathon_tools.get_marathon_servers', autospec=True, return_value={},
+    ), patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
     ), patch(
         'paasta_tools.metrics.metastatus_lib.get_chronos_status', autospec=True,
@@ -48,7 +48,6 @@ def test_main_no_marathon_config():
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
 
-        load_marathon_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main(())
         assert excinfo.value.code == 0
@@ -58,8 +57,6 @@ def test_main_no_chronos_config():
     with patch(
         'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
     ), patch(
-        'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
-    ) as load_marathon_config_patch, patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
     ) as load_chronos_config_patch, patch(
         'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
@@ -77,8 +74,6 @@ def test_main_no_chronos_config():
         fake_master.state.return_value = {}
         get_mesos_master.return_value = fake_master
 
-        load_marathon_config_patch.return_value = {}
-
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
 
@@ -92,8 +87,8 @@ def test_main_marathon_jsondecode_error():
     with patch(
         'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
     ), patch(
-        'paasta_tools.marathon_tools.load_marathon_config', autospec=True,
-    ) as load_marathon_config_patch, patch(
+        'paasta_tools.marathon_tools.get_marathon_servers', autospec=True,
+    ) as get_marathon_status_patch, patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
     ), patch(
         'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
@@ -103,16 +98,13 @@ def test_main_marathon_jsondecode_error():
     ) as get_mesos_state_status_patch, patch(
         'paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health', autospec=True,
     ) as get_mesos_resource_utilization_health_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_marathon_client', autospec=True,
-    ) as get_marathon_client_patch, patch(
         'paasta_tools.metrics.metastatus_lib.get_marathon_status', autospec=True,
     ) as get_marathon_status_patch:
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
         get_mesos_master.return_value = fake_master
 
-        load_marathon_config_patch.return_value = {"url": "http://foo"}
-        get_marathon_client_patch.return_value = Mock()
+        get_marathon_status_patch.return_value = [{"url": "http://foo"}]
 
         get_marathon_status_patch.side_effect = ValueError('could not decode json')
 

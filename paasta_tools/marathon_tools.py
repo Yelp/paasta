@@ -135,6 +135,9 @@ class MarathonClients(object):
         self.current = current
         self.previous = previous
 
+    def __repr__(self) -> str:
+        return 'MarathonClients(current=%r, previous=%r' % (self.current, self.previous)
+
     def get_current_client_for_service(self, job_config: 'MarathonServiceConfig') -> MarathonClient:
         service_instance = compose_job_id(job_config.service, job_config.instance)
         if job_config.get_marathon_shard() is not None:
@@ -175,10 +178,6 @@ def dedupe_clients(all_clients: Iterable[MarathonClient]) -> List[MarathonClient
             deduped_clients.append(client)
 
     return deduped_clients
-
-
-def load_marathon_config() -> "MarathonConfig":
-    return MarathonConfig(load_system_paasta_config().get_marathon_config())
 
 
 def get_marathon_servers(system_paasta_config: SystemPaastaConfig) -> MarathonServers:

@@ -1,3 +1,78 @@
+paasta-tools (0.69.4) xenial; urgency=medium
+
+  * 0.69.4 tagged with 'make release'
+    Commit: Merge pull request #1646 from Yelp/fix-cluster-boost-mypy
+    Fix mypy for cluster_boost
+
+ -- Nathan Handler <nhandler@yelp.com>  Mon, 04 Dec 2017 16:59:59 -0800
+
+paasta-tools (0.69.3) xenial; urgency=medium
+
+  * 0.69.3 tagged with 'make release'
+    Commit: Merge pull request #1587 from Yelp/u/mathieu/PAASTA-13099
+    Adding Cluster Boost feature
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 04 Dec 2017 15:16:16 -0800
+
+paasta-tools (0.69.2) xenial; urgency=medium
+
+  * 0.69.2 tagged with 'make release'
+    Commit: Merge pull request #1643 from Yelp/OPS-12441-local-run-port
+    paasta local-run --no-healthcheck shouldn"t publish a container"s
+    ports
+
+ -- Alexander Dudko <adudko@yelp.com>  Fri, 01 Dec 2017 13:42:51 -0800
+
+paasta-tools (0.69.1) xenial; urgency=medium
+
+  * 0.69.1 tagged with 'make release'
+    Commit: Merge pull request #1640 from Yelp/fix_autoscaler_pausing
+    Fix paused autoscaler logic bug
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 01 Dec 2017 11:34:55 -0800
+
+paasta-tools (0.69.0) xenial; urgency=medium
+
+  * 0.69.0 tagged with 'make release'
+    Commit: Merge pull request #1628 from Yelp/clean_up_marathon_client
+    Convert cli/cmds/sysdig.py to sharded marathon and clean up
+    unsharded code/test config.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 30 Nov 2017 11:15:31 -0800
+
+paasta-tools (0.68.12) xenial; urgency=medium
+
+  * 0.68.12 tagged with 'make release'
+    Commit: Merge pull request #1638 from Yelp/fix_example_cluster
+    Don"t docker-compose pull in example_cluster; see
+    bc3029fb3f01eadb931105eea480c9ec21c18ea8
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 29 Nov 2017 09:59:34 -0800
+
+paasta-tools (0.68.11) xenial; urgency=medium
+
+  * 0.68.11 tagged with 'make release'
+    Commit: Use unambiguous variable name in
+    test_check_marathon_has_apps
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 28 Nov 2017 10:46:53 -0800
+
+paasta-tools (0.68.10) xenial; urgency=medium
+
+  * 0.68.10 tagged with 'make release'
+    Commit: Merge pull request #1622 from fboxwala/PAASTA-10561  Add
+    feature to manually pause the autoscaler
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 27 Nov 2017 14:36:19 -0800
+
+paasta-tools (0.68.9) xenial; urgency=medium
+
+  * 0.68.9 tagged with 'make release'
+    Commit: Merge pull request #1634 from Yelp/fix-autoscaling-shard
+    fix bug in autoscaler for sharded marathon
+
+ -- Matthew Bentley <bentley@yelp.com>  Thu, 23 Nov 2017 03:05:20 -0800
+
 paasta-tools (0.68.8) xenial; urgency=medium
 
   * 0.68.8 tagged with 'make release'

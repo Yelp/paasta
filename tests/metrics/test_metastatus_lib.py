@@ -19,7 +19,6 @@ import mock
 from mock import Mock
 from mock import patch
 
-from paasta_tools.marathon_tools import MarathonConfig
 from paasta_tools.metrics import metastatus_lib
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -335,11 +334,10 @@ def test_ok_marathon_apps():
     assert ok
 
 
-@patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True)
-def test_no_marathon_apps(mock_get_marathon_client):
-    client = mock_get_marathon_client.return_value
+def test_no_marathon_apps():
+    client = mock.Mock()
     client.list_apps.return_value = []
-    output, ok = metastatus_lib.assert_marathon_apps(client)
+    output, ok = metastatus_lib.assert_marathon_apps([client])
     assert "CRITICAL: No marathon apps running" in output
     assert not ok
 
@@ -424,17 +422,6 @@ def test_get_marathon_status():
     assert expected_apps_output in results
     assert expected_deployment_output in results
     assert expected_tasks_output in results
-
-
-def test_get_marathon_client():
-    fake_config = MarathonConfig({
-        'url': 'fakeurl',
-        'user': 'fakeuser',
-        'password': 'fakepass',
-    })
-    client = metastatus_lib.get_marathon_client(fake_config)
-    assert client.servers == ['fakeurl']
-    assert client.auth == ('fakeuser', 'fakepass')
 
 
 def test_assert_chronos_scheduled_jobs():

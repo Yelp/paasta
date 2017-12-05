@@ -51,6 +51,7 @@ Submodules
    paasta_tools.list_marathon_service_instances
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
+   paasta_tools.marathon_dashboard
    paasta_tools.marathon_serviceinit
    paasta_tools.marathon_tools
    paasta_tools.mesos_maintenance
@@ -58,6 +59,7 @@ Submodules
    paasta_tools.monitoring_tools
    paasta_tools.native_mesos_scheduler
    paasta_tools.oom_logger
+   paasta_tools.paasta_cluster_boost
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus

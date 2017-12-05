@@ -21,6 +21,7 @@ from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
+from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
@@ -889,8 +890,11 @@ def test_autoscale_services_happy_path():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.create_autoscaling_lock', autospec=True,
     ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.autoscaling_is_paused', autospec=True,
+    ) as mock_paused, mock.patch(
         'paasta_tools.marathon_tools.MarathonServiceConfig.format_marathon_app_dict', autospec=True,
     ) as mock_format_marathon_app_dict:
+        mock_paused.return_value = False
         mock_format_marathon_app_dict.return_value = {'id': 'fake-service.fake-instance.sha123.sha456'}
         autoscaling_service_lib.autoscale_services()
         mock_autoscale_marathon_instance.assert_called_once_with(
@@ -940,10 +944,13 @@ def test_autoscale_services_not_healthy():
     ), mock.patch(
         'paasta_tools.marathon_tools.MarathonServiceConfig.format_marathon_app_dict', autospec=True,
     ) as mock_format_marathon_app_dict, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.autoscaling_is_paused', autospec=True,
+    ) as mock_paused, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.is_task_healthy', autospec=True,
     ) as mock_is_task_healthy, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.is_old_task_missing_healthchecks', autospec=True,
     ) as mock_is_old_task_missing_healthchecks:
+        mock_paused.return_value = False
         mock_is_task_healthy.return_value = True
         mock_is_old_task_missing_healthchecks.return_value = False
         mock_format_marathon_app_dict.return_value = {'id': 'fake-service.fake-instance.sha123.sha456'}
@@ -1031,10 +1038,13 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_marathon_servers', autospec=True,
     ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.autoscaling_is_paused', autospec=True,
+    ) as mock_paused, mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.create_autoscaling_lock', autospec=True,
     ):
+        mock_paused.return_value = False
         autoscaling_service_lib.autoscale_services()
         assert not mock_autoscale_marathon_instance.called
 
@@ -1064,6 +1074,31 @@ def test_humanize_error_below():
 def test_humanize_error_equal():
     actual = autoscaling_service_lib.humanize_error(0.0)
     assert actual == "utilization within thresholds"
+
+
+def test_autoscaling_is_paused():
+    with mock.patch(
+        'paasta_tools.utils.KazooClient', autospec=True,
+    ) as mock_zk, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.time', autospec=True,
+    ) as mock_time, mock.patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+    ):
+
+        # Pausing expired 100 seconds ago
+        mock_zk_get = mock.Mock(return_value=(b'100', None))
+        mock_zk.return_value = mock.Mock(get=mock_zk_get)
+        mock_time.time = mock.Mock(return_value=200)
+        assert not autoscaling_is_paused()
+
+        # Pause set until 300, still has 100 more seconds of pausing
+        mock_zk_get.return_value = (b'300', None)
+        mock_time.time = mock.Mock(return_value=200)
+        assert autoscaling_is_paused()
+
+        # With 0 we should be unpaused
+        mock_zk_get.return_value = (b'0', None)
+        assert not autoscaling_is_paused()
 
 
 def test_filter_autoscaling_tasks():
