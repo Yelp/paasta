@@ -20,6 +20,7 @@ import random
 import re
 import subprocess
 import sys
+from shlex import quote
 from socket import gaierror
 from socket import gethostbyname_ex
 
@@ -41,11 +42,6 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
-
-try:
-    from shlex import quote
-except ImportError:
-    from pipes import quote
 
 log = logging.getLogger(__name__)
 
