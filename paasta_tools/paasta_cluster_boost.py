@@ -15,6 +15,7 @@
 import argparse
 import logging
 import sys
+from typing import List  # noqa; imported for typing
 
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.utils import load_system_paasta_config
@@ -83,7 +84,7 @@ def check_pool_exist(pool: str, region: str) -> bool:
     if expected_slave_attributes is None:
         return False
 
-    region_pool_pairs = []
+    region_pool_pairs: List = []
     for slave in expected_slave_attributes:
         slave_pool = slave['pool']
         slave_region = slave['datacenter']
