@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
+
+import asynctest
 import mock
+import pytest
 from pytest import raises
 
 from paasta_tools import drain_lib
@@ -25,6 +29,31 @@ def test_register_drain_method():
             pass
 
         assert type(drain_lib.get_drain_method('FAKEDRAINMETHOD', 'srv', 'inst', 'ns')) == FakeDrainMethod
+
+
+@contextlib.contextmanager
+def mock_ClientSession(**fake_session_kwargs):
+    fake_session = asynctest.MagicMock(
+        name="session",
+        **fake_session_kwargs,
+    )
+
+    class FakeClientSession:
+        def __init__(self, *args, **kwargs):
+            ...
+
+        async def __aenter__(*args):
+            return fake_session
+
+        async def __aexit__(*args):
+            pass
+
+    with mock.patch(
+        'aiohttp.ClientSession',
+        new=FakeClientSession,
+        autospec=False,
+    ):
+        yield
 
 
 class TestHacheckDrainMethod(object):
@@ -42,14 +71,19 @@ class TestHacheckDrainMethod(object):
         actual = self.drain_method.spool_url(fake_task)
         assert actual is None
 
-    def test_get_spool(self):
+    @pytest.mark.asyncio
+    async def test_get_spool(self):
         fake_response = mock.Mock(
-            status_code=503,
-            text="Service service in down state since 1435694078.778886 until 1435694178.780000: Drained by Paasta",
+            status=503,
+            text=asynctest.CoroutineMock(
+                return_value="Service service in down state since 1435694078.778886 "
+                             "until 1435694178.780000: Drained by Paasta",
+            ),
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response, autospec=True):
-            actual = self.drain_method.get_spool(fake_task)
+
+        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+            actual = await self.drain_method.get_spool(fake_task)
 
         expected = {
             'service': 'service',
@@ -60,28 +94,36 @@ class TestHacheckDrainMethod(object):
         }
         assert actual == expected
 
-    def test_get_spool_handles_no_ports(self):
+    @pytest.mark.asyncio
+    async def test_get_spool_handles_no_ports(self):
         fake_task = mock.Mock(host="fake_host", ports=[])
-        actual = self.drain_method.get_spool(fake_task)
+        actual = await self.drain_method.get_spool(fake_task)
         assert actual is None
 
-    def test_is_draining_yes(self):
+    @pytest.mark.asyncio
+    async def test_is_draining_yes(self):
         fake_response = mock.Mock(
-            status_code=503,
-            text="Service service in down state since 1435694078.778886 until 1435694178.780000: Drained by Paasta",
+            status=503,
+            text=asynctest.CoroutineMock(
+                return_value="Service service in down state since 1435694078.778886 "
+                             "until 1435694178.780000: Drained by Paasta",
+            ),
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response, autospec=True):
-            assert self.drain_method.is_draining(fake_task) is True
+        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+            assert await self.drain_method.is_draining(fake_task) is True
 
-    def test_is_draining_no(self):
+    @pytest.mark.asyncio
+    async def test_is_draining_no(self):
         fake_response = mock.Mock(
-            status_code=200,
-            text="",
+            status=200,
+            text=asynctest.CoroutineMock(
+                return_value="",
+            ),
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock.patch('requests.get', return_value=fake_response, autospec=True):
-            assert self.drain_method.is_draining(fake_task) is False
+        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+            assert await self.drain_method.is_draining(fake_task) is False
 
 
 class TestHTTPDrainMethod(object):
@@ -119,7 +161,8 @@ class TestHTTPDrainMethod(object):
         with raises(drain_lib.StatusCodeNotAcceptableError):
             drain_method.check_response_code(500, '200-299')
 
-    def test_issue_request(self):
+    @pytest.mark.asyncio
+    async def test_issue_request(self):
         drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
         fake_task = mock.Mock(host='fake_host', ports=[54321])
         url_spec = {
@@ -128,12 +171,17 @@ class TestHTTPDrainMethod(object):
             'success_codes': '1234',
         }
 
-        fake_resp = mock.Mock(status_code=1234)
-
-        with mock.patch('paasta_tools.drain_lib.requests.get', autospec=True, return_value=fake_resp) as mock_get:
-            drain_method.issue_request(
+        fake_resp = mock.Mock(status=1234)
+        mock_request = asynctest.CoroutineMock(return_value=fake_resp)
+        with mock_ClientSession(request=mock_request):
+            await drain_method.issue_request(
                 url_spec=url_spec,
                 task=fake_task,
             )
 
-        mock_get.assert_called_once_with('http://localhost:654321/fake/fake_host', headers=mock.ANY, timeout=15)
+        mock_request.assert_called_once_with(
+            method='GET',
+            url='http://localhost:654321/fake/fake_host',
+            headers=mock.ANY,
+            timeout=15,
+        )

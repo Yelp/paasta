@@ -1,4 +1,5 @@
 -r requirements.txt
+asynctest==0.11.1
 coverage
 docutils==0.12
 flake8==2.5.0
@@ -8,5 +9,6 @@ path.py==8.1
 pep8==1.5.7
 pre-commit==1.2.0
 pylint==1.7.2
-pytest==2.7.3
+pytest==3.3.1
+pytest-asyncio==0.8.0
 sphinx==1.4.1
