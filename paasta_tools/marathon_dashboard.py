@@ -90,9 +90,12 @@ def create_marathon_dashboard(
         client: MarathonClient = marathon_clients.get_current_client_for_service(job_config=service_config)
         dashboard_links: Dict = system_paasta_config.get_dashboard_links()
         shard_url: str = client.servers[0]
-        for shard_number, shard in enumerate(marathon_servers.current):
-            if shard.url[0] == shard_url:
-                shard_url = dashboard_links[cluster]['Marathon RO'][shard_number]
+        if isinstance(dashboard_links[cluster]['Marathon RO'], list):
+            for shard_number, shard in enumerate(marathon_servers.current):
+                if shard.url[0] == shard_url:
+                    shard_url = dashboard_links[cluster]['Marathon RO'][shard_number]
+        else:
+            shard_url = dashboard_links[cluster]['Marathon RO'].split(' ')[0]
         service_info: Marathon_Dashboard_Item = {
             'service': service,
             'instance': instance,
