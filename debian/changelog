@@ -1,3 +1,11 @@
+paasta-tools (0.69.5) xenial; urgency=medium
+
+  * 0.69.5 tagged with 'make release'
+    Commit: Merge pull request #1645 from Yelp/fix-string-interpolation
+    add variables to string interpolation
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 06 Dec 2017 09:38:53 -0800
+
 paasta-tools (0.69.4) xenial; urgency=medium
 
   * 0.69.4 tagged with 'make release'
