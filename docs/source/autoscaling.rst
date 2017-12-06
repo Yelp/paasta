@@ -111,6 +111,7 @@ The currently available decicion policies are:
   to scale to, i.e. if load is 110% of the setpoint, scales up by 10%.
 
   Extra parameters:
+
   :offset:
     Float between 0.0 and 1.0, representing expected baseline load for each container. Defaults to 0.0.
   :forecast_policy:
