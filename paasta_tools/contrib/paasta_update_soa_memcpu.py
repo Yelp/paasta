@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import contextlib
 import os
@@ -77,8 +78,8 @@ def in_tempdir():
 def clone(branch_name):
     print('cloning')
     remote = 'git@sysgit.yelpcorp.com:yelpsoa-configs'
-    subprocess.check_call(('chronic', 'git', 'clone', remote, '.'))
-    subprocess.check_call(('chronic', 'git', 'checkout', 'origin/master', '-b', branch_name))
+    subprocess.check_call(('git', 'clone', remote, '.'))
+    subprocess.check_call(('git', 'checkout', 'origin/master', '-b', branch_name))
 
 
 def commit(filename, memcpu):
