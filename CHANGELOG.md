@@ -1,7 +1,44 @@
 # Change Log
 
-## [0.69.1](https://github.com/Yelp/paasta/tree/0.69.1) (2017-12-01)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.0...0.69.1)
+## [0.69.6](https://github.com/Yelp/paasta/tree/0.69.6) (2017-12-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.5...0.69.6)
+
+**Merged pull requests:**
+
+- Perfscript [\#1649](https://github.com/Yelp/paasta/pull/1649) ([fboxwala](https://github.com/fboxwala))
+- Make metastatus able to group by multiple values properly [\#1642](https://github.com/Yelp/paasta/pull/1642) ([EvanKrall](https://github.com/EvanKrall))
+- pytest.fixture for SystemPaastaConfig  [\#1641](https://github.com/Yelp/paasta/pull/1641) ([oktopuz](https://github.com/oktopuz))
+- Instance configs experiments [\#1492](https://github.com/Yelp/paasta/pull/1492) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.69.5](https://github.com/Yelp/paasta/tree/v0.69.5) (2017-12-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.4...v0.69.5)
+
+**Merged pull requests:**
+
+- Fixes a small typo in the autoscaling documentation [\#1650](https://github.com/Yelp/paasta/pull/1650) ([fhats](https://github.com/fhats))
+- A few python3 things [\#1648](https://github.com/Yelp/paasta/pull/1648) ([asottile](https://github.com/asottile))
+- Make marathon\_dashboard work for non-sharded clusters [\#1647](https://github.com/Yelp/paasta/pull/1647) ([nhandler](https://github.com/nhandler))
+- add variables to string interpolation [\#1645](https://github.com/Yelp/paasta/pull/1645) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.69.4](https://github.com/Yelp/paasta/tree/v0.69.4) (2017-12-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.3...v0.69.4)
+
+**Merged pull requests:**
+
+- Fix mypy for cluster\_boost [\#1646](https://github.com/Yelp/paasta/pull/1646) ([nhandler](https://github.com/nhandler))
+- Initial Support for a Sharded Marathon Dashboard [\#1601](https://github.com/Yelp/paasta/pull/1601) ([nhandler](https://github.com/nhandler))
+
+## [v0.69.3](https://github.com/Yelp/paasta/tree/v0.69.3) (2017-12-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.1...v0.69.3)
+
+**Merged pull requests:**
+
+- v0.69.2 [\#1644](https://github.com/Yelp/paasta/pull/1644) ([oktopuz](https://github.com/oktopuz))
+- paasta local-run --no-healthcheck shouldn't publish a container's ports [\#1643](https://github.com/Yelp/paasta/pull/1643) ([oktopuz](https://github.com/oktopuz))
+- Adding Cluster Boost feature \(ready to merge\) [\#1587](https://github.com/Yelp/paasta/pull/1587) ([matfra](https://github.com/matfra))
+
+## [v0.69.1](https://github.com/Yelp/paasta/tree/v0.69.1) (2017-12-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.0...v0.69.1)
 
 **Merged pull requests:**
 
