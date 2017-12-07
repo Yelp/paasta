@@ -23,7 +23,6 @@ from paasta_tools.monitoring.check_classic_service_replication import extract_re
 from paasta_tools.monitoring.check_classic_service_replication import report_event
 from paasta_tools.monitoring.config_providers import MonitoringInfo  # noqa
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
-from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_report_event():
@@ -177,7 +176,7 @@ def test_extract_replication_info_invalid_data():
         assert expected == result
 
 
-def test_classic_replication_check():
+def test_classic_replication_check(system_paasta_config):
     base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
 
@@ -212,7 +211,7 @@ def test_classic_replication_check():
         sys, 'argv', ['check_classic_service_replication.py'],
     ), mock.patch(
         load_system_paasta_config_module,
-        return_value=SystemPaastaConfig({}, '/fake/config'), autospec=True,
+        return_value=system_paasta_config, autospec=True,
     ):
         with pytest.raises(SystemExit) as error:
             ClassicServiceReplicationCheck()

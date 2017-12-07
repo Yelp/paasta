@@ -122,24 +122,26 @@ def test_format_mesos_command():
 
 @patch('paasta_tools.cli.cmds.sysdig.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.cli.cmds.sysdig.find_connectable_master', autospec=True)
-def test_get_any_mesos_master(mock_find_connectable_master, mock_calculate_remote_masters):
+def test_get_any_mesos_master(
+    mock_find_connectable_master,
+    mock_calculate_remote_masters,
+    system_paasta_config,
+):
     mock_calculate_remote_masters.return_value = ([], 'fakeERROR')
 
-    fake_system_paasta_config = mock.Mock()
-
     with raises(SystemExit):
-        sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config)
+        sysdig.get_any_mesos_master('cluster1', system_paasta_config)
     mock_calculate_remote_masters.assert_called_with(
         'cluster1',
-        fake_system_paasta_config,
+        system_paasta_config,
     )
 
     mock_masters = mock.Mock()
     mock_calculate_remote_masters.return_value = (mock_masters, 'fake')
     mock_find_connectable_master.return_value = (False, 'fakeERROR')
     with raises(SystemExit):
-        sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config)
+        sysdig.get_any_mesos_master('cluster1', system_paasta_config)
 
     mock_master = mock.Mock()
     mock_find_connectable_master.return_value = (mock_master, 'fake')
-    assert sysdig.get_any_mesos_master('cluster1', fake_system_paasta_config) == mock_master
+    assert sysdig.get_any_mesos_master('cluster1', system_paasta_config) == mock_master

@@ -1101,7 +1101,7 @@ class TestMarathonTools:
         )
         assert fake_conf.get_instances() == 0
 
-    def test_get_calculated_constraints_in_config_override_all_others(self):
+    def test_get_calculated_constraints_in_config_override_all_others(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1110,14 +1110,13 @@ class TestMarathonTools:
             config_dict={'constraints': [['something', 'GROUP_BY']], 'extra_constraints': [['ignore', 'this']]},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == [['something', 'GROUP_BY']]
 
-    def test_get_calculated_constraints_default_no_expected_slave_attributes(self):
+    def test_get_calculated_constraints_default_no_expected_slave_attributes(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1126,14 +1125,13 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
 
         expected_constraints = [
             ["pool", "LIKE", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1162,7 +1160,7 @@ class TestMarathonTools:
         )
         assert actual == expected_constraints
 
-    def test_get_calculated_constraints_stringifies(self):
+    def test_get_calculated_constraints_stringifies(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1171,7 +1169,6 @@ class TestMarathonTools:
             config_dict={'extra_constraints': [['foo', 1]]},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
 
         expected_constraints = [
             ["foo", "1"],
@@ -1179,11 +1176,11 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == expected_constraints
 
-    def test_get_calculated_constraints_extra_constraints(self):
+    def test_get_calculated_constraints_extra_constraints(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1192,7 +1189,6 @@ class TestMarathonTools:
             config_dict={'extra_constraints': [['extra', 'constraint']]},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
 
         expected_constraints = [
             ['extra', 'constraint'],
@@ -1200,7 +1196,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == expected_constraints
 
@@ -1232,10 +1228,9 @@ class TestMarathonTools:
         )
         assert actual == expected_constraints
 
-    def test_get_calculated_constraints_respects_deploy_blacklist(self):
+    def test_get_calculated_constraints_respects_deploy_blacklist(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_blacklist = [("region", "fake_blacklisted_region")]
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1249,14 +1244,13 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == expected_constraints
 
-    def test_get_calculated_constraints_respects_deploy_whitelist(self):
+    def test_get_calculated_constraints_respects_deploy_whitelist(self, system_paasta_config):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1270,7 +1264,7 @@ class TestMarathonTools:
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == expected_constraints
 
