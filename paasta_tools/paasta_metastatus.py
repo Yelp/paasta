@@ -13,10 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import functools
 import itertools
 import logging
 import sys
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 import chronos
 from marathon.exceptions import MarathonError
@@ -52,7 +56,7 @@ def parse_args(argv):
         '-g',
         '--groupings',
         nargs='+',
-        default=['region'],
+        default=['pool', 'region'],
         help=(
             'Group resource information of slaves grouped by attribute.'
             'Note: This is only effective with -vv'
@@ -103,7 +107,59 @@ def all_marathon_clients(marathon_clients):
     return [c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)]
 
 
-def main(argv=None):
+def utilization_table_by_grouping_from_mesos_state(
+    groupings: Sequence[str],
+    threshold: float,
+    humanize: bool,
+    mesos_state: Dict,
+) -> Tuple[
+    List[List[str]],
+    bool,
+]:
+    grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
+    resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping(
+        grouping_function,
+        mesos_state,
+    )
+
+    static_headers = [
+        'CPU (used/total)',
+        'RAM (used/total)',
+        'Disk (used/total)',
+        'GPU (used/total)',
+        'Agent count',
+    ]
+
+    all_rows = [
+        [grouping.capitalize() for grouping in groupings] + static_headers,
+    ]
+    table_rows = []
+
+    for grouping_values, resource_info_dict in resource_info_dict_grouped.items():
+        resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
+            total=resource_info_dict['total'],
+            free=resource_info_dict['free'],
+        )
+        healthcheck_utilization_pairs = [
+            metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(
+                utilization,
+                threshold,
+            )
+            for utilization in resource_utilizations
+        ]
+        healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
+        table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
+            [v for g, v in grouping_values],
+            healthcheck_utilization_pairs,
+            humanize,
+        ) + [str(resource_info_dict['slave_count'])])
+    table_rows = sorted(table_rows, key=lambda x: x[0:len(groupings)])
+    all_rows.extend(table_rows)
+
+    return all_rows, healthy_exit
+
+
+def main(argv: Optional[List[str]]=None) -> None:
     chronos_config = None
     args = parse_args(argv)
 
@@ -128,7 +184,7 @@ def main(argv=None):
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red("CRITICAL:  %s" % '\n'.join(e.args)))
         sys.exit(2)
 
     # Check to see if Chronos should be running here by checking for config
@@ -162,84 +218,40 @@ def main(argv=None):
     paasta_print("Master paasta_tools version: {}".format(__version__))
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1:
-        for grouping in args.groupings:
-            print_with_indent('Resources Grouped by %s' % grouping, 2)
-            grouping_function = metastatus_lib.key_func_for_attribute(grouping)
-            resource_info_dict = metastatus_lib.get_resource_utilization_by_grouping(
-                grouping_function,
-                mesos_state,
-            )
-            all_rows = [[
-                grouping.capitalize(), 'CPU (used/total)', 'RAM (used/total)', 'Disk (used/total)',
-                'GPU (used/total)', 'Agent count',
-            ]]
-            table_rows = []
-            for attribute_value, resource_info_dict in resource_info_dict.items():
-                resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
-                    total=resource_info_dict['total'],
-                    free=resource_info_dict['free'],
-                )
-                healthcheck_utilization_pairs = [
-                    metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(
-                        utilization,
-                        args.threshold,
-                    )
-                    for utilization in resource_utilizations
-                ]
-                healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
-                table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
-                    attribute_value,
-                    healthcheck_utilization_pairs,
-                    args.humanize,
-                ) + [str(resource_info_dict['slave_count'])])
-            table_rows = sorted(table_rows, key=lambda x: x[0])
-            all_rows.extend(table_rows)
-            for line in format_table(all_rows):
-                print_with_indent(line, 4)
+        print_with_indent('Resources Grouped by %s' % ", ".join(args.groupings), 2)
+        all_rows, healthy_exit = utilization_table_by_grouping_from_mesos_state(
+            groupings=args.groupings,
+            threshold=args.threshold,
+            humanize=args.humanize,
+            mesos_state=mesos_state,
+        )
+        for line in format_table(all_rows):
+            print_with_indent(line, 4)
 
         if args.autoscaling_info:
             print_with_indent("Autoscaling resources:", 2)
             headers = [field.replace("_", " ").capitalize() for field in AutoscalingInfo._fields]
-            table = functools.reduce(
-                lambda x, y: x + [(y)],
-                get_autoscaling_info_for_all_resources(mesos_state),
-                [headers],
-            )
+            table = [headers] + [[str(x) for x in asi] for asi in get_autoscaling_info_for_all_resources(mesos_state)]
 
             for line in format_table(table):
                 print_with_indent(line, 4)
 
         if args.verbose >= 3:
             print_with_indent('Per Slave Utilization', 2)
-            slave_resource_dict = metastatus_lib.get_resource_utilization_by_grouping(
-                lambda slave: slave['hostname'],
-                mesos_state,
-            )
-            all_rows = [['Hostname', 'CPU (used/total)', 'RAM (used//total)', 'Disk (used//total)', 'GPU (used/total)']]
-
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave
             # having high usage.
-            for attribute_value, resource_info_dict in slave_resource_dict.items():
-                table_rows = []
-                resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
-                    total=resource_info_dict['total'],
-                    free=resource_info_dict['free'],
-                )
-                healthcheck_utilization_pairs = [
-                    metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(
-                        utilization,
-                        args.threshold,
-                    )
-                    for utilization in resource_utilizations
-                ]
-                table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
-                    attribute_value,
-                    healthcheck_utilization_pairs,
-                    args.humanize,
-                ))
-                table_rows = sorted(table_rows, key=lambda x: x[0])
-                all_rows.extend(table_rows)
+            all_rows, _ = utilization_table_by_grouping_from_mesos_state(
+                groupings=args.groupings + ["hostname"],
+                threshold=args.threshold,
+                humanize=args.humanize,
+                mesos_state=mesos_state,
+            )
+            # The last column from utilization_table_by_grouping_from_mesos_state is "Agent count", which will always be
+            # 1 for per-slave resources, so delete it.
+            for row in all_rows:
+                row.pop()
+
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
     metastatus_lib.print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)

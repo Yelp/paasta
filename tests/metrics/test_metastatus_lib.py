@@ -1033,7 +1033,7 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
         (Mock(), Mock()),
     ]
     mock_format_row.return_value = ['10/10', '10/10', '10/10']
-    actual = metastatus_lib.get_table_rows_for_resource_info_dict('myhabitat', fake_pairs, False)
+    actual = metastatus_lib.get_table_rows_for_resource_info_dict(['myhabitat'], fake_pairs, False)
     assert actual == ['myhabitat', '10/10', '10/10', '10/10']
 
 

@@ -1278,7 +1278,7 @@ def get_mesos_utilization_error(
         )
         return 0
 
-    log.debug(region_pool_utilization_dict)
+    log.debug(repr(region_pool_utilization_dict))
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
     usage_percs = []
