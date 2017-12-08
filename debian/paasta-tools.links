@@ -29,7 +29,7 @@ opt/venvs/paasta-tools/bin/paasta_chronos_rerun usr/bin/paasta_chronos_rerun
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
-opt/venvs/paasta-tools/bin/paasta_cluster_boost usr/bin/paasta_cluster_boost
+opt/venvs/paasta-tools/bin/paasta_cluster_boost.py usr/bin/paasta_cluster_boost
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/deploy_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd

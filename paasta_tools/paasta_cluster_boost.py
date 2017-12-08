@@ -61,7 +61,7 @@ def parse_args():
         'action',
         choices=[
             'set',
-            'status',
+            'get',
             'clear',
         ],
         help="You can set, get or clear a boost.",
@@ -121,7 +121,7 @@ def paasta_cluster_boost():
             region=region,
             pool=pool,
             factor=args.boost,
-            duration_minutes=args.duration_minutes,
+            duration_minutes=args.duration,
             override=args.override,
         ):
             paasta_print('Failed! Check the logs.')
