@@ -1,5 +1,5 @@
 addict==2.1.0
-aiohttp
+aiohttp==2.3.3
 argcomplete==0.8.1
 backports.ssl-match-hostname==3.4.0.2
 boto3==1.3.0
