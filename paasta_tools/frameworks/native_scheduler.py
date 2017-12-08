@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Without this, the import of mesos.interface breaks because paasta_tools.mesos exists
+import asyncio
 import copy
 import getpass
 import logging
@@ -444,16 +445,27 @@ class NativeScheduler(Scheduler):
             old_app_live_unhappy_tasks=old_unhappy_task_ids,
         )
 
-        for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
-            self.undrain_task(task)
-        for task in actions['tasks_to_drain']:
-            self.drain_task(task)
+        ioloop = asyncio.get_event_loop()
 
+        futures = []
+        for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
+            futures.append(asyncio.ensure_future(self.undrain_task(task)))
+        for task in actions['tasks_to_drain']:
+            futures.append(asyncio.ensure_future(self.drain_task(task)))
+
+        if futures:
+            done, pending = ioloop.run_until_complete(asyncio.wait(futures))
+
+        async def kill_if_safe_to_kill(task_id: str):
+            if await self.drain_method.is_safe_to_kill(self.make_drain_task(task_id)):
+                self.kill_task(driver, task_id)
+
+        futures = []
         for task, parameters in all_tasks_with_params.items():
-            if parameters.is_draining and \
-                    self.drain_method.is_safe_to_kill(self.make_drain_task(task)) and \
-                    parameters.mesos_task_state in LIVE_TASK_STATES:
-                self.kill_task(driver, task)
+            if parameters.is_draining and parameters.mesos_task_state in LIVE_TASK_STATES:
+                futures.append(asyncio.ensure_future(kill_if_safe_to_kill(task)))
+        if futures:
+            done, pending = ioloop.run_until_complete(asyncio.wait(futures))
 
     def get_happy_tasks(self, tasks_with_params: Dict[str, MesosTaskParameters]):
         """Filter a dictionary of tasks->params to those that are running and not draining."""
@@ -485,14 +497,14 @@ class NativeScheduler(Scheduler):
             ports=ports,
         )
 
-    def undrain_task(self, task_id: str):
+    async def undrain_task(self, task_id: str):
         self.log("Undraining task %s" % task_id)
-        self.drain_method.stop_draining(self.make_drain_task(task_id))
+        await self.drain_method.stop_draining(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=False)
 
-    def drain_task(self, task_id: str):
+    async def drain_task(self, task_id: str):
         self.log("Draining task %s" % task_id)
-        self.drain_method.drain(self.make_drain_task(task_id))
+        await self.drain_method.drain(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=True)
 
     def kill_task(self, driver: MesosSchedulerDriver, task_id: str):

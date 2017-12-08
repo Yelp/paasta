@@ -41,6 +41,7 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import asyncio
 import logging
 import sys
 import traceback
@@ -168,21 +169,28 @@ def drain_tasks_and_find_tasks_to_kill(
                 line='%s bounce draining %d old tasks with app_id %s' %
                 (bounce_method, len(tasks), app_id),
             )
-        for task, client in tasks_to_drain:
+
+        async def drain_and_kill_if_draining_fails(task: MarathonTask, client: MarathonClient) -> None:
             all_draining_tasks.add((task, client))
             if task.state == 'TASK_UNREACHABLE':
-                continue
+                return
             try:
-                drain_method.drain(task)
+                await drain_method.drain(task)
             except Exception as e:
                 log_bounce_action(
                     line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
                 )
                 tasks_to_kill.add((task, client))
 
-    for task, client in all_draining_tasks:
+        drain_futures = []
+        for task, client in tasks_to_drain:
+            drain_futures.append(asyncio.ensure_future(drain_and_kill_if_draining_fails(task, client)))
+        if drain_futures:
+            asyncio.get_event_loop().run_until_complete(asyncio.wait(drain_futures))
+
+    async def add_to_tasks_to_kill_if_safe_to_kill(task: MarathonTask, client: MarathonClient) -> None:
         try:
-            if task.state != 'TASK_RUNNING' or drain_method.is_safe_to_kill(task):
+            if task.state != 'TASK_RUNNING' or await drain_method.is_safe_to_kill(task):
                 tasks_to_kill.add((task, client))
                 log_bounce_action(
                     line='%s bounce killing not_running or drained task %s %s' % (
@@ -195,6 +203,11 @@ def drain_tasks_and_find_tasks_to_kill(
                 line='%s bounce killing task %s due to exception in is_safe_to_kill: %s' % (bounce_method, task.id, e),
             )
 
+    safe_to_kill_futures = []
+    for task, client in all_draining_tasks:
+        safe_to_kill_futures.append(asyncio.ensure_future(add_to_tasks_to_kill_if_safe_to_kill(task, client)))
+    if safe_to_kill_futures:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait(safe_to_kill_futures))
     return tasks_to_kill
 
 
@@ -391,9 +404,10 @@ def get_tasks_by_state_for_app(
     }
 
     happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
-    for task in app.tasks:
+
+    async def categorize_task(task: MarathonTask) -> None:
         try:
-            is_draining = drain_method.is_draining(task)
+            is_draining = await drain_method.is_draining(task)
         except Exception as e:
             log_deploy_error(
                 "Ignoring exception during is_draining of task %s:"
@@ -411,6 +425,12 @@ def get_tasks_by_state_for_app(
             else:
                 state = 'unhappy'
         tasks_by_state[state].add(task)
+
+    categorize_task_futures = []
+    for task in app.tasks:
+        categorize_task_futures.append(asyncio.ensure_future(categorize_task(task)))
+    if categorize_task_futures:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait(categorize_task_futures))
 
     return tasks_by_state
 
@@ -471,14 +491,21 @@ def undrain_tasks(
 ) -> None:
     # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
     # `paasta mark-for-deployment`), then we should undrain them.
-    for task in to_undrain:
+
+    async def undrain_task(task: MarathonTask) -> None:
         if task not in leave_draining:
             if task.state == 'TASK_UNREACHABLE':
-                continue
+                return
             try:
-                drain_method.stop_draining(task)
+                await drain_method.stop_draining(task)
             except Exception as e:
                 log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
+
+    undrain_task_futures = []
+    for task in to_undrain:
+        undrain_task_futures.append(asyncio.ensure_future(undrain_task(task)))
+    if undrain_task_futures:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait(undrain_task_futures))
 
 
 def deploy_service(

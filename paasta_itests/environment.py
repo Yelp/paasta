@@ -173,7 +173,6 @@ def _clean_up_current_client(context):
 
 def _clean_up_event_loop(context):
     if hasattr(context, 'event_loop'):
-        context.event_loop.close()
         del context.event_loop
 
 
