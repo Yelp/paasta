@@ -182,11 +182,10 @@ def drain_tasks_and_find_tasks_to_kill(
                 )
                 tasks_to_kill.add((task, client))
 
-        drain_futures = []
-        for task, client in tasks_to_drain:
-            drain_futures.append(asyncio.ensure_future(drain_and_kill_if_draining_fails(task, client)))
-        if drain_futures:
-            asyncio.get_event_loop().run_until_complete(asyncio.wait(drain_futures))
+        if tasks_to_drain:
+            asyncio.get_event_loop().run_until_complete(asyncio.wait([
+                asyncio.ensure_future(drain_and_kill_if_draining_fails(task, client)) for task, client in tasks_to_drain
+            ]))
 
     async def add_to_tasks_to_kill_if_safe_to_kill(task: MarathonTask, client: MarathonClient) -> None:
         try:
@@ -203,11 +202,10 @@ def drain_tasks_and_find_tasks_to_kill(
                 line='%s bounce killing task %s due to exception in is_safe_to_kill: %s' % (bounce_method, task.id, e),
             )
 
-    safe_to_kill_futures = []
-    for task, client in all_draining_tasks:
-        safe_to_kill_futures.append(asyncio.ensure_future(add_to_tasks_to_kill_if_safe_to_kill(task, client)))
-    if safe_to_kill_futures:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait(safe_to_kill_futures))
+    if all_draining_tasks:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait([
+            asyncio.ensure_future(add_to_tasks_to_kill_if_safe_to_kill(t, c)) for t, c in all_draining_tasks
+        ]))
     return tasks_to_kill
 
 
@@ -426,11 +424,10 @@ def get_tasks_by_state_for_app(
                 state = 'unhappy'
         tasks_by_state[state].add(task)
 
-    categorize_task_futures = []
-    for task in app.tasks:
-        categorize_task_futures.append(asyncio.ensure_future(categorize_task(task)))
-    if categorize_task_futures:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait(categorize_task_futures))
+    if app.tasks:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait([
+            asyncio.ensure_future(categorize_task(task)) for task in app.tasks
+        ]))
 
     return tasks_by_state
 
@@ -501,11 +498,10 @@ def undrain_tasks(
             except Exception as e:
                 log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
 
-    undrain_task_futures = []
-    for task in to_undrain:
-        undrain_task_futures.append(asyncio.ensure_future(undrain_task(task)))
-    if undrain_task_futures:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait(undrain_task_futures))
+    if to_undrain:
+        asyncio.get_event_loop().run_until_complete(asyncio.wait([
+            asyncio.ensure_future(undrain_task(task)) for task in to_undrain
+        ]))
 
 
 def deploy_service(
