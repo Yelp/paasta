@@ -862,6 +862,9 @@ def configure_and_run_docker_container(
 
 
 def paasta_local_run(args):
+    if args.action == 'pull' and os.geteuid() != 0:
+        paasta_print("Re-executing paasta local-run --pull with sudo..")
+        os.execvp("sudo", ["sudo", "-H"] + sys.argv)
     if args.action == 'build' and not makefile_responds_to('cook-image'):
         paasta_print("A local Makefile with a 'cook-image' target is required for --build", file=sys.stderr)
         paasta_print("If you meant to pull the docker image from the registry, explicitly pass --pull", file=sys.stderr)
