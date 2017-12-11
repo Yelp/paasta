@@ -88,6 +88,7 @@ def detect_outdated_gitshas(versions, max_bounce_time_in_hours):
 
 def report_outdated_instances(task_id, gitsha, tasks, slave_id2hostname):
     output = []
+    remedy = []
     for t in tasks:
         deploy_time = datetime.datetime.fromtimestamp(int(t['statuses'][0]['timestamp'])).strftime('%Y-%m-%d %H:%M:%S')
         container_name = "mesos-{}.{}".format(
@@ -96,41 +97,51 @@ def report_outdated_instances(task_id, gitsha, tasks, slave_id2hostname):
         )
         hostname = slave_id2hostname[t['slave_id']]
         hostname = hostname[:hostname.find('.')]
+        service_instance = task_id.replace('--', '_')
         output.append(
             OUTPUT_FORMAT.format(
-                task_id.replace('--', '_')[:30],
+                service_instance[:30],
                 gitsha[3:],
                 deploy_time,
                 hostname,
                 container_name,
             ),
         )
-    return output
+        remedy.append('ssh {0} "sudo hadown {1}; sleep 10; sudo docker stop {2}; sudo haup {1}"'
+                      .format(hostname, service_instance, container_name))
+    return output, remedy
 
 
 def check_mesos_tasks(max_bounce_time_in_hours=MAX_BOUNCE_TIME_IN_HOURS):
     output = []
+    remedy = []
     state = get_mesos_state()
     aggregated_tasks = group_running_tasks_by_id_and_gitsha(state)
     slave_id2hostname = create_slave_id_to_hostname_dict(state)
     for task_id, versions in aggregated_tasks.items():
         for gitsha in detect_outdated_gitshas(versions, max_bounce_time_in_hours):
-            output.extend(report_outdated_instances(
-                task_id, gitsha, versions[gitsha],
-                slave_id2hostname,
-            ))
-    return output
+            temp_output, temp_remedy = report_outdated_instances(
+                task_id, gitsha, versions[gitsha], slave_id2hostname,
+            )
+            output.extend(temp_output)
+            remedy.extend(temp_remedy)
+    return output, remedy
 
 
 def main():
     args = parse_args()
     cluster = load_system_paasta_config().get_cluster()
-    output = check_mesos_tasks(args.bounce_time)
+    output, remedy = check_mesos_tasks(args.bounce_time)
     if output:
         print("CRITICAL - There are {} tasks running in {} that are more than {}h older than their"
               " last bounce.".format(len(output), cluster, args.bounce_time))
         print(OUTPUT_FORMAT.format('SERVICE.INSTANCE', 'COMMIT', 'CREATED', 'HOSTNAME', 'CONTAINER'))
         print('\n'.join(output))
+        print('')
+        print('Run the following commands to terminate them:')
+        print('{code}')
+        print('\n'.join(remedy))
+        print('{code}')
         return 1
     else:
         print("OK - There are no outdated tasks in {}".format(cluster))
