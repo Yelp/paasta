@@ -817,7 +817,9 @@ def main() -> None:
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
             num_failed_deployments = num_failed_deployments + 1
         else:
-            if deploy_marathon_service(service, instance, clients, soa_dir, marathon_apps_with_clients)[0]:
+            if instance.startswith('_'):
+                log.debug("Ignoring %s%s%s as instance name begins with '_'." % (service, SPACER, instance))
+            elif deploy_marathon_service(service, instance, clients, soa_dir, marathon_apps_with_clients)[0]:
                 num_failed_deployments = num_failed_deployments + 1
 
     requests_cache.uninstall_cache()
