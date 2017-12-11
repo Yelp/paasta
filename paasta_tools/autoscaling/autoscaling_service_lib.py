@@ -123,65 +123,6 @@ def threshold_decision_policy(current_instances, error, **kwargs):
         return 0
 
 
-@register_autoscaling_component('pid', DECISION_POLICY_KEY)
-def pid_decision_policy(zookeeper_path, current_instances, min_instances, max_instances, error, noop=False, **kwargs):
-    """
-    Uses a PID to determine when to autoscale a service.
-    See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
-    Kp, Ki and Kd are the canonical PID constants, where the output of the PID is:
-    Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
-    """
-    min_delta = min_instances - current_instances
-    max_delta = max_instances - current_instances
-
-    def clamp_value(number):
-        return min(max(number, min_delta), max_delta)
-
-    Kp = 4
-    Ki = 4 / AUTOSCALING_DELAY
-    Kd = 1 * AUTOSCALING_DELAY
-
-    zk_iterm_path = '%s/pid_iterm' % zookeeper_path
-    zk_last_error_path = '%s/pid_last_error' % zookeeper_path
-    zk_last_time_path = '%s/pid_last_time' % zookeeper_path
-
-    with ZookeeperPool() as zk:
-        try:
-            iterm = zk.get(zk_iterm_path)[0].decode('utf8')
-            last_error = zk.get(zk_last_error_path)[0].decode('utf8')
-            last_time = zk.get(zk_last_time_path)[0].decode('utf8')
-            iterm = float(iterm)
-            last_error = float(last_error)
-            last_time = float(last_time)
-        except NoNodeError:
-            iterm = 0.0
-            last_error = 0.0
-            last_time = 0.0
-
-    if not noop:
-        with ZookeeperPool() as zk:
-            zk.ensure_path(zk_iterm_path)
-            zk.ensure_path(zk_last_error_path)
-            zk.set(zk_iterm_path, str(iterm).encode('utf8'))
-            zk.set(zk_last_error_path, str(error).encode('utf8'))
-
-    current_time = int(datetime.now().strftime('%s'))
-    time_delta = current_time - last_time
-
-    iterm = clamp_value(iterm + (Ki * error) * time_delta)
-
-    if not noop:
-        with ZookeeperPool() as zk:
-            zk.ensure_path(zk_iterm_path)
-            zk.ensure_path(zk_last_error_path)
-            zk.ensure_path(zk_last_time_path)
-            zk.set(zk_iterm_path, str(iterm).encode('utf8'))
-            zk.set(zk_last_error_path, str(error).encode('utf8'))
-            zk.set(zk_last_time_path, str(current_time).encode('utf8'))
-
-    return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
-
-
 @register_autoscaling_component('proportional', DECISION_POLICY_KEY)
 def proportional_decision_policy(
     zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
