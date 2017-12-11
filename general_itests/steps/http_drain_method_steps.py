@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import http.server
 import threading
 from typing import List
@@ -58,7 +59,7 @@ def call_drain(context, method, status_code):
         'drain': context.http_drain_method.drain,
         'is_draining': context.http_drain_method.is_draining,
     }[method]
-    context.retval = func(fake_task)
+    context.retval = asyncio.get_event_loop().run_until_complete(func(fake_task))
 
 
 @then('the server should see a request to {path}')

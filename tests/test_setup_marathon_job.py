@@ -1735,23 +1735,23 @@ def make_fake_drain_method(
     stop_draining_func=None,
     is_draining_func=None,
 ):
-    async def is_safe_to_kill(task):
+    async def is_safe_to_kill(task):  # pragma: no cover
         if is_safe_to_kill_func:
             is_safe_to_kill_func()
         else:
             return True
 
-    async def drain(task):
+    async def drain(task):  # pragma: no cover
         task._drain_state = 'down'
         if drain_func:
             return drain_func()
 
-    async def stop_draining(task):
+    async def stop_draining(task):  # pragma: no cover
         task._drain_state = 'up'
         if stop_draining_func:
             return stop_draining_func()
 
-    async def is_draining(task):
+    async def is_draining(task):  # pragma: no cover
         if is_draining_func:
             return is_draining_func()
         else:
