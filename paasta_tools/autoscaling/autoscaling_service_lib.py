@@ -641,7 +641,7 @@ def autoscaling_is_paused():
     with ZookeeperPool() as zk:
         try:
             pause_until = zk.get(ZK_PAUSE_AUTOSCALE_PATH)[0].decode('utf8')
-            pause_until = int(pause_until)
+            pause_until = float(pause_until)
         except (NoNodeError, ValueError, AttributeError) as e:
             pause_until = 0
 

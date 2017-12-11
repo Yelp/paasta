@@ -36,8 +36,9 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-d', '--pause-duration',
-        default='120',
+        default=120,
         dest="duration",
+        type=int,
         help="How long to pause the autoscaler for, defaults to 120 minutes",
     )
     status_parser.add_argument(
@@ -68,7 +69,7 @@ def add_subparser(subparsers):
 def paasta_pause_service_autoscaler(args):
     """With a given cluster and duration, pauses the paasta service autoscaler
        in that cluster for duration minutes"""
-    if int(args.duration) > MAX_PAUSE_DURATION:
+    if args.duration > MAX_PAUSE_DURATION:
         if not args.force:
             paasta_print('Specified duration: {d} longer than max: {m}'.format(
                 d=args.duration,
