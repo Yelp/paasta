@@ -1121,7 +1121,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             volumes=[],
             interactive=False,
             command='fake_command',
-            healthcheck=True,
+            healthcheck=False,
             healthcheck_only=True,
             user_port=None,
             instance_config=mock_service_manifest,
