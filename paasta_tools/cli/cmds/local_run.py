@@ -653,7 +653,7 @@ def run_docker_container(
         paasta_print('Found our container running with CID %s' % container_id)
 
         # If the service has a healthcheck, simulate it
-        if healthcheck and healthcheck_mode is not None:
+        if (healthcheck_only or healthcheck) and healthcheck_mode is not None:
             healthcheck_result = simulate_healthcheck_on_service(
                 instance_config=instance_config,
                 docker_client=docker_client,
