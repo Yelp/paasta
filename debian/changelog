@@ -1,3 +1,10 @@
+paasta-tools (0.69.7) xenial; urgency=medium
+
+  * 0.69.7 tagged with 'make release'
+    Commit: Bump minor version
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 11 Dec 2017 16:55:14 -0800
+
 paasta-tools (0.69.6) xenial; urgency=medium
 
   * 0.69.6 tagged with 'make release'
