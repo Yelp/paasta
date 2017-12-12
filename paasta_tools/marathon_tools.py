@@ -549,9 +549,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         """
         if 'prod' in self.cluster:
             auto_hostname_unique_size = system_paasta_config.get_auto_hostname_unique_size()
-            app_size = self.get_max_instances()
-            if app_size is None:
-                app_size = self.get_desired_instances()
+            app_size = self.get_max_instances() or self.get_desired_instances() 
             if app_size <= auto_hostname_unique_size:
                 return [["hostname", "UNIQUE"]]
         return []
