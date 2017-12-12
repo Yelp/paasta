@@ -145,61 +145,7 @@ def test_get_service_metrics_provider():
 
 
 def test_get_decision_policy():
-    assert autoscaling_service_lib.get_decision_policy('pid') == autoscaling_service_lib.pid_decision_policy
-
-
-def test_pid_decision_policy():
-    current_time = datetime.now()
-
-    zookeeper_get_payload = {
-        'pid_iterm': 0,
-        'pid_last_error': 0,
-        'pid_last_time': (current_time - timedelta(seconds=600)).strftime('%s'),
-    }
-
-    with mock.patch(
-        'paasta_tools.utils.KazooClient', autospec=True, return_value=mock.Mock(
-            get=mock.Mock(
-                side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
-            ),
-        ),
-    ) as mock_zk_client, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
-    ) as mock_datetime, mock.patch(
-        'paasta_tools.utils.load_system_paasta_config', autospec=True,
-        return_value=mock.Mock(get_zk_hosts=mock.Mock()),
-    ):
-        mock_datetime.now.return_value = current_time
-        assert autoscaling_service_lib.pid_decision_policy(
-            '/autoscaling/fake-service/fake-instance',
-            10, 1, 100, 0.0,
-        ) == 0
-        assert autoscaling_service_lib.pid_decision_policy(
-            '/autoscaling/fake-service/fake-instance',
-            10, 1, 100, 0.2,
-        ) == 3
-        assert autoscaling_service_lib.pid_decision_policy(
-            '/autoscaling/fake-service/fake-instance',
-            10, 1, 100, -0.2,
-        ) == -3
-        mock_zk_client.return_value.set.assert_has_calls(
-            [
-                mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'.encode('utf8')),
-                mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'.encode('utf8')),
-                mock.call(
-                    '/autoscaling/fake-service/fake-instance/pid_last_time',
-                    current_time.strftime('%s').encode('utf8'),
-                ),
-            ], any_order=True,
-        )
-
-        # test noop mode
-        mock_zk_client.return_value.set.reset_mock()
-        assert autoscaling_service_lib.pid_decision_policy(
-            '/autoscaling/fake-service/fake-instance',
-            10, 1, 100, 0.2, noop=True,
-        ) == 3
-        assert not mock_zk_client.return_value.set.called
+    assert autoscaling_service_lib.get_decision_policy('proportional') == autoscaling_service_lib.proportional_decision_policy  # NOQA
 
 
 def test_threshold_decision_policy():

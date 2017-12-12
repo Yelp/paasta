@@ -36,14 +36,15 @@ PyYAML==3.11
 requests==2.6.2
 requests-cache==0.4.10
 retry==0.9.2
+ruamel.yaml==0.15.23
 sensu-plugin==0.3.1
 service-configuration-lib==0.12.0
 simplejson==3.10.0
-six>=1.9.0
 syslogmp==0.2.2
 task-processing==0.0.5
 thriftpy==0.1.15
 typing_extensions==3.6.2.1
+tzlocal==1.2
 ujson==1.35
 wsgicors==0.7.0
 yelp-clog==2.7.2

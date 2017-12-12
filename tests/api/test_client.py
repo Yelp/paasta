@@ -17,22 +17,14 @@ from bravado.requests_client import RequestsResponseAdapter
 
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
-from paasta_tools.utils import SystemPaastaConfig
 
 
-def test_get_paasta_api_client():
+def test_get_paasta_api_client(system_paasta_config):
     with mock.patch(
         'paasta_tools.api.client.load_system_paasta_config',
         autospec=True,
     ) as mock_load_system_paasta_config:
-        mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-            {
-                'api_endpoints': {
-                    'fake_cluster': "http://fake_cluster:5054",
-                },
-                'cluster': 'fake_cluster',
-            }, 'fake_directory',
-        )
+        mock_load_system_paasta_config.return_value = system_paasta_config
 
         client = get_paasta_api_client()
         assert client
@@ -47,7 +39,7 @@ class Struct(object):
         self.__dict__.update(entries)
 
 
-def test_paasta_status():
+def test_paasta_status(system_paasta_config):
     fake_dict = {"git_sha": "fake_git_sha", "instance": "fake_instance", "service": "fake_service"}
     fake_dict2 = {
         "error_message": None, "desired_state": "start",
@@ -58,14 +50,7 @@ def test_paasta_status():
     fake_status_obj = Struct(**fake_dict)
     fake_status_obj.marathon = Struct(**fake_dict2)
 
-    system_paasta_config = SystemPaastaConfig(
-        {
-            'api_endpoints': {
-                'fake_cluster': "http://fake_cluster:5054",
-            },
-            'cluster': 'fake_cluster',
-        }, 'fake_directory',
-    )
+    system_paasta_config = system_paasta_config
 
     with mock.patch('bravado.http_future.HttpFuture.result', autospec=True) as mock_result:
         mock_result.return_value = fake_status_obj
@@ -75,15 +60,8 @@ def test_paasta_status():
         )
 
 
-def test_paasta_status_exception():
-    system_paasta_config = SystemPaastaConfig(
-        {
-            'api_endpoints': {
-                'fake_cluster': "http://fake_cluster:5054",
-            },
-            'cluster': 'fake_cluster',
-        }, 'fake_directory',
-    )
+def test_paasta_status_exception(system_paasta_config):
+    system_paasta_config = system_paasta_config
 
     with mock.patch('paasta_tools.cli.cmds.status.get_paasta_api_client', autospec=True) as mock_get_paasta_api_client:
         requests_response = mock.Mock(status_code=500, reason='Internal Server Error')

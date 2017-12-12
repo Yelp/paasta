@@ -1,3 +1,34 @@
+paasta-tools (0.69.7) xenial; urgency=medium
+
+  * 0.69.7 tagged with 'make release'
+    Commit: Bump minor version
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 11 Dec 2017 16:55:14 -0800
+
+paasta-tools (0.69.6) xenial; urgency=medium
+
+  * 0.69.6 tagged with 'make release'
+    Commit: Merge pull request #1658 from fboxwala/bugfix-auto  bugfixes
+    for pause_service_autoscaler
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 11 Dec 2017 16:52:01 -0800
+
+paasta-tools (0.69.6) xenial; urgency=medium
+
+  * 0.69.6 tagged with 'make release'
+    Commit: Merge pull request #1492 from Yelp/instance-configs-
+    experiments  Instance configs experiments
+
+ -- Evan Krall <krall@yelp.com>  Thu, 07 Dec 2017 12:27:46 -0800
+
+paasta-tools (0.69.5) xenial; urgency=medium
+
+  * 0.69.5 tagged with 'make release'
+    Commit: Merge pull request #1645 from Yelp/fix-string-interpolation
+    add variables to string interpolation
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 06 Dec 2017 09:38:53 -0800
+
 paasta-tools (0.69.4) xenial; urgency=medium
 
   * 0.69.4 tagged with 'make release'

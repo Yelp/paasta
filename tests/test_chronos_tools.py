@@ -319,7 +319,7 @@ class TestChronosTools:
         actual = self.fake_chronos_job_config.get_service()
         assert actual == expected
 
-    def test_format_chronos_job_dict_uses_time_parser(self):
+    def test_format_chronos_job_dict_uses_time_parser(self, system_paasta_config):
         fake_cmd = 'foo bar baz'
         fake_config_dict = {
             'bounce_method': 'graceful',
@@ -337,7 +337,6 @@ class TestChronosTools:
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
         fake_constraints = []
-        dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
 
         expected = 'parsed_time'
         with mock.patch(
@@ -353,7 +352,7 @@ class TestChronosTools:
             fake_chronos_job_config.format_chronos_job_dict(
                 fake_docker_url,
                 fake_docker_volumes,
-                dummy_config.get_dockercfg_location(),
+                system_paasta_config.get_dockercfg_location(),
                 fake_constraints,
             )
             mock_parse_time_variables.assert_called_with(fake_cmd)
@@ -406,7 +405,7 @@ class TestChronosTools:
         ]
         assert sort_dicts(fake_conf.get_env()) == sort_dicts(expected_env)
 
-    def test_get_calculated_constraints_respects_constraints_override(self):
+    def test_get_calculated_constraints_respects_constraints_override(self, system_paasta_config):
         fake_constraints = [['fake_constraints']]
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
@@ -415,13 +414,12 @@ class TestChronosTools:
             config_dict={'constraints': fake_constraints},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == fake_constraints
 
-    def test_get_calculated_constraints_respects_pool(self):
+    def test_get_calculated_constraints_respects_pool(self, system_paasta_config):
         fake_pool = 'poolname'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
@@ -430,9 +428,8 @@ class TestChronosTools:
             config_dict={'pool': fake_pool},
             branch_dict={},
         )
-        fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         actual = fake_conf.get_calculated_constraints(
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         assert actual == [['pool', 'LIKE', 'poolname']]
 
@@ -1034,7 +1031,7 @@ class TestChronosTools:
         assert okay is False
         assert msg == 'Your Chronos config specifies "boat", an unsupported parameter.'
 
-    def test_format_chronos_job_dict(self):
+    def test_format_chronos_job_dict(self, system_paasta_config):
         fake_service = 'test_service'
         fake_job_name = 'test_job'
         fake_owner = 'test_team'
@@ -1094,17 +1091,16 @@ class TestChronosTools:
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
         }
-        dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
         with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True):
             actual = chronos_job_config.format_chronos_job_dict(
                 fake_docker_url,
                 fake_docker_volumes,
-                dummy_config.get_dockercfg_location(),
+                system_paasta_config.get_dockercfg_location(),
                 [],
             )
             assert actual == expected
 
-    def test_format_chronos_job_dict_uses_net(self):
+    def test_format_chronos_job_dict_uses_net(self, system_paasta_config):
         fake_service = 'test_service'
         fake_job_name = 'test_job'
         fake_owner = 'test_team'
@@ -1125,12 +1121,11 @@ class TestChronosTools:
             },
             branch_dict={},
         )
-        dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
         with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True):
             result = chronos_job_config.format_chronos_job_dict(
                 fake_docker_url,
                 fake_docker_volumes,
-                dummy_config.get_dockercfg_location(),
+                system_paasta_config.get_dockercfg_location(),
                 [],
             )
             assert result['container']['network'] == 'HOST'
@@ -1343,19 +1338,13 @@ class TestChronosTools:
         # The main thing here is that InvalidJobNameError is not raised.
         assert actual == []
 
-    def test_create_complete_config(self):
+    def test_create_complete_config(self, system_paasta_config):
         fake_owner = 'test_team'
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=self.fake_chronos_job_config,
@@ -1405,19 +1394,13 @@ class TestChronosTools:
             }
             assert actual == expected
 
-    def test_create_complete_config_understands_parents(self):
+    def test_create_complete_config_understands_parents(self, system_paasta_config):
         fake_owner = 'test_team'
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=self.fake_dependent_chronos_job_config,
@@ -1435,17 +1418,11 @@ class TestChronosTools:
             assert actual["parents"] == ["{} {}".format(self.fake_service, self.fake_job_name)]
             assert "schedule" not in actual
 
-    def test_create_complete_config_considers_disabled(self):
+    def test_create_complete_config_considers_disabled(self, system_paasta_config):
         fake_owner = 'test_team'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.utils.load_system_paasta_config', autospec=True,
         ), mock.patch(
@@ -1474,7 +1451,7 @@ class TestChronosTools:
 
             assert first_description != second_description
 
-    def test_create_complete_config_desired_state_start(self):
+    def test_create_complete_config_desired_state_start(self, system_paasta_config):
         fake_owner = 'test_team'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             service=self.fake_service,
@@ -1488,15 +1465,9 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,
@@ -1546,7 +1517,7 @@ class TestChronosTools:
             }
             assert actual == expected
 
-    def test_create_complete_config_desired_state_stop(self):
+    def test_create_complete_config_desired_state_stop(self, system_paasta_config):
         fake_owner = 'test@test.com'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             service=self.fake_service,
@@ -1560,15 +1531,9 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,
@@ -1618,7 +1583,7 @@ class TestChronosTools:
             }
             assert actual == expected
 
-    def test_create_complete_config_respects_extra_volumes(self):
+    def test_create_complete_config_respects_extra_volumes(self, system_paasta_config):
         fake_owner = 'test@test.com'
         fake_extra_volumes = [
             {
@@ -1648,15 +1613,9 @@ class TestChronosTools:
         )
         fake_config_hash = 'fake_config_hash'
         fake_registry = 'fake_registry'
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "cluster": "cluster",
-            },
-            '/some/path',
-        )
         with mock.patch(
             'paasta_tools.chronos_tools.load_system_paasta_config', autospec=True,
-            return_value=fake_system_paasta_config,
+            return_value=system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
             'paasta_tools.chronos_tools.load_chronos_job_config',
             autospec=True, return_value=fake_chronos_job_config,

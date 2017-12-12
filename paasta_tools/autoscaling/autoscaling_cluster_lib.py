@@ -1272,10 +1272,13 @@ def get_mesos_utilization_error(
             mesos_state,
         )[(pool, region,)]
     except KeyError:
-        log.info("Failed to find utilization for region %s, pool %s, returning 0 error")
+        log.info(
+            "Failed to find utilization for region %s, pool %s, returning 0 error" %
+            (region, pool),
+        )
         return 0
 
-    log.debug(region_pool_utilization_dict)
+    log.debug(repr(region_pool_utilization_dict))
     free_pool_resources = region_pool_utilization_dict['free']
     total_pool_resources = region_pool_utilization_dict['total']
     usage_percs = []

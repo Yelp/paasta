@@ -14,7 +14,6 @@
 # limitations under the License.
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.cli.utils import execute_paasta_cluster_boost_on_remote_master
-from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -29,7 +28,7 @@ def add_subparser(subparsers):
             "'paasta boost' is used to temporary provision more capacity in a given cluster "
             "It operates by ssh'ing to a Mesos master of a remote cluster, and "
             "interracting with the boost in the local zookeeper cluster. If you set or clear"
-            "a boost, the cluster autoscaler will be run immediately (instead of every 20 min)"
+            "a boost, you may want to run the cluster autoscaler manually afterwards."
         ),
         epilog=(
             "The boost command may time out during heavy load. When that happens "
@@ -46,7 +45,10 @@ def add_subparser(subparsers):
     )
     boost_parser.add_argument(
         '-c', '--cluster',
-    ).completer = lazy_choices_completer(list_clusters)
+        type=str,
+        required=True,
+        help="Cluster to boost. ex: nova-prod. You can find a list of paasta clusters with `paasta list-clusters'",
+    )
     boost_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -101,18 +103,20 @@ def paasta_boost(args):
     system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
     if args.cluster in all_clusters:
+        print("Valid cluster")
         return_code, output = execute_paasta_cluster_boost_on_remote_master(
             cluster=args.cluster,
             system_paasta_config=system_paasta_config,
             action=args.action,
             region=args.region,
             pool=args.pool,
-            duration=args.duration,
-            override=args.override,
-            boost=args.boost,
+            duration=args.duration if args.action == 'set' else None,
+            override=args.override if args.action == 'set' else None,
+            boost=args.boost if args.action == 'set' else None,
             verbose=args.verbose,
         )
     else:
-        paasta_print("Cluster %s doesn't look like a valid cluster?" % args.cluster)
-        paasta_print("Try using tab completion to help complete the cluster name")
+        paasta_print("Cluster %s doesn't look like a valid cluster" % args.cluster)
+        paasta_print("Here is a list of valid paasta clusters:\n{}".format(all_clusters))
+        return_code = 1
     return return_code

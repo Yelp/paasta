@@ -23,10 +23,9 @@ from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
-from paasta_tools.utils import SystemPaastaConfig
 
 
-def test_load_smartstack_info_for_service():
+def test_load_smartstack_info_for_service(system_paasta_config):
     with mock.patch(
         'paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config',
         autospec=True,
@@ -40,11 +39,11 @@ def test_load_smartstack_info_for_service():
             namespace='namespace',
             soa_dir='fake',
             blacklist=[],
-            system_paasta_config=SystemPaastaConfig({}, '/fake/config'),
+            system_paasta_config=system_paasta_config,
         )
 
 
-def test_get_smartstack_replication_for_attribute():
+def test_get_smartstack_replication_for_attribute(system_paasta_config):
     fake_namespace = 'fake_main'
     fake_service = 'fake_service'
     mock_filtered_slaves = [
@@ -62,7 +61,6 @@ def test_get_smartstack_replication_for_attribute():
         },
     ]
 
-    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with mock.patch(
         'paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
         return_value=mock_filtered_slaves, autospec=True,
@@ -79,7 +77,7 @@ def test_get_smartstack_replication_for_attribute():
             service=fake_service,
             namespace=fake_namespace,
             blacklist=[],
-            system_paasta_config=fake_system_paasta_config,
+            system_paasta_config=system_paasta_config,
         )
         mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
             blacklist=[],
@@ -90,8 +88,8 @@ def test_get_smartstack_replication_for_attribute():
 
         mock_get_replication_for_services.assert_any_call(
             synapse_host='hostone',
-            synapse_port=fake_system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
+            synapse_port=system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
             services=['fake_service.fake_main'],
         )
 
@@ -254,12 +252,12 @@ def test_get_replication_for_all_services(mock_get_multiple_backends):
 def test_get_replication_for_instance(
     mock_get_replication_for_all_services,
     mock_load_service_namespace_config,
+    system_paasta_config,
 ):
     mock_mesos_slaves = [
         {'hostname': 'host1', 'attributes': {'region': 'fake_region1'}},
         {'hostname': 'host2', 'attributes': {'region': 'fake_region1'}},
     ]
-    mock_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     instance_config = mock.Mock(service='fake_service', instance='fake_instance')
     instance_config.get_monitoring_blacklist.return_value = []
     mock_get_replication_for_all_services.return_value = \
@@ -267,7 +265,7 @@ def test_get_replication_for_instance(
     mock_load_service_namespace_config.return_value.get_discover.return_value = 'region'
     checker = smartstack_tools.SmartstackReplicationChecker(
         mesos_slaves=mock_mesos_slaves,
-        system_paasta_config=mock_system_paasta_config,
+        system_paasta_config=system_paasta_config,
     )
     assert checker.get_replication_for_instance(instance_config) == \
         {'fake_region1': {'fake_service.fake_instance': 20}}

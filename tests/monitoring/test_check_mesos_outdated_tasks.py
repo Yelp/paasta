@@ -55,7 +55,7 @@ def test_check_mesos_tasks(mock_get_mesos_master):
             ],
         }],
     }
-    output = check_mesos_outdated_tasks.check_mesos_tasks()
+    output, remedy = check_mesos_outdated_tasks.check_mesos_tasks()
     assert len(output) == 1
     assert 'a69b426d-f283-4287-9bee-6b8811386e1b' in output[0]
     assert 'old_SHA' in output[0]

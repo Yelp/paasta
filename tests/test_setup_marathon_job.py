@@ -31,7 +31,6 @@ from paasta_tools import bounce_lib
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
-from paasta_tools import utils
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -1774,7 +1773,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
     def fake_get_happy_tasks(self, app, service, nerve_ns, system_paasta_config, **kwargs):
         return [t for t in app.tasks if t._happiness == 'happy']
 
-    def test_get_tasks_by_state_empty(self):
+    def test_get_tasks_by_state_empty(self, system_paasta_config):
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
@@ -1788,8 +1787,6 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             (fake_app_1, fake_client_1),
             (fake_app_2, fake_client_2),
         ]
-
-        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
         expected_live_happy_tasks: Dict[Tuple[str, MarathonClient], Set[marathon_tools.MarathonTask]] = {
             (fake_app_1.id, fake_client_1): set(),
@@ -1819,7 +1816,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
-                system_paasta_config=fake_system_paasta_config,
+                system_paasta_config=system_paasta_config,
                 log_deploy_error=None,
                 draining_hosts=[],
             )
@@ -1829,7 +1826,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         assert actual_draining_tasks == expected_draining_tasks
         assert actual_at_risk_tasks == expected_at_risk_tasks
 
-    def test_get_tasks_by_state_not_empty(self):
+    def test_get_tasks_by_state_not_empty(self, system_paasta_config):
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
@@ -1859,8 +1856,6 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             (fake_app_2, fake_client_2),
         ]
 
-        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
-
         expected_live_happy_tasks: Dict[Tuple[str, MarathonClient], Set[marathon_tools.MarathonTask]] = {
             (fake_app_1.id, fake_client_1): {fake_app_1.tasks[0]},
             (fake_app_2.id, fake_client_2): {fake_app_2.tasks[0]},
@@ -1889,7 +1884,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
-                system_paasta_config=fake_system_paasta_config,
+                system_paasta_config=system_paasta_config,
                 log_deploy_error=None,
                 draining_hosts=[],
             )
