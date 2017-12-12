@@ -1,6 +1,14 @@
 paasta-tools (0.69.6) xenial; urgency=medium
 
   * 0.69.6 tagged with 'make release'
+    Commit: Merge pull request #1658 from fboxwala/bugfix-auto  bugfixes
+    for pause_service_autoscaler
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 11 Dec 2017 16:52:01 -0800
+
+paasta-tools (0.69.6) xenial; urgency=medium
+
+  * 0.69.6 tagged with 'make release'
     Commit: Merge pull request #1492 from Yelp/instance-configs-
     experiments  Instance configs experiments
 
