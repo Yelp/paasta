@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 
+from tzlocal import get_localzone
+
 from paasta_tools.api import client
 from paasta_tools.utils import paasta_print
 
@@ -15,11 +17,12 @@ def get_service_autoscale_pause_time(cluster):
         paasta_print('Could not connect to zookeeper server')
         return 2
 
-    pause_time = int(pause_time)
+    pause_time = float(pause_time)
     if pause_time < time.time():
         paasta_print('Service autoscaler is not paused')
     else:
-        paused_readable = datetime.fromtimestamp(pause_time).strftime('%F %H:%M:%S UTC')
+        local_tz = get_localzone()
+        paused_readable = local_tz.localize(datetime.fromtimestamp(pause_time)).strftime('%F %H:%M:%S %Z')  # NOQA
         paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
 
     return 0
