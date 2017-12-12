@@ -1471,11 +1471,11 @@ class SystemPaastaConfig(object):
         """
         We automatically add a ["hostname", "UNIQUE"] constraint to "small" services running in production clusters.
         If there are less than or equal to this number of instances, we consider it small.
-        We fail safe and return 0 to avoid adding the ['hostname', 'UNIQUE'] constraint if this value is not defined
+        We fail safe and return -1 to avoid adding the ['hostname', 'UNIQUE'] constraint if this value is not defined
 
         :returns: The integer size of a small service
         """
-        return self.config_dict.get('auto_hostname_unique_size', 0)
+        return self.config_dict.get('auto_hostname_unique_size', -1)
 
     def get_api_endpoints(self) -> Dict[str, str]:
         return self.config_dict['api_endpoints']
