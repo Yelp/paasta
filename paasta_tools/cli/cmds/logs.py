@@ -225,7 +225,6 @@ def paasta_log_line_passes_filter(
         return False
 
     timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
-    timestamp = pytz.utc.localize(timestamp)
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
