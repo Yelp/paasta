@@ -31,6 +31,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'argcomplete >= 0.8.1',
+        'aiohttp >= 2.3.3',
         'bravado == 8.4.0',
         'choice == 0.1',
         'chronos-python >= 1.2.0',

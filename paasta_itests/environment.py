@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import os
 import shutil
 import time
 
 import mock
 import requests
-from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
 from itest_utils import clear_mesos_tools_cache
 from itest_utils import get_service_connection_string
@@ -34,7 +34,6 @@ from paasta_tools.utils import paasta_print
 
 
 def before_all(context):
-    install_pytest_asserts()
     context.cluster = "testcluster"
     context.mesos_cli_config = os.path.join(os.getcwd(), 'mesos-cli.json')
     wait_for_marathon()
@@ -172,6 +171,11 @@ def _clean_up_current_client(context):
         del context.current_client
 
 
+def _clean_up_event_loop(context):
+    if hasattr(context, 'event_loop'):
+        del context.event_loop
+
+
 def after_scenario(context, scenario):
     _stop_deployd(context)
     _clean_up_marathon_apps(context)
@@ -184,6 +188,7 @@ def after_scenario(context, scenario):
     _clean_up_paasta_native_frameworks(context)  # this must come before _clean_up_etc_paasta
     _clean_up_etc_paasta(context)
     _clean_up_current_client(context)
+    _clean_up_event_loop(context)
 
 
 def before_feature(context, feature):
@@ -193,6 +198,7 @@ def before_feature(context, feature):
 
 
 def before_scenario(context, scenario):
+    context.event_loop = asyncio.get_event_loop()
     if "skip" in scenario.effective_tags:
         scenario.skip("Marked with @skip")
         return

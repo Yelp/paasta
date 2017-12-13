@@ -13,31 +13,52 @@
 # limitations under the License.
 import re
 import time
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Set
+from typing import Type
+from typing import TypeVar
 
-import requests
+import aiohttp
+from mypy_extensions import TypedDict
 
 from paasta_tools.utils import get_user_agent
 
-_drain_methods = {}
-HACHECK_TIMEOUT = (3, 1)  # (connect timeout, read timeout)
+_drain_methods: Dict[str, Type["DrainMethod"]] = {}
+HACHECK_CONN_TIMEOUT = 3
+HACHECK_READ_TIMEOUT = 1
 
 
-def register_drain_method(name):
+_RegisterDrainMethod_T = TypeVar('_RegisterDrainMethod_T', bound=Type["DrainMethod"])
+
+
+def register_drain_method(name: str) -> Callable[[_RegisterDrainMethod_T], _RegisterDrainMethod_T]:
     """Returns a decorator that registers a DrainMethod subclass at a given name
     so get_drain_method/list_drain_methods can find it."""
-    def outer(drain_method):
+    def outer(drain_method: _RegisterDrainMethod_T) -> _RegisterDrainMethod_T:
         _drain_methods[name] = drain_method
         return drain_method
     return outer
 
 
-def get_drain_method(name, service, instance, nerve_ns, drain_method_params=None):
+def get_drain_method(
+    name: str,
+    service: str,
+    instance: str,
+    nerve_ns: str,
+    drain_method_params: Optional[Dict]=None,
+) -> "DrainMethod":
     return _drain_methods[name](service, instance, nerve_ns, **(drain_method_params or {}))
 
 
-def list_drain_methods():
+def list_drain_methods() -> List[str]:
     return sorted(_drain_methods.keys())
+
+
+DrainTask = TypeVar('DrainTask', bound=Any)
 
 
 class DrainMethod(object):
@@ -54,24 +75,24 @@ class DrainMethod(object):
     When implementing a drain method, be sure to decorate with @register_drain_method(name).
     """
 
-    def __init__(self, service, instance, nerve_ns, **kwargs):
+    def __init__(self, service: str, instance: str, nerve_ns: str, **kwargs: Dict) -> None:
         self.service = service
         self.instance = instance
         self.nerve_ns = nerve_ns
 
-    def drain(self, task):
+    async def drain(self, task: DrainTask) -> None:
         """Make a task stop receiving new traffic."""
         raise NotImplementedError()
 
-    def stop_draining(self, task):
+    async def stop_draining(self, task: DrainTask) -> None:
         """Make a task that has previously been downed start receiving traffic again."""
         raise NotImplementedError()
 
-    def is_draining(self, task):
+    async def is_draining(self, task: DrainTask) -> bool:
         """Return whether a task is being drained."""
         raise NotImplementedError()
 
-    def is_safe_to_kill(self, task):
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
         """Return True if a task is drained and ready to be killed, or False if we should wait."""
         raise NotImplementedError()
 
@@ -80,16 +101,16 @@ class DrainMethod(object):
 class NoopDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
 
-    def drain(self, task):
+    async def drain(self, task: DrainTask) -> None:
         pass
 
-    def stop_draining(self, task):
+    async def stop_draining(self, task: DrainTask) -> None:
         pass
 
-    def is_draining(self, task):
+    async def is_draining(self, task: DrainTask) -> bool:
         return False
 
-    def is_safe_to_kill(self, task):
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
         return True
 
 
@@ -101,35 +122,48 @@ class TestDrainMethod(DrainMethod):
     downed_task_ids: Set[str] = set()
     safe_to_kill_task_ids: Set[str] = set()
 
-    def drain(self, task):
+    async def drain(self, task: DrainTask) -> None:
         if task.id not in self.safe_to_kill_task_ids:
             self.downed_task_ids.add(task.id)
 
-    def stop_draining(self, task):
+    async def stop_draining(self, task: DrainTask) -> None:
         self.downed_task_ids -= {task.id}
         self.safe_to_kill_task_ids -= {task.id}
 
-    def is_draining(self, task):
+    async def is_draining(self, task: DrainTask) -> bool:
         return task.id in (self.downed_task_ids | self.safe_to_kill_task_ids)
 
-    def is_safe_to_kill(self, task):
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
         return task.id in self.safe_to_kill_task_ids
 
     @classmethod
-    def mark_arbitrary_task_as_safe_to_kill(cls):
+    def mark_arbitrary_task_as_safe_to_kill(cls) -> None:
         cls.safe_to_kill_task_ids.add(cls.downed_task_ids.pop())
 
 
 @register_drain_method('crashy_drain')
 class CrashyDrainDrainMethod(NoopDrainMethod):
-    def drain(self, task):
+    async def drain(self, task: DrainTask) -> None:
         raise Exception("Intentionally crashing for testing purposes")
 
 
 @register_drain_method('crashy_is_safe_to_kill')
 class CrashySafeToKillDrainMethod(NoopDrainMethod):
-    def is_safe_to_kill(self, task):
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
         raise Exception("Intentionally crashing for testing purposes")
+
+
+SpoolInfo = TypedDict(
+    'SpoolInfo',
+    {
+        'service': str,
+        'state': str,
+        'since': float,
+        'until': float,
+        'reason': str,
+    },
+    total=False,
+)
 
 
 @register_drain_method('hacheck')
@@ -137,13 +171,22 @@ class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
     fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
 
-    def __init__(self, service, instance, nerve_ns, delay=120, hacheck_port=6666, expiration=0, **kwargs):
+    def __init__(
+        self,
+        service: str,
+        instance: str,
+        nerve_ns: str,
+        delay: float=120,
+        hacheck_port: int=6666,
+        expiration: float=0,
+        **kwargs: Dict,
+    ) -> None:
         super(HacheckDrainMethod, self).__init__(service, instance, nerve_ns)
         self.delay = float(delay)
         self.hacheck_port = hacheck_port
         self.expiration = float(expiration) or float(delay) * 10
 
-    def spool_url(self, task):
+    def spool_url(self, task: DrainTask) -> str:
         if task.ports == []:
             return None
         else:
@@ -155,75 +198,85 @@ class HacheckDrainMethod(DrainMethod):
                 'nerve_ns': self.nerve_ns,
             }
 
-    def post_spool(self, task, status):
+    async def post_spool(self, task: DrainTask, status: str) -> None:
         spool_url = self.spool_url(task)
         if spool_url is not None:
-            data = {'status': status}
+            data: Dict[str, str] = {'status': status}
             if status == 'down':
                 data.update({
-                    'expiration': time.time() + self.expiration,
+                    'expiration': str(time.time() + self.expiration),
                     'reason': 'Drained by Paasta',
                 })
-            resp = requests.post(
-                self.spool_url(task),
-                data=data,
-                headers={'User-Agent': get_user_agent()},
-                timeout=HACHECK_TIMEOUT,
-            )
-            resp.raise_for_status()
+            async with aiohttp.ClientSession(
+                conn_timeout=HACHECK_CONN_TIMEOUT,
+                read_timeout=HACHECK_READ_TIMEOUT,
+            ) as session:
+                async with session.post(
+                    self.spool_url(task),
+                    data=data,
+                    headers={'User-Agent': get_user_agent()},
+                ) as resp:
+                    resp.raise_for_status()
 
-    def get_spool(self, task):
+    async def get_spool(self, task: DrainTask) -> SpoolInfo:
         """Query hacheck for the state of a task, and parse the result into a dictionary."""
         spool_url = self.spool_url(task)
         if spool_url is None:
             return None
-        response = requests.get(
-            self.spool_url(task),
-            headers={'User-Agent': get_user_agent()},
-            timeout=HACHECK_TIMEOUT,
-        )
-        if response.status_code == 200:
-            return {
-                'state': 'up',
-            }
 
-        regex = ''.join([
-            "^",
-            r"Service (?P<service>.+)",
-            r" in (?P<state>.+) state",
-            r"(?: since (?P<since>[0-9.]+))?",
-            r"(?: until (?P<until>[0-9.]+))?",
-            r"(?:: (?P<reason>.*))?",
-            "$",
-        ])
-        match = re.match(regex, response.text)
-        groupdict = match.groupdict()
-        info = {}
-        info['service'] = groupdict['service']
-        info['state'] = groupdict['state']
-        if 'since' in groupdict:
-            info['since'] = float(groupdict['since'] or 0)
-        if 'until' in groupdict:
-            info['until'] = float(groupdict['until'] or 0)
-        if 'reason' in groupdict:
-            info['reason'] = groupdict['reason']
-        return info
+        # TODO: aiohttp says not to create a session per request. Fix this.
+        async with aiohttp.ClientSession(
+            conn_timeout=HACHECK_CONN_TIMEOUT,
+            read_timeout=HACHECK_READ_TIMEOUT,
+        ) as session:
+            response = await session.get(
+                self.spool_url(task),
+                headers={'User-Agent': get_user_agent()},
+            )
+            if response.status == 200:
+                return {
+                    'state': 'up',
+                }
 
-    def drain(self, task):
-        self.post_spool(task, 'down')
+            regex = ''.join([
+                "^",
+                r"Service (?P<service>.+)",
+                r" in (?P<state>.+) state",
+                r"(?: since (?P<since>[0-9.]+))?",
+                r"(?: until (?P<until>[0-9.]+))?",
+                r"(?:: (?P<reason>.*))?",
+                "$",
+            ])
 
-    def stop_draining(self, task):
-        self.post_spool(task, 'up')
+            response_text = await response.text()
+            match = re.match(regex, response_text)
+            groupdict = match.groupdict()
+            info: SpoolInfo = {}
+            info['service'] = groupdict['service']
+            info['state'] = groupdict['state']
+            if 'since' in groupdict:
+                info['since'] = float(groupdict['since'] or 0)
+            if 'until' in groupdict:
+                info['until'] = float(groupdict['until'] or 0)
+            if 'reason' in groupdict:
+                info['reason'] = groupdict['reason']
+            return info
 
-    def is_draining(self, task):
-        info = self.get_spool(task)
+    async def drain(self, task: DrainTask) -> None:
+        return await self.post_spool(task, 'down')
+
+    async def stop_draining(self, task: DrainTask) -> None:
+        return await self.post_spool(task, 'up')
+
+    async def is_draining(self, task: DrainTask) -> bool:
+        info = await self.get_spool(task)
         if info is None or info["state"] == "up":
             return False
         else:
             return True
 
-    def is_safe_to_kill(self, task):
-        info = self.get_spool(task)
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
+        info = await self.get_spool(task)
         if info is None or info["state"] == "up":
             return False
         else:
@@ -234,19 +287,39 @@ class StatusCodeNotAcceptableError(Exception):
     pass
 
 
+UrlSpec = TypedDict(
+    'UrlSpec',
+    {
+        'url_format': str,
+        'method': str,
+        'success_codes': str,
+    },
+    total=False,
+)
+
+
 @register_drain_method('http')
 class HTTPDrainMethod(DrainMethod):
     """This drain policy issues arbitrary HTTP calls to arbitrary URLs specified by the parameters. The URLs are
     specified as format strings, and will have variables such as {host}, {port}, etc. filled in."""
 
-    def __init__(self, service, instance, nerve_ns, drain, stop_draining, is_draining, is_safe_to_kill):
+    def __init__(
+        self,
+        service: str,
+        instance: str,
+        nerve_ns: str,
+        drain: UrlSpec,
+        stop_draining: UrlSpec,
+        is_draining: UrlSpec,
+        is_safe_to_kill: UrlSpec,
+    ) -> None:
         super(HTTPDrainMethod, self).__init__(service, instance, nerve_ns)
         self.drain_url_spec = drain
         self.stop_draining_url_spec = stop_draining
         self.is_draining_url_spec = is_draining
         self.is_safe_to_kill_url_spec = is_safe_to_kill
 
-    def get_format_params(self, task):
+    def get_format_params(self, task: DrainTask) -> Dict[str, Any]:
         return {
             'host': task.host,
             'port': task.ports[0],
@@ -255,12 +328,12 @@ class HTTPDrainMethod(DrainMethod):
             'nerve_ns': self.nerve_ns,
         }
 
-    def format_url(self, url_format, format_params):
+    def format_url(self, url_format: str, format_params: Dict[str, Any]) -> str:
         return url_format.format(**format_params)
 
-    def parse_success_codes(self, success_codes_str):
+    def parse_success_codes(self, success_codes_str: str) -> Set[int]:
         """Expand a string like 200-399,407-409,500 to a set containing all the integers in between."""
-        acceptable_response_codes = set()
+        acceptable_response_codes: Set[int] = set()
         for series_str in str(success_codes_str).split(','):
             if '-' in series_str:
                 start, end = series_str.split('-')
@@ -269,51 +342,43 @@ class HTTPDrainMethod(DrainMethod):
                 acceptable_response_codes.add(int(series_str))
         return acceptable_response_codes
 
-    def check_response_code(self, status_code, success_codes_str):
+    def check_response_code(self, status_code: int, success_codes_str: str) -> None:
         acceptable_response_codes = self.parse_success_codes(success_codes_str)
         if status_code not in acceptable_response_codes:
             raise StatusCodeNotAcceptableError("Status code %d not in %s", status_code, success_codes_str)
 
-    def issue_request(self, url_spec, task):
+    async def issue_request(self, url_spec: UrlSpec, task: DrainTask) -> None:
         """Issue a request to the URL specified by url_spec regarding the task given."""
         format_params = self.get_format_params(task)
         url = self.format_url(url_spec['url_format'], format_params)
         method = url_spec.get('method', 'GET').upper()
 
-        requests_func = {
-            'GET': requests.get,
-            'POST': requests.post,
-            'PUT': requests.put,
-            'PATCH': requests.patch,
-            'DELETE': requests.delete,
-            'OPTIONS': requests.options,
-            'HEAD': requests.head,
-        }[method]
+        async with aiohttp.ClientSession() as session:
+            response = await session.request(
+                method=method,
+                url=url,
+                headers={'User-Agent': get_user_agent()},
+                timeout=15,
+            )
+            self.check_response_code(response.status, url_spec['success_codes'])
 
-        resp = requests_func(
-            url,
-            headers={'User-Agent': get_user_agent()},
-            timeout=15,
-        )
-        self.check_response_code(resp.status_code, url_spec['success_codes'])
+    async def drain(self, task: DrainTask) -> None:
+        return await self.issue_request(self.drain_url_spec, task)
 
-    def drain(self, task):
-        return self.issue_request(self.drain_url_spec, task)
+    async def stop_draining(self, task: DrainTask) -> None:
+        return await self.issue_request(self.stop_draining_url_spec, task)
 
-    def stop_draining(self, task):
-        return self.issue_request(self.stop_draining_url_spec, task)
-
-    def is_draining(self, task):
+    async def is_draining(self, task: DrainTask) -> bool:
         try:
-            self.issue_request(self.is_draining_url_spec, task)
+            await self.issue_request(self.is_draining_url_spec, task)
         except StatusCodeNotAcceptableError:
             return False
         else:
             return True
 
-    def is_safe_to_kill(self, task):
+    async def is_safe_to_kill(self, task: DrainTask) -> bool:
         try:
-            self.issue_request(self.is_safe_to_kill_url_spec, task)
+            await self.issue_request(self.is_safe_to_kill_url_spec, task)
         except StatusCodeNotAcceptableError:
             return False
         else:
