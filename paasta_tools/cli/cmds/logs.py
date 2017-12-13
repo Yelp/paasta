@@ -823,11 +823,14 @@ class ScribeLogReader(LogReader):
         if end_time > warning_end_time:
             log.warn("Recent logs might be incomplete. Consider tailing instead.")
 
-        start_time_yst = start_time .replace(tzinfo=timezone.utc).astimezone(tz=None)
-        end_time_yst = end_time.replace(tzinfo=timezone.utc).astimezone(tz=None)
+        # scribeerader, sadly, is not based on UTC timestamps. It uses YST
+        # dates instead.
+        start_date_yst = (start_time - datetime.timedelta(hours=8)).date()
+        end_date_yst = (end_time - datetime.timedelta(hours=8)).date()
 
-        log.info("Running the equivalent of 'scribereader -e %s %s" % (scribe_env, stream_name))
-        return scribereader.get_stream_reader(stream_name, host, port, start_time_yst, end_time_yst)
+        log.info("Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s" \
+                 % (scribe_env, stream_name, start_date_yst, end_date_yst))
+        return scribereader.get_stream_reader(stream_name, host, port, start_date_yst, end_date_yst)
 
     def scribe_get_last_n_lines(self, scribe_env, stream_name, line_count):
         # Scribe connection details
