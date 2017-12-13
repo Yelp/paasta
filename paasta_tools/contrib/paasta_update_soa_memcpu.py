@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import contextlib
+import json
 import os
 import subprocess
-import sys
 import tempfile
+import time
 
+import requests
 import ruamel.yaml as yaml
 
 
@@ -14,40 +16,17 @@ def parse_args(argv):
         description='',
     )
     parser.add_argument(
-        '-s', '--service',
-        help="Service to edit. Like 'example_service'.",
-        dest="service",
+        '-s', '--splunk_creds',
+        help="Creds for Splunk API, user:pass",
+        dest="splunk_creds",
         required=True,
     )
-    parser.add_argument(
-        '-i', '--instance',
-        help="Instance of the service to edit. Like 'main' or 'canary'.",
-        dest="instance",
-        required=True,
-    )
-    parser.add_argument(
-        '-c', '--cluster',
-        help="The PaaSTA cluster that has the service instance to edit. Like 'norcal-prod'.",
-        dest="cluster",
-        required=True,
-    )
-    parser.add_argument(
-        '-m', '--mem',
-        default='',
-        dest="mem",
-        help='New value for mem of service',
-    )
-    parser.add_argument(
-        '-cp', '--cpu',
-        default='',
-        dest="cpu",
-        help='New value for cpus of service',
-    )
-    parser.add_argument(
-        '-t', '--ticket',
-        dest="ticket",
-        help='JIRA ticket tracking changes',
-    )
+    # parser.add_argument(
+    #     '-j', '--jira_creds',
+    #     help="Creds for JIRA API, user:pass",
+    #     dest="jira_creds",
+    #     required=True,
+    # )
     return parser.parse_args(argv)
 
 
@@ -75,17 +54,49 @@ def in_tempdir():
             yield
 
 
+def get_perf_data(creds):
+    url = 'https://splunk-api.yelpcorp.com/servicesNS/nobody/yelp_performance/search/jobs/export'
+    search = (
+        '| inputlookup paasta_overprovision_alerts_fired_new.csv |'
+        ' eval _time = search_time | where _time > relative_time(now(),\"-7d\")'
+    )
+    data = {
+        'output_mode': 'json',
+        'search': search,
+    }
+    creds = creds.split(':')
+    resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
+    resp_text = resp.text.split('\n')
+    resp_text = [x for x in resp_text if x]
+    resp_text = [json.loads(x) for x in resp_text]
+
+    services_to_update = []
+    print(services_to_update)
+    for d in resp_text:
+        criteria = d['result']['criteria'].split()
+        serv = {}
+        serv['service'] = criteria[0]
+        serv['cluster'] = criteria[1]
+        serv['instance'] = criteria[2]
+        serv['cpus'] = d['result']['suggested_cpus']
+        serv['memcpu'] = 'cpu'
+        serv['project'] = d['result']['project']
+        services_to_update.append(serv)
+
+    return services_to_update
+
+
 def clone(branch_name):
     print('cloning')
     remote = 'git@sysgit.yelpcorp.com:yelpsoa-configs'
     subprocess.check_call(('git', 'clone', remote, '.'))
-    subprocess.check_call(('git', 'checkout', 'origin/master', '-b', branch_name))
+    subprocess.check_call(('git', 'checkout', '-b', branch_name))
 
 
 def commit(filename, memcpu):
     message = 'Updating {} for under/overprovisioned {}'.format(filename, memcpu)
     subprocess.check_call(('git', 'add', filename))
-    subprocess.check_call(('git', 'commit', '-m', message))
+    subprocess.check_call(('git', 'commit', '-n', '-m', message))
 
 
 def get_reviewers(filename):
@@ -106,12 +117,19 @@ def review(filename):
         ' changes are being made see: PERF-2439'
     )
     subprocess.check_call((
-        'review-branch',
+        'git',
+        'push',
         '--force',
+        'origin',
+        'HEAD',
+    ))
+    subprocess.check_call((
+        'review-branch',
         '--summary=automatically updating {} for under/overprovisioned mem/cpu'.format(filename),
         '--description="{}"'.format(description),
         '--reviewers', reviewers,
-        '--target-groups', 'operations',
+        '--parent', 'master',
+        '--target-groups', 'operations', 'perf',
     ))
 
 
@@ -132,32 +150,44 @@ def edit_soa_configs(filename, instance, mem, cpu):
         fi.write(out)
 
 
+def create_jira_ticket(serv):
+    # creds = creds.split(':')
+    # options = {'server': 'https://jira.yelpcorp.com'}
+    # jira_cli = JIRA(options=options, basic_auth=(creds[0], creds[1])
+    # description = ('Perf suspects that {s}, {i}, {c} may be over/underprovisioned.
+    # jira_ticket = {
+    #     'project': { 'key': serv['project'] },
+    #     'issuetype': { 'name': 'Improvement'},
+    #     'priority': { 'id': '2' }
+    #     'summary': "{s}, {i}, {c}, may be over/underprovisioned".format(s=serv['service'],
+    #                                                   i=serv['instance'],
+    #                                                   c=serv['cluster'])
+
+    return 'cpu-{}'.format(str(time.time()))
+
+
 def main(argv=None):
     args = parse_args(argv)
-    mem = args.mem
-    cpu = args.cpu
-    instance = args.instance
-    service = args.service
-    cluster = args.cluster
-    ticket = args.ticket
+    services_to_update = get_perf_data(args.splunk_creds)
 
-    filename = '{}/marathon-{}.yaml'.format(service, cluster)
-    memcpu = ''
-    if mem:
-        memcpu = 'mem'
-        mem = int(mem)
-    elif cpu:
-        memcpu = 'cpu'
-        cpu = int(cpu)
-    else:
-        print('please specify either mem or cpu')
-        sys.exit(2)
+    for serv in services_to_update:
+        filename = '{}/{}.yaml'.format(serv['service'], serv['cluster'])
+        memcpu = serv['memcpu']
+        if serv.get('mem', ''):
+            memcpu = 'mem'
+            mem = float(serv['mem'])
+            cpu = ''
+        elif serv.get('cpus', ''):
+            memcpu = 'cpu'
+            cpu = float(serv['cpus'])
+            mem = ''
 
-    with in_tempdir():
-        clone(ticket)
-        edit_soa_configs(filename, instance, mem, cpu)
-        commit(filename, memcpu)
-        review(filename)
+        ticket = create_jira_ticket(serv)
+        with in_tempdir():
+            clone(ticket)
+            edit_soa_configs(filename, serv['instance'], mem, cpu)
+            commit(filename, memcpu)
+            review(filename)
 
 
 if __name__ == '__main__':
