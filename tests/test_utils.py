@@ -688,11 +688,47 @@ def test_get_service_instance_list():
         assert sorted(expected) == sorted(actual)
 
 
+def test_get_service_instance_list_ignores_underscore():
+    fake_name = 'hint'
+    fake_instance_1 = 'unsweet'
+    fake_instance_2 = '_ignore_me'
+    fake_cluster = '16floz'
+    fake_dir = '/nail/home/hipster'
+    fake_job_config: Dict[str, Dict] = {
+        fake_instance_1: {},
+        fake_instance_2: {},
+    }
+    expected = [
+        (fake_name, fake_instance_1),
+        (fake_name, fake_instance_1),
+        (fake_name, fake_instance_1),
+        (fake_name, fake_instance_1),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
+        return_value=fake_job_config,
+    ):
+        actual = utils.get_service_instance_list(service=fake_name, cluster=fake_cluster, soa_dir=fake_dir)
+        assert sorted(expected) == sorted(actual)
+
+
 def test_get_services_for_cluster():
     cluster = 'honey_bunches_of_oats'
     soa_dir = 'completely_wholesome'
-    instances = [['this_is_testing', 'all_the_things'], ['my_nerf_broke']]
-    expected = ['my_nerf_broke', 'this_is_testing', 'all_the_things']
+    instances = [
+        [
+            ('fake_service1', 'this_is_testing'),
+            ('fake_service1', 'all_the_things'),
+        ],
+        [
+            ('fake_service2', 'my_nerf_broke'),
+        ],
+    ]
+    expected = [
+        ('fake_service2', 'my_nerf_broke'),
+        ('fake_service1', 'this_is_testing'),
+        ('fake_service1', 'all_the_things'),
+    ]
     with mock.patch(
         'os.path.abspath', autospec=True, return_value='chex_mix',
     ) as abspath_patch, mock.patch(
@@ -708,6 +744,36 @@ def test_get_services_for_cluster():
         get_instances_patch.assert_any_call('dir1', cluster, None, soa_dir)
         get_instances_patch.assert_any_call('dir2', cluster, None, soa_dir)
         assert get_instances_patch.call_count == 2
+
+
+def test_get_services_for_cluster_ignores_underscore():
+    cluster = 'honey_bunches_of_oats'
+    soa_dir = 'completely_wholesome'
+    instances = [
+        [
+            ('fake_service1', 'this_is_testing'),
+            ('fake_service1', 'all_the_things'),
+            ('fake_service1', '_ignore_me'),
+        ],
+        [
+            ('fake_service2', 'my_nerf_broke'),
+        ],
+    ]
+    expected = [
+        ('fake_service2', 'my_nerf_broke'),
+        ('fake_service1', 'this_is_testing'),
+        ('fake_service1', 'all_the_things'),
+    ]
+    with mock.patch(
+        'os.path.abspath', autospec=True, return_value='chex_mix',
+    ), mock.patch(
+        'os.listdir', autospec=True, return_value=['dir1', 'dir2'],
+    ), mock.patch(
+        'paasta_tools.utils.get_service_instance_list',
+        side_effect=lambda a, b, c, d: instances.pop(), autospec=True,
+    ):
+        actual = utils.get_services_for_cluster(cluster, soa_dir=soa_dir)
+        assert expected == actual
 
 
 def test_color_text():

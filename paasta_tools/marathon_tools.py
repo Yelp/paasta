@@ -74,6 +74,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import MarathonConfigDict
@@ -83,6 +84,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
 
+# Marathon creates Mesos tasks with an id composed of the app's full name, a
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
 # this spacer, i.e. you can't change it here and expect the world to change
@@ -364,6 +366,10 @@ def load_marathon_service_config_no_cache(
         soa_dir=soa_dir,
     )
 
+    if instance.startswith('_'):
+        raise InvalidJobNameError(
+            "Unable to load marathon job config for %s.%s as instance name starts with '_'" % (service, instance),
+        )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file),
@@ -1474,12 +1480,12 @@ def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bo
 
 def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
     """Determine how many of an application's tasks are running on
-    at-risk (Mesos Maintenance Draining) hosts.
+    at - risk(Mesos Maintenance Draining) hosts.
 
-    :param app: A marathon application
-    :param draining_hosts: A list of hostnames that are marked as draining.
+    : param app: A marathon application
+    : param draining_hosts: A list of hostnames that are marked as draining.
                            See paasta_tools.mesos_maintenance.get_draining_hosts
-    :returns: An integer representing the number of tasks running on at-risk hosts
+    : returns: An integer representing the number of tasks running on at - risk hosts
     """
     hosts_tasks_running_on = [task.host for task in app.tasks]
     num_at_risk_tasks = 0
@@ -1493,8 +1499,8 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
 def broadcast_log_all_services_running_here(line: str, component: str='monitoring') -> None:
     """Log a line of text to paasta logs of all services running on this host.
 
-    :param line: text to log
-    :param component: paasta log component
+    : param line: text to log
+    : param component: paasta log component
     """
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()

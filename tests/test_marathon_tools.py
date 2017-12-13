@@ -34,6 +34,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentsJson
 from paasta_tools.utils import DockerVolume
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -108,6 +109,27 @@ class TestMarathonTools:
         ) as mock_read_extra_service_information:
             mock_read_extra_service_information.return_value = {}
             with raises(marathon_tools.NoConfigurationForServiceError):
+                marathon_tools.load_marathon_service_config(
+                    fake_name,
+                    fake_instance,
+                    fake_cluster,
+                    soa_dir=fake_dir,
+                )
+
+    def test_load_marathon_service_config_bails_with_underscore_instance(self):
+        fake_name = 'folk'
+        fake_instance = '_ignore_me'
+        fake_cluster = 'amnesia'
+        fake_dir = '/nail/home/sanfran'
+        with mock.patch(
+            'paasta_tools.marathon_tools.load_deployments_json', autospec=True,
+        ), mock.patch(
+            'service_configuration_lib.read_service_configuration', autospec=True,
+        ), mock.patch(
+            'service_configuration_lib.read_extra_service_information', autospec=True,
+        ) as mock_read_extra_service_information:
+            mock_read_extra_service_information.return_value = {}
+            with raises(InvalidJobNameError):
                 marathon_tools.load_marathon_service_config(
                     fake_name,
                     fake_instance,

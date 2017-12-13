@@ -208,6 +208,10 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         soa_dir=soa_dir,
     )
 
+    if instance.startswith('_'):
+        raise InvalidJobNameError(
+            "Unable to load chronos job config for %s.%s as instance name starts with '_'" % (service, instance),
+        )
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))

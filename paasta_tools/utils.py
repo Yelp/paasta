@@ -2059,7 +2059,10 @@ def get_service_instance_list_no_cache(
             soa_dir=soa_dir,
         )
         for instance in instances:
-            instance_list.append((service, instance))
+            if instance.startswith('_'):
+                log.info("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+            else:
+                instance_list.append((service, instance))
 
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
@@ -2100,13 +2103,20 @@ def get_services_for_cluster(
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
+
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
-        instance_list.extend(get_service_instance_list(srv_dir, cluster, instance_type, soa_dir))
+        service_instance_list = get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
+        for service_instance in service_instance_list:
+            service, instance = service_instance
+            if instance.startswith('_'):
+                log.info("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+            else:
+                instance_list.append(service_instance)
     return instance_list
 
 
