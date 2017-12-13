@@ -20,7 +20,6 @@ import re
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
-from datetime import timezone
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
