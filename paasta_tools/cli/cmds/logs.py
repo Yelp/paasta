@@ -20,6 +20,7 @@ import re
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
+from datetime import timezone
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
@@ -224,6 +225,7 @@ def paasta_log_line_passes_filter(
         return False
 
     timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
+    timestamp = pytz.utc.localize(timestamp)
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
@@ -812,30 +814,20 @@ class ScribeLogReader(LogReader):
 
     def scribe_get_from_time(self, scribe_env, stream_name, start_time, end_time):
         # Scribe connection details
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
+        host_and_port = scribereader.get_env_scribe_host(scribe_env, False)
         host = host_and_port['host']
         port = host_and_port['port']
 
-        # Annoyingly enough, scribe needs special handling if we're trying to retrieve logs from today.
+        # Recent logs might not be archived yet. Log warning message.
+        warning_end_time = datetime.datetime.utcnow().replace(tzinfo=pytz.utc) - datetime.timedelta(hours=4)
+        if end_time > warning_end_time:
+            log.warn("Recent logs might be incomplete. Consider tailing instead.")
 
-        # There is a datetime.date.today but we can't use it because it isn't UTC
-        today = datetime.datetime.utcnow().date()
-        if start_time.date() == today or end_time.date() == today:
-            # The reason we need a fake context here is because scribereader is a bit incosistent in its
-            # returns. get_stream_reader returns a context that needs to be acquired for cleanup code but
-            # get_stream_tailer simply returns an object that can be iterated over. We'd still like to have
-            # the cleanup code for get_stream_reader to be executed by this function's caller and this is
-            # one of the simpler ways to achieve it without having 2 if statements everywhere that calls
-            # this method
-            @contextmanager
-            def fake_context():
-                log.info("Running the equivalent of 'scribereader -f -e %s %s" % (scribe_env, stream_name))
-                yield scribereader.get_stream_tailer(stream_name, host, port, True, -1)
-
-            return fake_context()
+        start_time_yst = start_time .replace(tzinfo=timezone.utc).astimezone(tz=None)
+        end_time_yst = end_time.replace(tzinfo=timezone.utc).astimezone(tz=None)
 
         log.info("Running the equivalent of 'scribereader -e %s %s" % (scribe_env, stream_name))
-        return scribereader.get_stream_reader(stream_name, host, port, start_time, end_time)
+        return scribereader.get_stream_reader(stream_name, host, port, start_time_yst, end_time_yst)
 
     def scribe_get_last_n_lines(self, scribe_env, stream_name, line_count):
         # Scribe connection details

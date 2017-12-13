@@ -46,5 +46,5 @@ typing_extensions==3.6.2.1
 tzlocal==1.2
 ujson==1.35
 wsgicors==0.7.0
-yelp-clog==2.7.2
+yelp-clog==2.12.1
 zope.interface==4.1.2
