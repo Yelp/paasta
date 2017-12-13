@@ -8,13 +8,6 @@ Feature: setup_marathon_job can create a "complete" app
      Then we should see it in the list of apps
      Then we can run get_app
 
-  Scenario: instance names starting with _ are not deployed
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service._main"
-      And we have a deployments.json for the service "test-service" with enabled instance "_main"
-    When we create a marathon app called "test-service._main" with 1 instance(s)
-    Then we should not see it in the list of apps
-
   Scenario: duplicate create app does not fail with conflict
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
