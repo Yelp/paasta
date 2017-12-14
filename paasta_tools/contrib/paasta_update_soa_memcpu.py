@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 
 import requests
 import ruamel.yaml as yaml
@@ -28,9 +29,17 @@ def parse_args(argv):
         required=True,
     )
     parser.add_argument(
+        '-n', '--no-tick',
+        help='Do not create a JIRA ticket',
+        action='store_true',
+        dest='no_tick',
+        default=False,
+    )
+    parser.add_argument(
         '-f', '--file-splunk',
         help='Splunk csv from which to pull data. Defaults to paasta_overprovision_alerts_fired.csv',
         dest="file_splunk",
+        default='paasta_overprovision_alerts_fired.csv',
     )
     return parser.parse_args(argv)
 
@@ -90,18 +99,22 @@ def get_perf_data(creds, filename):
         serv['project'] = d['result']['project']
         services_to_update.append(serv)
 
-    return services_to_update
+    return services_to_update[0:1]
 
 
 def clone(branch_name):
-    print('cloning')
     remote = 'git@sysgit.yelpcorp.com:yelpsoa-configs'
     subprocess.check_call(('git', 'clone', remote, '.'))
     subprocess.check_call(('git', 'checkout', '-b', branch_name))
 
 
-def commit(filename, over):
-    message = 'Updating {} for {}provisioned cpu'.format(filename, over)
+def commit(filename, serv):
+    message = 'Updating {} for {}provisioned cpu from {} to {} cpus'.format(
+        filename,
+        serv['state'],
+        serv['old_cpus'],
+        serv['cpus'],
+    )
     subprocess.check_call(('git', 'add', filename))
     subprocess.check_call(('git', 'commit', '-n', '-m', message))
 
@@ -116,18 +129,11 @@ def get_reviewers(filename):
     return authors[:3]
 
 
-def review(filename, description, over):
+def review(filename, description, provisioned_state):
     reviewers = ' '.join(get_reviewers(filename))
     subprocess.check_call((
-        'git',
-        'push',
-        '--force',
-        'origin',
-        'HEAD',
-    ))
-    subprocess.check_call((
         'review-branch',
-        '--summary=automatically updating {} for {}provisioned cpu'.format(filename, over),
+        '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
         '--description="{}"'.format(description),
         '--reviewers', reviewers,
         '--server', 'https://reviewboard.yelpcorp.com',
@@ -154,34 +160,24 @@ def create_jira_ticket(serv, creds, description):
     options = {'server': 'https://jira.yelpcorp.com'}
     jira_cli = JIRA(options=options, basic_auth=(creds[0], creds[1]))
     jira_ticket = {}
-    # Sometimes the project name doesn't match a JIRA project
+    # Sometimes a project has required fields we can't predict
     try:
         jira_ticket = {
             'project': {'key': serv['project']},
-            'issuetype': {'name': 'Improvement'},
             'description': description,
+            'issuetype': {'name': 'Improvement'},
             'labels': ['perf-watching', 'paasta-rightsizer'],
             'summary': "{s} {c} {i} may be {o}provisioned".format(
                 s=serv['service'],
                 i=serv['instance'],
                 c=serv['cluster'],
-                o=serv['over'],
+                o=serv['state'],
             ),
         }
         tick = jira_cli.create_issue(fields=jira_ticket)
     except Exception:
-        jira_ticket = {
-            'project': {'key': 'PERF'},
-            'issuetype': {'name': 'Improvement'},
-            'description': description,
-            'summary': "{s} {c} {i} may be {o}provisioned".format(
-                s=serv['service'],
-                i=serv['instance'],
-                c=serv['cluster'],
-                o=serv['over'],
-            ),
-            'labels': ['perf-watching', 'paasta-rightsizer'],
-        }
+        jira_ticket['project'] = {'key': 'PERF'}
+        jira_ticket['labels'].append(serv['service'])
         tick = jira_cli.create_issue(fields=jira_ticket)
     return tick.key
 
@@ -193,14 +189,16 @@ def main(argv=None):
     for serv in services_to_update:
         filename = '{}/{}.yaml'.format(serv['service'], serv['cluster'])
         cpus = float(serv['cpus'])
-        over = 'over'
+        provisioned_state = 'over'
         if cpus > float(serv['old_cpus']):
-            over = 'under'
+            provisioned_state = 'under'
 
-        serv['over'] = over
+        serv['state'] = provisioned_state
         ticket_desc = (
             "We suspect that {s} {c} {i} may be {o}-provisioned"
-            " as of {d}.\n- Dashboard: y/{o}provisioned\n- Service"
+            " as of {d}. It initially had {x} cpus, but we think"
+            " it needs {y} cpus."
+            "\n- Dashboard: y/{o}provisioned\n- Service"
             " owner: {n}\n- Estimated monthly excess cost: {m}"
             "\n- Runbook: y/rb-provisioning-alert"
             "\n- Alert owner: team-perf@yelp.com"
@@ -208,17 +206,23 @@ def main(argv=None):
             s=serv['service'],
             c=serv['cluster'],
             i=serv['instance'],
-            o=over,
+            o=provisioned_state,
             d=serv['date'],
             n=serv['owner'],
             m=serv['money'],
+            x=serv['old_cpus'],
+            y=serv['cpus'],
         )
-        ticket = create_jira_ticket(serv, args.jira_creds, ticket_desc)
+        branch = ''
+        if args.no_tick:
+            branch = 'rightsize-{}'.format(int(time.time()))
+        else:
+            branch = create_jira_ticket(serv, args.jira_creds, ticket_desc)
         with in_tempdir():
-            clone(ticket)
+            clone(branch)
             edit_soa_configs(filename, serv['instance'], cpus)
-            commit(filename, over)
-            review(filename, ticket_desc, over)
+            commit(filename, serv)
+            review(filename, ticket_desc, provisioned_state)
 
 
 if __name__ == '__main__':
