@@ -74,6 +74,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import MarathonConfigDict
@@ -364,6 +365,10 @@ def load_marathon_service_config_no_cache(
         soa_dir=soa_dir,
     )
 
+    if instance.startswith('_'):
+        raise InvalidJobNameError(
+            "Unable to load marathon job config for %s.%s as instance name starts with '_'" % (service, instance),
+        )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file),

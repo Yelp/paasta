@@ -22,6 +22,7 @@ from paasta_tools import chronos_tools
 from paasta_tools.chronos_tools import _get_related_jobs_and_configs
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import get_related_jobs_configs
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import sort_dicts
 from paasta_tools.utils import SystemPaastaConfig
@@ -169,7 +170,7 @@ class TestChronosTools:
         assert actual == ('service', 'instance')
 
     def test_decompose_job_id_wrong_tmp_identifier(self):
-        with raises(chronos_tools.InvalidJobNameError):
+        with raises(InvalidJobNameError):
             chronos_tools.decompose_job_id('foo service instance')
 
     def test_decompose_job_id_invalid_length(self):
@@ -220,6 +221,19 @@ class TestChronosTools:
                 soa_dir=fake_soa_dir,
             )
             assert actual.config_dict == self.fake_chronos_job_config.config_dict
+
+    def test_load_chronos_job_config_bails_with_underscore_instance(self):
+        with mock.patch(
+            'paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True,
+        ) as mock_read_chronos_jobs_for_service:
+            mock_read_chronos_jobs_for_service.return_value = []
+            with raises(InvalidJobNameError):
+                chronos_tools.load_chronos_job_config(
+                    service='fake_service',
+                    instance='_fake_job',
+                    cluster='fake_cluster',
+                    soa_dir='fake_dir',
+                )
 
     def test_load_chronos_job_config_can_ignore_deployments(self):
         fake_soa_dir = '/tmp/'
