@@ -812,7 +812,7 @@ class ScribeLogReader(LogReader):
 
     def scribe_get_from_time(self, scribe_env, stream_name, start_time, end_time):
         # Scribe connection details
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, False)
+        host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=False)
         host = host_and_port['host']
         port = host_and_port['port']
 
@@ -821,23 +821,33 @@ class ScribeLogReader(LogReader):
         if end_time > warning_end_time:
             log.warn("Recent logs might be incomplete. Consider tailing instead.")
 
-        # scribeerader, sadly, is not based on UTC timestamps. It uses YST
+        # scribereader, sadly, is not based on UTC timestamps. It uses YST
         # dates instead.
-        start_date_yst = (start_time - datetime.timedelta(hours=8)).date()
-        end_date_yst = (end_time - datetime.timedelta(hours=8)).date()
+        start_date_yst = start_time.astimezone(pytz.timezone('America/Los_Angeles')).date()
+        end_date_yst = end_time.astimezone(pytz.timezone('America/Los_Angeles')).date()
 
-        log.info("Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s" \
+        log.info("Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s"
                  % (scribe_env, stream_name, start_date_yst, end_date_yst))
-        return scribereader.get_stream_reader(stream_name, host, port, start_date_yst, end_date_yst)
+        return scribereader.get_stream_reader(
+            stream_name=stream_name,
+            reader_host=host,
+            reader_port=port,
+            min_date=start_date_yst,
+            max_date=end_date_yst,
+        )
 
     def scribe_get_last_n_lines(self, scribe_env, stream_name, line_count):
         # Scribe connection details
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
+        host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=True)
         host = host_and_port['host']
         port = host_and_port['port']
 
-        # Please read comment above in scribe_get_from_time as to why a fake
-        # context here is necessary
+        # The reason we need a fake context here is because scribereader is a bit incosistent in its
+        # returns. get_stream_reader returns a context that needs to be acquired for cleanup code but
+        # get_stream_tailer simply returns an object that can be iterated over. We'd still like to have
+        # the cleanup code for get_stream_reader to be executed by this function's caller and this is
+        # one of the simpler ways to achieve it without having 2 if statements everywhere that calls
+        # this method
         @contextmanager
         def fake_context():
             yield scribereader.get_stream_tailer(stream_name, host, port, True, line_count)
