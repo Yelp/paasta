@@ -2060,7 +2060,7 @@ def get_service_instance_list_no_cache(
         )
         for instance in instances:
             if instance.startswith('_'):
-                log.info("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+                log.debug("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
             else:
                 instance_list.append((service, instance))
 
@@ -2114,7 +2114,7 @@ def get_services_for_cluster(
         for service_instance in service_instance_list:
             service, instance = service_instance
             if instance.startswith('_'):
-                log.info("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+                log.debug("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
             else:
                 instance_list.append(service_instance)
     return instance_list
