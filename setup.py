@@ -30,6 +30,7 @@ setup(
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
     install_requires=[
+        'a_sync >= 0.5.0',
         'argcomplete >= 0.8.1',
         'aiohttp >= 2.3.3',
         'bravado == 8.4.0',

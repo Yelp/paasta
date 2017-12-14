@@ -14,6 +14,7 @@ from typing import Mapping
 from typing import Optional
 from typing import Tuple
 
+import a_sync
 import service_configuration_lib
 from pymesos import MesosSchedulerDriver
 from pymesos.interface import Scheduler
@@ -444,29 +445,26 @@ class NativeScheduler(Scheduler):
             old_app_live_unhappy_tasks=old_unhappy_task_ids,
         )
 
-        ioloop = asyncio.new_event_loop()
+        with a_sync.idle_event_loop():
+            futures = []
+            for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
+                futures.append(asyncio.ensure_future(self.undrain_task(task)))
+            for task in actions['tasks_to_drain']:
+                futures.append(asyncio.ensure_future(self.drain_task(task)))
 
-        futures = []
-        for task in set(new_tasks_with_params.keys()) - set(actions['tasks_to_drain']):
-            futures.append(asyncio.ensure_future(self.undrain_task(task), loop=ioloop))
-        for task in actions['tasks_to_drain']:
-            futures.append(asyncio.ensure_future(self.drain_task(task), loop=ioloop))
+            if futures:
+                a_sync.block(asyncio.wait, futures)
 
-        if futures:
-            done, pending = ioloop.run_until_complete(asyncio.wait(futures, loop=ioloop))
+            async def kill_if_safe_to_kill(task_id: str):
+                if await self.drain_method.is_safe_to_kill(self.make_drain_task(task_id)):
+                    self.kill_task(driver, task_id)
 
-        async def kill_if_safe_to_kill(task_id: str):
-            if await self.drain_method.is_safe_to_kill(self.make_drain_task(task_id)):
-                self.kill_task(driver, task_id)
-
-        futures = []
-        for task, parameters in all_tasks_with_params.items():
-            if parameters.is_draining and parameters.mesos_task_state in LIVE_TASK_STATES:
-                futures.append(asyncio.ensure_future(kill_if_safe_to_kill(task), loop=ioloop))
-        if futures:
-            done, pending = ioloop.run_until_complete(asyncio.wait(futures, loop=ioloop))
-
-        ioloop.close()
+            futures = []
+            for task, parameters in all_tasks_with_params.items():
+                if parameters.is_draining and parameters.mesos_task_state in LIVE_TASK_STATES:
+                    futures.append(asyncio.ensure_future(kill_if_safe_to_kill(task)))
+            if futures:
+                a_sync.block(asyncio.wait, futures)
 
     def get_happy_tasks(self, tasks_with_params: Dict[str, MesosTaskParameters]):
         """Filter a dictionary of tasks->params to those that are running and not draining."""

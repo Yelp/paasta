@@ -55,6 +55,7 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import a_sync
 import pysensu_yelp
 import requests_cache
 from marathon.exceptions import MarathonHttpError
@@ -183,9 +184,10 @@ def drain_tasks_and_find_tasks_to_kill(
                 tasks_to_kill.add((task, client))
 
         if tasks_to_drain:
-            asyncio.get_event_loop().run_until_complete(asyncio.wait([
-                asyncio.ensure_future(drain_and_kill_if_draining_fails(task, client)) for task, client in tasks_to_drain
-            ]))
+            a_sync.block(
+                asyncio.wait,
+                [asyncio.ensure_future(drain_and_kill_if_draining_fails(t, c)) for t, c in tasks_to_drain],
+            )
 
     async def add_to_tasks_to_kill_if_safe_to_kill(task: MarathonTask, client: MarathonClient) -> None:
         try:
@@ -203,9 +205,10 @@ def drain_tasks_and_find_tasks_to_kill(
             )
 
     if all_draining_tasks:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait([
-            asyncio.ensure_future(add_to_tasks_to_kill_if_safe_to_kill(t, c)) for t, c in all_draining_tasks
-        ]))
+        a_sync.block(
+            asyncio.wait,
+            [asyncio.ensure_future(add_to_tasks_to_kill_if_safe_to_kill(t, c)) for t, c in all_draining_tasks],
+        )
     return tasks_to_kill
 
 
@@ -425,9 +428,10 @@ def get_tasks_by_state_for_app(
         tasks_by_state[state].add(task)
 
     if app.tasks:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait([
-            asyncio.ensure_future(categorize_task(task)) for task in app.tasks
-        ]))
+        a_sync.block(
+            asyncio.wait,
+            [asyncio.ensure_future(categorize_task(task)) for task in app.tasks],
+        )
 
     return tasks_by_state
 
@@ -499,9 +503,10 @@ def undrain_tasks(
                 log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
 
     if to_undrain:
-        asyncio.get_event_loop().run_until_complete(asyncio.wait([
-            asyncio.ensure_future(undrain_task(task)) for task in to_undrain
-        ]))
+        a_sync.block(
+            asyncio.wait,
+            [asyncio.ensure_future(undrain_task(task)) for task in to_undrain],
+        )
 
 
 def deploy_service(
@@ -868,14 +873,15 @@ def deploy_marathon_service(
                 return 1, None
 
             try:
-                status, output, bounce_again_in_seconds = setup_service(
-                    service=service,
-                    instance=instance,
-                    clients=clients,
-                    job_config=service_instance_config,
-                    marathon_apps_with_clients=marathon_apps_with_clients,
-                    soa_dir=soa_dir,
-                )
+                with a_sync.idle_event_loop():
+                    status, output, bounce_again_in_seconds = setup_service(
+                        service=service,
+                        instance=instance,
+                        clients=clients,
+                        job_config=service_instance_config,
+                        marathon_apps_with_clients=marathon_apps_with_clients,
+                        soa_dir=soa_dir,
+                    )
                 sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
                 send_event(service, instance, soa_dir, sensu_status, output)
                 return 0, bounce_again_in_seconds
