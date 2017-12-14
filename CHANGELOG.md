@@ -1,7 +1,26 @@
 # Change Log
 
-## [0.69.6](https://github.com/Yelp/paasta/tree/0.69.6) (2017-12-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.5...0.69.6)
+## [0.69.8](https://github.com/Yelp/paasta/tree/0.69.8) (2017-12-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.7...0.69.8)
+
+**Merged pull requests:**
+
+- PAASTA-13596: fix local\_run with healthcheck\_only [\#1659](https://github.com/Yelp/paasta/pull/1659) ([oktopuz](https://github.com/oktopuz))
+- Reexec paasta local-run --pull with sudo when the effective uid is not 0 [\#1656](https://github.com/Yelp/paasta/pull/1656) ([oktopuz](https://github.com/oktopuz))
+- Convert drain\_lib to asyncio so we can drain in parallel. [\#1653](https://github.com/Yelp/paasta/pull/1653) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.69.7](https://github.com/Yelp/paasta/tree/v0.69.7) (2017-12-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.6...v0.69.7)
+
+**Merged pull requests:**
+
+- bugfixes for pause\_service\_autoscaler [\#1658](https://github.com/Yelp/paasta/pull/1658) ([fboxwala](https://github.com/fboxwala))
+- Passing boost arguments only when action is set [\#1657](https://github.com/Yelp/paasta/pull/1657) ([matfra](https://github.com/matfra))
+- deletes pid decision code [\#1654](https://github.com/Yelp/paasta/pull/1654) ([fboxwala](https://github.com/fboxwala))
+- Add remedy commands to the check\_mesos\_outdated\_tasks output [\#1651](https://github.com/Yelp/paasta/pull/1651) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.69.6](https://github.com/Yelp/paasta/tree/v0.69.6) (2017-12-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.5...v0.69.6)
 
 **Merged pull requests:**
 

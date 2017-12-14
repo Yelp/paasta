@@ -1,3 +1,27 @@
+paasta-tools (0.69.8) xenial; urgency=medium
+
+  * 0.69.8 tagged with 'make release'
+    Commit: Merge pull request #1653 from Yelp/parallelize_drain
+    Convert drain_lib to asyncio so we can drain in parallel.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 13 Dec 2017 16:03:16 -0800
+
+paasta-tools (0.69.8) xenial; urgency=medium
+
+  * 0.69.8 tagged with 'make release'
+    Commit: Merge pull request #1653 from Yelp/parallelize_drain
+    Convert drain_lib to asyncio so we can drain in parallel.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 13 Dec 2017 16:02:48 -0800
+
+paasta-tools (0.69.8) xenial; urgency=medium
+
+  * 0.69.8 tagged with 'make release'
+    Commit: Merge pull request #1653 from Yelp/parallelize_drain
+    Convert drain_lib to asyncio so we can drain in parallel.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 13 Dec 2017 16:02:26 -0800
+
 paasta-tools (0.69.7) xenial; urgency=medium
 
   * 0.69.7 tagged with 'make release'
