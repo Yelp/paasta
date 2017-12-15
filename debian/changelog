@@ -1,3 +1,10 @@
+paasta-tools (0.69.9) xenial; urgency=medium
+
+  * 0.69.9 tagged with 'make release'
+    Commit: Merge branch "fix_deployd_async"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 14 Dec 2017 17:15:04 -0800
+
 paasta-tools (0.69.8) xenial; urgency=medium
 
   * 0.69.8 tagged with 'make release'

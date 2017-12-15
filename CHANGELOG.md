@@ -1,7 +1,15 @@
 # Change Log
 
-## [0.69.8](https://github.com/Yelp/paasta/tree/0.69.8) (2017-12-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.7...0.69.8)
+## [0.69.9](https://github.com/Yelp/paasta/tree/0.69.9) (2017-12-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.8...0.69.9)
+
+**Merged pull requests:**
+
+- Perfscript [\#1663](https://github.com/Yelp/paasta/pull/1663) ([fboxwala](https://github.com/fboxwala))
+- Make setup\_marathon\_job ignore instances starting with \_ [\#1655](https://github.com/Yelp/paasta/pull/1655) ([nhandler](https://github.com/nhandler))
+
+## [v0.69.8](https://github.com/Yelp/paasta/tree/v0.69.8) (2017-12-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.7...v0.69.8)
 
 **Merged pull requests:**
 
