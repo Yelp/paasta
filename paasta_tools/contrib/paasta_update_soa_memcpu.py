@@ -107,7 +107,7 @@ def get_perf_data(creds, filename):
         serv['project'] = d['result']['project']
         services_to_update.append(serv)
 
-    return services_to_update[0:1]
+    return services_to_update[1:]
 
 
 def clone(branch_name):
@@ -186,7 +186,7 @@ def create_jira_ticket(serv, creds, description):
             'description': description,
             'issuetype': {'name': 'Improvement'},
             'labels': ['perf-watching', 'paasta-rightsizer'],
-            'summary': "{s} {c} {i} may be {o}provisioned".format(
+            'summary': "{s}.{i} in {c} may be {o}provisioned".format(
                 s=serv['service'],
                 i=serv['instance'],
                 c=serv['cluster'],
@@ -214,12 +214,12 @@ def main(argv=None):
 
         serv['state'] = provisioned_state
         ticket_desc = (
-            "We suspect that {s} {c} {i} may be {o}-provisioned"
+            "We suspect that {s}.{i} in {c} may be {o}-provisioned"
             " as of {d}. It initially had {x} cpus, but we think"
             " it needs {y} cpus."
-            "\n- Dashboard: y/{o}provisioned\n- Service"
-            " owner: {n}\n- Estimated monthly excess cost: {m}"
-            "\n- Runbook: y/rb-provisioning-alert"
+            "\n- Dashboard: https://y.yelpcorp.com/{o}provisioned\n- Service"
+            " owner: {n}\n- Estimated monthly excess cost: ${m}"
+            "\n- Runbook: https://y.yelpcorp.com/rb-provisioning-alert"
             "\n- Alert owner: team-perf@yelp.com"
         ).format(
             s=serv['service'],
@@ -237,11 +237,19 @@ def main(argv=None):
             branch = 'rightsize-{}'.format(int(time.time()))
         else:
             branch = create_jira_ticket(serv, args.jira_creds, ticket_desc)
-        with in_tempdir():
-            clone(branch)
-            edit_soa_configs(filename, serv['instance'], cpus)
-            commit(filename, serv)
-            review(filename, ticket_desc, provisioned_state, args.manual_rb)
+            with in_tempdir():
+                clone(branch)
+                edit_soa_configs(filename, serv['instance'], cpus)
+                try:
+                    commit(filename, serv)
+                    review(filename, ticket_desc, provisioned_state, args.manual_rb)
+                except Exception:
+                    print((
+                        "\nUnable to push changes to {f}. Check if {f} conforms to"
+                        "yelpsoa-configs yaml rules. No review created. To see the"
+                        "cpu suggestion for this service check {t}."
+                    ).format(f=filename, t=branch))
+                    continue
 
 
 if __name__ == '__main__':
