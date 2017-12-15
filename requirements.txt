@@ -1,3 +1,4 @@
+a_sync==0.5.0
 addict==2.1.0
 aiohttp==2.3.3
 argcomplete==0.8.1
@@ -46,6 +47,7 @@ thriftpy==0.1.15
 typing_extensions==3.6.2.1
 tzlocal==1.2
 ujson==1.35
+utaw==0.2.0
 wsgicors==0.7.0
 yelp-clog==2.7.2
 zope.interface==4.1.2

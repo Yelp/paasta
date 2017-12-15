@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Without this, the import of mesos.interface breaks because paasta_tools.mesos exists
 import re
 from typing import Any
 from typing import Callable
