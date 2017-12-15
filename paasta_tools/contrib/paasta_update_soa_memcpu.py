@@ -36,6 +36,14 @@ def parse_args(argv):
         default=False,
     )
     parser.add_argument(
+        '-m', '--manual',
+        help='Do not automatically publish the review',
+        action='store_true',
+        dest='manual_rb',
+        default=False,
+    )
+
+    parser.add_argument(
         '-f', '--file-splunk',
         help='Splunk csv from which to pull data. Defaults to paasta_overprovision_alerts_fired.csv',
         dest="file_splunk",
@@ -129,16 +137,27 @@ def get_reviewers(filename):
     return authors[:3]
 
 
-def review(filename, description, provisioned_state):
+def review(filename, description, provisioned_state, manual_rb):
     reviewers = ' '.join(get_reviewers(filename))
-    subprocess.check_call((
-        'review-branch',
-        '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
-        '--description="{}"'.format(description),
-        '--reviewers', reviewers,
-        '--server', 'https://reviewboard.yelpcorp.com',
-        '--target-groups', 'operations perf',
-    ))
+    if manual_rb:
+        subprocess.check_call((
+            'review-branch',
+            '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
+            '--description="{}"'.format(description),
+            '--reviewers', reviewers,
+            '--server', 'https://reviewboard.yelpcorp.com',
+            '--target-groups', 'operations perf',
+        ))
+    else:
+        subprocess.check_call((
+            'review-branch',
+            '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
+            '--description="{}"'.format(description),
+            '-p',
+            '--reviewers', reviewers,
+            '--server', 'https://reviewboard.yelpcorp.com',
+            '--target-groups', 'operations perf',
+        ))
 
 
 def edit_soa_configs(filename, instance, cpu):
@@ -222,7 +241,7 @@ def main(argv=None):
             clone(branch)
             edit_soa_configs(filename, serv['instance'], cpus)
             commit(filename, serv)
-            review(filename, ticket_desc, provisioned_state)
+            review(filename, ticket_desc, provisioned_state, args.manual_rb)
 
 
 if __name__ == '__main__':
