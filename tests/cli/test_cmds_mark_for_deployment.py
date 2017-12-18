@@ -98,6 +98,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         block = True
         timeout = 600
 
+    mock_mark_for_deployment.return_value = 0
     mock_wait_for_deployment.side_effect = TimeoutError
     mock_get_currently_deployed_sha.return_value = "old-sha"
     assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
@@ -131,6 +132,7 @@ def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
         block = True
         timeout = 600
 
+    mock_mark_for_deployment.return_value = 0
     mock_wait_for_deployment.side_effect = TimeoutError
     mock_get_currently_deployed_sha.return_value = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
     assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1

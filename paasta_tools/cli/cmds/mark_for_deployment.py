@@ -243,7 +243,7 @@ def paasta_mark_for_deployment(args):
         service=service,
         commit=args.commit,
     )
-    if args.block:
+    if args.block and ret == 0:
         try:
             wait_for_deployment(
                 service=service,
