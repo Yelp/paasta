@@ -18,6 +18,7 @@ httplib2==0.9.2
 humanize==0.5.1
 inotify==0.2.8
 isodate==0.5.1
+jira==0.50
 jsonschema[format]==2.5.1
 kazoo==2.2
 marathon==0.9.3
