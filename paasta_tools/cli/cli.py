@@ -27,7 +27,7 @@ from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
 from paasta_tools.utils import paasta_print
 
 
-class ThrowingArgumentParser(argparse.ArgumentParser):
+class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     """Overriding the error method allows us to print the whole help page,
     otherwise the python arg parser prints a not-so-useful usage message that
     is way too terse"""
@@ -55,7 +55,7 @@ def add_subparser(command, subparsers):
 
 
 def get_argparser():
-    parser = ThrowingArgumentParser(
+    parser = PrintsHelpOnErrorArgumentParser(
         description=(
             "The PaaSTA command line tool. The 'paasta' command is the entry point "
             "to multiple subcommands, see below.\n\n"
