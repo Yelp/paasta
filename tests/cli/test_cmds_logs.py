@@ -722,7 +722,7 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_tailer.call_count == 14
+        assert mock_scribereader.get_stream_reader.call_count == 14
 
         start_time, end_time = logs.generate_start_end_time("3d", "2d")
         logs.ScribeLogReader(cluster_map={}).print_logs_by_time(
@@ -732,7 +732,7 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_reader.call_count == 14
+        assert mock_scribereader.get_stream_reader.call_count == 14 * 2
 
 
 def test_tail_paasta_logs_ctrl_c_in_queue_get():
