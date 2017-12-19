@@ -374,20 +374,45 @@ def mesos_cpu_metrics_provider(
     monkey.patch_socket()
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
     gevent.joinall(jobs, timeout=60)
-    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    mesos_task_stats_1 = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
+    # sometimes, the mesos slave returns crazy numbers for cpus_system_time_secs and cpus_user_time_secs.
+    # we fetch twice, and use the lower of the two.
+    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
+    gevent.joinall(jobs, timeout=60)
+    mesos_task_stats_2 = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+
     mesos_cpu_data = {}
-    for task_id, stats in mesos_tasks.items():
-        if stats is not None:
+    for task_id, stats in mesos_task_stats_1.items():
+        stats2 = mesos_task_stats_2[task_id]
+        if stats is not None and stats2 is not None:
+            class MesosGaveUsGarbageCpuError(Exception):
+                pass
+
+            def sanity_check(key):
+                val1 = stats[key]
+                val2 = stats2[key]
+                if float(val2) < float(val1):
+                    log.info('Ignoring values for task %s since second %s was less than first: %s < %s' % (
+                        task_id,
+                        key,
+                        val2,
+                        val1,
+                    ))
+                    raise MesosGaveUsGarbageCpuError
+                return min(val1, val2)
+
             try:
-                utime = float(stats['cpus_user_time_secs'])
-                stime = float(stats['cpus_system_time_secs'])
-                limit = float(stats['cpus_limit']) - .1
+                utime = sanity_check('cpus_user_time_secs')
+                stime = sanity_check('cpus_system_time_secs')
+                limit = sanity_check('cpus_limit') - .1
                 mesos_cpu_data[task_id] = (stime + utime) / limit
             except KeyError:
+                pass
+            except MesosGaveUsGarbageCpuError:
                 pass
 
     if not mesos_cpu_data:
