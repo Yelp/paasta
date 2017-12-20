@@ -784,7 +784,10 @@ def get_jenkins_build_output_url():
     return build_output
 
 
-def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False, instance_type=None):
+def get_instance_config(
+    service, instance, cluster, soa_dir=DEFAULT_SOA_DIR,
+    load_deployments=False, instance_type=None,
+):
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
     if instance_type is None:
