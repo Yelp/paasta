@@ -387,7 +387,7 @@ def mesos_cpu_metrics_provider(
 
     mesos_cpu_data = {}
     for task_id, stats in mesos_tasks_first_run.items():
-        stats2 = mesos_tasks_second_run[task_id]
+        stats2 = mesos_tasks_second_run.get(task_id)
         if stats is not None and stats2 is not None:
             try:
                 utime = min(float(stats['cpus_user_time_secs']), float(stats2['cpus_user_time_secs']))
