@@ -1,3 +1,11 @@
+paasta-tools (0.69.10) xenial; urgency=medium
+
+  * 0.69.10 tagged with 'make release'
+    Commit: Automatically add ["hostname", "UNIQUE"] to small services
+    (#1652)  Automatically add ["hostname", "UNIQUE"] to small services
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 20 Dec 2017 10:58:29 -0800
+
 paasta-tools (0.69.9) xenial; urgency=medium
 
   * 0.69.9 tagged with 'make release'
