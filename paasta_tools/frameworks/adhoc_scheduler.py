@@ -18,10 +18,10 @@ from typing import Tuple
 
 from pymesos import MesosSchedulerDriver
 
-from paasta_tools.frameworks.constraints import ConstraintState  # noqa; imported for typing
+from paasta_tools.frameworks.constraints import ConstraintState
 from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
-from paasta_tools.frameworks.native_service_config import TaskInfo  # noqa; imported for typing
+from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
 from paasta_tools.utils import paasta_print
 

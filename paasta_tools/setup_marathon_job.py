@@ -49,7 +49,7 @@ from collections import defaultdict
 from typing import Any
 from typing import Callable
 from typing import Collection
-from typing import Dict  # noqa: imported for typing
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set

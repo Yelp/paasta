@@ -2,10 +2,10 @@ import logging
 import os
 import time
 from functools import reduce
-from typing import Dict  # noqa: imported for typing
+from typing import Dict
 from typing import List
-from typing import Set  # noqa: imported for typing
-from typing import Tuple  # noqa: imported for typing
+from typing import Set
+from typing import Tuple
 
 import pyinotify
 from kazoo.protocol.states import EventType

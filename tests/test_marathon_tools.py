@@ -13,8 +13,8 @@
 # limitations under the License.
 import datetime
 from typing import cast
-from typing import Dict  # noqa, imported for typing.
-from typing import List  # noqa, imported for typing.
+from typing import Dict
+from typing import List
 
 import marathon
 import mock
@@ -25,9 +25,9 @@ from pytest import raises
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools.marathon_serviceinit import desired_state_human
-from paasta_tools.marathon_tools import FormattedMarathonAppDict  # noqa, imported for typing.
-from paasta_tools.marathon_tools import MarathonContainerInfo  # noqa, imported for typing.
-from paasta_tools.marathon_tools import MarathonServiceConfigDict  # noqa, imported for typing.
+from paasta_tools.marathon_tools import FormattedMarathonAppDict
+from paasta_tools.marathon_tools import MarathonContainerInfo
+from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import BranchDict
 from paasta_tools.utils import compose_job_id

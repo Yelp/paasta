@@ -22,7 +22,7 @@ def get_service_autoscale_pause_time(cluster):
         paasta_print('Service autoscaler is not paused')
     else:
         local_tz = get_localzone()
-        paused_readable = local_tz.localize(datetime.fromtimestamp(pause_time)).strftime('%F %H:%M:%S %Z')  # NOQA
+        paused_readable = local_tz.localize(datetime.fromtimestamp(pause_time)).strftime('%F %H:%M:%S %Z')
         paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
 
     return 0

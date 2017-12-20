@@ -169,7 +169,7 @@ class DeployDaemon(PaastaThread):
             obj[1] for obj in inspect.getmembers(watchers) if inspect.isclass(obj[1]) and
             obj[1].__bases__[0] == watchers.PaastaWatcher
         ]
-        enabled_watchers = [x for x in watcher_classes if x.__name__ not in disabled_watchers]  # noqa
+        enabled_watchers = [x for x in watcher_classes if x.__name__ not in disabled_watchers]
         return enabled_watchers
 
     def startup(self):
