@@ -190,6 +190,7 @@ InstanceConfigDict = TypedDict(
         'deploy_whitelist': UnsafeDeployWhitelist,
         'monitoring_blacklist': UnsafeDeployBlacklist,
         'pool': str,
+        'role': str,
         'extra_volumes': List[DockerVolume],
         'security': SecurityConfigDict,
         'dependencies_reference': str,
@@ -623,6 +624,11 @@ class InstanceConfig(object):
         conform to the `Mesos container volumes spec
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
         return self.config_dict.get('extra_volumes', [])
+
+    def get_role(self) -> Optional[str]:
+        """Which mesos role of nodes this job should run on.
+        """
+        return self.config_dict.get('role')
 
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
@@ -1315,6 +1321,13 @@ LocalRunConfig = TypedDict(
     },
     total=False,
 )
+RemoteRunConfig = TypedDict(
+    'RemoteRunConfig',
+    {
+        'default_role': str,
+    },
+    total=False,
+)
 PaastaNativeConfig = TypedDict(
     'PaastaNativeConfig',
     {
@@ -1356,6 +1369,7 @@ SystemPaastaConfigDict = TypedDict(
         'marathon_servers': List[MarathonConfigDict],
         'previous_marathon_servers': List[MarathonConfigDict],
         'local_run_config': LocalRunConfig,
+        'remote_run_config': RemoteRunConfig,
         'paasta_native': PaastaNativeConfig,
         'mesos_config': Dict,
         'monitoring_config': Dict,
@@ -1626,6 +1640,12 @@ class SystemPaastaConfig(object):
 
         :returns: The local-run job config dictionary"""
         return self.config_dict.get('local_run_config', {})
+
+    def get_remote_run_config(self) -> RemoteRunConfig:
+        """Get the remote-run config
+
+        :returns: The remote-run system_paasta_config dictionary"""
+        return self.config_dict.get('remote_run_config', {})
 
     def get_paasta_native_config(self) -> PaastaNativeConfig:
         return self.config_dict.get('paasta_native', {})

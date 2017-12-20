@@ -232,6 +232,7 @@ def build_executor_stack(
     service,
     instance,
     cluster,
+    role,
     pool,
     # TODO: move run_id into task identifier?
     run_id,
@@ -239,8 +240,10 @@ def build_executor_stack(
     framework_staging_timeout,
 ):
 
+    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
     mesos_address = '{}:{}'.format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT,
+        mesos_tools.find_mesos_leader(cluster_fqdn),
+        mesos_tools.MESOS_MASTER_PORT,
     )
 
     # TODO: implement DryRunExecutor?
@@ -248,7 +251,7 @@ def build_executor_stack(
 
     MesosExecutor = processor.executor_cls('mesos')
     mesos_executor = MesosExecutor(
-        role=taskproc_config.get('role', taskproc_config.get('principal')),
+        role=role,
         pool=pool,
         principal=taskproc_config.get('principal'),
         secret=taskproc_config.get('secret'),
@@ -410,11 +413,15 @@ def remote_run_start(args):
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
+    default_role = system_paasta_config.get_remote_run_config().get('default_role')
+    assert default_role
+
     try:
         executor_stack = build_executor_stack(
             processor=processor,
             service=service,
             instance=instance,
+            role=native_job_config.get_role() or default_role,
             pool=native_job_config.get_pool(),
             cluster=cluster,
             run_id=run_id,

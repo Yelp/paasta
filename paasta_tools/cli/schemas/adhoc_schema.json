@@ -97,6 +97,9 @@
             },
             "pool": {
                 "type": "string"
+            },
+            "role": {
+                "type": "string"
             }
         }
     }
