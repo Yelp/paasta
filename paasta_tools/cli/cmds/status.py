@@ -408,6 +408,7 @@ def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
+    system_paasta_config = load_system_paasta_config()
 
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
@@ -429,7 +430,7 @@ def paasta_status(args):
                         deploy_pipeline=deploy_pipeline,
                         actual_deployments=actual_deployments,
                         instance_whitelist=instances,
-                        system_paasta_config=load_system_paasta_config(),
+                        system_paasta_config=system_paasta_config,
                         verbose=args.verbose,
                         use_api_endpoint=use_api_endpoint,
                     ),
