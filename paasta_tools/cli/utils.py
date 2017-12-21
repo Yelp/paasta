@@ -26,7 +26,6 @@ from socket import gethostbyname_ex
 
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
-from service_configuration_lib import read_services_configuration
 
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client

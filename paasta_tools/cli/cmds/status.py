@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import difflib
 import concurrent.futures
+import difflib
 import os
 import sys
 from collections import defaultdict
@@ -422,16 +422,18 @@ def paasta_status(args):
             actual_deployments = get_actual_deployments(service, soa_dir)
             if actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-                tasks.append((report_status_for_cluster, dict(
-                    service=service,
-                    cluster=cluster,
-                    deploy_pipeline=deploy_pipeline,
-                    actual_deployments=actual_deployments,
-                    instance_whitelist=instances,
-                    system_paasta_config=load_system_paasta_config(),
-                    verbose=args.verbose,
-                    use_api_endpoint=use_api_endpoint,
-                )))
+                tasks.append((
+                    report_status_for_cluster, dict(
+                        service=service,
+                        cluster=cluster,
+                        deploy_pipeline=deploy_pipeline,
+                        actual_deployments=actual_deployments,
+                        instance_whitelist=instances,
+                        system_paasta_config=load_system_paasta_config(),
+                        verbose=args.verbose,
+                        use_api_endpoint=use_api_endpoint,
+                    ),
+                ))
             else:
                 paasta_print(missing_deployments_message(service))
                 return_codes.append(1)
