@@ -1,3 +1,10 @@
+paasta-tools (0.69.12) xenial; urgency=medium
+
+  * 0.69.12 tagged with 'make release'
+    Commit: Merge branch "clear_cache_before_fetching_twice"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 21 Dec 2017 14:28:38 -0800
+
 paasta-tools (0.69.11) xenial; urgency=medium
 
   * 0.69.11 tagged with 'make release'

@@ -1,10 +1,41 @@
 # Change Log
 
-## [0.69.9](https://github.com/Yelp/paasta/tree/0.69.9) (2017-12-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.8...0.69.9)
+## [0.69.12](https://github.com/Yelp/paasta/tree/0.69.12) (2017-12-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.11...0.69.12)
 
 **Merged pull requests:**
 
+- Remove extraneous `\# noqa` comments. [\#1675](https://github.com/Yelp/paasta/pull/1675) ([asottile](https://github.com/asottile))
+
+## [v0.69.11](https://github.com/Yelp/paasta/tree/v0.69.11) (2017-12-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.10...v0.69.11)
+
+**Merged pull requests:**
+
+- Sanity-check mesos\_cpu data. [\#1669](https://github.com/Yelp/paasta/pull/1669) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.69.10](https://github.com/Yelp/paasta/tree/v0.69.10) (2017-12-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.9...v0.69.10)
+
+**Closed issues:**
+
+- Delete Me [\#1673](https://github.com/Yelp/paasta/issues/1673)
+
+**Merged pull requests:**
+
+- help wanted -- fix issue 842 [\#1670](https://github.com/Yelp/paasta/pull/1670) ([white105](https://github.com/white105))
+- adds a try/except to update\_soa\_memcpu [\#1667](https://github.com/Yelp/paasta/pull/1667) ([fboxwala](https://github.com/fboxwala))
+- Skip wait-for-deployment if mark-for-deployment failed [\#1666](https://github.com/Yelp/paasta/pull/1666) ([oktopuz](https://github.com/oktopuz))
+- adds -p to update\_soa review branch command [\#1665](https://github.com/Yelp/paasta/pull/1665) ([fboxwala](https://github.com/fboxwala))
+- Fix tail discovery, date handling and upgrade yelp\_clog [\#1662](https://github.com/Yelp/paasta/pull/1662) ([fede1024](https://github.com/fede1024))
+- RFC: Automatically add \['hostname', 'UNIQUE'\] to small services [\#1652](https://github.com/Yelp/paasta/pull/1652) ([nhandler](https://github.com/nhandler))
+
+## [v0.69.9](https://github.com/Yelp/paasta/tree/v0.69.9) (2017-12-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.8...v0.69.9)
+
+**Merged pull requests:**
+
+- Avoid using default event loop on secondary threads. [\#1664](https://github.com/Yelp/paasta/pull/1664) ([EvanKrall](https://github.com/EvanKrall))
 - Perfscript [\#1663](https://github.com/Yelp/paasta/pull/1663) ([fboxwala](https://github.com/fboxwala))
 - Make setup\_marathon\_job ignore instances starting with \_ [\#1655](https://github.com/Yelp/paasta/pull/1655) ([nhandler](https://github.com/nhandler))
 
