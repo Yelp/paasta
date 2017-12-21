@@ -164,6 +164,92 @@ def test_threshold_decision_policy():
         assert autoscaling_service_lib.threshold_decision_policy(error=-0.5, **decision_policy_args) == -1
 
 
+def test_mesos_cpu_metrics_provider_disappearing_container_bogus_mesos_cpu_stats():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict={},
+    )
+    fake_mesos_task_1 = mock.MagicMock()
+    fake_mesos_task_1.stats_callable.side_effect = [
+        {'cpus_limit': 1.1, 'cpus_system_time_secs': 999999, 'cpus_user_time_secs': 999999},
+        None,
+    ]
+    fake_mesos_task_1.__getitem__.return_value = 'fake-service.fake-instance1'
+
+    fake_mesos_task_2 = mock.MagicMock()
+    fake_mesos_task_2.stats_callable.side_effect = [
+        {'cpus_limit': 2.1, 'cpus_system_time_secs': 100, 'cpus_user_time_secs': 200},
+        {'cpus_limit': 2.1, 'cpus_system_time_secs': 124, 'cpus_user_time_secs': 365},
+    ]
+    fake_mesos_task_2.__getitem__.return_value = 'fake-service.fake-instance2'
+    fake_marathon_tasks = [
+        mock.Mock(id='fake-service.fake-instance1'),
+        mock.Mock(id='fake-service.fake-instance2'),
+    ]
+
+    with mock.patch(
+        'paasta_tools.utils.KazooClient', autospec=True,
+        return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError)),
+    ) as mock_zk_client, mock.patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        return_value=mock.Mock(get_zk_hosts=mock.Mock()),
+    ):
+        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+            autoscaling_service_lib.mesos_cpu_metrics_provider(
+                fake_marathon_service_config, fake_marathon_tasks, (fake_mesos_task_1, fake_mesos_task_2),
+            )
+        # We only expect the task with valid CPU values to be saved to zk.
+        mock_zk_client.return_value.set.assert_has_calls(
+            [
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '150.0:fake-service.fake-instance2'.encode('utf8'),
+                ),
+            ], any_order=True,
+        )
+
+
+def test_mesos_cpu_metrics_provider_bogus_mesos_cpu_stats():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict={},
+    )
+    fake_mesos_task = mock.MagicMock()
+    fake_mesos_task.stats_callable.side_effect = [
+        {'cpus_limit': 1.1, 'cpus_system_time_secs': 240, 'cpus_user_time_secs': 240},
+        {'cpus_limit': 1.1, 'cpus_system_time_secs': 999999, 'cpus_user_time_secs': 999999},
+    ]
+    fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
+
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
+
+    with mock.patch(
+        'paasta_tools.utils.KazooClient', autospec=True,
+        return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError)),
+    ) as mock_zk_client, mock.patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        return_value=mock.Mock(get_zk_hosts=mock.Mock()),
+    ):
+        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+            autoscaling_service_lib.mesos_cpu_metrics_provider(
+                fake_marathon_service_config, fake_marathon_tasks, (fake_mesos_task,),
+            )
+        mock_zk_client.return_value.set.assert_has_calls(
+            [
+                mock.call(
+                    '/autoscaling/fake-service/fake-instance/cpu_data',
+                    '480.0:fake-service.fake-instance'.encode('utf8'),
+                ),
+            ], any_order=True,
+        )
+
+
 def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',

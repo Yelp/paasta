@@ -374,17 +374,24 @@ def mesos_cpu_metrics_provider(
     monkey.patch_socket()
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
     gevent.joinall(jobs, timeout=60)
-    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    mesos_tasks_first_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
+    # Mesos slave statistics endpoint returns a crazy CPU value when a container is
+    # in the process of being killed. So we fetch twice, and use the lower of the two.
+    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
+    gevent.joinall(jobs, timeout=60)
+    mesos_tasks_second_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+
     mesos_cpu_data = {}
-    for task_id, stats in mesos_tasks.items():
-        if stats is not None:
+    for task_id, stats in mesos_tasks_first_run.items():
+        stats2 = mesos_tasks_second_run.get(task_id)
+        if stats is not None and stats2 is not None:
             try:
-                utime = float(stats['cpus_user_time_secs'])
-                stime = float(stats['cpus_system_time_secs'])
+                utime = min(float(stats['cpus_user_time_secs']), float(stats2['cpus_user_time_secs']))
+                stime = min(float(stats['cpus_system_time_secs']), float(stats2['cpus_system_time_secs']))
                 limit = float(stats['cpus_limit']) - .1
                 mesos_cpu_data[task_id] = (stime + utime) / limit
             except KeyError:
