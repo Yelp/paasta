@@ -97,43 +97,6 @@ def test_get_deploy_group_mappings():
         assert expected_v2 == actual_v2
 
 
-def test_get_cluster_instance_map_for_service():
-    fake_service_configs = [
-        MarathonServiceConfig(
-            service='service1',
-            cluster='clusterA',
-            instance='main',
-            branch_dict={},
-            config_dict={'deploy_group': 'no_thanks'},
-        ),
-        MarathonServiceConfig(
-            service='service1',
-            cluster='clusterB',
-            instance='main',
-            branch_dict={},
-            config_dict={'deploy_group': 'try_me'},
-        ),
-        MarathonServiceConfig(
-            service='service1',
-            cluster='clusterA',
-            instance='canary',
-            branch_dict={},
-            config_dict={'deploy_group': 'try_me'},
-        ),
-    ]
-    with mock.patch(
-        'paasta_tools.generate_deployments_for_service.get_instance_configs_for_service',
-        return_value=fake_service_configs, autospec=True,
-    ):
-        ret = generate_deployments_for_service.get_cluster_instance_map_for_service('/nail/blah', 'service1', 'try_me')
-        expected = {'clusterA': {'instances': ['canary']}, 'clusterB': {'instances': ['main']}}
-        assert ret == expected
-
-        ret = generate_deployments_for_service.get_cluster_instance_map_for_service('/nail/blah', 'service1')
-        expected = {'clusterA': {'instances': ['main', 'canary']}, 'clusterB': {'instances': ['main']}}
-        assert ret == expected
-
-
 def test_get_service_from_docker_image():
     mock_image = (
         'docker-paasta.yelpcorp.com:443/'

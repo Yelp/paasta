@@ -42,10 +42,8 @@ import json
 import logging
 import os
 import re
-from collections import defaultdict
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Tuple
 
 from mypy_extensions import TypedDict
@@ -117,27 +115,6 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     return args
-
-
-def get_cluster_instance_map_for_service(
-    soa_dir: str,
-    service: str,
-    deploy_group: str=None,
-    type_filter: List[str]=[],
-) -> Dict[str, Dict[str, List[str]]]:
-    if deploy_group:
-        instances = [
-            config for config in get_instance_configs_for_service(
-                soa_dir=soa_dir, service=service, type_filter=type_filter,
-            )
-            if config.get_deploy_group() == deploy_group
-        ]
-    else:
-        instances = get_instance_configs_for_service(soa_dir=soa_dir, service=service, type_filter=type_filter)
-    cluster_map: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
-    for instance_config in instances:
-        cluster_map[instance_config.get_cluster()]['instances'].append(instance_config.get_instance())
-    return cluster_map
 
 
 def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[str, str]:

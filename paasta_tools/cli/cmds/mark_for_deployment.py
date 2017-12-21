@@ -31,7 +31,6 @@ from requests.exceptions import ConnectionError
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
@@ -41,7 +40,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
-from paasta_tools.generate_deployments_for_service import get_cluster_instance_map_for_service
+from paasta_tools.paasta_service_config import PaastaServiceConfig
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
@@ -303,15 +302,13 @@ class ClusterData:
     :param instances_queue: a thread-safe queue. Should contain all cluster
                             instances that need to be checked.
     :type instances_queue: Queue
-    :param soa_dir:
     """
 
-    def __init__(self, cluster, service, git_sha, instances_queue, soa_dir):
+    def __init__(self, cluster, service, git_sha, instances_queue):
         self.cluster = cluster
         self.service = service
         self.git_sha = git_sha
         self.instances_queue = instances_queue
-        self.soa_dir = soa_dir
 
 
 def instances_deployed(cluster_data, instances_out, green_light):
@@ -355,25 +352,19 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                     "deployed there yet.".format(cluster_data.cluster))
         while not cluster_data.instances_queue.empty():
             try:
-                instance = cluster_data.instances_queue.get(block=False)
+                instance_config = cluster_data.instances_queue.get(block=False)
             except Empty:
                 return
             cluster_data.instances_queue.task_done()
-            instances_out.put(instance)
+            instances_out.put(instance_config)
 
     while not cluster_data.instances_queue.empty() and green_light.is_set():
         try:
-            instance = cluster_data.instances_queue.get(block=False)
+            instance_config = cluster_data.instances_queue.get(block=False)
         except Empty:
             return
 
-        instance_config = get_instance_config(
-            cluster_data.service,
-            instance,
-            cluster_data.cluster,
-            load_deployments=False,
-            soa_dir=cluster_data.soa_dir,
-        )
+        instance = instance_config.get_instance()
 
         log.debug("Inspecting the deployment status of {}.{} on {}"
                   .format(cluster_data.service, instance, cluster_data.cluster))
@@ -409,7 +400,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                           cluster_data.cluster,
                       ))
             cluster_data.instances_queue.task_done()
-            instances_out.put(instance)
+            instances_out.put(instance_config)
         elif not status.marathon:
             log.debug("{}.{} in {} is not a Marathon job. Marked as deployed."
                       .format(
@@ -435,7 +426,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                                  status.marathon.app_count,
                              ))
                 cluster_data.instances_queue.task_done()
-                instances_out.put(instance)
+                instances_out.put(instance_config)
                 continue
             if not cluster_data.git_sha.startswith(status.git_sha):
                 paasta_print("  {}.{} on {} doesn't have the right sha yet: {}"
@@ -444,7 +435,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                                  cluster_data.cluster, status.git_sha,
                              ))
                 cluster_data.instances_queue.task_done()
-                instances_out.put(instance)
+                instances_out.put(instance_config)
                 continue
             if status.marathon.deploy_status not in ['Running', 'Deploying', 'Waiting']:
                 paasta_print("  {}.{} on {} isn't running yet: {}"
@@ -454,7 +445,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                                  status.marathon.deploy_status,
                              ))
                 cluster_data.instances_queue.task_done()
-                instances_out.put(instance)
+                instances_out.put(instance_config)
                 continue
 
             # The bounce margin factor defines what proportion of instances we need to be "safe",
@@ -473,7 +464,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                                  status.marathon.expected_instance_count,
                              ))
                 cluster_data.instances_queue.task_done()
-                instances_out.put(instance)
+                instances_out.put(instance_config)
                 continue
             paasta_print("Complete: {}.{} on {} looks 100% deployed at {} "
                          "instances on {}"
@@ -536,42 +527,46 @@ def _run_cluster_worker(cluster_data, green_light):
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     # Currently only 'marathon' instances are supported for wait_for_deployment because they
     # are the only thing that are worth waiting on.
-    cluster_map = get_cluster_instance_map_for_service(
-        soa_dir=soa_dir, service=service, deploy_group=deploy_group, type_filter='marathon',
-    )
-    if not cluster_map:
-        _log(
-            service=service,
-            component='deploy',
-            line=("Couldn't find any marathon instances for service {} in deploy group {}. Exiting.".format(
-                service,
-                deploy_group,
-            )),
-            level='event',
-        )
-        return
-    paasta_print("Waiting for deployment of {} for '{}' to complete..."
-                 .format(git_sha, deploy_group))
+    service_configs = PaastaServiceConfig(service=service, soa_dir=soa_dir, load_deployments=False)
 
     total_instances = 0
     clusters_data = []
     api_endpoints = load_system_paasta_config().get_api_endpoints()
-    for cluster in cluster_map:
+    for cluster in service_configs.clusters:
         if cluster not in api_endpoints:
             paasta_print(PaastaColors.red(
                 'Cluster %s is NOT in paasta-api endpoints config.' %
                 cluster,
             ))
             raise NoSuchCluster
-        clusters_data.append(ClusterData(
-            cluster=cluster, service=service,
-            git_sha=git_sha,
-            instances_queue=Queue(),
-            soa_dir=soa_dir,
-        ))
-        for i in cluster_map[cluster]['instances']:
-            clusters_data[-1].instances_queue.put(i)
-        total_instances += len(cluster_map[cluster]['instances'])
+
+        instances_queue = Queue()
+        for instance_config in service_configs.instance_configs(cluster=cluster, instance_type='marathon'):
+            if instance_config.get_deploy_group() == deploy_group:
+                instances_queue.put(instance_config)
+                total_instances += 1
+
+        if not instances_queue.empty():
+            clusters_data.append(ClusterData(
+                cluster=cluster,
+                service=service,
+                git_sha=git_sha,
+                instances_queue=instances_queue,
+            ))
+
+    if not clusters_data:
+        _log(
+            service=service,
+            component='deploy',
+            line=("Couldn't find any marathon instances for service {} in deploy group {}. Exiting."
+                  .format(service, deploy_group)),
+            level='event',
+        )
+        return
+
+    paasta_print("Waiting for deployment of {} for '{}' to complete..."
+                 .format(git_sha, deploy_group))
+
     deadline = time.time() + timeout
     green_light = Event()
     green_light.set()
@@ -610,7 +605,10 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
     cluster_instances = {}
     for c_d in clusters_data:
         while c_d.instances_queue.qsize() > 0:
-            cluster_instances.setdefault(c_d.cluster, []).append(c_d.instances_queue.get(block=False))
+            cluster_instances.setdefault(
+                c_d.cluster,
+                [],
+            ).append(c_d.instances_queue.get(block=False).get_instance())
             c_d.instances_queue.task_done()
 
     paasta_status = []
