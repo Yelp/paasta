@@ -1372,6 +1372,7 @@ SystemPaastaConfigDict = TypedDict(
         'taskproc': Dict,
         'disabled_watchers': List,
         'vault_environment': str,
+        'cluster_boost_enabled': bool,
     },
     total=False,
 )
@@ -1589,6 +1590,13 @@ class SystemPaastaConfig(object):
 
         :returns A bool"""
         return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
+
+    def get_cluster_boost_enabled(self) -> bool:
+        """ Enable the cluster boost. Note boost that applies only to the resource cpus anyway.
+        If the boost is toggle on here but not configured, it will be transparent.
+
+        :returns A bool"""
+        return self.config_dict.get('cluster_boost_enabled', False)
 
     def get_resource_pool_settings(self) -> ResourcePoolSettings:
         return self.config_dict.get('resource_pool_settings', {})

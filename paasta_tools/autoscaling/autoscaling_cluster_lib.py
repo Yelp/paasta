@@ -1267,6 +1267,7 @@ def get_mesos_utilization_error(
     When the boost feature is enabled, the current_load will be artifically increased
     and stored into boosted_load. If the boost is disabled, boosted_load = current_load
     """
+    system_config = load_system_paasta_config()
     try:
         region_pool_utilization_dict = get_resource_utilization_by_grouping(
             lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
@@ -1291,7 +1292,7 @@ def get_mesos_utilization_error(
         current_load = total - free
 
         # We apply the boost only on the cpu resource.
-        if resource == 'cpus':
+        if resource == 'cpus'and system_config.get_cluster_boost_enabled():
             boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
         else:
             boosted_load = current_load

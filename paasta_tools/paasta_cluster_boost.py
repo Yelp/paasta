@@ -91,6 +91,7 @@ def paasta_cluster_boost():
     """ Set, Get or clear a boost on a paasta cluster for a given pool in a given region
     :returns: None
     """
+    system_config = load_system_paasta_config()
     args = parse_args()
 
     if args.verbose >= 2:
@@ -102,6 +103,11 @@ def paasta_cluster_boost():
 
     action = args.action
     pool = args.pool
+
+    if not system_config.get_cluster_boost_enabled():
+        paasta_print('ERROR: cluster_boost feature is not enabled.')
+        return False
+
     regions = get_regions(pool)
 
     if len(regions) == 0:
