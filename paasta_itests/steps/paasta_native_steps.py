@@ -2,8 +2,8 @@ import json
 import os
 import socket
 import time
-from typing import List  # noqa
-from typing import Tuple  # noqa
+from typing import List
+from typing import Tuple
 
 import mock
 import yaml

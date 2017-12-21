@@ -48,7 +48,7 @@ from typing import Dict
 from typing import IO
 from typing import Iterable
 from typing import Iterator
-from typing import List  # noqa
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -56,7 +56,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
-from typing import Union  # noqa
+from typing import Union
 
 import choice
 import dateutil.tz

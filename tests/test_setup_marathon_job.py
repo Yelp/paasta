@@ -13,18 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from typing import Any  # noqa: imported for typing
-from typing import Dict  # noqa: imported for typing
-from typing import List  # noqa: imported for typing
-from typing import Set  # noqa: imported for typing
-from typing import Tuple  # noqa: imported for typing
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
+from typing import Tuple
 
 import asynctest
 import marathon
 import mock
-from marathon import MarathonClient  # noqa: imported for typing
-from marathon.models.app import MarathonApp  # noqa: imported for typing
-from marathon.models.app import MarathonTask  # noqa: imported for typing
+from marathon import MarathonClient
+from marathon.models.app import MarathonApp
+from marathon.models.app import MarathonTask
 from pytest import raises
 
 from paasta_tools import bounce_lib

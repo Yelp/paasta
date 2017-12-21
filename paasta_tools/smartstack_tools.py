@@ -14,11 +14,11 @@
 import collections
 import csv
 import socket
-from typing import DefaultDict  # noqa
+from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
-from typing import Tuple  # noqa
+from typing import Tuple
 
 import requests
 from mypy_extensions import TypedDict

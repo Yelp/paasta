@@ -23,9 +23,9 @@ from mypy_extensions import TypedDict
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.marathon_tools import MarathonClient  # noqa; imported for typing
-from paasta_tools.marathon_tools import MarathonClients  # noqa; imported for typing
-from paasta_tools.marathon_tools import MarathonServiceConfig  # noqa; imported for typing
+from paasta_tools.marathon_tools import MarathonClient
+from paasta_tools.marathon_tools import MarathonClients
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config

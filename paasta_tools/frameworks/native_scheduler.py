@@ -23,11 +23,11 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
 from paasta_tools.frameworks.constraints import check_offer_constraints
-from paasta_tools.frameworks.constraints import ConstraintState  # noqa; imported for typing
+from paasta_tools.frameworks.constraints import ConstraintState
 from paasta_tools.frameworks.constraints import update_constraint_state
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
-from paasta_tools.frameworks.native_service_config import NativeServiceConfig  # noqa; imported for typing
-from paasta_tools.frameworks.native_service_config import TaskInfo  # noqa; imported for typing
+from paasta_tools.frameworks.native_service_config import NativeServiceConfig
+from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.task_store import MesosTaskParameters
 from paasta_tools.frameworks.task_store import TaskStore
 from paasta_tools.frameworks.task_store import ZKTaskStore

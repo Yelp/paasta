@@ -16,8 +16,8 @@ import argparse
 import logging
 import sys
 import traceback
-from typing import Dict  # noqa; imported for typing
-from typing import List  # noqa; imported for typing
+from typing import Dict
+from typing import List
 from typing import Optional
 
 import requests_cache
