@@ -15,7 +15,6 @@
 import argparse
 import logging
 import sys
-from typing import List
 
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.utils import load_system_paasta_config

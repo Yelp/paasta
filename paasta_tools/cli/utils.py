@@ -625,7 +625,7 @@ def run_paasta_cluster_boost(
             ],
         ),
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_cluster_boost %s' % (
+    command = ('ssh -A -n -o StrictHostKeyChecking=no %s paasta_cluster_boost %s' % (
         master,
         cmd_args,
     )).strip()
