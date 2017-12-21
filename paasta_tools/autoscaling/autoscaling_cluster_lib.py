@@ -50,6 +50,7 @@ from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
@@ -1069,6 +1070,7 @@ def get_all_utilization_errors(
     autoscaling_resources: Dict[str, Dict[str, str]],
     all_pool_settings: Dict[str, Dict],
     mesos_state: MesosState,
+    system_config: SystemPaastaConfig,
 ) -> Dict[Tuple[str, str], float]:
     errors: Dict[Tuple[str, str], float] = {}
     for identifier, resource in autoscaling_resources.items():
@@ -1084,6 +1086,7 @@ def get_all_utilization_errors(
         )
         errors[(region, pool)] = get_mesos_utilization_error(
             mesos_state=mesos_state,
+            system_config=system_config,
             region=region,
             pool=pool,
             target_utilization=target_utilization,
@@ -1106,7 +1109,12 @@ def autoscale_local_cluster(
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     mesos_state = get_mesos_master().state
-    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
+    utilization_errors = get_all_utilization_errors(
+        autoscaling_resources=autoscaling_resources,
+        all_pool_settings=all_pool_settings,
+        mesos_state=MesosState,
+        system_config=system_config,
+    )
     autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
@@ -1213,7 +1221,12 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
     pool_settings = system_config.get_resource_pool_settings()
     system_config = load_system_paasta_config()
     all_pool_settings = system_config.get_resource_pool_settings()
-    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
+    utilization_errors = get_all_utilization_errors(
+        autoscaling_resources=autoscaling_resources,
+        all_pool_settings=all_pool_settings,
+        mesos_state=MesosState,
+        system_config=system_config,
+    )
     vals = [
         autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors)
         for resource in autoscaling_resources.values()
@@ -1256,6 +1269,7 @@ def autoscaling_info_for_resource(
 
 def get_mesos_utilization_error(
     mesos_state: MesosState,
+    system_config: SystemPaastaConfig,
     region: str,
     pool: str,
     target_utilization: float,
@@ -1267,7 +1281,6 @@ def get_mesos_utilization_error(
     When the boost feature is enabled, the current_load will be artifically increased
     and stored into boosted_load. If the boost is disabled, boosted_load = current_load
     """
-    system_config = load_system_paasta_config()
     try:
         region_pool_utilization_dict = get_resource_utilization_by_grouping(
             lambda slave: (slave['attributes']['pool'], slave['attributes']['datacenter'],),
