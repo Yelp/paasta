@@ -46,8 +46,9 @@ def add_subparser(subparsers):
     boost_parser.add_argument(
         '-c', '--cluster',
         type=str,
+        action='append',
         required=True,
-        help="Cluster to boost. ex: nova-prod. You can find a list of paasta clusters with `paasta list-clusters'",
+        help="Cluster to boost. ex: nova-prod .This option can be specified multiple times.",
     )
     boost_parser.add_argument(
         '-d', '--soa-dir',
@@ -55,12 +56,6 @@ def add_subparser(subparsers):
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
-    )
-    boost_parser.add_argument(
-        '-r', '--region',
-        type=str,
-        required=True,
-        help="name of the AWS region where the pool is. eg: us-east-1",
     )
     boost_parser.add_argument(
         '-p', '--pool',
@@ -90,10 +85,10 @@ def add_subparser(subparsers):
         'action',
         choices=[
             'set',
-            'get',
+            'status',
             'clear',
         ],
-        help="You can set, get or clear a boost.",
+        help="You can view the status, set or clear a boost.",
     )
     boost_parser.set_defaults(command=paasta_boost)
 
@@ -102,21 +97,23 @@ def paasta_boost(args):
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
-    if args.cluster in all_clusters:
-        print("Valid cluster")
-        return_code, output = execute_paasta_cluster_boost_on_remote_master(
-            cluster=args.cluster,
-            system_paasta_config=system_paasta_config,
-            action=args.action,
-            region=args.region,
-            pool=args.pool,
-            duration=args.duration if args.action == 'set' else None,
-            override=args.override if args.action == 'set' else None,
-            boost=args.boost if args.action == 'set' else None,
-            verbose=args.verbose,
-        )
-    else:
-        paasta_print("Cluster %s doesn't look like a valid cluster" % args.cluster)
-        paasta_print("Here is a list of valid paasta clusters:\n{}".format(all_clusters))
-        return_code = 1
+    for cluster in args.cluster:
+        if cluster not in all_clusters:
+            paasta_print(
+                "Error: {} doesn't look like a valid cluster. ".format(cluster) +
+                "Here is a list of valid paasta clusters:\n" + "\n".join(all_clusters),
+            )
+            return 1
+
+    return_code, output = execute_paasta_cluster_boost_on_remote_master(
+        clusters=args.cluster,
+        system_paasta_config=system_paasta_config,
+        action=args.action,
+        pool=args.pool,
+        duration=args.duration if args.action == 'set' else None,
+        override=args.override if args.action == 'set' else None,
+        boost=args.boost if args.action == 'set' else None,
+        verbose=args.verbose,
+    )
+    paasta_print(output)
     return return_code

@@ -89,6 +89,19 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
         return current_load
 
 
+def print_boost_value(region: str, pool: str) -> float:
+    """THis function prints the boost value if a boost is active
+    """
+    current_time = get_time()
+
+    with ZookeeperPool() as zk:
+        boost_values = get_boost_values(region, pool, zk)
+        if current_time < boost_values.end_time:
+            return boost_values.boost_factor
+        else:
+            return 1.0
+
+
 def get_boost_values(
     region: str,
     pool: str,

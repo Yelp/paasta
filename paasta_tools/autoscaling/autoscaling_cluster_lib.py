@@ -46,6 +46,7 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import get_resource_utilization_by_grouping
+from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.utils import load_system_paasta_config
@@ -1279,19 +1280,28 @@ def get_mesos_utilization_error(
         return 0
 
     log.debug(repr(region_pool_utilization_dict))
-    free_pool_resources = region_pool_utilization_dict['free']
-    total_pool_resources = region_pool_utilization_dict['total']
     usage_percs = []
-    for free, total in zip(free_pool_resources, total_pool_resources):
+    for resource in ResourceInfo._fields:
+        free = getattr(region_pool_utilization_dict['free'], resource)
+        total = getattr(region_pool_utilization_dict['total'], resource)
+
         if math.isclose(total, 0):
             continue
+
         current_load = total - free
-        boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
+
+        # We apply the boost only on the cpu resource.
+        if resource == 'cpus':
+            boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
+        else:
+            boosted_load = current_load
 
         usage_percs.append(boosted_load / float(total))
 
     if len(usage_percs) == 0:  # If all resource totals are close to 0 for some reason
         return 0
 
+    # We only look at the percentage of utilization. Whichever is the highest (closer or past the setpoint)
+    # will be used to determine how much we need to scale
     utilization = max(usage_percs)
     return utilization - target_utilization

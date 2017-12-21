@@ -28,12 +28,6 @@ def parse_args():
     """Parses the command line arguments passed to this script"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-r', '--region',
-        type=str,
-        required=True,
-        help="name of the AWS region where the pool is. eg: us-east-1",
-    )
-    parser.add_argument(
         '-p', '--pool',
         type=str,
         default='default',
@@ -61,10 +55,10 @@ def parse_args():
         'action',
         choices=[
             'set',
-            'get',
+            'status',
             'clear',
         ],
-        help="You can set, get or clear a boost.",
+        help="You can view the status, set or clear a boost.",
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -76,23 +70,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def check_pool_exist(pool: str, region: str) -> bool:
-    """ Check that we have slaves in the provided pool and region
+def get_regions(pool: str) -> list:
+    """ Return the regions where we have slaves running for a given pool
     """
     system_paasta_config = load_system_paasta_config()
     expected_slave_attributes = system_paasta_config.get_expected_slave_attributes()
     if expected_slave_attributes is None:
-        return False
+        return []
 
-    region_pool_pairs: List = []
+    regions = []
     for slave in expected_slave_attributes:
-        slave_pool = slave['pool']
         slave_region = slave['datacenter']
-        region_pool_pair = (slave_region, slave_pool)
-        if region_pool_pair not in region_pool_pairs:
-            region_pool_pairs.append(region_pool_pair)
-
-    return (region, pool) in region_pool_pairs
+        if slave['pool'] == pool:
+            if slave_region not in regions:
+                regions.append(slave_region)
+    return regions
 
 
 def paasta_cluster_boost():
@@ -109,39 +101,40 @@ def paasta_cluster_boost():
         logging.basicConfig(level=logging.WARNING)
 
     action = args.action
-    region = args.region
     pool = args.pool
+    regions = get_regions(pool)
 
-    if action == 'set':
-        # Let's disallow people to set boost on a non existing pool
-        if not check_pool_exist(pool=pool, region=region):
-            paasta_print('Could not find the pool {} in the region {}'.format(pool, region))
-            return False
-        if not cluster_boost.set_boost_factor(
-            region=region,
-            pool=pool,
-            factor=args.boost,
-            duration_minutes=args.duration,
-            override=args.override,
-        ):
-            paasta_print('Failed! Check the logs.')
-            return False
-
-    elif action == 'get':
-        paasta_print('Current boost value: {}'.format(cluster_boost.get_boosted_load(
-            region=region,
-            pool=pool,
-            current_load=1.0,
-        )))
-
-    elif action == 'clear':
-        if not cluster_boost.clear_boost(pool=pool, region=region):
-            paasta_print('Failed! Check the logs.')
-            return False
-
-    else:
-        raise NotImplementedError("Action: '%s' is not implemented." % action)
+    if len(regions) == 0:
+        paasta_print('Error, no slaves found in pool {}'.format(pool))
         return False
+
+    for region in regions:
+        if action == 'set':
+            if not cluster_boost.set_boost_factor(
+                region=region,
+                pool=pool,
+                factor=args.boost,
+                duration_minutes=args.duration,
+                override=args.override,
+            ):
+                paasta_print('Failed to set the boost for pool {}, region {}.'.format(pool, region))
+                return False
+
+        elif action == 'status':
+            paasta_print('Current boost value for pool: {}, region: {}: {}'.format(
+                pool, region, cluster_boost.print_boost_value(
+                    region=region, pool=pool,
+                ),
+            ))
+
+        elif action == 'clear':
+            if not cluster_boost.clear_boost(pool=pool, region=region):
+                paasta_print('Failed to clear the boost for pool {}, region {}.')
+                return False
+
+        else:
+            raise NotImplementedError("Action: '%s' is not implemented." % action)
+            return False
 
 
 if __name__ == '__main__':
