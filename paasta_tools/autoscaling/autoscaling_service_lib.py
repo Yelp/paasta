@@ -381,6 +381,9 @@ def mesos_cpu_metrics_provider(
 
     # Mesos slave statistics endpoint returns a crazy CPU value when a container is
     # in the process of being killed. So we fetch twice, and use the lower of the two.
+    # First, we clear the cache.
+    for task in mesos_tasks:
+        del task.slave._cache['stats']
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
     gevent.joinall(jobs, timeout=60)
     mesos_tasks_second_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
