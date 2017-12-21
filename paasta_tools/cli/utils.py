@@ -341,7 +341,8 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
 
 def list_services(**kwargs):
     """Returns a sorted list of all services"""
-    return sorted(read_services_configuration().keys())
+    soa_dir = kwargs.get('soa_dir', DEFAULT_SOA_DIR)
+    return sorted(os.listdir(os.path.abspath(soa_dir)))
 
 
 def list_paasta_services():
