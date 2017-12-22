@@ -1,3 +1,12 @@
+paasta-tools (0.69.14) xenial; urgency=medium
+
+  * 0.69.14 tagged with 'make release'
+    Commit: Merge pull request #1683 from
+    Yelp/fix_itest_pip_dependencies  Bumping version of docker-compose
+    in tox
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Fri, 22 Dec 2017 11:31:41 -0800
+
 paasta-tools (0.69.13) xenial; urgency=medium
 
   * 0.69.13 tagged with 'make release'
