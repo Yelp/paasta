@@ -1,3 +1,11 @@
+paasta-tools (0.69.13) xenial; urgency=medium
+
+  * 0.69.13 tagged with 'make release'
+    Commit: Merge pull request #1677 from Yelp/cluster_boost_fix  Better
+    cluster boost
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Thu, 21 Dec 2017 18:02:52 -0800
+
 paasta-tools (0.69.12) xenial; urgency=medium
 
   * 0.69.12 tagged with 'make release'
