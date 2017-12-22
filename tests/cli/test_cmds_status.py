@@ -101,7 +101,6 @@ def test_status_arg_service_not_found(
 def test_report_status_for_cluster_displays_deployed_service(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -144,7 +143,6 @@ def test_report_status_for_cluster_displays_deployed_service(
 def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -182,7 +180,6 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
 def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info
@@ -229,7 +226,6 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
 def test_print_cluster_status_missing_deploys_in_red(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status displays missing deploys in red
@@ -279,7 +275,6 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
     verbosity_level,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -322,7 +317,6 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -357,7 +351,6 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
 def test_report_status_calls_report_invalid_whitelist_values(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -472,7 +465,6 @@ def test_status_calls_sergeants(
     mock_load_system_paasta_config,
     mock_list_services,
     mock_get_instance_configs_for_service,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -757,7 +749,7 @@ def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instanc
 def test_status_with_owner(
         mock_report_status, mock_load_system_paasta_config, mock_get_actual_deployments,
         mock_figure_out_service_name, mock_list_services,
-        mock_get_instance_configs_for_service, capfd,
+        mock_get_instance_configs_for_service,
         system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = system_paasta_config
