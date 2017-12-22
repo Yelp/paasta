@@ -77,7 +77,7 @@ def get_regions(pool: str) -> list:
     if expected_slave_attributes is None:
         return []
 
-    regions = []
+    regions = []  # type: list
     for slave in expected_slave_attributes:
         slave_region = slave['datacenter']
         if slave['pool'] == pool:
