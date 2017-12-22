@@ -611,7 +611,7 @@ def run_paasta_cluster_boost(
     pool_flag = '--pool {}'.format(pool)
     duration_flag = '--duration {}'.format(duration) if duration is not None else ''
     boost_flag = '--boost {}'.format(boost) if boost is not None else ''
-    override_flag = '--override {}'.format(override) if override is not None else ''
+    override_flag = '--force' if override is not None else ''
 
     cmd_args = " ".join(
         filter(
