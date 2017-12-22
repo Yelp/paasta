@@ -68,6 +68,7 @@ def test_figure_out_service_name_not_found(
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
 def test_status_arg_service_not_found(
     mock_guess_service_name, mock_validate_service_name, mock_list_clusters, capfd,
+    system_paasta_config
 ):
     # paasta_status with no args and non-service directory results in error
     mock_guess_service_name.return_value = 'not_a_service'
