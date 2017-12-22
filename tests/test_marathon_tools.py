@@ -1162,29 +1162,6 @@ class TestMarathonTools:
         )
         assert actual == expected_constraints
 
-    def test_get_calculated_constraints_non_prod_no_hostname_unique(self):
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
-        fake_conf = marathon_tools.MarathonServiceConfig(
-            service='fake_name',
-            cluster='fake_dev_cluster',
-            instance='fake_instance',
-            config_dict={'instances': 3},
-            branch_dict={},
-        )
-        fake_system_paasta_config = SystemPaastaConfig(
-            {
-                "auto_hostname_unique_size": 3,
-            }, "/foo",
-        )
-        expected_constraints = [
-            ["pool", "LIKE", "default"],
-        ]
-        actual = fake_conf.get_calculated_constraints(
-            service_namespace_config=fake_service_namespace_config,
-            system_paasta_config=fake_system_paasta_config,
-        )
-        assert actual == expected_constraints
-
     def test_get_calculated_constraints_no_config_no_hostname_unique(self):
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
