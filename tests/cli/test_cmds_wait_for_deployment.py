@@ -25,8 +25,8 @@ from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha
 from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.remote_git import LSRemoteException
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import TimeoutError
 
 
@@ -114,13 +114,12 @@ def mock_status_instance_side_effect(service, instance):  # pragma: no cover (ge
     return mock_status_instance
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.get_instance_config', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch(
     'paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client',
     autospec=True,
 )
-def test_instances_deployed(mock_get_paasta_api_client, mock__log, mock_get_instance_config):
+def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client = Mock()
     mock_get_paasta_api_client.return_value = mock_paasta_api_client
     mock_paasta_api_client.service.status_instance.side_effect = \
@@ -134,21 +133,20 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log, mock_get_inst
         service='service1',
         git_sha='somesha',
         instances_queue=Queue(),
-        soa_dir=DEFAULT_SOA_DIR,
     )
-    cluster_data.instances_queue.put('instance1')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance1'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance1')
-    cluster_data.instances_queue.put('instance2')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance1'))
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance2'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=False) == 'instance2'
+    assert instances_out.get(block=False).get_instance() == 'instance2'
 
     cluster_data.instances_queue = Queue()
     cluster_data.instances_queue.put('instance3')
@@ -158,57 +156,57 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log, mock_get_inst
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance4')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance4'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance4.1')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance4.1'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance5')
-    cluster_data.instances_queue.put('instance1')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance5'))
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance1'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance6')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance6'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=False) == 'instance6'
+    assert instances_out.get(block=False).get_instance() == 'instance6'
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('notaninstance')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('notaninstance'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=False) == 'notaninstance'
+    assert instances_out.get(block=False).get_instance() == 'notaninstance'
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('api_error')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('api_error'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
-    assert instances_out.get(block=False) == 'api_error'
+    assert instances_out.get(block=False).get_instance() == 'api_error'
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance7')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance7'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put('instance8')
+    cluster_data.instances_queue.put(mock_marathon_instance_config('instance8'))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
@@ -217,24 +215,28 @@ def test_instances_deployed(mock_get_paasta_api_client, mock__log, mock_get_inst
 
 def instances_deployed_side_effect(cluster_data, instances_out, green_light):  # pragma: no cover (gevent)
     while not cluster_data.instances_queue.empty():
-        instance = cluster_data.instances_queue.get()
-        if instance not in ['instance1', 'instance2']:
-            instances_out.put(instance)
+        instance_config = cluster_data.instances_queue.get()
+        if instance_config.get_instance() not in ['instance1', 'instance2']:
+            instances_out.put(instance_config)
         cluster_data.instances_queue.task_done()
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 def test_wait_for_deployment(
     mock_instances_deployed,
     mock__log,
-    mock_get_cluster_instance_map_for_service,
+    mock_paasta_service_config,
     mock_load_system_paasta_config,
 ):
-    mock_cluster_map = {'cluster1': {'instances': ['instance1', 'instance2', 'instance3']}}
-    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
+    mock_paasta_service_config.return_value.clusters = ['cluster1']
+    mock_paasta_service_config.return_value.instance_configs.return_value = [
+        mock_marathon_instance_config('instance1'),
+        mock_marathon_instance_config('instance2'),
+        mock_marathon_instance_config('instance3'),
+    ]
     mock_instances_deployed.side_effect = instances_deployed_side_effect
 
     mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = \
@@ -243,39 +245,39 @@ def test_wait_for_deployment(
     with raises(TimeoutError):
         with patch('time.time', side_effect=[0, 0, 2], autospec=True):
             with patch('time.sleep', autospec=True):
-                mark_for_deployment.wait_for_deployment('service', 'deploy_group_1', 'somesha', '/nail/soa', 1)
+                mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 1)
 
-    mock_cluster_map = {
-        'cluster1': {'instances': ['instance1', 'instance2']},
-        'cluster2': {'instances': ['instance1', 'instance2']},
-    }
-    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
+    mock_paasta_service_config.return_value.clusters = ['cluster1', 'cluster2']
+    mock_paasta_service_config.return_value.instance_configs.side_effect = [
+        [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
+        [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
+    ]
     with patch('sys.stdout', autospec=True, flush=Mock()):
-        assert mark_for_deployment.wait_for_deployment('service', 'deploy_group_2', 'somesha', '/nail/soa', 5) == 0
+        assert mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 5) == 0
 
-    mock_cluster_map = {
-        'cluster1': {'instances': ['instance1', 'instance2']},
-        'cluster2': {'instances': ['instance1', 'instance3']},
-    }
-    mock_get_cluster_instance_map_for_service.return_value = mock_cluster_map
+    mock_paasta_service_config.return_value.clusters = ['cluster1', 'cluster2']
+    mock_paasta_service_config.return_value.instance_configs.side_effect = [
+        [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
+        [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance3')],
+    ]
     with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
+        mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 0)
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 def test_wait_for_deployment_raise_no_such_cluster(
     mock_instances_deployed,
     mock__log,
-    mock_get_cluster_instance_map_for_service,
+    mock_paasta_service_config,
     mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = \
         {'cluster1': 'some_url_1', 'cluster2': 'some_url_2'}
 
-    mock_get_cluster_instance_map_for_service.return_value = {'cluster3': {'instances': ['instance3']}}
+    mock_paasta_service_config.return_value.clusters = ['cluster3']
     with raises(NoSuchCluster):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
 
@@ -306,7 +308,8 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
     assert mock_validate_service_name.called
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.get_cluster_instance_map_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
@@ -314,10 +317,14 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock_list_deploy_groups,
     mock_validate_service_name,
     mock_validate_git_sha,
-    mock_get_cluster_instance_map_for_service,
+    mock_paasta_service_config,
+    mock_load_system_paasta_config,
+    system_paasta_config,
 ):
+    mock_load_system_paasta_config.return_value = system_paasta_config
+    mock_paasta_service_config.return_value.instance_configs.return_value = \
+        [mock_marathon_instance_config('some_instance')]
     mock_list_deploy_groups.return_value = {'test_deploy_group'}
-    mock_get_cluster_instance_map_for_service.return_value = {}
     assert paasta_wait_for_deployment(fake_args) == 0
     assert mock_validate_service_name.called
 
@@ -357,6 +364,17 @@ def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs):
     ) is None
 
 
+def mock_marathon_instance_config(fake_name) -> "MarathonServiceConfig":
+    return MarathonServiceConfig(
+        service='fake_service',
+        cluster='fake_cluster',
+        instance=fake_name,
+        config_dict={'deploy_group': 'fake_deploy_group'},
+        branch_dict={},
+        soa_dir='fake_soa_dir',
+    )
+
+
 def test_compose_timeout_message():
     clusters_data = []
     clusters_data.append(mark_for_deployment.ClusterData(
@@ -364,24 +382,21 @@ def test_compose_timeout_message():
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
-        soa_dir=DEFAULT_SOA_DIR,
     ))
-    clusters_data[0].instances_queue.put('instance1')
-    clusters_data[0].instances_queue.put('instance2')
+    clusters_data[0].instances_queue.put(mock_marathon_instance_config('instance1'))
+    clusters_data[0].instances_queue.put(mock_marathon_instance_config('instance2'))
     clusters_data.append(mark_for_deployment.ClusterData(
         cluster='cluster2',
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
-        soa_dir=DEFAULT_SOA_DIR,
     ))
-    clusters_data[1].instances_queue.put('instance3')
+    clusters_data[1].instances_queue.put(mock_marathon_instance_config('instance3'))
     clusters_data.append(mark_for_deployment.ClusterData(
         cluster='cluster3',
         service='someservice',
         git_sha='somesha',
         instances_queue=Queue(),
-        soa_dir=DEFAULT_SOA_DIR,
     ))
     message = mark_for_deployment.compose_timeout_message(
         clusters_data, 1, 'fake_group',
