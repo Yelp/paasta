@@ -544,19 +544,17 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             system_paasta_config: SystemPaastaConfig,
     ) -> List[Constraint]:
         """
-        "Small" services running in a production cluster automatically receive a running
-        in a production cluster automatically receive a hostname UNIQUE constraint to reduce
+        "Small" services automatically receive a hostname UNIQUE constraint to reduce
         the risk of all tasks getting launched on the same agent, which might then be lost.
 
         :param system_paasta_config: A SystemPaastaConfig object representing the system
                                  configuration.
         :returns: a set of constraints for marathon
         """
-        if 'prod' in self.cluster:
-            auto_hostname_unique_size = system_paasta_config.get_auto_hostname_unique_size()
-            app_size = self.get_max_instances() or self.get_desired_instances()
-            if app_size <= auto_hostname_unique_size:
-                return [["hostname", "UNIQUE"]]
+        auto_hostname_unique_size = system_paasta_config.get_auto_hostname_unique_size()
+        app_size = self.get_max_instances() or self.get_desired_instances()
+        if app_size <= auto_hostname_unique_size:
+            return [["hostname", "UNIQUE"]]
         return []
 
     def get_routing_constraints(
