@@ -69,7 +69,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_regions(pool: str):
+def get_regions(pool: str) -> list:
     """ Return the regions where we have slaves running for a given pool
     """
     system_paasta_config = load_system_paasta_config()
