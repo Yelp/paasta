@@ -64,10 +64,12 @@ def test_figure_out_service_name_not_found(
 
 
 @patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
 def test_status_arg_service_not_found(
-    mock_guess_service_name, mock_validate_service_name, mock_list_clusters, capfd,
+    mock_guess_service_name, mock_validate_service_name,
+    mock_load_system_paasta_config, mock_list_clusters, capfd,
     system_paasta_config,
 ):
     # paasta_status with no args and non-service directory results in error
@@ -75,6 +77,7 @@ def test_status_arg_service_not_found(
     error = NoSuchService('fake_service')
     mock_validate_service_name.side_effect = error
     mock_list_clusters.return_value = ['cluster1']
+    mock_load_system_paasta_config.return_value = system_paasta_config
     expected_output = str(error) + "\n"
 
     args = MagicMock()
