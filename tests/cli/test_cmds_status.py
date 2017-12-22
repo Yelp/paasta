@@ -64,16 +64,20 @@ def test_figure_out_service_name_not_found(
 
 
 @patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_system_paasta_config', autospec=True)
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.utils.guess_service_name', autospec=True)
 def test_status_arg_service_not_found(
-    mock_guess_service_name, mock_validate_service_name, mock_list_clusters, capfd,
+    mock_guess_service_name, mock_validate_service_name,
+    mock_load_system_paasta_config, mock_list_clusters, capfd,
+    system_paasta_config,
 ):
     # paasta_status with no args and non-service directory results in error
     mock_guess_service_name.return_value = 'not_a_service'
     error = NoSuchService('fake_service')
     mock_validate_service_name.side_effect = error
     mock_list_clusters.return_value = ['cluster1']
+    mock_load_system_paasta_config.return_value = system_paasta_config
     expected_output = str(error) + "\n"
 
     args = MagicMock()
@@ -97,7 +101,6 @@ def test_status_arg_service_not_found(
 def test_report_status_for_cluster_displays_deployed_service(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -119,7 +122,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         % (fake_status)
     )
 
-    status.report_status_for_cluster(
+    _, output = status.report_status_for_cluster(
         service=service,
         cluster='fake_cluster',
         deploy_pipeline=planned_deployments,
@@ -127,11 +130,11 @@ def test_report_status_for_cluster_displays_deployed_service(
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
     )
-    output, _ = capfd.readouterr()
+    output = '\n'.join(str(line) for line in output)
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance',
-        system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+        system_paasta_config, stream=False, verbose=0, ignore_ssh_output=True,
     )
 
 
@@ -140,7 +143,6 @@ def test_report_status_for_cluster_displays_deployed_service(
 def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -161,7 +163,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         "    on another line!\n"
     )
 
-    status.report_status_for_cluster(
+    _, output = status.report_status_for_cluster(
         service=service,
         cluster='cluster',
         deploy_pipeline=planned_deployments,
@@ -169,7 +171,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
     )
-    output, _ = capfd.readouterr()
+    output = '\n'.join(str(line) for line in output)
     assert expected_output in output
 
 
@@ -178,7 +180,6 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
 def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status with no args displays deploy info
@@ -204,7 +205,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         % (fake_status)
     )
 
-    status.report_status_for_cluster(
+    _, output = status.report_status_for_cluster(
         service=service,
         cluster='fake_cluster',
         deploy_pipeline=planned_deployments,
@@ -212,11 +213,11 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
     )
-    output, _ = capfd.readouterr()
+    output = '\n'.join(str(line) for line in output)
     assert expected_output in output
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a,fake_instance_b',
-        system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+        system_paasta_config, stream=False, verbose=0, ignore_ssh_output=True,
     )
 
 
@@ -225,7 +226,6 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
 def test_print_cluster_status_missing_deploys_in_red(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     # paasta_status displays missing deploys in red
@@ -255,7 +255,7 @@ def test_print_cluster_status_missing_deploys_in_red(
         )
     )
 
-    status.report_status_for_cluster(
+    _, output = status.report_status_for_cluster(
         service=service,
         cluster='a_cluster',
         deploy_pipeline=planned_deployments,
@@ -263,7 +263,8 @@ def test_print_cluster_status_missing_deploys_in_red(
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
     )
-    output, _ = capfd.readouterr()
+
+    output = '\n'.join(str(line) for line in output)
     assert expected_output in output
 
 
@@ -274,7 +275,6 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
     verbosity_level,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -293,7 +293,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         fake_output,
     )
     expected_output = "    %s\n" % fake_output
-    status.report_status_for_cluster(
+    _, output = status.report_status_for_cluster(
         service=service,
         cluster='a_cluster',
         deploy_pipeline=planned_deployments,
@@ -305,10 +305,10 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
     mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
         'status', 'a_cluster', service, 'a_instance', system_paasta_config,
-        stream=True, verbose=verbosity_level, ignore_ssh_output=True,
+        stream=False, verbose=verbosity_level, ignore_ssh_output=True,
     )
 
-    output, _ = capfd.readouterr()
+    output = '\n'.join(str(line) for line in output)
     assert expected_output in output
 
 
@@ -317,7 +317,6 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -343,7 +342,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
     )
     mock_execute_paasta_serviceinit_on_remote_master.assert_called_once_with(
         'status', 'fake_cluster', 'fake_service', 'fake_instance_a',
-        system_paasta_config, stream=True, verbose=0, ignore_ssh_output=True,
+        system_paasta_config, stream=False, verbose=0, ignore_ssh_output=True,
     )
 
 
@@ -352,7 +351,6 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
 def test_report_status_calls_report_invalid_whitelist_values(
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -467,7 +465,6 @@ def test_status_calls_sergeants(
     mock_load_system_paasta_config,
     mock_list_services,
     mock_get_instance_configs_for_service,
-    capfd,
     system_paasta_config,
 ):
     service = 'fake_service'
@@ -490,7 +487,7 @@ def test_status_calls_sergeants(
     }
     mock_get_actual_deployments.return_value = actual_deployments
     mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_report_status.return_value = 1776
+    mock_report_status.return_value = 1776, ['dummy', 'output']
 
     args = MagicMock()
     args.service = service
@@ -752,7 +749,7 @@ def test_verify_instances_with_clusters(mock_paasta_print, mock_list_all_instanc
 def test_status_with_owner(
         mock_report_status, mock_load_system_paasta_config, mock_get_actual_deployments,
         mock_figure_out_service_name, mock_list_services,
-        mock_get_instance_configs_for_service, capfd,
+        mock_get_instance_configs_for_service,
         system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = system_paasta_config
@@ -771,7 +768,7 @@ def test_status_with_owner(
         'otherservice.instance3': 'sha3',
         'otherservice.instance1': 'sha4',
     }
-    mock_report_status.return_value = 0
+    mock_report_status.return_value = 0, ['dummy', 'output']
 
     args = MagicMock()
     args.service = None

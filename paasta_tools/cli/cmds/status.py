@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import concurrent.futures
 import difflib
 import os
 import sys
@@ -216,9 +217,7 @@ def report_status_for_cluster(
 ):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
-    paasta_print()
-    paasta_print("service: %s" % service)
-    paasta_print("cluster: %s" % cluster)
+    output = ['', 'service: %s' % service, 'cluster: %s' % cluster]
     seen_instances = []
     deployed_instances = []
 
@@ -237,8 +236,8 @@ def report_status_for_cluster(
 
         # Case: service NOT deployed to cluster.instance
         else:
-            paasta_print('  instance: %s' % PaastaColors.red(instance))
-            paasta_print('    Git sha:    None (not deployed yet)')
+            output.append('  instance: %s' % PaastaColors.red(instance))
+            output.append('    Git sha:    None (not deployed yet)')
 
     return_code = 0
     if len(deployed_instances) > 0:
@@ -258,17 +257,17 @@ def report_status_for_cluster(
         else:
             return_code, status = execute_paasta_serviceinit_on_remote_master(
                 'status', cluster, service, ','.join(deployed_instances),
-                system_paasta_config, stream=True, verbose=verbose,
+                system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
             )
             # Status results are streamed. This print is for possible error messages.
             if status is not None:
                 for line in status.rstrip().split('\n'):
-                    paasta_print('    %s' % line)
+                    output.append('    %s' % line)
 
-    paasta_print(report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance'))
+    output.append(report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance'))
 
-    return return_code
+    return return_code, output
 
 
 def report_invalid_whitelist_values(whitelist, items, item_type):
@@ -409,6 +408,7 @@ def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
+    system_paasta_config = load_system_paasta_config()
 
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
@@ -416,25 +416,34 @@ def paasta_status(args):
         use_api_endpoint = False
 
     return_codes = [0]
+    tasks = []
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             actual_deployments = get_actual_deployments(service, soa_dir)
             if actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-                return_code = report_status_for_cluster(
-                    service=service,
-                    cluster=cluster,
-                    deploy_pipeline=deploy_pipeline,
-                    actual_deployments=actual_deployments,
-                    instance_whitelist=instances,
-                    system_paasta_config=load_system_paasta_config(),
-                    verbose=args.verbose,
-                    use_api_endpoint=use_api_endpoint,
-                )
-                return_codes.append(return_code)
+                tasks.append((
+                    report_status_for_cluster, dict(
+                        service=service,
+                        cluster=cluster,
+                        deploy_pipeline=deploy_pipeline,
+                        actual_deployments=actual_deployments,
+                        instance_whitelist=instances,
+                        system_paasta_config=system_paasta_config,
+                        verbose=args.verbose,
+                        use_api_endpoint=use_api_endpoint,
+                    ),
+                ))
             else:
                 paasta_print(missing_deployments_message(service))
                 return_codes.append(1)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        tasks = [executor.submit(t[0], **t[1]) for t in tasks]
+        for future in concurrent.futures.as_completed(tasks):
+            return_code, output = future.result()
+            paasta_print('\n'.join(output))
+            return_codes.append(return_code)
 
     return max(return_codes)
