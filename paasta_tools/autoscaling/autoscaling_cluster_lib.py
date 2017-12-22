@@ -1112,7 +1112,7 @@ def autoscale_local_cluster(
     utilization_errors = get_all_utilization_errors(
         autoscaling_resources=autoscaling_resources,
         all_pool_settings=all_pool_settings,
-        mesos_state=MesosState,
+        mesos_state=mesos_state,
         system_config=system_config,
     )
     autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
@@ -1224,7 +1224,7 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
     utilization_errors = get_all_utilization_errors(
         autoscaling_resources=autoscaling_resources,
         all_pool_settings=all_pool_settings,
-        mesos_state=MesosState,
+        mesos_state=mesos_state,
         system_config=system_config,
     )
     vals = [

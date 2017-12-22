@@ -24,7 +24,7 @@ from paasta_tools.utils import paasta_print
 def add_subparser(subparsers):
     boost_parser = subparsers.add_parser(
         'boost',
-        help="Set, get, or clear a capacity boost for a given region in a PaaSTA cluster",
+        help="Set, print the status, or clear a capacity boost for a given region in a PaaSTA cluster",
         description=(
             "'paasta boost' is used to temporary provision more capacity in a given cluster "
             "It operates by ssh'ing to a Mesos master of a remote cluster, and "
@@ -98,7 +98,8 @@ def paasta_boost(args):
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
-    for cluster in args.cluster.split(','):
+    clusters = args.cluster.split(',')
+    for cluster in clusters:
         if cluster not in all_clusters:
             paasta_print(
                 "Error: {} doesn't look like a valid cluster. ".format(cluster) +
@@ -107,7 +108,7 @@ def paasta_boost(args):
             return 1
 
     return_code, output = execute_paasta_cluster_boost_on_remote_master(
-        clusters=args.cluster,
+        clusters=clusters,
         system_paasta_config=system_paasta_config,
         action=args.action,
         pool=args.pool,
