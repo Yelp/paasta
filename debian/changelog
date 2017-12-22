@@ -1,3 +1,10 @@
+paasta-tools (0.69.15) xenial; urgency=medium
+
+  * 0.69.15 tagged with 'make release'
+    Commit: Merge branch "pop_not_del"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 22 Dec 2017 14:57:56 -0800
+
 paasta-tools (0.69.14) xenial; urgency=medium
 
   * 0.69.14 tagged with 'make release'

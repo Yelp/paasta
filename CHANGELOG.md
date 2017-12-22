@@ -1,10 +1,35 @@
 # Change Log
 
-## [0.69.12](https://github.com/Yelp/paasta/tree/0.69.12) (2017-12-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.11...0.69.12)
+## [0.69.15](https://github.com/Yelp/paasta/tree/0.69.15) (2017-12-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.14...0.69.15)
 
 **Merged pull requests:**
 
+- Perform paasta status ssh in parallel [\#1679](https://github.com/Yelp/paasta/pull/1679) ([henryzhangsta](https://github.com/henryzhangsta))
+
+## [v0.69.14](https://github.com/Yelp/paasta/tree/v0.69.14) (2017-12-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.13...v0.69.14)
+
+**Merged pull requests:**
+
+- Bumping version of docker-compose in tox [\#1683](https://github.com/Yelp/paasta/pull/1683) ([matfra](https://github.com/matfra))
+- Allow auto hostname unique in non-prod clusters [\#1682](https://github.com/Yelp/paasta/pull/1682) ([nhandler](https://github.com/nhandler))
+- Ignore all .cache directories [\#1681](https://github.com/Yelp/paasta/pull/1681) ([henryzhangsta](https://github.com/henryzhangsta))
+- Wait for deployment refactoring [\#1676](https://github.com/Yelp/paasta/pull/1676) ([oktopuz](https://github.com/oktopuz))
+
+## [v0.69.13](https://github.com/Yelp/paasta/tree/v0.69.13) (2017-12-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.12...v0.69.13)
+
+**Merged pull requests:**
+
+- Better cluster boost [\#1677](https://github.com/Yelp/paasta/pull/1677) ([matfra](https://github.com/matfra))
+
+## [v0.69.12](https://github.com/Yelp/paasta/tree/v0.69.12) (2017-12-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.11...v0.69.12)
+
+**Merged pull requests:**
+
+- Clear stats cache before fetching a second time [\#1678](https://github.com/Yelp/paasta/pull/1678) ([EvanKrall](https://github.com/EvanKrall))
 - Remove extraneous `\# noqa` comments. [\#1675](https://github.com/Yelp/paasta/pull/1675) ([asottile](https://github.com/asottile))
 
 ## [v0.69.11](https://github.com/Yelp/paasta/tree/v0.69.11) (2017-12-21)
