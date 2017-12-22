@@ -89,8 +89,8 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
         return current_load
 
 
-def print_boost_value(region: str, pool: str) -> float:
-    """THis function prints the boost value if a boost is active
+def get_boost_factor(region: str, pool: str) -> float:
+    """This function returns the boost factor value if a boost is active
     """
     current_time = get_time()
 

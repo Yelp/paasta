@@ -1592,10 +1592,10 @@ class SystemPaastaConfig(object):
         return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
 
     def get_cluster_boost_enabled(self) -> bool:
-        """ Enable the cluster boost. Note boost that applies only to the resource cpus anyway.
-        If the boost is toggle on here but not configured, it will be transparent.
+        """ Enable the cluster boost. Note that the boost only applies to the CPUs.
+        If the boost is toggled on here but not configured, it will be transparent.
 
-        :returns A bool"""
+        :returns A bool: True means cluster boost is enabled."""
         return self.config_dict.get('cluster_boost_enabled', False)
 
     def get_resource_pool_settings(self) -> ResourcePoolSettings:

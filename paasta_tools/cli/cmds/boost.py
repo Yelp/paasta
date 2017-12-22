@@ -14,6 +14,7 @@
 # limitations under the License.
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.cli.utils import execute_paasta_cluster_boost_on_remote_master
+from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -46,10 +47,10 @@ def add_subparser(subparsers):
     boost_parser.add_argument(
         '-c', '--cluster',
         type=str,
-        action='append',
         required=True,
-        help="Cluster to boost. ex: nova-prod .This option can be specified multiple times.",
-    )
+        help="""Paasta cluster(s) to boost. This option can take comma separated values.
+        If auto-completion doesn't work, you can get a list of cluster with `paasta list-clusters'""",
+    ).completer = lazy_choices_completer(list_clusters)
     boost_parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -97,7 +98,7 @@ def paasta_boost(args):
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
-    for cluster in args.cluster:
+    for cluster in args.cluster.split(','):
         if cluster not in all_clusters:
             paasta_print(
                 "Error: {} doesn't look like a valid cluster. ".format(cluster) +

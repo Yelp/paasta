@@ -646,14 +646,14 @@ def execute_paasta_cluster_boost_on_remote_master(
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_cluster_boost().
     """
-    output = {}
+    result = {}
     for cluster in clusters:
         try:
             master = connectable_master(cluster, system_paasta_config)
         except NoMasterError as e:
-            output[cluster] = (255, str(e))
+            result[cluster] = (255, str(e))
 
-        output[cluster] = run_paasta_cluster_boost(
+        result[cluster] = run_paasta_cluster_boost(
             master=master,
             action=action,
             pool=pool,
@@ -664,14 +664,14 @@ def execute_paasta_cluster_boost_on_remote_master(
         )
 
     aggregated_code = 0
-    aggregated_stdout = ""
-    for cluster in output:
-        code = output[cluster][0]
-        stdout = output[cluster][1]
+    aggregated_output = ""
+    for cluster in result:
+        code = result[cluster][0]
+        output = result[cluster][1]
         if not code == 0:
-            aggregated_code = code
-        aggregated_stdout += "\n{}: \n{}\n".format(cluster, stdout)
-    return (aggregated_code, aggregated_stdout)
+            aggregated_code = 1
+        aggregated_output += "\n{}: \n{}\n".format(cluster, output)
+    return (aggregated_code, aggregated_output)
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):
