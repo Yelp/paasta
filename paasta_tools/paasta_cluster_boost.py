@@ -126,11 +126,7 @@ def paasta_cluster_boost():
                 return False
 
         elif action == 'status':
-            paasta_print('Current boost value for pool: {}, region: {}: {}'.format(
-                pool, region, cluster_boost.get_boost_factor(
-                    region=region, pool=pool,
-                ),
-            ))
+            continue
 
         elif action == 'clear':
             if not cluster_boost.clear_boost(pool=pool, region=region):
@@ -140,6 +136,12 @@ def paasta_cluster_boost():
         else:
             raise NotImplementedError("Action: '%s' is not implemented." % action)
             return False
+
+        paasta_print('Current boost value for pool: {}, region: {}: {}'.format(
+            pool, region, cluster_boost.get_boost_factor(
+                region=region, pool=pool,
+            ),
+        ))
 
 
 if __name__ == '__main__':
