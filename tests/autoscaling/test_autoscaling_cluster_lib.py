@@ -71,6 +71,7 @@ def is_resource_cancelled_sideeffect(self):
 
 
 def test_get_mesos_utilization_error():
+    mock_system_config = mock.Mock(return_value={})
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.get_resource_utilization_by_grouping',
         autospec=True,
@@ -87,6 +88,7 @@ def test_get_mesos_utilization_error():
 
         ret = autoscaling_cluster_lib.get_mesos_utilization_error(
             mesos_state=mock_mesos_state,
+            system_config=mock_system_config,
             region="westeros-1",
             pool="default",
             target_utilization=0.8,
@@ -95,6 +97,7 @@ def test_get_mesos_utilization_error():
 
         ret = autoscaling_cluster_lib.get_mesos_utilization_error(
             mesos_state=mock_mesos_state,
+            system_config=mock_system_config,
             region="westeros-1",
             pool="fake-pool",
             target_utilization=0.8,
@@ -329,7 +332,7 @@ def test_get_autoscaling_info_for_all_resources():
         mock_get_utilization_error.return_value = 0
         ret = autoscaling_cluster_lib.get_autoscaling_info_for_all_resources(mock_state)
         utilization_errors = autoscaling_cluster_lib.get_all_utilization_errors(
-            mock_resources, {}, mock_state,
+            mock_resources, {}, mock_state, mock_system_config,
         )
         calls = [
             mock.call(mock_resource_1, {}, mock_state, utilization_errors),

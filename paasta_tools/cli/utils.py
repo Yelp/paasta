@@ -595,21 +595,19 @@ def execute_paasta_metastatus_on_remote_master(
 def run_paasta_cluster_boost(
     master,
     action,
-    region,
     pool,
     duration,
     override,
     boost,
     verbose,
 ):
-    if verbose > 0:
-        verbose_flag = '{}'.format('v' * verbose)
-        timeout = 120
-    else:
-        verbose_flag = ''
-        timeout = 20
+    timeout = 20
 
-    region_flag = '--region {}'.format(region)
+    if verbose > 0:
+        verbose_flag = '-{}'.format('v' * verbose)
+    else:
+        verbose_flag = None
+
     pool_flag = '--pool {}'.format(pool)
     duration_flag = '--duration {}'.format(duration) if duration is not None else ''
     boost_flag = '--boost {}'.format(boost) if boost is not None else ''
@@ -618,7 +616,7 @@ def run_paasta_cluster_boost(
     cmd_args = " ".join(
         filter(
             None, [
-                region_flag,
+                action,
                 pool_flag,
                 duration_flag,
                 boost_flag,
@@ -627,7 +625,7 @@ def run_paasta_cluster_boost(
             ],
         ),
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_cluster_boost %s' % (
+    command = ('ssh -A -n -o StrictHostKeyChecking=no %s paasta_cluster_boost %s' % (
         master,
         cmd_args,
     )).strip()
@@ -636,10 +634,9 @@ def run_paasta_cluster_boost(
 
 
 def execute_paasta_cluster_boost_on_remote_master(
-    cluster,
+    clusters,
     system_paasta_config,
     action,
-    region,
     pool,
     duration=None,
     override=None,
@@ -647,23 +644,34 @@ def execute_paasta_cluster_boost_on_remote_master(
     verbose=0,
 ):
     """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_metastatus().
+    Otherwise returns the output of run_paasta_cluster_boost().
     """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (255, str(e))
+    result = {}
+    for cluster in clusters:
+        try:
+            master = connectable_master(cluster, system_paasta_config)
+        except NoMasterError as e:
+            result[cluster] = (255, str(e))
 
-    return run_paasta_cluster_boost(
-        master=master,
-        action=action,
-        region=region,
-        pool=pool,
-        duration=duration,
-        override=override,
-        boost=boost,
-        verbose=verbose,
-    )
+        result[cluster] = run_paasta_cluster_boost(
+            master=master,
+            action=action,
+            pool=pool,
+            duration=duration,
+            override=override,
+            boost=boost,
+            verbose=verbose,
+        )
+
+    aggregated_code = 0
+    aggregated_output = ""
+    for cluster in result:
+        code = result[cluster][0]
+        output = result[cluster][1]
+        if not code == 0:
+            aggregated_code = 1
+        aggregated_output += "\n{}: \n{}\n".format(cluster, output)
+    return (aggregated_code, aggregated_output)
 
 
 def run_chronos_rerun(master, service, instancename, **kwargs):

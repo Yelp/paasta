@@ -46,9 +46,11 @@ from paasta_tools.mesos_tools import get_mesos_task_count_by_slave
 from paasta_tools.mesos_tools import slave_pid_to_ip
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import get_resource_utilization_by_grouping
+from paasta_tools.metrics.metastatus_lib import ResourceInfo
 from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.paasta_maintenance import is_safe_to_kill
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
@@ -1068,6 +1070,7 @@ def get_all_utilization_errors(
     autoscaling_resources: Dict[str, Dict[str, str]],
     all_pool_settings: Dict[str, Dict],
     mesos_state: MesosState,
+    system_config: SystemPaastaConfig,
 ) -> Dict[Tuple[str, str], float]:
     errors: Dict[Tuple[str, str], float] = {}
     for identifier, resource in autoscaling_resources.items():
@@ -1083,6 +1086,7 @@ def get_all_utilization_errors(
         )
         errors[(region, pool)] = get_mesos_utilization_error(
             mesos_state=mesos_state,
+            system_config=system_config,
             region=region,
             pool=pool,
             target_utilization=target_utilization,
@@ -1105,7 +1109,12 @@ def autoscale_local_cluster(
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
     mesos_state = get_mesos_master().state
-    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
+    utilization_errors = get_all_utilization_errors(
+        autoscaling_resources=autoscaling_resources,
+        all_pool_settings=all_pool_settings,
+        mesos_state=mesos_state,
+        system_config=system_config,
+    )
     autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
@@ -1212,7 +1221,12 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
     pool_settings = system_config.get_resource_pool_settings()
     system_config = load_system_paasta_config()
     all_pool_settings = system_config.get_resource_pool_settings()
-    utilization_errors = get_all_utilization_errors(autoscaling_resources, all_pool_settings, mesos_state)
+    utilization_errors = get_all_utilization_errors(
+        autoscaling_resources=autoscaling_resources,
+        all_pool_settings=all_pool_settings,
+        mesos_state=mesos_state,
+        system_config=system_config,
+    )
     vals = [
         autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors)
         for resource in autoscaling_resources.values()
@@ -1255,6 +1269,7 @@ def autoscaling_info_for_resource(
 
 def get_mesos_utilization_error(
     mesos_state: MesosState,
+    system_config: SystemPaastaConfig,
     region: str,
     pool: str,
     target_utilization: float,
@@ -1279,19 +1294,28 @@ def get_mesos_utilization_error(
         return 0
 
     log.debug(repr(region_pool_utilization_dict))
-    free_pool_resources = region_pool_utilization_dict['free']
-    total_pool_resources = region_pool_utilization_dict['total']
     usage_percs = []
-    for free, total in zip(free_pool_resources, total_pool_resources):
+    for resource in ResourceInfo._fields:
+        free = getattr(region_pool_utilization_dict['free'], resource)
+        total = getattr(region_pool_utilization_dict['total'], resource)
+
         if math.isclose(total, 0):
             continue
+
         current_load = total - free
-        boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
+
+        # We apply the boost only on the cpu resource.
+        if resource == 'cpus'and system_config.get_cluster_boost_enabled():
+            boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
+        else:
+            boosted_load = current_load
 
         usage_percs.append(boosted_load / float(total))
 
     if len(usage_percs) == 0:  # If all resource totals are close to 0 for some reason
         return 0
 
+    # We only look at the percentage of utilization. Whichever is the highest (closer or past the setpoint)
+    # will be used to determine how much we need to scale
     utilization = max(usage_percs)
     return utilization - target_utilization

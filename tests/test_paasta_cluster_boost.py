@@ -22,7 +22,7 @@ FAKE_SLAVE_DATA = [
         'habitat': 'uswest1cstagef',
         'instance_type': 'c3.4xlarge',
         'kwatest': 'foo',
-        'pool': 'piscine',
+        'pool': 'default',
         'region': 'uswest1-stagef',
         'role': 'taskproc',
         'runtimeenv': 'stage',
@@ -45,7 +45,7 @@ FAKE_SLAVE_DATA = [
 ]
 
 
-def test_check_pool_exist():
+def test_get_regions():
     with mock.patch(
         'paasta_tools.paasta_cluster_boost.load_system_paasta_config',
         autospec=True,
@@ -53,10 +53,10 @@ def test_check_pool_exist():
         load_system_paasta_config_patch.return_value.get_expected_slave_attributes = mock.Mock(
             return_value=FAKE_SLAVE_DATA,
         )
-        assert paasta_cluster_boost.check_pool_exist(pool='piscine', region='westeros-1')
+        assert paasta_cluster_boost.get_regions('default') == ['westeros-1']
 
 
-def test_check_pool_exist_bad_pool():
+def test_get_regions_wrong_pool():
     with mock.patch(
         'paasta_tools.paasta_cluster_boost.load_system_paasta_config',
         autospec=True,
@@ -64,24 +64,4 @@ def test_check_pool_exist_bad_pool():
         load_system_paasta_config_patch.return_value.get_expected_slave_attributes = mock.Mock(
             return_value=FAKE_SLAVE_DATA,
         )
-        assert not paasta_cluster_boost.check_pool_exist(pool='big_pond', region='westeros-1')
-
-
-def test_check_pool_exist_bad_region():
-    with mock.patch(
-        'paasta_tools.paasta_cluster_boost.load_system_paasta_config',
-        autospec=True,
-    ) as load_system_paasta_config_patch:
-        load_system_paasta_config_patch.return_value.get_expected_slave_attributes = mock.Mock(
-            return_value=FAKE_SLAVE_DATA,
-        )
-        assert not paasta_cluster_boost.check_pool_exist(pool='piscine', region='the-north')
-
-
-def test_check_pool_exist_no_data():
-    with mock.patch(
-        'paasta_tools.paasta_cluster_boost.load_system_paasta_config',
-        autospec=True,
-    ) as load_system_paasta_config_patch:
-        load_system_paasta_config_patch.return_value.get_expected_slave_attributes = mock.Mock(return_value=None)
-        assert not paasta_cluster_boost.check_pool_exist(pool='piscine', region='westeros-1')
+        assert paasta_cluster_boost.get_regions('piscine') == []
