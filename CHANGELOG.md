@@ -1,10 +1,18 @@
 # Change Log
 
-## [0.69.15](https://github.com/Yelp/paasta/tree/0.69.15) (2017-12-22)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.14...0.69.15)
+## [0.69.16](https://github.com/Yelp/paasta/tree/0.69.16) (2017-12-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.15...0.69.16)
 
 **Merged pull requests:**
 
+- Fixed override flag on paasta\_cluster\_boost and print status for any action [\#1686](https://github.com/Yelp/paasta/pull/1686) ([matfra](https://github.com/matfra))
+
+## [v0.69.15](https://github.com/Yelp/paasta/tree/v0.69.15) (2017-12-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.14...v0.69.15)
+
+**Merged pull requests:**
+
+- Pop stats from cache instead of del'ing, so we don't get a KeyError if the stats aren't cached. [\#1684](https://github.com/Yelp/paasta/pull/1684) ([EvanKrall](https://github.com/EvanKrall))
 - Perform paasta status ssh in parallel [\#1679](https://github.com/Yelp/paasta/pull/1679) ([henryzhangsta](https://github.com/henryzhangsta))
 
 ## [v0.69.14](https://github.com/Yelp/paasta/tree/v0.69.14) (2017-12-22)

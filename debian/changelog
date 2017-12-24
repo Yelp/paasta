@@ -1,3 +1,10 @@
+paasta-tools (0.69.16) xenial; urgency=medium
+
+  * 0.69.16 tagged with 'make release'
+    Commit: Merge branch "ugh"
+
+ -- Evan Krall <krall@yelp.com>  Sat, 23 Dec 2017 21:26:23 -0800
+
 paasta-tools (0.69.15) xenial; urgency=medium
 
   * 0.69.15 tagged with 'make release'
