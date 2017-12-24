@@ -383,7 +383,7 @@ def mesos_cpu_metrics_provider(
     # in the process of being killed. So we fetch twice, and use the lower of the two.
     # First, we clear the cache.
     for task in mesos_tasks:
-        task.slave._cache.pop('stats')
+        task.slave._cache.pop('stats', None)
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
     gevent.joinall(jobs, timeout=60)
     mesos_tasks_second_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
