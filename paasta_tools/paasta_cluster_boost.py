@@ -126,7 +126,7 @@ def paasta_cluster_boost():
                 return False
 
         elif action == 'status':
-            continue
+            pass
 
         elif action == 'clear':
             if not cluster_boost.clear_boost(pool=pool, region=region):
