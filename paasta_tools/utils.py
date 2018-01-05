@@ -1374,6 +1374,8 @@ SystemPaastaConfigDict = TypedDict(
         'disabled_watchers': List,
         'vault_environment': str,
         'cluster_boost_enabled': bool,
+        'filter_bogus_mesos_cputime_enabled': bool,
+
     },
     total=False,
 )
