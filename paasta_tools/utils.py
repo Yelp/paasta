@@ -708,6 +708,7 @@ def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List
     return [stringify_constraint(usc) for usc in uscs]
 
 
+@time_cache(ttl=60)
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
     for instance_type in INSTANCE_TYPES:
         services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
@@ -2126,7 +2127,7 @@ def get_services_for_cluster(
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
+    log.debug("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
         service_instance_list = get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
