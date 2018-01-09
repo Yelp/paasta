@@ -146,15 +146,15 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 def print_marathon_message(desired_state):
     if desired_state == "start":
         paasta_print(
-            "A 'start' or 'restart' command will trigger a bounce, "
-            "gracefully replacing old instances according to the bounce method chosen in soa-configs. "
-            "It will also undo the effect of a previous 'stop' command.",
+            "This service will soon be gracefully started/restarted, replacing old instances according"
+            "to the bounce method chosen in soa-configs. ",
         )
     elif desired_state == "stop":
         paasta_print(
-            "A 'stop' command will signal to Marathon that the service should be in Marathon, "
-            "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
-            "make the service start back up.",
+            "This service will be gracefully stopped soon. It will be started back up again on the next deploy.\n"
+            "To stop this service permanantly. Set this in the soa-configs definition:\n"
+            "\n"
+            "    instances: 0\n",
         )
 
 
