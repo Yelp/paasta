@@ -98,17 +98,13 @@ class PaastaDeployWorker(PaastaThread):
         bounce_timers = self.setup_timers(service_instance)
         self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
 
-        # TODO: change this to use get_all_clients_for_service() instead.
-        unique_clients = self.marathon_clients.get_all_clients()
-        marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(unique_clients, embed_tasks=True)
-
         bounce_timers.setup_marathon.start()
         return_code, bounce_again_in_seconds = deploy_marathon_service(
             service=service_instance.service,
             instance=service_instance.instance,
             clients=self.marathon_clients,
             soa_dir=marathon_tools.DEFAULT_SOA_DIR,
-            marathon_apps_with_clients=marathon_apps_with_clients,
+            marathon_apps_with_clients=None,
         )
 
         bounce_timers.setup_marathon.stop()
