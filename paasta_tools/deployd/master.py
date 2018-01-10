@@ -102,7 +102,7 @@ class Inbox(PaastaThread):
 
     def process_to_bounce(self):
         bounced = []
-        self.log.info("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
+        self.log.debug("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
         for service_instance_key in self.to_bounce.keys():
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
@@ -218,6 +218,7 @@ class DeployDaemon(PaastaThread):
         live_workers = len([worker for worker in self.workers if worker.is_alive()])
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
+            self.log.error("Detected a dead worker, starting a replacement thread")
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
