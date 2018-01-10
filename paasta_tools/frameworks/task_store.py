@@ -154,7 +154,10 @@ class ZKTaskStore(TaskStore):
         self.zk_client = KazooClient(hosts='%s/%s' % (self.zk_hosts, chroot))
         self.zk_client.start()
         self.zk_client.ensure_path('/')
-        # TODO: call self.zk_client.stop() and .close()
+
+    def close(self):
+        self.zk_client.stop()
+        self.zk_client.close()
 
     def get_task(self, task_id: str) -> MesosTaskParameters:
         params, stat = self._get_task(task_id)

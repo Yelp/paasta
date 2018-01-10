@@ -139,6 +139,7 @@ def bounce_lock_zookeeper(name):
         lock.release()
     finally:
         zk.stop()
+        zk.close()
 
 
 def wait_for_create(app_id, client):

@@ -756,3 +756,4 @@ def create_autoscaling_lock():
         lock.release()
     finally:
         zk.stop()
+        zk.close()
