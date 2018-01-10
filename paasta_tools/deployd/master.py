@@ -218,6 +218,7 @@ class DeployDaemon(PaastaThread):
         live_workers = len([worker for worker in self.workers if worker.is_alive()])
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
+            self.log.error("Detected a dead worker, starting a replacement thread")
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(worker_no, self.inbox_q, self.bounce_q, self.config, self.metrics)
             worker.start()
