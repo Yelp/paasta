@@ -116,6 +116,17 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
     return get_mesos_leader() == hostname
 
 
+def find_mesos_leader(master):
+    """ Find the leader with redirect given one mesos master.
+    """
+    if master is None:
+        raise ValueError("Mesos master is required to find leader")
+
+    url = "http://%s:%s/redirect" % (master, MESOS_MASTER_PORT)
+    response = requests.get(url)
+    return urlparse(response.url).hostname
+
+
 def get_current_tasks(job_id):
     """ Returns a list of all the tasks with a given job id.
     :param job_id: the job id of the tasks.
