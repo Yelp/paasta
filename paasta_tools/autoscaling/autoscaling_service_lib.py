@@ -339,7 +339,7 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='sta
 
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
 def mesos_cpu_metrics_provider(
-    marathon_service_config, marathon_tasks, mesos_tasks, log_utilization_data={},
+    marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks, log_utilization_data={},
     noop=False, **kwargs,
 ):
     """
@@ -374,28 +374,31 @@ def mesos_cpu_metrics_provider(
     monkey.patch_socket()
     jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
     gevent.joinall(jobs, timeout=60)
-    mesos_tasks_first_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
-    # Mesos slave statistics endpoint returns a crazy CPU value when a container is
-    # in the process of being killed. So we fetch twice, and use the lower of the two.
-    # First, we clear the cache.
-    for task in mesos_tasks:
-        task.slave._cache.pop('stats', None)
-    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
-    gevent.joinall(jobs, timeout=60)
-    mesos_tasks_second_run = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
-
     mesos_cpu_data = {}
-    for task_id, stats in mesos_tasks_first_run.items():
-        stats2 = mesos_tasks_second_run.get(task_id)
-        if stats is not None and stats2 is not None:
+    for task_id, stats in mesos_tasks.items():
+        if stats is not None:
             try:
-                utime = min(float(stats['cpus_user_time_secs']), float(stats2['cpus_user_time_secs']))
-                stime = min(float(stats['cpus_system_time_secs']), float(stats2['cpus_system_time_secs']))
+                utime = float(stats['cpus_user_time_secs'])
+                stime = float(stats['cpus_system_time_secs'])
                 limit = float(stats['cpus_limit']) - .1
+
+                # It is unlikely that the cputime consumed by the task is greater than the CPU shares that we enforce.
+                # This is instead probably a bug in mesos reporting CPU value. Let's filter it out
+                if system_paasta_config.get_filter_bogus_mesos_cputime_enabled():
+                    cpu_burst_allowance = (
+                        marathon_service_config.get_cpu_quota() /
+                        marathon_service_config.get_cpu_period()
+                    )
+                    if (stime + utime) > limit * float(time_delta) * cpu_burst_allowance:
+                        log.warning('Ignoring potentially bogus cputime values for task {}'.format(str(task_id)))
+                        log.debug('Content of stats: {}'.format(str(stats)))
+                        continue
+
                 mesos_cpu_data[task_id] = (stime + utime) / limit
             except KeyError:
                 pass
@@ -451,6 +454,7 @@ def get_autoscaling_info(marathon_clients, service_config):
         all_mesos_tasks = get_all_running_tasks()
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
+        system_paasta_config = load_system_paasta_config()
         try:
             marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
                 [app for (app, client) in apps_with_clients],
@@ -459,6 +463,7 @@ def get_autoscaling_info(marathon_clients, service_config):
             )
             utilization = get_utilization(
                 marathon_service_config=service_config,
+                system_paasta_config=system_paasta_config,
                 autoscaling_params=autoscaling_params,
                 log_utilization_data={},
                 marathon_tasks=list(marathon_tasks.values()),
@@ -521,11 +526,19 @@ def get_new_instance_count(
     return new_instance_count
 
 
-def get_utilization(marathon_service_config, autoscaling_params, log_utilization_data, marathon_tasks, mesos_tasks):
+def get_utilization(
+    marathon_service_config,
+    system_paasta_config,
+    autoscaling_params,
+    log_utilization_data,
+    marathon_tasks,
+    mesos_tasks,
+):
     autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params[SERVICE_METRICS_PROVIDER_KEY])
 
     return autoscaling_metrics_provider(
         marathon_service_config=marathon_service_config,
+        system_paasta_config=system_paasta_config,
         marathon_tasks=marathon_tasks,
         mesos_tasks=mesos_tasks,
         log_utilization_data=log_utilization_data,
@@ -539,13 +552,14 @@ def is_task_data_insufficient(marathon_service_config, marathon_tasks, current_i
     return too_many_instances_running or too_few_instances_running
 
 
-def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
+def autoscale_marathon_instance(marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks):
     current_instances = marathon_service_config.get_instances()
     task_data_insufficient = is_task_data_insufficient(marathon_service_config, marathon_tasks, current_instances)
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     log_utilization_data = {}
     utilization = get_utilization(
         marathon_service_config=marathon_service_config,
+        system_paasta_config=system_paasta_config,
         autoscaling_params=autoscaling_params,
         log_utilization_data=log_utilization_data,
         marathon_tasks=marathon_tasks,
@@ -691,7 +705,12 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                                 all_mesos_tasks,
                                 config,
                             )
-                            autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
+                            autoscale_marathon_instance(
+                                config,
+                                system_paasta_config,
+                                list(marathon_tasks.values()),
+                                mesos_tasks,
+                            )
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
