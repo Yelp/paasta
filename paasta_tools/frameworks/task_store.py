@@ -115,6 +115,9 @@ class TaskStore(object):
         # TODO: implement in base class.
         raise NotImplementedError()
 
+    def close(self):
+        pass
+
 
 class DictTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
