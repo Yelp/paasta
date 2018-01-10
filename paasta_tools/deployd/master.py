@@ -102,7 +102,7 @@ class Inbox(PaastaThread):
 
     def process_to_bounce(self):
         bounced = []
-        self.log.info("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
+        self.log.debug("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
         for service_instance_key in self.to_bounce.keys():
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
