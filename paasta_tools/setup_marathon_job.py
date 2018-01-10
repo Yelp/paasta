@@ -838,7 +838,7 @@ def deploy_marathon_service(
     instance: str,
     clients: marathon_tools.MarathonClients,
     soa_dir: str,
-    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+    marathon_apps_with_clients: Optional[Collection[Tuple[MarathonApp, MarathonClient]]],
 ) -> Tuple[int, float]:
     """deploy the service instance given and proccess return code
     if there was an error we send a sensu alert.
@@ -871,6 +871,12 @@ def deploy_marathon_service(
                             (service, instance, load_system_paasta_config().get_cluster())
                 log.error(error_msg)
                 return 1, None
+
+            if marathon_apps_with_clients is None:
+                marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+                    clients=clients.get_all_clients_for_service(job_config=service_instance_config),
+                    embed_tasks=True,
+                )
 
             try:
                 with a_sync.idle_event_loop():

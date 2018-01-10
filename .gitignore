@@ -1,4 +1,5 @@
 */.cache
+.cache/
 build/
 dist/
 .tox
