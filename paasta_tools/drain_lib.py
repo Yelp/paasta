@@ -176,7 +176,7 @@ class HacheckDrainMethod(DrainMethod):
         service: str,
         instance: str,
         nerve_ns: str,
-        delay: float=120,
+        delay: float=240,
         hacheck_port: int=6666,
         expiration: float=0,
         **kwargs: Dict,
