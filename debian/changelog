@@ -1,3 +1,10 @@
+paasta-tools (0.69.18) xenial; urgency=medium
+
+  * 0.69.18 tagged with 'make release'
+    Commit: Merge branch "reduce_loading_apps_deployd"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 09 Jan 2018 16:31:10 -0800
+
 paasta-tools (0.69.17) xenial; urgency=medium
 
   * 0.69.17 tagged with 'make release'

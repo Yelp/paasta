@@ -1,10 +1,27 @@
 # Change Log
 
-## [0.69.16](https://github.com/Yelp/paasta/tree/0.69.16) (2017-12-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.15...0.69.16)
+## [0.69.18](https://github.com/Yelp/paasta/tree/0.69.18) (2018-01-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.17...0.69.18)
 
 **Merged pull requests:**
 
+- Use marathon 1.4.10 in itests [\#1689](https://github.com/Yelp/paasta/pull/1689) ([nhandler](https://github.com/nhandler))
+- Added a script to emit additional paasta metrics [\#1674](https://github.com/Yelp/paasta/pull/1674) ([solarkennedy](https://github.com/solarkennedy))
+- Added a bespoke-autoscale cli helper [\#1671](https://github.com/Yelp/paasta/pull/1671) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.69.17](https://github.com/Yelp/paasta/tree/v0.69.17) (2018-01-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.16...v0.69.17)
+
+**Merged pull requests:**
+
+- Fixed the output when asking for cluster boost status [\#1688](https://github.com/Yelp/paasta/pull/1688) ([matfra](https://github.com/matfra))
+
+## [v0.69.16](https://github.com/Yelp/paasta/tree/v0.69.16) (2017-12-24)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.15...v0.69.16)
+
+**Merged pull requests:**
+
+- If you don't specify a default value, then dict.pop KeyErrors if the key doesn't exist. [\#1687](https://github.com/Yelp/paasta/pull/1687) ([EvanKrall](https://github.com/EvanKrall))
 - Fixed override flag on paasta\_cluster\_boost and print status for any action [\#1686](https://github.com/Yelp/paasta/pull/1686) ([matfra](https://github.com/matfra))
 
 ## [v0.69.15](https://github.com/Yelp/paasta/tree/v0.69.15) (2017-12-22)
