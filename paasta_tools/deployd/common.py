@@ -10,6 +10,8 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
+import service_configuration_lib
+
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -198,3 +200,17 @@ def get_marathon_clients_from_config() -> MarathonClients:
     marathon_servers = get_marathon_servers(system_paasta_config)
     marathon_clients = get_marathon_clients(marathon_servers)
     return marathon_clients
+
+
+def clear_yaml_cache(service_name=None):
+    if not service_name:
+        print("Deleting all from yaml cache")
+        service_configuration_lib._yaml_cache = {}
+        return
+    keys_to_delete = []
+    for key in service_configuration_lib._yaml_cache.keys():
+        if service_name in key.split('/'):
+            keys_to_delete.append(key)
+    for key in keys_to_delete:
+        print("Deleting {} from cache".format(key))
+        service_configuration_lib._yaml_cache.pop(key)
