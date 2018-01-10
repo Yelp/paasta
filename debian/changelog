@@ -1,3 +1,11 @@
+paasta-tools (0.69.20) xenial; urgency=medium
+
+  * 0.69.20 tagged with 'make release'
+    Commit: Merge pull request #1697 from Yelp/zk-close  Close
+    connections to Zookeeper properly
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 10 Jan 2018 10:44:53 -0800
+
 paasta-tools (0.69.19) xenial; urgency=medium
 
   * 0.69.19 tagged with 'make release'
