@@ -1,3 +1,11 @@
+paasta-tools (0.69.19) xenial; urgency=medium
+
+  * 0.69.19 tagged with 'make release'
+    Commit: Merge pull request #1695 from Yelp/quiet-deployd-logging
+    Reduce deployd log verbosity
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 10 Jan 2018 08:21:32 -0800
+
 paasta-tools (0.69.18) xenial; urgency=medium
 
   * 0.69.18 tagged with 'make release'
