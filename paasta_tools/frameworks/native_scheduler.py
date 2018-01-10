@@ -137,6 +137,7 @@ class NativeScheduler(Scheduler):
         for task, parameters in self.task_store.get_all_tasks().items():
             if parameters.mesos_task_state in LIVE_TASK_STATES:
                 self.kill_task(driver, task)
+        self.task_store.close()
 
     def registered(self, driver: MesosSchedulerDriver, frameworkId, masterInfo):
         self.framework_id = frameworkId['value']

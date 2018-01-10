@@ -547,10 +547,17 @@ def get_number_of_mesos_masters(host, path):
     """
     zk = KazooClient(hosts=host, read_only=True)
     zk.start()
-    root_entries = zk.get_children(path)
-    result = [info for info in root_entries if info.startswith('json.info_') or info.startswith('info_')]
-    zk.stop()
-    return len(result)
+    try:
+        root_entries = zk.get_children(path)
+        result = [
+            info
+            for info in root_entries
+            if info.startswith('json.info_') or info.startswith('info_')
+        ]
+        return len(result)
+    finally:
+        zk.stop()
+        zk.close()
 
 
 def get_all_slaves_for_blacklist_whitelist(blacklist: DeployBlacklist, whitelist: DeployWhitelist):
