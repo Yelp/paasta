@@ -102,15 +102,15 @@ def validate_schema(file_path, file_type):
     extension = os.path.splitext(basename)[1]
     try:
         config_file = get_file_contents(file_path)
-    except IOError:
+        if extension == '.yaml':
+            config_file_object = yaml.safe_load(config_file)
+        elif extension == '.json':
+            config_file_object = json.loads(config_file)
+        else:
+            config_file_object = config_file
+    except Exception:
         paasta_print('%s: %s' % (FAILED_READING_FILE, file_path))
-        return False
-    if extension == '.yaml':
-        config_file_object = yaml.safe_load(config_file)
-    elif extension == '.json':
-        config_file_object = json.loads(config_file)
-    else:
-        config_file_object = config_file
+        raise
     try:
         validator.validate(config_file_object)
     except ValidationError:
