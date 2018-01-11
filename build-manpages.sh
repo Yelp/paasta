@@ -24,7 +24,9 @@ set +u
 . .tox/manpages/bin/activate
 set -u
 
-VERSION=`paasta --version 2>&1 | cut -f 2 -d ' '`
+echo -n "Building man pages for: "
+paasta --version
+VERSION=$(paasta --version 2>&1 | cut -f 2 -d ' ')
 
 function build_man() {
     COMMAND=$1
@@ -34,25 +36,27 @@ function build_man() {
 
 for FILE in paasta_tools/cli/cmds/*.py
 do
-    BASE=`basename $FILE`
-    COMMAND=`echo "${BASE%.*}" | tr '_' '-'`
+    BASE=$(basename "$FILE")
+    COMMAND=$(echo "${BASE%.*}" | tr '_' '-')
     if [[ $COMMAND == '--init--' ]]; then
         continue
     fi
     if [[ $COMMAND == 'start-stop-restart' ]]; then
         continue
     fi
-    build_man $COMMAND
+    build_man "$COMMAND"
 done
 
 # Start / stop / restart are munged in one file
 for COMMAND in start stop restart; do
-    build_man $COMMAND
+    build_man "$COMMAND"
 done
 
 # And then finally the "main" paasta command
-help2man --name='paasta' --version-string=$VERSION "paasta" > docs/man/paasta.1
+help2man --name='paasta' --version-string="$VERSION" "paasta" > docs/man/paasta.1
 
 # Make our generated docs available at 'man paasta_tools"
 sphinx-build -b man docs/source docs/man
 mv docs/man/paasta{_,-}tools.1
+
+rm -rf .tox/manpages
