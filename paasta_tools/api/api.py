@@ -30,6 +30,7 @@ import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import ZookeeperPool
 
 
 log = logging.getLogger(__name__)
@@ -123,7 +124,11 @@ def main(argv=None):
     log.info("paasta-api started on port %d with soa_dir %s" % (args.port, settings.soa_dir))
 
     try:
-        server.serve_forever()
+        # We create the Zookeeper pool here to prevent the context manager
+        # tearing down the client after each request. This can cause an exception
+        # if the API is dealing with two or more requests at the same time!
+        with ZookeeperPool() as _:  # noqa
+            server.serve_forever()
     except KeyboardInterrupt:
         exit(0)
 
