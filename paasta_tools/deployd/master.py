@@ -7,8 +7,6 @@ import sys
 import time
 from queue import Empty
 
-import service_configuration_lib
-
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import PaastaPriorityQueue
@@ -128,7 +126,6 @@ class DeployDaemon(PaastaThread):
         super(DeployDaemon, self).__init__()
         self.started = False
         self.daemon = True
-        service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
         self.bounce_q = DedupedPriorityQueue("BounceQueue")

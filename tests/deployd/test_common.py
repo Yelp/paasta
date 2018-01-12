@@ -3,6 +3,7 @@ import unittest
 import mock
 
 from paasta_tools.deployd.common import BaseServiceInstance
+from paasta_tools.deployd.common import clear_yaml_cache
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_priority
@@ -310,3 +311,26 @@ def test_get_marathon_clients_from_config():
         'paasta_tools.deployd.common.get_marathon_clients', autospec=True,
     ) as mock_marathon_clients:
         assert get_marathon_clients_from_config() == mock_marathon_clients.return_value
+
+
+def test_clear_yaml_cache():
+    with mock.patch(
+        'paasta_tools.deployd.common.service_configuration_lib', autospec=True,
+    ) as mock_config_lib:
+        mock_config_lib._yaml_cache = {}
+        assert clear_yaml_cache('universe') is None
+        assert mock_config_lib._yaml_cache == {}
+
+        mock_config_lib._yaml_cache = {
+            '/some/universe/blah.yaml': 'data',
+            '/some/multiverse/blah.yaml': 'moredata',
+        }
+        assert clear_yaml_cache('universe') is None
+        assert mock_config_lib._yaml_cache == {'/some/multiverse/blah.yaml': 'moredata'}
+
+        mock_config_lib._yaml_cache = {
+            '/some/universe/blah.yaml': 'data',
+            '/some/multiverse/blah.yaml': 'moredata',
+        }
+        assert clear_yaml_cache() is None
+        assert mock_config_lib._yaml_cache == {}

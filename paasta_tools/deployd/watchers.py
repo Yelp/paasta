@@ -13,6 +13,7 @@ from kazoo.recipe.watchers import ChildrenWatch
 from kazoo.recipe.watchers import DataWatch
 from requests.exceptions import RequestException
 
+from paasta_tools.deployd.common import clear_yaml_cache
 from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaThread
@@ -247,6 +248,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 return
             service_instances: List[Tuple[str, str]] = []
             if new_config != self.public_config:
+                clear_yaml_cache()
                 self.log.info("Public config has changed, now checking if it affects any services config shas")
                 self.public_config = new_config
                 all_service_instances = get_services_for_cluster(
@@ -319,6 +321,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
 
     def bounce_service(self, service_name):
         self.log.info("Checking if any instances for {} need bouncing".format(service_name))
+        clear_yaml_cache(service_name)
         instances = list_all_instances_for_service(
             service=service_name,
             clusters=[self.filewatcher.cluster],

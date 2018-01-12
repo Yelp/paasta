@@ -3,6 +3,7 @@ from collections import namedtuple
 
 from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
+from paasta_tools.deployd.common import clear_yaml_cache
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
@@ -97,6 +98,7 @@ class PaastaDeployWorker(PaastaThread):
     def process_service_instance(self, service_instance):
         bounce_timers = self.setup_timers(service_instance)
         self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
+        clear_yaml_cache(service_instance.service)
 
         bounce_timers.setup_marathon.start()
         return_code, bounce_again_in_seconds = deploy_marathon_service(
