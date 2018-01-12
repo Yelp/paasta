@@ -224,13 +224,15 @@ def main(argv=None):
         serv['state'] = provisioned_state
         ticket_desc = (
             "This ticket and CR have been auto-generated, and only requires action from your team to ship."
+            "\nPERF will also review this CR, after our shipit and your own sanity check of the new value,"
+            " you can merge and push the branch that jenkins created."
             "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
-            " during the 1 week prior to {d}. It initially had {x} cpus, but we think"
-            " it needs {y} cpus."
-            "\n- Dashboard: https://y.yelpcorp.com/{o}provisioned?{superregion_param}&{service_param}&{instance_param}"
+            " during the 1 week prior to {d}. It initially had {x} cpus, but based on the below dashboard,"
+            " we recommend {y} cpus."
+            "\n- Dashboard: https://y.yelpcorp.com/{o}provisioned?{cluster_param}&{service_param}&{instance_param}"
             "\n- Service owner: {n}"
             "\n- Estimated monthly excess cost: ${m}"
-            "\n\nFor more information:"
+            "\n\nFor more information and sizing examples for larger services:"
             "\n- Runbook: https://y.yelpcorp.com/rb-provisioning-alert"
             "\n- Alert owner: team-perf@yelp.com"
         ).format(
@@ -243,7 +245,7 @@ def main(argv=None):
             m=serv['money'],
             x=serv['old_cpus'],
             y=serv['cpus'],
-            superregion_param=_get_dashboard_qs_param('superregion', serv['cluster'].replace('marathon-', '')),
+            cluster_param=_get_dashboard_qs_param('superregion', serv['cluster'].replace('marathon-', '')),
             service_param=_get_dashboard_qs_param('service_name', serv['service']),
             instance_param=_get_dashboard_qs_param('instance_name', serv['instance']),
         )
