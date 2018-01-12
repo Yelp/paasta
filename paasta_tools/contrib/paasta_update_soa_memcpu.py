@@ -107,7 +107,7 @@ def get_perf_data(creds, filename):
         serv['project'] = d['result']['project']
         services_to_update.append(serv)
 
-    return services_to_update[1:]
+    return services_to_update
 
 
 def clone(branch_name):
@@ -128,13 +128,17 @@ def commit(filename, serv):
 
 
 def get_reviewers(filename):
+    recent_authors = set()
     authors = subprocess.check_output((
         'git', 'log', '--format=%ae', '--', filename,
     )).decode('UTF-8').splitlines()
 
-    authors = list(set(authors))
     authors = [x.split('@')[0] for x in authors]
-    return authors[:3]
+    for author in authors:
+        recent_authors.add(author)
+        if len(recent_authors) >= 3:
+            break
+    return recent_authors
 
 
 def review(filename, description, provisioned_state, manual_rb):
@@ -201,6 +205,11 @@ def create_jira_ticket(serv, creds, description):
     return tick.key
 
 
+def _get_dashboard_qs_param(param, value):
+    # Some dashboards may ask for query string params like param=value, but not this provider.
+    return 'variables%5B%5D={}%3D{}:{}'.format(param, param, value)
+
+
 def main(argv=None):
     args = parse_args(argv)
     services_to_update = get_perf_data(args.splunk_creds, args.file_splunk)
@@ -214,11 +223,14 @@ def main(argv=None):
 
         serv['state'] = provisioned_state
         ticket_desc = (
-            "We suspect that {s}.{i} in {c} may be {o}-provisioned"
-            " as of {d}. It initially had {x} cpus, but we think"
+            "This ticket and CR have been auto-generated, and only requires action from your team to ship."
+            "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
+            " during the 1 week prior to {d}. It initially had {x} cpus, but we think"
             " it needs {y} cpus."
-            "\n- Dashboard: https://y.yelpcorp.com/{o}provisioned\n- Service"
-            " owner: {n}\n- Estimated monthly excess cost: ${m}"
+            "\n- Dashboard: https://y.yelpcorp.com/{o}provisioned?{superregion_param}&{service_param}&{instance_param}"
+            "\n- Service owner: {n}"
+            "\n- Estimated monthly excess cost: ${m}"
+            "\n\nFor more information:"
             "\n- Runbook: https://y.yelpcorp.com/rb-provisioning-alert"
             "\n- Alert owner: team-perf@yelp.com"
         ).format(
@@ -231,25 +243,29 @@ def main(argv=None):
             m=serv['money'],
             x=serv['old_cpus'],
             y=serv['cpus'],
+            superregion_param=_get_dashboard_qs_param('superregion', serv['cluster'].replace('marathon-', '')),
+            service_param=_get_dashboard_qs_param('service_name', serv['service']),
+            instance_param=_get_dashboard_qs_param('instance_name', serv['instance']),
         )
         branch = ''
         if args.no_tick:
             branch = 'rightsize-{}'.format(int(time.time()))
         else:
             branch = create_jira_ticket(serv, args.jira_creds, ticket_desc)
-            with in_tempdir():
-                clone(branch)
-                edit_soa_configs(filename, serv['instance'], cpus)
-                try:
-                    commit(filename, serv)
-                    review(filename, ticket_desc, provisioned_state, args.manual_rb)
-                except Exception:
-                    print((
-                        "\nUnable to push changes to {f}. Check if {f} conforms to"
-                        "yelpsoa-configs yaml rules. No review created. To see the"
-                        "cpu suggestion for this service check {t}."
-                    ).format(f=filename, t=branch))
-                    continue
+
+        with in_tempdir():
+            clone(branch)
+            edit_soa_configs(filename, serv['instance'], cpus)
+            try:
+                commit(filename, serv)
+                review(filename, ticket_desc, provisioned_state, args.manual_rb)
+            except Exception:
+                print((
+                    "\nUnable to push changes to {f}. Check if {f} conforms to"
+                    "yelpsoa-configs yaml rules. No review created. To see the"
+                    "cpu suggestion for this service check {t}."
+                ).format(f=filename, t=branch))
+                continue
 
 
 if __name__ == '__main__':
