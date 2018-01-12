@@ -1,6 +1,21 @@
 paasta-tools (0.69.20) xenial; urgency=medium
 
   * 0.69.20 tagged with 'make release'
+    Commit: Merge pull request #1699 from Yelp/fix-kazoo-api-exceptions
+    Fix randomly closing ZK connections in paasta-api
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 12 Jan 2018 03:36:11 -0800
+
+paasta-tools (0.69.20) xenial; urgency=medium
+
+  * 0.69.20 tagged with 'make release'
+    Commit: Released 0.69.20 via make release
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 12 Jan 2018 03:36:02 -0800
+
+paasta-tools (0.69.20) xenial; urgency=medium
+
+  * 0.69.20 tagged with 'make release'
     Commit: Merge pull request #1697 from Yelp/zk-close  Close
     connections to Zookeeper properly
 
