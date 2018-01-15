@@ -255,26 +255,6 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication(in
                 .format(instance_config.job_id)) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_ignores_things_under_a_different_namespace(
-    instance_config,
-):
-    instance_config.get_registrations.return_value = 'fake_registration'
-    expected_replication_count = 8
-    mock_smartstack_replication_checker = mock.Mock()
-    mock_smartstack_replication_checker.get_replication_for_instance.return_value = \
-        {'fake_region': {'test.canary': 1, 'test.main': 4, 'test.fully_replicated': 8}}
-    with mock.patch(
-        'paasta_tools.check_marathon_services_replication.send_event_if_under_replication',
-        autospec=True,
-    ) as mock_send_event_if_under_replication:
-        check_marathon_services_replication.check_smartstack_replication_for_instance(
-            instance_config=instance_config,
-            expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
-        )
-        mock_send_event_if_under_replication.call_count == 0
-
-
 def test_check_smartstack_replication_for_instance_ok_with_enough_replication_multilocation(
     instance_config,
 ):
@@ -453,6 +433,34 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
             instance_config=instance_config,
             expected_count=100,
             smartstack_replication_checker=None,
+        )
+
+
+def test_check_service_replication_for_smartstack_with_different_namespace(instance_config):
+    instance_config.get_instances.return_value = 100
+    all_tasks = []
+    with mock.patch(
+        'paasta_tools.marathon_tools.get_proxy_port_for_instance',
+        autospec=True,
+        return_value=666,
+    ), mock.patch(
+        'paasta_tools.check_marathon_services_replication.check_smartstack_replication_for_instance',
+        autospec=True,
+    ) as mock_check_smartstack_replication_for_service, mock.patch(
+        'paasta_tools.check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance',
+        autospec=True,
+    ) as mock_check_healthy_marathon_tasks:
+        instance_config.get_registrations.return_value = ['some-random-other-namespace']
+        check_marathon_services_replication.check_service_replication(
+            instance_config=instance_config,
+            all_tasks=all_tasks,
+            smartstack_replication_checker=None,
+        )
+        assert not mock_check_smartstack_replication_for_service.called
+        mock_check_healthy_marathon_tasks.assert_called_once_with(
+            instance_config=instance_config,
+            expected_count=100,
+            all_tasks=[],
         )
 
 

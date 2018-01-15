@@ -123,14 +123,6 @@ def check_smartstack_replication_for_instance(
     :param instance_config: an instance of MarathonServiceConfig
     :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
     """
-    primary_registration = instance_config.get_registrations()[0]
-
-    if primary_registration != instance_config.job_id:
-        log.debug(
-            '%s is announced under: %s. '
-            'Not checking replication for it' % (instance_config.job_id, primary_registration),
-        )
-        return
 
     crit_threshold = instance_config.get_replication_crit_percentage()
 
@@ -314,7 +306,11 @@ def check_service_replication(
         cluster=instance_config.cluster,
         soa_dir=instance_config.soa_dir,
     )
-    if proxy_port is not None:
+
+    registrations = instance_config.get_registrations()
+    # if the primary registration does not match the service_instance name then
+    # the best we can do is check marathon for replication (for now).
+    if proxy_port is not None and registrations[0] == instance_config.job_id:
         check_smartstack_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
