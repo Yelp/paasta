@@ -36,6 +36,10 @@ def emit_metrics_for_type(instance_type):
         gauge.set(service_instance_config.get_mem())
         gauge = yelp_meteorite.create_gauge('paasta.service.disk', dimensions)
         gauge.set(service_instance_config.get_disk())
+        if hasattr(service_instance_config, 'get_instances'):
+            if service_instance_config.get_max_instances() is None:
+                gauge = yelp_meteorite.create_gauge('paasta.service.instances', dimensions)
+                gauge.set(service_instance_config.get_instances())
 
 
 def main():

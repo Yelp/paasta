@@ -621,7 +621,7 @@ def autoscale_marathon_instance(marathon_service_config, system_paasta_config, m
         'instance_name': marathon_service_config.instance,
     }
     if yelp_meteorite:
-        gauge = yelp_meteorite.create_gauge('paasta.service.autoscaler', meteorite_dims)
+        gauge = yelp_meteorite.create_gauge('paasta.service.instances', meteorite_dims)
         gauge.set(new_instance_count)
         gauge = yelp_meteorite.create_gauge('paasta.service.max_instances', meteorite_dims)
         gauge.set(marathon_service_config.get_max_instances())
