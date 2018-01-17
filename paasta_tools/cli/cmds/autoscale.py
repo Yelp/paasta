@@ -27,34 +27,34 @@ log = logging.getLogger(__name__)
 
 
 def add_subparser(subparsers):
-    bespoke_parser = subparsers.add_parser(
-        'bespoke-autoscale',
-        help="Manually scale a service up and down if is set to use a 'bespoke' autoscaler",
+    autoscale_parser = subparsers.add_parser(
+        'autoscale',
+        help="Manually scale a service up and down manually, bypassing the normal autoscaler",
     )
 
-    bespoke_parser.add_argument(
+    autoscale_parser.add_argument(
         '-s', '--service',
         help="Service that you want to stop. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
-    bespoke_parser.add_argument(
+    autoscale_parser.add_argument(
         '-i', '--instance',
         help="Instance of the service that you want to stop. Like 'main' or 'canary'.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
-    bespoke_parser.add_argument(
+    autoscale_parser.add_argument(
         '-c', '--cluster',
         help="The PaaSTA cluster that has the service instance you want to stop. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
-    bespoke_parser.add_argument(
+    autoscale_parser.add_argument(
         '--set',
         help="Set the number to scale to. Must be an Int.",
         type=int,
     )
-    bespoke_parser.set_defaults(command=paasta_bespoke_autoscale)
+    autoscale_parser.set_defaults(command=paasta_autoscale)
 
 
-def paasta_bespoke_autoscale(args):
+def paasta_autoscale(args):
     log.setLevel(logging.DEBUG)
     service = figure_out_service_name(args)
     api = client.get_paasta_api_client(cluster=args.cluster, http_res=True)
@@ -66,7 +66,7 @@ def paasta_bespoke_autoscale(args):
         log.debug("Getting the current autoscaler count...")
         res, http = api.autoscaler.get_autoscaler_count(service=service, instance=args.instance).result()
     else:
-        log.debug("Setting desired instances to {}".format(args.set))
+        log.debug("Setting desired instances to {}.".format(args.set))
         body = {'desired_instances': int(args.set)}
         res, http = api.autoscaler.update_autoscaler_count(
             service=service, instance=args.instance, json_body=body,
