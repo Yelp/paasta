@@ -429,21 +429,21 @@ class NativeScheduler(Scheduler):
         new_task_ids_to_kill = new_task_ids_by_desirability[desired_instances:]
 
         old_tasks_with_params = self.get_old_tasks(base_task['name'], all_tasks_with_params)
-        old_happy_tasks_with_params = self.get_happy_tasks(old_tasks_with_params)
         old_draining_tasks_with_params = self.get_draining_tasks(old_tasks_with_params)
-
-        old_unhappy_task_ids = list(
-            set(old_tasks_with_params.keys()) -
-            set(old_happy_tasks_with_params.keys()) -
-            set(old_draining_tasks_with_params),
+        old_non_draining_tasks = sorted(
+            list(
+                set(old_tasks_with_params.keys()) -
+                set(old_draining_tasks_with_params),
+            ),
+            key=self.make_healthiness_sorter(base_task['name'], all_tasks_with_params),
+            reverse=True,
         )
 
         actions = bounce_lib.crossover_bounce(
             new_config={"instances": desired_instances},
             new_app_running=True,
             happy_new_tasks=happy_new_tasks_with_params.keys(),
-            old_app_live_happy_tasks=list(old_happy_tasks_with_params.keys()) + new_task_ids_to_kill,
-            old_app_live_unhappy_tasks=old_unhappy_task_ids,
+            old_non_draining_tasks=new_task_ids_to_kill + old_non_draining_tasks,
         )
 
         with a_sync.idle_event_loop():

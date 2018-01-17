@@ -813,6 +813,58 @@ class TestSetupMarathonJob:
             # But since they haven't drained yet, we should not kill the app.
             assert mock_kill_old_ids.call_count == 1
 
+    def test_do_bounce_passes_all_old_tasks_except_draining_ones_to_bounce_func(self):
+        with mock.patch(
+            'paasta_tools.setup_marathon_job.kill_given_tasks', autospec=True,
+        ):
+            fake_client = mock.Mock()
+            bounce_func = mock.Mock(return_value={
+                'create_app': False,
+                'tasks_to_drain': set(),
+            })
+
+            happy_new_tasks = [(mock.Mock(name='happy_new_task'), fake_client)]
+            old_app_live_happy_tasks = {('', fake_client): {mock.Mock(name='old_app_live_happy_task')}}
+            old_app_live_unhappy_tasks = {('', fake_client): {mock.Mock(name='old_app_live_unhappy_task')}}
+            old_app_draining_tasks = {('', fake_client): {mock.Mock(name='old_app_draining_task')}}
+            old_app_at_risk_tasks = {('', fake_client): {mock.Mock(name='old_app_at_risk_task')}}
+
+            all_non_draining_tasks = []
+            all_non_draining_tasks += [t for t, c in happy_new_tasks]
+            all_non_draining_tasks += old_app_live_happy_tasks[('', fake_client)]
+            all_non_draining_tasks += old_app_live_unhappy_tasks[('', fake_client)]
+            all_non_draining_tasks += old_app_at_risk_tasks[('', fake_client)]
+
+            setup_marathon_job.do_bounce(
+                bounce_func=bounce_func,
+                drain_method=mock.Mock(),
+                config=mock.MagicMock(),
+                new_app_running=False,
+                happy_new_tasks=happy_new_tasks,
+                old_app_live_happy_tasks=old_app_live_happy_tasks,
+                old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+                old_app_draining_tasks=old_app_draining_tasks,
+                old_app_at_risk_tasks=old_app_at_risk_tasks,
+                service='service',
+                bounce_method='bounce_method',
+                serviceinstance='service.instance',
+                cluster='cluster',
+                instance='instance',
+                marathon_jobid='service.instance.git11111111.config22222222',
+                clients=marathon_tools.MarathonClients(current=[fake_client], previous=[fake_client]),
+                soa_dir='/doesntexist',
+                job_config=mock.Mock(get_marathon_shard=mock.Mock(return_value=None)),
+                bounce_margin_factor=1.0,
+            )
+
+            kwargs = bounce_func.call_args[1]
+            all_passed_tasks_with_clients = set()
+            all_passed_tasks_with_clients |= set(kwargs['happy_new_tasks'])
+            all_passed_tasks_with_clients |= set(kwargs['old_non_draining_tasks'])
+            all_passed_tasks = {t for t, c in all_passed_tasks_with_clients}
+
+            assert set(all_non_draining_tasks) == set(all_passed_tasks)
+
     def test_deploy_service_scale_up(self):
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
@@ -1556,14 +1608,19 @@ class TestSetupMarathonJob:
             )
             assert result[0] == 0, "Expected successful result; got (%d, %s, %d)" % result
             assert fake_client.create_app.call_count == 0
+
             fake_bounce_func.assert_called_once_with(
                 new_config=fake_config,
                 new_app_running=False,
                 happy_new_tasks=[],
-                old_app_live_happy_tasks={(old_task_to_drain, fake_client), (old_task_dont_drain, fake_client)},
-                old_app_live_unhappy_tasks=set(),
+                old_non_draining_tasks=mock.ANY,
                 margin_factor=1,
             )
+
+            assert set(fake_bounce_func.call_args[1]['old_non_draining_tasks']) == {
+                (old_task_dont_drain, fake_client),
+                (old_task_to_drain, fake_client),
+            }
 
             assert fake_drain_method.drain.call_count == 1
             fake_drain_method.drain.assert_any_call(old_task_to_drain)

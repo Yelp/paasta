@@ -356,8 +356,7 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=[],
-            old_app_live_unhappy_tasks=[],
+            old_non_draining_tasks=[],
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -375,8 +374,7 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=[],
-            old_app_live_unhappy_tasks=[],
+            old_non_draining_tasks=[],
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
@@ -395,8 +393,7 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(old_app_live_happy_tasks + old_app_live_unhappy_tasks),
@@ -415,8 +412,7 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=[],
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": True,
             "tasks_to_drain": set(old_app_live_happy_tasks + old_app_live_unhappy_tasks),
@@ -435,8 +431,7 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=[],
-            old_app_live_unhappy_tasks=[],
+            old_non_draining_tasks=[],
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -455,8 +450,7 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=[],
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -476,8 +470,7 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
@@ -497,8 +490,7 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(old_app_live_happy_tasks + old_app_live_unhappy_tasks),
@@ -518,8 +510,7 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
@@ -540,8 +531,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -560,8 +550,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -580,8 +569,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
             margin_factor=0.95,
         )
         assert actual["create_app"] is True
@@ -601,8 +589,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(old_app_live_unhappy_tasks),
@@ -622,8 +609,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
@@ -639,15 +625,14 @@ class TestCrossoverBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
-        old_app_live_happy_tasks = {}
+        old_app_live_happy_tasks = []
         old_app_live_unhappy_tasks = [mock.Mock() for _ in range(10)]
 
         actual = bounce_lib.crossover_bounce(
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 5
@@ -666,8 +651,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
         assert actual['create_app'] is False
         assert actual['tasks_to_drain'] == set(old_app_live_unhappy_tasks)
@@ -687,8 +671,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
 
         assert actual['create_app'] is False
@@ -707,8 +690,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
 
         assert actual['create_app'] is False
@@ -731,8 +713,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
 
         assert actual['create_app'] is False
@@ -752,8 +733,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         )
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 4
@@ -768,8 +748,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
             margin_factor=0.95,
         )
         assert actual['create_app'] is False
@@ -785,8 +764,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
             margin_factor=0.66,
         )
         assert actual['create_app'] is False
@@ -806,8 +784,7 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
@@ -828,8 +805,7 @@ class TestDownThenUpBounce(object):
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
@@ -847,8 +823,7 @@ class TestDownThenUpBounce(object):
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=old_app_live_happy_tasks,
-            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            old_non_draining_tasks=old_app_live_happy_tasks + old_app_live_unhappy_tasks,
         ) == {
             "create_app": False,
             "tasks_to_drain": set(old_app_live_happy_tasks + old_app_live_unhappy_tasks),
@@ -865,8 +840,7 @@ class TestDownThenUpBounce(object):
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_live_happy_tasks=[],
-            old_app_live_unhappy_tasks=[],
+            old_non_draining_tasks=[],
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),

@@ -24,6 +24,7 @@ from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import Mapping
+from typing import Sequence
 from typing import Set
 from typing import TypeVar
 
@@ -67,8 +68,7 @@ BounceMethod = Callable[
         Arg(BounceMethodConfigDict, 'new_config'),
         Arg(bool, 'new_app_running'),
         Arg(Collection, 'happy_new_tasks'),
-        Arg(Collection, 'old_app_live_happy_tasks'),
-        Arg(Collection, 'old_app_live_unhappy_tasks'),
+        Arg(Sequence, 'old_non_draining_tasks'),
         DefaultArg(float, 'margin_factor'),
     ],
     BounceMethodResult
@@ -279,8 +279,7 @@ def brutal_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Collection,
-    old_app_live_unhappy_tasks: Collection,
+    old_non_draining_tasks: Sequence,
     margin_factor=1.0,
 ) -> BounceMethodResult:
     """Pays no regard to safety. Starts the new app if necessary, and kills any
@@ -290,8 +289,8 @@ def brutal_bounce(
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
-                               that are being drained are not included in this dictionary.
+    :param old_non_draining_tasks: A sequence of tasks not belonging to the new version. Tasks should be ordered from
+                                   most desirable to least desirable.
     :param margin_factor: the multiplication factor used to calculate the number of instances to be drained
                           when the crossover method is used.
     :return: A dictionary representing the desired bounce actions and containing the following keys:
@@ -300,7 +299,7 @@ def brutal_bounce(
     """
     return {
         "create_app": not new_app_running,
-        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
+        "tasks_to_drain": set(old_non_draining_tasks),
     }
 
 
@@ -309,8 +308,7 @@ def upthendown_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Collection,
-    old_app_live_unhappy_tasks: Collection,
+    old_non_draining_tasks: Sequence,
     margin_factor=1.0,
 ) -> BounceMethodResult:
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
@@ -320,7 +318,7 @@ def upthendown_bounce(
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
             "create_app": False,
-            "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
+            "tasks_to_drain": set(old_non_draining_tasks),
         }
     else:
         return {
@@ -334,8 +332,7 @@ def crossover_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Collection,
-    old_app_live_unhappy_tasks: Collection,
+    old_non_draining_tasks: Sequence,
     margin_factor=1.0,
 ) -> BounceMethodResult:
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
@@ -351,10 +348,9 @@ def crossover_bounce(
         len(happy_new_tasks), 0,
     )
 
-    old_tasks = list(old_app_live_happy_tasks) + list(old_app_live_unhappy_tasks)
     return {
         "create_app": not new_app_running,
-        "tasks_to_drain": set(old_tasks[needed_count:]),
+        "tasks_to_drain": set(old_non_draining_tasks[needed_count:]),
     }
 
 
@@ -363,8 +359,7 @@ def downthenup_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Collection,
-    old_app_live_unhappy_tasks: Collection,
+    old_non_draining_tasks: Sequence,
     margin_factor=1.0,
 ) -> BounceMethodResult:
     """Stops any old apps and waits for them to die before starting a new one.
@@ -372,8 +367,8 @@ def downthenup_bounce(
     See the docstring for brutal_bounce() for parameters and return value.
     """
     return {
-        "create_app": not old_app_live_happy_tasks and not new_app_running,
-        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
+        "create_app": not old_non_draining_tasks and not new_app_running,
+        "tasks_to_drain": set(old_non_draining_tasks),
     }
 
 
@@ -382,8 +377,7 @@ def down_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
     happy_new_tasks: Collection,
-    old_app_live_happy_tasks: Collection,
-    old_app_live_unhappy_tasks: Collection,
+    old_non_draining_tasks: Sequence,
     margin_factor=1.0,
 ) -> BounceMethodResult:
     """
@@ -392,7 +386,7 @@ def down_bounce(
     """
     return {
         "create_app": False,
-        "tasks_to_drain": set(old_app_live_happy_tasks) | set(old_app_live_unhappy_tasks),
+        "tasks_to_drain": set(old_non_draining_tasks),
     }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
