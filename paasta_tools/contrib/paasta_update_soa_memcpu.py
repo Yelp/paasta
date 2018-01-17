@@ -223,9 +223,10 @@ def main(argv=None):
 
         serv['state'] = provisioned_state
         ticket_desc = (
-            "This ticket and CR have been auto-generated, and only requires action from your team to ship."
-            "\nPERF will also review this CR, after our shipit and your own sanity check of the new value,"
-            " you can merge and push the branch that jenkins created."
+            "This ticket and CR have been auto-generated to help keep PaaSTA right-sized."
+            "\nPERF will review this CR and give a shipit. After that shipit and your own sanity check of the new"
+            " value, proceed to merge and push the branch that jenkins created. Open an issue with any concerns"
+            " and someone from PERF will respond."
             "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
             " during the 1 week prior to {d}. It initially had {x} cpus, but based on the below dashboard,"
             " we recommend {y} cpus."
