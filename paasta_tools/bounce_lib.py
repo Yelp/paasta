@@ -198,11 +198,8 @@ def kill_old_ids(old_ids, client):
     :param old_ids: A list of old job/app ids to kill
     :param client: A marathon.MarathonClient object"""
     for app in old_ids:
-        try:
-            log.info("Killing %s", app)
-            delete_marathon_app(app, client)
-        except Exception:
-            continue
+        log.info("Killing %s", app)
+        delete_marathon_app(app, client)
 
 
 def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
