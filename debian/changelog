@@ -1,3 +1,11 @@
+paasta-tools (0.69.23) xenial; urgency=medium
+
+  * 0.69.23 tagged with 'make release'
+    Commit: Merge pull request #1707 from Yelp/kill_old_ids-raise  Make
+    paasta_tools.bounce_lib.kill_old_ids raise exceptions for deployd
+
+ -- Nathan Handler <nhandler@yelp.com>  Thu, 18 Jan 2018 13:54:02 -0800
+
 paasta-tools (0.69.22) xenial; urgency=medium
 
   * 0.69.22 tagged with 'make release'
