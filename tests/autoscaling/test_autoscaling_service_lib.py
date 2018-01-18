@@ -315,22 +315,31 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
     fake_mesos_task = mock.MagicMock(
         stats_callable=mock.MagicMock(return_value={
             'cpus_limit': 1.1,
-            'cpus_system_time_secs': 240,
-            'cpus_user_time_secs': 240,
+            # These values are counter. They can only increment.
+            # This container has been running for 80 minutes at 100% CPU usage of one core
+            # and for the last 10 minutes at 80%
+            # (80 * 60) + 0.8 * (10 * 60) = 4800 + 600 = 5400 cpu seconds consumed
+            # Let's just ignore the system cpu time for the sake of this test
+            'cpus_system_time_secs': 0,
+            'cpus_user_time_secs': 80 * 60 + 0.8 * 10 * 60,
         }),
     )
-    # The CPU Value for this task is wrongly reported by Mesos.
-    # We make sure that the outcome of this test with filter enabled
-    # is the same than the previous test
     fake_mesos_task_2 = mock.MagicMock(
         stats_callable=mock.MagicMock(return_value={
             'cpus_limit': 1.1,
-            'cpus_system_time_secs': 2222222222,
-            'cpus_user_time_secs': 2222222222,
+            # The CPU Value for this task is wrongly reported by Mesos.
+            # We expect the mean utilization to not take this into account.
+            'cpus_system_time_secs': 0,
+            'cpus_user_time_secs': 948184546,
         }),
     )
     fake_mesos_task_3 = mock.MagicMock(
-        stats_callable=lambda: {},
+        stats_callable=mock.MagicMock(return_value={
+            'cpus_limit': 1.1,
+            # This task has just started 10 minutes and 1 second ago and is using 100% of one CPU
+            'cpus_system_time_secs': 0,
+            'cpus_user_time_secs': 1 + 10 * 60,
+        }),
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
     fake_mesos_task_2.__getitem__.return_value = 'fake-service.fake-instance2'
@@ -343,12 +352,14 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
     ]
 
     current_time = datetime.now()
-    last_time = (current_time - timedelta(seconds=600)).strftime('%s')
+    last_time = (current_time - timedelta(seconds=600)).strftime('%s')  # 10 minutes
 
     fake_old_utilization_data = ','.join([
-        '0:fake-service.fake-instance',
-        '300:fake-service.fake-instance2',
-        '123456:fake-service.fake-instance3',
+        # 80 minutes at 100%
+        '4800:fake-service.fake-instance',
+        '4800:fake-service.fake-instance2',
+        # 1 second at 100% CPU
+        '1:fake-service.fake-instance3',
     ])
 
     zookeeper_get_payload = {
@@ -361,7 +372,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
         return_value=mock.Mock(get=mock.Mock(
             side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
         )),
-    ) as mock_zk_client, mock.patch(
+    ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
     ) as mock_datetime, mock.patch(
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
@@ -369,41 +380,14 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
+        # We expect an average of 80% and 100% CPU usage == 90%
+        assert 0.9 == autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_system_paasta_config,
             fake_marathon_tasks,
             (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
             log_utilization_data=log_utilization_data,
         )
-        mock_zk_client.return_value.set.assert_has_calls(
-            [
-                mock.call(
-                    '/autoscaling/fake-service/fake-instance/cpu_last_time',
-                    current_time.strftime('%s').encode('utf8'),
-                ),
-                mock.call(
-                    '/autoscaling/fake-service/fake-instance/cpu_data',
-                    '480.0:fake-service.fake-instance'.encode('utf8'),
-                ),
-            ], any_order=True,
-        )
-        assert log_utilization_data == {
-            last_time: fake_old_utilization_data,
-            current_time.strftime('%s'): '480.0:fake-service.fake-instance',
-        }
-
-        # test noop mode
-        mock_zk_client.return_value.set.reset_mock()
-        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
-            fake_marathon_service_config,
-            fake_system_paasta_config,
-            fake_marathon_tasks,
-            (fake_mesos_task,),
-            log_utilization_data=log_utilization_data,
-            noop=True,
-        )
-        assert not mock_zk_client.return_value.set.called
 
 
 def test_get_json_body_from_service():

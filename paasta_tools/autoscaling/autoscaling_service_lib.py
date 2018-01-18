@@ -386,19 +386,6 @@ def mesos_cpu_metrics_provider(
                 utime = float(stats['cpus_user_time_secs'])
                 stime = float(stats['cpus_system_time_secs'])
                 limit = float(stats['cpus_limit']) - .1
-
-                # It is unlikely that the cputime consumed by the task is greater than the CPU shares that we enforce.
-                # This is instead probably a bug in mesos reporting CPU value. Let's filter it out
-                if system_paasta_config.get_filter_bogus_mesos_cputime_enabled():
-                    cpu_burst_allowance = (
-                        marathon_service_config.get_cpu_quota() /
-                        marathon_service_config.get_cpu_period()
-                    )
-                    if (stime + utime) > limit * float(time_delta) * cpu_burst_allowance:
-                        log.warning('Ignoring potentially bogus cputime values for task {}'.format(str(task_id)))
-                        log.debug('Content of stats: {}'.format(str(stats)))
-                        continue
-
                 mesos_cpu_data[task_id] = (stime + utime) / limit
             except KeyError:
                 pass
@@ -420,7 +407,27 @@ def mesos_cpu_metrics_provider(
     for datum in last_cpu_data:
         last_cpu_seconds, task_id = datum.split(':')
         if task_id in mesos_cpu_data:
-            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
+            cputime_delta = mesos_cpu_data[task_id] - float(last_cpu_seconds)
+
+            if system_paasta_config.get_filter_bogus_mesos_cputime_enabled():
+                # It is unlikely that the cputime consumed by a task is greater than the CPU limits
+                # that we enforce. This is a bug in Mesos (tracked in PAASTA-13510)
+                cpu_burst_allowance = (
+                    marathon_service_config.get_cpu_quota() /
+                    marathon_service_config.get_cpu_period()
+                )
+                if cputime_delta > time_delta * cpu_burst_allowance:
+                    log.warning('Ignoring potentially bogus cputime values for task {}'.format(str(task_id)))
+                    log.debug(
+                        'Elapsed time: {}, Enforced CPU limit: {}, CPU time consumed: {}'.format(
+                            time_delta,
+                            cpu_burst_allowance,
+                            cputime_delta,
+                        ),
+                    )
+                    continue
+
+            utilization[task_id] = cputime_delta / time_delta
 
     if not utilization:
         raise MetricsProviderNoDataError("""The mesos_cpu metrics provider doesn't have Zookeeper data for this service.
@@ -428,7 +435,6 @@ def mesos_cpu_metrics_provider(
 
     task_utilization = utilization.values()
     mean_utilization = mean(task_utilization)
-
     return mean_utilization
 
 
