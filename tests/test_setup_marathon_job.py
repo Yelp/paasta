@@ -816,6 +816,8 @@ class TestSetupMarathonJob:
     def test_do_bounce_passes_all_old_tasks_except_draining_ones_to_bounce_func(self):
         with mock.patch(
             'paasta_tools.setup_marathon_job.kill_given_tasks', autospec=True,
+        ), mock.patch(
+            'paasta_tools.setup_marathon_job._log', autospec=True,
         ):
             fake_client = mock.Mock()
             bounce_func = mock.Mock(return_value={
