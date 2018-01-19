@@ -1,3 +1,11 @@
+paasta-tools (0.69.24) xenial; urgency=medium
+
+  * 0.69.24 tagged with 'make release'
+    Commit: Merge pull request #1708 from Yelp/fix_mesos_cputime_filter
+    Filtering out the delta cpu_time, not absolute cpu_time
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Thu, 18 Jan 2018 17:09:18 -0800
+
 paasta-tools (0.69.23) xenial; urgency=medium
 
   * 0.69.23 tagged with 'make release'
