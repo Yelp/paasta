@@ -276,12 +276,19 @@ def do_bounce(
 
     new_client = clients.get_current_client_for_service(job_config)
 
+    old_non_draining_tasks = list(
+        old_app_tasks_to_task_client_pairs(old_app_live_happy_tasks),
+    ) + list(
+        old_app_tasks_to_task_client_pairs(old_app_live_unhappy_tasks),
+    ) + list(
+        old_app_tasks_to_task_client_pairs(old_app_at_risk_tasks),
+    )
+
     actions = bounce_func(
         new_config=config,
         new_app_running=new_app_running,
         happy_new_tasks=happy_new_tasks,
-        old_app_live_happy_tasks=old_app_tasks_to_task_client_pairs(old_app_live_happy_tasks),
-        old_app_live_unhappy_tasks=old_app_tasks_to_task_client_pairs(old_app_live_unhappy_tasks),
+        old_non_draining_tasks=old_non_draining_tasks,
         margin_factor=bounce_margin_factor,
     )
 
