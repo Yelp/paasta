@@ -1,3 +1,11 @@
+paasta-tools (0.69.25) xenial; urgency=medium
+
+  * 0.69.25 tagged with 'make release'
+    Commit: Merge pull request #1709 from Yelp/hliu-spp  1st iteration
+    of paasta spark-run
+
+ -- Huadong Liu <hliu@yelp.com>  Tue, 23 Jan 2018 10:52:54 -0800
+
 paasta-tools (0.69.24) xenial; urgency=medium
 
   * 0.69.24 tagged with 'make release'

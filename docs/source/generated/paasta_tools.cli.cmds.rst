@@ -34,6 +34,7 @@ Submodules
    paasta_tools.cli.cmds.rerun
    paasta_tools.cli.cmds.rollback
    paasta_tools.cli.cmds.security_check
+   paasta_tools.cli.cmds.spark_run
    paasta_tools.cli.cmds.start_stop_restart
    paasta_tools.cli.cmds.status
    paasta_tools.cli.cmds.sysdig
