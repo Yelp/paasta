@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import getpass
 from socket import gaierror
 
+import ephemeral_port_reserve
 import mock
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
@@ -801,3 +803,24 @@ def test_get_container_name():
     mock_task = mock.Mock(slave_id='slave1', executor={'container': 'container1'})
     ret = utils.get_container_name(mock_task)
     assert ret == 'mesos-slave1.container1'
+
+
+def test_pick_random_port():
+    def fake_epr(ip, port):
+        return port
+
+    with mock.patch.object(
+        ephemeral_port_reserve, 'reserve', side_effect=fake_epr,
+    ), mock.patch.object(
+        getpass, 'getuser', return_value='nobody', autospec=True,
+    ):
+        # Two calls with the same service should try to reserve the same port.
+        port1 = utils.pick_random_port('fake_service')
+        port2 = utils.pick_random_port('fake_service')
+        assert port1 == port2
+        assert 33000 <= port1 < 58000
+
+        # A third call with a different service should try to reserve a different port.
+        port3 = utils.pick_random_port('different_fake_service')
+        assert port1 != port3
+        assert 33000 <= port3 < 58000
