@@ -21,7 +21,7 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 * ``max_instances``
 * ``backoff_seconds``
 
-Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
+Top level keys are instance names, e.g. ``main`` and ``canary``. Each
 instance MAY have:
 
   * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
@@ -37,10 +37,10 @@ instance MAY have:
     met, other than a ``TASK_FAILED`` message. For more a more detailed read on
     how this works, see the docs on `isolation <isolation.html>`_
 
-  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
-    disk is constrained to the specified limit, and tasks will receive 'No space
-    left on device' errors if they attempt to exceed these limits, and then be
-    unable to write any more data to disk.
+  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
+    may or may not be enforced, but services should set their ``disk`` setting
+    regardless to ensure the scheduler has adequate information for distributing
+    tasks.
 
   * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
     to empty dictionary. Each ulimit value is a dictionary with the soft limit
@@ -64,8 +64,6 @@ instance MAY have:
 
   * ``max_instances``: When autoscaling, the maximum number of instances that
     marathon will create for a service
-
-  * ``nerve_ns``: **DEPRECATED** please use ``registrations``.
 
   * ``registrations``: A list of SmartStack registrations (service.namespace)
     where instances of this PaaSTA service ought register in. In SmartStack,
