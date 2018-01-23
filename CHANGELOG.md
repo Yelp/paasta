@@ -1,10 +1,73 @@
 # Change Log
 
-## [0.69.18](https://github.com/Yelp/paasta/tree/0.69.18) (2018-01-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.17...0.69.18)
+## [0.69.26](https://github.com/Yelp/paasta/tree/0.69.26) (2018-01-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.24...0.69.26)
 
 **Merged pull requests:**
 
+- 1st iteration of paasta spark-run [\#1709](https://github.com/Yelp/paasta/pull/1709) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.69.24](https://github.com/Yelp/paasta/tree/v0.69.24) (2018-01-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.23...v0.69.24)
+
+**Merged pull requests:**
+
+- Filtering out the delta cpu\_time, not absolute cpu\_time [\#1708](https://github.com/Yelp/paasta/pull/1708) ([matfra](https://github.com/matfra))
+
+## [v0.69.23](https://github.com/Yelp/paasta/tree/v0.69.23) (2018-01-18)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.22...v0.69.23)
+
+**Closed issues:**
+
+- Old Marathon apps can fail to be cleaned up \(stuck bounces\) [\#1706](https://github.com/Yelp/paasta/issues/1706)
+
+**Merged pull requests:**
+
+- Make paasta\_tools.bounce\_lib.kill\_old\_ids raise exceptions for deployd [\#1707](https://github.com/Yelp/paasta/pull/1707) ([nhandler](https://github.com/nhandler))
+- Rename the bespoke-autoscale command to just 'autoscale' [\#1705](https://github.com/Yelp/paasta/pull/1705) ([solarkennedy](https://github.com/solarkennedy))
+- Always emit 'instances' to signalfx for knowing what the desired instance count is [\#1704](https://github.com/Yelp/paasta/pull/1704) ([solarkennedy](https://github.com/solarkennedy))
+- Add missing space [\#1702](https://github.com/Yelp/paasta/pull/1702) ([nhandler](https://github.com/nhandler))
+- Tweaks to paasta rightsizer script. [\#1701](https://github.com/Yelp/paasta/pull/1701) ([thebostik](https://github.com/thebostik))
+
+## [v0.69.22](https://github.com/Yelp/paasta/tree/v0.69.22) (2018-01-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.21...v0.69.22)
+
+**Merged pull requests:**
+
+- Check marathon replication on non-default reg [\#1700](https://github.com/Yelp/paasta/pull/1700) ([mattmb](https://github.com/mattmb))
+- Tried to clarify the paasta stop message again [\#1691](https://github.com/Yelp/paasta/pull/1691) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.69.21](https://github.com/Yelp/paasta/tree/v0.69.21) (2018-01-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.20...v0.69.21)
+
+**Merged pull requests:**
+
+- Fix randomly closing ZK connections in paasta-api [\#1699](https://github.com/Yelp/paasta/pull/1699) ([mattmb](https://github.com/mattmb))
+- validate error message improvement [\#1698](https://github.com/Yelp/paasta/pull/1698) ([chlgit](https://github.com/chlgit))
+
+## [v0.69.20](https://github.com/Yelp/paasta/tree/v0.69.20) (2018-01-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.19...v0.69.20)
+
+**Merged pull requests:**
+
+- Close connections to Zookeeper properly [\#1697](https://github.com/Yelp/paasta/pull/1697) ([keymone](https://github.com/keymone))
+- Revert the Mesos CPU sanity check and added Filter mesos cpu value [\#1690](https://github.com/Yelp/paasta/pull/1690) ([matfra](https://github.com/matfra))
+- Enabled paasta\_remote\_run to connect to diffferent mesos clusters [\#1680](https://github.com/Yelp/paasta/pull/1680) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.69.19](https://github.com/Yelp/paasta/tree/v0.69.19) (2018-01-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.18...v0.69.19)
+
+**Merged pull requests:**
+
+- Reduce deployd log verbosity [\#1695](https://github.com/Yelp/paasta/pull/1695) ([mattmb](https://github.com/mattmb))
+- Bump drain timeout for hacheck [\#1694](https://github.com/Yelp/paasta/pull/1694) ([mattmb](https://github.com/mattmb))
+
+## [v0.69.18](https://github.com/Yelp/paasta/tree/v0.69.18) (2018-01-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.17...v0.69.18)
+
+**Merged pull requests:**
+
+- When calling deploy\_marathon\_service from deployd, only fetch apps from relevant marathons. [\#1692](https://github.com/Yelp/paasta/pull/1692) ([EvanKrall](https://github.com/EvanKrall))
 - Use marathon 1.4.10 in itests [\#1689](https://github.com/Yelp/paasta/pull/1689) ([nhandler](https://github.com/nhandler))
 - Added a script to emit additional paasta metrics [\#1674](https://github.com/Yelp/paasta/pull/1674) ([solarkennedy](https://github.com/solarkennedy))
 - Added a bespoke-autoscale cli helper [\#1671](https://github.com/Yelp/paasta/pull/1671) ([solarkennedy](https://github.com/solarkennedy))
@@ -116,7 +179,6 @@
 - Perfscript [\#1649](https://github.com/Yelp/paasta/pull/1649) ([fboxwala](https://github.com/fboxwala))
 - Make metastatus able to group by multiple values properly [\#1642](https://github.com/Yelp/paasta/pull/1642) ([EvanKrall](https://github.com/EvanKrall))
 - pytest.fixture for SystemPaastaConfig  [\#1641](https://github.com/Yelp/paasta/pull/1641) ([oktopuz](https://github.com/oktopuz))
-- Instance configs experiments [\#1492](https://github.com/Yelp/paasta/pull/1492) ([oktopuz](https://github.com/oktopuz))
 
 ## [v0.69.5](https://github.com/Yelp/paasta/tree/v0.69.5) (2017-12-06)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.4...v0.69.5)
