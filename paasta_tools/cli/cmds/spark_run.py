@@ -299,6 +299,10 @@ def build_and_push_docker_image(args):
 
 
 def paasta_spark_run(args):
+    if args.build is False and os.geteuid() != 0:
+        paasta_print("Re-executing paasta spark-run with sudo")
+        os.execvp("sudo", ["sudo", "-H"] + sys.argv)
+
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
@@ -363,7 +367,7 @@ def paasta_spark_run(args):
             "Please wait while the image (%s) is pulled (times out after 5m)..." % docker_url,
             file=sys.stderr,
         )
-        retcode, _ = _run('sudo -H docker pull %s' % docker_url, stream=True, timeout=300)
+        retcode, _ = _run('docker pull %s' % docker_url, stream=True, timeout=300)
         if retcode != 0:
             paasta_print(
                 "\nPull failed. Are you authorized to run docker commands?",
