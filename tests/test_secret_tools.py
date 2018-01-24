@@ -15,8 +15,9 @@ from json.decoder import JSONDecodeError
 
 import mock
 
-from paasta_tools.secret_tools import _get_secret_name_from_ref
 from paasta_tools.secret_tools import get_hmac_for_secret
+from paasta_tools.secret_tools import get_secret_name_from_ref
+from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
 
 
@@ -27,8 +28,8 @@ def test_is_secret_ref():
     assert not is_secret_ref('anything_else')
 
 
-def test__get_secret_name_from_ref():
-    assert _get_secret_name_from_ref('SECRET(aaa-bbb-222_111)') == 'aaa-bbb-222_111'
+def test_get_secret_name_from_ref():
+    assert get_secret_name_from_ref('SECRET(aaa-bbb-222_111)') == 'aaa-bbb-222_111'
 
 
 def test_get_hmac_for_secret():
@@ -37,7 +38,7 @@ def test_get_hmac_for_secret():
     ) as mock_open, mock.patch(
         'json.load', autospec=True,
     ) as mock_json_load, mock.patch(
-        'paasta_tools.secret_tools._get_secret_name_from_ref', autospec=True,
+        'paasta_tools.secret_tools.get_secret_name_from_ref', autospec=True,
     ) as mock_get_secret_name_from_ref:
         mock_json_load.return_value = {
             'environments': {
@@ -65,3 +66,12 @@ def test_get_hmac_for_secret():
         mock_json_load.side_effect = JSONDecodeError('', '', 1)
         ret = get_hmac_for_secret("SECRET(secretsquirrel)", "service-name", "/nail/blah", 'dev')
         assert ret is None
+
+
+def test_get_secret_provider():
+    with mock.patch(
+        'paasta_tools.secret_providers.SecretProvider', autospec=True,
+    ) as mock_secret_provider:
+        ret = get_secret_provider('paasta_tools.secret_providers', '/nail/blah', 'test-service', 'norcal-devc')
+        mock_secret_provider.assert_called_with('/nail/blah', 'test-service', 'norcal-devc')
+        assert ret == mock_secret_provider.return_value

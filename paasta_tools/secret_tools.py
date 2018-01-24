@@ -15,6 +15,8 @@ import os
 import re
 from typing import Optional
 
+from paasta_tools.secret_providers import SecretProvider
+
 SECRET_REGEX = "^SECRET\([A-Za-z0-9_-]*\)$"
 
 
@@ -29,7 +31,7 @@ def get_hmac_for_secret(
     soa_dir: str,
     vault_environment: str,
 ) -> Optional[str]:
-    secret_name = _get_secret_name_from_ref(env_var_val)
+    secret_name = get_secret_name_from_ref(env_var_val)
     secret_path = os.path.join(
         soa_dir,
         service,
@@ -52,5 +54,15 @@ def get_hmac_for_secret(
         return None
 
 
-def _get_secret_name_from_ref(env_var_val: str) -> str:
+def get_secret_name_from_ref(env_var_val: str) -> str:
     return env_var_val.split('(')[1][:-1]
+
+
+def get_secret_provider(
+    secret_provider_name: str,
+    soa_dir: str,
+    service_name: str,
+    cluster_name: str,
+) -> SecretProvider:
+    SecretProvider = __import__(secret_provider_name, fromlist=['SecretProvider']).SecretProvider
+    return SecretProvider(soa_dir, service_name, cluster_name)

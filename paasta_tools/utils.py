@@ -1410,6 +1410,8 @@ SystemPaastaConfigDict = TypedDict(
         'vault_environment': str,
         'cluster_boost_enabled': bool,
         'filter_bogus_mesos_cputime_enabled': bool,
+        'vault_cluster_map': Dict,
+        'secret_provider': str,
 
     },
     total=False,
@@ -1770,6 +1772,16 @@ class SystemPaastaConfig(object):
         This must match the environment keys in the secret json files
         used by all services in this cluster"""
         return self.config_dict.get('vault_environment')
+
+    def get_vault_cluster_config(self) -> dict:
+        """ Get a map from paasta_cluster to vault ecosystem. We need
+        this because not every ecosystem will have its own vault cluster"""
+        return self.config_dict.get('vault_cluster_map', {})
+
+    def get_secret_provider_name(self) -> str:
+        """ Get the name for the configured secret_provider, used to
+        decrypt secrets"""
+        return self.config_dict.get('secret_provider', 'paasta_tools.secret_providers')
 
 
 def _run(
