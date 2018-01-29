@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import struct
 import time
@@ -21,10 +22,8 @@ from datetime import datetime
 from math import ceil
 from math import floor
 
-import gevent
-import requests
-from gevent import monkey
-from gevent import pool
+import a_sync
+import aiohttp
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
@@ -54,7 +53,6 @@ from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import mean
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
 try:
     import yelp_meteorite
@@ -109,7 +107,7 @@ class MetricsProviderNoDataError(ValueError):
 
 
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
-def threshold_decision_policy(current_instances, error, **kwargs):
+async def threshold_decision_policy(current_instances, error, **kwargs):
     """
     Decides to autoscale up or down by 10% if the service exceeds the upper or lower thresholds
     (see get_error_from_value() for how the thresholds are created)
@@ -124,7 +122,7 @@ def threshold_decision_policy(current_instances, error, **kwargs):
 
 
 @register_autoscaling_component('proportional', DECISION_POLICY_KEY)
-def proportional_decision_policy(
+async def proportional_decision_policy(
     zookeeper_path, current_instances, min_instances, max_instances, setpoint, utilization,
     num_healthy_instances, noop=False, offset=0.0, forecast_policy='current',
     good_enough_window=None, **kwargs,
@@ -158,9 +156,9 @@ def proportional_decision_policy(
 
     current_load = (utilization - offset) * num_healthy_instances
 
-    historical_load = fetch_historical_load(zk_path_prefix=zookeeper_path)
+    historical_load = await fetch_historical_load(zk_path_prefix=zookeeper_path)
     historical_load.append((time.time(), current_load))
-    save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
+    await save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
@@ -188,6 +186,7 @@ def zk_historical_load_path(zk_path_prefix):
     return "%s/historical_load" % zk_path_prefix
 
 
+@a_sync.to_async
 def save_historical_load(historical_load, zk_path_prefix):
     with ZookeeperPool() as zk:
         historical_load_bytes = serialize_historical_load(historical_load)
@@ -201,6 +200,7 @@ def serialize_historical_load(historical_load):
     return b''.join([struct.pack(HISTORICAL_LOAD_SERIALIZATION_FORMAT, *x) for x in historical_load])
 
 
+@a_sync.to_async
 def fetch_historical_load(zk_path_prefix):
     with ZookeeperPool() as zk:
         try:
@@ -225,14 +225,17 @@ def deserialize_historical_load(historical_load_bytes):
     return historical_load
 
 
-def get_json_body_from_service(host, port, endpoint, timeout=2):
-    return requests.get(
+async def get_json_body_from_service(host, port, endpoint, session, timeout=2):
+    # TODO use aiohttp
+    async with session.get(
         'http://%s:%s/%s' % (host, port, endpoint),
         headers={'User-Agent': get_user_agent()}, timeout=timeout,
-    ).json()
+    ) as resp:
+        print(f"resp = {resp!r}")
+        return await resp.json()
 
 
-def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
+async def get_http_utilization_for_a_task(task, service, endpoint, json_mapper, session):
     """
     Gets the task utilization by fetching json from an http endpoint
     and applying a function that maps it to a utilization.
@@ -245,8 +248,8 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     :returns: the service's utilization, from 0 to 1, or None
     """
     try:
-        return json_mapper(get_json_body_from_service(task.host, task.ports[0], endpoint))
-    except requests.exceptions.Timeout:
+        return json_mapper(await get_json_body_from_service(task.host, task.ports[0], endpoint, session))
+    except asyncio.TimeoutError:
         # If we time out querying an endpoint, assume the task is fully loaded
         # This won't trigger in the event of DNS error or when a request is refused
         # a requests.exception.ConnectionError is raised in those cases
@@ -257,7 +260,7 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
         log.error("Caught exception when querying %s on %s:%s : %s" % (service, task.host, task.ports[0], str(e)))
 
 
-def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
+async def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
     """
     Gets the mean utilization of a service across all of its tasks by fetching
     json from an http endpoint and applying a function that maps it to a
@@ -271,31 +274,31 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
     :returns: the service's mean utilization, from 0 to 1
     """
 
-    endpoint = endpoint.lstrip('/')
-    utilization = []
-    service = marathon_service_config.get_service()
+    async with aiohttp.ClientSession(
+        read_timeout=30, conn_timeout=5,
+    ) as session:
+        endpoint = endpoint.lstrip('/')
+        utilization = []
+        service = marathon_service_config.get_service()
 
-    monkey.patch_socket()
-    gevent_pool = pool.Pool(20)
-    jobs = [
-        gevent_pool.spawn(get_http_utilization_for_a_task, task, service, endpoint, json_mapper)
-        for task in marathon_tasks
-    ]
-    gevent.joinall(jobs)
+        coros = []
+        for task in marathon_tasks:
+            coros.append(get_http_utilization_for_a_task(task, service, endpoint, json_mapper, session))
 
-    for job in jobs:
-        if job.value is not None:
-            utilization.append(job.value)
+        for coro in coros:
+            result = await coro
+            if result is not None:
+                utilization.append(result)
 
-    if not utilization:
-        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
-            endpoint, marathon_service_config.service, marathon_service_config.instance,
-        ))
-    return mean(utilization)
+        if not utilization:
+            raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
+                endpoint, marathon_service_config.service, marathon_service_config.instance,
+            ))
+        return mean(utilization)
 
 
 @register_autoscaling_component('uwsgi', SERVICE_METRICS_PROVIDER_KEY)
-def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status/uwsgi', **kwargs):
+async def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status/uwsgi', **kwargs):
     """
     Gets the mean utilization of a service across all of its tasks, where
     the utilization of a task is the percentage of non-idle workers as read
@@ -313,11 +316,11 @@ def uwsgi_metrics_provider(marathon_service_config, marathon_tasks, endpoint='st
         utilization = [1.0 if worker['status'] != 'idle' else 0.0 for worker in workers]
         return mean(utilization)
 
-    return get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, uwsgi_mapper)
+    return await get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, uwsgi_mapper)
 
 
 @register_autoscaling_component('http', SERVICE_METRICS_PROVIDER_KEY)
-def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status', **kwargs):
+async def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='status', **kwargs):
     """
     Gets the mean utilization of a service across all of its tasks, where
     the utilization of a task is read from a HTTP endpoint on the host. The
@@ -334,11 +337,16 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, endpoint='sta
     def utilization_mapper(json):
         return float(json['utilization'])
 
-    return get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, utilization_mapper)
+    return await get_http_utilization_for_all_tasks(
+        marathon_service_config,
+        marathon_tasks,
+        endpoint,
+        utilization_mapper,
+    )
 
 
 @register_autoscaling_component('mesos_cpu', SERVICE_METRICS_PROVIDER_KEY)
-def mesos_cpu_metrics_provider(
+async def mesos_cpu_metrics_provider(
     marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks, log_utilization_data={},
     noop=False, **kwargs,
 ):
@@ -362,8 +370,8 @@ def mesos_cpu_metrics_provider(
 
     with ZookeeperPool() as zk:
         try:
-            last_time = zk.get(zk_last_time_path)[0].decode('utf8')
-            last_cpu_data = zk.get(zk_last_cpu_data)[0].decode('utf8')
+            last_time = (await a_sync.run(zk.get, zk_last_time_path))[0].decode('utf8')
+            last_cpu_data = (await a_sync.run(zk.get, zk_last_cpu_data))[0].decode('utf8')
             log_utilization_data[last_time] = last_cpu_data
             last_time = float(last_time)
             last_cpu_data = (datum for datum in last_cpu_data.split(',') if datum)
@@ -371,10 +379,11 @@ def mesos_cpu_metrics_provider(
             last_time = 0.0
             last_cpu_data = []
 
-    monkey.patch_socket()
-    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
-    gevent.joinall(jobs, timeout=60)
-    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    parallel = a_sync.Parallel()
+    for task in mesos_tasks:
+        parallel.schedule(task.stats_callable)
+
+    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], await parallel.run()))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
@@ -454,7 +463,8 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
         return 0.0
 
 
-def get_autoscaling_info(marathon_clients, service_config):
+@a_sync.to_blocking
+async def get_autoscaling_info(marathon_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
         apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
         all_mesos_tasks = get_all_running_tasks()
@@ -467,7 +477,7 @@ def get_autoscaling_info(marathon_clients, service_config):
                 all_mesos_tasks,
                 service_config,
             )
-            utilization = get_utilization(
+            utilization = await get_utilization(
                 marathon_service_config=service_config,
                 system_paasta_config=system_paasta_config,
                 autoscaling_params=autoscaling_params,
@@ -480,7 +490,7 @@ def get_autoscaling_info(marathon_clients, service_config):
                 setpoint=autoscaling_params['setpoint'],
                 current_instances=service_config.get_instances(),
             )
-            new_instance_count = get_new_instance_count(
+            new_instance_count = await get_new_instance_count(
                 utilization=utilization,
                 error=error,
                 autoscaling_params=autoscaling_params,
@@ -502,7 +512,7 @@ def get_autoscaling_info(marathon_clients, service_config):
     return None
 
 
-def get_new_instance_count(
+async def get_new_instance_count(
     utilization, error, autoscaling_params, current_instances, marathon_service_config,
     num_healthy_instances,
 ):
@@ -512,7 +522,7 @@ def get_new_instance_count(
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
     )
-    autoscaling_amount = autoscaling_decision_policy(
+    autoscaling_amount = await autoscaling_decision_policy(
         utilization=utilization,
         error=error,
         min_instances=marathon_service_config.get_min_instances(),
@@ -532,7 +542,7 @@ def get_new_instance_count(
     return new_instance_count
 
 
-def get_utilization(
+async def get_utilization(
     marathon_service_config,
     system_paasta_config,
     autoscaling_params,
@@ -542,7 +552,7 @@ def get_utilization(
 ):
     autoscaling_metrics_provider = get_service_metrics_provider(autoscaling_params[SERVICE_METRICS_PROVIDER_KEY])
 
-    return autoscaling_metrics_provider(
+    return await autoscaling_metrics_provider(
         marathon_service_config=marathon_service_config,
         system_paasta_config=system_paasta_config,
         marathon_tasks=marathon_tasks,
@@ -558,12 +568,12 @@ def is_task_data_insufficient(marathon_service_config, marathon_tasks, current_i
     return too_many_instances_running or too_few_instances_running
 
 
-def autoscale_marathon_instance(marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks):
-    current_instances = marathon_service_config.get_instances()
+async def autoscale_marathon_instance(marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks):
+    current_instances = await a_sync.to_async(marathon_service_config.get_instances)()
     task_data_insufficient = is_task_data_insufficient(marathon_service_config, marathon_tasks, current_instances)
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     log_utilization_data = {}
-    utilization = get_utilization(
+    utilization = await get_utilization(
         marathon_service_config=marathon_service_config,
         system_paasta_config=system_paasta_config,
         autoscaling_params=autoscaling_params,
@@ -576,7 +586,7 @@ def autoscale_marathon_instance(marathon_service_config, system_paasta_config, m
         setpoint=autoscaling_params['setpoint'],
         current_instances=current_instances,
     )
-    new_instance_count = get_new_instance_count(
+    new_instance_count = await get_new_instance_count(
         utilization=utilization,
         error=error,
         autoscaling_params=autoscaling_params,
@@ -687,7 +697,6 @@ def autoscaling_is_paused():
         return False
 
 
-@use_requests_cache('service_autoscaler')
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
     if autoscaling_is_paused():
         log.warning("Skipping autoscaling because autoscaler paused")
@@ -704,7 +713,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
             all_mesos_tasks = get_all_running_tasks()
             if configs:
                 with ZookeeperPool():
-                    for config in configs:
+                    async def inner(config):
                         try:
                             marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
                                 [app for (app, client) in apps_with_clients],
@@ -719,6 +728,9 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                             )
                         except Exception as e:
                             write_to_log(config=config, line='Caught Exception %s' % e)
+                    futures = [asyncio.ensure_future(inner(config)) for config in configs]
+                    a_sync.block(asyncio.wait, futures)
+
     except LockHeldException:
         log.warning("Skipping autoscaling run for services because the lock is held")
 

@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 from datetime import datetime
 from datetime import timedelta
 
+import a_sync
+import asynctest
 import mock
+import pytest
 from kazoo.exceptions import NoNodeError
 from pytest import raises
-from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
@@ -148,7 +151,8 @@ def test_get_decision_policy():
     assert autoscaling_service_lib.get_decision_policy('proportional') == autoscaling_service_lib.proportional_decision_policy  # NOQA
 
 
-def test_threshold_decision_policy():
+@pytest.mark.asyncio
+async def test_threshold_decision_policy():
     decision_policy_args = {
         'threshold': 0.1,
         'current_instances': 10,
@@ -159,12 +163,13 @@ def test_threshold_decision_policy():
         'paasta_tools.utils.load_system_paasta_config', autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
-        assert autoscaling_service_lib.threshold_decision_policy(error=0, **decision_policy_args) == 0
-        assert autoscaling_service_lib.threshold_decision_policy(error=0.5, **decision_policy_args) == 1
-        assert autoscaling_service_lib.threshold_decision_policy(error=-0.5, **decision_policy_args) == -1
+        assert await autoscaling_service_lib.threshold_decision_policy(error=0, **decision_policy_args) == 0
+        assert await autoscaling_service_lib.threshold_decision_policy(error=0.5, **decision_policy_args) == 1
+        assert await autoscaling_service_lib.threshold_decision_policy(error=-0.5, **decision_policy_args) == -1
 
 
-def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
+@pytest.mark.asyncio
+async def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -192,7 +197,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
-            autoscaling_service_lib.mesos_cpu_metrics_provider(
+            await autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config, fake_system_paasta_config, fake_marathon_tasks, (fake_mesos_task,),
             )
         mock_zk_client.return_value.set.assert_has_calls(
@@ -205,7 +210,8 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         )
 
 
-def test_mesos_cpu_metrics_provider():
+@pytest.mark.asyncio
+async def test_mesos_cpu_metrics_provider():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -265,7 +271,7 @@ def test_mesos_cpu_metrics_provider():
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
+        assert 0.8 == await autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_system_paasta_config,
             fake_marathon_tasks,
@@ -291,7 +297,7 @@ def test_mesos_cpu_metrics_provider():
 
         # test noop mode
         mock_zk_client.return_value.set.reset_mock()
-        assert 0.8 == autoscaling_service_lib.mesos_cpu_metrics_provider(
+        assert 0.8 == await autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_system_paasta_config,
             fake_marathon_tasks,
@@ -302,7 +308,8 @@ def test_mesos_cpu_metrics_provider():
         assert not mock_zk_client.return_value.set.called
 
 
-def test_mesos_cpu_metrics_provider_filter_bogus_values():
+@pytest.mark.asyncio
+async def test_mesos_cpu_metrics_provider_filter_bogus_values():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -381,7 +388,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
         # We expect an average of 80% and 100% CPU usage == 90%
-        assert 0.9 == autoscaling_service_lib.mesos_cpu_metrics_provider(
+        assert 0.9 == await autoscaling_service_lib.mesos_cpu_metrics_provider(
             fake_marathon_service_config,
             fake_system_paasta_config,
             fake_marathon_tasks,
@@ -390,26 +397,39 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
         )
 
 
-def test_get_json_body_from_service():
-    with mock.patch(
-            'paasta_tools.autoscaling.autoscaling_service_lib.requests.get', autospec=True,
-    ) as mock_request_get:
-        mock_request_get.return_value = mock.Mock(json=mock.Mock(return_value=mock.sentinel.json_body))
-        assert autoscaling_service_lib.get_json_body_from_service(
-            'fake-host', 'fake-port', 'fake-endpoint',
-        ) == mock.sentinel.json_body
-        mock_request_get.assert_called_once_with(
-            'http://fake-host:fake-port/fake-endpoint',
-            headers={'User-Agent': mock.ANY}, timeout=2,
-        )
+@pytest.mark.asyncio
+async def test_get_json_body_from_service():
+    # mock_request_get.return_value = mock.Mock(json=mock.Mock(return_value=mock.sentinel.json_body))
+    fake_session = asynctest.MagicMock(
+        name='fake_session',
+        get=asynctest.MagicMock(return_value=asynctest.MagicMock(
+            __aenter__=asynctest.CoroutineMock(
+                return_value=asynctest.MagicMock(
+                    name='resp',
+                    json=asynctest.CoroutineMock(return_value=mock.sentinel.json_body),
+                ),
+            ),
+            __aexit__=asynctest.CoroutineMock(),
+        )),
+    )
+    assert await autoscaling_service_lib.get_json_body_from_service(
+        'fake-host', 'fake-port', 'fake-endpoint', fake_session,
+    ) == mock.sentinel.json_body
+    fake_session.get.assert_called_once_with(
+        'http://fake-host:fake-port/fake-endpoint',
+        headers={'User-Agent': mock.ANY}, timeout=2,
+    )
 
 
-def test_get_http_utilization_for_all_tasks():
+@pytest.mark.asyncio
+async def test_get_http_utilization_for_all_tasks():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
     mock_json_mapper = mock.Mock(return_value=0.5)
 
-    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
-        assert autoscaling_service_lib.get_http_utilization_for_all_tasks(
+    with asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
+    ):
+        assert await autoscaling_service_lib.get_http_utilization_for_all_tasks(
             marathon_service_config=mock.Mock(),
             marathon_tasks=fake_marathon_tasks,
             endpoint='fake-endpoint',
@@ -417,12 +437,15 @@ def test_get_http_utilization_for_all_tasks():
         ) == 0.5
 
 
-def test_get_http_utilization_for_all_tasks_timeout():
+@pytest.mark.asyncio
+async def test_get_http_utilization_for_all_tasks_timeout():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
-    mock_json_mapper = mock.Mock(side_effect=Timeout)
+    mock_json_mapper = mock.Mock(side_effect=asyncio.TimeoutError)
 
-    with mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True):
-        assert autoscaling_service_lib.get_http_utilization_for_all_tasks(
+    with asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
+    ):
+        assert await autoscaling_service_lib.get_http_utilization_for_all_tasks(
             marathon_service_config=mock.Mock(),
             marathon_tasks=fake_marathon_tasks,
             endpoint='fake-endpoint',
@@ -430,7 +453,8 @@ def test_get_http_utilization_for_all_tasks_timeout():
         ) == 1.0
 
 
-def test_get_http_utilization_for_all_tasks_no_data():
+@pytest.mark.asyncio
+async def test_get_http_utilization_for_all_tasks_no_data():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -444,11 +468,11 @@ def test_get_http_utilization_for_all_tasks_no_data():
 
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.log.error', autospec=True,
-    ) as mock_log_error, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service', autospec=True,
+    ) as mock_log_error, asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
     ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
-            autoscaling_service_lib.get_http_utilization_for_all_tasks(
+            await autoscaling_service_lib.get_http_utilization_for_all_tasks(
                 fake_marathon_service_config,
                 fake_marathon_tasks,
                 endpoint='fake-endpoint',
@@ -459,26 +483,26 @@ def test_get_http_utilization_for_all_tasks_no_data():
         )
 
 
-def test_http_metrics_provider():
+@pytest.mark.asyncio
+async def test_http_metrics_provider():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
 
-    with mock.patch(
+    with asynctest.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
-        autospec=True,
     ) as mock_get_json_body_from_service:
         mock_get_json_body_from_service.return_value = {'utilization': 0.5}
-        assert autoscaling_service_lib.http_metrics_provider(
+        assert await autoscaling_service_lib.http_metrics_provider(
             marathon_service_config=mock.Mock(),
             marathon_tasks=fake_marathon_tasks,
         ) == 0.5
 
 
-def test_uwsgi_metrics_provider():
+@pytest.mark.asyncio
+async def test_uwsgi_metrics_provider():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
 
-    with mock.patch(
+    with asynctest.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service',
-        autospec=True,
     ) as mock_get_json_body_from_service:
         mock_get_json_body_from_service.return_value = {
             'workers': [
@@ -488,13 +512,14 @@ def test_uwsgi_metrics_provider():
                 {'status': 'busy'},
             ],
         }
-        assert autoscaling_service_lib.uwsgi_metrics_provider(
+        assert await autoscaling_service_lib.uwsgi_metrics_provider(
             marathon_service_config=mock.Mock(),
             marathon_tasks=fake_marathon_tasks,
         ) == 0.75
 
 
-def test_mesos_cpu_metrics_provider_no_data_mesos():
+@pytest.mark.asyncio
+async def test_mesos_cpu_metrics_provider_no_data_mesos():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -518,7 +543,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
-            autoscaling_service_lib.mesos_cpu_metrics_provider(
+            await autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
                 fake_marathon_tasks,
@@ -526,7 +551,8 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
             )
 
 
-def test_autoscale_marathon_instance():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -540,10 +566,10 @@ def test_autoscale_marathon_instance():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=1),
+        return_value=asynctest.CoroutineMock(return_value=1),
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=1,
     ), mock.patch(
@@ -551,7 +577,7 @@ def test_autoscale_marathon_instance():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.yelp_meteorite', autospec=True,
     ) as mock_meteorite:
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()],
@@ -563,7 +589,8 @@ def test_autoscale_marathon_instance():
         mock_meteorite.create_gauge.call_count == 3
 
 
-def test_autoscale_marathon_instance_up_to_min_instances():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance_up_to_min_instances():
     current_instances = 5
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -578,10 +605,10 @@ def test_autoscale_marathon_instance_up_to_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=-3),
+        return_value=asynctest.CoroutineMock(return_value=-3),
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig,
         'get_instances',
@@ -590,7 +617,7 @@ def test_autoscale_marathon_instance_up_to_min_instances():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * 5,
@@ -602,7 +629,7 @@ def test_autoscale_marathon_instance_up_to_min_instances():
 
         # even if we don't find the tasks healthy in marathon we shouldn't be below min_instances
         mock_set_instances_for_marathon_service.reset_mock()
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * (int(5 * (1 - MAX_TASK_DELTA)) - 1),
@@ -613,7 +640,8 @@ def test_autoscale_marathon_instance_up_to_min_instances():
         )
 
 
-def test_autoscale_marathon_instance_below_min_instances():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance_below_min_instances():
     current_instances = 7
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -628,10 +656,10 @@ def test_autoscale_marathon_instance_below_min_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=-3),
+        return_value=asynctest.CoroutineMock(return_value=-3),
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig,
         'get_instances',
@@ -640,7 +668,7 @@ def test_autoscale_marathon_instance_below_min_instances():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock() for i in range(current_instances)],
@@ -651,7 +679,8 @@ def test_autoscale_marathon_instance_below_min_instances():
         )
 
 
-def test_autoscale_marathon_instance_above_max_instances():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance_above_max_instances():
     current_instances = 7
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -666,10 +695,10 @@ def test_autoscale_marathon_instance_above_max_instances():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=5),
+        return_value=asynctest.CoroutineMock(return_value=5),
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig,
         'get_instances',
@@ -678,7 +707,7 @@ def test_autoscale_marathon_instance_above_max_instances():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock() for i in range(current_instances)],
@@ -689,7 +718,8 @@ def test_autoscale_marathon_instance_above_max_instances():
         )
 
 
-def test_autoscale_marathon_instance_drastic_downscaling():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance_drastic_downscaling():
     current_instances = 100
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -704,10 +734,10 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=-50),
+        return_value=asynctest.CoroutineMock(return_value=-50),
     ), mock.patch.object(
         marathon_tools.MarathonServiceConfig,
         'get_instances',
@@ -716,7 +746,7 @@ def test_autoscale_marathon_instance_drastic_downscaling():
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock() for i in range(current_instances)],
@@ -727,7 +757,8 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         )
 
 
-def test_autoscale_marathon_with_http_stuff():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_with_http_stuff():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -750,15 +781,14 @@ def test_autoscale_marathon_with_http_stuff():
         marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=1,
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib._log', autospec=True,
-    ), mock.patch(
+    ), asynctest.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_http_utilization_for_all_tasks',
-        autospec=True,
         return_value=0,
     ) as mock_get_http_utilization_for_all_tasks, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
-        return_value=mock.Mock(return_value=1),
+        return_value=asynctest.CoroutineMock(return_value=1),
     ):
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()],
@@ -827,7 +857,8 @@ def test_is_task_data_insufficient():
     assert not ret
 
 
-def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
+@pytest.mark.asyncio
+async def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -836,7 +867,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         branch_dict={},
     )
     fake_system_paasta_config = mock.MagicMock()
-    mock_autoscaling_decision = mock.Mock()
+    mock_autoscaling_decision = asynctest.CoroutineMock()
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
         autospec=True,
@@ -844,7 +875,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         'paasta_tools.autoscaling.autoscaling_service_lib.is_task_data_insufficient', autospec=True,
     ) as mock_is_task_data_insufficient, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
-        **{'return_value.return_value': 0.0},
+        return_value=asynctest.CoroutineMock(return_value=0),
     ), mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
         return_value=mock_autoscaling_decision,
@@ -858,7 +889,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         mock_is_task_data_insufficient.return_value = True
         mock_get_instances.return_value = 10
         mock_autoscaling_decision.return_value = 1
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * 10,
@@ -871,7 +902,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         mock_is_task_data_insufficient.return_value = True
         mock_get_instances.return_value = 10
         mock_autoscaling_decision.return_value = -1
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * 10,
@@ -884,7 +915,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         mock_is_task_data_insufficient.return_value = False
         mock_get_instances.return_value = 10
         mock_autoscaling_decision.return_value = 1
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * 10,
@@ -897,7 +928,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         mock_is_task_data_insufficient.return_value = False
         mock_get_instances.return_value = 10
         mock_autoscaling_decision.return_value = -1
-        autoscaling_service_lib.autoscale_marathon_instance(
+        await autoscaling_service_lib.autoscale_marathon_instance(
             fake_marathon_service_config,
             fake_system_paasta_config,
             [mock.Mock()] * 10,
@@ -1241,11 +1272,12 @@ def test_filter_autoscaling_tasks():
         assert ret == ({'fake-service.fake-instance.sha123.sha456.uuid': mock_marathon_tasks[0]}, mock_mesos_tasks)
 
 
-def test_get_utilization():
+@pytest.mark.asyncio
+async def test_get_utilization():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
     ) as mock_get_service_metrics_provider:
-        mock_metrics_provider = mock.Mock()
+        mock_metrics_provider = asynctest.CoroutineMock()
         mock_get_service_metrics_provider.return_value = mock_metrics_provider
         mock_marathon_tasks = mock.Mock()
         mock_mesos_tasks = mock.Mock()
@@ -1256,7 +1288,7 @@ def test_get_utilization():
             autoscaling_service_lib.SERVICE_METRICS_PROVIDER_KEY: 'mock_provider',
             'mock_param': 2,
         }
-        ret = autoscaling_service_lib.get_utilization(
+        ret = await autoscaling_service_lib.get_utilization(
             marathon_service_config=mock_marathon_service_config,
             system_paasta_config=mock_system_paasta_config,
             marathon_tasks=mock_marathon_tasks,
@@ -1276,17 +1308,18 @@ def test_get_utilization():
         assert ret == mock_metrics_provider.return_value
 
 
-def test_get_new_instance_count():
+@pytest.mark.asyncio
+async def test_get_new_instance_count():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_decision_policy', autospec=True,
     ) as mock_get_decision_policy, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.compose_autoscaling_zookeeper_root', autospec=True,
     ) as mock_compose_autoscaling_zookeeper_root:
-        mock_decision_policy = mock.Mock(return_value=1)
+        mock_decision_policy = asynctest.CoroutineMock(return_value=1)
         mock_get_decision_policy.return_value = mock_decision_policy
         mock_marathon_service_config = mock.Mock()
         mock_autoscaling_params = {autoscaling_service_lib.DECISION_POLICY_KEY: 'mock_dp', 'mock_param': 2}
-        ret = autoscaling_service_lib.get_new_instance_count(
+        ret = await autoscaling_service_lib.get_new_instance_count(
             utilization=0.7,
             error=0.1,
             autoscaling_params=mock_autoscaling_params,
@@ -1306,10 +1339,10 @@ def test_get_new_instance_count():
         assert ret == mock_marathon_service_config.limit_instance_count.return_value
 
         # test safe_downscaling_threshold
-        mock_decision_policy = mock.Mock(return_value=-4)
+        mock_decision_policy = asynctest.CoroutineMock(return_value=-4)
         mock_get_decision_policy.return_value = mock_decision_policy
         mock_autoscaling_params = {autoscaling_service_lib.DECISION_POLICY_KEY: 'mock_dp', 'mock_param': 2}
-        ret = autoscaling_service_lib.get_new_instance_count(
+        ret = await autoscaling_service_lib.get_new_instance_count(
             utilization=0.7,
             error=0.1,
             autoscaling_params=mock_autoscaling_params,
@@ -1323,14 +1356,14 @@ def test_get_new_instance_count():
 def test_get_autoscaling_info():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.load_marathon_service_config', autospec=True,
-    ) as mock_load_marathon_service_config, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_utilization', autospec=True,
+    ) as mock_load_marathon_service_config, asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_utilization', return_value=0.80131,
     ) as mock_get_utilization, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.filter_autoscaling_tasks', autospec=True,
     ) as mock_filter_autoscaling_tasks, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_error_from_utilization', autospec=True,
-    ) as mock_get_error_from_utilization, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_new_instance_count', autospec=True,
+    ) as mock_get_error_from_utilization, asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_new_instance_count',
     ) as mock_get_new_instance_count, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.load_system_paasta_config', autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock()),
@@ -1341,7 +1374,6 @@ def test_get_autoscaling_info():
         'paasta_tools.autoscaling.autoscaling_service_lib.get_marathon_apps_with_clients', autospec=True,
         return_value=[(mock.Mock, mock.Mock)],
     ) as mock_get_marathon_apps_with_clients:
-        mock_get_utilization.return_value = 0.80131
         mock_marathon_client = mock.Mock()
         mock_get_new_instance_count.return_value = 6
         mock_service_config = mock.Mock(
@@ -1464,166 +1496,196 @@ def test_serialize_historical_load_trims_oldest_data():
     assert deserialized_long[-1] == (62999, 1)
 
 
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', autospec=True, return_value=[])
-def test_proportional_decision_policy(mock_save_historical_load, mock_fetch_historical_load):
+def test_proportional_decision_policy():
+    with asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load',
+        return_value=[],
+    ), asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load',
+    ):
 
-    common_kwargs = {
-        'zookeeper_path': '/test',
-        'current_instances': 10,
-        'min_instances': 5,
-        'max_instances': 15,
-        'num_healthy_instances': 10,
-        'forecast_policy': 'current',
-    }
+        common_kwargs = {
+            'zookeeper_path': '/test',
+            'current_instances': 10,
+            'min_instances': 5,
+            'max_instances': 15,
+            'num_healthy_instances': 10,
+            'forecast_policy': 'current',
+        }
 
-    # if utilization == setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.5,
-        **common_kwargs,
-    )
+        # if utilization == setpoint, delta should be 0.
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.5,
+            **common_kwargs,
+        )
 
-    # if utilization is fairly close to setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.524,  # Just under 0.525 = 0.5 * 1.05
-        **common_kwargs,
-    )
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.476,  # Just over 0.475 = 0.5 * 0.95
-        **common_kwargs,
-    )
+        # if utilization is fairly close to setpoint, delta should be 0.
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.524,  # Just under 0.525 = 0.5 * 1.05
+            **common_kwargs,
+        )
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.476,  # Just over 0.475 = 0.5 * 0.95
+            **common_kwargs,
+        )
 
-    assert 1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.526,  # Just over 0.525 = 0.5 * 1.05
-        **common_kwargs,
-    )
+        assert 1 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.526,  # Just over 0.525 = 0.5 * 1.05
+            **common_kwargs,
+        )
 
-    assert -1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.474,  # Just under 0.475 = 0.5 * 0.95
-        **common_kwargs,
-    )
+        assert -1 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.474,  # Just under 0.475 = 0.5 * 0.95
+            **common_kwargs,
+        )
 
-    # If we're 50% overutilized, scale up by 50%
-    assert 5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.75,
-        **common_kwargs,
-    )
+        # If we're 50% overutilized, scale up by 50%
+        assert 5 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.75,
+            **common_kwargs,
+        )
 
-    # If we're 50% underutilized, scale down by 50%
-    assert -5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.25,
-        **common_kwargs,
-    )
-
-
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', autospec=True, return_value=[])
-def test_proportional_decision_policy_nonzero_offset(mock_save_historical_load, mock_fetch_historical_load):
-    common_kwargs = {
-        'zookeeper_path': '/test',
-        'current_instances': 10,
-        'num_healthy_instances': 10,
-        'min_instances': 5,
-        'max_instances': 15,
-        'forecast_policy': 'current',
-        'offset': 0.2,
-    }
-
-    # if utilization == setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.5,
-        **common_kwargs,
-    )
-
-    # if utilization is fairly close to setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.514,  # Just under 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs,
-    )
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.486,  # Just over 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs,
-    )
-
-    assert 1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.516,  # Just over 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs,
-    )
-
-    assert -1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.484,  # Just under 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs,
-    )
-
-    # If we're 50% overutilized, scale up by 50%
-    assert 5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.65,
-        **common_kwargs,
-    )
-
-    # If we're 50% underutilized, scale down by 50%
-    assert -5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.35,
-        **common_kwargs,
-    )
+        # If we're 50% underutilized, scale down by 50%
+        assert -5 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.25,
+            **common_kwargs,
+        )
 
 
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load', autospec=True)
-@mock.patch('paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', autospec=True, return_value=[])
-def test_proportional_decision_policy_good_enough(mock_save_historical_load, mock_fetch_historical_load):
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path='/test',
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy='current',
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.54,
-        good_enough_window=(0.45, 0.55),
-    )
+def test_proportional_decision_policy_nonzero_offset():
+    with asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load',
+        return_value=[],
+    ), asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load',
+    ):
 
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path='/test',
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy='current',
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.46,
-        good_enough_window=(0.45, 0.55),
-    )
+        common_kwargs = {
+            'zookeeper_path': '/test',
+            'current_instances': 10,
+            'num_healthy_instances': 10,
+            'min_instances': 5,
+            'max_instances': 15,
+            'forecast_policy': 'current',
+            'offset': 0.2,
+        }
 
-    # current_instances < min_instances, so scale up.
-    assert 25 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path='/test',
-        current_instances=25,
-        num_healthy_instances=25,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy='current',
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.46,
-        good_enough_window=(0.45, 0.55),
-    )
+        # if utilization == setpoint, delta should be 0.
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.5,
+            **common_kwargs,
+        )
+
+        # if utilization is fairly close to setpoint, delta should be 0.
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.514,  # Just under 0.515 = (0.5 - 0.2) * 1.05 + 0.2
+            **common_kwargs,
+        )
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.486,  # Just over 0.485 = (0.5 - 0.2) * 0.95 + 0.2
+            **common_kwargs,
+        )
+
+        assert 1 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.516,  # Just over 0.515 = (0.5 - 0.2) * 1.05 + 0.2
+            **common_kwargs,
+        )
+
+        assert -1 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.484,  # Just under 0.485 = (0.5 - 0.2) * 0.95 + 0.2
+            **common_kwargs,
+        )
+
+        # If we're 50% overutilized, scale up by 50%
+        assert 5 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.65,
+            **common_kwargs,
+        )
+
+        # If we're 50% underutilized, scale down by 50%
+        assert -5 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            setpoint=0.5,
+            utilization=0.35,
+            **common_kwargs,
+        )
+
+
+def test_proportional_decision_policy_good_enough():
+    with asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load', return_value=[],
+    ), asynctest.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load',
+    ):
+
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            zookeeper_path='/test',
+            current_instances=100,
+            num_healthy_instances=100,
+            min_instances=50,
+            max_instances=150,
+            forecast_policy='current',
+            offset=0.0,
+            setpoint=0.50,
+            utilization=0.54,
+            good_enough_window=(0.45, 0.55),
+        )
+
+        assert 0 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            zookeeper_path='/test',
+            current_instances=100,
+            num_healthy_instances=100,
+            min_instances=50,
+            max_instances=150,
+            forecast_policy='current',
+            offset=0.0,
+            setpoint=0.50,
+            utilization=0.46,
+            good_enough_window=(0.45, 0.55),
+        )
+
+        # current_instances < min_instances, so scale up.
+        assert 25 == a_sync.block(
+            autoscaling_service_lib.proportional_decision_policy,
+            zookeeper_path='/test',
+            current_instances=25,
+            num_healthy_instances=25,
+            min_instances=50,
+            max_instances=150,
+            forecast_policy='current',
+            offset=0.0,
+            setpoint=0.50,
+            utilization=0.46,
+            good_enough_window=(0.45, 0.55),
+        )
 
 
 def test_filter_autoscaling_tasks_considers_old_versions():
