@@ -1,5 +1,5 @@
 [run]
-concurrency = gevent
+concurrency = thread
 branch = True
 source = .
 omit =
