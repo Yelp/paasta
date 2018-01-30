@@ -112,6 +112,24 @@ def add_subparser(subparsers):
         default=4,
     )
 
+    list_parser.add_argument(
+        '--driver-max-result-size',
+        type=int,
+        help='Limit of total size in GB of serialized results of all partitions',
+    )
+
+    list_parser.add_argument(
+        '--driver-memory',
+        type=int,
+        help='Size of Spark driver memory in GB',
+    )
+
+    list_parser.add_argument(
+        '--driver-cores',
+        type=int,
+        help='Number of CPU cores for the Spark driver',
+    )
+
     list_parser.set_defaults(command=paasta_spark_run)
 
 
@@ -128,6 +146,7 @@ def get_docker_run_cmd(
     cmd.append('--interactive=true')
     cmd.append('--tty=true')
 
+    cmd.append('--user=%d:%d' % (os.geteuid(), os.getegid()))
     cmd.append('--name=%s' % container_name)
     for k, v in env.items():
         cmd.append('--env')
@@ -164,6 +183,13 @@ def get_spark_configuration(
     spark_conf['SPARK_CORES_MAX'] = args.max_cores
     spark_conf['SPARK_EXECUTOR_CORES'] = args.executor_cores
     spark_conf['SPARK_EXECUTOR_MEMORY'] = '%dg' % args.executor_memory
+
+    if args.driver_max_result_size:
+        spark_conf['SPARK_DRIVER_MAX_RESULT_SIZE'] = '%dg' % args.driver_max_result_size
+    if args.driver_memory:
+        spark_conf['SPARK_DRIVER_MEMORY'] = '%dg' % args.driver_memory
+    if args.driver_cores:
+        spark_conf['SPARK_DRIVER_CORES'] = args.driver_cores
 
     if args.build:
         spark_conf['SPARK_EXECUTOR_IMAGE'] = docker_img
@@ -216,6 +242,8 @@ def configure_and_run_docker_container(
                 ),
             )
     volumes.append('%s:%s:rw' % (os.getcwd(), DEFAULT_SPARK_WORK_DIR))
+    volumes.append('/etc/passwd:/etc/passwd:ro')
+    volumes.append('/etc/group:/etc/group:ro')
 
     if args.cmd is None:
         docker_cmd = instance_config.get_cmd()
@@ -227,7 +255,7 @@ def configure_and_run_docker_container(
         return 1
     # Changes at docker ENTRYPOINT or CMD does not work.
     elif docker_cmd == 'jupyter':
-        docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s --allow-root' % (
+        docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
             socket.getfqdn(), DEFAULT_SPARK_WORK_DIR,
         )
 
