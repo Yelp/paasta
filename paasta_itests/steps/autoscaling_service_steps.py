@@ -1,3 +1,4 @@
+import a_sync
 from behave import given
 from behave import then
 from behave import when
@@ -17,11 +18,15 @@ def make_fake_historical_load_data(context):
 
 @when('I save the fake historical load data')
 def save_fake_historical_load_data(context):
-    autoscaling_service_lib.save_historical_load(context.fake_historical_load_data, '/itest/fake_historical_load_data')
+    a_sync.block(
+        autoscaling_service_lib.save_historical_load,
+        context.fake_historical_load_data,
+        '/itest/fake_historical_load_data',
+    )
 
 
 @then('I should get the same fake historical load data back when I fetch it')
 def load_fake_historical_load_data(context):
-    actual = autoscaling_service_lib.fetch_historical_load('/itest/fake_historical_load_data')
+    actual = a_sync.block(autoscaling_service_lib.fetch_historical_load, '/itest/fake_historical_load_data')
     expected = context.fake_historical_load_data
     assert actual == expected
