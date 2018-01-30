@@ -20,7 +20,15 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def test_get_docker_run_cmd():
+@mock.patch('paasta_tools.cli.cmds.spark_run.os.geteuid', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run.os.getegid', autospec=True)
+def test_get_docker_run_cmd(
+    mock_getegid,
+    mock_geteuid,
+):
+    mock_geteuid.return_value = 1234
+    mock_getegid.return_value = 100
+
     container_name = 'fake_name'
     volumes = ['v1:v1:rw', 'v2:v2:rw']
     env = {'k1': 'v1', 'k2': 'v2'}
@@ -36,6 +44,7 @@ def test_get_docker_run_cmd():
     )
 
     assert actual[6:] == [
+        '--user=1234:100',
         '--name=fake_name',
         '--env', 'k1=v1', '--env', 'k2=v2',
         '--volume=v1:v1:rw', '--volume=v2:v2:rw',
@@ -126,7 +135,13 @@ def test_configure_and_run_docker_container(
     assert retcode == 0
     mock_run_docker_container.assert_called_once_with(
         container_name='paasta_spark_run_fake_user_123',
-        volumes=['/h1:/c1:ro', '/h2:/c2:ro', 'fake_cwd:/spark_client:rw'],
+        volumes=[
+            '/h1:/c1:ro',
+            '/h2:/c2:ro',
+            'fake_cwd:/spark_client:rw',
+            '/etc/passwd:/etc/passwd:ro',
+            '/etc/group:/etc/group:ro',
+        ],
         environment={
             'PAASTA_SERVICE': 'fake_service',
             'PAASTA_INSTANCE': 'fake_instance',
