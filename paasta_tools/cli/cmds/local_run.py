@@ -375,7 +375,7 @@ def get_container_name():
 
 def get_docker_run_cmd(
     memory, chosen_port, container_port, container_name, volumes, env, interactive,
-    docker_hash, command, net, docker_params,
+    docker_hash, command, net, docker_params, detach,
 ):
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
@@ -395,7 +395,7 @@ def get_docker_run_cmd(
         cmd.append('--interactive=true')
         if sys.stdout.isatty():
             cmd.append('--tty=true')
-    else:
+    if detach:
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
@@ -583,6 +583,8 @@ def run_docker_container(
         except AttributeError:
             container_port = None
 
+    simulate_healthcheck = (healthcheck_only or healthcheck) and healthcheck_mode is not None
+
     docker_run_args = dict(
         memory=memory,
         chosen_port=chosen_port,
@@ -591,6 +593,7 @@ def run_docker_container(
         volumes=volumes,
         env=environment,
         interactive=interactive,
+        detach=simulate_healthcheck,
         docker_hash=docker_hash,
         command=command,
         net=net,
@@ -608,7 +611,7 @@ def run_docker_container(
     else:
         paasta_print('Running docker command:\n%s' % PaastaColors.grey(joined_docker_run_cmd))
 
-    if interactive:
+    if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
         execlp('paasta_docker_wrapper', *docker_run_cmd)
@@ -638,8 +641,7 @@ def run_docker_container(
         container_id = get_container_id(docker_client, container_name)
         paasta_print('Found our container running with CID %s' % container_id)
 
-        # If the service has a healthcheck, simulate it
-        if (healthcheck_only or healthcheck) and healthcheck_mode is not None:
+        if simulate_healthcheck:
             healthcheck_result = simulate_healthcheck_on_service(
                 instance_config=instance_config,
                 docker_client=docker_client,

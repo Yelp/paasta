@@ -621,9 +621,10 @@ def test_get_docker_run_cmd_without_additional_args():
     command = None
     net = 'bridge'
     docker_params = []
+    detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
@@ -643,9 +644,10 @@ def test_get_docker_run_cmd_with_env_vars():
     command = None
     net = 'bridge'
     docker_params = []
+    detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
     assert actual[actual.index('foo=bar') - 1] == '--env'
     assert actual[actual.index('baz=qux') - 1] == '--env'
@@ -663,16 +665,15 @@ def test_get_docker_run_cmd_interactive_false():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
+    detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
-
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % chosen_port in arg for arg in actual])
     assert '--name=%s' % container_name in actual
     assert all(['--volume=%s' % volume in actual for volume in volumes])
-    assert '--detach=true' in actual
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
     assert docker_hash in actual
@@ -691,11 +692,11 @@ def test_get_docker_run_cmd_interactive_true():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
+    detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
-
     assert '--interactive=true' in actual
 
 
@@ -715,9 +716,10 @@ def test_get_docker_run_docker_params():
         {'key': 'cpu-period', 'value': '200000'},
         {'key': 'cpu-quota', 'value': '150000'},
     ]
+    detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
     assert '--memory-swap=555m' in actual
     assert '--cpu-period=200000' in actual
@@ -736,11 +738,11 @@ def test_get_docker_run_cmd_host_networking():
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
+    detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
-
     assert '--net=host' in actual
 
 
@@ -757,11 +759,11 @@ def test_get_docker_run_cmd_quote_cmd():
     command = 'make test'
     net = 'host'
     docker_params = []
+    detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
-
     assert actual[-3:] == ['sh', '-c', 'make test']
 
 
@@ -778,11 +780,11 @@ def test_get_docker_run_cmd_quote_list():
     command = ['zsh', '-c', 'make test']
     net = 'host'
     docker_params = []
+    detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params,
+        interactive, docker_hash, command, net, docker_params, detach,
     )
-
     assert actual[-3:] == ['zsh', '-c', 'make test']
 
 
@@ -827,7 +829,7 @@ def test_get_container_id_name_not_found():
     autospec=True,
     return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
 )
-def test_run_docker_container_non_interactive(
+def test_run_docker_container_non_interactive_no_healthcheck(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -842,7 +844,7 @@ def test_run_docker_container_non_interactive(
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 666, 'Running': True}}
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    return_code = run_docker_container(
+    run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
@@ -859,13 +861,7 @@ def test_run_docker_container_non_interactive(
     mock_pick_random_port.assert_called_once_with('fake_service')
     assert mock_get_docker_run_cmd.call_count == 1
     assert mock_get_healthcheck_for_instance.call_count == 1
-    assert mock_execlp.call_count == 0
-    assert mock_run.call_count == 1
-    assert mock_get_container_id.call_count == 1
-    assert mock_docker_client.attach.call_count == 1
-    assert mock_docker_client.stop.call_count == 1
-    assert mock_docker_client.remove_container.call_count == 1
-    assert return_code == 666
+    assert mock_execlp.call_count == 1
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
@@ -928,7 +924,9 @@ def test_run_docker_container_interactive(
     autospec=True,
     return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
 )
-def test_run_docker_container_non_interactive_keyboard_interrupt(
+@mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
+def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthcheck(
+    mock_run_healthcheck_on_container,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -942,6 +940,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
         spec_set=docker.Client.attach,
         side_effect=KeyboardInterrupt,
     )
+    mock_run_healthcheck_on_container.return_value = (True, "Good to go")
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
@@ -954,7 +953,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
         volumes=[],
         interactive=False,
         command='fake_command',
-        healthcheck=False,
+        healthcheck=True,
         healthcheck_only=False,
         user_port=None,
         instance_config=mock_service_manifest,
@@ -1000,7 +999,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             volumes=[],
             interactive=False,
             command='fake_command',
-            healthcheck=False,
+            healthcheck=True,
             healthcheck_only=False,
             user_port=None,
             instance_config=mock_service_manifest,
@@ -1203,8 +1202,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_service_manifest.get_mem.assert_called_once_with()
     assert mock_check_if_port_free.call_count == 1
     assert mock_pick_random_port.called is False  # Don't pick a random port, use the user chosen one
-    docker_run_args = mock_run.call_args[0][0]
-    assert "--publish=1234:8888" in docker_run_args
+    assert mock_execlp.call_count == 1
 
 
 @mock.patch('time.sleep', autospec=True)
