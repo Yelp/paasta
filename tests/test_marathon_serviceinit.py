@@ -1087,6 +1087,7 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     ):
         actual = marathon_serviceinit.perform_command(
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir,
+            clients=mock.Mock(),
         )
         assert actual == 1
 

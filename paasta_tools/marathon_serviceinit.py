@@ -92,16 +92,26 @@ def desired_state_human(desired_state, instances):
         return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
 
-def status_desired_state(service, instance, client, job_config):
+def status_desired_state(
+    service: str,
+    instance: str,
+    client: marathon_tools.MarathonClient,
+    job_config: marathon_tools.MarathonServiceConfig,
+) -> str:
     status = get_bouncing_status(service, instance, client, job_config)
     desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
     return "Desired State:      %s and %s" % (status, desired_state)
 
 
 def status_marathon_job_human(
-    service, instance, deploy_status, app_id,
-    running_instances, normal_instance_count, unused_offers_summary=None,
-):
+    service: str,
+    instance: str,
+    deploy_status: str,
+    app_id: str,
+    running_instances: int,
+    normal_instance_count: int,
+    unused_offers_summary: Dict[str, int]=None,
+) -> str:
     name = PaastaColors.cyan(compose_job_id(service, instance))
     if unused_offers_summary is not None and len(unused_offers_summary) > 0:
         stalled_str = "\n    ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()])
@@ -149,7 +159,13 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
     return deploy_status
 
 
-def status_marathon_job(service, instance, app_id, normal_instance_count, client):
+def status_marathon_job(
+    service: str,
+    instance: str,
+    app_id: str,
+    normal_instance_count: int,
+    client: marathon_tools.MarathonClient,
+) -> str:
     status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
     app_queue = marathon_tools.get_app_queue(client, app_id)
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
@@ -169,7 +185,11 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     )
 
 
-def get_marathon_dashboard(client, dashboards, app_id):
+def get_marathon_dashboard(
+    client: marathon_tools.MarathonClient,
+    dashboards: Dict[marathon_tools.MarathonClient, str],
+    app_id: str,
+) -> str:
     if dashboards is not None:
         base_url = dashboards.get(client)
         if base_url:
@@ -178,7 +198,15 @@ def get_marathon_dashboard(client, dashboards, app_id):
     return "  Marathon app ID: %s" % PaastaColors.bold(app_id)
 
 
-def get_verbose_status_of_marathon_app(marathon_client, app, service, instance, cluster, soa_dir, dashboards):
+def get_verbose_status_of_marathon_app(
+    marathon_client: marathon_tools.MarathonClient,
+    app: marathon_tools.MarathonApp,
+    service: str,
+    instance: str,
+    cluster: str,
+    soa_dir: str,
+    dashboards: Dict[marathon_tools.MarathonClient, str],
+) -> Tuple[List[MarathonTask], str]:
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
@@ -457,7 +485,16 @@ def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
     return None
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None, delta=None, clients=None):
+def perform_command(
+    command: str,
+    service: str,
+    instance: str,
+    cluster: str,
+    verbose: int,
+    soa_dir: str,
+    clients: marathon_tools.MarathonClients,
+    app_id: str=None,
+) -> int:
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status
     :param service: service name
@@ -480,9 +517,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
 
     normal_instance_count = job_config.get_instances()
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
-
-    if clients is None:
-        clients = marathon_tools.get_marathon_clients(system_config.get_marathon_servers())
 
     current_client = clients.get_current_client_for_service(job_config)
 
