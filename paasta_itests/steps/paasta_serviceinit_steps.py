@@ -74,14 +74,19 @@ def status_marathon_job(context, status, job_id):
     app_id = job_config.format_marathon_app_dict()['id']
 
     with requests_cache.disabled():
-        output = marathon_serviceinit.status_marathon_job(
-            service,
-            instance,
-            app_id,
-            normal_instance_count,
-            context.marathon_clients.get_current_client_for_service(job_config),
+        tasks, output = marathon_serviceinit.status_marathon_job(
+            service=service,
+            instance=instance,
+            cluster=load_system_paasta_config().get_cluster(),
+            soa_dir=context.soa_dir,
+            dashboards=None,
+            normal_instance_count=normal_instance_count,
+            clients=context.marathon_clients,
+            job_config=job_config,
+            desired_app_id=app_id,
+            verbose=0,
         )
-    assert status in output
+    assert status in output, f"{status!r} not found in {output!r}"
 
 
 @then('marathon_serviceinit restart should get new task_ids for "{job_id}"')
