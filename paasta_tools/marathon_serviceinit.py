@@ -107,18 +107,14 @@ def status_marathon_job_human(
     service: str,
     instance: str,
     deploy_status: str,
-    app_id: str,
+    desired_app_id: str,
+    app_count: int,
     running_instances: int,
     normal_instance_count: int,
-    unused_offers_summary: Dict[str, int]=None,
 ) -> str:
     name = PaastaColors.cyan(compose_job_id(service, instance))
-    if unused_offers_summary is not None and len(unused_offers_summary) > 0:
-        stalled_str = "\n    ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()])
-        stall_reason = "\n  Possibly stalled for:\n    %s" % stalled_str
-    else:
-        stall_reason = ""
-    if deploy_status != 'NotRunning':
+
+    if app_count >= 0:
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
@@ -128,13 +124,13 @@ def status_marathon_job_human(
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s%s" % (
-            status, instance_count, deploy_status, stall_reason,
+        return "Marathon:   %s - up with %s instances. Status: %s" % (
+            status, instance_count, deploy_status,
         )
     else:
         status = PaastaColors.yellow("Warning")
-        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)%s" % (
-            status, name, app_id, stall_reason,
+        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)" % (
+            status, name, desired_app_id,
         )
 
 
@@ -162,27 +158,67 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
 def status_marathon_job(
     service: str,
     instance: str,
-    app_id: str,
+    cluster: str,
+    soa_dir: str,
+    dashboards: Dict[marathon_tools.MarathonClient, str],
     normal_instance_count: int,
-    client: marathon_tools.MarathonClient,
-) -> str:
-    status = marathon_tools.get_marathon_app_deploy_status(client, app_id)
-    app_queue = marathon_tools.get_app_queue(client, app_id)
-    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
-    if status == marathon_tools.MarathonDeployStatus.Delayed:
-        _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
-        deploy_status_human = marathon_app_deploy_status_human(status, backoff_seconds)
-    else:
-        deploy_status_human = marathon_app_deploy_status_human(status)
-
-    if status == marathon_tools.MarathonDeployStatus.NotRunning:
-        running_instances = 0
-    else:
-        running_instances = client.get_app(app_id).tasks_running
-    return status_marathon_job_human(
-        service, instance, deploy_status_human, app_id,
-        running_instances, normal_instance_count, unused_offers_summary,
+    clients: marathon_tools.MarathonClients,
+    job_config: marathon_tools.MarathonServiceConfig,
+    desired_app_id: str,
+    verbose: int,
+) -> Tuple[List[MarathonTask], str]:
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+        clients=clients.get_all_clients_for_service(job_config),
+        embed_tasks=True,
     )
+    all_tasks = []
+    all_output = [""]  # One entry that will be replaced with status_marathon_job_human output later.
+
+    running_instances = 0
+
+    if verbose > 0:
+        autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
+        if autoscaling_info:
+            all_output.append("  Autoscaling Info:")
+            headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
+            table = [headers, autoscaling_info]
+            all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
+
+    deploy_status_for_desired_app = 'Waiting for bounce'
+    matching_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
+        service,
+        instance,
+        marathon_apps_with_clients,
+    )
+    for app, client in matching_apps_with_clients:
+        all_tasks.extend(app.tasks)
+        deploy_status_for_current_app, running_instances_for_current_app, out = status_marathon_app(
+            marathon_client=client,
+            app=app,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=dashboards,
+            verbose=verbose,
+        )
+        if app.id.lstrip('/') == desired_app_id.lstrip('/'):
+            deploy_status_for_desired_app = marathon_tools.MarathonDeployStatus.tostring(deploy_status_for_current_app)
+
+        running_instances += running_instances_for_current_app
+        all_output.append(out)
+
+    all_output[0] = status_marathon_job_human(
+        service=service,
+        instance=instance,
+        deploy_status=deploy_status_for_desired_app,
+        desired_app_id=desired_app_id,
+        app_count=len(matching_apps_with_clients),
+        running_instances=running_instances,
+        normal_instance_count=normal_instance_count,
+    )
+
+    return all_tasks, '\n'.join(all_output)
 
 
 def get_marathon_dashboard(
@@ -198,7 +234,7 @@ def get_marathon_dashboard(
     return "  Marathon app ID: %s" % PaastaColors.bold(app_id)
 
 
-def get_verbose_status_of_marathon_app(
+def status_marathon_app(
     marathon_client: marathon_tools.MarathonClient,
     app: marathon_tools.MarathonApp,
     service: str,
@@ -206,87 +242,63 @@ def get_verbose_status_of_marathon_app(
     cluster: str,
     soa_dir: str,
     dashboards: Dict[marathon_tools.MarathonClient, str],
-) -> Tuple[List[MarathonTask], str]:
-    """Takes a given marathon app object and returns the verbose details
-    about the tasks, times, hosts, etc"""
+    verbose: int,
+) -> Tuple[int, int, str]:
+    """Takes a given marathon app object and returns the details about start, times, hosts, etc"""
     output = []
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append(get_marathon_dashboard(marathon_client, dashboards, app.id))
+    output.append('    ' + ' '.join([
+        f"{app.tasks_running} running,",
+        f"{app.tasks_healthy} healthy,",
+        f"{app.tasks_staged} staged",
+        f"out of {app.instances}",
+    ]))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
 
-    output.append("    Tasks:")
-    rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
-    for task in app.tasks:
-        local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
-        if task.host is not None:
-            hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
-        else:
-            hostname = "Unknown"
-        if not task.health_check_results:
-            health_check_status = PaastaColors.grey("N/A")
-        elif marathon_tools.is_task_healthy(task):
-            health_check_status = PaastaColors.green("Healthy")
-        else:
-            health_check_status = PaastaColors.red("Unhealthy")
+    deploy_status = marathon_tools.get_marathon_app_deploy_status(marathon_client, app)
+    app_queue = marathon_tools.get_app_queue(marathon_client, app.id)
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
+    if deploy_status == marathon_tools.MarathonDeployStatus.Delayed:
+        _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
+        deploy_status_human = marathon_app_deploy_status_human(deploy_status, backoff_seconds)
+    else:
+        deploy_status_human = marathon_app_deploy_status_human(deploy_status)
+    output.append(f"    Status: {deploy_status_human}")
 
-        rows.append((
-            get_short_task_id(task.id),
-            hostname,
-            '%s (%s)' % (
-                local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
-                humanize.naturaltime(local_deployed_datetime),
-            ),
-            health_check_status,
-        ))
-    output.append('\n'.join(["      %s" % line for line in format_table(rows)]))
-    if len(app.tasks) == 0:
-        output.append("      No tasks associated with this marathon app")
-    return app.tasks, "\n".join(output)
+    if unused_offers_summary is not None and len(unused_offers_summary) > 0:
+        output.append("    Possibly stalled for:")
+        output.append("      ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()]))
 
+    if verbose > 0:
+        output.append("    Tasks:")
+        rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
+        for task in app.tasks:
+            local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
+            if task.host is not None:
+                hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
+            else:
+                hostname = "Unknown"
+            if not task.health_check_results:
+                health_check_status = PaastaColors.grey("N/A")
+            elif marathon_tools.is_task_healthy(task):
+                health_check_status = PaastaColors.green("Healthy")
+            else:
+                health_check_status = PaastaColors.red("Unhealthy")
 
-def status_marathon_job_verbose(
-    service: str,
-    instance: str,
-    clients: marathon_tools.MarathonClients,
-    cluster: str,
-    soa_dir: str,
-    job_config: marathon_tools.MarathonServiceConfig,
-    dashboards: Dict[marathon_tools.MarathonClient, str],
-) -> Tuple[List[MarathonTask], str]:
-    """Returns detailed information about a marathon apps for a service
-    and instance. Does not make assumptions about what the *exact*
-    appid is, but instead does a fuzzy match on any marathon apps
-    that match the given service.instance"""
-    all_tasks: List[MarathonTask] = []
-    all_output: List[str] = []
-    # For verbose mode, we want to see *any* matching app. As it may
-    # not be the one that we think should be deployed. For example
-    # during a bounce we want to see the old and new ones.
-    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
-        clients=clients.get_all_clients_for_service(job_config),
-        embed_tasks=True,
-    )
-
-    autoscaling_info = get_autoscaling_info(clients, job_config)
-    if autoscaling_info:
-        all_output.append("  Autoscaling Info:")
-        headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
-        table = [headers, autoscaling_info]
-        all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
-
-    for app, client in marathon_tools.get_matching_apps_with_clients(service, instance, marathon_apps_with_clients):
-        tasks, output = get_verbose_status_of_marathon_app(
-            marathon_client=client,
-            app=app,
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-            dashboards=dashboards,
-        )
-        all_tasks.extend(tasks)
-        all_output.append(output)
-    return all_tasks, "\n".join(all_output)
+            rows.append((
+                get_short_task_id(task.id),
+                hostname,
+                '%s (%s)' % (
+                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                    humanize.naturaltime(local_deployed_datetime),
+                ),
+                health_check_status,
+            ))
+        output.append('\n'.join(["      %s" % line for line in format_table(rows)]))
+        if len(app.tasks) == 0:
+            output.append("      No tasks associated with this marathon app")
+    return deploy_status, app.tasks_running, "\n".join(output)
 
 
 def haproxy_backend_report(normal_instance_count, up_backends):
@@ -524,11 +536,20 @@ def perform_command(
         restart_marathon_job(service, instance, app_id, current_client, cluster)
     elif command == 'status':
         paasta_print(status_desired_state(service, instance, current_client, job_config))
-        paasta_print(status_marathon_job(service, instance, app_id, normal_instance_count, current_client))
         dashboards = get_marathon_dashboard_links(clients, system_config)
-        tasks, out = status_marathon_job_verbose(service, instance, clients, cluster, soa_dir, job_config, dashboards)
-        if verbose > 0:
-            paasta_print(out)
+        tasks, out = status_marathon_job(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=dashboards,
+            normal_instance_count=normal_instance_count,
+            clients=clients,
+            job_config=job_config,
+            desired_app_id=app_id,
+            verbose=verbose,
+        )
+        paasta_print(out)
         paasta_print(status_mesos_tasks(service, instance, normal_instance_count))
         if verbose > 0:
             tail_lines = calculate_tail_lines(verbose_level=verbose)

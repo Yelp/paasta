@@ -88,18 +88,22 @@ def test_status_marathon_job_verbose():
     clients = mock.Mock(
         get_all_clients_for_service=mock.Mock(return_value=[client]),
     )
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    task = mock.Mock()
+    app = mock.create_autospec(
+        marathon.models.app.MarathonApp,
+        id="my_service.my_instance.gitAAAAA.configBBBBB",
+        tasks=[task],
+    )
     client.get_app.return_value = app
     service = 'my_service'
     instance = 'my_instance'
-    task = mock.Mock()
     with mock.patch(
         'paasta_tools.marathon_serviceinit.marathon_tools.get_marathon_apps_with_clients', autospec=True,
     ) as mock_get_marathon_apps_with_clients, mock.patch(
         'paasta_tools.marathon_serviceinit.marathon_tools.get_matching_apps_with_clients', autospec=True,
     ) as mock_get_matching_apps_with_clients, mock.patch(
-        'paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app', autospec=True,
-    ) as mock_get_verbose_app, mock.patch(
+        'paasta_tools.marathon_serviceinit.status_marathon_app', autospec=True,
+    ) as mock_status_marathon_app, mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=ServiceAutoscalingInfo(
             current_instances='1',
             max_instances='2',
@@ -109,8 +113,8 @@ def test_status_marathon_job_verbose():
         ),
     ):
         mock_get_matching_apps_with_clients.return_value = [(app, client)]
-        mock_get_verbose_app.return_value = ([task], 'fake_return')
-        tasks, out = marathon_serviceinit.status_marathon_job_verbose(
+        mock_status_marathon_app.return_value = (0, 0, 'fake_return')
+        tasks, out = marathon_serviceinit.status_marathon_job(
             service=service,
             instance=instance,
             clients=clients,
@@ -118,6 +122,9 @@ def test_status_marathon_job_verbose():
             soa_dir='/nail/blah',
             job_config=mock.Mock(),
             dashboards=None,
+            verbose=1,
+            normal_instance_count=3,
+            desired_app_id='my_service.my_instance.gitAAAAA.configBBBBB',
         )
         mock_get_marathon_apps_with_clients.assert_called_once_with(
             [client],
@@ -128,7 +135,7 @@ def test_status_marathon_job_verbose():
             instance,
             mock_get_marathon_apps_with_clients.return_value,
         )
-        mock_get_verbose_app.assert_called_once_with(
+        mock_status_marathon_app.assert_called_once_with(
             marathon_client=client,
             app=app,
             service=service,
@@ -136,13 +143,14 @@ def test_status_marathon_job_verbose():
             cluster='fake_cluster',
             soa_dir='/nail/blah',
             dashboards=None,
+            verbose=1,
         )
         assert tasks == [task]
         assert 'fake_return' in out
         assert '  Autoscaling Info:' in out
 
 
-def test_get_verbose_status_of_marathon_app():
+def test_status_marathon_app():
     mock_autoscaling_info = ServiceAutoscalingInfo(
         current_instances=str(3),
         max_instances=str(5),
@@ -154,8 +162,14 @@ def test_get_verbose_status_of_marathon_app():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=mock_autoscaling_info,
     ):
-        mock_marathon_client = mock.Mock()
-        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        mock_marathon_client = mock.Mock(
+            name='client',
+            list_queue=mock.Mock(return_value=[]),
+        )
+        fake_app = mock.Mock(
+            name='app',
+            deployments=[],
+        )
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
         fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
@@ -165,7 +179,7 @@ def test_get_verbose_status_of_marathon_app():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+        status, tasks, out = marathon_serviceinit.status_marathon_app(
             mock_marathon_client,
             fake_app,
             'fake_service',
@@ -173,20 +187,21 @@ def test_get_verbose_status_of_marathon_app():
             'fake_cluster',
             '/nail/blah',
             dashboards={mock_marathon_client: "http://marathon/"},
+            verbose=1,
         )
         assert 'fake_task_id' in out
         assert 'http://marathon/ui/#/apps/%2Ffake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
         assert 'fake_deployed_host:6666' in out
-        assert tasks == [fake_task]
+        assert tasks == fake_app.tasks_running
 
 
-def test_get_verbose_status_of_marathon_app_no_autoscaling():
+def test_status_marathon_app_no_autoscaling():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
-        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        fake_app = mock.Mock()
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
         fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
@@ -196,7 +211,10 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_task.health_check_results = []
         fake_app.tasks = [fake_task]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+        fake_app.tasks_running = 1
+        fake_app.deployments = []
+        mock_marathon_client.list_queue.return_value = []
+        deploy_status, num_tasks, out = marathon_serviceinit.status_marathon_app(
             mock_marathon_client,
             fake_app,
             'fake_service',
@@ -204,23 +222,26 @@ def test_get_verbose_status_of_marathon_app_no_autoscaling():
             'fake_cluster',
             '/nail/blah',
             dashboards=None,
+            verbose=1,
         )
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-15 05:30:49' in out
         assert 'fake_deployed_host:6666' in out
         assert 'Autoscaling Info' not in out
-        assert tasks == [fake_task]
+        assert num_tasks == 1
 
 
-def test_get_verbose_status_of_marathon_app_column_alignment():
+def test_status_marathon_app_column_alignment():
     with mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=None,
     ):
         mock_marathon_client = mock.Mock()
-        fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+        mock_marathon_client.list_queue.return_value = []
+        fake_app = mock.Mock()
         fake_app.version = '2015-01-15T05:30:49.862Z'
         fake_app.id = '/fake--service'
+        fake_app.deployments = []
 
         fake_task1 = mock.create_autospec(marathon.models.app.MarathonTask)
         fake_task1.id = 'fake_task1_id'
@@ -237,7 +258,7 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
         fake_task2.health_check_results = []
 
         fake_app.tasks = [fake_task1, fake_task2]
-        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(
+        status, tasks, out = marathon_serviceinit.status_marathon_app(
             mock_marathon_client,
             fake_app,
             'fake_service',
@@ -245,153 +266,185 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
             'fake_cluster',
             '/nail/blah',
             dashboards={mock_marathon_client: 'http://marathon'},
+            verbose=1,
         )
-        (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
+
+        (headers_line, task1_line, task2_line) = out.split('\n')[-3:]
         assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
         assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
         assert headers_line.index('Deployed at what localtime') == task1_line.index('1970-01-01T00:00')
         assert headers_line.index('Deployed at what localtime') == task2_line.index('1970-01-01T00:00')
 
 
-def test_status_marathon_job_when_running():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
-    client.get_app.return_value = app
-    service = 'my_service'
-    instance = 'my_instance'
-    app_id = 'mock_app_id'
-    normal_instance_count = 5
-    mock_tasks_running = 5
-    app.tasks_running = mock_tasks_running
-    app.deployments = []
-    app.instances = normal_instance_count
-    with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch:
-        marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-
-
-def tests_status_marathon_job_when_running_running_no_tasks():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
-    client.get_app.return_value = app
-    service = 'my_service'
-    instance = 'my_instance'
-    app_id = 'mock_app_id'
-    normal_instance_count = 5
-    mock_tasks_running = 0
-    app.tasks_running = mock_tasks_running
-    app.deployments = []
-    app.instances = normal_instance_count
-    with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch:
-        marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-
-
-def tests_status_marathon_job_when_running_not_running():
-    client = mock.create_autospec(marathon.MarathonClient)
-    client.get_app.return_value.tasks_running = 0
-    service = 'my_service'
-    instance = 'my_instance'
-    app_id = 'mock_app_id'
-    normal_instance_count = 5
-    with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch:
-        marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-
-
 def tests_status_marathon_job_when_running_running_tasks_with_deployments():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
+    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app = mock.Mock(
+        name="app",
+        id=f"/{app_id}",
+        tasks=[],
+        deployments=['test_deployment'],
+        version='1970-01-01T00:00:00Z',
+    )
     client.get_app.return_value = app
+    client.list_apps.return_value = [app]
+    clients = marathon_tools.MarathonClients(current=[client], previous=[client])
     service = 'my_service'
     instance = 'my_instance'
-    app_id = 'mock_app_id'
+    cluster = 'my_cluster'
+    soa_dir = '/soa/dir'
+    job_config = mock.Mock()
+    job_config.get_marathon_shard.return_value = None
+    job_config.get_previous_marathon_shards.return_value = None
     normal_instance_count = 5
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
-    app.deployments = ['test_deployment']
     app.instances = normal_instance_count
-    with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch:
-        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-        assert 'Deploying' in output
+
+    _, output = marathon_serviceinit.status_marathon_job(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+        dashboards=None,
+        normal_instance_count=normal_instance_count,
+        clients=clients,
+        job_config=job_config,
+        desired_app_id=app_id,
+        verbose=0,
+    )
+
+    assert 'Deploying' in output
 
 
 def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
+    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app = mock.Mock(
+        name="app",
+        id=f"/{app_id}",
+        tasks=[],
+        deployments=['test_deployment'],
+        version='1970-01-01T00:00:00Z',
+    )
     client.get_app.return_value = app
+    client.list_apps.return_value = [app]
+    clients = marathon_tools.MarathonClients(current=[client], previous=[client])
     service = 'my_service'
     instance = 'my_instance'
-    app_id = 'mock_app_id'
+    cluster = 'my_cluster'
+    soa_dir = '/soa/dir'
+    job_config = mock.Mock()
+    job_config.get_marathon_shard.return_value = None
+    job_config.get_previous_marathon_shards.return_value = None
     normal_instance_count = 5
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
-    app.deployments = ['test_deployment']
     app.instances = normal_instance_count
+
     with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch, mock.patch(
         'paasta_tools.marathon_tools.get_app_queue_status', return_value=(False, 10), autospec=True,
     ) as get_app_queue_status_patch:
-        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-        get_app_queue_status_patch.assert_called_with(client, app_id)
+        _, output = marathon_serviceinit.status_marathon_job(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=None,
+            normal_instance_count=normal_instance_count,
+            clients=clients,
+            job_config=job_config,
+            desired_app_id=app_id,
+            verbose=0,
+        )
+        get_app_queue_status_patch.assert_called_with(client, app.id)
         assert 'Delayed' in output
 
 
 def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
+    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app = mock.Mock(
+        name="app",
+        id=f"/{app_id}",
+        tasks=[],
+        deployments=['test_deployment'],
+        version='1970-01-01T00:00:00Z',
+    )
     client.get_app.return_value = app
+    client.list_apps.return_value = [app]
+    clients = marathon_tools.MarathonClients(current=[client], previous=[client])
     service = 'my_service'
     instance = 'my_instance'
-    app_id = 'mock_app_id'
+    cluster = 'my_cluster'
+    soa_dir = '/soa/dir'
+    job_config = mock.Mock()
+    job_config.get_marathon_shard.return_value = None
+    job_config.get_previous_marathon_shards.return_value = None
     normal_instance_count = 5
     mock_tasks_running = 0
     app.tasks_running = mock_tasks_running
-    app.deployments = ['test_deployment']
     app.instances = normal_instance_count
+
     with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch, mock.patch(
         'paasta_tools.marathon_tools.get_app_queue_status', return_value=(True, 0), autospec=True,
     ) as get_app_queue_status_patch:
-        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-        get_app_queue_status_patch.assert_called_once_with(client, app_id)
+        _, output = marathon_serviceinit.status_marathon_job(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=None,
+            normal_instance_count=normal_instance_count,
+            clients=clients,
+            job_config=job_config,
+            desired_app_id=app_id,
+            verbose=0,
+        )
+        get_app_queue_status_patch.assert_called_with(client, app.id)
         assert 'Waiting' in output
 
 
 def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployment():
-    client = mock.create_autospec(marathon.MarathonClient)
-    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
+    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app = mock.Mock(
+        name="app",
+        id=f"/{app_id}",
+        tasks=[],
+        deployments=[],
+        version='1970-01-01T00:00:00Z',
+    )
     client.get_app.return_value = app
+    client.list_apps.return_value = [app]
+    clients = marathon_tools.MarathonClients(current=[client], previous=[client])
     service = 'my_service'
     instance = 'my_instance'
-    app_id = 'mock_app_id'
+    cluster = 'my_cluster'
+    soa_dir = '/soa/dir'
+    job_config = mock.Mock()
+    job_config.get_marathon_shard.return_value = None
+    job_config.get_previous_marathon_shards.return_value = None
     normal_instance_count = 5
-    mock_tasks_running = 0
-    app.tasks_running = mock_tasks_running
-    app.deployments = []
-    app.instances = 0
     app.tasks_running = 0
+    app.instances = 0
+
     with mock.patch(
-        'paasta_tools.marathon_tools.is_app_id_running', return_value=True, autospec=True,
-    ) as is_app_id_running_patch, mock.patch(
         'paasta_tools.marathon_tools.get_app_queue_status', return_value=(None, None), autospec=True,
     ) as get_app_queue_status_patch:
-        output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        is_app_id_running_patch.assert_called_once_with(app_id, client)
-        assert get_app_queue_status_patch.call_count == 1
+        _, output = marathon_serviceinit.status_marathon_job(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            dashboards=None,
+            normal_instance_count=normal_instance_count,
+            clients=clients,
+            job_config=job_config,
+            desired_app_id=app_id,
+            verbose=0,
+        )
+        get_app_queue_status_patch.assert_called_with(client, app.id)
         assert 'Stopped' in output
 
 

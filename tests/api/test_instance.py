@@ -158,6 +158,7 @@ def test_marathon_job_status_verbose(
     app.instances = 5
     app.tasks_running = 5
     app.deployments = []
+    app.id = 'mock_app_id'
 
     client = mock.create_autospec(marathon.MarathonClient)
     client.get_app.return_value = app

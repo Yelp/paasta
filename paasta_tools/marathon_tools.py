@@ -877,14 +877,9 @@ class MarathonDeployStatus:
         return getattr(cls, _str, None)
 
 
-def get_marathon_app_deploy_status(client: MarathonClient, app_id: str) -> int:
-    if is_app_id_running(app_id, client):
-        app = client.get_app(app_id)
-    else:
-        return MarathonDeployStatus.NotRunning
-
+def get_marathon_app_deploy_status(client: MarathonClient, app: MarathonApp=None) -> int:
     # Check the launch queue to see if an app is blocked
-    is_overdue, backoff_seconds = get_app_queue_status(client, app_id)
+    is_overdue, backoff_seconds = get_app_queue_status(client, app.id)
 
     # Based on conditions at https://mesosphere.github.io/marathon/docs/marathon-ui.html
     if is_overdue:
