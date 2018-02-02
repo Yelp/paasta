@@ -65,7 +65,7 @@ Submodules
    paasta_tools.paasta_metastatus
    paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_remote_run
-   paasta_tools.paasta_service_config
+   paasta_tools.paasta_service_config_loader
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
    paasta_tools.secret_tools

@@ -41,7 +41,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.paasta_service_config import PaastaServiceConfig
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
@@ -528,7 +528,7 @@ def _run_cluster_worker(cluster_data, green_light):
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
     # Currently only 'marathon' instances are supported for wait_for_deployment because they
     # are the only thing that are worth waiting on.
-    service_configs = PaastaServiceConfig(service=service, soa_dir=soa_dir, load_deployments=False)
+    service_configs = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir, load_deployments=False)
 
     total_instances = 0
     clusters_data = []

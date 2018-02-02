@@ -19,7 +19,7 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.paasta_service_config import PaastaServiceConfig
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DeploymentsJsonV2
 
 
@@ -29,7 +29,7 @@ TEST_CLUSTER_NAME = 'cluster'
 
 
 def create_test_service():
-    return PaastaServiceConfig(
+    return PaastaServiceConfigLoader(
         service=TEST_SERVICE_NAME,
         soa_dir=TEST_SOA_DIR,
         load_deployments=True,
@@ -141,7 +141,7 @@ def adhoc_cluster_config():
     }
 
 
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_marathon_instances(mock_read_extra_service_information):
     mock_read_extra_service_information.return_value = marathon_cluster_config()
     s = create_test_service()
@@ -152,8 +152,8 @@ def test_marathon_instances(mock_read_extra_service_information):
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_marathon_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
@@ -210,8 +210,8 @@ def test_marathon_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_chronos_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
@@ -271,8 +271,8 @@ def test_chronos_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_adhoc_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
@@ -330,9 +330,9 @@ def test_adhoc_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
 @patch('paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.marathon_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_marathon_configs(
         mock_marathon_tools_read_extra_service_information,
@@ -358,9 +358,9 @@ def test_old_and_new_ways_load_the_same_marathon_configs(
     assert list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
 @patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.chronos_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_chronos_configs(
         mock_chronos_tools_read_extra_service_information,
@@ -386,9 +386,9 @@ def test_old_and_new_ways_load_the_same_chronos_configs(
     assert list(s.instance_configs(TEST_CLUSTER_NAME, ChronosJobConfig)) == expected
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
 @patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.adhoc_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_adhoc_configs(
         mock_adhoc_tools_read_extra_service_information,

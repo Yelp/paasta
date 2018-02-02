@@ -38,16 +38,16 @@ log.addHandler(logging.NullHandler())
 _InstanceConfig_T = TypeVar('_InstanceConfig_T', bound=InstanceConfig)
 
 
-class PaastaServiceConfig():
-    """PaastaServiceConfig provides useful methods for reading soa-configs and
+class PaastaServiceConfigLoader():
+    """PaastaServiceConfigLoader provides useful methods for reading soa-configs and
     iterating instance names or InstanceConfigs objects.
 
     :Example:
 
-    >>> from paasta_tools.paasta_service_config import PaastaServiceConfig
+    >>> from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
     >>> from paasta_tools.utils import DEFAULT_SOA_DIR
     >>>
-    >>> sc = PaastaServiceConfig(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
+    >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
     >>> for instance in sc.instances(cluster='fake_cluster', instance_type='marathon'):
     ...     print(instance)
