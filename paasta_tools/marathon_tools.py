@@ -58,6 +58,7 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_hmac_for_secret
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.utils import _log
@@ -72,7 +73,6 @@ from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
@@ -1370,16 +1370,15 @@ def get_expected_instance_count_for_namespace(
     total_expected = 0
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    for name, instance in get_service_instance_list(
-        service,
-        cluster=cluster,
-        instance_type='marathon',
+
+    pscl = PaastaServiceConfigLoader(
+        service=service,
         soa_dir=soa_dir,
-    ):
-        srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
-        instance_ns = srv_config.get_nerve_namespace()
-        if namespace == instance_ns:
-            total_expected += srv_config.get_instances()
+        load_deployments=False,
+    )
+    for job_config in pscl.instance_configs(cluster=cluster, instance_type_class=MarathonServiceConfig):
+        if f"{service}.{namespace}" in job_config.get_registrations():
+            total_expected += job_config.get_instances()
     return total_expected
 
 

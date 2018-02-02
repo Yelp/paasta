@@ -1623,36 +1623,32 @@ class TestMarathonTools:
         service = 'red'
         namespace = 'rojo'
         soa_dir = 'que_esta'
-        fake_instances = [(service, 'blue'), (service, 'green')]
-        fake_srv_config = marathon_tools.MarathonServiceConfig(
-            service=service,
-            cluster='fake_cluster',
-            instance='blue',
-            config_dict={'nerve_ns': 'rojo', 'instances': 11},
-            branch_dict=None,
-        )
-
-        def config_helper(name, inst, cluster, soa_dir=None):
-            if inst == 'blue':
-                return fake_srv_config
-            else:
-                return marathon_tools.MarathonServiceConfig(
-                    service=service,
-                    cluster='fake_cluster',
-                    instance='green',
-                    config_dict={'nerve_ns': 'amarillo'},
-                    branch_dict=None,
-                )
+        fake_job_configs = [
+            marathon_tools.MarathonServiceConfig(
+                service=service,
+                cluster='fake_cluster',
+                instance='blue',
+                config_dict={'nerve_ns': 'rojo', 'instances': 11},
+                branch_dict=None,
+            ),
+            marathon_tools.MarathonServiceConfig(
+                service=service,
+                cluster='fake_cluster',
+                instance='green',
+                config_dict={'nerve_ns': 'amarillo'},
+                branch_dict=None,
+            ),
+        ]
 
         with mock.patch(
-            'paasta_tools.marathon_tools.get_service_instance_list',
+            'paasta_tools.marathon_tools.PaastaServiceConfigLoader',
             autospec=True,
-            return_value=fake_instances,
-        ) as inst_list_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
-            autospec=True,
-            side_effect=config_helper,
-        ) as read_config_patch:
+            return_value=mock.Mock(
+                instance_configs=mock.Mock(
+                    return_value=fake_job_configs,
+                ),
+            ),
+        ) as fake_pscl:
             actual = marathon_tools.get_expected_instance_count_for_namespace(
                 service,
                 namespace,
@@ -1660,14 +1656,10 @@ class TestMarathonTools:
                 soa_dir=soa_dir,
             )
             assert actual == 11
-            inst_list_patch.assert_called_once_with(
-                service,
+            fake_pscl.return_value.instance_configs.assert_called_once_with(
                 cluster='fake_cluster',
-                instance_type='marathon',
-                soa_dir=soa_dir,
+                instance_type_class=marathon_tools.MarathonServiceConfig,
             )
-            read_config_patch.assert_any_call(service, 'blue', 'fake_cluster', soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service, 'green', 'fake_cluster', soa_dir=soa_dir)
 
     def test_get_matching_appids(self):
         apps = [
