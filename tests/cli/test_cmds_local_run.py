@@ -1228,7 +1228,7 @@ def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on
         config_dict={
             'healthcheck_grace_period_seconds': 0,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
@@ -1250,7 +1250,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
         config_dict={
             'healthcheck_grace_period_seconds': 0,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     mock_service_manifest
 
@@ -1276,7 +1276,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_health
         config_dict={
             'healthcheck_grace_period_seconds': 0,
         },
-        branch_dict={},
+        branch_dict=None,
     )
 
     fake_container_id = 'fake_container_id'
@@ -1311,7 +1311,7 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
         config_dict={
             'healthcheck_grace_period_seconds': 1,
         },
-        branch_dict={},
+        branch_dict=None,
     )
 
     fake_container_id = 'fake_container_id'
@@ -1346,7 +1346,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
             # only one healthcheck will be performed silently
             'healthcheck_grace_period_seconds': 2,
         },
-        branch_dict={},
+        branch_dict=None,
     )
 
     fake_container_id = 'fake_container_id'
@@ -1380,7 +1380,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         ret = simulate_healthcheck_on_service(
             fake_service_manifest, mock_client, mock.sentinel.container_id,
@@ -1522,7 +1522,7 @@ def test_volumes_are_deduped(mock_exists):
                     "mode": "RO",
                 }],
             },
-            branch_dict={},
+            branch_dict=None,
         )
 
         configure_and_run_docker_container(
@@ -1574,7 +1574,7 @@ def test_missing_volumes_skipped(mock_exists):
                     "mode": "RO",
                 }],
             },
-            branch_dict={},
+            branch_dict=None,
         )
 
         configure_and_run_docker_container(

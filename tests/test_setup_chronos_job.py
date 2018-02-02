@@ -51,6 +51,9 @@ class TestSetupChronosJob:
     }
     fake_branch_dict = {
         'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+        'git_sha': 'fake_sha',
+        'force_bounce': None,
+        'desired_state': 'start',
     }
     fake_chronos_job_config = chronos_tools.ChronosJobConfig(
         service=fake_service,

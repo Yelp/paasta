@@ -40,8 +40,8 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -202,7 +202,13 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     )
 
 
-def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_chronos_job_config(
+    service: str,
+    instance: str,
+    cluster: str,
+    load_deployments: bool=True,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> 'ChronosJobConfig':
     general_config = service_configuration_lib.read_service_configuration(
         service,
         soa_dir=soa_dir,
@@ -215,13 +221,14 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
         raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
-    branch_dict = {}
-    if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        branch_dict = deployments_json.get_branch_dict(service, branch)
-
+    branch_dict = None
     general_config = deep_merge_dictionaries(overrides=service_chronos_jobs[instance], defaults=general_config)
+
+    if load_deployments:
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
+        branch = get_paasta_branch(cluster=cluster, instance=instance)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return ChronosJobConfig(
         service=service,
@@ -234,6 +241,7 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
 
 
 class ChronosJobConfig(InstanceConfig):
+    config_filename_prefix = 'chronos'
 
     def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(ChronosJobConfig, self).__init__(

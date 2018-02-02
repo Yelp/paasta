@@ -40,6 +40,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config import PaastaServiceConfig
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -541,7 +542,10 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
             raise NoSuchCluster
 
         instances_queue = Queue()
-        for instance_config in service_configs.instance_configs(cluster=cluster, instance_type='marathon'):
+        for instance_config in service_configs.instance_configs(
+            cluster=cluster,
+            instance_type_class=MarathonServiceConfig,
+        ):
             if instance_config.get_deploy_group() == deploy_group:
                 instances_queue.put(instance_config)
                 total_instances += 1

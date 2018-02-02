@@ -821,7 +821,7 @@ def test_DeploymentsJson_read():
         actual = utils.load_deployments_json('fake_service', fake_dir)
         open_patch.assert_called_once_with(fake_path)
         json_patch.assert_called_once_with(file_mock.return_value.__enter__.return_value)
-        assert actual == fake_json['v1']
+        assert actual == utils.DeploymentsJsonV1(fake_json['v1'])
 
 
 def test_get_running_mesos_docker_containers():
@@ -897,7 +897,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'monitoring': fake_info},
-            branch_dict={},
+            branch_dict=None,
         ).get_monitoring() == fake_info
 
     def test_get_cpus_in_config(self):
@@ -906,7 +906,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'cpus': -5},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cpus() == -5
 
@@ -916,7 +916,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'cpus': .66},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cpus() == .66
 
@@ -926,7 +926,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cpus() == .25
 
@@ -936,7 +936,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={'mem': -999},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_mem() == -999
 
@@ -946,7 +946,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_mem() == 1024
 
@@ -956,7 +956,7 @@ class TestInstanceConfig:
             cluster='',
             instance='fake_instance',
             config_dict={'cpu_burst_pct': 0, 'cpus': 1},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cpu_quota() == 100000
 
@@ -969,7 +969,7 @@ class TestInstanceConfig:
                 'cpus': 1,
                 'mem': 1024,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1088m'},
@@ -995,7 +995,7 @@ class TestInstanceConfig:
                 },
                 'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1088m'},
@@ -1015,7 +1015,7 @@ class TestInstanceConfig:
             cluster='',
             instance='fake_instance',
             config_dict={'cpu_burst_pct': 100, 'cpus': 1},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cpu_quota() == 200000
 
@@ -1027,7 +1027,7 @@ class TestInstanceConfig:
             config_dict={
                 'mem': 50,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_mem_swap() == "114m"
 
@@ -1039,7 +1039,7 @@ class TestInstanceConfig:
             config_dict={
                 'mem': 50.4,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_mem_swap() == "115m"
 
@@ -1049,7 +1049,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={'disk': -999},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_disk() == -999
 
@@ -1059,7 +1059,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_disk() == 1024
 
@@ -1069,7 +1069,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={'gpus': -123},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_gpus() == -123
 
@@ -1079,7 +1079,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_gpus() == 0
 
@@ -1094,7 +1094,7 @@ class TestInstanceConfig:
                     'nice': {'soft': 20},
                 },
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert list(fake_conf.get_ulimit()) == [
             {"key": "ulimit", "value": "nice=20"},
@@ -1107,7 +1107,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert list(fake_conf.get_ulimit()) == []
 
@@ -1119,7 +1119,7 @@ class TestInstanceConfig:
             config_dict={
                 'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert list(fake_conf.get_cap_add()) == [
             {"key": "cap-add", "value": "IPC_LOCK"},
@@ -1132,7 +1132,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert list(fake_conf.get_cap_add()) == []
 
@@ -1142,7 +1142,7 @@ class TestInstanceConfig:
             instance='fake_instance',
             cluster='fake_cluster',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_deploy_group() == 'fake_cluster.fake_instance'
 
@@ -1152,7 +1152,7 @@ class TestInstanceConfig:
             instance='',
             cluster='',
             config_dict={'deploy_group': 'fake_deploy_group'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_deploy_group() == 'fake_deploy_group'
 
@@ -1162,7 +1162,7 @@ class TestInstanceConfig:
             instance='',
             cluster='fake_cluster',
             config_dict={'deploy_group': 'cluster_is_{cluster}'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_deploy_group() == 'cluster_is_fake_cluster'
 
@@ -1172,7 +1172,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cmd() is None
 
@@ -1182,7 +1182,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'cmd': 'FAKECMD'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_cmd() == 'FAKECMD'
 
@@ -1192,7 +1192,7 @@ class TestInstanceConfig:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_env() == {
             'PAASTA_SERVICE': 'fake_service',
@@ -1225,7 +1225,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_args() == []
 
@@ -1235,7 +1235,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'cmd': 'FAKECMD'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_args() is None
 
@@ -1245,7 +1245,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'args': ['arg1', 'arg2']},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_args() == ['arg1', 'arg2']
 
@@ -1255,7 +1255,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'args': ['A'], 'cmd': 'C'},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_conf.get_cmd()
         with raises(utils.InvalidInstanceConfig):
@@ -1287,7 +1287,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == []
 
@@ -1298,7 +1298,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == fake_deploy_blacklist
 
@@ -1308,7 +1308,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_deploy_blacklist() == []
 
@@ -1319,7 +1319,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
@@ -1329,7 +1329,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_extra_volumes() == []
 
@@ -1346,7 +1346,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'extra_volumes': fake_extra_volumes},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
@@ -1357,7 +1357,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'pool': pool},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_pool() == pool
 
@@ -1367,7 +1367,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_pool() == 'default'
 
@@ -1382,7 +1382,7 @@ class TestInstanceConfig:
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = []
         assert fake_conf.get_volumes(system_volumes) == [
@@ -1400,7 +1400,7 @@ class TestInstanceConfig:
                     {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [{"containerPath": "/a", "hostPath": "/a", "mode": "RO"}]
         assert fake_conf.get_volumes(system_volumes) == [
@@ -1420,7 +1420,7 @@ class TestInstanceConfig:
                     {"containerPath": "/c", "hostPath": "/c", "mode": "RO"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
@@ -1444,7 +1444,7 @@ class TestInstanceConfig:
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
@@ -1464,7 +1464,7 @@ class TestInstanceConfig:
                     {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
@@ -1486,7 +1486,7 @@ class TestInstanceConfig:
                     {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [
             {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
@@ -1505,7 +1505,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
 
         with mock.patch(
@@ -1536,7 +1536,7 @@ class TestInstanceConfig:
                 'dependencies_reference': dependencies_reference,
                 'dependencies': dependencies,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_conf.get_dependencies() == expected
 
@@ -1554,7 +1554,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'security': security},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_conf.get_outbound_firewall() == expected
 
@@ -1576,7 +1576,7 @@ class TestInstanceConfig:
             cluster='',
             instance='',
             config_dict={'security': security},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.check_security() == expected
 
@@ -1597,7 +1597,7 @@ class TestInstanceConfig:
                 'dependencies_reference': dependencies_reference,
                 'dependencies': dependencies,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.check_dependencies_reference() == expected
 

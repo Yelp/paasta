@@ -34,7 +34,7 @@ class TestMonitoring_Tools:
         cluster='mycluster',
         instance='myinstance',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     job_page = False
     fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
@@ -48,7 +48,7 @@ class TestMonitoring_Tools:
             'notification_email': 'job_test_notification_email',
             'page': job_page,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     fake_chronos_job_config = chronos_tools.ChronosJobConfig(
         service='myservicename',
@@ -61,7 +61,7 @@ class TestMonitoring_Tools:
             'notification_email': 'job_test_notification_email',
             'page': job_page,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     empty_job_config = {}
     monitor_page = True

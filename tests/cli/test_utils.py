@@ -723,14 +723,14 @@ def test_list_deploy_groups_parses_configs(
             cluster='',
             instance='',
             config_dict={'deploy_group': 'fake_deploy_group'},
-            branch_dict={},
+            branch_dict=None,
         ),
         MarathonServiceConfig(
             service='foo',
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         ),
     ]
     actual = utils.list_deploy_groups(service="foo")

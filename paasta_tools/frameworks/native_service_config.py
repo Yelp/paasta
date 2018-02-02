@@ -11,7 +11,7 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import BranchDict
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint  # noqa, imported for typing.
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -19,7 +19,7 @@ from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -157,10 +157,17 @@ class NativeServiceConfigDict(LongRunningServiceConfigDict):
 
 class NativeServiceConfig(LongRunningServiceConfig):
     config_dict: NativeServiceConfigDict
+    config_filename_prefix = 'paasta_native'
 
     def __init__(
-        self, service: str, instance: str, cluster: str, config_dict: NativeServiceConfigDict, branch_dict: BranchDict,
-        soa_dir: str, service_namespace_config: Optional[ServiceNamespaceConfig]=None,
+        self,
+        service: str,
+        instance: str,
+        cluster: str,
+        config_dict: NativeServiceConfigDict,
+        branch_dict: Optional[BranchDictV2],
+        soa_dir: str,
+        service_namespace_config: Optional[ServiceNamespaceConfig]=None,
     ) -> None:
         super(NativeServiceConfig, self).__init__(
             cluster=cluster,
@@ -304,14 +311,15 @@ def load_paasta_native_job_config(
         cluster=cluster,
         soa_dir=soa_dir,
     )
-    branch_dict: BranchDict = {}
-    if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        branch_dict = deployments_json.get_branch_dict(service, branch)
-
+    branch_dict: Optional[BranchDictV2] = None
     instance_config_dict = service_paasta_native_jobs[instance].copy()
     instance_config_dict.update(config_overrides or {})
+    if load_deployments:
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
+        branch = get_paasta_branch(cluster=cluster, instance=instance)
+        deploy_group = instance_config_dict.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
+
     service_config = NativeServiceConfig(
         service=service,
         cluster=cluster,

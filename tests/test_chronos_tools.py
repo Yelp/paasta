@@ -58,6 +58,8 @@ class TestChronosTools:
     fake_branch_dict = {
         'desired_state': 'start',
         'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+        'force_bounce': None,
+        "git_sha": "deadbeef",
     }
 
     fake_chronos_job_config = chronos_tools.ChronosJobConfig(
@@ -181,11 +183,11 @@ class TestChronosTools:
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
         with mock.patch(
-            'paasta_tools.chronos_tools.load_deployments_json', autospec=True,
-        ) as mock_load_deployments_json, mock.patch(
+            'paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,
+        ) as mock_load_v2_deployments_json, mock.patch(
             'service_configuration_lib.read_extra_service_information', autospec=True,
         ) as mock_read_extra_service_information:
-            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+            mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_extra_service_information.return_value = self.fake_config_file
             actual = chronos_tools.read_chronos_jobs_for_service(
                 self.fake_service,
@@ -202,11 +204,11 @@ class TestChronosTools:
     def test_load_chronos_job_config(self):
         fake_soa_dir = '/tmp/'
         with mock.patch(
-            'paasta_tools.chronos_tools.load_deployments_json', autospec=True,
-        ) as mock_load_deployments_json, mock.patch(
+            'paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,
+        ) as mock_load_v2_deployments_json, mock.patch(
             'paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True,
         ) as mock_read_chronos_jobs_for_service:
-            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+            mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             actual = chronos_tools.load_chronos_job_config(
                 service=self.fake_service,
@@ -214,7 +216,7 @@ class TestChronosTools:
                 cluster=self.fake_cluster,
                 soa_dir=fake_soa_dir,
             )
-            mock_load_deployments_json.assert_called_once_with(self.fake_service, soa_dir=fake_soa_dir)
+            mock_load_v2_deployments_json.assert_called_once_with(self.fake_service, soa_dir=fake_soa_dir)
             mock_read_chronos_jobs_for_service.assert_called_once_with(
                 self.fake_service,
                 self.fake_cluster,
@@ -238,8 +240,8 @@ class TestChronosTools:
     def test_load_chronos_job_config_can_ignore_deployments(self):
         fake_soa_dir = '/tmp/'
         with mock.patch(
-            'paasta_tools.chronos_tools.load_deployments_json', autospec=True,
-        ) as mock_load_deployments_json, mock.patch(
+            'paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True,
+        ) as mock_load_v2_deployments_json, mock.patch(
             'paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True,
         ) as mock_read_chronos_jobs_for_service:
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
@@ -255,7 +257,7 @@ class TestChronosTools:
                 self.fake_cluster,
                 soa_dir=fake_soa_dir,
             )
-            assert not mock_load_deployments_json.called
+            assert not mock_load_v2_deployments_json.called
             assert actual.config_dict == self.fake_chronos_job_config.config_dict
 
     def test_load_chronos_job_config_unknown_job(self):
@@ -288,7 +290,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_bounce_method()
         assert actual == 'graceful'
@@ -304,7 +306,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_epsilon()
         assert actual == 'PT60S'
@@ -318,7 +320,7 @@ class TestChronosTools:
             config_dict={
                 'epsilon': fake_epsilon,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_epsilon()
         assert actual == fake_epsilon
@@ -361,7 +363,7 @@ class TestChronosTools:
                 cluster='fake_cluster',
                 instance='fake_job',
                 config_dict=fake_config_dict,
-                branch_dict={},
+                branch_dict=None,
             )
             fake_chronos_job_config.format_chronos_job_dict(
                 fake_docker_url,
@@ -384,7 +386,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'args': ['a', 'b']},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_shell()
         assert actual is False
@@ -395,7 +397,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_shell() is True
 
@@ -406,7 +408,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'env': input_env},
-            branch_dict={},
+            branch_dict=None,
         )
         expected_env = [
             {"name": "PAASTA_CLUSTER", "value": "fake_cluster"},
@@ -426,7 +428,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'constraints': fake_constraints},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_calculated_constraints(
             system_paasta_config=system_paasta_config,
@@ -440,7 +442,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'pool': fake_pool},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_calculated_constraints(
             system_paasta_config=system_paasta_config,
@@ -454,7 +456,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'pool': fake_pool},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -473,7 +475,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'pool': fake_pool},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -491,7 +493,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_retries()
         assert actual == 2
@@ -503,7 +505,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'retries': fake_retries},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_retries()
         assert actual == fake_retries
@@ -514,7 +516,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_disabled()
         assert not actual
@@ -525,7 +527,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'disabled': True},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_disabled()
         assert actual
@@ -537,7 +539,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_schedule()
         assert actual == fake_schedule
@@ -549,7 +551,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24  # once a day
 
@@ -560,7 +562,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24
 
@@ -571,7 +573,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_schedule_interval_in_seconds() is None
 
@@ -581,7 +583,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_schedule_interval_in_seconds() is None
 
@@ -592,7 +594,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'schedule_time_zone': fake_schedule_time_zone},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_schedule_time_zone()
         assert actual == fake_schedule_time_zone
@@ -603,7 +605,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': None},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_parents() is None
 
@@ -613,7 +615,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': ['my-parent']},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_parents() == ['my-parent']
 
@@ -623,7 +625,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': None},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_parents()
         assert okay is True
@@ -635,7 +637,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': ['service1.instance1', 'service1.instance2']},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_parents()
         assert okay is True
@@ -648,7 +650,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': 'service1.instance1'},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_parents()
         assert okay is True
@@ -660,7 +662,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': ['service1.instance1', 'service1-instance1']},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_parents()
         assert okay is False
@@ -672,7 +674,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'parents': ['service1-instance1', 'service1-instance2']},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_parents()
         assert okay is False
@@ -776,7 +778,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is True
@@ -789,7 +791,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -805,7 +807,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -821,7 +823,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -835,7 +837,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_isodate_exception = (
             "ISO 8601 time designator 'T' missing. Unable to parse datetime string {!r}".format('now')
@@ -853,7 +855,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_isodate_exception = 'Unrecognised ISO 8601 date format: {!r}'.format('today')
         okay, msg = chronos_config.check_schedule()
@@ -869,7 +871,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_isodate_exception = 'Unrecognised ISO 8601 time format: {!r}'.format('morning')
         okay, msg = chronos_config.check_schedule()
@@ -884,7 +886,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -900,7 +902,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -916,7 +918,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -929,7 +931,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -945,7 +947,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is True
@@ -957,7 +959,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is True
@@ -969,7 +971,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule': fake_schedule},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -989,7 +991,7 @@ class TestChronosTools:
             cluster='',
             instance='',
             config_dict={'schedule_time_zone': ''},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = chronos_config.check_schedule_time_zone()
         assert okay is True
@@ -1071,7 +1073,7 @@ class TestChronosTools:
                 'cfs_period_us': fake_period,
                 'cpu_burst_pct': fake_burst,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         expected = {
             'name': fake_job_name,
@@ -1133,7 +1135,7 @@ class TestChronosTools:
                 'epsilon': 'PT60S',
                 'net': 'host',
             },
-            branch_dict={},
+            branch_dict=None,
         )
         with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True):
             result = chronos_job_config.format_chronos_job_dict(
@@ -1158,7 +1160,7 @@ class TestChronosTools:
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
             },
-            branch_dict={},
+            branch_dict=None,
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             invalid_config.format_chronos_job_dict(
@@ -1458,6 +1460,8 @@ class TestChronosTools:
                 branch_dict={
                     'desired_state': 'stop',
                     'docker_image': 'paasta-%s-%s' % (self.fake_service, self.fake_cluster),
+                    'force_bounce': None,
+                    'git_sha': 'deadbeef',
                 },
             )
             load_chronos_job_config_patch.return_value = stopped_job_config
@@ -1475,6 +1479,8 @@ class TestChronosTools:
             branch_dict={
                 'desired_state': 'start',
                 'docker_image': 'fake_image',
+                'force_bounce': None,
+                'git_sha': 'deadbeef',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1541,6 +1547,8 @@ class TestChronosTools:
             branch_dict={
                 'desired_state': 'stop',
                 'docker_image': 'fake_image',
+                'force_bounce': None,
+                'git_sha': 'deadbeef',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1623,6 +1631,8 @@ class TestChronosTools:
             branch_dict={
                 'desired_state': 'stop',
                 'docker_image': 'fake_image',
+                'force_bounce': None,
+                'git_sha': 'deadbeef',
             },
         )
         fake_config_hash = 'fake_config_hash'
@@ -1713,7 +1723,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'cmd': test_input},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_cmd()
         assert okay is True
@@ -1726,7 +1736,7 @@ class TestChronosTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'cmd': test_input},
-            branch_dict={},
+            branch_dict=None,
         )
         okay, msg = fake_conf.check_cmd()
         assert okay is False
@@ -1944,11 +1954,11 @@ class TestChronosTools:
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
-    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
     def test__get_related_jobs_and_configs_only_independent_jobs(
-        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+        self, mock_load_v2_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
     ):
-        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
         mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
         mock_read_services_configuration.return_value = [self.fake_service]
         jobs, configs = _get_related_jobs_and_configs(cluster=self.fake_cluster, ttl=-1)  # ttl=-1 to disable cache
@@ -1977,11 +1987,11 @@ class TestChronosTools:
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
-    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
     def test__get_related_jobs_and_configs_with_dependent_jobs(
-        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+        self, mock_load_v2_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
     ):
-        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
         mock_read_chronos_jobs_for_service.return_value = {
             self.fake_job_name: self.fake_config_dict,
             self.fake_dependent_job_name: self.fake_dependent_job_config_dict,
@@ -2016,11 +2026,11 @@ class TestChronosTools:
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
-    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
     def test_get_related_jobs_configs_only_independent_jobs(
-        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+        self, mock_load_v2_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
     ):
-        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
         mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
         mock_read_services_configuration.return_value = [self.fake_service]
         related_jobs_configs = get_related_jobs_configs(
@@ -2040,11 +2050,11 @@ class TestChronosTools:
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
-    @mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
     def test_get_related_jobs_configs_with_dependent_jobs(
-        self, mock_load_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+        self, mock_load_v2_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
     ):
-        mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
+        mock_load_v2_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
         mock_read_chronos_jobs_for_service.return_value = {
             self.fake_job_name: self.fake_config_dict,
             self.fake_dependent_job_name: self.fake_dependent_job_config_dict,

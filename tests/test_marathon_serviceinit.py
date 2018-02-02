@@ -58,7 +58,7 @@ def test_get_bouncing_status():
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'bounce_method': 'fake_bounce'},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = marathon_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', mock_config)
         assert 'fake_bounce' in actual

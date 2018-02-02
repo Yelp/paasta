@@ -350,7 +350,10 @@ def main():
 
     for service in list_services(soa_dir=args.soa_dir):
         service_config = PaastaServiceConfig(service=service, soa_dir=args.soa_dir)
-        for instance_config in service_config.instance_configs(cluster=cluster, instance_type='marathon'):
+        for instance_config in service_config.instance_configs(
+            cluster=cluster,
+            instance_type_class=marathon_tools.MarathonServiceConfig,
+        ):
             if instance_config.get_docker_image():
                 check_service_replication(
                     instance_config=instance_config,

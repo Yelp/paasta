@@ -370,7 +370,7 @@ def mock_marathon_instance_config(fake_name) -> "MarathonServiceConfig":
         cluster='fake_cluster',
         instance=fake_name,
         config_dict={'deploy_group': 'fake_deploy_group'},
-        branch_dict={},
+        branch_dict=None,
         soa_dir='fake_soa_dir',
     )
 

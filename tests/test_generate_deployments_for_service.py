@@ -26,14 +26,14 @@ def test_get_deploy_group_mappings():
             service=fake_service,
             cluster='clusterA',
             instance='main',
-            branch_dict={},
+            branch_dict=None,
             config_dict={'deploy_group': 'no_thanks'},
         ),
         MarathonServiceConfig(
             service=fake_service,
             cluster='clusterB',
             instance='main',
-            branch_dict={},
+            branch_dict=None,
             config_dict={'deploy_group': 'try_me'},
         ),
     ]

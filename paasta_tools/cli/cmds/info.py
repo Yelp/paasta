@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Collection
+from typing import List
+
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -61,7 +64,7 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_info)
 
 
-def deployments_to_clusters(deployments):
+def deployments_to_clusters(deployments: Collection[str]) -> Collection[str]:
     clusters = []
     for deployment in deployments:
         cluster, _ = deployment.split('.')
@@ -80,7 +83,7 @@ def get_smartstack_endpoints(service, soa_dir):
     return endpoints
 
 
-def get_deployments_strings(service, soa_dir):
+def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
     output = []
     try:
         deployments = get_actual_deployments(service, soa_dir)
