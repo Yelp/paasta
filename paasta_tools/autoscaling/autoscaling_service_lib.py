@@ -420,8 +420,9 @@ async def mesos_cpu_metrics_provider(
 
             if system_paasta_config.get_filter_bogus_mesos_cputime_enabled():
                 # It is unlikely that the cputime consumed by a task is greater than the CPU limits
-                # that we enforce. This is a bug in Mesos (tracked in PAASTA-13510)
+                # that we enforce (plus 10% of margin). This is a bug in Mesos (tracked in PAASTA-13510)
                 cpu_burst_allowance = (
+                    1.10 *
                     marathon_service_config.get_cpu_quota() /
                     marathon_service_config.get_cpu_period()
                 )

@@ -34,10 +34,11 @@ RUN apt-get update > /dev/null && \
         libssl-dev \
         libyaml-dev \
         python3.6-dev \
+        python-pip \
         python-tox \
         wget \
         zsh > /dev/null \
-    && apt-get clean > /dev/null
+    && rm -rf /var/lib/apt/lists/*
 
 RUN cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \

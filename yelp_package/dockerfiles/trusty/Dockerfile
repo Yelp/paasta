@@ -38,7 +38,7 @@ RUN apt-get update > /dev/null && \
         python-tox \
         wget \
         zsh > /dev/null \
-    && apt-get clean > /dev/null
+    && rm -rf /var/lib/apt/lists/*
 
 RUN cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \

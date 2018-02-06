@@ -30,7 +30,7 @@ RUN apt-get update > /dev/null && \
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         lsb-release \
-        marathon=1.4.10-1.0.675.ubuntu1604 \
+        marathon=1.4.11-1.0.676.ubuntu1604 \
         && \
     apt-get clean
 
