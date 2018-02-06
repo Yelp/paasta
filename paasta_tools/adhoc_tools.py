@@ -49,7 +49,7 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
-    branch_dict = {}
+    branch_dict = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))

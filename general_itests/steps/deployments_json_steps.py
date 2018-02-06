@@ -29,6 +29,7 @@ from dulwich.repo import Repo
 from paasta_tools import generate_deployments_for_service
 from paasta_tools.cli.cmds.mark_for_deployment import paasta_mark_for_deployment
 from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
+from paasta_tools.utils import DeploymentsJsonV1
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
@@ -138,7 +139,7 @@ def step_impl_when(context):
 @then('that deployments.json can be read back correctly')
 def step_impl_then(context):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    expected_deployments = {
+    expected_deployments = DeploymentsJsonV1({
         'fake_deployments_json_service:paasta-test_cluster.test_instance': {
             'force_bounce': context.force_bounce_timestamp,
             'desired_state': 'stop',
@@ -149,14 +150,14 @@ def step_impl_then(context):
             'desired_state': 'start',
             'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
         },
-    }
+    })
     assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
 
 
 @then('that deployments.json has a desired_state of "{expected_state}"')
 def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    latest = sorted(deployments.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
+    latest = sorted(deployments.config_dict.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
     desired_state = latest['desired_state']
     assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
 
