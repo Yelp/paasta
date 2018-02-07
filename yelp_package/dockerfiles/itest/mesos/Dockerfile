@@ -16,11 +16,17 @@ FROM ubuntu:trusty
 
 # Install packages to allow apt to use a repository over HTTPS
 # https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#trusty-1404
-RUN apt-get update > /dev/null && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    software-properties-common
+RUN apt-get update > /dev/null && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        software-properties-common && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Need Python 3.6
+RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
@@ -31,7 +37,7 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
         docker-ce=17.03.2~ce-0~ubuntu-trusty \
         libsasl2-modules \
         mesos=1.3.0-2.0.3 > /dev/null && \
-    apt-get clean
+    rm -rf /var/lib/apt/lists/*
 
 COPY mesos-secrets mesos-slave-secret /etc/
 RUN echo '{}' > /root/.dockercfg

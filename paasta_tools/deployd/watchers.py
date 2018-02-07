@@ -51,7 +51,7 @@ class AutoscalerWatcher(PaastaWatcher):
         """recursive nonsense"""
         if "autoscaling.lock" in path:
             return
-        self.log.debug("Adding watch on {}".format(path))
+        self.log.debug("Adding folder watch on {}".format(path))
         watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
         self.watchers[path] = watcher
         children = watcher._prior_children
@@ -61,27 +61,31 @@ class AutoscalerWatcher(PaastaWatcher):
             for child in children:
                 self.watch_folder("{}/{}".format(path, child))
 
+    def _enqueue_service_instance(self, path):
+        service, instance = path.split('/')[-3:-1]
+        self.log.info("Number of instances changed or autoscaling enabled for first time"
+                      " for {}.{}".format(service, instance))
+        # https://github.com/python/mypy/issues/2852
+        service_instance = ServiceInstance(  # type: ignore
+            service=service,
+            instance=instance,
+            cluster=self.config.get_cluster(),
+            bounce_by=int(time.time()),
+            bounce_timers=None,
+            watcher=type(self).__name__,
+            failures=0,
+        )
+        self.inbox_q.put(service_instance)
+
     def watch_node(self, path):
-        self.log.debug("Adding watch on {}".format(path))
+        self.log.debug("Adding node watch on {}".format(path))
         DataWatch(self.zk, path, func=self.process_node_event, send_event=True)
+        self._enqueue_service_instance(path)
 
     def process_node_event(self, data, stat, event):
         self.log.debug("Node change: {}".format(event))
         if event and (event.type == EventType.CREATED or event.type == EventType.CHANGED):
-            service, instance = event.path.split('/')[-3:-1]
-            self.log.info("Number of instances changed or autoscaling enabled for first time"
-                          " for {}.{}".format(service, instance))
-            # https://github.com/python/mypy/issues/2852
-            service_instance = ServiceInstance(  # type: ignore
-                service=service,
-                instance=instance,
-                cluster=self.config.get_cluster(),
-                bounce_by=int(time.time()),
-                bounce_timers=None,
-                watcher=type(self).__name__,
-                failures=0,
-            )
-            self.inbox_q.put(service_instance)
+            self._enqueue_service_instance(event.path)
 
     def process_folder_event(self, children, event):
         self.log.debug("Folder change: {}".format(event))
