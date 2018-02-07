@@ -46,6 +46,7 @@ from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import get_all_running_tasks
+from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -455,10 +456,9 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
         return 0.0
 
 
-def get_autoscaling_info(marathon_clients, service_config):
+def get_autoscaling_info(apps_with_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
-        all_mesos_tasks = get_all_running_tasks()
+        all_mesos_tasks = get_cached_list_of_running_tasks_from_frameworks()
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         system_paasta_config = load_system_paasta_config()
