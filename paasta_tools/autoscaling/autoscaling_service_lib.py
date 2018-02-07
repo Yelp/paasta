@@ -231,7 +231,6 @@ async def get_json_body_from_service(host, port, endpoint, session, timeout=2):
         'http://%s:%s/%s' % (host, port, endpoint),
         headers={'User-Agent': get_user_agent()}, timeout=timeout,
     ) as resp:
-        print(f"resp = {resp!r}")
         return await resp.json()
 
 
@@ -721,7 +720,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                                 all_mesos_tasks,
                                 config,
                             )
-                            autoscale_marathon_instance(
+                            await autoscale_marathon_instance(
                                 config,
                                 system_paasta_config,
                                 list(marathon_tasks.values()),
