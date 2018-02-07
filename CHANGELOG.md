@@ -1,7 +1,22 @@
 # Change Log
 
-## [0.69.26](https://github.com/Yelp/paasta/tree/0.69.26) (2018-01-23)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.24...0.69.26)
+## [0.69.27](https://github.com/Yelp/paasta/tree/0.69.27) (2018-02-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.26...0.69.27)
+
+**Merged pull requests:**
+
+- Give cpu\_burst\_allowance a 10% margin for underprovisioned services [\#1723](https://github.com/Yelp/paasta/pull/1723) ([solarkennedy](https://github.com/solarkennedy))
+- Stop allowing nerve\_ns in marathon files [\#1721](https://github.com/Yelp/paasta/pull/1721) ([nhandler](https://github.com/nhandler))
+- Use marathon 1.4.11 in itests [\#1720](https://github.com/Yelp/paasta/pull/1720) ([nhandler](https://github.com/nhandler))
+- Revert "Drop paasta lucid image" [\#1719](https://github.com/Yelp/paasta/pull/1719) ([macisamuele](https://github.com/macisamuele))
+- Fix mesos dockerfile \(example\_cluster\) and minor docker file updates [\#1718](https://github.com/Yelp/paasta/pull/1718) ([macisamuele](https://github.com/macisamuele))
+- paasta deployd watches for new watches when autoscaling is enabled first time [\#1716](https://github.com/Yelp/paasta/pull/1716) ([chlgit](https://github.com/chlgit))
+- Run jupyter notebook as non-root, added spark driver options [\#1715](https://github.com/Yelp/paasta/pull/1715) ([huadongliu](https://github.com/huadongliu))
+- Make paasta local-run detach only when there is a healthcheck to run. [\#1712](https://github.com/Yelp/paasta/pull/1712) ([solarkennedy](https://github.com/solarkennedy))
+- Update disk docs [\#1710](https://github.com/Yelp/paasta/pull/1710) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.69.26](https://github.com/Yelp/paasta/tree/v0.69.26) (2018-01-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.24...v0.69.26)
 
 **Merged pull requests:**
 
@@ -26,6 +41,7 @@
 - Make paasta\_tools.bounce\_lib.kill\_old\_ids raise exceptions for deployd [\#1707](https://github.com/Yelp/paasta/pull/1707) ([nhandler](https://github.com/nhandler))
 - Rename the bespoke-autoscale command to just 'autoscale' [\#1705](https://github.com/Yelp/paasta/pull/1705) ([solarkennedy](https://github.com/solarkennedy))
 - Always emit 'instances' to signalfx for knowing what the desired instance count is [\#1704](https://github.com/Yelp/paasta/pull/1704) ([solarkennedy](https://github.com/solarkennedy))
+- Make sure tasks in old\_app\_at\_risk\_tasks get passed to bounce\_func. [\#1703](https://github.com/Yelp/paasta/pull/1703) ([EvanKrall](https://github.com/EvanKrall))
 - Add missing space [\#1702](https://github.com/Yelp/paasta/pull/1702) ([nhandler](https://github.com/nhandler))
 - Tweaks to paasta rightsizer script. [\#1701](https://github.com/Yelp/paasta/pull/1701) ([thebostik](https://github.com/thebostik))
 
