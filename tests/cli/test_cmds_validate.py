@@ -149,7 +149,7 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
   healthcheck_mode: cmd
   healthcheck_cmd: '/bin/true'
-main_http:
+_main_http:
   cpus: 0.1
   instances: 2
   mem: 250
