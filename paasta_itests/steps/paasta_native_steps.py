@@ -164,6 +164,20 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
                         'force_bounce': None,
                     },
                 },
+                'v2': {
+                    'deployments': {
+                        f"{context.cluster}.{instance}": {
+                            'docker_image': 'busybox',
+                            'git_sha': 'deadbeef',
+                        },
+                    },
+                    'controls': {
+                        f"{service}:{context.cluster}.{instance}": {
+                            'desired_state': 'start',
+                            'force_bounce': None,
+                        },
+                    },
+                },
             }, f,
         )
 
