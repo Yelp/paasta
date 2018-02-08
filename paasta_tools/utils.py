@@ -2473,7 +2473,7 @@ def terminal_len(text: str) -> int:
     return len(remove_ansi_escape_sequences(text))
 
 
-def format_table(rows: Iterable[Union[str, List[str]]], min_spacing: int=2) -> List[str]:
+def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int=2) -> List[str]:
     """Formats a table for use on the command line.
 
     :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string

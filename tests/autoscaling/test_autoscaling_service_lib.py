@@ -1335,14 +1335,11 @@ def test_get_autoscaling_info():
         'paasta_tools.autoscaling.autoscaling_service_lib.load_system_paasta_config', autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock()),
     ), mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_all_running_tasks', autospec=True,
-        return_value=[],
-    ) as mock_get_all_running_tasks, mock.patch(
-        'paasta_tools.autoscaling.autoscaling_service_lib.get_marathon_apps_with_clients', autospec=True,
-        return_value=[(mock.Mock, mock.Mock)],
-    ) as mock_get_marathon_apps_with_clients:
+        'paasta_tools.autoscaling.autoscaling_service_lib.get_cached_list_of_running_tasks_from_frameworks',
+        autospec=True, return_value=[],
+    ) as mock_get_all_running_tasks:
         mock_get_utilization.return_value = 0.80131
-        mock_marathon_client = mock.Mock()
+        mock_apps_with_clients = [(mock.Mock(name='fake_app'), mock.Mock(name='fake_client'))]
         mock_get_new_instance_count.return_value = 6
         mock_service_config = mock.Mock(
             get_max_instances=mock.Mock(return_value=10),
@@ -1359,11 +1356,11 @@ def test_get_autoscaling_info():
         mock_mesos_tasks = mock.Mock()
         mock_filter_autoscaling_tasks.return_value = ({'id1': mock_marathon_task}, mock_mesos_tasks)
         ret = autoscaling_service_lib.get_autoscaling_info(
-            mock_marathon_client,
+            mock_apps_with_clients,
             mock_service_config,
         )
         mock_filter_autoscaling_tasks.assert_called_with(
-            [mock_get_marathon_apps_with_clients.return_value[0][0]],
+            [mock_apps_with_clients[0][0]],
             mock_get_all_running_tasks.return_value,
             mock_service_config,
         )
@@ -1408,7 +1405,7 @@ def test_get_autoscaling_info():
         # test missing data
         mock_get_utilization.side_effect = MetricsProviderNoDataError
         ret = autoscaling_service_lib.get_autoscaling_info(
-            mock_marathon_client,
+            mock_apps_with_clients,
             mock_service_config,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
@@ -1423,7 +1420,7 @@ def test_get_autoscaling_info():
         mock_get_utilization.return_value = 0.80131
         mock_filter_autoscaling_tasks.side_effect = MetricsProviderNoDataError
         ret = autoscaling_service_lib.get_autoscaling_info(
-            mock_marathon_client,
+            mock_apps_with_clients,
             mock_service_config,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
@@ -1439,7 +1436,7 @@ def test_get_autoscaling_info():
         mock_service_config = mock.Mock(get_max_instances=mock.Mock(return_value=None))
         mock_load_marathon_service_config.return_value = mock_service_config
         ret = autoscaling_service_lib.get_autoscaling_info(
-            mock_marathon_client,
+            mock_apps_with_clients,
             mock_service_config,
         )
         assert ret is None

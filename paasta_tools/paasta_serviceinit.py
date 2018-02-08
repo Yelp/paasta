@@ -199,7 +199,6 @@ def main() -> None:
                         verbose=args.verbose,
                         soa_dir=args.soa_dir,
                         app_id=args.app_id,
-                        delta=args.delta,
                         clients=clients.marathon(),
                     )
                 elif instance_type == 'chronos':

@@ -1,3 +1,17 @@
+paasta-tools (0.69.27) xenial; urgency=medium
+
+  * 0.69.27 tagged with 'make release'
+    Commit: Merge branch "status_should_show_all_marathon_apps"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 Feb 2018 15:52:13 -0800
+
+paasta-tools (0.69.27) xenial; urgency=medium
+
+  * 0.69.27 tagged with 'make release'
+    Commit: Merge branch "status_should_show_all_marathon_apps"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 Feb 2018 15:51:43 -0800
+
 paasta-tools (0.69.26) xenial; urgency=medium
 
   * 0.69.26 tagged with 'make release'

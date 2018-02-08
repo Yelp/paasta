@@ -201,12 +201,13 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
 
     paasta_print(
         status_marathon_job_human(
-            service,
-            instance,
-            deploy_status,
-            marathon_status.app_id,
-            marathon_status.running_instance_count,
-            marathon_status.expected_instance_count,
+            service=service,
+            instance=instance,
+            deploy_status=deploy_status,
+            desired_app_id=marathon_status.app_id,
+            app_count=marathon_status.app_count,
+            running_instances=marathon_status.running_instance_count,
+            normal_instance_count=marathon_status.expected_instance_count,
         ),
     )
     return 0
