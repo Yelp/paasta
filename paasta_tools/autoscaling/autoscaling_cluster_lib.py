@@ -456,7 +456,7 @@ class ClusterAutoscaler(object):
             slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
             killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
-            amount_to_decrease = delta * -1
+            amount_to_decrease = round(delta * -1, 2)
             if amount_to_decrease > killable_capacity:
                 self.log.error(
                     "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything! "
