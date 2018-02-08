@@ -37,27 +37,6 @@ def create_test_service():
 
 
 def deployment_json():
-    # return DeploymentsJsonV2({
-    #     '%s:paasta-%s.main' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    #     '%s:paasta-%s.canary' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    #     '%s:paasta-%s.example_chronos_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    #     '%s:paasta-%s.example_child_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    #     '%s:paasta-%s.sample_batch' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    #     '%s:paasta-%s.interactive' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-    #         'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-    #     },
-    # })
-
     return DeploymentsJsonV2({
         'deployments': {
             'fake.non_canary': {
