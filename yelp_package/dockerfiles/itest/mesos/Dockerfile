@@ -36,7 +36,7 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         docker-ce=17.03.2~ce-0~ubuntu-trusty \
         libsasl2-modules \
-        mesos=1.4.1-2.0.1 > /dev/null && \
+        mesos=1.5.0-2.0.1 > /dev/null && \
     rm -rf /var/lib/apt/lists/*
 
 COPY mesos-secrets mesos-slave-secret /etc/
