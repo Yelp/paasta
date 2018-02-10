@@ -698,6 +698,7 @@ def test_get_docker_run_cmd_interactive_true():
         interactive, docker_hash, command, net, docker_params, detach,
     )
     assert '--interactive=true' in actual
+    assert '--detach' not in actual
 
 
 def test_get_docker_run_docker_params():

@@ -395,8 +395,9 @@ def get_docker_run_cmd(
         cmd.append('--interactive=true')
         if sys.stdout.isatty():
             cmd.append('--tty=true')
-    if detach:
-        cmd.append('--detach=true')
+    else:
+        if detach:
+            cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
         if isinstance(command, str):
