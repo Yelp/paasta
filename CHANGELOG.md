@@ -1,7 +1,15 @@
 # Change Log
 
-## [0.69.27](https://github.com/Yelp/paasta/tree/0.69.27) (2018-02-07)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.26...0.69.27)
+## [0.69.28](https://github.com/Yelp/paasta/tree/0.69.28) (2018-02-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.27...0.69.28)
+
+**Merged pull requests:**
+
+- Update marathon schema to allow instance names to begin with an underscore [\#1725](https://github.com/Yelp/paasta/pull/1725) ([nhandler](https://github.com/nhandler))
+- Rounding capacity to terminate too [\#1724](https://github.com/Yelp/paasta/pull/1724) ([matfra](https://github.com/matfra))
+
+## [v0.69.27](https://github.com/Yelp/paasta/tree/v0.69.27) (2018-02-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.26...v0.69.27)
 
 **Merged pull requests:**
 
@@ -10,6 +18,7 @@
 - Use marathon 1.4.11 in itests [\#1720](https://github.com/Yelp/paasta/pull/1720) ([nhandler](https://github.com/nhandler))
 - Revert "Drop paasta lucid image" [\#1719](https://github.com/Yelp/paasta/pull/1719) ([macisamuele](https://github.com/macisamuele))
 - Fix mesos dockerfile \(example\_cluster\) and minor docker file updates [\#1718](https://github.com/Yelp/paasta/pull/1718) ([macisamuele](https://github.com/macisamuele))
+- Make paasta status display information about all marathon apps, even without -v. [\#1717](https://github.com/Yelp/paasta/pull/1717) ([EvanKrall](https://github.com/EvanKrall))
 - paasta deployd watches for new watches when autoscaling is enabled first time [\#1716](https://github.com/Yelp/paasta/pull/1716) ([chlgit](https://github.com/chlgit))
 - Run jupyter notebook as non-root, added spark driver options [\#1715](https://github.com/Yelp/paasta/pull/1715) ([huadongliu](https://github.com/huadongliu))
 - Make paasta local-run detach only when there is a healthcheck to run. [\#1712](https://github.com/Yelp/paasta/pull/1712) ([solarkennedy](https://github.com/solarkennedy))

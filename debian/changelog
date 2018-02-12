@@ -1,3 +1,19 @@
+paasta-tools (0.69.28) xenial; urgency=medium
+
+  * 0.69.28 tagged with 'make release'
+    Commit: Merge branch
+    "speedup_get_expected_instance_count_for_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 12 Feb 2018 11:11:47 -0800
+
+paasta-tools (0.69.28) xenial; urgency=medium
+
+  * 0.69.28 tagged with 'make release'
+    Commit: Merge branch
+    "speedup_get_expected_instance_count_for_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 12 Feb 2018 11:11:19 -0800
+
 paasta-tools (0.69.27) xenial; urgency=medium
 
   * 0.69.27 tagged with 'make release'
