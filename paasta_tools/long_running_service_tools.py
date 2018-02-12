@@ -9,7 +9,7 @@ import service_configuration_lib
 from kazoo.exceptions import NoNodeError
 from mypy_extensions import TypedDict
 
-from paasta_tools.utils import BranchDict
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -89,7 +89,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def __init__(
         self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
-        branch_dict: BranchDict, soa_dir: str=DEFAULT_SOA_DIR,
+        branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         super(LongRunningServiceConfig, self).__init__(
             cluster=cluster,

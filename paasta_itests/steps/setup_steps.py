@@ -378,6 +378,22 @@ def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
                 }
                 for instance in csv_instances.split(',')
             },
+            'v2': {
+                'deployments': {
+                    f"{context.cluster}.{instance}": {
+                        'docker_image': image,
+                        'git_sha': 'deadbeef',
+                    }
+                    for instance in csv_instances.split(',')
+                },
+                'controls': {
+                    f"{service}:{context.cluster}.{instance}": {
+                        'desired_state': desired_state,
+                        'force_bounce': None,
+                    }
+                    for instance in csv_instances.split(',')
+                },
+            },
         }))
 
 

@@ -222,17 +222,17 @@ def instances_deployed_side_effect(cluster_data, instances_out, green_light):  #
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfigLoader', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 def test_wait_for_deployment(
     mock_instances_deployed,
     mock__log,
-    mock_paasta_service_config,
+    mock_paasta_service_config_loader,
     mock_load_system_paasta_config,
 ):
-    mock_paasta_service_config.return_value.clusters = ['cluster1']
-    mock_paasta_service_config.return_value.instance_configs.return_value = [
+    mock_paasta_service_config_loader.return_value.clusters = ['cluster1']
+    mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
         mock_marathon_instance_config('instance1'),
         mock_marathon_instance_config('instance2'),
         mock_marathon_instance_config('instance3'),
@@ -247,16 +247,16 @@ def test_wait_for_deployment(
             with patch('time.sleep', autospec=True):
                 mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 1)
 
-    mock_paasta_service_config.return_value.clusters = ['cluster1', 'cluster2']
-    mock_paasta_service_config.return_value.instance_configs.side_effect = [
+    mock_paasta_service_config_loader.return_value.clusters = ['cluster1', 'cluster2']
+    mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
     ]
     with patch('sys.stdout', autospec=True, flush=Mock()):
         assert mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 5) == 0
 
-    mock_paasta_service_config.return_value.clusters = ['cluster1', 'cluster2']
-    mock_paasta_service_config.return_value.instance_configs.side_effect = [
+    mock_paasta_service_config_loader.return_value.clusters = ['cluster1', 'cluster2']
+    mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance3')],
     ]
@@ -265,19 +265,19 @@ def test_wait_for_deployment(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfigLoader', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.instances_deployed', autospec=True)
 def test_wait_for_deployment_raise_no_such_cluster(
     mock_instances_deployed,
     mock__log,
-    mock_paasta_service_config,
+    mock_paasta_service_config_loader,
     mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = \
         {'cluster1': 'some_url_1', 'cluster2': 'some_url_2'}
 
-    mock_paasta_service_config.return_value.clusters = ['cluster3']
+    mock_paasta_service_config_loader.return_value.clusters = ['cluster3']
     with raises(NoSuchCluster):
         mark_for_deployment.wait_for_deployment('service', 'deploy_group_3', 'somesha', '/nail/soa', 0)
 
@@ -309,7 +309,7 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfig', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfigLoader', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
@@ -317,12 +317,12 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock_list_deploy_groups,
     mock_validate_service_name,
     mock_validate_git_sha,
-    mock_paasta_service_config,
+    mock_paasta_service_config_loader,
     mock_load_system_paasta_config,
     system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_paasta_service_config.return_value.instance_configs.return_value = \
+    mock_paasta_service_config_loader.return_value.instance_configs.return_value = \
         [mock_marathon_instance_config('some_instance')]
     mock_list_deploy_groups.return_value = {'test_deploy_group'}
     assert paasta_wait_for_deployment(fake_args) == 0
@@ -370,7 +370,7 @@ def mock_marathon_instance_config(fake_name) -> "MarathonServiceConfig":
         cluster='fake_cluster',
         instance=fake_name,
         config_dict={'deploy_group': 'fake_deploy_group'},
-        branch_dict={},
+        branch_dict=None,
         soa_dir='fake_soa_dir',
     )
 

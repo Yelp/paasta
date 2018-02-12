@@ -414,7 +414,7 @@ def test_status_pending_pipeline_build_message(
 
 @patch('paasta_tools.cli.cmds.status.load_deployments_json', autospec=True)
 def test_get_actual_deployments(mock_get_deployments,):
-    mock_get_deployments.return_value = utils.DeploymentsJson({
+    mock_get_deployments.return_value = utils.DeploymentsJsonV1({
         'fake_service:paasta-b_cluster.b_instance': {
             'docker_image': 'this_is_a_sha',
         },

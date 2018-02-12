@@ -1,7 +1,7 @@
-paasta_tools.paasta_service_config module
+paasta_tools.paasta_service_config_loader module
 =========================================
 
-.. automodule:: paasta_tools.paasta_service_config
+.. automodule:: paasta_tools.paasta_service_config_loader
     :members:
     :undoc-members:
     :show-inheritance:

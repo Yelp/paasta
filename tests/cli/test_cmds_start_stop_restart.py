@@ -47,7 +47,7 @@ def test_issue_state_change_for_service(mock_log_event, get_transport_and_path, 
             instance='fake_instance',
             service='fake_service',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         ),
         '0',
         'stop',
@@ -68,7 +68,7 @@ def test_make_mutate_refs_func():
             instance='fake_instance',
             service='fake_service',
             config_dict={'deploy_group': 'a'},
-            branch_dict={},
+            branch_dict=None,
         ),
         force_bounce='FORCEBOUNCE',
         desired_state='stop',
@@ -103,7 +103,7 @@ def test_log_event():
             instance='fake_instance',
             service='fake_service',
             config_dict={'deploy_group': 'fake_deploy_group'},
-            branch_dict={},
+            branch_dict=None,
         )
         start_stop_restart.log_event(service_config, 'stopped')
         mock_log.assert_called_once_with(
@@ -388,7 +388,7 @@ def test_start_or_stop_bad_refs(
         instance='fake_instance',
         service='fake_service',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     mock_list_remote_refs.return_value = {
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783",

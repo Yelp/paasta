@@ -18,6 +18,7 @@ import os
 import sys
 from collections import defaultdict
 from distutils.util import strtobool
+from typing import Dict
 
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
@@ -35,13 +36,13 @@ from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
-from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
@@ -141,16 +142,16 @@ def list_deployed_clusters(pipeline, actual_deployments):
     return deployed_clusters
 
 
-def get_actual_deployments(service, soa_dir):
+def get_actual_deployments(service: str, soa_dir: str) -> Dict[str, str]:
     deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
         paasta_print("Warning: it looks like %s has not been deployed anywhere yet!" % service, file=sys.stderr)
     # Create a dictionary of actual $service Jenkins deployments
     actual_deployments = {}
-    for key in deployments_json:
+    for key, branch_dict in deployments_json.config_dict.items():
         service, namespace = key.split(':')
         if service == service:
-            value = deployments_json[key]['docker_image']
+            value = branch_dict['docker_image']
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
     return actual_deployments

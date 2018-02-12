@@ -52,7 +52,7 @@ def test_instances_status_marathon(
         cluster='fake_cluster',
         instance='fake_instance',
         config_dict={'bounce_method': 'fake_bounce'},
-        branch_dict={},
+        branch_dict=None,
     )
     mock_load_marathon_service_config.return_value = mock_service_config
     mock_marathon_job_status.return_value = 'fake_marathon_status'
@@ -98,7 +98,7 @@ def test_chronos_instance_status(
         {
             'schedule': 'always',
         },
-        {},
+        None,
     )
 
     request = testing.DummyRequest()

@@ -19,8 +19,8 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.paasta_service_config import PaastaServiceConfig
-from paasta_tools.utils import DeploymentsJson
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.utils import DeploymentsJsonV2
 
 
 TEST_SERVICE_NAME = 'example_happyhour'
@@ -29,7 +29,7 @@ TEST_CLUSTER_NAME = 'cluster'
 
 
 def create_test_service():
-    return PaastaServiceConfig(
+    return PaastaServiceConfigLoader(
         service=TEST_SERVICE_NAME,
         soa_dir=TEST_SOA_DIR,
         load_deployments=True,
@@ -37,28 +37,17 @@ def create_test_service():
 
 
 def deployment_json():
-    return DeploymentsJson({
-        '%s:paasta-%s.main' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
+    return DeploymentsJsonV2({
+        'deployments': {
+            'fake.non_canary': {
+                'docker_image': 'some_image',
+                'git_sha': 'some_sha',
+            },
+            'fake.canary': {
+                'docker_image': 'some_image',
+                'git_sha': 'some_sha',
+            },
         },
-        '%s:paasta-%s.canary' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-        },
-        '%s:paasta-%s.example_chronos_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-        },
-        '%s:paasta-%s.example_child_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
-            'docker_image': 'some_image', 'desired_state': 'start', 'force_bounce': None,
-        },
-    })
-
-
-def deployment_json_v2():
-    return DeploymentsJson({
-        'deployments': {'fake.non_canary': {
-            'docker_image': 'some_image',
-            'git_sha': 'some_sha',
-        }},
         'controls': {
             'example_happyhour:%s.sample_batch' % TEST_CLUSTER_NAME: {
                 'desired_state': 'start',
@@ -67,6 +56,24 @@ def deployment_json_v2():
             'example_happyhour:%s.interactive' % TEST_CLUSTER_NAME: {
                 'desired_state': 'start',
                 'force_bounce': None,
+            },
+            '%s:%s.main' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            '%s:%s.canary' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            '%s:%s.example_chronos_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            '%s:%s.example_child_job' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            '%s:%s.sample_batch' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
+            },
+            '%s:%s.interactive' % (TEST_SERVICE_NAME, TEST_CLUSTER_NAME): {
+                'desired_state': 'start', 'force_bounce': None,
             },
         },
     })
@@ -113,19 +120,19 @@ def adhoc_cluster_config():
     }
 
 
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_marathon_instances(mock_read_extra_service_information):
     mock_read_extra_service_information.return_value = marathon_cluster_config()
     s = create_test_service()
-    assert [i for i in s.instances(TEST_CLUSTER_NAME, 'marathon')] == ['main', 'canary']
+    assert list(s.instances(TEST_CLUSTER_NAME, MarathonServiceConfig)) == ['main', 'canary']
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='marathon-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_marathon_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
@@ -145,8 +152,10 @@ def test_marathon_instances_configs(
                 'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
-                'docker_image': 'some_image', 'desired_state': 'start',
+                'docker_image': 'some_image',
+                'desired_state': 'start',
                 'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -161,13 +170,15 @@ def test_marathon_instances_configs(
                 'deploy_group': 'fake.canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
-                'docker_image': 'some_image', 'desired_state': 'start',
+                'docker_image': 'some_image',
+                'desired_state': 'start',
                 'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
     ]
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'marathon')] == expected
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='marathon-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
@@ -178,8 +189,8 @@ def test_marathon_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_chronos_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
@@ -201,8 +212,10 @@ def test_chronos_instances_configs(
                 'schedule_time_zone': 'America/Los_Angeles',
             },
             branch_dict={
-                'docker_image': 'some_image', 'desired_state': 'start',
+                'docker_image': 'some_image',
+                'desired_state': 'start',
                 'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -218,13 +231,15 @@ def test_chronos_instances_configs(
                 'deploy_group': 'fake.non_canary', 'cmd': '/bin/sleep 5s',
             },
             branch_dict={
-                'docker_image': 'some_image', 'desired_state': 'start',
+                'docker_image': 'some_image',
+                'desired_state': 'start',
                 'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
     ]
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'chronos')] == expected
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, ChronosJobConfig)) == expected
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='chronos-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
@@ -235,14 +250,14 @@ def test_chronos_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 def test_adhoc_instances_configs(
         mock_read_extra_service_information,
         mock_load_deployments_json,
 ):
     mock_read_extra_service_information.return_value = adhoc_cluster_config()
-    mock_load_deployments_json.return_value = deployment_json_v2()
+    mock_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
     expected = [
         AdhocJobConfig(
@@ -256,8 +271,10 @@ def test_adhoc_instances_configs(
                 'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
-                'docker_image': 'some_image', 'git_sha': 'some_sha',
-                'desired_state': 'start', 'force_bounce': None,
+                'docker_image': 'some_image',
+                'desired_state': 'start',
+                'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -271,15 +288,17 @@ def test_adhoc_instances_configs(
                 'deploy_group': 'fake.non_canary', 'mem': 1000,
             },
             branch_dict={
-                'docker_image': 'some_image', 'git_sha': 'some_sha',
-                'desired_state': 'start', 'force_bounce': None,
+                'docker_image': 'some_image',
+                'desired_state': 'start',
+                'force_bounce': None,
+                'git_sha': 'some_sha',
             },
             soa_dir=TEST_SOA_DIR,
         ),
     ]
-    for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc'):
+    for i in s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig):
         print(i, i.cluster)
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc')] == expected
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='adhoc-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
@@ -290,9 +309,9 @@ def test_adhoc_instances_configs(
     )
 
 
-@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
-@patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.marathon_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_marathon_configs(
         mock_marathon_tools_read_extra_service_information,
@@ -315,12 +334,12 @@ def test_old_and_new_ways_load_the_same_marathon_configs(
             cluster=TEST_CLUSTER_NAME, load_deployments=True, soa_dir=TEST_SOA_DIR,
         ),
     ]
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'marathon')] == expected
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
 
 
-@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
-@patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.chronos_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_chronos_configs(
         mock_chronos_tools_read_extra_service_information,
@@ -343,12 +362,12 @@ def test_old_and_new_ways_load_the_same_chronos_configs(
             cluster=TEST_CLUSTER_NAME, load_deployments=True, soa_dir=TEST_SOA_DIR,
         ),
     ]
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'chronos')] == expected
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, ChronosJobConfig)) == expected
 
 
-@patch('paasta_tools.paasta_service_config.load_v2_deployments_json', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.load_v2_deployments_json', autospec=True)
 @patch('paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
+@patch('paasta_tools.paasta_service_config_loader.read_extra_service_information', autospec=True)
 @patch('paasta_tools.adhoc_tools.service_configuration_lib.read_extra_service_information', autospec=True)
 def test_old_and_new_ways_load_the_same_adhoc_configs(
         mock_adhoc_tools_read_extra_service_information,
@@ -358,8 +377,8 @@ def test_old_and_new_ways_load_the_same_adhoc_configs(
 ):
     mock_read_extra_service_information.return_value = adhoc_cluster_config()
     mock_adhoc_tools_read_extra_service_information.return_value = adhoc_cluster_config()
-    mock_load_deployments_json.return_value = deployment_json_v2()
-    mock_adhoc_tools_load_deployments_json.return_value = deployment_json_v2()
+    mock_load_deployments_json.return_value = deployment_json()
+    mock_adhoc_tools_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
     expected = [
         load_adhoc_job_config(
@@ -371,33 +390,4 @@ def test_old_and_new_ways_load_the_same_adhoc_configs(
             cluster=TEST_CLUSTER_NAME, load_deployments=True, soa_dir=TEST_SOA_DIR,
         ),
     ]
-    assert [i for i in s.instance_configs(TEST_CLUSTER_NAME, 'adhoc')] == expected
-
-
-@patch('paasta_tools.paasta_service_config.load_deployments_json', autospec=True)
-@patch('paasta_tools.paasta_service_config.read_extra_service_information', autospec=True)
-def test_instance_config(
-        mock_read_extra_service_information,
-        mock_load_deployments_json,
-):
-    mock_read_extra_service_information.return_value = marathon_cluster_config()
-    mock_load_deployments_json.return_value = deployment_json()
-    expected_instance_config = MarathonServiceConfig(
-        service=TEST_SERVICE_NAME,
-        cluster=TEST_CLUSTER_NAME,
-        instance='main',
-        config_dict={
-            'port': None, 'vip': None,
-            'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
-            'smartstack': {}, 'dependencies': {}, 'instances': 3,
-            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
-        },
-        branch_dict={
-            'docker_image': 'some_image', 'desired_state': 'start',
-            'force_bounce': None,
-        },
-        soa_dir=TEST_SOA_DIR,
-    )
-    s = create_test_service()
-    instance_config = s.instance_config(TEST_CLUSTER_NAME, 'main')
-    assert instance_config == expected_instance_config
+    assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected

@@ -128,7 +128,7 @@ def test_clone_job_dependent_jobs(
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.get_job_type', autospec=True)
 @mock.patch('paasta_tools.chronos_rerun.remove_parents', autospec=True)
 @mock.patch('paasta_tools.chronos_tools.create_complete_config', autospec=True)
-@mock.patch('paasta_tools.chronos_tools.load_deployments_json', autospec=True)
+@mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
 @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
 @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
 @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
@@ -140,7 +140,7 @@ def test_chronos_rerun_main_with_independent_job(
     mock_get_chronos_client,
     mock_read_chronos_jobs_for_service,
     mock_read_services_configuration,
-    mock_load_deployments_json,
+    mock_load_v2_deployments_json,
     mock_create_complete_config,
     mock_remove_parents,
     mock_get_job_type,
@@ -175,7 +175,7 @@ def test_chronos_rerun_main_with_independent_job(
         'test_dependent_instance_2': gen_dependent_job(service, 'test_dependent_instance_1'),
     }
 
-    mock_load_deployments_json.return_value.get_branch_dict.side_effect = lambda service, *args, **kwargs: {
+    mock_load_v2_deployments_json.return_value.get_branch_dict.side_effect = lambda service, *args, **kwargs: {
         'desired_state': 'start',
         'docker_image': 'paasta-{}-{}'.format(service, cluster),
     }

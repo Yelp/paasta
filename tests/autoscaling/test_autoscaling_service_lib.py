@@ -37,7 +37,7 @@ def test_get_zookeeper_instances():
             'instances': 5,
             'max_instances': 10,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
@@ -75,7 +75,7 @@ def test_get_zookeeper_instances_defaults_to_max_instances_when_no_zk_node():
             'min_instances': 5,
             'max_instances': 10,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
@@ -95,7 +95,7 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
             'min_instances': 5,
             'max_instances': 10,
         },
-        branch_dict={},
+        branch_dict=None,
     )
     with mock.patch(
         'paasta_tools.utils.KazooClient', autospec=True,
@@ -126,7 +126,7 @@ def test_update_instances_for_marathon_service():
                 'min_instances': 5,
                 'max_instances': 10,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         autoscaling_service_lib.set_instances_for_marathon_service('service', 'instance', instance_count=8)
         zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8'.encode('utf8'))
@@ -170,7 +170,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_mesos_task = mock.MagicMock(
         stats_callable=mock.MagicMock(return_value={
@@ -211,7 +211,7 @@ def test_mesos_cpu_metrics_provider():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = False
@@ -308,7 +308,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = True
@@ -436,7 +436,7 @@ def test_get_http_utilization_for_all_tasks_no_data():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
     # KeyError simulates an invalid response
@@ -500,7 +500,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
@@ -532,7 +532,7 @@ def test_autoscale_marathon_instance():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 10},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -570,7 +570,7 @@ def test_autoscale_marathon_instance_up_to_min_instances():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 10, 'max_instances': 100},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -620,7 +620,7 @@ def test_autoscale_marathon_instance_below_min_instances():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 5, 'max_instances': 10},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -658,7 +658,7 @@ def test_autoscale_marathon_instance_above_max_instances():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 5, 'max_instances': 10},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -696,7 +696,7 @@ def test_autoscale_marathon_instance_drastic_downscaling():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 5, 'max_instances': 100},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -740,7 +740,7 @@ def test_autoscale_marathon_with_http_stuff():
                 'endpoint': '/bogus',
             },
         },
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     with mock.patch(
@@ -776,7 +776,7 @@ def test_is_task_data_insufficient():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 100},
-        branch_dict={},
+        branch_dict=None,
     )
     # Test all running
     ret = autoscaling_service_lib.is_task_data_insufficient(
@@ -833,7 +833,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 100},
-        branch_dict={},
+        branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
     mock_autoscaling_decision = mock.Mock()
@@ -912,7 +912,7 @@ def test_autoscale_services_happy_path():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 10, 'desired_state': 'start'},
-        branch_dict={},
+        branch_dict=None,
     )
     mock_mesos_tasks = [{'id': 'fake-service.fake-instance.sha123.sha456'}]
     mock_healthcheck_results = mock.Mock(alive=True)
@@ -976,7 +976,7 @@ def test_autoscale_services_not_healthy():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 10, 'desired_state': 'start'},
-        branch_dict={},
+        branch_dict=None,
     )
     mock_mesos_tasks = [{'id': 'fake-service.fake-instance.sha123.sha456.uuid'}]
     with mock.patch(
@@ -1078,7 +1078,7 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
             'min_instances': 1, 'max_instances': 10, 'desired_state': 'start',
             'autoscaling': {'decision_policy': 'bespoke'},
         },
-        branch_dict={},
+        branch_dict=None,
     )
     mock_mesos_tasks = [{'id': 'fake-service.fake-instance'}]
     with mock.patch(
@@ -1175,7 +1175,7 @@ def test_filter_autoscaling_tasks():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={'min_instances': 1, 'max_instances': 10, 'desired_state': 'start'},
-        branch_dict={},
+        branch_dict=None,
     )
     mock_mesos_tasks = [{'id': 'fake-service.fake-instance.sha123.sha456.uuid'}]
     with mock.patch(
@@ -1651,7 +1651,7 @@ def test_filter_autoscaling_tasks_considers_old_versions():
         cluster='cluster',
         instance='instance',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
         soa_dir='/soa/dir',
     )
 

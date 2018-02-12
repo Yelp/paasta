@@ -16,6 +16,8 @@ import logging
 import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_paasta_branch
@@ -47,12 +49,12 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
-    branch_dict = {}
+    branch_dict = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
         deploy_group = general_config.get('deploy_group', branch)
-        branch_dict = deployments_json.get_branch_dict_v2(service, branch, deploy_group)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return AdhocJobConfig(
         service=service,
@@ -65,8 +67,17 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
 
 class AdhocJobConfig(LongRunningServiceConfig):
+    config_filename_prefix = 'adhoc'
 
-    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(
+        self,
+        service: str,
+        instance: str,
+        cluster: str,
+        config_dict: LongRunningServiceConfigDict,
+        branch_dict: BranchDictV2,
+        soa_dir: str=DEFAULT_SOA_DIR,
+    ) -> None:
         super(AdhocJobConfig, self).__init__(
             cluster=cluster,
             instance=instance,
@@ -76,7 +87,7 @@ class AdhocJobConfig(LongRunningServiceConfig):
             soa_dir=soa_dir,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "AdhocJobConfig(%r, %r, %r, %r, %r, %r)" % (
             self.service,
             self.cluster,
@@ -87,7 +98,12 @@ class AdhocJobConfig(LongRunningServiceConfig):
         )
 
 
-def get_default_interactive_config(service, cluster, soa_dir, load_deployments=False):
+def get_default_interactive_config(
+    service: str,
+    cluster: str,
+    soa_dir: str,
+    load_deployments: bool=False,
+) -> AdhocJobConfig:
     default_job_config = {
         'cpus': 4,
         'mem': 10240,
@@ -102,7 +118,7 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
             instance='interactive',
             cluster=cluster,
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
@@ -113,14 +129,16 @@ def get_default_interactive_config(service, cluster, soa_dir, load_deployments=F
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(
-            (
-                deployment
-                for deployment in deployments_json['deployments'].keys()
-            ),
+            deployments_json.get_deploy_groups(),
             choosing='deploy group',
         )
         job_config.config_dict['deploy_group'] = deploy_group
-        job_config.branch_dict['docker_image'] = deployments_json.get_docker_image_for_deploy_group(deploy_group)
+        job_config.branch_dict = {
+            'docker_image': deployments_json.get_docker_image_for_deploy_group(deploy_group),
+            'git_sha': deployments_json.get_git_sha_for_deploy_group(deploy_group),
+            'force_bounce': None,
+            'desired_state': 'start',
+        }
 
     for key, value in default_job_config.items():
         job_config.config_dict.setdefault(key, value)

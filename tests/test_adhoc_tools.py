@@ -14,7 +14,7 @@
 import mock
 
 from paasta_tools import adhoc_tools
-from paasta_tools.utils import DeploymentsJson
+from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import NoConfigurationForServiceError
 
 
@@ -50,12 +50,14 @@ def test_get_default_interactive_config_reads_from_tty():
     ) as mock_load_deployments_json:
         mock_prompt_pick_one.return_value = 'fake_deploygroup'
         mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
-        mock_load_deployments_json.return_value = DeploymentsJson({
+        mock_load_deployments_json.return_value = DeploymentsJsonV2({
             'deployments': {
                 'fake_deploygroup': {
                     'docker_image': mock.sentinel.docker_image,
+                    'git_sha': mock.sentinel.git_sha,
                 },
             },
+            'controls': {},
         })
         result = adhoc_tools.get_default_interactive_config(
             'fake_serivce',

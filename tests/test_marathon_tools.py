@@ -29,10 +29,10 @@ from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
 from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.utils import BranchDict
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeploymentsJson
+from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import SystemPaastaConfig
@@ -54,6 +54,7 @@ class TestMarathonTools:
             'docker_image': 'test_docker:1.0',
             'desired_state': 'start',
             'force_bounce': None,
+            'git_sha': 'deadbeef',
         },
     )
     fake_srv_config = {
@@ -76,7 +77,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with mock.patch(
-            'paasta_tools.marathon_tools.load_deployments_json', autospec=True,
+            'paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True,
         ) as mock_load_deployments_json, mock.patch(
             'service_configuration_lib.read_service_configuration', autospec=True,
         ) as mock_read_service_configuration, mock.patch(
@@ -101,7 +102,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with mock.patch(
-            'paasta_tools.marathon_tools.load_deployments_json', autospec=True,
+            'paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True,
         ), mock.patch(
             'service_configuration_lib.read_service_configuration', autospec=True,
         ), mock.patch(
@@ -122,7 +123,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with mock.patch(
-            'paasta_tools.marathon_tools.load_deployments_json', autospec=True,
+            'paasta_tools.marathon_tools.load_v2_deployments_json', autospec=True,
         ), mock.patch(
             'service_configuration_lib.read_service_configuration', autospec=True,
         ), mock.patch(
@@ -154,7 +155,7 @@ class TestMarathonTools:
                     **self.fake_marathon_app_config.config_dict,
                 ),
             ),
-            branch_dict={},
+            branch_dict=None,
         )
 
         with mock.patch(
@@ -191,9 +192,14 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
-        fake_branch_dict = BranchDict({'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker})
+        fake_branch_dict = BranchDictV2({
+            'desired_state': 'stop',
+            'force_bounce': '12345',
+            'docker_image': fake_docker,
+            'git_sha': '9',
+        })
         deployments_json_mock = mock.Mock(
-            spec=DeploymentsJson,
+            spec=DeploymentsJsonV2,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
@@ -206,7 +212,7 @@ class TestMarathonTools:
             autospec=True,
             return_value={fake_instance: config_copy},
         ) as read_extra_info_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_deployments_json',
+            'paasta_tools.marathon_tools.load_v2_deployments_json',
             autospec=True,
             return_value=deployments_json_mock,
         ):
@@ -234,7 +240,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
-            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo')
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'amnesia.solo', 'amnesia.solo')
             assert read_service_configuration_patch.call_count == 1
             read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 1
@@ -467,7 +473,7 @@ class TestMarathonTools:
             cluster=cluster,
             instance=instance,
             config_dict={'nerve_ns': namespace},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == compose_job_id(name, namespace)
@@ -489,7 +495,7 @@ class TestMarathonTools:
                     compose_job_id(name, 'something else'),
                 ],
             },
-            branch_dict={},
+            branch_dict=None,
         )
         actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == compose_job_id(name, instance)
@@ -508,7 +514,7 @@ class TestMarathonTools:
             cluster=cluster,
             instance=instance,
             config_dict={'registrations': registrations},
-            branch_dict={},
+            branch_dict=None,
         )
         actual_registrations = marathon_tools.read_all_registrations_for_service_instance(
             name, instance, cluster, soa_dir,
@@ -527,7 +533,7 @@ class TestMarathonTools:
             cluster=cluster,
             instance=instance,
             config_dict={'bounce_method': 'fakefakefake'},
-            branch_dict={},
+            branch_dict=None,
         )
 
         actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
@@ -830,7 +836,7 @@ class TestMarathonTools:
             ]
 
     def test_format_marathon_app_dict(self):
-        fake_url = 'dockervania_from_konami'
+        fake_url = 'docker-registry/dockervania_from_konami'
         fake_volumes = [
             DockerVolume({
                 'hostPath': '/var/data/a',
@@ -851,7 +857,7 @@ class TestMarathonTools:
             'PAASTA_INSTANCE': 'yes_i_can',
             'PAASTA_SERVICE': 'can_you_dig_it',
             'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
-            'PAASTA_DOCKER_IMAGE': '',
+            'PAASTA_DOCKER_IMAGE': 'dockervania_from_konami',
         }
         fake_cpus = .42
         fake_disk = 1234.5
@@ -937,7 +943,12 @@ class TestMarathonTools:
                 'healthcheck_max_consecutive_failures': 3,
                 'accepted_resource_roles': ['ads'],
             },
-            branch_dict={'desired_state': 'start'},
+            branch_dict={
+                'desired_state': 'start',
+                'docker_image': 'dockervania_from_konami',
+                'force_bounce': None,
+                'git_sha': 'deadbeef',
+            },
         )
         with mock.patch(
             'paasta_tools.utils.InstanceConfig.get_docker_url', autospec=True, return_value=fake_url,
@@ -980,7 +991,7 @@ class TestMarathonTools:
             cluster='',
             instance='fake_instance',
             config_dict={'bounce_method': 'aaargh'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_bounce_method() == 'aaargh'
 
@@ -990,7 +1001,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_bounce_method() == 'crossover'
 
@@ -1001,7 +1012,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'bounce_health_params': fake_param},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_bounce_health_params(mock.Mock()) == fake_param
 
@@ -1012,7 +1023,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {}
 
@@ -1023,7 +1034,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {'check_haproxy': True}
 
@@ -1034,7 +1045,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'drain_method': fake_param},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method(mock.Mock()) == fake_param
 
@@ -1045,7 +1056,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method(fake_service_namespace_config) == 'noop'
 
@@ -1056,7 +1067,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method(fake_service_namespace_config) == 'hacheck'
 
@@ -1067,7 +1078,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'drain_method_params': fake_param},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method_params(mock.Mock()) == fake_param
 
@@ -1078,7 +1089,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {}
 
@@ -1089,7 +1100,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {'delay': 60}
 
@@ -1109,7 +1120,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_instances() == 1
 
@@ -1130,7 +1141,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'constraints': [['something', 'GROUP_BY']], 'extra_constraints': [['ignore', 'this']]},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1145,7 +1156,7 @@ class TestMarathonTools:
             cluster='fake_prod_cluster',
             instance='fake_instance',
             config_dict={'instances': 3},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -1169,7 +1180,7 @@ class TestMarathonTools:
             cluster='fake_dev_cluster',
             instance='fake_instance',
             config_dict={'instances': 3},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
         expected_constraints = [
@@ -1188,7 +1199,7 @@ class TestMarathonTools:
             cluster='fake_prod_cluster',
             instance='fake_instance',
             config_dict={'instances': 10},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -1211,7 +1222,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
 
         expected_constraints = [
@@ -1230,7 +1241,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -1255,7 +1266,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'extra_constraints': [['foo', 1]]},
-            branch_dict={},
+            branch_dict=None,
         )
 
         expected_constraints = [
@@ -1275,7 +1286,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'extra_constraints': [['extra', 'constraint']]},
-            branch_dict={},
+            branch_dict=None,
         )
 
         expected_constraints = [
@@ -1299,7 +1310,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig(
             {
@@ -1324,7 +1335,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
-            branch_dict={},
+            branch_dict=None,
         )
         expected_constraints = [
             ["region", "UNLIKE", "fake_blacklisted_region"],
@@ -1344,7 +1355,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'deploy_whitelist': fake_deploy_whitelist},
-            branch_dict={},
+            branch_dict=None,
         )
         expected_constraints = [
             ["region", "LIKE", "fake_whitelisted_region"],
@@ -1369,7 +1380,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         expected_constraints = [
             ["region", "GROUP_BY", "1"],
@@ -1395,7 +1406,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         expected_constraints = [
             ["region", "GROUP_BY", "1"],
@@ -1414,7 +1425,7 @@ class TestMarathonTools:
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'monitoring': {'test': 'foo'}},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_monitoring() == {'test': 'foo'}
 
@@ -1522,6 +1533,8 @@ class TestMarathonTools:
             branch_dict={
                 'desired_state': 'start',
                 'force_bounce': '88888',
+                'git_sha': 'deadbeef',
+                'docker_image': 'doesntmatter',
             },
         )
 
@@ -1533,6 +1546,8 @@ class TestMarathonTools:
             branch_dict={
                 'desired_state': 'start',
                 'force_bounce': '99999',
+                'git_sha': 'deadbeef',
+                'docker_image': 'doesntmatter',
             },
         )
 
@@ -1544,6 +1559,8 @@ class TestMarathonTools:
             branch_dict={
                 'desired_state': 'stop',
                 'force_bounce': '99999',
+                'git_sha': 'deadbeef',
+                'docker_image': 'doesntmatter',
             },
         )
 
@@ -1606,36 +1623,32 @@ class TestMarathonTools:
         service = 'red'
         namespace = 'rojo'
         soa_dir = 'que_esta'
-        fake_instances = [(service, 'blue'), (service, 'green')]
-        fake_srv_config = marathon_tools.MarathonServiceConfig(
-            service=service,
-            cluster='fake_cluster',
-            instance='blue',
-            config_dict={'nerve_ns': 'rojo', 'instances': 11},
-            branch_dict={},
-        )
-
-        def config_helper(name, inst, cluster, soa_dir=None):
-            if inst == 'blue':
-                return fake_srv_config
-            else:
-                return marathon_tools.MarathonServiceConfig(
-                    service=service,
-                    cluster='fake_cluster',
-                    instance='green',
-                    config_dict={'nerve_ns': 'amarillo'},
-                    branch_dict={},
-                )
+        fake_job_configs = [
+            marathon_tools.MarathonServiceConfig(
+                service=service,
+                cluster='fake_cluster',
+                instance='blue',
+                config_dict={'nerve_ns': 'rojo', 'instances': 11},
+                branch_dict=None,
+            ),
+            marathon_tools.MarathonServiceConfig(
+                service=service,
+                cluster='fake_cluster',
+                instance='green',
+                config_dict={'nerve_ns': 'amarillo'},
+                branch_dict=None,
+            ),
+        ]
 
         with mock.patch(
-            'paasta_tools.marathon_tools.get_service_instance_list',
+            'paasta_tools.marathon_tools.PaastaServiceConfigLoader',
             autospec=True,
-            return_value=fake_instances,
-        ) as inst_list_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
-            autospec=True,
-            side_effect=config_helper,
-        ) as read_config_patch:
+            return_value=mock.Mock(
+                instance_configs=mock.Mock(
+                    return_value=fake_job_configs,
+                ),
+            ),
+        ) as fake_pscl:
             actual = marathon_tools.get_expected_instance_count_for_namespace(
                 service,
                 namespace,
@@ -1643,14 +1656,10 @@ class TestMarathonTools:
                 soa_dir=soa_dir,
             )
             assert actual == 11
-            inst_list_patch.assert_called_once_with(
-                service,
+            fake_pscl.return_value.instance_configs.assert_called_once_with(
                 cluster='fake_cluster',
-                instance_type='marathon',
-                soa_dir=soa_dir,
+                instance_type_class=marathon_tools.MarathonServiceConfig,
             )
-            read_config_patch.assert_any_call(service, 'blue', 'fake_cluster', soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service, 'green', 'fake_cluster', soa_dir=soa_dir)
 
     def test_get_matching_appids(self):
         apps = [
@@ -1713,7 +1722,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
@@ -1724,7 +1733,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'http'
 
@@ -1735,7 +1744,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'healthcheck_mode': 'tcp'},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'tcp'
 
@@ -1746,7 +1755,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'healthcheck_mode': 'udp'},
-            branch_dict={},
+            branch_dict=None,
         )
         with raises(long_running_service_tools.InvalidHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
@@ -1758,7 +1767,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'healthcheck_mode': None},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
@@ -1794,7 +1803,7 @@ class TestMarathonServiceConfig(object):
                 cluster='cluster',
                 instance='instance',
                 config_dict=marathon_conf,
-                branch_dict={},
+                branch_dict=None,
             )
             expected = {
                 'env': {'SOME_VAR': 'SOME_VAL'},
@@ -1840,7 +1849,7 @@ class TestMarathonServiceConfig(object):
                 cluster='cluster',
                 instance='instance',
                 config_dict=conf,
-                branch_dict={},
+                branch_dict=None,
             )
             assert marathon_config.get_secret_hashes(conf['env'], 'dev') == {}
             mock_is_secret_ref.assert_called_with("SOME_VAL")
@@ -1871,7 +1880,7 @@ class TestMarathonServiceConfig(object):
                 "healthcheck_timeout_seconds": 13,
                 "healthcheck_max_consecutive_failures": 7,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -1901,7 +1910,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
@@ -1927,7 +1936,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
@@ -1953,7 +1962,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
         expected = [
@@ -1979,7 +1988,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'tcp'})
         expected = [
@@ -2005,7 +2014,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         expected = [
@@ -2036,7 +2045,7 @@ class TestMarathonServiceConfig(object):
                 'healthcheck_timeout_seconds': fake_timeout,
                 'healthcheck_cmd': fake_command,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig()
         expected = [
@@ -2061,7 +2070,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         assert fake_marathon_service_config.get_healthchecks(
@@ -2075,7 +2084,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'healthcheck_mode': 'none'},
-            branch_dict={},
+            branch_dict=None,
         )
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with raises(long_running_service_tools.InvalidHealthcheckMode):
@@ -2087,7 +2096,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'instances': 100},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_backoff_seconds() == 1
 
@@ -2097,7 +2106,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'instances': 1},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_backoff_seconds() == 10
 
@@ -2107,7 +2116,7 @@ class TestMarathonServiceConfig(object):
             cluster='cluster',
             instance='instance',
             config_dict={'instances': 0},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_backoff_seconds() == 1
 
@@ -2117,7 +2126,7 @@ class TestMarathonServiceConfig(object):
             instance='instance',
             cluster='cluster',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_accepted_resource_roles() is None
 
@@ -2127,7 +2136,7 @@ class TestMarathonServiceConfig(object):
             instance='instance',
             cluster='cluster',
             config_dict={"accepted_resource_roles": ["ads"]},
-            branch_dict={},
+            branch_dict=None,
         )
         assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
@@ -2176,7 +2185,12 @@ def test_format_marathon_app_dict_no_smartstack():
         cluster='clustername',
         instance=instance,
         config_dict={},
-        branch_dict={'docker_image': 'abcdef'},
+        branch_dict={
+            'docker_image': 'abcdef',
+            'git_sha': 'deadbeef',
+            'force_bounce': None,
+            'desired_state': 'start',
+        },
     )
     fake_system_paasta_config = SystemPaastaConfig(
         {
@@ -2247,7 +2261,12 @@ def test_format_marathon_app_dict_with_smartstack():
         cluster='clustername',
         instance=instance,
         config_dict={},
-        branch_dict={'docker_image': 'abcdef'},
+        branch_dict={
+            'docker_image': 'abcdef',
+            'git_sha': 'deadbeef',
+            'force_bounce': None,
+            'desired_state': 'start',
+        },
     )
     fake_system_paasta_config = SystemPaastaConfig(
         {
@@ -2335,7 +2354,12 @@ def test_format_marathon_app_dict_utilizes_net():
         cluster='clustername',
         instance=instance_name,
         config_dict={'net': 'host'},
-        branch_dict={'docker_image': 'abcdef'},
+        branch_dict={
+            'docker_image': 'abcdef',
+            'git_sha': 'deadbeef',
+            'force_bounce': None,
+            'desired_state': 'start',
+        },
     )
     fake_system_paasta_config = SystemPaastaConfig(
         {
@@ -2385,7 +2409,12 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         cluster='clustername',
         instance=instance_name,
         config_dict={'extra_volumes': fake_extra_volumes},
-        branch_dict={'docker_image': 'abcdef'},
+        branch_dict={
+            'docker_image': 'abcdef',
+            'git_sha': 'deadbeef',
+            'force_bounce': None,
+            'desired_state': 'start',
+        },
     )
     fake_system_paasta_config = SystemPaastaConfig(
         {
@@ -2526,7 +2555,7 @@ def test_marathon_service_config_get_healthchecks_invalid_type():
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     with mock.patch.object(
         marathon_tools.MarathonServiceConfig, 'get_healthcheck_mode', autospec=True,
@@ -2542,7 +2571,7 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
         instance='fake-instance',
         cluster='fake-cluster',
         config_dict={},
-        branch_dict={},
+        branch_dict=None,
     )
     with mock.patch.object(
         marathon_tools.MarathonServiceConfig, 'get_desired_state', autospec=True,

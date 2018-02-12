@@ -58,10 +58,11 @@ from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_hmac_for_secret
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.utils import _log
-from paasta_tools.utils import BranchDict
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
 from paasta_tools.utils import decompose_job_id
@@ -72,11 +73,10 @@ from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import MarathonConfigDict
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
@@ -376,11 +376,12 @@ def load_marathon_service_config_no_cache(
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
-    branch_dict: BranchDict = {}
+    branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
-        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        branch_dict = deployments_json.get_branch_dict(service, branch)
+        deploy_group = general_config.get('deploy_group', branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return MarathonServiceConfig(
         service=service,
@@ -428,13 +429,15 @@ class InvalidMarathonConfig(Exception):
 class MarathonServiceConfig(LongRunningServiceConfig):
     config_dict: MarathonServiceConfigDict
 
+    config_filename_prefix = 'marathon'
+
     def __init__(
         self,
         service: str,
         cluster: str,
         instance: str,
         config_dict: MarathonServiceConfigDict,
-        branch_dict: BranchDict,
+        branch_dict: Optional[BranchDictV2],
         soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         super(MarathonServiceConfig, self).__init__(
@@ -462,7 +465,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             instance=self.instance,
             cluster=self.cluster,
             config_dict=dict(self.config_dict),
-            branch_dict=dict(self.branch_dict),
+            branch_dict=dict(self.branch_dict) if self.branch_dict is not None else None,
             soa_dir=self.soa_dir,
         )
 
@@ -1362,16 +1365,15 @@ def get_expected_instance_count_for_namespace(
     total_expected = 0
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    for name, instance in get_service_instance_list(
-        service,
-        cluster=cluster,
-        instance_type='marathon',
+
+    pscl = PaastaServiceConfigLoader(
+        service=service,
         soa_dir=soa_dir,
-    ):
-        srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
-        instance_ns = srv_config.get_nerve_namespace()
-        if namespace == instance_ns:
-            total_expected += srv_config.get_instances()
+        load_deployments=False,
+    )
+    for job_config in pscl.instance_configs(cluster=cluster, instance_type_class=MarathonServiceConfig):
+        if f"{service}.{namespace}" in job_config.get_registrations():
+            total_expected += job_config.get_instances()
     return total_expected
 
 

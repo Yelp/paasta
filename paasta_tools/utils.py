@@ -200,20 +200,31 @@ InstanceConfigDict = TypedDict(
         'net': str,
         'extra_docker_args': Dict[str, str],
         'gpus': float,
+        'branch': str,
     },
     total=False,
 )
 
 
-BranchDict = TypedDict(
-    'BranchDict',
+BranchDictV1 = TypedDict(
+    'BranchDictV1',
     {
         'docker_image': str,
-        'git_sha': str,
         'desired_state': str,
         'force_bounce': Optional[str],
     },
     total=False,
+)
+
+
+BranchDictV2 = TypedDict(
+    'BranchDictV2',
+    {
+        'git_sha': str,
+        'docker_image': str,
+        'desired_state': str,
+        'force_bounce': Optional[str],
+    },
 )
 
 
@@ -239,10 +250,11 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
 
 
 class InstanceConfig(object):
+    config_filename_prefix: str
 
     def __init__(
         self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
-        branch_dict: BranchDict, soa_dir: str=DEFAULT_SOA_DIR,
+        branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
@@ -511,7 +523,10 @@ class InstanceConfig(object):
     def get_docker_image(self) -> str:
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
-        return self.branch_dict.get('docker_image', '')
+        if self.branch_dict is not None:
+            return self.branch_dict['docker_image']
+        else:
+            return ''
 
     def get_docker_url(self) -> str:
         """Compose the docker url.
@@ -527,7 +542,10 @@ class InstanceConfig(object):
     def get_desired_state(self) -> str:
         """Get the desired state (either 'start' or 'stop') for a given service
         branch from a generated deployments.json file."""
-        return self.branch_dict.get('desired_state', 'start')
+        if self.branch_dict is not None:
+            return self.branch_dict['desired_state']
+        else:
+            return 'start'
 
     def get_force_bounce(self) -> Optional[str]:
         """Get the force_bounce token for a given service branch from a generated
@@ -536,7 +554,10 @@ class InstanceConfig(object):
         parameters have changed. This may be None or a string, generally a
         timestamp.
         """
-        return self.branch_dict.get('force_bounce', None)
+        if self.branch_dict is not None:
+            return self.branch_dict['force_bounce']
+        else:
+            return None
 
     def check_cpus(self) -> Tuple[bool, str]:
         cpus = self.get_cpus()
@@ -2221,32 +2242,86 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJson':
+def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJsonV1':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v1'])
+            return DeploymentsJsonV1(json.load(f)['v1'])
     else:
         raise NoDeploymentsAvailable
 
 
-def load_v2_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJson':
+def load_v2_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJsonV2':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v2'])
+            return DeploymentsJsonV2(json.load(f)['v2'])
     else:
         raise NoDeploymentsAvailable
 
 
-class DeploymentsJson(dict):
-    def get_branch_dict(self, service: str, branch: str) -> BranchDict:
+DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
+
+DeployGroup = str
+BranchName = str
+
+
+_DeploymentsJsonV2ControlsDict = TypedDict(
+    '_DeploymentsJsonV2ControlsDict',
+    {
+        'force_bounce': Optional[str],
+        'desired_state': str,
+    },
+    total=False,
+)
+
+
+_DeploymentsJsonV2DeploymentsDict = TypedDict(
+    '_DeploymentsJsonV2DeploymentsDict',
+    {
+        'docker_image': str,
+        'git_sha': str,
+    },
+)
+
+
+DeploymentsJsonV2Dict = TypedDict(
+    'DeploymentsJsonV2Dict',
+    {
+        'deployments': Dict[DeployGroup, _DeploymentsJsonV2DeploymentsDict],
+        'controls': Dict[BranchName, _DeploymentsJsonV2ControlsDict],
+    },
+)
+
+
+DeploymentsJsonDict = TypedDict(
+    'DeploymentsJsonDict',
+    {
+        'v1': DeploymentsJsonV1Dict,
+        'v2': DeploymentsJsonV2Dict,
+    },
+)
+
+
+class DeploymentsJsonV1:
+    def __init__(self, config_dict: DeploymentsJsonV1Dict) -> None:
+        self.config_dict = config_dict
+
+    def get_branch_dict(self, service: str, branch: str) -> BranchDictV1:
         full_branch = '%s:paasta-%s' % (service, branch)
-        return self.get(full_branch, {})
+        return self.config_dict.get(full_branch, {})
 
-    def get_branch_dict_v2(self, service: str, branch: str, deploy_group: str) -> BranchDict:
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, DeploymentsJsonV1) and other.config_dict == self.config_dict
+
+
+class DeploymentsJsonV2:
+    def __init__(self, config_dict: DeploymentsJsonV2Dict) -> None:
+        self.config_dict = config_dict
+
+    def get_branch_dict(self, service: str, branch: str, deploy_group: str) -> BranchDictV2:
         full_branch = '%s:%s' % (service, branch)
-        branch_dict: BranchDict = {
+        branch_dict: BranchDictV2 = {
             'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
             'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
             'desired_state': self.get_desired_state_for_branch(full_branch),
@@ -2254,27 +2329,30 @@ class DeploymentsJson(dict):
         }
         return branch_dict
 
+    def get_deploy_groups(self) -> Collection[str]:
+        return self.config_dict['deployments'].keys()
+
     def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self['deployments'][deploy_group]['docker_image']
+            return self.config_dict['deployments'][deploy_group]['docker_image']
         except KeyError:
             raise NoDeploymentsAvailable
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self['deployments'][deploy_group]['git_sha']
+            return self.config_dict['deployments'][deploy_group]['git_sha']
         except KeyError:
             raise NoDeploymentsAvailable
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
-            return self['controls'][control_branch].get('desired_state', 'start')
+            return self.config_dict['controls'][control_branch].get('desired_state', 'start')
         except KeyError:
             raise NoDeploymentsAvailable
 
     def get_force_bounce_for_branch(self, control_branch: str) -> str:
         try:
-            return self['controls'][control_branch].get('force_bounce', None)
+            return self.config_dict['controls'][control_branch].get('force_bounce', None)
         except KeyError:
             raise NoDeploymentsAvailable
 
@@ -2523,7 +2601,7 @@ def mean(iterable: Collection[float]) -> float:
     return sum(iterable) / len(iterable)
 
 
-def prompt_pick_one(sequence: Sequence[str], choosing: str) -> str:
+def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
     if not sys.stdin.isatty():
         paasta_print(
             'No {choosing} specified and no TTY present to ask.'

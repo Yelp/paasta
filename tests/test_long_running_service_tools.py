@@ -26,7 +26,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={'healthcheck_cmd': 'test_cmd'},
-            branch_dict={},
+            branch_dict=None,
         )
         actual = fake_conf.get_healthcheck_cmd()
         assert actual == 'test_cmd'
@@ -37,7 +37,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         with raises(InvalidInstanceConfig) as exc:
             fake_conf.get_healthcheck_cmd()
@@ -55,7 +55,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance=fake_namespace,
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -85,7 +85,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance=fake_namespace,
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
             'mode': 'tcp',
@@ -118,7 +118,7 @@ class TestLongRunningServiceConfig(object):
                 'healthcheck_mode': 'cmd',
                 'healthcheck_cmd': fake_cmd,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with mock.patch(
@@ -146,7 +146,7 @@ class TestLongRunningServiceConfig(object):
             config_dict={
                 'healthcheck_mode': None,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with mock.patch(
@@ -175,7 +175,7 @@ class TestLongRunningServiceConfig(object):
             config_dict={
                 'healthcheck_mode': None,
             },
-            branch_dict={},
+            branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with mock.patch(
@@ -208,7 +208,7 @@ class TestLongRunningServiceConfig(object):
             cluster='fake_cluster',
             instance='fake_instance',
             config_dict={},
-            branch_dict={},
+            branch_dict=None,
         )
         assert fake_conf.get_instances() == 1
 

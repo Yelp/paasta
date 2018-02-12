@@ -55,7 +55,7 @@ class TestSetupMarathonJob:
             'nerve_ns': 'aaaaugh',
             'bounce_method': 'brutal',
         },
-        branch_dict={},
+        branch_dict=None,
     )
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({
@@ -1402,7 +1402,7 @@ class TestSetupMarathonJob:
                 'nerve_ns': 'fake_nerve_ns',
                 'bounce_method': 'brutal',
             },
-            branch_dict={},
+            branch_dict=None,
         )
 
         with mock.patch(

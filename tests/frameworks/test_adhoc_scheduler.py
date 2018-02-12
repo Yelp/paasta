@@ -109,6 +109,7 @@ class TestAdhocScheduler(object):
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
+                    'force_bounce': None,
                 },
                 soa_dir='/nail/etc/services',
             ),
@@ -190,6 +191,7 @@ class TestAdhocScheduler(object):
                 branch_dict={
                     'docker_image': 'busybox',
                     'desired_state': 'start',
+                    'force_bounce': None,
                 },
                 soa_dir='/nail/etc/services',
             ),
