@@ -72,7 +72,6 @@ from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
@@ -379,8 +378,16 @@ def load_marathon_service_config_no_cache(
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = general_config.get('deploy_group', branch)
+        temp_instance_config = MarathonServiceConfig(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            config_dict=general_config,
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
+        branch = temp_instance_config.get_branch()
+        deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return MarathonServiceConfig(

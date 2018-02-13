@@ -39,11 +39,11 @@ def create_test_service():
 def deployment_json():
     return DeploymentsJsonV2({
         'deployments': {
-            'fake.non_canary': {
+            'cluster.non_canary': {
                 'docker_image': 'some_image',
                 'git_sha': 'some_sha',
             },
-            'fake.canary': {
+            'cluster.canary': {
                 'docker_image': 'some_image',
                 'git_sha': 'some_sha',
             },
@@ -83,11 +83,11 @@ def marathon_cluster_config():
     """Return a sample dict to mock service_configuration_lib.read_extra_service_information"""
     return {
         'main': {
-            'instances': 3, 'deploy_group': 'fake.non_canary',
+            'instances': 3, 'deploy_group': '{cluster}.non_canary',
             'cpus': 0.1, 'mem': 1000,
         },
         'canary': {
-            'instances': 1, 'deploy_group': 'fake.canary',
+            'instances': 1, 'deploy_group': '{cluster}.canary',
             'cpus': 0.1, 'mem': 1000,
         },
     }
@@ -97,14 +97,14 @@ def chronos_cluster_config():
     """Return a sample dict to mock service_configuration_lib.read_extra_service_information"""
     return {
         'example_chronos_job': {
-            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 200,
+            'deploy_group': '{cluster}.non_canary', 'cpus': 0.1, 'mem': 200,
             'cmd': '/bin/sleep 5s',
             'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
             'schedule_time_zone': 'America/Los_Angeles',
         },
         'example_child_job': {
             'parents': ['example_happyhour.example_chronos_job'],
-            'deploy_group': 'fake.non_canary',
+            'deploy_group': '{cluster}.non_canary',
             'cmd': '/bin/sleep 5s',
         },
     }
@@ -113,10 +113,10 @@ def chronos_cluster_config():
 def adhoc_cluster_config():
     return {
         'sample_batch': {
-            'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+            'deploy_group': '{cluster}.non_canary', 'cpus': 0.1, 'mem': 1000,
             'cmd': '/bin/sleep 5s',
         },
-        'interactive': {'deploy_group': 'fake.non_canary', 'mem': 1000},
+        'interactive': {'deploy_group': '{cluster}.non_canary', 'mem': 1000},
     }
 
 
@@ -149,7 +149,7 @@ def test_marathon_instances_configs(
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {}, 'instances': 3,
-                'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+                'deploy_group': f'{TEST_CLUSTER_NAME}.non_canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
                 'docker_image': 'some_image',
@@ -167,7 +167,7 @@ def test_marathon_instances_configs(
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {}, 'instances': 1,
-                'deploy_group': 'fake.canary', 'cpus': 0.1, 'mem': 1000,
+                'deploy_group': f'{TEST_CLUSTER_NAME}.canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
                 'docker_image': 'some_image',
@@ -206,7 +206,7 @@ def test_chronos_instances_configs(
             config_dict={
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
-                'smartstack': {}, 'dependencies': {}, 'deploy_group': 'fake.non_canary',
+                'smartstack': {}, 'dependencies': {}, 'deploy_group': 'cluster.non_canary',
                 'cpus': 0.1, 'mem': 200, 'cmd': '/bin/sleep 5s',
                 'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
                 'schedule_time_zone': 'America/Los_Angeles',
@@ -228,7 +228,7 @@ def test_chronos_instances_configs(
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {},
                 'parents': ['example_happyhour.example_chronos_job'],
-                'deploy_group': 'fake.non_canary', 'cmd': '/bin/sleep 5s',
+                'deploy_group': 'cluster.non_canary', 'cmd': '/bin/sleep 5s',
             },
             branch_dict={
                 'docker_image': 'some_image',
@@ -268,7 +268,7 @@ def test_adhoc_instances_configs(
                 'port': None, 'vip': None,
                 'lb_extras': {}, 'monitoring': {}, 'deploy': {}, 'data': {},
                 'smartstack': {}, 'dependencies': {}, 'cmd': '/bin/sleep 5s',
-                'deploy_group': 'fake.non_canary', 'cpus': 0.1, 'mem': 1000,
+                'deploy_group': 'cluster.non_canary', 'cpus': 0.1, 'mem': 1000,
             },
             branch_dict={
                 'docker_image': 'some_image',
@@ -285,7 +285,7 @@ def test_adhoc_instances_configs(
             config_dict={
                 'port': None, 'vip': None, 'lb_extras': {}, 'monitoring': {},
                 'deploy': {}, 'data': {}, 'smartstack': {}, 'dependencies': {},
-                'deploy_group': 'fake.non_canary', 'mem': 1000,
+                'deploy_group': 'cluster.non_canary', 'mem': 1000,
             },
             branch_dict={
                 'docker_image': 'some_image',
