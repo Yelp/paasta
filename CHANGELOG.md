@@ -1,12 +1,21 @@
 # Change Log
 
-## [0.69.28](https://github.com/Yelp/paasta/tree/0.69.28) (2018-02-12)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.27...0.69.28)
+## [0.69.29](https://github.com/Yelp/paasta/tree/0.69.29) (2018-02-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.28...0.69.29)
+
+**Merged pull requests:**
+
+- Use mesos 1.4.1 in itests [\#1729](https://github.com/Yelp/paasta/pull/1729) ([nhandler](https://github.com/nhandler))
+- Never detach containers with paasta local-run in interactive mode [\#1727](https://github.com/Yelp/paasta/pull/1727) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.69.28](https://github.com/Yelp/paasta/tree/v0.69.28) (2018-02-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.27...v0.69.28)
 
 **Merged pull requests:**
 
 - Update marathon schema to allow instance names to begin with an underscore [\#1725](https://github.com/Yelp/paasta/pull/1725) ([nhandler](https://github.com/nhandler))
 - Rounding capacity to terminate too [\#1724](https://github.com/Yelp/paasta/pull/1724) ([matfra](https://github.com/matfra))
+- Do a huge refactor to make get\_expected\_instance\_count\_for\_service a lot faster [\#1722](https://github.com/Yelp/paasta/pull/1722) ([EvanKrall](https://github.com/EvanKrall))
 
 ## [v0.69.27](https://github.com/Yelp/paasta/tree/v0.69.27) (2018-02-07)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.26...v0.69.27)

@@ -1,3 +1,10 @@
+paasta-tools (0.69.29) xenial; urgency=medium
+
+  * 0.69.29 tagged with 'make release'
+    Commit: Merge branch "fix_v2_deployments_loading"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 13 Feb 2018 10:56:00 -0800
+
 paasta-tools (0.69.28) xenial; urgency=medium
 
   * 0.69.28 tagged with 'make release'
