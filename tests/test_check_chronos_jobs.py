@@ -476,10 +476,26 @@ def test_job_is_stuck_when_still_running(mock_chronos_client):
     mock_chronos_client.job_stat.assert_called_once_with('job_name')
 
 
-def test_job_is_stuck_when_stuck(mock_chronos_client):
+def test_job_is_stuck_when_late(mock_chronos_client):
     last_time_run = datetime.now(pytz.utc) - timedelta(hours=25)
     interval = 60 * 60 * 24
     mock_chronos_client.job_stat.return_value = {"histogram": {"99thPercentile": 60 * 30}}
+
+    assert check_chronos_jobs.job_is_stuck(
+        last_time_run.isoformat(),
+        interval,
+        mock_chronos_client,
+        'job_name',
+    )
+    mock_chronos_client.job_stat.assert_called_once_with('job_name')
+
+
+def test_job_is_stuck_on_really_long_jobs(mock_chronos_client):
+    """A daily job last run 48 hours ago should be considered stuck
+    even if chronos says it normally takes 14 days to complete"""
+    last_time_run = datetime.now(pytz.utc) - timedelta(hours=48)
+    interval = 60 * 60 * 24
+    mock_chronos_client.job_stat.return_value = {"histogram": {"99thPercentile": 60 * 60 * 24 * 14}}
 
     assert check_chronos_jobs.job_is_stuck(
         last_time_run.isoformat(),
