@@ -18,7 +18,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SystemPaastaConfig
@@ -316,8 +315,16 @@ def load_paasta_native_job_config(
     instance_config_dict.update(config_overrides or {})
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = instance_config_dict.get('deploy_group', branch)
+        temp_instance_config = NativeServiceConfig(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            config_dict=instance_config_dict,
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
+        branch = temp_instance_config.get_branch()
+        deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     service_config = NativeServiceConfig(

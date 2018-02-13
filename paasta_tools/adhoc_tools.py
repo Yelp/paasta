@@ -20,7 +20,6 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -52,8 +51,16 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
     branch_dict = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        branch = general_config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = general_config.get('deploy_group', branch)
+        temp_instance_config = AdhocJobConfig(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            config_dict=general_config,
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
+        branch = temp_instance_config.get_branch()
+        deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return AdhocJobConfig(

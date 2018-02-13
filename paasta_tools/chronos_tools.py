@@ -35,7 +35,6 @@ from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
@@ -226,8 +225,16 @@ def load_chronos_job_config(
 
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        branch = get_paasta_branch(cluster=cluster, instance=instance)
-        deploy_group = general_config.get('deploy_group', branch)
+        temp_instance_config = ChronosJobConfig(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            config_dict=general_config,
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
+        branch = temp_instance_config.get_branch()
+        deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
     return ChronosJobConfig(

@@ -25,7 +25,6 @@ from service_configuration_lib import read_service_configuration
 from paasta_tools import utils
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_v2_deployments_json
@@ -131,11 +130,12 @@ class PaastaServiceConfigLoader():
         )
         self._framework_configs[(cluster, instance_type_class)] = instances
 
-    def _get_branch_dict(self, cluster: str, instance: str, config: utils.InstanceConfigDict) -> utils.BranchDictV2:
+    def _get_branch_dict(self, cluster: str, instance: str, config: utils.InstanceConfig) -> utils.BranchDictV2:
         if self._deployments_json is None:
             self._deployments_json = load_v2_deployments_json(self._service, soa_dir=self._soa_dir)
-        branch = config.get('branch', get_paasta_branch(cluster, instance))
-        deploy_group = config.get('deploy_group', branch)
+
+        branch = config.get_branch()
+        deploy_group = config.get_deploy_group()
         return self._deployments_json.get_branch_dict(self._service, branch, deploy_group)
 
     def _get_merged_config(self, config: utils.InstanceConfigDict) -> utils.InstanceConfigDict:
@@ -163,8 +163,19 @@ class PaastaServiceConfigLoader():
         :param config: the framework instance config.
         :returns: An instance of config_class
         """
+
         merged_config = self._get_merged_config(config)
-        branch_dict = self._get_branch_dict(cluster, instance, merged_config)
+
+        temp_instance_config = config_class(
+            service=self._service,
+            cluster=cluster,
+            instance=instance,
+            config_dict=merged_config,
+            branch_dict=None,
+            soa_dir=self._soa_dir,
+        )
+
+        branch_dict = self._get_branch_dict(cluster, instance, temp_instance_config)
 
         return config_class(
             service=self._service,
