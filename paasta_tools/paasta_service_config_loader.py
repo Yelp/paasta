@@ -28,6 +28,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 log = logging.getLogger(__name__)
@@ -115,7 +116,10 @@ class PaastaServiceConfigLoader():
         if (cluster, instance_type_class) not in self._framework_configs:
             self._refresh_framework_config(cluster, instance_type_class)
         for instance, config in self._framework_configs.get((cluster, instance_type_class), {}).items():
-            yield self._create_service_config(cluster, instance, config, instance_type_class)
+            try:
+                yield self._create_service_config(cluster, instance, config, instance_type_class)
+            except NoDeploymentsAvailable:
+                pass
 
     def _framework_config_filename(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]):
         return "%s-%s" % (instance_type_class.config_filename_prefix, cluster)

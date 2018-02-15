@@ -90,6 +90,10 @@ def marathon_cluster_config():
             'instances': 1, 'deploy_group': '{cluster}.canary',
             'cpus': 0.1, 'mem': 1000,
         },
+        'not_deployed': {
+            'instances': 1, 'deploy_group': 'not_deployed',
+            'cpus': 0.1, 'mem': 1000,
+        },
     }
 
 
@@ -107,6 +111,13 @@ def chronos_cluster_config():
             'deploy_group': '{cluster}.non_canary',
             'cmd': '/bin/sleep 5s',
         },
+        'not_deployed': {
+            'deploy_group': 'not_deployed',
+            'cpus': 0.1,
+            'mem': 1000,
+            'schedule': 'R/2016-04-15T06:00:00Z/PT24H',
+            'schedule_time_zone': 'America/Los_Angeles',
+        },
     }
 
 
@@ -117,6 +128,7 @@ def adhoc_cluster_config():
             'cmd': '/bin/sleep 5s',
         },
         'interactive': {'deploy_group': '{cluster}.non_canary', 'mem': 1000},
+        'not_deployed': {'deploy_group': 'not_deployed'},
     }
 
 
@@ -124,7 +136,7 @@ def adhoc_cluster_config():
 def test_marathon_instances(mock_read_extra_service_information):
     mock_read_extra_service_information.return_value = marathon_cluster_config()
     s = create_test_service()
-    assert list(s.instances(TEST_CLUSTER_NAME, MarathonServiceConfig)) == ['main', 'canary']
+    assert list(s.instances(TEST_CLUSTER_NAME, MarathonServiceConfig)) == ['main', 'canary', 'not_deployed']
     mock_read_extra_service_information.assert_called_once_with(
         extra_info='marathon-%s' % TEST_CLUSTER_NAME,
         service_name=TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR,
