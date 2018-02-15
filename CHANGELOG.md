@@ -1,10 +1,11 @@
 # Change Log
 
-## [0.69.29](https://github.com/Yelp/paasta/tree/0.69.29) (2018-02-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.28...0.69.29)
+## [v0.69.29](https://github.com/Yelp/paasta/tree/v0.69.29) (2018-02-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.69.28...v0.69.29)
 
 **Merged pull requests:**
 
+- Make sure PaastaServiceConfig, load\_marathon\_service\_config, and load\_{chronos,adhoc,paasta\_native}\_job\_config correctly interpolate facts into deploy\_group before loading branch dict. [\#1730](https://github.com/Yelp/paasta/pull/1730) ([EvanKrall](https://github.com/EvanKrall))
 - Use mesos 1.4.1 in itests [\#1729](https://github.com/Yelp/paasta/pull/1729) ([nhandler](https://github.com/nhandler))
 - Never detach containers with paasta local-run in interactive mode [\#1727](https://github.com/Yelp/paasta/pull/1727) ([solarkennedy](https://github.com/solarkennedy))
 
