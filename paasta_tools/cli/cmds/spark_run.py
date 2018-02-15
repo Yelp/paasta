@@ -65,10 +65,16 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-c', '--cluster',
         help=(
-            "The name of the cluster you wish to run Spark on. "
+            "The name of the cluster you wish to run Spark on."
         ),
-        choices=['norcal-devc', 'pnw-devc'],
+        choices=['norcal-devc', 'pnw-devc', 'mesosstage'],
         required=True,
+    )
+
+    list_parser.add_argument(
+        '-p', '--pool',
+        help="Name of the resource pool to run the Spark job.",
+        default='default',
     )
 
     list_parser.add_argument(
@@ -154,50 +160,79 @@ def get_docker_run_cmd(
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     cmd.append('%s' % docker_img)
-    cmd.append(docker_cmd)
+    cmd.extend(('sh', '-c', docker_cmd))
 
     return cmd
 
 
-def get_spark_configuration(
+def get_spark_env(
+    cmd,
+    spark_conf,
+):
+    spark_env = {}
+
+    creds = Session().get_credentials()
+    spark_env['AWS_ACCESS_KEY_ID'] = creds.access_key
+    spark_env['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
+
+    # Run spark (and mesos framework) as root.
+    spark_env['SPARK_USER'] = 'root'
+
+    if cmd == 'jupyter':
+        spark_env['SPARK_OPTS'] = spark_conf
+        spark_env['JUPYTER_RUNTIME_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
+        spark_env['JUPYTER_DATA_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
+
+    return spark_env
+
+
+def get_spark_conf_str(
     args,
     container_name,
     spark_ui_port,
     docker_img,
     system_paasta_config,
+    volumes,
 ):
-    spark_conf = {}
-    spark_conf['APP_NAME'] = container_name
-    spark_conf['SPARK_UI_PORT'] = spark_ui_port
-
-    creds = Session().get_credentials()
-    spark_conf['AWS_ACCESS_KEY_ID'] = creds.access_key
-    spark_conf['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
+    spark_conf = list()
+    spark_conf.append('--conf spark.app.name=%s' % container_name)
+    spark_conf.append('--conf spark.ui.port=%d' % spark_ui_port)
 
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=args.cluster)
     mesos_address = '{}:{}'.format(
         find_mesos_leader(cluster_fqdn),
         MESOS_MASTER_PORT,
     )
-    spark_conf['SPARK_MASTER'] = 'mesos://%s' % mesos_address
-    spark_conf['SPARK_CORES_MAX'] = args.max_cores
-    spark_conf['SPARK_EXECUTOR_CORES'] = args.executor_cores
-    spark_conf['SPARK_EXECUTOR_MEMORY'] = '%dg' % args.executor_memory
+    spark_conf.append('--conf spark.master=mesos://%s' % mesos_address)
+
+    spark_conf.append('--conf spark.cores.max=%d' % args.max_cores)
+    spark_conf.append('--conf spark.executor.memory=%dg' % args.executor_memory)
+    spark_conf.append('--conf spark.executor.cores=%d' % args.executor_cores)
 
     if args.driver_max_result_size:
-        spark_conf['SPARK_DRIVER_MAX_RESULT_SIZE'] = '%dg' % args.driver_max_result_size
+        spark_conf.append('--conf spark.driver.maxResultSize=%dg' % args.driver_max_result_size)
     if args.driver_memory:
-        spark_conf['SPARK_DRIVER_MEMORY'] = '%dg' % args.driver_memory
+        spark_conf.append('--conf spark.driver.memory=%dg' % args.driver_memory)
     if args.driver_cores:
-        spark_conf['SPARK_DRIVER_CORES'] = args.driver_cores
+        spark_conf.append('--conf spark.driver.cores=%d' % args.driver_cores)
 
-    if args.build:
-        spark_conf['SPARK_EXECUTOR_IMAGE'] = docker_img
+    spark_conf.append('--conf spark.mesos.executor.docker.image=%s' % docker_img)
+    if not args.build:
+        spark_conf.append('--conf spark.mesos.uris=file:///root/.dockercfg')
 
-    # Run spark (and mesos framework) as root.
-    spark_conf['SPARK_USER'] = 'root'
+    # TODO PAASTA-13815
+    # spark_conf.append('--conf spark.mesos.secret=')
+    # spark_conf.append('--conf spark.mesos.principal=')
 
-    return spark_conf
+    # derby.system.home property defaulting to '.',
+    # which requires directory permission changes.
+    spark_conf.append('--conf spark.driver.extraJavaOptions=-Dderby.system.home=/tmp/derby')
+
+    spark_conf.append('--conf spark.mesos.constraints=pool:%s' % args.pool)
+
+    spark_conf.append('--conf spark.mesos.executor.docker.volumes=%s' % ','.join(volumes))
+
+    return ' '.join(spark_conf)
 
 
 def run_docker_container(
@@ -244,6 +279,20 @@ def configure_and_run_docker_container(
                     "Warning: Path %s does not exist on this host. Skipping this binding." % volume['hostPath'],
                 ),
             )
+
+    spark_ui_port = pick_random_port(args.service)
+    container_name = 'paasta_spark_run_%s_%s' % (get_username(), spark_ui_port)
+
+    spark_conf_str = get_spark_conf_str(
+        args=args,
+        container_name=container_name,
+        spark_ui_port=spark_ui_port,
+        docker_img=docker_img,
+        system_paasta_config=system_paasta_config,
+        volumes=volumes,
+    )
+
+    # Spark client specific volumes
     volumes.append('%s:%s:rw' % (os.getcwd(), DEFAULT_SPARK_WORK_DIR))
     volumes.append('/etc/passwd:/etc/passwd:ro')
     volumes.append('/etc/group:/etc/group:ro')
@@ -256,27 +305,27 @@ def configure_and_run_docker_container(
     if docker_cmd is None:
         paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
         return 1
-    # Changes at docker ENTRYPOINT or CMD does not work.
-    elif docker_cmd == 'jupyter':
+
+    # Spark options are passed as options to pyspark and spark-shell.
+    # For jupyter, environment variable SPARK_OPTS is set instead.
+    if docker_cmd == 'jupyter':
         docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
             socket.getfqdn(), DEFAULT_SPARK_WORK_DIR,
         )
+    elif docker_cmd in ['pyspark', 'spark-shell']:
+        docker_cmd = docker_cmd + ' ' + spark_conf_str
+    elif docker_cmd.startswith('spark-submit'):
+        docker_cmd = 'spark-submit ' + spark_conf_str + docker_cmd[len('spark-submit'):]
 
-    spark_ui_port = pick_random_port(args.service)
-    container_name = 'paasta_spark_run_%s_%s' % (get_username(), spark_ui_port)
-
-    # Do not put memory and CPU limits on Spark driver for now.
-    # Toree won't work with the default memory-swap setting.
     environment = instance_config.get_env_dictionary()
     environment.update(
-        get_spark_configuration(
-            args,
-            container_name,
-            spark_ui_port,
-            docker_img,
-            system_paasta_config,
+        get_spark_env(
+            args.cmd,
+            spark_conf_str,
         ),
     )
+
+    paasta_print('\nSpark Monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
 
     return run_docker_container(
         container_name=container_name,
