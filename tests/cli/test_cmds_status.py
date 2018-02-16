@@ -670,6 +670,26 @@ def test_apply_args_filters_clusters_and_instances(
     assert pargs['cluster1']['fake_service'] == {'instance1', 'instance3'}
 
 
+@patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
+def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
+    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
+    args = PaastaArgs(
+        service='fake-service',
+        soa_dir='/fake/soa/dir',
+        deploy_group=None,
+        clusters='cluster1',
+        instances='instance4,instance5',
+        owner=None,
+    )
+    mock_list_services.return_value = ['fake_service']
+    pargs = apply_args_filters(args)
+    output, _ = capfd.readouterr()
+    assert len(pargs) == 0
+    assert 'The service "fake-service" does not exist.' in output
+    assert 'Did you mean any of these?' in output
+    assert '  fake_service' in output
+
+
 @patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)

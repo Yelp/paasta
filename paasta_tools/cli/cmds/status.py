@@ -385,8 +385,19 @@ def apply_args_filters(args):
 
     filters = get_filters(args)
 
+    all_services = list_services(soa_dir=args.soa_dir)
+
+    if args.service and args.service not in all_services:
+        paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
+        suggestions = difflib.get_close_matches(args.service, all_services, n=5, cutoff=0.5)
+        if suggestions:
+            paasta_print(PaastaColors.red(f'Did you mean any of these?'))
+            for suggestion in suggestions:
+                paasta_print(PaastaColors.red(f'  {suggestion}'))
+        return {}
+
     i_count = 0
-    for service in list_services(soa_dir=args.soa_dir):
+    for service in all_services:
         if args.service and service != args.service:
             continue
 
