@@ -1,3 +1,11 @@
+paasta-tools (0.69.33) xenial; urgency=medium
+
+  * 0.69.33 tagged with 'make release'
+    Commit: Merge pull request #1738 from Yelp/PAASTA-14045  Run spark
+    and mesos framework as root
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 21 Feb 2018 14:36:17 -0800
+
 paasta-tools (0.69.32) xenial; urgency=medium
 
   * 0.69.32 tagged with 'make release'
