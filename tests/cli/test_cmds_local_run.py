@@ -22,6 +22,7 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cli import main
 from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
+from paasta_tools.cli.cmds.local_run import decrypt_secret_environment_variables
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
@@ -351,6 +352,14 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.user_port = None
     args.interactive = False
     args.dry_run_json_dict = False
+    args.vault_auth_method = 'ldap'
+    args.vault_token_file = '/blah/token'
+
+    mock_secret_provider_kwargs = {
+        'vault_cluster_config': {},
+        'vault_auth_method': 'ldap',
+        'vault_token_file': '/blah/token',
+    }
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -375,9 +384,11 @@ def test_configure_and_run_command_uses_cmd_from_config(
         healthcheck_only=args.healthcheck_only,
         user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
+        secret_provider_name='paasta_tools.secret_providers',
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
         json_dict=False,
+        secret_provider_kwargs=mock_secret_provider_kwargs,
     )
 
 
@@ -405,6 +416,8 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.instance = 'fake_instance'
     args.interactive = True
     args.dry_run_json_dict = False
+    args.vault_auth_method = 'ldap'
+    args.vault_token_file = '/blah/token'
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -416,6 +429,11 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         args=args,
     )
     assert return_code == 0
+    mock_secret_provider_kwargs = {
+        'vault_cluster_config': {},
+        'vault_auth_method': 'ldap',
+        'vault_token_file': '/blah/token',
+    }
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -429,9 +447,11 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         healthcheck_only=args.healthcheck_only,
         user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
+        secret_provider_name='paasta_tools.secret_providers',
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
         json_dict=False,
+        secret_provider_kwargs=mock_secret_provider_kwargs,
     )
 
 
@@ -465,6 +485,8 @@ def test_configure_and_run_pulls_image_when_asked(
     args.user_port = None
     args.interactive = True
     args.dry_run_json_dict = False
+    args.vault_auth_method = 'ldap'
+    args.vault_token_file = '/blah/token'
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -478,6 +500,11 @@ def test_configure_and_run_pulls_image_when_asked(
     )
     assert return_code == 0
     mock_docker_pull_image.assert_called_once_with('fake_registry/fake_image')
+    mock_secret_provider_kwargs = {
+        'vault_cluster_config': {},
+        'vault_auth_method': 'ldap',
+        'vault_token_file': '/blah/token',
+    }
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -491,9 +518,11 @@ def test_configure_and_run_pulls_image_when_asked(
         healthcheck_only=args.healthcheck_only,
         user_port=args.user_port,
         instance_config=mock_get_instance_config.return_value,
+        secret_provider_name='paasta_tools.secret_providers',
         soa_dir=args.yelpsoa_config_root,
         dry_run=False,
         json_dict=False,
+        secret_provider_kwargs=mock_secret_provider_kwargs,
     )
 
 
@@ -521,6 +550,8 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.user_port = None
         args.interactive = False
         args.dry_run_json_dict = False
+        args.vault_auth_method = 'ldap'
+        args.vault_token_file = '/blah/token'
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -534,6 +565,11 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             system_paasta_config=system_paasta_config,
         )
         assert return_code == 0
+        mock_secret_provider_kwargs = {
+            'vault_cluster_config': {},
+            'vault_auth_method': 'ldap',
+            'vault_token_file': '/blah/token',
+        }
         mock_run_docker_container.assert_called_once_with(
             docker_client=mock_docker_client,
             service='fake_service',
@@ -547,9 +583,11 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             healthcheck_only=args.healthcheck_only,
             user_port=args.user_port,
             instance_config=mock_config,
+            secret_provider_name='paasta_tools.secret_providers',
             soa_dir=args.yelpsoa_config_root,
             dry_run=False,
             json_dict=False,
+            secret_provider_kwargs=mock_secret_provider_kwargs,
         )
 
 
@@ -844,7 +882,8 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 666, 'Running': True}}
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
@@ -857,6 +896,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
         healthcheck_only=False,
         user_port=None,
         instance_config=mock_service_manifest,
+        secret_provider_name='vault',
     )
     mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with('fake_service')
@@ -888,7 +928,8 @@ def test_run_docker_container_interactive(
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     return_code = run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
@@ -901,6 +942,7 @@ def test_run_docker_container_interactive(
         healthcheck_only=False,
         user_port=None,
         instance_config=mock_service_manifest,
+        secret_provider_name='vault',
     )
     mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with('fake_service')
@@ -944,7 +986,8 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
     mock_run_healthcheck_on_container.return_value = (True, "Good to go")
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
     return_code = run_docker_container(
         docker_client=mock_docker_client,
@@ -958,6 +1001,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
         healthcheck_only=False,
         user_port=None,
         instance_config=mock_service_manifest,
+        secret_provider_name='vault',
     )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
@@ -989,8 +1033,9 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     )
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
+    mock_service_manifest.cluster = 'fake_cluster'
     with raises(SystemExit) as excinfo:
         run_docker_container(
             docker_client=mock_docker_client,
@@ -1004,6 +1049,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             healthcheck_only=False,
             user_port=None,
             instance_config=mock_service_manifest,
+            secret_provider_name='vault',
         )
     # Cleanup wont' be necessary and the function should bail out early.
     assert mock_docker_client.stop.call_count == 0
@@ -1036,7 +1082,8 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_docker_client.attach.return_value = ['line1', 'line2']
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     with raises(SystemExit) as excinfo:
         run_docker_container(
             docker_client=mock_docker_client,
@@ -1051,6 +1098,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             user_port=None,
             instance_config=mock_service_manifest,
             soa_dir='fake_soa_dir',
+            secret_provider_name='vault',
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
@@ -1090,7 +1138,8 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 0}}
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     with raises(SystemExit) as excinfo:
         run_docker_container(
             docker_client=mock_docker_client,
@@ -1104,6 +1153,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             healthcheck_only=True,
             user_port=None,
             instance_config=mock_service_manifest,
+            secret_provider_name='vault',
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
@@ -1142,7 +1192,8 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 42}}
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = 'fake_cluster'
     with raises(SystemExit) as excinfo:
         run_docker_container(
             docker_client=mock_docker_client,
@@ -1156,6 +1207,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
             healthcheck_only=True,
             user_port=None,
             instance_config=mock_service_manifest,
+            secret_provider_name='vault',
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
@@ -1183,10 +1235,11 @@ def test_run_docker_container_with_user_specified_port(
 ):
     mock_pick_random_port.return_value = 666  # we dont want it running on this port
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.get_net.return_value = 'bridge'
     mock_service_manifest.get_env_dictionary.return_value = {}
     mock_service_manifest.get_container_port.return_value = 8888
+    mock_service_manifest.cluster = 'blah'
     run_docker_container(
         docker_client=mock_docker_client,
         service='fake_service',
@@ -1199,6 +1252,7 @@ def test_run_docker_container_with_user_specified_port(
         healthcheck_only=False,
         user_port=1234,
         instance_config=mock_service_manifest,
+        secret_provider_name='vault',
     )
     mock_service_manifest.get_mem.assert_called_once_with()
     assert mock_check_if_port_free.call_count == 1
@@ -1600,3 +1654,64 @@ def test_missing_volumes_skipped(mock_exists):
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs['volumes'] == []
+
+
+def mock_is_secret_side_effect(val):
+    if "SECRET" in val:
+        return True
+    return False
+
+
+def test_decrypt_secret_environment_variables():
+    with mock.patch(
+        'paasta_tools.cli.cmds.local_run.is_secret_ref', autospec=True,
+    ) as mock_is_secret_ref, mock.patch(
+        'paasta_tools.cli.cmds.local_run.get_secret_provider', autospec=True,
+    ) as mock_get_secret_provider:
+        mock_environment = {'MY': 'aaa', 'SECRET': 'SECRET(123)'}
+        mock_secret_provider = mock.Mock()
+        mock_is_secret_ref.return_value = False
+        mock_get_secret_provider.return_value = mock_secret_provider
+        ret = decrypt_secret_environment_variables(
+            secret_provider_name='vault',
+            environment=mock_environment,
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_name='mesosstage',
+            secret_provider_kwargs={'some': 'config'},
+        )
+        assert ret == {}
+        assert not mock_get_secret_provider.called
+        assert not mock_secret_provider.decrypt_environment.called
+
+        mock_is_secret_ref.side_effect = mock_is_secret_side_effect
+        ret = decrypt_secret_environment_variables(
+            secret_provider_name='vault',
+            environment=mock_environment,
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_name='mesosstage',
+            secret_provider_kwargs={'some': 'config'},
+        )
+        mock_get_secret_provider.assert_called_with(
+            secret_provider_name='vault',
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_name='mesosstage',
+        )
+        mock_secret_provider.decrypt_environment.assert_called_with(
+            {'SECRET': 'SECRET(123)'},
+            some='config',
+        )
+        assert ret == mock_secret_provider.decrypt_environment.return_value
+
+        mock_secret_provider.decrypt_environment.side_effect = KeyError
+        with raises(KeyError):
+            decrypt_secret_environment_variables(
+                secret_provider_name='vault',
+                environment=mock_environment,
+                soa_dir='/nail/blah',
+                service_name='universe',
+                cluster_name='mesosstage',
+                secret_provider_kwargs={'some': 'config'},
+            )

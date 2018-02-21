@@ -38,6 +38,8 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
+from paasta_tools.secret_tools import get_secret_provider
+from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
@@ -366,6 +368,23 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '--vault-auth-method',
+        help='Override how we auth with vault, defaults to token if not present',
+        type=str,
+        dest='vault_auth_method',
+        required=False,
+        default='token',
+        choices=['token', 'ldap'],
+    )
+    list_parser.add_argument(
+        '--vault-token-file',
+        help='Override vault token file, defaults to /root/.vault-token',
+        type=str,
+        dest='vault_token_file',
+        required=False,
+        default='/root/.vault-token',
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -520,6 +539,30 @@ def check_if_port_free(port):
     return True
 
 
+def decrypt_secret_environment_variables(
+    secret_provider_name,
+    environment,
+    soa_dir,
+    service_name,
+    cluster_name,
+    secret_provider_kwargs,
+):
+    secret_environment = {}
+    secret_env_vars = {k: v for k, v in environment.items() if is_secret_ref(v)}
+    if secret_env_vars:
+        secret_provider = get_secret_provider(
+            secret_provider_name=secret_provider_name,
+            soa_dir=soa_dir,
+            service_name=service_name,
+            cluster_name=cluster_name,
+        )
+        secret_environment = secret_provider.decrypt_environment(
+            secret_env_vars,
+            **secret_provider_kwargs,
+        )
+    return secret_environment
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -532,10 +575,12 @@ def run_docker_container(
     healthcheck_only,
     user_port,
     instance_config,
+    secret_provider_name,
     soa_dir=DEFAULT_SOA_DIR,
     dry_run=False,
     json_dict=False,
     framework=None,
+    secret_provider_kwargs={},
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -559,6 +604,15 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
+    secret_environment = decrypt_secret_environment_variables(
+        secret_provider_name=secret_provider_name,
+        environment=environment,
+        soa_dir=soa_dir,
+        service_name=service,
+        cluster_name=instance_config.cluster,
+        secret_provider_kwargs=secret_provider_kwargs,
+    )
+    environment.update(secret_environment)
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config,
         port0=chosen_port,
@@ -831,6 +885,12 @@ def configure_and_run_docker_container(
         else:
             command = instance_config.get_args()
 
+    secret_provider_kwargs = {
+        'vault_cluster_config': system_paasta_config.get_vault_cluster_config(),
+        'vault_auth_method': args.vault_auth_method,
+        'vault_token_file': args.vault_token_file,
+    }
+
     return run_docker_container(
         docker_client=docker_client,
         service=service,
@@ -847,6 +907,8 @@ def configure_and_run_docker_container(
         dry_run=dry_run,
         json_dict=args.dry_run_json_dict,
         framework=instance_type,
+        secret_provider_name=system_paasta_config.get_secret_provider_name(),
+        secret_provider_kwargs=secret_provider_kwargs,
     )
 
 
