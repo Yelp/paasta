@@ -31,6 +31,7 @@ RUN apt-get update > /dev/null && \
         git \
         help2man \
         libffi-dev \
+        libgpgme11 \
         libssl-dev \
         libyaml-dev \
         python3.6-dev \
