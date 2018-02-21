@@ -27,6 +27,7 @@ from typing import TypeVar
 
 from humanize import naturalsize
 from mypy_extensions import TypedDict
+from typing_extensions import Counter as _Counter  # noqa
 
 from paasta_tools import chronos_tools
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
