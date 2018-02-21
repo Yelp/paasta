@@ -84,15 +84,11 @@ def add_subparser(subparsers):
             'Note: This is only effective with -vv'
         ),
     )
-    status_parser.add_argument(
-        '-H', '--humanize', action='store_true', dest="humanize", default=True,
-        help="Print human-readable sizes",
-    )
     status_parser.set_defaults(command=paasta_metastatus)
 
 
 def print_cluster_status(
-    cluster, system_paasta_config, humanize, groupings,
+    cluster, system_paasta_config, groupings,
     verbose=0,
     autoscaling_info=False,
     use_mesos_cache=False,
@@ -102,7 +98,6 @@ def print_cluster_status(
     return_code, output = execute_paasta_metastatus_on_remote_master(
         cluster=cluster,
         system_paasta_config=system_paasta_config,
-        humanize=humanize,
         groupings=groupings,
         verbose=verbose,
         autoscaling_info=autoscaling_info,
@@ -158,7 +153,6 @@ def paasta_metastatus(args):
                 print_cluster_status(
                     cluster=cluster,
                     system_paasta_config=system_paasta_config,
-                    humanize=args.humanize,
                     groupings=args.groupings,
                     verbose=args.verbose,
                     autoscaling_info=args.autoscaling_info,

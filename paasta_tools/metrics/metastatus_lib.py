@@ -745,7 +745,6 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
     tuples represented by a formatted string.
 
     :param healthcheck_utilization_pairs: a list of (HealthCheckResult, ResourceUtilization) tuples.
-    :param humanize: a boolean indicating if the strings should be humanized.
     :returns: a list containing a string representation of each (HealthCheckResult, ResourceUtilization) tuple.
     """
     return [
