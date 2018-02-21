@@ -1,3 +1,11 @@
+paasta-tools (0.69.31) xenial; urgency=medium
+
+  * 0.69.31 tagged with 'make release'
+    Commit: Merge pull request #1711 from Yelp/secret-decryption-local-
+    run  Integrate vault with local-run
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 21 Feb 2018 06:58:34 -0800
+
 paasta-tools (0.69.30) xenial; urgency=medium
 
   * 0.69.30 tagged with 'make release'
