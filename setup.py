@@ -49,6 +49,7 @@ setup(
         'jsonschema[format]',
         'kazoo >= 2.0.0',
         'marathon >= 0.9.3',
+        'mypy-extensions == 0.3.0',
         'progressbar2 >= 3.10.0',
         'pyramid >= 1.8',
         'pymesos >= 0.2.0',

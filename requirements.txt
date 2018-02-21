@@ -21,7 +21,7 @@ isodate==0.5.1
 jsonschema[format]==2.5.1
 kazoo==2.4
 marathon==0.9.3
-mypy_extensions
+mypy_extensions==0.3.0
 ply==3.4
 progressbar2==3.10.1
 pymesos==0.2.13
