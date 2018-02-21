@@ -73,8 +73,8 @@ def parse_args(argv):
         help="Print out more output regarding the state of the cluster",
     )
     parser.add_argument(
-        '-H', '--humanize', action='store_true', dest="humanize", default=False,
-        help="Print human-readable sizes",
+        '-H', '--humanize', action='store_true', dest="humanize", default=True,
+        help="DEPRECATED, always assumed true: Print human-readable sizes",
     )
     return parser.parse_args(argv)
 
@@ -110,7 +110,6 @@ def all_marathon_clients(marathon_clients):
 def utilization_table_by_grouping_from_mesos_state(
     groupings: Sequence[str],
     threshold: float,
-    humanize: bool,
     mesos_state: Dict,
 ) -> Tuple[
     List[List[str]],
@@ -151,7 +150,6 @@ def utilization_table_by_grouping_from_mesos_state(
         table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
             [v for g, v in grouping_values],
             healthcheck_utilization_pairs,
-            humanize,
         ) + [str(resource_info_dict['slave_count'])])
     table_rows = sorted(table_rows, key=lambda x: x[0:len(groupings)])
     all_rows.extend(table_rows)
@@ -222,7 +220,6 @@ def main(argv: Optional[List[str]]=None) -> None:
         all_rows, healthy_exit = utilization_table_by_grouping_from_mesos_state(
             groupings=args.groupings,
             threshold=args.threshold,
-            humanize=args.humanize,
             mesos_state=mesos_state,
         )
         for line in format_table(all_rows):
@@ -244,7 +241,6 @@ def main(argv: Optional[List[str]]=None) -> None:
             all_rows, _ = utilization_table_by_grouping_from_mesos_state(
                 groupings=args.groupings + ["hostname"],
                 threshold=args.threshold,
-                humanize=args.humanize,
                 mesos_state=mesos_state,
             )
             # The last column from utilization_table_by_grouping_from_mesos_state is "Agent count", which will always be

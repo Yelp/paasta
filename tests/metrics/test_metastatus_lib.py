@@ -928,47 +928,6 @@ def test_healthcheck_result_for_resource_utilization_zero():
     ) == expected
 
 
-def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy():
-    fake_healthcheckresult = Mock()
-    fake_healthcheckresult.healthy = True
-    fake_resource_utilization = Mock()
-    fake_resource_utilization.free = 10
-    fake_resource_utilization.total = 20
-    expected = PaastaColors.green("10/20 (50.00%)")
-    assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
-        (fake_healthcheckresult, fake_resource_utilization),
-        False,
-    ) == expected
-
-
-def test_format_table_column_for_healthcheck_resource_utilization_pair_unhealthy():
-    fake_healthcheckresult = Mock()
-    fake_healthcheckresult.healthy = False
-    fake_healthcheckresult.metric = 'mem'
-    fake_resource_utilization = Mock()
-    fake_resource_utilization.free = 10
-    fake_resource_utilization.total = 20
-    expected = PaastaColors.red("10/20 (50.00%)")
-    assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
-        (fake_healthcheckresult, fake_resource_utilization),
-        False,
-    ) == expected
-
-
-def test_format_table_column_for_healthcheck_resource_utilization_pair_zero():
-    fake_healthcheckresult = Mock()
-    fake_healthcheckresult.healthy = False
-    fake_healthcheckresult.metric = 'mem'
-    fake_resource_utilization = Mock()
-    fake_resource_utilization.free = 0
-    fake_resource_utilization.total = 0
-    expected = PaastaColors.red("0/0 (100.00%)")
-    assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
-        (fake_healthcheckresult, fake_resource_utilization),
-        False,
-    ) == expected
-
-
 def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_human_non_cpu():
     fake_healthcheckresult = Mock()
     fake_healthcheckresult.healthy = True
@@ -980,7 +939,6 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_h
     expected = PaastaColors.green("10.0M/20.0M (50.00%)")
     assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
         (fake_healthcheckresult, fake_resource_utilization),
-        True,
     ) == expected
 
 
@@ -995,7 +953,6 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_h
     expected = PaastaColors.green("9.89/20 (49.43%)")
     assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
         (fake_healthcheckresult, fake_resource_utilization),
-        True,
     ) == expected
 
 
@@ -1009,7 +966,6 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_unhealthy
     expected = PaastaColors.red("10.0M/20.0M (50.00%)")
     assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
         (fake_healthcheckresult, fake_resource_utilization),
-        True,
     ) == expected
 
 
@@ -1023,7 +979,6 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_zero_huma
     expected = PaastaColors.red("0B/0B (100.00%)")
     assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
         (fake_healthcheckresult, fake_resource_utilization),
-        True,
     ) == expected
 
 
@@ -1037,7 +992,7 @@ def test_format_row_for_resource_utilization_checks(mock_format_row):
         (Mock(), Mock()),
         (Mock(), Mock()),
     ]
-    assert metastatus_lib.format_row_for_resource_utilization_healthchecks(fake_pairs, False)
+    assert metastatus_lib.format_row_for_resource_utilization_healthchecks(fake_pairs)
     assert mock_format_row.call_count == len(fake_pairs)
 
 
@@ -1049,7 +1004,7 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
         (Mock(), Mock()),
     ]
     mock_format_row.return_value = ['10/10', '10/10', '10/10']
-    actual = metastatus_lib.get_table_rows_for_resource_info_dict(['myhabitat'], fake_pairs, False)
+    actual = metastatus_lib.get_table_rows_for_resource_info_dict(['myhabitat'], fake_pairs)
     assert actual == ['myhabitat', '10/10', '10/10', '10/10']
 
 
