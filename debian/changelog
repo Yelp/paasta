@@ -1,3 +1,11 @@
+paasta-tools (0.69.32) xenial; urgency=medium
+
+  * 0.69.32 tagged with 'make release'
+    Commit: Merge pull request #1737 from Yelp/fix-gpgme-missing  Add
+    libgpgme as a dependency
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 21 Feb 2018 09:37:36 -0800
+
 paasta-tools (0.69.31) xenial; urgency=medium
 
   * 0.69.31 tagged with 'make release'
