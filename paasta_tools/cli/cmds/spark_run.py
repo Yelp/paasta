@@ -194,6 +194,9 @@ def get_spark_configuration(
     if args.build:
         spark_conf['SPARK_EXECUTOR_IMAGE'] = docker_img
 
+    # Run spark (and mesos framework) as root.
+    spark_conf['SPARK_USER'] = 'root'
+
     return spark_conf
 
 
