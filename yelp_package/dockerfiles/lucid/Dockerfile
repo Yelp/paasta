@@ -27,6 +27,7 @@ RUN apt-get update > /dev/null && apt-get -y install \
         help2man \
         libssl-dev \
         libffi-dev \
+        libgpgme11 \
         libyaml-dev \
         python-pip \
         python-setuptools \
