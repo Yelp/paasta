@@ -969,14 +969,30 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_zero():
     ) == expected
 
 
-def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_human():
+def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_human_non_cpu():
     fake_healthcheckresult = Mock()
     fake_healthcheckresult.healthy = True
     fake_healthcheckresult.metric = 'mem'
     fake_resource_utilization = Mock()
     fake_resource_utilization.free = 10
     fake_resource_utilization.total = 20
+    fake_resource_utilization.metric = 'mem'
     expected = PaastaColors.green("10.0M/20.0M (50.00%)")
+    assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
+        (fake_healthcheckresult, fake_resource_utilization),
+        True,
+    ) == expected
+
+
+def test_format_table_column_for_healthcheck_resource_utilization_pair_healthy_human_cpu():
+    fake_healthcheckresult = Mock()
+    fake_healthcheckresult.healthy = True
+    fake_healthcheckresult.metric = 'mem'
+    fake_resource_utilization = Mock()
+    fake_resource_utilization.free = 10.114
+    fake_resource_utilization.total = 20
+    fake_resource_utilization.metric = 'cpus'
+    expected = PaastaColors.green("9.89/20 (49.43%)")
     assert metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair(
         (fake_healthcheckresult, fake_resource_utilization),
         True,

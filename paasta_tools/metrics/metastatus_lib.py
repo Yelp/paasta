@@ -27,7 +27,6 @@ from typing import TypeVar
 
 from humanize import naturalsize
 from mypy_extensions import TypedDict
-from typing_extensions import Counter as _Counter
 
 from paasta_tools import chronos_tools
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
@@ -734,6 +733,12 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
         return color_func('%s/%s (%.2f%%)' % (
             naturalsize(utilization * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),
+            utilization_perc,
+        ))
+    elif humanize and healthcheck_utilization_pair[1].metric in ['cpus', 'gpus']:
+        return color_func('%.2f/%.0f (%.2f%%)' % (
+            utilization,
+            healthcheck_utilization_pair[1].total,
             utilization_perc,
         ))
     else:
