@@ -1,3 +1,11 @@
+paasta-tools (0.69.34) xenial; urgency=medium
+
+  * 0.69.34 tagged with 'make release'
+    Commit: Merge pull request #1734 from Yelp/PAASTA-13876  Replaced
+    spark-run docker envs with command line options
+
+ -- Huadong Liu <hliu@yelp.com>  Thu, 22 Feb 2018 14:05:13 -0800
+
 paasta-tools (0.69.33) xenial; urgency=medium
 
   * 0.69.33 tagged with 'make release'
