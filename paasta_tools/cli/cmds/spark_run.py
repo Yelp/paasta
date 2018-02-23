@@ -72,6 +72,11 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        '-j', '--jars',
+        help="Comma-separated list of local jars to include on the driver and executor classpaths.",
+    )
+
+    list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
         default='default',
@@ -219,6 +224,9 @@ def get_spark_conf_str(
     spark_conf.append('--conf spark.mesos.executor.docker.image=%s' % docker_img)
     if not args.build:
         spark_conf.append('--conf spark.mesos.uris=file:///root/.dockercfg')
+
+    if args.jars:
+        spark_conf.append('--conf spark.jars=%s' % args.jars)
 
     # TODO PAASTA-13815
     # spark_conf.append('--conf spark.mesos.secret=')
