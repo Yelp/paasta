@@ -27,7 +27,7 @@ from typing import TypeVar
 
 from humanize import naturalsize
 from mypy_extensions import TypedDict
-from typing_extensions import Counter as _Counter
+from typing_extensions import Counter as _Counter  # noqa
 
 from paasta_tools import chronos_tools
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
@@ -712,16 +712,12 @@ def healthcheck_result_resource_utilization_pair_for_resource_utilization(utiliz
     return (healthcheck_result_for_resource_utilization(utilization, threshold), utilization)
 
 
-def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_utilization_pair, humanize):
+def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_utilization_pair):
     """Given a tuple of (HealthCheckResult, ResourceUtilization), return a
     string representation of the ResourceUtilization such that it is formatted
-    according to the value of HealthCheckResult.healthy. Further, humanize the
-    string according to the humanize boolean parameter and the metric - be sure
-    to *not* try and humanize if the ResourceUtilization metric is cpus
-    (because we don't want to try and show that as some other unit).
+    according to the value of HealthCheckResult.healthy.
 
     :param healthcheck_utilization_pair: a tuple of (HealthCheckResult, ResourceUtilization)
-    :param humanize: a boolean indicating if the string should be humanized
     :returns: a string representing the ResourceUtilization.
     """
     color_func = PaastaColors.green if healthcheck_utilization_pair[0].healthy else PaastaColors.red
@@ -730,35 +726,34 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
         utilization_perc = 100
     else:
         utilization_perc = utilization / float(healthcheck_utilization_pair[1].total) * 100
-    if humanize and healthcheck_utilization_pair[1].metric not in ['cpus', 'gpus']:
+    if healthcheck_utilization_pair[1].metric not in ['cpus', 'gpus']:
         return color_func('%s/%s (%.2f%%)' % (
             naturalsize(utilization * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),
             utilization_perc,
         ))
     else:
-        return color_func('%s/%s (%.2f%%)' % (
+        return color_func('%.2f/%.0f (%.2f%%)' % (
             utilization,
             healthcheck_utilization_pair[1].total,
             utilization_perc,
         ))
 
 
-def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize):
+def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs):
     """Given a list of (HealthCheckResult, ResourceUtilization) tuples, return a list with each of those
     tuples represented by a formatted string.
 
     :param healthcheck_utilization_pairs: a list of (HealthCheckResult, ResourceUtilization) tuples.
-    :param humanize: a boolean indicating if the strings should be humanized.
     :returns: a list containing a string representation of each (HealthCheckResult, ResourceUtilization) tuple.
     """
     return [
-        format_table_column_for_healthcheck_resource_utilization_pair(pair, humanize)
+        format_table_column_for_healthcheck_resource_utilization_pair(pair)
         for pair in healthcheck_utilization_pairs
     ]
 
 
-def get_table_rows_for_resource_info_dict(attribute_values, healthcheck_utilization_pairs, humanize):
+def get_table_rows_for_resource_info_dict(attribute_values, healthcheck_utilization_pairs):
     """ A wrapper method to join together
 
     :param attribute: The attribute value and formatted columns to be shown in
@@ -766,10 +761,9 @@ def get_table_rows_for_resource_info_dict(attribute_values, healthcheck_utilizat
     associated with the row. This becomes index 0 in the array returned.
     :param healthcheck_utilization_pairs: a list of 2-tuples, where each tuple has the elements
     (HealthCheckResult, ResourceUtilization)
-    :param humanize: a boolean indicating whether the outut strings should be 'humanized'
     :returns: a list of strings, representing a row in a table to be formatted.
     """
-    return attribute_values + format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize)
+    return attribute_values + format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs)
 
 
 def reserved_maintenence_resources(resources):

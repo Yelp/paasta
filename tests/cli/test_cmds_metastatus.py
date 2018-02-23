@@ -39,14 +39,12 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
         return_code = metastatus.print_cluster_status(
             cluster,
             fake_system_paasta_config,
-            False,
             [],
             verbose=0,
         )
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
             cluster=cluster,
             system_paasta_config=fake_system_paasta_config,
-            humanize=False,
             groupings=[],
             verbose=0,
             autoscaling_info=False,
