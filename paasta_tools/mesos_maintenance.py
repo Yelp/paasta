@@ -83,7 +83,8 @@ def operator_api():
             kwargs['headers']['Content-Type'] = 'application/json'
         else:
             kwargs['headers'] = {'Content-Type': 'application/json'}
-        return base_api_client("POST", "/api/v1", **kwargs)
+        data = kwargs.pop('data')
+        return base_api_client("POST", "/api/v1", data=json.dumps(data), **kwargs)
     return execute_operator_api_request
 
 
