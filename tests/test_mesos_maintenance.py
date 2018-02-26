@@ -23,9 +23,9 @@ from requests.exceptions import HTTPError
 from paasta_tools.mesos_maintenance import _make_request_payload
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_down
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_draining
+from paasta_tools.mesos_maintenance import build_maintenance_payload
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
 from paasta_tools.mesos_maintenance import build_reservation_payload
-from paasta_tools.mesos_maintenance import build_start_maintenance_payload
 from paasta_tools.mesos_maintenance import components_to_hosts
 from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
@@ -111,7 +111,7 @@ def test_datetime_to_nanoseconds():
 
 
 @mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
-def test_build_start_maintenance_payload(
+def test_build_maintenance_payload(
     mock_gethostbyname,
 ):
     ip = '169.254.121.212'
@@ -119,7 +119,7 @@ def test_build_start_maintenance_payload(
     hostname = 'fqdn1.example.org'
     hostnames = [hostname]
 
-    assert build_start_maintenance_payload(
+    assert build_maintenance_payload(
         hostnames, 'start_maintenance',
     )['start_maintenance']['machines'] == get_machine_ids(hostnames)
 
@@ -596,16 +596,16 @@ def test_unreserve(
 
 
 @mock.patch('paasta_tools.mesos_maintenance.operator_api', autospec=True)
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_payload', autospec=True)
 def test_down(
-    mock_build_start_maintenance_payload,
+    mock_build_maintenance_payload,
     mock_operator_api,
 ):
     fake_payload = [{'fake_schedule': 'fake_value'}]
-    mock_build_start_maintenance_payload.return_value = fake_payload
+    mock_build_maintenance_payload.return_value = fake_payload
     down(hostnames=['some-host'])
-    assert mock_build_start_maintenance_payload.call_count == 1
-    assert mock_build_start_maintenance_payload.call_args == mock.call(['some-host'], 'start_maintenance')
+    assert mock_build_maintenance_payload.call_count == 1
+    assert mock_build_maintenance_payload.call_args == mock.call(['some-host'], 'start_maintenance')
     assert mock_operator_api.call_count == 1
     assert mock_operator_api.return_value.call_count == 1
     expected_args = mock.call(data=fake_payload)
@@ -613,16 +613,16 @@ def test_down(
 
 
 @mock.patch('paasta_tools.mesos_maintenance.operator_api', autospec=True)
-@mock.patch('paasta_tools.mesos_maintenance.build_start_maintenance_payload', autospec=True)
+@mock.patch('paasta_tools.mesos_maintenance.build_maintenance_payload', autospec=True)
 def test_up(
-    mock_build_start_maintenance_payload,
+    mock_build_maintenance_payload,
     mock_operator_api,
 ):
     fake_payload = [{'fake_schedule': 'fake_value'}]
-    mock_build_start_maintenance_payload.return_value = fake_payload
+    mock_build_maintenance_payload.return_value = fake_payload
     up(hostnames=['some-host'])
-    assert mock_build_start_maintenance_payload.call_count == 1
-    assert mock_build_start_maintenance_payload.call_args == mock.call(['some-host'], 'stop_maintenance')
+    assert mock_build_maintenance_payload.call_count == 1
+    assert mock_build_maintenance_payload.call_args == mock.call(['some-host'], 'stop_maintenance')
     assert mock_operator_api.call_count == 1
     assert mock_operator_api.return_value.call_count == 1
     expected_args = mock.call(data=fake_payload)

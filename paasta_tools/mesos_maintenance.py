@@ -79,7 +79,7 @@ def master_api():
 def operator_api():
     def execute_operator_api_request(**kwargs):
         base_api_client = base_api()
-        if 'headers' in kwargs.keys():
+        if 'headers' in kwargs:
             kwargs['headers']['Content-Type'] = 'application/json'
         else:
             kwargs['headers'] = {'Content-Type': 'application/json'}
@@ -332,7 +332,7 @@ def datetime_to_nanoseconds(dt):
     return seconds_to_nanoseconds(int(dt.strftime("%s")))
 
 
-def build_start_maintenance_payload(hostnames, maint_type):
+def build_maintenance_payload(hostnames, maint_type):
     """Creates the JSON payload necessary to bring the specified hostnames up/down for maintenance.
     :param hostnames: a list of hostnames
     :returns: a dictionary representing the list of machines to bring up/down for maintenance
@@ -662,7 +662,7 @@ def down(hostnames):
     :returns: None
     """
     log.info("Bringing down: %s" % hostnames)
-    payload = build_start_maintenance_payload(hostnames, 'start_maintenance')
+    payload = build_maintenance_payload(hostnames, 'start_maintenance')
     client_fn = operator_api()
     try:
         down_output = client_fn(data=payload).text
@@ -677,7 +677,7 @@ def up(hostnames):
     :returns: None
     """
     log.info("Bringing up: %s" % hostnames)
-    payload = build_start_maintenance_payload(hostnames, 'stop_maintenance')
+    payload = build_maintenance_payload(hostnames, 'stop_maintenance')
     client_fn = operator_api()
     try:
         up_output = client_fn(data=payload).text
