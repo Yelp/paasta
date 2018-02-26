@@ -566,6 +566,17 @@ class TestChronosTools:
         )
         assert fake_conf.get_schedule_interval_in_seconds() == 60 * 60 * 24
 
+    def test_get_schedule_interval_in_seconds_if_monthly_crontab_format(self):
+        fake_schedule = '0 20 16 * *'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': fake_schedule, 'schedule_time_zone': 'America/Los_Angeles'},
+            branch_dict=None,
+        )
+        assert 60 * 60 * 24 * 28 <= fake_conf.get_schedule_interval_in_seconds() <= 60 * 60 * 24 * 31
+
     def test_get_schedule_interval_in_seconds_if_no_interval(self):
         fake_schedule = '2016-10-21T00:30:00Z'
         fake_conf = chronos_tools.ChronosJobConfig(
