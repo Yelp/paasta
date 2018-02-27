@@ -182,9 +182,10 @@ def get_spark_env(
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
+    spark_env['SPARK_OPTS'] = spark_conf
 
+    # Default configs to start the jupyter notebook server
     if cmd == 'jupyter':
-        spark_env['SPARK_OPTS'] = spark_conf
         spark_env['JUPYTER_RUNTIME_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
         spark_env['JUPYTER_DATA_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
 
@@ -314,12 +315,13 @@ def configure_and_run_docker_container(
         paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
         return 1
 
-    # Spark options are passed as options to pyspark and spark-shell.
-    # For jupyter, environment variable SPARK_OPTS is set instead.
+    # Default cli options to start the jupyter notebook server.
     if docker_cmd == 'jupyter':
         docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
             socket.getfqdn(), DEFAULT_SPARK_WORK_DIR,
         )
+    # Spark options are passed as options to pyspark and spark-shell.
+    # For jupyter, environment variable SPARK_OPTS is set instead.
     elif docker_cmd in ['pyspark', 'spark-shell']:
         docker_cmd = docker_cmd + ' ' + spark_conf_str
     elif docker_cmd.startswith('spark-submit'):

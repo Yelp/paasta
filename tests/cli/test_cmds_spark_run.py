@@ -151,6 +151,7 @@ def test_configure_and_run_docker_container(
             'AWS_ACCESS_KEY_ID': 'id',
             'AWS_SECRET_ACCESS_KEY': 'secret',
             'SPARK_USER': 'root',
+            'SPARK_OPTS': '--conf spark.app.name=fake_app',
         },
         docker_img='fake-registry/fake-service',
         docker_cmd='pyspark --conf spark.app.name=fake_app',
