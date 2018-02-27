@@ -1,3 +1,11 @@
+paasta-tools (0.69.35) xenial; urgency=medium
+
+  * 0.69.35 tagged with 'make release'
+    Commit: Merge pull request #1742 from Yelp/maint-operator-api  Use
+    the operator api for maintenance, draining, and up/down
+
+ -- Matthew Bentley <bentley@yelp.com>  Tue, 27 Feb 2018 07:42:07 -0800
+
 paasta-tools (0.69.34) xenial; urgency=medium
 
   * 0.69.34 tagged with 'make release'
