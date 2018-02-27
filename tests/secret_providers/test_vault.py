@@ -20,7 +20,7 @@ def test_decrypt_environment():
     ) as mock_get_secret_name_from_ref, mock.patch(
         'paasta_tools.secret_providers.vault.get_plaintext', autospec=False,
     ) as mock_get_plaintext:
-        mock_get_plaintext.return_value = ('SECRETSQUIRREL',)
+        mock_get_plaintext.return_value = b'SECRETSQUIRREL'
         sp = SecretProvider(
             soa_dir='/nail/blah',
             service_name='universe',

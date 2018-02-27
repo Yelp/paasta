@@ -56,6 +56,6 @@ class SecretProvider(BaseSecretProvider):
                 cache_dir=None,
                 cache_key=None,
                 context=self.service_name,
-            )[0]
+            ).decode('utf-8')
             secret_environment[k] = secret
         return secret_environment
